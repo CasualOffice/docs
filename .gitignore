@@ -1,0 +1,27 @@
+# Editor fork lives inline in docx-editor/ — tracked as part of this repo.
+# Build outputs and large fixtures are excluded below.
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Build / runtime artifacts
+node_modules/
+dist/
+build/
+target/
+*.log
+.env
+.env.local
+
+# Editor fork-specific build artefacts (avoid bloating outer repo history)
+docx-editor/node_modules/
+docx-editor/dist/
+docx-editor/.next/
+docx-editor/.turbo/
+docx-editor/coverage/
+docx-editor/playwright-report/
+docx-editor/test-results/

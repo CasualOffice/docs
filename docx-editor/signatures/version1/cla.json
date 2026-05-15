@@ -1,0 +1,40 @@
+{
+  "signedContributors": [
+    {
+      "name": "SaidMuratOzdemir",
+      "id": 114745121,
+      "signed_at": "2026-05-09T20:56:29Z",
+      "pull_request_no": 429
+    },
+    {
+      "name": "Cruiser13",
+      "id": 2771909,
+      "signed_at": "2026-05-10T18:05:51Z",
+      "pull_request_no": 245
+    },
+    {
+      "name": "leandrotcawork",
+      "id": 255115265,
+      "signed_at": "2026-05-11T03:50:06Z",
+      "pull_request_no": 425
+    },
+    {
+      "name": "VladislavSkripnichenko",
+      "id": 40806601,
+      "signed_at": "2026-05-11T22:24:49Z",
+      "pull_request_no": 453
+    },
+    {
+      "name": "dancrew32",
+      "id": 86152,
+      "signed_at": "2026-05-12T04:44:56Z",
+      "pull_request_no": 459
+    },
+    {
+      "name": "eliahilse",
+      "id": 83713217,
+      "signed_at": "2026-05-15T20:36:28Z",
+      "pull_request_no": 481
+    }
+  ]
+}

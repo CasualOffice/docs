@@ -1,0 +1,97 @@
+{
+  "name": "docx-editor-monorepo",
+  "version": "0.0.21",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config examples/vite/vite.config.ts",
+    "dev:nextjs": "cd examples/nextjs && npm run dev",
+    "dev:remix": "cd examples/remix && npm run dev",
+    "dev:astro": "cd examples/astro && npm run dev",
+    "dev:demo": "bash examples/dev-all.sh",
+    "build": "bun run --filter '@eigenpal/docx-core' build && bun run --filter '@eigenpal/docx-js-editor' build",
+    "build:demo": "vite build --config examples/vite/vite.config.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:visual": "npx playwright test visual.spec.ts",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "eslint packages/*/src/",
+    "lint:fix": "eslint packages/*/src/ --fix",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "i18n:validate": "node scripts/validate-i18n.mjs validate",
+    "i18n:fix": "node scripts/validate-i18n.mjs validate --fix",
+    "i18n:new": "node scripts/validate-i18n.mjs new",
+    "i18n:status": "node scripts/validate-i18n.mjs status",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "bun run build && changeset publish",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.30.0",
+    "@happy-dom/global-registrator": "^20.8.3",
+    "@playwright/test": "^1.58.1",
+    "@testing-library/react": "^16.0.0",
+    "@types/bun": "^1.0.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.17",
+    "class-variance-authority": "^0.7.0",
+    "eslint": "^10.0.3",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "husky": "^9.1.7",
+    "jszip": "^3.10.1",
+    "lint-staged": "^16.2.7",
+    "postcss": "^8.4.33",
+    "prettier": "^3.8.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "vite": "^8.0.10"
+  },
+  "keywords": [
+    "docx",
+    "editor",
+    "template",
+    "word",
+    "document",
+    "react",
+    "prosemirror"
+  ],
+  "author": "EigenPal",
+  "license": "MIT",
+  "homepage": "https://docx-editor.dev/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eigenpal/docx-editor.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "overrides": {
+    "prosemirror-view": "1.41.8",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-model": "1.25.4",
+    "prosemirror-transform": "1.12.0"
+  },
+  "resolutions": {
+    "prosemirror-view": "1.41.8",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-model": "1.25.4",
+    "prosemirror-transform": "1.12.0"
+  }
+}

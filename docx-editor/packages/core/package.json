@@ -1,0 +1,230 @@
+{
+  "name": "@eigenpal/docx-core",
+  "version": "0.0.28",
+  "private": true,
+  "sideEffects": false,
+  "description": "Framework-agnostic core for DOCX parsing, editing, and rendering",
+  "main": "./dist/core.js",
+  "module": "./dist/core.mjs",
+  "types": "./dist/core.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.mjs",
+      "require": "./dist/core.js"
+    },
+    "./headless": {
+      "types": "./dist/headless.d.ts",
+      "import": "./dist/headless.mjs",
+      "require": "./dist/headless.js"
+    },
+    "./core-plugins": {
+      "types": "./dist/core-plugins.d.ts",
+      "import": "./dist/core-plugins.mjs",
+      "require": "./dist/core-plugins.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.mjs",
+      "require": "./dist/mcp.js"
+    },
+    "./prosemirror": {
+      "types": "./dist/prosemirror/index.d.ts",
+      "import": "./dist/prosemirror/index.mjs",
+      "require": "./dist/prosemirror/index.js"
+    },
+    "./prosemirror/extensions": {
+      "types": "./dist/prosemirror/extensions/index.d.ts",
+      "import": "./dist/prosemirror/extensions/index.mjs",
+      "require": "./dist/prosemirror/extensions/index.js"
+    },
+    "./prosemirror/conversion": {
+      "types": "./dist/prosemirror/conversion/index.d.ts",
+      "import": "./dist/prosemirror/conversion/index.mjs",
+      "require": "./dist/prosemirror/conversion/index.js"
+    },
+    "./prosemirror/commands": {
+      "types": "./dist/prosemirror/commands/index.d.ts",
+      "import": "./dist/prosemirror/commands/index.mjs",
+      "require": "./dist/prosemirror/commands/index.js"
+    },
+    "./prosemirror/plugins": {
+      "types": "./dist/prosemirror/plugins/index.d.ts",
+      "import": "./dist/prosemirror/plugins/index.mjs",
+      "require": "./dist/prosemirror/plugins/index.js"
+    },
+    "./prosemirror/editor.css": "./dist/prosemirror/editor.css",
+    "./docx": {
+      "types": "./dist/docx/index.d.ts",
+      "import": "./dist/docx/index.mjs",
+      "require": "./dist/docx/index.js"
+    },
+    "./docx/serializer": {
+      "types": "./dist/docx/serializer/index.d.ts",
+      "import": "./dist/docx/serializer/index.mjs",
+      "require": "./dist/docx/serializer/index.js"
+    },
+    "./agent": {
+      "types": "./dist/agent/index.d.ts",
+      "import": "./dist/agent/index.mjs",
+      "require": "./dist/agent/index.js"
+    },
+    "./layout-engine": {
+      "types": "./dist/layout-engine/index.d.ts",
+      "import": "./dist/layout-engine/index.mjs",
+      "require": "./dist/layout-engine/index.js"
+    },
+    "./layout-painter": {
+      "types": "./dist/layout-painter/index.d.ts",
+      "import": "./dist/layout-painter/index.mjs",
+      "require": "./dist/layout-painter/index.js"
+    },
+    "./layout-bridge": {
+      "types": "./dist/layout-bridge/index.d.ts",
+      "import": "./dist/layout-bridge/index.mjs",
+      "require": "./dist/layout-bridge/index.js"
+    },
+    "./plugin-api": {
+      "types": "./dist/plugin-api/index.d.ts",
+      "import": "./dist/plugin-api/index.mjs",
+      "require": "./dist/plugin-api/index.js"
+    },
+    "./types/document": {
+      "types": "./dist/types/document.d.ts",
+      "import": "./dist/types/document.mjs",
+      "require": "./dist/types/document.js"
+    },
+    "./types/content": {
+      "types": "./dist/types/content.d.ts",
+      "import": "./dist/types/content.mjs",
+      "require": "./dist/types/content.js"
+    },
+    "./types/agentApi": {
+      "types": "./dist/types/agentApi.d.ts",
+      "import": "./dist/types/agentApi.mjs",
+      "require": "./dist/types/agentApi.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.mjs",
+      "require": "./dist/utils/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "headless": [
+        "./dist/headless.d.ts"
+      ],
+      "core-plugins": [
+        "./dist/core-plugins.d.ts"
+      ],
+      "mcp": [
+        "./dist/mcp.d.ts"
+      ],
+      "prosemirror": [
+        "./dist/prosemirror/index.d.ts"
+      ],
+      "prosemirror/extensions": [
+        "./dist/prosemirror/extensions/index.d.ts"
+      ],
+      "prosemirror/conversion": [
+        "./dist/prosemirror/conversion/index.d.ts"
+      ],
+      "prosemirror/commands": [
+        "./dist/prosemirror/commands/index.d.ts"
+      ],
+      "prosemirror/plugins": [
+        "./dist/prosemirror/plugins/index.d.ts"
+      ],
+      "docx": [
+        "./dist/docx/index.d.ts"
+      ],
+      "docx/serializer": [
+        "./dist/docx/serializer/index.d.ts"
+      ],
+      "agent": [
+        "./dist/agent/index.d.ts"
+      ],
+      "layout-engine": [
+        "./dist/layout-engine/index.d.ts"
+      ],
+      "layout-painter": [
+        "./dist/layout-painter/index.d.ts"
+      ],
+      "layout-bridge": [
+        "./dist/layout-bridge/index.d.ts"
+      ],
+      "plugin-api": [
+        "./dist/plugin-api/index.d.ts"
+      ],
+      "types/document": [
+        "./dist/types/document.d.ts"
+      ],
+      "types/content": [
+        "./dist/types/content.d.ts"
+      ],
+      "types/agentApi": [
+        "./dist/types/agentApi.d.ts"
+      ],
+      "utils": [
+        "./dist/utils/index.d.ts"
+      ]
+    }
+  },
+  "bin": {
+    "docx-editor-mcp": "./dist/mcp-cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/copy-assets.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "docxtemplater": "^3.50.0",
+    "jszip": "^3.10.1",
+    "pizzip": "^3.1.7",
+    "xml-js": "^1.6.11"
+  },
+  "peerDependencies": {
+    "prosemirror-commands": "^1.5.2",
+    "prosemirror-dropcursor": "^1.8.2",
+    "prosemirror-history": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.19.4",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-transform": "^1.10.2",
+    "prosemirror-view": "^1.32.7"
+  },
+  "devDependencies": {
+    "prosemirror-commands": "^1.5.2",
+    "prosemirror-dropcursor": "^1.8.2",
+    "prosemirror-history": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.19.4",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-transform": "^1.10.2",
+    "prosemirror-view": "^1.41.6"
+  },
+  "keywords": [
+    "docx",
+    "editor",
+    "template",
+    "word",
+    "document",
+    "prosemirror"
+  ],
+  "author": "EigenPal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eigenpal/docx-editor.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

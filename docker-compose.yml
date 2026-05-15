@@ -1,0 +1,55 @@
+# Local dev stack for the document service.
+#
+# Design note: this service is stateless. Document persistence is delegated
+# to a WOPI host (added in a later milestone) via GetFile / PutFile. The
+# backend will hold the Y.Doc in memory while a session is live, fan
+# updates out to connected clients, and flush snapshots back to WOPI on
+# save / session-end. No database, no on-disk update log.
+#
+# Currently defined:
+#   - editor: runs the eigenpal-derived editor's Vite dev server in
+#             oven/bun. No system-side bun/node install required.
+#
+# Planned (added when the Go backend code lands):
+#   - backend: WS gateway + snapshot worker
+#
+# Usage:
+#   docker compose up -d editor       # first run: bun install ~30-90s
+#   docker compose logs -f editor     # wait for "Local:   http://0.0.0.0:5173/"
+#   open http://localhost:5173/
+#   docker compose down
+#   docker compose down -v            # also wipes node_modules volume
+
+services:
+  editor:
+    image: oven/bun:1
+    container_name: docx-editor-dev
+    working_dir: /app
+    command: sh -c "bun install && bunx vite --config examples/vite/vite.config.ts --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      # Source: bind-mount the fork so edits hot-reload.
+      - ./docx-editor:/app
+      # Keep node_modules inside the container (named volume) so the host
+      # never gets a node_modules dir, and Linux-built native deps stay
+      # separate from any host install.
+      - editor-node-modules:/app/node_modules
+    restart: unless-stopped
+
+  # backend:
+  #   build: ./backend
+  #   container_name: docx-backend
+  #   restart: unless-stopped
+  #   environment:
+  #     JWT_SECRET: dev-secret-not-for-production
+  #     LISTEN_ADDR: ":8080"
+  #   ports:
+  #     - "8080:8080"
+
+  # Future possibilities (not required for v1):
+  # - mock-wopi: local WOPI host for testing storage integration end-to-end
+  # - redis: cross-node pubsub if/when we scale past a single backend node
+
+volumes:
+  editor-node-modules:
