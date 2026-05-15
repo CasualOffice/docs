@@ -39,18 +39,9 @@ export {
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils';
 export { AgentPanel, type AgentPanelProps } from './components/AgentPanel';
-export {
-  AgentChatLog,
-  AgentComposer,
-  AgentSuggestionChip,
-  AgentTimeline,
-  type AgentChatLogProps,
-  type AgentComposerProps,
-  type AgentSuggestionChipProps,
-  type AgentTimelineProps,
-  type AgentMessage,
-  type AgentToolCall,
-} from './components/AgentChat';
+// AgentChat exports removed: the source file (./components/AgentChat) imported
+// from the AGPL @eigenpal/docx-editor-agents package and was dropped in this
+// fork's AGPL purge. See docs/agpl-removal.md.
 
 // ============================================================================
 // AGENT API
