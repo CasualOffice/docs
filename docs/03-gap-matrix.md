@@ -32,7 +32,7 @@ Columns:
 | **table-overlap-text** | Table content can render over following text; extra blank pages | openspec/table-rendering-fidelity | P2 | M | Y | open | — |
 | **table-last-row-border** | Last row missing bottom border (firstRow-only style) | GH #395 | P2 | S | Y | open | — |
 | **table-column-resize** | Column resize only works on last column; can't be moved back | openspec/table-editing-polish | P2 | M | Y | open | — |
-| **table-new-row-format** | New rows from "Add row above/below" don't inherit formatting | openspec/table-editing-polish | P2 | S | Y | open | — |
+| **table-new-row-format** | New rows from "Add row above/below" don't inherit formatting | openspec/table-editing-polish | P2 | S | Y | **already-fixed** — `addRowAbove` / `addRowBelow` in `TableExtension.ts:936,974` both call `buildCellAttrsFromTemplate(cell)` (line 798) which clones `borders`, `backgroundColor`, `margins`, `verticalAlign`, `width`, `widthType`, `textDirection`, `noWrap` from the template cell. Row's `height` / `heightRule` also forwarded. New e2e tints a row, then inserts above and below from a cursor in that row — both new rows carry the tint. | `e2e/tests/table-new-row-format.spec.ts` |
 | **tab-leader-toc** | Tab leaders in TOC overlap titles and page numbers | openspec/tab-leader-fidelity | P2 | M | Y | open | — |
 | **list-multi-indent** | Multi-select indent/outdent only affects first item | openspec/list-operations-fidelity | P2 | S | Y | **fixed-local** — toolbar-bound `increaseListLevel` and `decreaseListLevel` in `ListExtension.ts` used to only act on `$from.parent`, leaving the rest of a multi-paragraph selection untouched. Rewrote both to walk `nodesBetween($from.pos, $to.pos)` and apply the level change (or remove-list at level 0) to every paragraph with `numPr` — mirrors the existing keymap path (`increaseListIndent`/`decreaseListIndent`) and the `removeList` helper. 2/2 new e2e + typecheck green. | `e2e/tests/list-multi-indent.spec.ts` |
 | **list-multi-toggle** | Multi-select list toggle only removes first item | openspec/list-operations-fidelity | P2 | S | Y | **already-fixed** — `toggleList` in `ListExtension.ts` was rewritten in a prior commit to walk the selection via `nodesBetween` and toggle `numPr` on every visited paragraph. Pinned with a new e2e to lock the behavior. 1/1 e2e green. | `e2e/tests/list-multi-toggle.spec.ts` |
@@ -68,6 +68,7 @@ The next ≤3 gaps actively in flight. Update when one closes / opens.
 
 ## Recently moved
 
+- **table-new-row-format** — ALREADY-FIXED, PINNED (2026-05-17). `addRowAbove`/`addRowBelow` clone every formatting attr via `buildCellAttrsFromTemplate`. E2E locks the behavior.
 - **drawing-shapes-render (DrawingML half)** — FIXED-LOCAL (2026-05-17). Word's "Insert → Shapes" output (`<wps:wsp>` with `<wps:spPr>` but no `<wps:txbx>`) now renders via the same TextBox pipeline. Both halves of the gap are done.
 - **drawing-shapes-render (VML half)** — FIXED-LOCAL (2026-05-17). VML decorative `<v:rect>` / `<v:oval>` / `<v:line>` now render with fill/outline/position. SDS painted-textbox count went 1 → 7 (initial viewport).
 - **table-indent-offset** — FIXED-LOCAL (2026-05-17). Table positioning now subtracts the left cell margin from `tblInd` so first-cell content (not the cell border) lines up at the page margin, matching Word. Ready for upstream PR.
