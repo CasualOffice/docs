@@ -82,78 +82,94 @@ const toggleNumberedList: Command = (state, dispatch) => {
   return toggleList(2)(state, dispatch);
 };
 
+// Both indent/outdent commands walk the selection so that multi-paragraph
+// selections affect every list item, not just the one under the cursor —
+// matches Word's Tab / Shift+Tab behavior. The keymap-bound
+// `increaseListIndent` / `decreaseListIndent` further down already do
+// this; the toolbar entry points used to act only on `$from.parent` and
+// silently no-op'd every other selected item.
+
 const increaseListLevel: Command = (state, dispatch) => {
-  const { $from } = state.selection;
-  const paragraph = $from.parent;
+  const { $from, $to } = state.selection;
 
-  if (paragraph.type.name !== 'paragraph') return false;
-  if (!paragraph.attrs.numPr) return false;
+  const targets: Array<{ pos: number; attrs: Record<string, unknown>; newLevel: number }> = [];
+  const seen = new Set<number>();
+  state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+    if (node.type.name !== 'paragraph' || !node.attrs.numPr || seen.has(pos)) return;
+    seen.add(pos);
+    const currentLevel = node.attrs.numPr.ilvl || 0;
+    if (currentLevel >= 8) return;
+    targets.push({ pos, attrs: node.attrs, newLevel: currentLevel + 1 });
+  });
 
-  const currentLevel = paragraph.attrs.numPr.ilvl || 0;
-  if (currentLevel >= 8) return false;
-
+  if (targets.length === 0) return false;
   if (!dispatch) return true;
 
-  const paragraphPos = $from.before($from.depth);
-
-  dispatch(
-    state.tr
-      .setNodeMarkup(paragraphPos, undefined, {
-        ...paragraph.attrs,
-        numPr: { ...paragraph.attrs.numPr, ilvl: currentLevel + 1 },
-        // Clear explicit indentation so layout engine computes from new level
-        indentLeft: null,
-        indentFirstLine: null,
-        hangingIndent: null,
-      })
-      .scrollIntoView()
-  );
-
+  let tr = state.tr;
+  for (const { pos, attrs, newLevel } of targets) {
+    tr = tr.setNodeMarkup(pos, undefined, {
+      ...attrs,
+      numPr: { ...(attrs.numPr as Record<string, unknown>), ilvl: newLevel },
+      // Clear explicit indentation so the layout engine recomputes from
+      // the new level — otherwise the item keeps its old visual indent.
+      indentLeft: null,
+      indentFirstLine: null,
+      hangingIndent: null,
+    });
+  }
+  dispatch(tr.scrollIntoView());
   return true;
 };
 
 const decreaseListLevel: Command = (state, dispatch) => {
-  const { $from } = state.selection;
-  const paragraph = $from.parent;
+  const { $from, $to } = state.selection;
 
-  if (paragraph.type.name !== 'paragraph') return false;
-  if (!paragraph.attrs.numPr) return false;
+  const targets: Array<{
+    pos: number;
+    attrs: Record<string, unknown>;
+    removeList: boolean;
+    newLevel: number;
+  }> = [];
+  const seen = new Set<number>();
+  state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+    if (node.type.name !== 'paragraph' || !node.attrs.numPr || seen.has(pos)) return;
+    seen.add(pos);
+    const currentLevel = node.attrs.numPr.ilvl || 0;
+    targets.push({
+      pos,
+      attrs: node.attrs,
+      removeList: currentLevel <= 0,
+      newLevel: currentLevel - 1,
+    });
+  });
 
-  const currentLevel = paragraph.attrs.numPr.ilvl || 0;
-
+  if (targets.length === 0) return false;
   if (!dispatch) return true;
 
-  const paragraphPos = $from.before($from.depth);
-
-  if (currentLevel <= 0) {
-    dispatch(
-      state.tr
-        .setNodeMarkup(paragraphPos, undefined, {
-          ...paragraph.attrs,
-          numPr: null,
-          listIsBullet: null,
-          listNumFmt: null,
-          listMarker: null,
-          indentLeft: null,
-          indentFirstLine: null,
-          hangingIndent: null,
-        })
-        .scrollIntoView()
-    );
-  } else {
-    dispatch(
-      state.tr
-        .setNodeMarkup(paragraphPos, undefined, {
-          ...paragraph.attrs,
-          numPr: { ...paragraph.attrs.numPr, ilvl: currentLevel - 1 },
-          indentLeft: null,
-          indentFirstLine: null,
-          hangingIndent: null,
-        })
-        .scrollIntoView()
-    );
+  let tr = state.tr;
+  for (const { pos, attrs, removeList, newLevel } of targets) {
+    if (removeList) {
+      tr = tr.setNodeMarkup(pos, undefined, {
+        ...attrs,
+        numPr: null,
+        listIsBullet: null,
+        listNumFmt: null,
+        listMarker: null,
+        indentLeft: null,
+        indentFirstLine: null,
+        hangingIndent: null,
+      });
+    } else {
+      tr = tr.setNodeMarkup(pos, undefined, {
+        ...attrs,
+        numPr: { ...(attrs.numPr as Record<string, unknown>), ilvl: newLevel },
+        indentLeft: null,
+        indentFirstLine: null,
+        hangingIndent: null,
+      });
+    }
   }
-
+  dispatch(tr.scrollIntoView());
   return true;
 };
 
