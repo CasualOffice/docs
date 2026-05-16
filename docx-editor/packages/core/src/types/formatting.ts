@@ -93,7 +93,18 @@ export interface TextFormatting {
   // Colors and highlighting
   /** Text color (w:color) */
   color?: ColorValue;
-  /** Highlight/background color (w:highlight) */
+  /**
+   * Highlight/background color.
+   *
+   * Two forms:
+   *  - One of the OOXML named highlight colors (`<w:highlight w:val="..."/>`,
+   *    ECMA-376 §17.18.40). Serializes verbatim.
+   *  - A 6-digit hex string (e.g. `"FFEB3B"`). Custom hex colors are NOT
+   *    valid for `<w:highlight>` — the serializer emits
+   *    `<w:shd w:val="clear" w:color="auto" w:fill="HEX"/>` instead, and
+   *    the parser rehydrates the highlight semantic from that on read
+   *    (openspec `ooxml-roundtrip-fidelity` #1).
+   */
   highlight?:
     | 'black'
     | 'blue'
@@ -111,7 +122,10 @@ export interface TextFormatting {
     | 'none'
     | 'red'
     | 'white'
-    | 'yellow';
+    | 'yellow'
+    // Custom hex colors (e.g. picked from the color picker). The string
+    // contract is `[0-9a-fA-F]{6}`; the serializer falls back to <w:shd>.
+    | (string & {});
   /** Character shading (w:shd) */
   shading?: ShadingProperties;
 
