@@ -4,11 +4,13 @@ A casual, real-time collaborative `.docx` editor.
 
 Browser-side editor + a stateless Go sync server. Pulls a `.docx` into the editor, lets multiple people work on it together, hands the file back when you're done. No database, no on-disk log — the only live state is whatever's in active session memory; storage is handed off to a WOPI host.
 
-The editor view is a fork of [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor) (MIT — React + ProseMirror with the OOXML model kept intact end-to-end), inlined under `docx-editor/`. The fixes for the gaps we hit (textboxes in headers, comment-ID collisions on collab, theme-color round-trip, tab-stop alignment in headers, etc.) all live there and are tracked one PR each in `docs/03-gap-matrix.md`.
+The editor view is based on the MIT `eigenpal/docx-editor` codebase (React + ProseMirror with the OOXML model kept intact end-to-end), inlined under `docx-editor/`. Our fixes for the fidelity gaps we hit (textboxes in headers, comment-ID collisions on collab, theme-color round-trip, tab-stop alignment in headers, etc.) all live there and are tracked one row each in [`docs/03-gap-matrix.md`](docs/03-gap-matrix.md).
+
+Repo: [github.com/schnsrw/docx](https://github.com/schnsrw/docx).
 
 ## Status
 
-Early. Editor fork in place with ten of our fidelity fixes landed locally. AGPL pieces stripped. Backend not yet written.
+Early. Editor fork in place with 12 fidelity fixes landed locally. AGPL pieces stripped. Backend not yet written.
 
 ## Architecture
 

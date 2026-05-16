@@ -37,7 +37,7 @@ Columns:
 | **list-multi-indent** | Multi-select indent/outdent only affects first item | openspec/list-operations-fidelity | P2 | S | Y | **fixed-local** — toolbar-bound `increaseListLevel` and `decreaseListLevel` in `ListExtension.ts` used to only act on `$from.parent`, leaving the rest of a multi-paragraph selection untouched. Rewrote both to walk `nodesBetween($from.pos, $to.pos)` and apply the level change (or remove-list at level 0) to every paragraph with `numPr` — mirrors the existing keymap path (`increaseListIndent`/`decreaseListIndent`) and the `removeList` helper. 2/2 new e2e + typecheck green. | `e2e/tests/list-multi-indent.spec.ts` |
 | **list-multi-toggle** | Multi-select list toggle only removes first item | openspec/list-operations-fidelity | P2 | S | Y | **already-fixed** — `toggleList` in `ListExtension.ts` was rewritten in a prior commit to walk the selection via `nodesBetween` and toggle `numPr` on every visited paragraph. Pinned with a new e2e to lock the behavior. 1/1 e2e green. | `e2e/tests/list-multi-toggle.spec.ts` |
 | **list-num-format-fallback** | Decimal/unsupported list number formats fall back to decimal silently | in-code `toFlowBlocks.ts` | P3 | M | Y | open | — |
-| **drawingml-hyperlink-click** | DrawingML images with `a:hlinkClick` don't open on click | openspec/ooxml-feature-gaps | P3 | S | Y | open | — |
+| **drawingml-hyperlink-click** | DrawingML images with `a:hlinkClick` don't open on click | openspec/ooxml-feature-gaps | P3 | S | Y | **fixed-local** — parser already stored `image.hlinkHref` (resolved via doc rels) and `renderImage.ts`'s block-image path already wrapped in an anchor, but `toFlowBlocks.ts` dropped the field when building `ImageRun`, so the painter's inline + block renderers in `renderParagraph.ts` never saw it. Added `hlinkHref?: string` to `ImageRun`, threaded it through the bridge, and wrapped the `<img>` in a `target="_blank" rel="noopener noreferrer"` anchor in both `renderInlineImageRun` and `renderBlockImage`. 1 new e2e green; typecheck clean. | `e2e/tests/drawingml-hyperlink-click.spec.ts` + `scripts/make-image-hyperlink-fixture.mjs` |
 | **tiff-images** | TIFF images render as broken icons | openspec/ooxml-feature-gaps + GH #146 | P3 | M | Y | open | — |
 | **continuous-section-columns** | No column balancing for continuous section breaks | GH #182 | P3 | M | Y | open | — |
 | **perf-200-pages** | >200-page docs take >60s to load; tab throttling kills layout | openspec/editor-performance | P3 | XL | Y | open | — |
@@ -59,12 +59,13 @@ Columns:
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **upstream PRs** — bundle the fixed-local changes (textbox-header, textbox-vml, comment-id, highlight-roundtrip, header-image-inheritance, theme-color-roundtrip, header-footer-render partial, file-properties, export-pdf, list-multi-indent, header-image-oversized) into separate PRs against `eigenpal/docx-js-editor`.
-2. **drawing-shapes-render (P2, L)** — non-textbox DrawingML shapes (rectangles, ellipses, arrows, callouts) parsed but not rendered. Parser already solid; gap is in `imageParser` routing + a missing `renderShape` in `layout-painter/`.
+1. **drawing-shapes-render (P2, L)** — non-textbox DrawingML shapes (rectangles, ellipses, arrows, callouts) parsed but not rendered. Parser already solid; gap is in `imageParser` routing + a missing `renderShape` in `layout-painter/`.
+2. *(open slot)*
 3. *(open slot)*
 
 ## Recently moved
 
+- **drawingml-hyperlink-click** — FIXED-LOCAL (2026-05-17). Inline + block images with `a:hlinkClick` now render inside a `target=_blank` anchor.
 - **paragraph-border-between-bar** — ALREADY-FIXED, PINNED (2026-05-17). Every layer carries `w:between` + `w:bar` already; matrix entry was stale. New e2e pins round-trip + rendered output.
 - **header-image-oversized** — FIXED-LOCAL (2026-05-17). Inline + block images now carry `max-width: 100%` from the painter itself, so the clamp works regardless of whether the host page loads Tailwind preflight. Ready for upstream PR.
 - **drawing-shapes-render** — NEW GAP recorded (2026-05-17). Audit found non-textbox DrawingML shapes are parsed but never painted.
