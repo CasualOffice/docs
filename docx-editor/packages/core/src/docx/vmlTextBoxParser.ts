@@ -27,7 +27,14 @@
  * code path can be skipped quickly when only DrawingML is present.
  */
 
-import type { TextBox, Paragraph, ImageSize } from '../types/content';
+import type {
+  TextBox,
+  Paragraph,
+  ImageSize,
+  ShapeFill,
+  ShapeOutline,
+  ImagePosition,
+} from '../types/content';
 import {
   findDeep,
   findChild,
@@ -159,4 +166,168 @@ function lengthDeclToEmu(value: string | undefined): number | null {
   // Bare number → twips
   // 1 twip = 635 EMU
   return Math.round(num * 635);
+}
+
+// ============================================================================
+// VML DECORATIVE SHAPES (non-textbox)
+// ============================================================================
+
+/**
+ * Decorative VML shapes — `<v:rect>`, `<v:oval>`, `<v:line>` — that do
+ * NOT carry an inner `<v:textbox>`. Common in older Word docs as page
+ * dividers, banner bars, signature lines, etc.
+ *
+ * We emit them as a `TextBox` whose `content` is a single empty
+ * paragraph (the PM textBox schema requires `(paragraph | table)+`).
+ * The renderer in `renderTextBox.ts` paints the fill + outline based on
+ * the TextBox's `fill`/`outline` fields regardless of whether the inner
+ * content has any text, so the box appears as a styled rectangle.
+ *
+ * Per OOXML §9.4.2 (legacy VML), the wire format is CSS-like style
+ * declarations on a single attribute — same shape this module already
+ * parses for VML text frames. The supported tags here are limited to
+ * shapes whose visual is a single filled rectangle:
+ *
+ *   <v:rect ... fillcolor="#000" stroked="false">
+ *     <v:fill type="solid"/>
+ *   </v:rect>
+ *
+ * `<v:oval>` is rendered as a rectangle too — close enough for most
+ * decorative-banner use cases, and round-trips faithfully on save
+ * because we keep no shape-type-specific data here.
+ */
+const VML_DECORATIVE_TAGS = new Set(['rect', 'oval', 'line']);
+
+function parseVmlStyle(styleAttr: string): Map<string, string> {
+  const decls = new Map<string, string>();
+  for (const part of styleAttr.split(';')) {
+    const [k, v] = part.split(':');
+    if (k && v) decls.set(k.trim().toLowerCase(), v.trim());
+  }
+  return decls;
+}
+
+function buildEmptyParagraph(): Paragraph {
+  return { type: 'paragraph', content: [] };
+}
+
+function parseFillForShape(shapeEl: XmlElement): ShapeFill | undefined {
+  // `filled="false"` means no fill regardless of fillcolor.
+  const filled = getAttribute(shapeEl, null, 'filled');
+  if (filled === 'false' || filled === 'f') return { type: 'none' };
+
+  const fillcolor = getAttribute(shapeEl, null, 'fillcolor');
+  if (!fillcolor) return undefined;
+  const rgb = normalizeHex(fillcolor);
+  if (!rgb) return undefined;
+  return { type: 'solid', color: { rgb } };
+}
+
+function parseOutlineForShape(shapeEl: XmlElement): ShapeOutline | undefined {
+  const stroked = getAttribute(shapeEl, null, 'stroked');
+  if (stroked === 'false' || stroked === 'f') return undefined;
+
+  const strokecolor = getAttribute(shapeEl, null, 'strokecolor');
+  const strokeweight = getAttribute(shapeEl, null, 'strokeweight');
+  if (!strokecolor && !strokeweight) return undefined;
+
+  const outline: ShapeOutline = {};
+  if (strokecolor) {
+    const rgb = normalizeHex(strokecolor);
+    if (rgb) outline.color = { rgb };
+  }
+  if (strokeweight) {
+    const emu = lengthDeclToEmu(strokeweight);
+    if (emu) outline.width = emu;
+  }
+  return outline;
+}
+
+function normalizeHex(value: string): string | null {
+  const trimmed = value.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed.toUpperCase();
+  if (/^[0-9a-fA-F]{3}$/.test(trimmed)) {
+    return trimmed
+      .toUpperCase()
+      .split('')
+      .map((c) => c + c)
+      .join('');
+  }
+  // Some VML uses CSS-style names like "white", "black" — skip for now
+  // (the SDS fixture's shapes all use #RRGGBB).
+  return null;
+}
+
+function parseVmlShapePosition(
+  _shapeEl: XmlElement,
+  decls: Map<string, string>
+): ImagePosition | undefined {
+  const isAbsolute = decls.get('position') === 'absolute';
+  if (!isAbsolute) return undefined;
+
+  const left = lengthDeclToEmu(decls.get('margin-left'));
+  const top = lengthDeclToEmu(decls.get('margin-top'));
+  if (left === null && top === null) return undefined;
+
+  // The DOCX `mso-position-*-relative` style hints would let us bind
+  // the offset to `page`, `margin`, `paragraph`, etc., but the model's
+  // `ImagePosition.horizontal.relativeTo` is required and the typed
+  // enum doesn't accept the loose VML strings. Default to a margin-
+  // relative anchor — for the SDS-style page-divider shapes this puts
+  // the rectangle inside the content area, which is close enough.
+  return {
+    horizontal: { relativeTo: 'margin', posOffset: left ?? 0 },
+    vertical: { relativeTo: 'paragraph', posOffset: top ?? 0 },
+  };
+}
+
+/** Does this `<w:pict>` contain a decorative VML shape we can render? */
+export function isVmlDecorativeShapePict(pictEl: XmlElement): boolean {
+  return findVmlDecorativeShape(pictEl) !== null;
+}
+
+function findVmlDecorativeShape(pictEl: XmlElement): XmlElement | null {
+  for (const child of getChildElements(pictEl)) {
+    const local = getLocalName(child.name ?? '');
+    if (VML_DECORATIVE_TAGS.has(local)) return child;
+    if (local === 'group') {
+      for (const inner of getChildElements(child)) {
+        if (VML_DECORATIVE_TAGS.has(getLocalName(inner.name ?? ''))) return inner;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse a `<w:pict>` element containing one VML decorative shape to a
+ * `TextBox`-shaped record. Returns `null` if no decorative shape was
+ * found. The caller decides whether to wrap it back into a `Shape` /
+ * `ShapeContent` for injection into the document tree (same as the
+ * text-frame path).
+ */
+export function parseVmlDecorativeShape(pictEl: XmlElement): TextBox | null {
+  const shape = findVmlDecorativeShape(pictEl);
+  if (!shape) return null;
+
+  const size = parseVmlShapeSize(shape);
+  const style = getAttribute(shape, null, 'style') ?? '';
+  const decls = parseVmlStyle(style);
+  const position = parseVmlShapePosition(shape, decls);
+  const fill = parseFillForShape(shape);
+  const outline = parseOutlineForShape(shape);
+  const id = getAttribute(shape, null, 'id') ?? undefined;
+
+  return {
+    type: 'textBox',
+    id,
+    size,
+    position,
+    fill,
+    outline,
+    // Schema requires (paragraph | table)+ — emit one empty paragraph
+    // so the textBox node is valid; the renderer paints fill + outline
+    // regardless of inner content.
+    content: [buildEmptyParagraph()],
+  };
 }

@@ -1768,8 +1768,13 @@ function extractTextBoxesFromParagraph(paragraph: Paragraph): TextBox[] {
       for (const rc of content.content) {
         if (rc.type === 'shape' && 'shape' in rc) {
           const shape = rc.shape as Shape;
-          if (shape.textBody && shape.textBody.content.length > 0) {
-            // Convert shape with text body to TextBox
+          // Convert any shape with a textBody — including decorative
+          // VML rectangles where the inner content is just a single
+          // empty paragraph. The painter renders the box's
+          // fill/outline regardless of whether the inner content has
+          // text; gating this on non-empty content silently dropped
+          // every decorative `<v:rect>` (SDS-style page dividers).
+          if (shape.textBody) {
             textBoxes.push({
               type: 'textBox',
               id: shape.id,
@@ -1778,7 +1783,10 @@ function extractTextBoxesFromParagraph(paragraph: Paragraph): TextBox[] {
               wrap: shape.wrap,
               fill: shape.fill,
               outline: shape.outline,
-              content: shape.textBody.content,
+              content:
+                shape.textBody.content.length > 0
+                  ? shape.textBody.content
+                  : [{ type: 'paragraph', content: [] }],
               margins: shape.textBody.margins,
             });
           }

@@ -38,7 +38,12 @@ import {
   getTextBoxContentElement,
   parseTextBoxContent,
 } from './textBoxParser';
-import { isVmlTextBoxPict, parseVmlTextBox } from './vmlTextBoxParser';
+import {
+  isVmlTextBoxPict,
+  parseVmlTextBox,
+  isVmlDecorativeShapePict,
+  parseVmlDecorativeShape,
+} from './vmlTextBoxParser';
 
 /**
  * Enrich a parsed paragraph with text-box content from its raw XML.
@@ -90,6 +95,35 @@ export function enrichParagraphTextBoxes(
               },
             };
             if (vmlTextBox.id) shape.id = vmlTextBox.id;
+            parsedContent.content.push({ type: 'shape', shape });
+          }
+        }
+        continue;
+      }
+
+      // Decorative VML shapes — `<v:rect>`, `<v:oval>`, `<v:line>` with
+      // no inner text. SDS-style docs use them as section dividers.
+      // Emitted as a Shape with `textBody.content = [{ empty para }]`
+      // so the existing toProseDoc → renderTextBox pipeline paints the
+      // fill / outline / position. Without this branch every decorative
+      // banner / divider was silently dropped.
+      if (elName === 'pict' && isVmlDecorativeShapePict(runEl)) {
+        const decorative = parseVmlDecorativeShape(runEl);
+        if (decorative && runIndex < paragraph.content.length) {
+          const parsedContent = paragraph.content[runIndex];
+          if (parsedContent.type === 'run') {
+            const shape: Shape = {
+              type: 'shape',
+              shapeType: 'rect',
+              size: decorative.size,
+              position: decorative.position,
+              fill: decorative.fill,
+              outline: decorative.outline,
+              textBody: {
+                content: decorative.content,
+              },
+            };
+            if (decorative.id) shape.id = decorative.id;
             parsedContent.content.push({ type: 'shape', shape });
           }
         }
