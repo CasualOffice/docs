@@ -1215,14 +1215,29 @@ function convertTable(node: PMNode, startPos: number, options: ToFlowBlocksOptio
   // Extract justification
   const justification = node.attrs.justification as 'left' | 'center' | 'right' | undefined;
 
-  // Extract table indent from _originalFormatting (w:tblInd)
+  // Extract table indent from _originalFormatting (w:tblInd).
+  //
+  // Word renders `tblInd` as the distance from the page margin to the
+  // first cell's *content* area, not to the first cell's outer edge
+  // (ECMA-376 §17.4.8 + Word's de-facto behavior). To match, subtract
+  // the table-level left cell margin from the pixel offset so the
+  // first cell's content lines up at `tblInd` exactly. Without this
+  // compensation, tables sit ~7 px (Word's default 108-twip cell
+  // margin) further right than they do in Word.
+  //
+  // When `tblInd` is absent, Word defaults to the negative left cell
+  // margin so the cell content still sits at the page margin —
+  // mirrored here.
+  const DEFAULT_LEFT_CELL_MARGIN_TWIPS = 108;
   const originalFormatting = node.attrs._originalFormatting as
     | { indent?: { value: number; type: string } }
     | undefined;
+  const leftCellMarginTwips = tableCellMargins?.left ?? DEFAULT_LEFT_CELL_MARGIN_TWIPS;
   const indentPx =
-    originalFormatting?.indent?.value && originalFormatting.indent.type === 'dxa'
-      ? twipsToPixels(originalFormatting.indent.value)
-      : undefined;
+    originalFormatting?.indent?.value !== undefined &&
+    originalFormatting.indent.type === 'dxa'
+      ? twipsToPixels(originalFormatting.indent.value - leftCellMarginTwips)
+      : -twipsToPixels(leftCellMarginTwips);
 
   const floating = node.attrs.floating as
     | {
