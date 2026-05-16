@@ -205,6 +205,11 @@ export interface ToolbarProps {
   onOpenImageProperties?: () => void;
   /** Callback to open page setup dialog */
   onPageSetup?: () => void;
+  /** Callback to open File → Properties dialog (`docProps/core.xml`) */
+  onFileProperties?: () => void;
+  /** Callback for Export as PDF — opens the print pipeline so the user
+   *  can pick "Save as PDF" as the destination. */
+  onExportPdf?: () => void;
   /** Table context when cursor is in a table */
   tableContext?: {
     isInTable: boolean;
@@ -351,6 +356,8 @@ export function Toolbar({
   onOpen,
   onSave,
   onPageSetup,
+  onFileProperties,
+  onExportPdf,
   onInsertImage,
   onInsertTable,
   showTableInsert = true,
@@ -429,7 +436,8 @@ export function Toolbar({
       {/* File Menu */}
       {(() => {
         const hasPrintOrPageSetup = (showPrintButton && onPrint) || onPageSetup;
-        const hasFileMenu = hasPrintOrPageSetup || onOpen || onSave;
+        const hasFileMenu =
+          hasPrintOrPageSetup || onOpen || onSave || onFileProperties || onExportPdf;
         if (!hasFileMenu) return null;
         return (
           <MenuDropdown
@@ -456,7 +464,8 @@ export function Toolbar({
                     } as MenuEntry,
                   ]
                 : []),
-              ...((onOpen || onSave) && hasPrintOrPageSetup
+              ...((onOpen || onSave) &&
+              (hasPrintOrPageSetup || onFileProperties || onExportPdf)
                 ? [{ type: 'separator' as const } as MenuEntry]
                 : []),
               ...(showPrintButton && onPrint
@@ -469,12 +478,30 @@ export function Toolbar({
                     } as MenuEntry,
                   ]
                 : []),
+              ...(onExportPdf
+                ? [
+                    {
+                      icon: 'file_download',
+                      label: 'Export as PDF',
+                      onClick: onExportPdf,
+                    } as MenuEntry,
+                  ]
+                : []),
               ...(onPageSetup
                 ? [
                     {
                       icon: 'settings',
                       label: t('toolbar.pageSetup'),
                       onClick: onPageSetup,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onFileProperties
+                ? [
+                    {
+                      icon: 'tune',
+                      label: 'Properties',
+                      onClick: onFileProperties,
                     } as MenuEntry,
                   ]
                 : []),

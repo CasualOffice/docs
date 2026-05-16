@@ -43,6 +43,10 @@ import {
 import { RELATIONSHIP_TYPES } from './relsParser';
 import { type RawDocxContent } from './unzip';
 import { escapeXml } from './serializer/xmlUtils';
+import {
+  applyCorePropertiesToXml,
+  EMPTY_CORE_PROPERTIES_XML,
+} from './corePropertiesParser';
 
 /**
  * Find the highest rId number in a relationships XML string.
@@ -486,23 +490,38 @@ export async function repackDocx(doc: Document, options: RepackOptions = {}): Pr
   // Serialize comments
   await serializeCommentsToZip(exportDocument, newZip, compressionLevel);
 
-  // Optionally update modification date in docProps/core.xml
-  if (updateModifiedDate) {
+  // Update docProps/core.xml. Two independent inputs are applied:
+  //   1. User-editable fields from `pkg.properties` (set by the File →
+  //      Properties dialog) — `applyCorePropertiesToXml`.
+  //   2. The modified-date stamp (`updateCoreProperties`) — always on
+  //      when `updateModifiedDate` is true so a saved file looks "just
+  //      now" to other Word installs.
+  // The pipeline is property-edits first, then date stamp, so the stamp
+  // always wins over a stale `modified` in `pkg.properties`.
+  const userProps = exportDocument.package?.properties;
+  const hasUserPropEdits = !!userProps && Object.keys(userProps).length > 0;
+  if (updateModifiedDate || hasUserPropEdits) {
     const corePropsPath = 'docProps/core.xml';
     const corePropsFile = originalZip.file(corePropsPath);
+    const originalCoreProps = corePropsFile
+      ? await corePropsFile.async('text')
+      : EMPTY_CORE_PROPERTIES_XML;
 
-    if (corePropsFile) {
-      const originalCoreProps = await corePropsFile.async('text');
-      const updatedCoreProps = updateCoreProperties(originalCoreProps, {
+    let updatedCoreProps = originalCoreProps;
+    if (hasUserPropEdits) {
+      updatedCoreProps = applyCorePropertiesToXml(updatedCoreProps, userProps);
+    }
+    if (updateModifiedDate) {
+      updatedCoreProps = updateCoreProperties(updatedCoreProps, {
         updateModifiedDate,
         modifiedBy,
       });
-
-      newZip.file(corePropsPath, updatedCoreProps, {
-        compression: 'DEFLATE',
-        compressionOptions: { level: compressionLevel },
-      });
     }
+
+    newZip.file(corePropsPath, updatedCoreProps, {
+      compression: 'DEFLATE',
+      compressionOptions: { level: compressionLevel },
+    });
   }
 
   // Generate the new DOCX file

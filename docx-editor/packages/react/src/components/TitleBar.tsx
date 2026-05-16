@@ -118,6 +118,8 @@ export function MenuBar() {
     onOpen,
     onSave,
     onPageSetup,
+    onFileProperties,
+    onExportPdf,
     onInsertImage,
     onInsertTable,
     showTableInsert = true,
@@ -146,7 +148,8 @@ export function MenuBar() {
   );
 
   const hasPrintOrPageSetup = (showPrintButton && onPrint) || onPageSetup;
-  const hasFileMenu = hasPrintOrPageSetup || onOpen || onSave;
+  const hasFileMenu =
+    hasPrintOrPageSetup || onOpen || onSave || onFileProperties || onExportPdf;
 
   return (
     <div className="flex items-center" role="menubar" aria-label={t('titleBar.menuBarAriaLabel')}>
@@ -176,7 +179,8 @@ export function MenuBar() {
                   } as MenuEntry,
                 ]
               : []),
-            ...((onOpen || onSave) && hasPrintOrPageSetup
+            ...((onOpen || onSave) &&
+            (hasPrintOrPageSetup || onFileProperties || onExportPdf)
               ? [{ type: 'separator' as const } as MenuEntry]
               : []),
             ...(showPrintButton && onPrint
@@ -189,12 +193,30 @@ export function MenuBar() {
                   } as MenuEntry,
                 ]
               : []),
+            ...(onExportPdf
+              ? [
+                  {
+                    icon: 'file_download',
+                    label: 'Export as PDF',
+                    onClick: onExportPdf,
+                  } as MenuEntry,
+                ]
+              : []),
             ...(onPageSetup
               ? [
                   {
                     icon: 'settings',
                     label: t('toolbar.pageSetup'),
                     onClick: onPageSetup,
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onFileProperties
+              ? [
+                  {
+                    icon: 'tune',
+                    label: 'Properties',
+                    onClick: onFileProperties,
                   } as MenuEntry,
                 ]
               : []),

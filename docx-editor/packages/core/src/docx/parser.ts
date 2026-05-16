@@ -39,6 +39,7 @@ import { parseDocumentBody, extractAllTemplateVariables } from './documentParser
 import { parseHeader, parseFooter } from './headerFooterParser';
 import { parseFootnotes, parseEndnotes } from './footnoteParser';
 import { parseComments } from './commentParser';
+import { parseCoreProperties } from './corePropertiesParser';
 import { loadFontsWithMapping } from '../utils/fontLoader';
 import { type DocxInput, toArrayBuffer } from '../utils/docxInput';
 
@@ -271,6 +272,8 @@ export async function parseDocx(input: DocxInput, options: ParseOptions = {}): P
     // ========================================================================
     onProgress('Assembling document...', 95);
 
+    const properties = parseCoreProperties(raw.corePropsXml);
+
     const pkg: DocxPackage = {
       document: documentBody,
       styles: styleDefinitions,
@@ -282,6 +285,7 @@ export async function parseDocx(input: DocxInput, options: ParseOptions = {}): P
       endnotes,
       relationships: rels,
       media,
+      properties,
     };
 
     const document: Document = {

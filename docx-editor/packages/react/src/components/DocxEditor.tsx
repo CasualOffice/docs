@@ -103,6 +103,9 @@ const FootnotePropertiesDialog = lazy(() =>
 const PageSetupDialog = lazy(() =>
   import('./dialogs/PageSetupDialog').then((m) => ({ default: m.PageSetupDialog }))
 );
+const FilePropertiesDialog = lazy(() =>
+  import('./dialogs/FilePropertiesDialog').then((m) => ({ default: m.FilePropertiesDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -1793,6 +1796,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Page setup dialog state
   const [showPageSetup, setShowPageSetup] = useState(false);
   const handleOpenPageSetup = useCallback(() => setShowPageSetup(true), []);
+
+  // File → Properties dialog state.
+  const [showFileProperties, setShowFileProperties] = useState(false);
+  const handleOpenFileProperties = useCallback(() => setShowFileProperties(true), []);
 
   // Hyperlink popup state (Google Docs-style floating popup on link click)
   const [hyperlinkPopupData, setHyperlinkPopupData] = useState<HyperlinkPopupData | null>(null);
@@ -3702,8 +3709,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [onError]
   );
 
-  const handleDirectPrint = useCallback(() => {
-    // Find the pages container and clone its content into a clean print window
+  // `handleDirectPrint` is also the underlying flow for Export as PDF —
+  // browsers' "Save as PDF" destination in the print dialog uses the
+  // print window's <title> as the default filename, so we let callers
+  // pass one. The visible HTML and CSS are identical for print and PDF.
+  const triggerPrintFlow = useCallback((windowTitle: string) => {
     const pagesEl = containerRef.current?.querySelector('.paged-editor__pages');
     if (!pagesEl) {
       window.print();
@@ -3742,8 +3752,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       el.style.margin = '0';
     }
 
+    const titleEscaped = windowTitle
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     printWindow.document.write(`<!DOCTYPE html>
-<html><head><title>Print</title>
+<html><head><title>${titleEscaped}</title>
 <style>
 ${fontFaceRules.join('\n')}
 * { margin: 0; padding: 0; }
@@ -3771,6 +3785,21 @@ body { background: white; }
 
     onPrint?.();
   }, [onPrint]);
+
+  const handleDirectPrint = useCallback(() => {
+    triggerPrintFlow('Print');
+  }, [triggerPrintFlow]);
+
+  // Export as PDF reuses the print pipeline — browsers' print dialogs
+  // include a "Save as PDF" destination that uses the print window's
+  // title as the default filename. We pass the current document name
+  // (or a sensible default) so the saved file is `<doc>.pdf` rather
+  // than `Print.pdf`. There is no JS API to preselect the PDF
+  // destination — the user picks it once in the print dialog.
+  const handleExportPdf = useCallback(() => {
+    const base = (documentName?.trim() || 'Document').replace(/\.docx$/i, '');
+    triggerPrintFlow(base);
+  }, [triggerPrintFlow, documentName]);
 
   const handleDownloadDocument = useCallback(async () => {
     const buffer = await handleSave();
@@ -5036,6 +5065,8 @@ body { background: white; }
                       onImageTransform={handleImageTransform}
                       onOpenImageProperties={handleOpenImageProperties}
                       onPageSetup={handleOpenPageSetup}
+                      onFileProperties={handleOpenFileProperties}
+                      onExportPdf={handleExportPdf}
                       tableContext={state.pmTableContext}
                       onTableAction={handleTableAction}
                     >
@@ -5612,6 +5643,23 @@ body { background: white; }
                   onApply={handleApplyFootnoteProperties}
                   footnotePr={history.state?.package.document?.finalSectionProperties?.footnotePr}
                   endnotePr={history.state?.package.document?.finalSectionProperties?.endnotePr}
+                />
+              )}
+              {showFileProperties && (
+                <FilePropertiesDialog
+                  isOpen={showFileProperties}
+                  onClose={() => setShowFileProperties(false)}
+                  current={history.state?.package?.properties}
+                  onApply={(edits) => {
+                    // Push edits onto the current package so the next save
+                    // writes them through `applyCorePropertiesToXml`. The
+                    // edits land on the live `Document` so the dialog can
+                    // re-open against the new values without a save.
+                    const pkg = history.state?.package;
+                    if (!pkg) return;
+                    const next = { ...(pkg.properties ?? {}), ...edits };
+                    pkg.properties = next;
+                  }}
                 />
               )}
             </Suspense>

@@ -63,6 +63,13 @@ export {
 // Page Setup dialog for page size, orientation, and margins
 export { PageSetupDialog, type PageSetupDialogProps } from './PageSetupDialog';
 
+// File → Properties dialog for OOXML core properties (docProps/core.xml)
+export {
+  FilePropertiesDialog,
+  type FilePropertiesDialogProps,
+  type FilePropertiesValue,
+} from './FilePropertiesDialog';
+
 // Keyboard Shortcuts dialog for showing all shortcuts
 export {
   KeyboardShortcutsDialog,
