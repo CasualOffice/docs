@@ -53,15 +53,18 @@ Columns:
 | **header-image-resize-handles** | Image resize handles missing in HF edit mode | GH #266 | P3 | S | Y | open | — |
 | **docx-to-pdf-blank-pages** | Some pages with content appear blank in generated PDF | GH #141 | P2 | M | ? | open | — |
 | **remote-cursors-collab** | Remote cursors not rendered in collab demo | GH #256 (referenced from #257) | P0 (for our Yjs work) | M | Y | open | — |
-| **drawing-shapes-render** | Non-textbox DrawingML shapes (`<wps:wsp>` without `<wps:txbx>` — rectangles, ellipses, arrows, callouts) and legacy VML shapes (`<v:rect>`, `<v:oval>`, `<v:line>`) are parsed but never rendered. Parser (`shapeParser.ts:511`) is solid; `Shape` type exists at `types/content.ts:737`; gap is in `imageParser.ts:667` dropping non-textbox wps:wsp and the missing `renderShape` in `layout-painter/`. | Audited 2026-05-17 | P2 | L | Y | open | — |
+| **drawing-shapes-render** | Non-textbox DrawingML shapes (`<wps:wsp>` without `<wps:txbx>` — rectangles, ellipses, arrows, callouts) and legacy VML shapes (`<v:rect>`, `<v:oval>`, `<v:line>`) are parsed but never rendered. Parser (`shapeParser.ts:511`) is solid; `Shape` type exists at `types/content.ts:737`; gap is in `imageParser.ts:667` dropping non-textbox wps:wsp and the missing `renderShape` in `layout-painter/`. **SDS coverage audit confirms: 18 `<v:rect>` decorative shapes in the project-root doc render as zero painted output.** | Audited 2026-05-17 | P2 | L | Y | open | — |
+| **vml-textbox-replication** | VML textboxes don't fully replicate. Source SDS doc has 8 v:textboxes (3 body, 4 header, 1 footer) — painted output shows only 1. Header textboxes especially should appear per-page (18 pages × 4 = 72 expected). Likely a pagination or HF-replication bug for textbox blocks. | Audited 2026-05-17 via `sds-coverage-audit.spec.ts` | P2 | M | Y | open | — |
+| **header-image-replication** | Header watermark only replicates to ~7 of 18 pages on the SDS doc (30 sections). The 2026-05-16 `header-image-section-inheritance` fix made the watermark reach more than just section 0, but it doesn't cover every paginated page. | Audited 2026-05-17 | P1 | M | Y | open | — |
+| **sds-doc-coverage** | The project-root reference doc (`SDS_ANTI-T..._ZH.docx` = `fixtures/sds-real-world.docx`) is permanently pinned by a coverage-audit spec that snapshots painted counts: pages, paragraphs, tables, cells, textboxes, images, body text length. Any regression in core rendering against this doc surfaces here. | Audit 2026-05-17 | P0 (gate) | — | — | **pinned** | `e2e/tests/sds-coverage-audit.spec.ts` |
 
 ## Working set
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **drawing-shapes-render (P2, L)** — non-textbox DrawingML shapes (rectangles, ellipses, arrows, callouts) parsed but not rendered. Parser already solid; gap is in `imageParser` routing + a missing `renderShape` in `layout-painter/`.
-2. *(open slot)*
-3. *(open slot)*
+1. **vml-textbox-replication (P2, M)** — only 1/8 source VML textboxes painted on the SDS reference doc. Likely pagination/HF replication bug.
+2. **header-image-replication (P1, M)** — header watermark appears on ~7/18 painted pages of the 30-section SDS doc; the section-inheritance fix isn't fully reaching every paginated page.
+3. **drawing-shapes-render (P2, L)** — non-textbox DrawingML / legacy VML shapes (18 `<v:rect>` in the SDS doc) silently dropped.
 
 ## Recently moved
 
