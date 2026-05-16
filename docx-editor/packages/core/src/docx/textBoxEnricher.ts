@@ -37,6 +37,8 @@ import {
   parseTextBox,
   getTextBoxContentElement,
   parseTextBoxContent,
+  isDecorativeShapeDrawing,
+  parseDecorativeDrawing,
 } from './textBoxParser';
 import {
   isVmlTextBoxPict,
@@ -176,6 +178,37 @@ export function enrichParagraphTextBoxes(
             if (parsedContent.type === 'run') {
               parsedContent.content.push(shapeContent);
             }
+          }
+        }
+        continue;
+      }
+
+      // Decorative DrawingML shapes — `<wps:wsp>` with `<wps:spPr>` but
+      // no `<wps:txbx>`. Word's "Insert → Shapes" output (rectangles,
+      // ellipses, arrows, callouts). Same TextBox-pipeline treatment as
+      // the VML decorative branch: emit with one empty paragraph as
+      // content; the renderer paints fill/outline/position regardless.
+      if (elName === 'drawing' && isDecorativeShapeDrawing(runEl)) {
+        const decorative = parseDecorativeDrawing(runEl);
+        if (decorative && runIndex < paragraph.content.length) {
+          const parsedContent = paragraph.content[runIndex];
+          if (parsedContent.type === 'run') {
+            const shape: Shape = {
+              type: 'shape',
+              shapeType: 'rect',
+              size: decorative.size,
+              position: decorative.position,
+              wrap: decorative.wrap,
+              fill: decorative.fill,
+              outline: decorative.outline,
+              textBody: {
+                // Empty paragraph satisfies PM textBox `(paragraph|table)+`
+                // schema; the painter draws just the box.
+                content: [{ type: 'paragraph', content: [] }],
+              },
+            };
+            if (decorative.id) shape.id = decorative.id;
+            parsedContent.content.push({ type: 'shape', shape });
           }
         }
       }

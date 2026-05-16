@@ -222,6 +222,92 @@ export function isShapeTextBox(wsp: XmlElement): boolean {
   return txbx !== null;
 }
 
+/**
+ * Decorative DrawingML shapes — `<wps:wsp>` with `<wps:spPr>` (geometry,
+ * fill, outline) but no `<wps:txbx>`. Word's "Insert → Shapes" output:
+ * rectangles, ellipses, arrows, callouts, etc. used as visual elements
+ * without text.
+ *
+ * Returns true when the drawing carries a shape but no text frame; the
+ * paired `parseDecorativeDrawing` then extracts the visual properties.
+ * Distinct from `isTextBoxDrawing`, which gates on `<wps:txbx>` being
+ * present.
+ */
+export function isDecorativeShapeDrawing(drawingEl: XmlElement): boolean {
+  const children = getChildElements(drawingEl);
+  const container = children.find((el) => el.name === 'wp:inline' || el.name === 'wp:anchor');
+  if (!container) return false;
+  const graphic = findByFullName(container, 'a:graphic');
+  if (!graphic) return false;
+  const graphicData = findByFullName(graphic, 'a:graphicData');
+  if (!graphicData) return false;
+  const wsp = findByFullName(graphicData, 'wps:wsp');
+  if (!wsp) return false;
+  // Distinguishes from text-frame: must have spPr (shape props) but no
+  // txbx (text content).
+  const txbx = findByFullName(wsp, 'wps:txbx');
+  if (txbx) return false;
+  const spPr = getChildElements(wsp).find((el) => el.name === 'wps:spPr');
+  return spPr !== undefined;
+}
+
+/**
+ * Parse a decorative DrawingML shape (rectangle/ellipse/arrow/etc.) to
+ * a `TextBox`-shaped record. Empty `content` — the painter draws just
+ * the fill + outline + position from the shape's `<wps:spPr>`. The
+ * caller wraps the result back into a `Shape` with `textBody` so it
+ * rides the existing TextBox pipeline (toProseDoc → renderTextBox).
+ *
+ * Distinct from `parseTextBox`, which requires a `<wps:txbx>`. Returns
+ * null when the drawing doesn't carry a shape OR carries a text frame
+ * (caller should use `parseTextBox` for those).
+ */
+export function parseDecorativeDrawing(drawingEl: XmlElement): TextBox | null {
+  if (!isDecorativeShapeDrawing(drawingEl)) return null;
+
+  const children = getChildElements(drawingEl);
+  const container = children.find((el) => el.name === 'wp:inline' || el.name === 'wp:anchor');
+  if (!container) return null;
+
+  const isAnchor = container.name === 'wp:anchor';
+  const graphic = findByFullName(container, 'a:graphic');
+  const graphicData = graphic ? findByFullName(graphic, 'a:graphicData') : null;
+  const wsp = graphicData ? findByFullName(graphicData, 'wps:wsp') : null;
+  if (!wsp) return null;
+
+  const wspChildren = getChildElements(wsp);
+  const spPr = wspChildren.find((el) => el.name === 'wps:spPr');
+
+  const extent = findByFullName(container, 'wp:extent');
+  const cx = parseNumericAttribute(extent, null, 'cx') ?? 0;
+  const cy = parseNumericAttribute(extent, null, 'cy') ?? 0;
+  const size: ImageSize = { width: cx, height: cy };
+
+  const docPr = findByFullName(container, 'wp:docPr');
+  const id = docPr ? (getAttribute(docPr, null, 'id') ?? undefined) : undefined;
+
+  const fill = parseFill(spPr ?? null);
+  const outline = parseOutline(spPr ?? null);
+
+  const textBox: TextBox = {
+    type: 'textBox',
+    size,
+    content: [],
+  };
+  if (id) textBox.id = id;
+  if (fill) textBox.fill = fill;
+  if (outline) textBox.outline = outline;
+
+  if (isAnchor) {
+    const position = parseAnchorPosition(container);
+    if (position) textBox.position = position;
+    const wrap = parseAnchorWrap(container);
+    if (wrap) textBox.wrap = wrap;
+  }
+
+  return textBox;
+}
+
 // ============================================================================
 // MAIN PARSING FUNCTIONS
 // ============================================================================
