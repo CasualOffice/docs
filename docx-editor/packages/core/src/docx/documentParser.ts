@@ -18,8 +18,6 @@ import type {
   Paragraph,
   Table,
   SectionProperties,
-  Shape,
-  ShapeContent,
   Theme,
   RelationshipMap,
   MediaFile,
@@ -29,20 +27,13 @@ import type { NumberingMap } from './numberingParser';
 import {
   parseXml,
   findChild,
-  findDeep,
   getChildElements,
-  getLocalName,
   type XmlElement,
 } from './xmlParser';
 import { parseParagraph, getParagraphText } from './paragraphParser';
 import { parseTable } from './tableParser';
 import { parseSectionProperties, getDefaultSectionProperties } from './sectionParser';
-import {
-  isTextBoxDrawing,
-  parseTextBox,
-  getTextBoxContentElement,
-  parseTextBoxContent,
-} from './textBoxParser';
+import { enrichParagraphTextBoxes } from './textBoxEnricher';
 
 // ============================================================================
 // LIST MARKER COMPUTATION
@@ -235,98 +226,10 @@ function extractTableVariables(table: Table): string[] {
 }
 
 // ============================================================================
-// TEXT BOX ENRICHMENT
-// ============================================================================
-
-/**
- * Enrich a parsed paragraph with text box content from its raw XML.
- *
- * During initial parsing, w:drawing elements containing text boxes (wps:wsp with wps:txbx)
- * are skipped because parseImage returns null for non-image drawings. This function does
- * a second pass over the raw XML to find text box drawings, parse them with their content,
- * and inject ShapeContent into the paragraph's runs.
- */
-function enrichParagraphTextBoxes(
-  paragraph: Paragraph,
-  paraXml: XmlElement,
-  styles: StyleMap | null,
-  theme: Theme | null,
-  numbering: NumberingMap | null,
-  rels: RelationshipMap | null,
-  media: Map<string, MediaFile> | null
-): void {
-  // Early exit: skip paragraphs with no runs (most paragraphs have no text boxes)
-  if (paragraph.content.length === 0) return;
-
-  const xmlChildren = getChildElements(paraXml);
-
-  // Track which run we're on (to match XML runs with parsed runs)
-  let runIndex = 0;
-
-  for (const xmlChild of xmlChildren) {
-    if (getLocalName(xmlChild.name ?? '') !== 'r') continue;
-
-    // Find w:drawing children in this run
-    const runElements = getChildElements(xmlChild);
-    for (const runEl of runElements) {
-      if (getLocalName(runEl.name ?? '') === 'drawing' && isTextBoxDrawing(runEl)) {
-        // Parse the text box structure
-        const textBox = parseTextBox(runEl);
-        if (textBox) {
-          // Navigate to wps:wsp to get the txbxContent element
-          const wsp = findDeep(runEl, 'wps', 'wsp');
-          if (wsp) {
-            const txbxContentEl = getTextBoxContentElement(wsp);
-            if (txbxContentEl) {
-              textBox.content = parseTextBoxContent(
-                txbxContentEl,
-                parseParagraph,
-                null, // table parser not needed for most text boxes
-                styles,
-                theme,
-                numbering,
-                rels ?? undefined,
-                media ?? undefined
-              );
-            }
-          }
-
-          // Convert to Shape with textBody and inject as ShapeContent
-          const shape: Shape = {
-            type: 'shape',
-            shapeType: 'rect',
-            size: textBox.size,
-            position: textBox.position,
-            wrap: textBox.wrap,
-            fill: textBox.fill,
-            outline: textBox.outline,
-            textBody: {
-              content: textBox.content,
-              margins: textBox.margins,
-            },
-          };
-          if (textBox.id) shape.id = textBox.id;
-
-          const shapeContent: ShapeContent = { type: 'shape', shape };
-
-          // Find the matching parsed run and inject the ShapeContent
-          if (runIndex < paragraph.content.length) {
-            const parsedContent = paragraph.content[runIndex];
-            if (parsedContent.type === 'run') {
-              parsedContent.content.push(shapeContent);
-            }
-          }
-        }
-      }
-    }
-
-    runIndex++;
-  }
-}
-
-// ============================================================================
 // CONTENT PARSING
 // ============================================================================
+// (enrichParagraphTextBoxes was moved to ./textBoxEnricher so the
+//  header/footer parser can reuse it without a circular dep — issue #318.)
 
 /**
  * Parse block content from an element (body or SDT content)

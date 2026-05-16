@@ -1128,6 +1128,33 @@ function renderHeaderFooterContent(
         containerEl.appendChild(fragEl);
         cursorY += measure.totalHeight;
       }
+    } else if (block.kind === 'textBox' && measure.kind === 'textBox') {
+      // HF text boxes don't paginate — synthesize a fragment covering the
+      // full block. Mirrors the body painter's textBox path at the
+      // fragment-handling site above. Issue #318: previously the HF
+      // painter skipped textBox blocks entirely so a textbox declared
+      // inside `<w:hdr>` rendered nothing.
+      const tbBlock = block as TextBoxBlock;
+      const tbMeasure = measure as TextBoxMeasure;
+      const syntheticFragment: TextBoxFragment = {
+        kind: 'textBox',
+        blockId: tbBlock.id,
+        x: 0,
+        y: cursorY,
+        width: tbMeasure.width,
+        height: tbMeasure.height,
+      };
+      const fragEl = renderTextBoxFragment(
+        syntheticFragment,
+        tbBlock,
+        tbMeasure,
+        { ...context, positioning: 'absolute' },
+        { document: doc }
+      );
+      fragEl.style.top = `${cursorY}px`;
+      fragEl.style.left = '0';
+      containerEl.appendChild(fragEl);
+      cursorY += tbMeasure.height;
     }
   }
 

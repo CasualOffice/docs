@@ -1,29 +1,35 @@
 /**
  * Textbox-in-header rendering tests — issue #318 (header edge case)
  *
- * Issue #318 explicitly notes: "In some templates, the textbox is only
- * visible in Microsoft Word when editing the header section, but it is
- * not rendered in the editor at all."
+ * Issue #318 explicitly: "the textbox is only visible in Microsoft Word
+ * when editing the header section, but it is not rendered in the editor
+ * at all."
  *
- * Body textboxes are handled correctly (see textbox-rendering.spec.ts —
- * 10/10 pass on textbox-test.docx). The header path is separate; we
- * suspect the header parser doesn't invoke textBoxParser / shapeParser
- * (line 622 of packages/core/src/docx/headerFooterParser.ts is just a
- * `hasImages` type-check, not actual parsing).
+ * Body textboxes are handled correctly (see textbox-rendering.spec.ts).
+ * The header path needed three changes (issue #318):
+ *  1. `enrichParagraphTextBoxes` had to be called in
+ *     `parseHeaderFooterContent`, not just `parseBlockContent` for body.
+ *     (Lives in the new `textBoxEnricher.ts` so both parsers can share
+ *     it without the documentParser/headerFooterParser cycle.)
+ *  2. `renderHeaderFooterContent` had to grow a `textBox` case mirroring
+ *     the table case (synthesize a `TextBoxFragment` covering the full
+ *     block, call `renderTextBoxFragment`, advance `cursorY`).
+ *  3. (Already in place upstream: bridge + measure + visual-bounds for
+ *     `textBox` blocks in `headerFooterLayout.ts`.)
  *
  * Fixture: `e2e/fixtures/header-with-textbox.docx`, built by
- * `scripts/make-header-textbox-fixture.mjs`. It injects an inline
- * `<wps:txbx>` with "Header Textbox" + body text into word/header1.xml
- * of `template-with-hf-rule.docx`.
+ * `scripts/make-header-textbox-fixture.mjs`. The textbox lives inside
+ * `word/header1.xml`. Headers repeat on every page, so the editor
+ * renders one container per page.
  *
- * Expected: this batch FAILS until header textbox parsing is wired up.
+ * The fixture renders across multiple pages so we assert *at-least-one*
+ * rather than an exact count.
  */
 
 import { test, expect } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
 
 const FIXTURE = 'fixtures/header-with-textbox.docx';
-const EDITOR = 'docx-editor';
 
 test.describe('Textbox in header — issue #318 (header path)', () => {
   let editor: EditorPage;
@@ -37,22 +43,35 @@ test.describe('Textbox in header — issue #318 (header path)', () => {
   });
 
   test('header textbox heading appears in painter output', async ({ page }) => {
+    // Header content lives outside the body `data-testid="docx-editor"`
+    // container — it's painted in per-page header regions. Use page-scoped
+    // `getByText` and assert at least one is visible.
     await expect(
-      page.getByTestId(EDITOR).getByText('Header Textbox', { exact: true })
+      page.getByText('Header Textbox', { exact: true }).first()
     ).toBeVisible({ timeout: 5000 });
   });
 
   test('header textbox body appears in painter output', async ({ page }) => {
     await expect(
-      page.getByTestId(EDITOR).getByText('A textbox inside the page header.')
+      page.getByText('A textbox inside the page header.').first()
     ).toBeVisible({ timeout: 5000 });
   });
 
-  test('a .layout-textbox container exists for the header textbox', async ({ page }) => {
+  test('at least one .layout-textbox container exists for the header textbox', async ({ page }) => {
     const containers = page.locator('.layout-textbox');
-    // The fixture is built on template-with-hf-rule.docx which has no
-    // body textboxes, so a count >= 1 means our header textbox got a
-    // container.
-    await expect(containers).toHaveCount(1, { timeout: 5000 });
+    const count = await containers.count();
+    expect(count, 'expected >= 1 header textbox container').toBeGreaterThanOrEqual(1);
+  });
+
+  test('every rendered header .layout-textbox is absolutely positioned', async ({ page }) => {
+    const containers = page.locator('.layout-textbox');
+    const count = await containers.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const pos = await containers.nth(i).evaluate(
+        (el) => getComputedStyle(el).position
+      );
+      expect(pos, `textbox #${i} should be absolutely positioned`).toBe('absolute');
+    }
   });
 });

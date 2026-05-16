@@ -15,7 +15,8 @@ Columns:
 | ID | Gap | Source | Sev | Effort | Upstream | Status | Test |
 |----|-----|--------|-----|--------|----------|--------|------|
 | **textbox-render-body** | Body textboxes render | GH #318 (general) | P2 | M | Y | **basic-rendering-verified** — 10/10 tests pass on `e2e/fixtures/textbox-test.docx` (9 body textboxes — containers + content + position + border all render correctly). Deeper visual fidelity (positioning relative to text wrap, fill nuances) not yet stressed. | `e2e/tests/textbox-rendering.spec.ts` |
-| **textbox-render-header** | Textboxes inside page headers don't render at all | GH #318 (header sub-case explicitly cited in issue body) | **P0** | M | Y | **failing-test** — 3/3 tests fail. `.layout-textbox` count is 0 inside header content (expected 1). Inspection of `packages/core/src/docx/headerFooterParser.ts` (639 lines) found no call to `textBoxParser` / `shapeParser`; line 622 only checks `rc.type === 'drawing'` as a boolean predicate (`hasImages`). The header path doesn't actually parse textbox content. Fix scope: wire shape/textbox parsing into the header parser, then verify painter renders header textboxes. | `e2e/tests/textbox-in-header.spec.ts` + `scripts/make-header-textbox-fixture.mjs` |
+| **textbox-render-header** | DrawingML textboxes inside page headers (`<wps:wsp>` / `<wps:txbx>`) | GH #318 (header sub-case explicitly cited) | P0 | M | Y | **fixed-local** — three changes: (1) extracted `enrichParagraphTextBoxes` into `packages/core/src/docx/textBoxEnricher.ts` so both `documentParser` and `headerFooterParser` can call it without a circular dep; (2) `parseHeaderFooterContent` now calls it on each header paragraph; (3) `renderHeaderFooterContent` grew a `textBox` branch mirroring the table branch. All 4 header tests + 10 body tests pass; typecheck clean. | `e2e/tests/textbox-in-header.spec.ts` + `scripts/make-header-textbox-fixture.mjs` + unit tests under `packages/core/src/docx/__tests__/` and `packages/core/src/layout-bridge/__tests__/` |
+| **textbox-render-vml** | Legacy VML textboxes (`<v:shape>` / `<v:textbox>`) not parsed | Discovered via `e2e/fixtures/sds-real-world.docx` (real-world SDS doc) | P1 | M | Y | **failing-test** — `e2e/tests/sds-real-world.spec.ts` has a `test.fixme` pinning the gap. SDS uses VML for its textbox; our parser handles DrawingML only. Fix scope: add a VML textbox detection + parse path either in `textBoxParser.ts` or alongside it, then feed into the same `enrichParagraphTextBoxes` flow. | `e2e/tests/sds-real-world.spec.ts` |
 | **comment-id-collision** | Comment IDs collide between peers (module-level scalar) | GH #257 | P0 | S | Y (maintainers proposed fix) | open | — |
 | **highlight-roundtrip** | Highlight export emits invalid OOXML; highlights disappear after roundtrip | openspec/ooxml-roundtrip-fidelity | P1 | M | Y | open | — |
 | **theme-color-roundtrip** | Theme color resolution corrupts text colors (black→white in headers) | openspec/ooxml-roundtrip-fidelity | P1 | M | Y | open | — |
@@ -54,13 +55,14 @@ Columns:
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **textbox-render-header** — failing test in place, root-cause hypothesis identified (`headerFooterParser.ts` doesn't invoke textbox/shape parsers). Next: trace exact parse chain, wire textbox parsing into header path.
-2. **comment-id-collision (#257)** — direct hazard for our Yjs plan. Fix recommended by maintainers (option B). After textbox-header lands.
+1. **textbox-render-vml** — discovered via the SDS real-world doc. Tests in place (pinned with `test.fixme`). Next.
+2. **comment-id-collision (#257)** — direct hazard for our Yjs plan. Fix already recommended by maintainers (option B).
 3. *(open slot)*
 
 ## Recently moved
 
-- **textbox-render-body** — was P0, demoted to P2 after 10/10 tests passed on `textbox-test.docx`. Watch list, not active. Replaced as P0 by `textbox-render-header`.
+- **textbox-render-header** — FIXED-LOCAL (2026-05-16). All tests pass. Three-file change (parser + render path + extracted shared helper). Ready for upstream PR.
+- **textbox-render-body** — verified working from the start; demoted to P2 watch list.
 
 ## Recently closed
 
