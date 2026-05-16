@@ -17,7 +17,7 @@ Columns:
 | **textbox-render-body** | Body textboxes render | GH #318 (general) | P2 | M | Y | **basic-rendering-verified** — 10/10 tests pass on `e2e/fixtures/textbox-test.docx` (9 body textboxes — containers + content + position + border all render correctly). Deeper visual fidelity (positioning relative to text wrap, fill nuances) not yet stressed. | `e2e/tests/textbox-rendering.spec.ts` |
 | **textbox-render-header** | DrawingML textboxes inside page headers (`<wps:wsp>` / `<wps:txbx>`) | GH #318 (header sub-case explicitly cited) | P0 | M | Y | **fixed-local** — three changes: (1) extracted `enrichParagraphTextBoxes` into `packages/core/src/docx/textBoxEnricher.ts` so both `documentParser` and `headerFooterParser` can call it without a circular dep; (2) `parseHeaderFooterContent` now calls it on each header paragraph; (3) `renderHeaderFooterContent` grew a `textBox` branch mirroring the table branch. All 4 header tests + 10 body tests pass; typecheck clean. | `e2e/tests/textbox-in-header.spec.ts` + `scripts/make-header-textbox-fixture.mjs` + unit tests under `packages/core/src/docx/__tests__/` and `packages/core/src/layout-bridge/__tests__/` |
 | **textbox-render-vml** | Legacy VML textboxes (`<w:pict>` / `<v:shape type="#_x0000_t202">` / `<v:textbox>`) | Discovered via `e2e/fixtures/sds-real-world.docx` (real-world SDS doc) | P1 | M | Y | **fixed-local** — new `packages/core/src/docx/vmlTextBoxParser.ts` detects VML text-frame shapes (incl. inside `<v:group>`) and extracts content + best-effort size from the CSS-like `style` attr. `textBoxEnricher.ts` walks `<w:pict>` siblings of `<w:drawing>` in the same second pass. SDS doc now renders its body + header VML textboxes; 2/2 SDS tests pass; no regression on DrawingML tests. | `e2e/tests/sds-real-world.spec.ts` |
-| **comment-id-collision** | Comment IDs collide between peers (module-level scalar) | GH #257 | P0 | S | Y (maintainers proposed fix) | open | — |
+| **comment-id-collision** | Comment IDs collide between peers (module-level scalar) | GH #257 | P0 | S | Y (maintainers proposed fix) | **fixed-local** — Added `commentIdBase?: number` prop on `DocxEditor`. On mount and on prop change it bumps the shared counter to at least `commentIdBase + 1`. The doc-load bump now also factors in the partition base. Vite example reads `?commentIdBase=N` from URL so tests can drive it. 3/3 new tests pass; 22 existing comments-sidebar tests pass; typecheck clean. | `e2e/tests/comment-id-collision.spec.ts` |
 | **highlight-roundtrip** | Highlight export emits invalid OOXML; highlights disappear after roundtrip | openspec/ooxml-roundtrip-fidelity | P1 | M | Y | open | — |
 | **theme-color-roundtrip** | Theme color resolution corrupts text colors (black→white in headers) | openspec/ooxml-roundtrip-fidelity | P1 | M | Y | open | — |
 | **paragraph-border-between-bar** | `w:between` and `w:bar` borders parsed but silently dropped | openspec/paragraph-border-rendering | P2 | S | Y | open | — |
@@ -55,14 +55,15 @@ Columns:
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **comment-id-collision (#257)** — direct hazard for our Yjs plan. Fix already recommended by maintainers (option B: numeric ID partitioning).
-2. *(open slot)*
+1. **highlight-roundtrip (P1)** — silent data loss on save. Top of the data-integrity tier.
+2. **theme-color-roundtrip (P1)** — wrong text colors after roundtrip.
 3. *(open slot)*
 
 ## Recently moved
 
-- **textbox-render-vml** — FIXED-LOCAL (2026-05-16). New `vmlTextBoxParser.ts` + `textBoxEnricher.ts` walks `<w:pict>` too. Real-world SDS doc now renders. Ready for upstream PR alongside textbox-render-header.
-- **textbox-render-header** — FIXED-LOCAL (2026-05-16). Ready for upstream PR.
+- **comment-id-collision** — FIXED-LOCAL (2026-05-16). `commentIdBase` prop wired through. Ready for upstream PR. Unblocks the Yjs collab plan.
+- **textbox-render-vml** — FIXED-LOCAL (2026-05-16). VML parser added; SDS doc renders.
+- **textbox-render-header** — FIXED-LOCAL (2026-05-16).
 - **textbox-render-body** — verified working from the start; demoted to P2 watch list.
 
 ## Recently closed

@@ -273,6 +273,21 @@ export interface DocxEditorProps {
    * editor can build its schema and render the shell.
    */
   externalContent?: boolean;
+  /**
+   * Starting offset for comment/tracked-change IDs. Default 0.
+   *
+   * Comments and tracked-change revisions share a single numeric ID space
+   * inside the editor (and in OOXML's `<w:comment w:id=...>` / `<w:ins
+   * w:id=...>`). The internal counter normally bumps itself above any
+   * IDs already present in the loaded document, but a collab room that
+   * seeds from `createEmptyDocument()` has no IDs to bump past, so two
+   * peers can both start at 1 and create colliding comment IDs.
+   *
+   * Pass a unique base per peer (e.g. `clientId * 1e6`) to partition the
+   * ID space — Comment.id values from peer A and peer B will never
+   * collide. Issue: github.com/eigenpal/docx-editor/issues/257.
+   */
+  commentIdBase?: number;
   /** Callback when editor view is ready (for PluginHost) */
   onEditorViewReady?: (view: import('prosemirror-view').EditorView) => void;
   /** Theme for styling */
@@ -927,9 +942,21 @@ function EditingModeDropdown({
 // MAIN COMPONENT
 // ============================================================================
 
-// Bumped on document load to be above all existing comment + tracked change IDs
+// Bumped on document load to be above all existing comment + tracked change IDs.
+// Can also be bumped on mount by the `commentIdBase` prop so collab peers
+// can partition the ID space and avoid collisions (issue #257).
 let nextCommentId = 1;
 const PENDING_COMMENT_ID = -1;
+
+/**
+ * Bump the shared `nextCommentId` counter forward (never backward).
+ * Used both by the doc-load handler (to skip past IDs already in the
+ * document) and by the `commentIdBase` prop effect (to skip past a
+ * collab partition).
+ */
+function bumpNextCommentIdAtLeast(value: number): void {
+  if (value > nextCommentId) nextCommentId = value;
+}
 
 /**
  * Inject commentRangeStart/End/Reference for reply comments.
@@ -1294,6 +1321,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onCommentsChange,
     externalPlugins,
     externalContent = false,
+    commentIdBase,
     onEditorViewReady,
     onRenderedDomContextReady,
     pluginOverlays,
@@ -1582,9 +1610,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           }
         });
       }
-      if (maxId >= nextCommentId) nextCommentId = maxId + 1;
+      // Bump past the document's existing IDs and (if set) past the
+      // collab partition base.
+      const partition = commentIdBase ?? 0;
+      bumpNextCommentIdAtLeast(Math.max(maxId, partition) + 1);
     }
-  }, [history.state]);
+  }, [history.state, commentIdBase]);
+
+  // Apply commentIdBase on mount and whenever it changes — independent
+  // of doc-load, since collab rooms can seed from createEmptyDocument()
+  // (no comments → load-time bump never fires; both peers would start
+  // at 1 without this).
+  useEffect(() => {
+    if (commentIdBase !== undefined) {
+      bumpNextCommentIdAtLeast(commentIdBase + 1);
+    }
+  }, [commentIdBase]);
 
   // Extension manager — built once, provides schema + plugins + commands
   const extensionManager = useMemo(() => {

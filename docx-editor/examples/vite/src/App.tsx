@@ -99,6 +99,28 @@ export function App() {
     []
   );
 
+  // Read `?commentIdBase=N` so Playwright tests can drive issue #257
+  // collab-peer partitioning without a separate test harness.
+  const commentIdBase = useMemo(() => {
+    const raw = new URLSearchParams(window.location.search).get('commentIdBase');
+    if (raw == null) return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  }, []);
+
+  // Under `?e2e=1`, expose the editor ref on window so Playwright can
+  // call addComment/getComments/findInDocument programmatically. Off by
+  // default so the live demo at docx-editor.dev doesn't leak the API.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isE2E = new URLSearchParams(window.location.search).get('e2e') === '1';
+    if (!isE2E) return;
+    (window as unknown as { __editorRef?: typeof editorRef }).__editorRef = editorRef;
+    return () => {
+      delete (window as unknown as { __editorRef?: typeof editorRef }).__editorRef;
+    };
+  }, []);
+
   const { zoom: autoZoom, isMobile } = useResponsiveLayout();
 
   useEffect(() => {
@@ -211,6 +233,7 @@ export function App() {
           showZoomControl={true}
           initialZoom={autoZoom}
           disableFindReplaceShortcuts={disableFindReplaceShortcuts}
+          commentIdBase={commentIdBase}
           documentName={fileName}
           onDocumentNameChange={setFileName}
           renderTitleBarRight={renderTitleBarRight}
