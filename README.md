@@ -1,12 +1,14 @@
-# Document Service
+# Casual Editor
 
-Solo / personal project. (`melp/` in the path is a folder name, not a company.)
+A casual, real-time collaborative `.docx` editor.
 
-A real-time collaborative `.docx` editing service. The browser-side editor is a fork of [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor) (MIT, React + ProseMirror with canonical OOXML preservation); the backend is a **stateless** Go service that provides Yjs CRDT sync, presence, auth, and `.docx` snapshot generation. Document persistence is delegated to a WOPI host (added in a later milestone).
+Browser-side editor + a stateless Go sync server. Pulls a `.docx` into the editor, lets multiple people work on it together, hands the file back when you're done. No database, no on-disk log — the only live state is whatever's in active session memory; storage is handed off to a WOPI host.
+
+The editor view is a fork of [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor) (MIT — React + ProseMirror with the OOXML model kept intact end-to-end), inlined under `docx-editor/`. The fixes for the gaps we hit (textboxes in headers, comment-ID collisions on collab, theme-color round-trip, tab-stop alignment in headers, etc.) all live there and are tracked one PR each in `docs/03-gap-matrix.md`.
 
 ## Status
 
-Early. Fork in place and stripped of AGPL pieces. Backend not yet written.
+Early. Editor fork in place with ten of our fidelity fixes landed locally. AGPL pieces stripped. Backend not yet written.
 
 ## Architecture
 
@@ -22,40 +24,39 @@ Browser
                                                                                           └─ PutFile (save snapshot)
 ```
 
-The backend has no database and no on-disk update log. The only state is the in-memory Y.Doc for active sessions; it's dropped when the last client disconnects. Storage lives in the WOPI host.
+When the last client disconnects, the Y.Doc is dropped. Clients reconnecting get re-seeded from WOPI.
 
 ## Layout
 
 ```
-services/document/
-├── CLAUDE.md             - project guide for Claude sessions
+.
 ├── README.md             - this file
-├── docker-compose.yml    - local dev stack (no DB; backend container stubbed)
+├── CLAUDE.md             - context for AI coding sessions
+├── docker-compose.yml    - local dev stack
 ├── docs/
-│   └── 00-overview.md    - goal, decisions, current state
-├── docx-editor/          - working fork of eigenpal/docx-editor
-│                           (separate git repo; gitignored from this outer repo)
+│   ├── 00-overview.md    - goals + decisions
+│   ├── 02-pipeline.md    - how a fidelity gap moves from repro to PR
+│   └── 03-gap-matrix.md  - status of every known gap
+├── docx-editor/          - inlined fork of eigenpal/docx-editor
 └── (Go backend code, TBD)
 ```
 
 ## Decisions (locked)
 
 - Editor: fork of `eigenpal/docx-editor` (MIT).
-- CRDT: Yjs + `y-prosemirror` via the editor's `externalContent` + `externalPlugins` props.
+- CRDT: Yjs + `y-prosemirror`.
 - Backend language: Go.
-- **Stateless backend.** No DB. Storage delegated to a WOPI host (integrated later).
-- Licensing: MIT through the editor; backend proprietary in this repo. AGPL `agent-use` package and dependents purged from the fork.
+- **Stateless backend.** No DB. Storage delegated to a WOPI host.
 - Toolchain: Bun for editor dev; standard Go toolchain for backend.
 
 ## Open
 
-- y-websocket implementation source (write in Go vs. bridge to Hocuspocus)
-- WOPI host target (own mock vs. integrating a real one like Nextcloud)
-- Text-box fidelity gap in the editor (known weak spot; first contribution target)
+- y-websocket protocol — write in Go or bridge to a Hocuspocus-equivalent.
+- WOPI host target — own mock for tests vs. integrating a real one like Nextcloud.
 
 ## Local dev
 
 ```bash
-docker compose up -d    # currently a no-op until backend code lands
+docker compose up -d    # editor available at http://localhost:5173
 docker compose down
 ```
