@@ -380,16 +380,45 @@ function findContentAtOffset(
 }
 
 /**
- * Scroll to a match in the document
+ * Scroll to a match in the document.
+ *
+ * `findInDocument` counts only top-level body paragraphs when assigning
+ * `match.paragraphIndex`, so we mirror that on the painted DOM: collect
+ * visible `.layout-paragraph` elements that aren't inside a header,
+ * footer, table, text-box, or the hidden ProseMirror tree, dedupe by
+ * `data-block-id` (a paragraph can paginate into multiple fragments
+ * sharing one block id), and pick the Nth one. The previous query
+ * looked for `data-paragraph-index`, which the painter never emits —
+ * the function silently no-op'd and Cmd+F appeared to do nothing
+ * (GH #321).
  */
 export function scrollToMatch(containerElement: HTMLElement | null, match: FindMatch): void {
   if (!containerElement || !match) return;
 
-  const paragraphElement = containerElement.querySelector(
-    `[data-paragraph-index="${match.paragraphIndex}"]`
-  );
+  const paragraphs = Array.from(
+    containerElement.querySelectorAll<HTMLElement>('.layout-paragraph')
+  ).filter((el) => {
+    if (el.closest('.paged-editor__hidden-pm')) return false;
+    if (el.closest('.layout-page-header')) return false;
+    if (el.closest('.layout-page-footer')) return false;
+    if (el.closest('.layout-table')) return false;
+    if (el.closest('.layout-textbox')) return false;
+    return true;
+  });
 
-  if (paragraphElement) {
-    paragraphElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const seen = new Set<string>();
+  const uniqueParagraphs: HTMLElement[] = [];
+  for (const el of paragraphs) {
+    const blockId = el.dataset.blockId;
+    if (blockId) {
+      if (seen.has(blockId)) continue;
+      seen.add(blockId);
+    }
+    uniqueParagraphs.push(el);
+  }
+
+  const target = uniqueParagraphs[match.paragraphIndex];
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 }

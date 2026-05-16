@@ -566,6 +566,7 @@ export function FindReplaceDialog({
             <input
               ref={searchInputRef}
               id="find-text"
+              data-testid="find-input"
               type="text"
               className="docx-find-replace-dialog-input"
               style={searchFocused ? INPUT_FOCUS_STYLE : INPUT_STYLE}
