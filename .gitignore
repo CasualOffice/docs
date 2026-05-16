@@ -5,6 +5,9 @@
 .idea/
 *.iml
 
+# Claude Code per-project local settings (skill packs, local-only prefs)
+.claude/
+
 # OS
 .DS_Store
 
