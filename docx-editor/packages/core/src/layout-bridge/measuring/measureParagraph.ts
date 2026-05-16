@@ -44,22 +44,61 @@ const WIDTH_TOLERANCE = 0.5;
 
 /**
  * Compute the width a tab character should advance to reach the next tab stop.
+ *
+ * For `center` and `end` (= right) tab stops, the tab width must account for
+ * the width of the text up to the next tab or end of paragraph: a center stop
+ * sits the text's midpoint at `stop.pos`, and a right stop sits the text's
+ * right edge at `stop.pos`. Otherwise the cursor over-advances during
+ * measurement and the next text overflows the line width, causing a spurious
+ * line break (e.g. a 3-section `Left[tab]Center[tab]Right` header where Right
+ * would wrap to a second line). The painter's `calculateTabWidth` in
+ * `prosemirror/utils/tabCalculator.ts` already does this; measurement now
+ * matches.
  */
 function computeTabWidth(
   currentPos: number,
-  tabStops: { pos: number; val: string }[] | undefined
+  tabStops: { pos: number; val: string }[] | undefined,
+  followingTextWidth = 0
 ): number {
   if (tabStops && tabStops.length > 0) {
     for (const stop of tabStops) {
       const stopPx = twipsToPx(stop.pos);
       if (stopPx > currentPos + 0.5) {
-        return Math.max(1, stopPx - currentPos);
+        let width = stopPx - currentPos;
+        if (stop.val === 'center') {
+          width -= followingTextWidth / 2;
+        } else if (stop.val === 'end') {
+          width -= followingTextWidth;
+        }
+        return Math.max(1, width);
       }
     }
   }
   // No matching stop — advance to next default interval
   const remainder = currentPos % DEFAULT_TAB_WIDTH;
   return Math.max(1, remainder < 0.5 ? DEFAULT_TAB_WIDTH : DEFAULT_TAB_WIDTH - remainder);
+}
+
+/**
+ * Sum the widths of contiguous text runs following `tabIndex` up to (but
+ * excluding) the next tab run or end of the paragraph. Used to size
+ * center/right tabs during line measurement so the cursor lands where the
+ * painter will draw it.
+ */
+function followingTextWidthFor(runs: Run[], tabIndex: number): number {
+  let width = 0;
+  for (let i = tabIndex + 1; i < runs.length; i++) {
+    const run = runs[i];
+    if (isTabRun(run)) break;
+    if (isTextRun(run)) {
+      width += measureTextWidth(run.text, runToFontStyle(run));
+    }
+    // Non-tab, non-text runs (images, fields, line breaks) end the
+    // "following text" span — the alignment computation should only
+    // account for the literal text between the tab and the next break.
+    if (!isTextRun(run) && !isTabRun(run)) break;
+  }
+  return width;
 }
 
 /**
@@ -604,9 +643,13 @@ export function measureParagraph(
       updateMaxFont(style);
 
       // Compute tab width: advance to the next tab stop position.
+      // For center / right tab stops we need the width of the following
+      // text up to the next tab so the cursor lands where the painter
+      // will draw it (see `computeTabWidth`).
       const tabStops = attrs?.tabs;
       const currentPos = currentLine.width + (currentLine.leftOffset ?? 0);
-      const tabWidth = computeTabWidth(currentPos, tabStops);
+      const followingWidth = followingTextWidthFor(runs, runIndex);
+      const tabWidth = computeTabWidth(currentPos, tabStops, followingWidth);
 
       if (currentLine.width + tabWidth > currentLine.availableWidth + WIDTH_TOLERANCE) {
         // Tab doesn't fit, start new line
