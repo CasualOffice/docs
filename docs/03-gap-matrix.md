@@ -34,8 +34,8 @@ Columns:
 | **table-column-resize** | Column resize only works on last column; can't be moved back | openspec/table-editing-polish | P2 | M | Y | open | — |
 | **table-new-row-format** | New rows from "Add row above/below" don't inherit formatting | openspec/table-editing-polish | P2 | S | Y | open | — |
 | **tab-leader-toc** | Tab leaders in TOC overlap titles and page numbers | openspec/tab-leader-fidelity | P2 | M | Y | open | — |
-| **list-multi-indent** | Multi-select indent/outdent only affects first item | openspec/list-operations-fidelity | P2 | S | Y | open | — |
-| **list-multi-toggle** | Multi-select list toggle only removes first item | openspec/list-operations-fidelity | P2 | S | Y | open | — |
+| **list-multi-indent** | Multi-select indent/outdent only affects first item | openspec/list-operations-fidelity | P2 | S | Y | **fixed-local** — toolbar-bound `increaseListLevel` and `decreaseListLevel` in `ListExtension.ts` used to only act on `$from.parent`, leaving the rest of a multi-paragraph selection untouched. Rewrote both to walk `nodesBetween($from.pos, $to.pos)` and apply the level change (or remove-list at level 0) to every paragraph with `numPr` — mirrors the existing keymap path (`increaseListIndent`/`decreaseListIndent`) and the `removeList` helper. 2/2 new e2e + typecheck green. | `e2e/tests/list-multi-indent.spec.ts` |
+| **list-multi-toggle** | Multi-select list toggle only removes first item | openspec/list-operations-fidelity | P2 | S | Y | **already-fixed** — `toggleList` in `ListExtension.ts` was rewritten in a prior commit to walk the selection via `nodesBetween` and toggle `numPr` on every visited paragraph. Pinned with a new e2e to lock the behavior. 1/1 e2e green. | `e2e/tests/list-multi-toggle.spec.ts` |
 | **list-num-format-fallback** | Decimal/unsupported list number formats fall back to decimal silently | in-code `toFlowBlocks.ts` | P3 | M | Y | open | — |
 | **drawingml-hyperlink-click** | DrawingML images with `a:hlinkClick` don't open on click | openspec/ooxml-feature-gaps | P3 | S | Y | open | — |
 | **tiff-images** | TIFF images render as broken icons | openspec/ooxml-feature-gaps + GH #146 | P3 | M | Y | open | — |
@@ -58,12 +58,14 @@ Columns:
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **upstream PRs** — bundle the 8 fixed-local changes into separate PRs against `eigenpal/docx-js-editor` (textbox-header, textbox-vml, comment-id, highlight-roundtrip, header-image-inheritance, theme-color-roundtrip, header-footer-render partial, file-properties, export-pdf).
-2. *(open slot)*
+1. **upstream PRs** — bundle the fixed-local changes (textbox-header, textbox-vml, comment-id, highlight-roundtrip, header-image-inheritance, theme-color-roundtrip, header-footer-render partial, file-properties, export-pdf, list-multi-indent) into separate PRs against `eigenpal/docx-js-editor`.
+2. **header-image-oversized (P2, S, GH #265)** — next easy P2 win after the upstream batch.
 3. *(open slot)*
 
 ## Recently moved
 
+- **list-multi-indent / list-multi-toggle** — FIXED-LOCAL (2026-05-17). Multi-paragraph selections now indent/outdent every list item, not just the first. Three new e2e specs added (incl. toggle, which already worked but was uncovered). Ready for upstream PR.
+- **highlight-roundtrip / theme-color-roundtrip** — END-TO-END COVERAGE ADDED (2026-05-17). Unit tests already pinned the contract; new e2e specs walk the load → edit → save → reload cycle through the browser so the full disk path is covered.
 - **export-pdf** — FIXED-LOCAL (2026-05-16). Dedicated Export-as-PDF menu entry reuses the existing print pipeline; saved PDF defaults to `<doc>.pdf` because the print window's `<title>` now carries the document name. Ready for upstream PR.
 - **file-properties-dialog** — FIXED-LOCAL (2026-05-16). Parser + dialog landed; user-edited fields persist into saved `.docx` via `applyCorePropertiesToXml`. Likely keeper for our fork, but offerable upstream.
 - **header-footer-render (partial)** — FIXED-LOCAL (2026-05-16). 3-section tab-stop alignment (`Left[tab]Center[tab]Right`) now lays out correctly. Other openspec sub-cases (content clipping, anchored images into margins) already covered by existing tests. Ready for upstream PR.
