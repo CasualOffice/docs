@@ -49,21 +49,24 @@ Columns:
 | **tracked-undo-orphan-comment** | Undo of last suggestion leaves orphan auto-comment | openspec/tracked-changes-edge-cases | P4 | S | Y | open | — |
 | **tracked-suggest-extra-letter** | "Added" section shows extra last letter in suggesting mode | openspec/tracked-changes-edge-cases | P4 | S | Y | open | — |
 | **paste-gdocs-align-spacing-indent** | Google Docs paste loses alignment, line spacing, indentation | openspec/paste-google-docs | P4 | M | Y | open | — |
-| **header-image-oversized** | Header images render oversized, overlay body | GH #265 | P2 | S | Y | open | — |
+| **header-image-oversized** | Header images render oversized, overlay body | GH #265 | P2 | S | Y | **fixed-local** — added `img.style.maxWidth = '100%'` to both `renderInlineImageRun` and `renderBlockImage` in `layout-painter/renderParagraph.ts`. The vite demo's `@tailwind base` preflight already supplied this rule globally, so the symptom only bit production embedders who load just `editor.css` (which explicitly omits preflight). The painter-side setting makes the clamp authoritative regardless of host CSS. New fixture has an inline header image declared at 1800×600 px (≈ 3× the page content width); the e2e asserts the rendered image is clamped to the header box and that body content's first line starts at or below the image bottom. 15/15 header-related e2e regression green. | `e2e/tests/header-image-oversized.spec.ts` + `scripts/make-oversized-header-image-fixture.mjs` |
 | **header-image-resize-handles** | Image resize handles missing in HF edit mode | GH #266 | P3 | S | Y | open | — |
 | **docx-to-pdf-blank-pages** | Some pages with content appear blank in generated PDF | GH #141 | P2 | M | ? | open | — |
 | **remote-cursors-collab** | Remote cursors not rendered in collab demo | GH #256 (referenced from #257) | P0 (for our Yjs work) | M | Y | open | — |
+| **drawing-shapes-render** | Non-textbox DrawingML shapes (`<wps:wsp>` without `<wps:txbx>` — rectangles, ellipses, arrows, callouts) and legacy VML shapes (`<v:rect>`, `<v:oval>`, `<v:line>`) are parsed but never rendered. Parser (`shapeParser.ts:511`) is solid; `Shape` type exists at `types/content.ts:737`; gap is in `imageParser.ts:667` dropping non-textbox wps:wsp and the missing `renderShape` in `layout-painter/`. | Audited 2026-05-17 | P2 | L | Y | open | — |
 
 ## Working set
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **upstream PRs** — bundle the fixed-local changes (textbox-header, textbox-vml, comment-id, highlight-roundtrip, header-image-inheritance, theme-color-roundtrip, header-footer-render partial, file-properties, export-pdf, list-multi-indent) into separate PRs against `eigenpal/docx-js-editor`.
-2. **header-image-oversized (P2, S, GH #265)** — next easy P2 win after the upstream batch.
+1. **upstream PRs** — bundle the fixed-local changes (textbox-header, textbox-vml, comment-id, highlight-roundtrip, header-image-inheritance, theme-color-roundtrip, header-footer-render partial, file-properties, export-pdf, list-multi-indent, header-image-oversized) into separate PRs against `eigenpal/docx-js-editor`.
+2. **drawing-shapes-render (P2, L)** — non-textbox DrawingML shapes (rectangles, ellipses, arrows, callouts) parsed but not rendered. Parser already solid; gap is in `imageParser` routing + a missing `renderShape` in `layout-painter/`.
 3. *(open slot)*
 
 ## Recently moved
 
+- **header-image-oversized** — FIXED-LOCAL (2026-05-17). Inline + block images now carry `max-width: 100%` from the painter itself, so the clamp works regardless of whether the host page loads Tailwind preflight. Ready for upstream PR.
+- **drawing-shapes-render** — NEW GAP recorded (2026-05-17). Audit found non-textbox DrawingML shapes are parsed but never painted.
 - **list-multi-indent / list-multi-toggle** — FIXED-LOCAL (2026-05-17). Multi-paragraph selections now indent/outdent every list item, not just the first. Three new e2e specs added (incl. toggle, which already worked but was uncovered). Ready for upstream PR.
 - **highlight-roundtrip / theme-color-roundtrip** — END-TO-END COVERAGE ADDED (2026-05-17). Unit tests already pinned the contract; new e2e specs walk the load → edit → save → reload cycle through the browser so the full disk path is covered.
 - **export-pdf** — FIXED-LOCAL (2026-05-16). Dedicated Export-as-PDF menu entry reuses the existing print pipeline; saved PDF defaults to `<doc>.pdf` because the print window's `<title>` now carries the document name. Ready for upstream PR.
