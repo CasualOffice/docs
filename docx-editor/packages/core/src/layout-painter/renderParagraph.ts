@@ -511,6 +511,20 @@ function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement {
 
   applyPmPositions(img, run.pmStart, run.pmEnd);
 
+  // a:hlinkClick on the picture (ECMA-376 §20.1.2.3.5) — wrap the image
+  // in a target=_blank anchor so the user can click through. Mirrors the
+  // existing block-image hyperlink handling in `renderImage.ts`.
+  if (run.hlinkHref) {
+    const anchor = doc.createElement('a');
+    anchor.href = run.hlinkHref;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.style.display = 'inline-block';
+    anchor.style.verticalAlign = 'middle';
+    anchor.appendChild(img);
+    return anchor;
+  }
+
   return img;
 }
 
@@ -562,7 +576,19 @@ function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
   }
 
   applyPmPositions(container, run.pmStart, run.pmEnd);
-  container.appendChild(img);
+  // Same a:hlinkClick handling as `renderInlineImageRun` — wrap the
+  // image in a target=_blank anchor when the picture carries an
+  // external link.
+  if (run.hlinkHref) {
+    const anchor = doc.createElement('a');
+    anchor.href = run.hlinkHref;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.appendChild(img);
+    container.appendChild(anchor);
+  } else {
+    container.appendChild(img);
+  }
 
   return container;
 }

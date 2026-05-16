@@ -536,6 +536,9 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
         cropBottom: attrs.cropBottom as number | undefined,
         cropLeft: attrs.cropLeft as number | undefined,
         opacity: attrs.opacity as number | undefined,
+        // a:hlinkClick on the picture — clicked image should open the URL
+        // in a new tab, same as a text hyperlink.
+        hlinkHref: attrs.hlinkHref as string | undefined,
         pmStart: childPos,
         pmEnd: childPos + child.nodeSize,
       };

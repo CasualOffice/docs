@@ -176,6 +176,8 @@ export type ImageRun = {
   cropLeft?: number;
   /** a:alphaModFix → CSS opacity in [0, 1]. */
   opacity?: number;
+  /** External URL from `<a:hlinkClick>` on the picture's `pic:cNvPr`. */
+  hlinkHref?: string;
   pmStart?: number;
   pmEnd?: number;
 };
