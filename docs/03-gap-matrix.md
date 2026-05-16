@@ -44,8 +44,8 @@ Columns:
 | **perf-tracked-changes-heavy** | 100+ tracked changes makes editor sluggish | openspec/editor-performance | P3 | L | Y | open | — |
 | **cursor-nav-autoscroll** | Arrow nav inconsistent; no auto-scroll on viewport edge | openspec/cursor-navigation-autoscroll | P4 | M | Y | open | — |
 | **find-replace-scroll** | Cmd+F doesn't scroll/highlight result | GH #321 | P4 | S | Y | **fixed-local** — `scrollToMatch` in `findReplaceUtils.ts` queried `[data-paragraph-index]` which the painter never emits, so the scroll was a silent no-op. Rewrote it to collect visible `.layout-paragraph` elements (skipping HF / tables / textboxes / hidden PM), dedupe by `data-block-id` (paginated paragraphs share one), and pick the Nth — matching the paragraph-ordinal `findInDocument` assigns. Also added the missing `data-testid="find-input"` to the search input in `FindReplaceDialog.tsx` so the existing helper works. 1 new e2e green; typecheck clean. | `e2e/tests/find-replace-scroll.spec.ts` + `scripts/make-find-scroll-fixture.mjs` |
-| **toolbar-selection-loss** | Selection disappears when dropdown opens | openspec/toolbar-selection-interactions | P4 | S | Y | open | — |
-| **toolbar-dropdown-close** | Dropdowns don't close on outside click | openspec/toolbar-selection-interactions | P4 | S | Y | open | — |
+| **toolbar-selection-loss** | Selection disappears when dropdown opens | openspec/toolbar-selection-interactions | P4 | S | Y | **already-fixed** — `MenuDropdown.tsx:177,200` already calls `e.preventDefault()` on the trigger button and the dropdown panel's `mousedown`, keeping PM's focus + selection intact while the menu is open. E2E pins the invariant (selection's from/to is identical before-vs-during open). | `e2e/tests/toolbar-selection-loss.spec.ts` |
+| **toolbar-dropdown-close** | Dropdowns don't close on outside click | openspec/toolbar-selection-interactions | P4 | S | Y | **already-fixed** — `MenuDropdown.tsx:130-162` wires a document-level `mousedown` listener with proper `contains()` checks on both trigger and dropdown refs, plus Escape and scroll handlers. E2E pins outside-click + Escape both close the File menu. | `e2e/tests/toolbar-dropdown-close.spec.ts` |
 | **tracked-undo-orphan-comment** | Undo of last suggestion leaves orphan auto-comment | openspec/tracked-changes-edge-cases | P4 | S | Y | open | — |
 | **tracked-suggest-extra-letter** | "Added" section shows extra last letter in suggesting mode | openspec/tracked-changes-edge-cases | P4 | S | Y | open | — |
 | **paste-gdocs-align-spacing-indent** | Google Docs paste loses alignment, line spacing, indentation | openspec/paste-google-docs | P4 | M | Y | open | — |
@@ -65,6 +65,7 @@ The next ≤3 gaps actively in flight. Update when one closes / opens.
 
 ## Recently moved
 
+- **toolbar-dropdown-close / toolbar-selection-loss** — ALREADY-FIXED, PINNED (2026-05-17). Both gaps from `toolbar-selection-interactions` are properly handled in `MenuDropdown.tsx`. Two e2e specs lock the behavior.
 - **find-replace-scroll** — FIXED-LOCAL (2026-05-17). `scrollToMatch` queried for a `data-paragraph-index` attribute the painter never emits — silent no-op. Now walks `.layout-paragraph` elements directly. Ready for upstream PR.
 - **drawingml-hyperlink-click** — FIXED-LOCAL (2026-05-17). Inline + block images with `a:hlinkClick` now render inside a `target=_blank` anchor.
 - **paragraph-border-between-bar** — ALREADY-FIXED, PINNED (2026-05-17). Every layer carries `w:between` + `w:bar` already; matrix entry was stale. New e2e pins round-trip + rendered output.
