@@ -455,6 +455,12 @@ function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement {
   // overflowing the cell by ~0.3 px and clipping the bottom of the logo).
   img.style.width = `${run.width}px`;
   img.style.height = `${run.height}px`;
+  // Safety net against pasted images much larger than the parent container
+  // (especially in headers — GH #265). Real Word files set `wp:extent` to
+  // the intended display size, so `run.width` already fits the page; this
+  // only triggers when an oversized image lands in a narrow container
+  // (e.g. a paste into a header) and clamps it to the parent width.
+  img.style.maxWidth = '100%';
   if (run.alt) {
     img.alt = run.alt;
   }
@@ -528,6 +534,8 @@ function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
   // Use margin: auto on the img itself to center it.
   img.style.marginLeft = 'auto';
   img.style.marginRight = 'auto';
+  // Same safety net as `renderInlineImageRun` — see GH #265.
+  img.style.maxWidth = '100%';
   if (run.alt) {
     img.alt = run.alt;
   }
