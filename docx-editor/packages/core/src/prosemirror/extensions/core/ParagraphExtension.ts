@@ -187,8 +187,10 @@ function cssLineHeightToSpacing(
 /**
  * Extract paragraph-level attributes from a pasted HTML <p> element's inline styles.
  * Used by parseDOM to preserve formatting from external apps (Google Docs, Word Online, etc.).
+ *
+ * @internal — exported for unit tests in `__tests__/paste-paragraph-styles.test.ts`.
  */
-function extractParagraphAttrsFromStyle(element: HTMLElement): Partial<ParagraphAttrs> {
+export function extractParagraphAttrsFromStyle(element: HTMLElement): Partial<ParagraphAttrs> {
   const style = element.style;
   const attrs: Partial<ParagraphAttrs> = {};
 
