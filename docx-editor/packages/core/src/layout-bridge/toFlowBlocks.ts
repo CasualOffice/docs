@@ -158,6 +158,138 @@ function toLetter(n: number, upper: boolean): string {
   return upper ? out : out.toLowerCase();
 }
 
+// English ordinal suffix (1st, 2nd, 3rd, 4th, ...).
+function ordinalSuffix(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return 'th';
+  switch (n % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+const CARDINAL_ONES = [
+  '',
+  'One',
+  'Two',
+  'Three',
+  'Four',
+  'Five',
+  'Six',
+  'Seven',
+  'Eight',
+  'Nine',
+  'Ten',
+  'Eleven',
+  'Twelve',
+  'Thirteen',
+  'Fourteen',
+  'Fifteen',
+  'Sixteen',
+  'Seventeen',
+  'Eighteen',
+  'Nineteen',
+];
+const CARDINAL_TENS = [
+  '',
+  '',
+  'Twenty',
+  'Thirty',
+  'Forty',
+  'Fifty',
+  'Sixty',
+  'Seventy',
+  'Eighty',
+  'Ninety',
+];
+const ORDINAL_ONES = [
+  '',
+  'First',
+  'Second',
+  'Third',
+  'Fourth',
+  'Fifth',
+  'Sixth',
+  'Seventh',
+  'Eighth',
+  'Ninth',
+  'Tenth',
+  'Eleventh',
+  'Twelfth',
+  'Thirteenth',
+  'Fourteenth',
+  'Fifteenth',
+  'Sixteenth',
+  'Seventeenth',
+  'Eighteenth',
+  'Nineteenth',
+];
+const ORDINAL_TENS = [
+  '',
+  '',
+  'Twentieth',
+  'Thirtieth',
+  'Fortieth',
+  'Fiftieth',
+  'Sixtieth',
+  'Seventieth',
+  'Eightieth',
+  'Ninetieth',
+];
+
+// Word forms cover 1..99 — beyond that fall back to "<cardinal-99>+<rest>"
+// or decimal. Real docs rarely cardinal-text past two digits, so the cost
+// of a bigger lookup table isn't justified for this fallback path.
+function toCardinalText(n: number): string {
+  if (n <= 0 || n >= 100) return String(n);
+  if (n < 20) return CARDINAL_ONES[n];
+  const tens = Math.floor(n / 10);
+  const ones = n % 10;
+  if (ones === 0) return CARDINAL_TENS[tens];
+  return `${CARDINAL_TENS[tens]}-${CARDINAL_ONES[ones].toLowerCase()}`;
+}
+
+function toOrdinalText(n: number): string {
+  if (n <= 0 || n >= 100) return String(n) + ordinalSuffix(n);
+  if (n < 20) return ORDINAL_ONES[n];
+  const tens = Math.floor(n / 10);
+  const ones = n % 10;
+  if (ones === 0) return ORDINAL_TENS[tens];
+  return `${CARDINAL_TENS[tens]}-${ORDINAL_ONES[ones].toLowerCase()}`;
+}
+
+// Chicago Manual footnote sequence: * † ‡ § ‖ # then doubled (** †† …).
+const CHICAGO_GLYPHS = ['*', '†', '‡', '§', '‖', '#'];
+function toChicago(n: number): string {
+  if (n <= 0) return '';
+  const idx = (n - 1) % CHICAGO_GLYPHS.length;
+  const repeat = Math.floor((n - 1) / CHICAGO_GLYPHS.length) + 1;
+  return CHICAGO_GLYPHS[idx].repeat(repeat);
+}
+
+// Unicode circled digits ① ② ③ … ⑳ at U+2460..U+2473, then ㉑..㊿ at
+// U+3251..U+325F + U+32B1..U+32BF. Past 50 fall back to "(N)".
+function toDecimalEnclosedCircle(n: number): string {
+  if (n <= 0) return '';
+  if (n <= 20) return String.fromCodePoint(0x2460 + n - 1);
+  if (n <= 35) return String.fromCodePoint(0x3251 + n - 21);
+  if (n <= 50) return String.fromCodePoint(0x32b1 + n - 36);
+  return `(${n})`;
+}
+
+// ⑴ ⑵ ⑶ at U+2474..U+2487 (1..20). Past 20 fall back to "(N)".
+function toDecimalEnclosedParen(n: number): string {
+  if (n <= 0) return '';
+  if (n <= 20) return String.fromCodePoint(0x2474 + n - 1);
+  return `(${n})`;
+}
+
 function formatCounter(value: number, fmt: NumberFormat | undefined): string {
   if (value <= 0) return '';
   switch (fmt) {
@@ -171,10 +303,30 @@ function formatCounter(value: number, fmt: NumberFormat | undefined): string {
       return toLetter(value, false);
     case 'decimalZero':
       return value < 10 ? `0${value}` : String(value);
+    case 'ordinal':
+      return `${value}${ordinalSuffix(value)}`;
+    case 'cardinalText':
+      return toCardinalText(value);
+    case 'ordinalText':
+      return toOrdinalText(value);
+    case 'hex':
+      return value.toString(16).toUpperCase();
+    case 'numberInDash':
+      return `- ${value} -`;
+    case 'chicago':
+      return toChicago(value);
+    case 'decimalEnclosedCircle':
+      return toDecimalEnclosedCircle(value);
+    case 'decimalEnclosedParen':
+      return toDecimalEnclosedParen(value);
     case 'none':
       return '';
     default:
-      // decimal and unsupported formats fall back to decimal
+      // CJK / Hebrew / Arabic / Thai / Korean script-specific formats
+      // (japaneseCounting, koreanDigital, hebrew1, arabicAlpha,
+      // thaiNumbers, ideographDigital, …) still fall through to
+      // decimal — they require sizable lookup tables and don't show
+      // up in any of our 39 fixtures.
       return String(value);
   }
 }
