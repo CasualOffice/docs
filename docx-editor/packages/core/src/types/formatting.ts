@@ -381,6 +381,16 @@ export interface ParagraphFormatting {
   autoSpaceDN?: boolean;
   /** Auto-adjust right indent when a table follows (`<w:adjustRightInd>`). */
   adjustRightInd?: boolean;
+  /**
+   * Vertical alignment of text within each line of the paragraph
+   * (`<w:textAlignment w:val="..."/>`, ECMA-376 §17.3.1.40).
+   */
+  textAlignment?: 'top' | 'center' | 'baseline' | 'bottom' | 'auto';
+  /**
+   * Allow East-Asian punctuation to overflow the line boundary
+   * (`<w:overflowPunct>`). Defaults to true; `w:val="0"` disables.
+   */
+  overflowPunct?: boolean;
 }
 
 // ============================================================================

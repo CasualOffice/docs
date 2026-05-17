@@ -445,6 +445,11 @@ export function serializeParagraphFormatting(
     // `<w:val="0"/>` is what shows up when the author disables them
     // (Form025U, issue-319-sections). Per ECMA-376 these sit between
     // suppressAutoHyphens and spacing in <w:pPr>'s schema order.
+    if (formatting.overflowPunct !== undefined) {
+      parts.push(
+        formatting.overflowPunct ? '<w:overflowPunct/>' : '<w:overflowPunct w:val="0"/>'
+      );
+    }
     if (formatting.autoSpaceDE !== undefined) {
       parts.push(formatting.autoSpaceDE ? '<w:autoSpaceDE/>' : '<w:autoSpaceDE w:val="0"/>');
     }
@@ -455,6 +460,9 @@ export function serializeParagraphFormatting(
       parts.push(
         formatting.adjustRightInd ? '<w:adjustRightInd/>' : '<w:adjustRightInd w:val="0"/>'
       );
+    }
+    if (formatting.textAlignment) {
+      parts.push(`<w:textAlignment w:val="${formatting.textAlignment}"/>`);
     }
 
     // Spacing

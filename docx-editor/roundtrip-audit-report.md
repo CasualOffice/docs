@@ -24,8 +24,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `v:f` | 12 | 1 |
 | `v:shape` | 11 | 2 |
 | `v:textbox` | 8 | 2 |
-| `w:textAlignment` | 8 | 2 |
-| `w:overflowPunct` | 8 | 1 |
 | `w:cols` | 7 | 1 |
 | `v:group` | 6 | 2 |
 | `w:rFonts` | 6 | 1 |
@@ -73,6 +71,8 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `wp14:sizeRelH` | 2 | 1 |
 | `wp14:pctWidth` | 2 | 1 |
 | `wp14:sizeRelV` | 2 | 1 |
+| `wp14:pctHeight` | 2 | 1 |
+| `w:highlight` | 2 | 1 |
 
 ## Per-fixture detail
 
@@ -180,7 +180,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:bdr` | 1 | 0 |
-| `w:textAlignment` | 1 | 0 |
 
 ### theme-color-auto
 
@@ -229,8 +228,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:overflowPunct` | 8 | 0 |
-| `w:textAlignment` | 7 | 0 |
 | `w:fldChar` | 6 | 0 |
 | `w:rStyle` | 4 | 0 |
 | `w:headerReference` | 2 | 0 |

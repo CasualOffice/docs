@@ -661,6 +661,17 @@ export function parseParagraphProperties(
   if (adjustRightInd) {
     formatting.adjustRightInd = parseBooleanElement(adjustRightInd);
   }
+  const textAlignmentEl = findChild(pPr, 'w', 'textAlignment');
+  if (textAlignmentEl) {
+    const val = getAttribute(textAlignmentEl, 'w', 'val');
+    if (val === 'top' || val === 'center' || val === 'baseline' || val === 'bottom' || val === 'auto') {
+      formatting.textAlignment = val;
+    }
+  }
+  const overflowPunct = findChild(pPr, 'w', 'overflowPunct');
+  if (overflowPunct) {
+    formatting.overflowPunct = parseBooleanElement(overflowPunct);
+  }
 
   // === Default Run Properties ===
   const rPr = findChild(pPr, 'w', 'rPr');
