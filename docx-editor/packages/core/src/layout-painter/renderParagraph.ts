@@ -362,28 +362,64 @@ function renderTextRun(run: TextRun, doc: Document, resolvedCommentIds?: Set<num
 }
 
 /**
- * Render a tab run with calculated width
+ * Render a tab run with calculated width.
+ *
+ * Tab leaders (TOCs etc.) used to span the *full* width of the tab
+ * span — including the gutter touching the runs on either side. Glyphs
+ * like `.` or `-` would butt against the section title on the left
+ * and the page number on the right (openspec `tab-leader-fidelity`).
+ *
+ * Fix:
+ *   - Small horizontal padding inside the tab span keeps the leader
+ *     glyphs clear of adjacent runs.
+ *   - `background-clip: content-box` so the repeating-glyph pattern
+ *     respects that padding rather than rendering across it.
+ *   - For solid-line leaders (underscore / heavy) use a CSS border-
+ *     bottom instead of the `_` character — the character has gaps
+ *     between repeats that look like a dotted line.
  */
-function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string): HTMLElement {
+/** @internal — exported for unit tests in `__tests__/tab-leader.test.ts`. */
+export function renderTabRun(
+  run: TabRun,
+  doc: Document,
+  width: number,
+  leader?: string
+): HTMLElement {
   const span = doc.createElement('span');
   span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.tab}`;
 
   span.style.display = 'inline-block';
   span.style.width = `${width}px`;
   span.style.overflow = 'hidden';
+  span.style.boxSizing = 'border-box';
 
   applyPmPositions(span, run.pmStart, run.pmEnd);
 
-  // Render leader character if specified
   if (leader && leader !== 'none') {
-    const leaderChar = getLeaderChar(leader);
-    if (leaderChar) {
-      // Fill with leader characters
-      span.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(
-        `<svg xmlns='http://www.w3.org/2000/svg' width='4' height='16'><text x='0' y='12' font-size='12' fill='%23000'>${leaderChar}</text></svg>`
-      )}")`;
-      span.style.backgroundRepeat = 'repeat-x';
-      span.style.backgroundPosition = 'bottom';
+    // 2 px gutters on each side keep the leader pattern from butting
+    // up against adjacent runs — matches Word's visual spacing.
+    span.style.paddingLeft = '2px';
+    span.style.paddingRight = '2px';
+
+    if (leader === 'underscore' || leader === 'heavy') {
+      // Solid baseline rule. The `_` character has gaps between
+      // repeats that look like a dotted line — a CSS border is the
+      // right primitive for a continuous underscore / heavy rule.
+      const thickness = leader === 'heavy' ? '2px' : '1px';
+      span.style.borderBottom = `${thickness} solid currentColor`;
+    } else {
+      const leaderChar = getLeaderChar(leader);
+      if (leaderChar) {
+        span.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(
+          `<svg xmlns='http://www.w3.org/2000/svg' width='4' height='16'><text x='0' y='12' font-size='12' fill='%23000'>${leaderChar}</text></svg>`
+        )}")`;
+        span.style.backgroundRepeat = 'repeat-x';
+        span.style.backgroundPosition = 'bottom';
+        // Keep the repeating pattern inside the padded box so it
+        // doesn't bleed across the 2 px gutters.
+        span.style.backgroundOrigin = 'content-box';
+        span.style.backgroundClip = 'content-box';
+      }
     }
   }
 
@@ -394,7 +430,11 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
 }
 
 /**
- * Get leader character for tab
+ * Get leader character for tab.
+ *
+ * Solid-line leaders (`underscore` / `heavy`) are *not* served by this
+ * function — the renderer uses a CSS `border-bottom` so the line is
+ * continuous rather than dotted between glyph repeats.
  */
 function getLeaderChar(leader: string): string | null {
   switch (leader) {
@@ -402,12 +442,8 @@ function getLeaderChar(leader: string): string | null {
       return '.';
     case 'hyphen':
       return '-';
-    case 'underscore':
-      return '_';
     case 'middleDot':
       return '·';
-    case 'heavy':
-      return '_';
     default:
       return null;
   }
