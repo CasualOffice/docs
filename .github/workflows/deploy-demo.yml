@@ -37,17 +37,21 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - name: Resolve Pages base path
-        id: base
-        run: |
-          repo_name="${GITHUB_REPOSITORY##*/}"
-          echo "path=/$repo_name/" >> "$GITHUB_OUTPUT"
-
       - name: Build core + react libs
         run: bun run build
 
+      # Custom domain (doc.schnsrw.live) means Pages serves at root '/',
+      # not '/<repo>/'. Vite's default base = '/' is correct; no override.
       - name: Build demo (Vite)
-        run: bun run build:demo -- --base ${{ steps.base.outputs.path }}
+        run: bun run build:demo
+
+      # CNAME file pins the custom domain. GitHub auto-creates it when
+      # the domain is set in Settings → Pages, but each
+      # actions/deploy-pages run replaces the whole site with the
+      # artifact's contents — without this step that CNAME would be
+      # wiped on every deploy and the custom domain would be unset.
+      - name: Write CNAME for custom domain
+        run: echo 'doc.schnsrw.live' > examples/vite/dist/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

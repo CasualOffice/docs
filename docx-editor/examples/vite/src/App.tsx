@@ -124,8 +124,18 @@ export function App() {
   const { zoom: autoZoom, isMobile } = useResponsiveLayout();
 
   useEffect(() => {
-    fetch('/docx-editor-demo.docx')
-      .then((res) => res.arrayBuffer())
+    // Prefix with Vite's BASE_URL so the seed doc loads under both:
+    //   - Local dev / Vercel (BASE_URL = '/'): fetches '/docx-editor-demo.docx'
+    //   - GitHub Pages (BASE_URL = '/docx/'): fetches '/docx/docx-editor-demo.docx'
+    // The catch below already falls back to an empty doc on 404, but on
+    // Pages the 404 HTML used to make it as far as JSZip, which then
+    // failed to parse with "Can't find end of central directory" and
+    // crashed initial render.
+    fetch(`${import.meta.env.BASE_URL}docx-editor-demo.docx`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.arrayBuffer();
+      })
       .then((buffer) => {
         setDocumentBuffer(buffer);
         setFileName('docx-editor-demo.docx');
