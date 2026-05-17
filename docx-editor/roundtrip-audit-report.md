@@ -16,17 +16,12 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:proofErr` | 544 | 8 |
 | `w:noProof` | 175 | 6 |
 | `w:webHidden` | 119 | 1 |
-| `w:left` | 112 | 1 |
-| `w:right` | 112 | 1 |
 | `w:autoSpaceDE` | 84 | 2 |
 | `w:autoSpaceDN` | 84 | 2 |
 | `w:adjustRightInd` | 84 | 2 |
-| `w:insideH` | 32 | 3 |
-| `w:insideV` | 32 | 3 |
 | `w:txbxContent` | 24 | 4 |
 | `v:fill` | 21 | 3 |
 | `a:picLocks` | 20 | 6 |
-| `w:tblBorders` | 20 | 2 |
 | `w:pict` | 19 | 3 |
 | `a:extLst` | 18 | 5 |
 | `a14:useLocalDpi` | 18 | 5 |
@@ -72,7 +67,12 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:cnfStyle` | 4 | 2 |
 | `w:pgNumType` | 4 | 4 |
 | `w:rStyle` | 4 | 1 |
-| `w:tcBorders` | 4 | 1 |
+| `mc:AlternateContent` | 3 | 2 |
+| `mc:Choice` | 3 | 2 |
+| `wpg:wgp` | 3 | 2 |
+| `a:chOff` | 3 | 1 |
+| `a:chExt` | 3 | 1 |
+| `a:lumMod` | 3 | 1 |
 
 ## Per-fixture detail
 
@@ -89,8 +89,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:left` | 112 | 0 |
-| `w:right` | 112 | 0 |
 | `v:f` | 12 | 0 |
 | `w:txbxContent` | 10 | 0 |
 | `wps:cNvPr` | 8 | 0 |
@@ -119,7 +117,9 @@ No round-trip drops.
 | `a:chExt` | 3 | 0 |
 | `a:lumMod` | 3 | 0 |
 | `wps:style` | 3 | 0 |
-| _…31 more_ | | |
+| `a:lnRef` | 3 | 0 |
+| `a:fillRef` | 3 | 0 |
+| _…29 more_ | | |
 
 ### table-indent
 
@@ -207,9 +207,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 38 | 0 |
-| `w:tblBorders` | 10 | 0 |
-| `w:insideH` | 10 | 0 |
-| `w:insideV` | 10 | 0 |
 | `w:cols` | 1 | 0 |
 
 ### border-overlay-layout-demo
@@ -289,7 +286,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 92 | 0 |
-| `w:tcBorders` | 4 | 0 |
 | `w:cols` | 1 | 0 |
 
 ### issue-387-font-theme-override
@@ -311,9 +307,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 38 | 0 |
-| `w:tblBorders` | 10 | 0 |
-| `w:insideH` | 10 | 0 |
-| `w:insideV` | 10 | 0 |
 | `w:cols` | 1 | 0 |
 
 ### textbox-test
@@ -389,8 +382,6 @@ No round-trip drops.
 | `w:autoSpaceDE` | 36 | 0 |
 | `w:autoSpaceDN` | 36 | 0 |
 | `w:adjustRightInd` | 36 | 0 |
-| `w:insideH` | 12 | 0 |
-| `w:insideV` | 12 | 0 |
 | `w:gridAfter` | 1 | 0 |
 | `w:wAfter` | 1 | 0 |
 | `w:cols` | 1 | 0 |

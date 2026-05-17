@@ -97,7 +97,14 @@ function serializeMeasurement(
  * Serialize a single border element
  */
 function serializeBorder(border: BorderSpec | undefined, elementName: string): string {
-  if (!border || border.style === 'none' || border.style === 'nil') {
+  // Only bail when the border is fully absent (style undefined) — `none`
+  // and `nil` are *valid* declarations meaning "explicitly no border".
+  // Word writes these out verbatim; dropping them is a structural
+  // round-trip loss that disappears entire <w:tblBorders> blocks when
+  // every side is "none" (scripts/roundtrip-audit.mjs surfaced 32
+  // dropped w:insideH and w:insideV across header-with-textbox +
+  // template-with-hf-rule, plus 20 dropped w:tblBorders blocks).
+  if (!border || !border.style) {
     return '';
   }
 
