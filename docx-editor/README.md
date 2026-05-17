@@ -1,101 +1,80 @@
 <p align="center">
-  <a href="https://www.docx-editor.dev/">
-    <img src="./assets/header.png" alt="DOCX Editor — .docx in, .docx out. Open source, client-side." width="500" />
+  <a href="https://doc.schnsrw.live/">
+    <img src="../assets/logo.svg" alt="Casual Editor" width="80" height="80" />
   </a>
 </p>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/@eigenpal/docx-js-editor"><img src="https://img.shields.io/npm/v/@eigenpal/docx-js-editor.svg?style=flat-square&color=3B5BDB" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/@eigenpal/docx-js-editor"><img src="https://img.shields.io/npm/dm/@eigenpal/docx-js-editor.svg?style=flat-square&color=3B5BDB" alt="npm downloads" /></a>
-  <a href="https://github.com/eigenpal/docx-js-editor/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square&color=3B5BDB" alt="license" /></a>
-  <a href="https://docx-editor.dev/editor"><img src="https://img.shields.io/badge/Live_Demo-3B5BDB?style=flat-square&logo=vercel&logoColor=white" alt="Demo" /></a>
-  <a href="https://www.docx-editor.dev/docs"><img src="https://img.shields.io/badge/Docs-3B5BDB?style=flat-square&logo=readthedocs&logoColor=white" alt="Documentation" /></a>
-</p>
-
-> **Note:** this is a local fork of [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor). The AGPL `@eigenpal/docx-editor-agents` package and dependents have been removed from this fork; the remaining code is MIT.
-
-Open-source WYSIWYG `.docx` editor for React with canonical OOXML, tracked changes, and real-time collaboration via Yjs (BYO transport). **[Upstream live demo](https://docx-editor.dev/editor)** | **[Upstream docs](https://www.docx-editor.dev/docs)**
-
-## Quick Start
-
-```bash
-npm install @eigenpal/docx-js-editor
-```
-
-```tsx
-import { useRef } from 'react';
-import { DocxEditor, type DocxEditorRef } from '@eigenpal/docx-js-editor';
-import '@eigenpal/docx-js-editor/styles.css';
-
-function Editor({ file }: { file: ArrayBuffer }) {
-  const editorRef = useRef<DocxEditorRef>(null);
-  return <DocxEditor ref={editorRef} documentBuffer={file} mode="editing" onChange={() => {}} />;
-}
-```
-
-> **Next.js / SSR:** Use dynamic import — the editor requires the DOM.
+<h2 align="center">Casual Editor — editor package</h2>
 
 <p align="center">
-  <a href="https://docx-editor.dev/editor">
-    <img src="./assets/editor.png" alt="DOCX JS Editor screenshot" width="100%" />
-  </a>
+  Inlined fork of <a href="https://github.com/eigenpal/docx-editor">eigenpal/docx-editor</a>.
+  MIT only. AGPL <code>@eigenpal/docx-editor-agents</code> removed.
 </p>
+
+This directory holds the browser editor codebase for Casual Editor.
+Everything project-wide (architecture, roadmap, contribution rules,
+backend plan) lives in the **[outer README](../README.md)** — start
+there.
+
+This README is just a quick map of what's inside `docx-editor/` so
+folks browsing the package itself don't have to grep around.
 
 ## Packages
 
-| Package                                      | Description                                                  |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| [`@eigenpal/docx-js-editor`](packages/react) | React UI — toolbar, paged editor, plugins. **Install this.** |
-| [`@eigenpal/docx-editor-vue`](packages/vue)  | Vue.js scaffold — contributions welcome                      |
+| Path | What it is |
+|------|------------|
+| `packages/core/` | DOCX parser + serializer, layout engine, ProseMirror schema |
+| `packages/react/` | The `<DocxEditor>` React component (used by the demo) |
+| `packages/vue/` | Vue wrapper (private, community-maintained, not published) |
 
-## Plugins
+## Useful commands
 
-```tsx
-import { DocxEditor, PluginHost, templatePlugin } from '@eigenpal/docx-js-editor';
-
-<PluginHost plugins={[templatePlugin]}>
-  <DocxEditor documentBuffer={file} />
-</PluginHost>;
-```
-
-See the [plugin documentation](https://www.docx-editor.dev/docs/plugins) for the full plugin API.
-
-## Development
+Run from inside `docx-editor/`. Bun ≥ 1.3.14 required.
 
 ```bash
 bun install
-bun run dev        # localhost:5173
-bun run build
-bun run typecheck
+bun run dev           # vite demo at http://localhost:5173
+bun run typecheck     # type-check every package
+bun test              # unit tests
+bun run test:e2e      # Playwright e2e (chromium)
+bun run build         # build core + react packages
+bun run build:demo    # build the Vite demo bundle
 ```
 
-A live preview of `main` is auto-deployed at **[latest.docx-editor.dev](https://latest.docx-editor.dev/)** — useful for trying out changes before they ship to npm.
-
-Examples: [Vite](examples/vite) | [Next.js](examples/nextjs) | [Remix](examples/remix) | [Astro](examples/astro) | [Vue](examples/vue)
-
-**[Documentation](https://www.docx-editor.dev/docs)** | **[Props & Ref Methods](https://www.docx-editor.dev/docs/props)** | **[Plugins](https://www.docx-editor.dev/docs/plugins)** | **[Architecture](https://www.docx-editor.dev/docs/architecture)**
-
-## Contributing
-
-Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and the one-time CLA signature.
-
-## Translations
-
-| Locale  | Language            | Coverage |
-| ------- | ------------------- | -------- |
-| `en`    | English             | 100%     |
-| `de`    | German              | 100%     |
-| `pl`    | Polish              | 100%     |
-| `pt-BR` | Portuguese (Brazil) | 100%     |
-
-Help translate the editor into your language! See the full **[i18n contribution guide](docs/i18n.md)**.
+Round-trip audit (lists every OOXML tag we silently drop on save):
 
 ```bash
-bun run i18n:new de      # scaffold German locale
-bun run i18n:status      # check translation coverage
+bun run scripts/roundtrip-audit.mjs
+# writes roundtrip-audit-report.md
 ```
 
-## Commercial Support
+## Architecture cheat sheet
 
-> [!TIP]
-> Questions or custom features? Email **[docx-editor@eigenpal.com](mailto:docx-editor@eigenpal.com)**.
+The editor has **two rendering pipelines** that must stay in sync:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ HIDDEN ProseMirror (off-screen)                              │
+│   real editing state, selection, undo/redo, commands         │
+│   src/paged-editor/HiddenProseMirror.tsx                     │
+└──────────────────────────────────────────────────────────────┘
+                state changes ↓ trigger re-render
+┌──────────────────────────────────────────────────────────────┐
+│ VISIBLE pages (layout-painter)                               │
+│   what the user actually sees, has its own render logic      │
+│   src/layout-painter/renderPage.ts                           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+When fixing a visual bug, edit `layout-painter/`. When fixing an
+editing-behavior bug, edit `prosemirror/extensions/`. For both, you
+usually need to touch both pipelines.
+
+See `CLAUDE.md` in this directory for the full "Key File Map" used by
+day-to-day work.
+
+## License
+
+MIT (`docx-editor/LICENSE`). Derived from
+[`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor) under
+the same MIT license; their copyright notice is retained.

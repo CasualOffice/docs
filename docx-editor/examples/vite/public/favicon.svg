@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Same design as logo.svg, kept identical so the asset is interchangeable
+       and modern browsers can use either as a favicon. Text lines slightly
+       thicker to hold up at 16px / 32px favicon sizes. -->
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <g transform="rotate(-6 32 32)">
+    <path d="M16 14 H42 L48 20 V50 H16 Z" fill="#ffffff"/>
+    <path d="M42 14 L48 20 H42 Z" fill="#dbeafe"/>
+    <rect x="20" y="26" width="22" height="3" rx="1.5" fill="#2563eb"/>
+    <rect x="20" y="33" width="18" height="3" rx="1.5" fill="#2563eb" opacity="0.7"/>
+    <rect x="20" y="40" width="22" height="3" rx="1.5" fill="#2563eb"/>
+    <rect x="20" y="47" width="12" height="3" rx="1.5" fill="#2563eb" opacity="0.7"/>
+  </g>
+</svg>
