@@ -29,7 +29,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:rFonts` | 6 | 1 |
 | `w:fldChar` | 6 | 1 |
 | `w:rPr` | 6 | 1 |
-| `a:hlinkClick` | 5 | 2 |
 | `a:spLocks` | 5 | 1 |
 | `a:miter` | 5 | 1 |
 | `a:headEnd` | 5 | 1 |
@@ -40,6 +39,7 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:ind` | 5 | 1 |
 | `wpg:cNvGrpSpPr` | 4 | 2 |
 | `wpg:grpSpPr` | 4 | 2 |
+| `a:hlinkClick` | 4 | 1 |
 | `w:hyperlink` | 4 | 1 |
 | `a:noAutofit` | 4 | 1 |
 | `w:start` | 4 | 2 |
@@ -214,10 +214,7 @@ No round-trip drops.
 
 ### image-hyperlink
 
-
-| Tag | In | Out |
-|-----|----|-----|
-| `a:hlinkClick` | 1 | 0 |
+No round-trip drops.
 
 ### image-layout-modes-demo
 

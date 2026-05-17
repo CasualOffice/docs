@@ -532,10 +532,16 @@ function parseInline(
   if (crop) image.crop = crop;
   if (opacity !== undefined) image.opacity = opacity;
 
-  // Resolve image hyperlink (a:hlinkClick)
-  if (props.hlinkRId && rels) {
-    const href = resolveTarget(rels, props.hlinkRId);
-    if (href) image.hlinkHref = href;
+  // Resolve image hyperlink (a:hlinkClick). Keep the original rId on
+  // the model so the serializer can emit the same reference back
+  // verbatim (round-trip preserves the existing rels.xml entry rather
+  // than allocating a new one).
+  if (props.hlinkRId) {
+    image.hlinkRId = props.hlinkRId;
+    if (rels) {
+      const href = resolveTarget(rels, props.hlinkRId);
+      if (href) image.hlinkHref = href;
+    }
   }
 
   return image;
@@ -639,10 +645,16 @@ function parseAnchor(
   if (layoutInCell !== undefined) image.layoutInCell = layoutInCell;
   if (allowOverlap !== undefined) image.allowOverlap = allowOverlap;
 
-  // Resolve image hyperlink (a:hlinkClick)
-  if (props.hlinkRId && rels) {
-    const href = resolveTarget(rels, props.hlinkRId);
-    if (href) image.hlinkHref = href;
+  // Resolve image hyperlink (a:hlinkClick). Keep the original rId on
+  // the model so the serializer can emit the same reference back
+  // verbatim (round-trip preserves the existing rels.xml entry rather
+  // than allocating a new one).
+  if (props.hlinkRId) {
+    image.hlinkRId = props.hlinkRId;
+    if (rels) {
+      const href = resolveTarget(rels, props.hlinkRId);
+      if (href) image.hlinkHref = href;
+    }
   }
 
   return image;

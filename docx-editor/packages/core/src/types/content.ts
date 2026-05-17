@@ -457,6 +457,13 @@ export interface Image {
   allowOverlap?: boolean;
   /** Hyperlink URL for clickable image */
   hlinkHref?: string;
+  /**
+   * Source `r:id` of the `<a:hlinkClick>` on the image's `<wp:docPr>`.
+   * Preserved so we can re-emit the same relationship reference rather
+   * than allocating a fresh one (which would orphan the existing rels
+   * entry on round-trip).
+   */
+  hlinkRId?: string;
   /** Image outline/border */
   outline?: ShapeOutline;
   /** Image effects */

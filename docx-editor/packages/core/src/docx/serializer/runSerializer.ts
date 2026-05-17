@@ -783,6 +783,21 @@ function serializePicGraphic(image: Image, sharedId: string): string {
 /**
  * Serialize drawing/image content (w:drawing) to full DrawingML XML
  */
+/** Emit a `<wp:docPr>` element, opening it to host an `<a:hlinkClick>`
+ * child when the image was parsed with one. Without this the audit
+ * loses every `a:hlinkClick` on round-trip (image-hyperlink + medical-
+ * incident-form). */
+function buildDocPr(docPrId: string, name: string, image: Image): string {
+  const attrs: string[] = [`id="${docPrId}"`, `name="${escapeXml(name)}"`];
+  if (image.alt) attrs.push(`descr="${escapeXml(image.alt)}"`);
+  if (image.decorative) attrs.push('hidden="1"');
+  const opening = `<wp:docPr ${attrs.join(' ')}`;
+  if (image.hlinkRId) {
+    return `${opening}><a:hlinkClick xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" r:id="${image.hlinkRId}"/></wp:docPr>`;
+  }
+  return `${opening}/>`;
+}
+
 function serializeDrawingContent(content: DrawingContent): string {
   const image = content.image;
   const isFloating = image.wrap.type !== 'inline';
@@ -812,7 +827,7 @@ function serializeDrawingContent(content: DrawingContent): string {
       `<wp:inline distT="${intAttr(distT)}" distB="${intAttr(distB)}" distL="${intAttr(distL)}" distR="${intAttr(distR)}">`,
       `<wp:extent cx="${intAttr(cx)}" cy="${intAttr(cy)}"/>`,
       effectExtentEl,
-      `<wp:docPr id="${docPrId}" name="${escapeXml(docPrName)}"${image.alt ? ` descr="${escapeXml(image.alt)}"` : ''}${image.decorative ? ' hidden="1"' : ''}/>`,
+      buildDocPr(docPrId, docPrName, image),
       '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>',
       graphic,
       '</wp:inline>',
@@ -835,7 +850,7 @@ function serializeDrawingContent(content: DrawingContent): string {
     `<wp:extent cx="${intAttr(cx)}" cy="${intAttr(cy)}"/>`,
     effectExtentEl,
     wrap,
-    `<wp:docPr id="${docPrId}" name="${escapeXml(docPrName)}"${image.alt ? ` descr="${escapeXml(image.alt)}"` : ''}/>`,
+    buildDocPr(docPrId, docPrName, image),
     '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>',
     graphic,
     '</wp:anchor>',
