@@ -1213,6 +1213,33 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
       return [convertShape(shp)];
     }
 
+    case 'symbol': {
+      // OOXML §17.3.3.30 `<w:sym w:font="..." w:char="HHHH">` is a single
+      // character from a non-default font (often Wingdings / Symbol /
+      // Webdings). Pre-fix, `convertRunContent` had no case for symbols
+      // and they fell into `default → []`, silently dropping every
+      // checkbox glyph and bullet character. We try a Unicode
+      // translation first so the glyph renders even on browsers that
+      // don't have the source font installed; otherwise we emit the
+      // literal character with the original font applied as a
+      // fontFamily mark so a host that does have the font renders it
+      // natively.
+      const ch = symbolToUnicodeChar(content.font, content.char);
+      if (!ch) return [];
+      // Only attach a fontFamily mark when we DIDN'T translate to a
+      // safe Unicode character — substitution chars (☐ ☒ ➤ etc.) are
+      // universally available so forcing a specific font would hurt
+      // rather than help.
+      if (isTranslatedUnicode(ch, content.font, content.char)) {
+        return [schema.text(ch, marks)];
+      }
+      const fontMark = schema.mark('fontFamily', {
+        ascii: content.font,
+        hAnsi: content.font,
+      });
+      return [schema.text(ch, [...marks, fontMark])];
+    }
+
     case 'footnoteRef':
       // Footnote reference - render as superscript number with footnoteRef mark
       const footnoteMark = schema.mark('footnoteRef', {
@@ -1232,6 +1259,90 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
     default:
       return [];
   }
+}
+
+/**
+ * Translate a `<w:sym w:font="..." w:char="HHHH">` to a Unicode display
+ * character. The most common case in real Word docs is form checkboxes
+ * (Wingdings 2 ☐ / ☒) and bullet glyphs (Wingdings ●). The lookup
+ * covers those plus a handful of frequent decorative chars; anything
+ * we can't translate falls through to its raw codepoint with the
+ * original font set as a mark so a host that has the font installed
+ * still renders it correctly.
+ *
+ * Map sources: Adobe / ECMA-376 Annex L, plus
+ * https://www.alanwood.net/demos/wingdings.html (cross-checked).
+ */
+function symbolToUnicodeChar(font: string, char: string): string | null {
+  if (!char) return null;
+  // OOXML stores `w:char` as a hex string. Word also sometimes emits
+  // codepoints in the Private Use Area (0xF000+) for legacy fonts; we
+  // strip that high bit so a "F0A3" matches the same glyph as "00A3".
+  const code = parseInt(char, 16);
+  if (!Number.isFinite(code)) return null;
+  const cp = code >= 0xf000 ? code - 0xf000 : code;
+  const fontKey = (font || '').toLowerCase().trim();
+
+  const wingdings2: Record<number, string> = {
+    0xa3: '☐', // ☐ empty checkbox
+    0x52: '☑', // ☑ checked checkbox (boxed tick)
+    0x53: '☒', // ☒ x-marked checkbox
+    0xa8: '☐', // ☐ alt empty
+    0xfb: '☒', // ☒ alt x
+    0xfc: '☑', // ☑ alt check
+  };
+  const wingdings: Record<number, string> = {
+    0x6c: '○', // ○ open circle
+    0x6d: '●', // ● solid circle
+    0xa7: '■', // ■ solid square
+    0xa8: '□', // □ open square
+    0xfc: '✓', // ✓ check
+    0xfd: '✔', // ✔ heavy check
+    0xfe: '✗', // ✗ ballot x
+    0xff: '✘', // ✘ heavy x
+  };
+  const symbol: Record<number, string> = {
+    0xb7: '·', // · middle dot
+    0xa1: 'ϒ', // ϒ
+    0xb6: '∂', // ∂
+  };
+
+  const table =
+    fontKey === 'wingdings 2'
+      ? wingdings2
+      : fontKey === 'wingdings'
+        ? wingdings
+        : fontKey === 'symbol'
+          ? symbol
+          : null;
+
+  if (table && table[cp]) return table[cp];
+
+  // Unknown — return the raw codepoint so the caller can attach the
+  // original font as a fallback and at least something renders.
+  return String.fromCodePoint(cp);
+}
+
+/**
+ * Whether `symbolToUnicodeChar` translated the symbol to a universal
+ * Unicode glyph (rather than returning the raw codepoint). Used to
+ * decide whether to attach the original font as a mark.
+ */
+function isTranslatedUnicode(out: string, _font: string, char: string): boolean {
+  if (!out) return false;
+  const code = parseInt(char, 16);
+  if (!Number.isFinite(code)) return false;
+  const cp = code >= 0xf000 ? code - 0xf000 : code;
+  // If the output codepoint differs from the source codepoint, we
+  // translated it — output is universal Unicode.
+  return out.codePointAt(0) !== cp || isStandardUnicode(out);
+}
+
+function isStandardUnicode(s: string): boolean {
+  // Treat characters in the BMP outside the Private Use Area as
+  // "universally renderable enough" to not need a font fallback.
+  const cp = s.codePointAt(0) ?? 0;
+  return cp >= 0x20 && cp < 0xe000;
 }
 
 /**
