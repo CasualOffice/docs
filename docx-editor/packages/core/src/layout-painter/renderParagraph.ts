@@ -476,9 +476,72 @@ function rotatedBoundingBox(w: number, h: number, deg: number): { w: number; h: 
 }
 
 /**
- * Render an inline image run (flows with text)
+ * Detect formats no major browser renders natively in an `<img>`
+ * tag. Chrome and Firefox both refuse `data:image/tiff;base64,…` —
+ * Safari handles it. Without a converter (UTIF.js etc.) we ship a
+ * styled placeholder rather than a broken-image icon.
+ *
+ * Cited in gap-matrix `tiff-images` + GH #146.
  */
-function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement {
+function isUnrenderableImageFormat(src: string): boolean {
+  if (!src.startsWith('data:')) return false;
+  const head = src.slice(5, 30).toLowerCase();
+  // image/tiff or image/tif both appear in saved DOCXs.
+  return head.startsWith('image/tif');
+}
+
+/**
+ * Build a placeholder element for an image whose format the browser
+ * can't render. Width/height match the original `wp:extent` so the
+ * surrounding layout stays stable. Caller decides inline vs block by
+ * setting display.
+ */
+function renderImagePlaceholder(
+  run: ImageRun,
+  doc: Document,
+  kind: 'inline' | 'block'
+): HTMLElement {
+  const placeholder = doc.createElement(kind === 'inline' ? 'span' : 'div');
+  placeholder.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.image} layout-image-placeholder`;
+  placeholder.style.width = `${run.width}px`;
+  placeholder.style.height = `${run.height}px`;
+  placeholder.style.maxWidth = '100%';
+  placeholder.style.boxSizing = 'border-box';
+  placeholder.style.border = '1px dashed #94a3b8';
+  placeholder.style.background = '#f1f5f9';
+  placeholder.style.color = '#475569';
+  placeholder.style.fontSize = '11px';
+  placeholder.style.lineHeight = '1.3';
+  placeholder.style.padding = '4px';
+  placeholder.style.overflow = 'hidden';
+  if (kind === 'inline') {
+    placeholder.style.display = 'inline-flex';
+    placeholder.style.verticalAlign = 'middle';
+  } else {
+    placeholder.style.display = 'flex';
+    placeholder.style.marginLeft = 'auto';
+    placeholder.style.marginRight = 'auto';
+  }
+  placeholder.style.alignItems = 'center';
+  placeholder.style.justifyContent = 'center';
+  placeholder.style.textAlign = 'center';
+  const label =
+    run.alt && run.alt.trim().length > 0 ? `${run.alt} (TIFF)` : 'TIFF image — preview unavailable';
+  placeholder.textContent = label;
+  placeholder.title = label;
+  return placeholder;
+}
+
+/**
+ * Render an inline image run (flows with text).
+ * @internal exported for unit tests in `__tests__/tiff-placeholder.test.ts`.
+ */
+export function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement {
+  if (isUnrenderableImageFormat(run.src)) {
+    const ph = renderImagePlaceholder(run, doc, 'inline');
+    applyPmPositions(ph, run.pmStart, run.pmEnd);
+    return ph;
+  }
   const img = doc.createElement('img');
   img.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.image}`;
 
@@ -574,6 +637,13 @@ function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
   container.style.textAlign = 'center';
   container.style.marginTop = `${run.distTop ?? 6}px`;
   container.style.marginBottom = `${run.distBottom ?? 6}px`;
+
+  if (isUnrenderableImageFormat(run.src)) {
+    const ph = renderImagePlaceholder(run, doc, 'block');
+    applyPmPositions(ph, run.pmStart, run.pmEnd);
+    container.appendChild(ph);
+    return container;
+  }
 
   const img = doc.createElement('img');
   img.src = run.src;
