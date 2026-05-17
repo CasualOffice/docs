@@ -1183,7 +1183,22 @@ export type ParagraphContent =
   | MoveFromRangeEnd
   | MoveToRangeStart
   | MoveToRangeEnd
-  | MathEquation;
+  | MathEquation
+  | ProofErr;
+
+/**
+ * Word's editor-internal proofing markers (`<w:proofErr w:type="..."/>`).
+ *
+ * Word writes these to delimit spans where its spell- or grammar-check
+ * flagged something at save time. We don't act on them (the renderer
+ * ignores proofErr entirely) but losing them on save makes the audit
+ * surface 500+ dropped tags and re-introduces re-checking work on the
+ * next open. Round-tripped verbatim.
+ */
+export interface ProofErr {
+  type: 'proofErr';
+  errorType: 'spellStart' | 'spellEnd' | 'gramStart' | 'gramEnd';
+}
 
 /**
  * Paragraph (w:p)

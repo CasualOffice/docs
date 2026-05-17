@@ -13,7 +13,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 
 | Tag | Total dropped | Fixtures affected |
 |-----|---------------|-------------------|
-| `w:proofErr` | 544 | 8 |
 | `w:txbxContent` | 24 | 4 |
 | `v:fill` | 21 | 3 |
 | `w:pict` | 19 | 3 |
@@ -73,6 +72,7 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `v:stroke` | 3 | 1 |
 | `v:path` | 3 | 2 |
 | `a:spAutoFit` | 3 | 1 |
+| `w:headerReference` | 3 | 2 |
 
 ## Per-fixture detail
 
@@ -99,7 +99,6 @@ No round-trip drops.
 | `w14:checkedState` | 8 | 0 |
 | `w14:uncheckedState` | 8 | 0 |
 | `v:shape` | 7 | 0 |
-| `w:proofErr` | 6 | 0 |
 | `w:rFonts` | 6 | 0 |
 | `a:spLocks` | 5 | 0 |
 | `a:miter` | 5 | 0 |
@@ -119,7 +118,8 @@ No round-trip drops.
 | `wps:style` | 3 | 0 |
 | `a:lnRef` | 3 | 0 |
 | `a:fillRef` | 3 | 0 |
-| _…23 more_ | | |
+| `a:effectRef` | 3 | 0 |
+| _…22 more_ | | |
 
 ### table-indent
 
@@ -200,10 +200,7 @@ No round-trip drops.
 
 ### header-with-textbox
 
-
-| Tag | In | Out |
-|-----|----|-----|
-| `w:proofErr` | 38 | 0 |
+No round-trip drops.
 
 ### border-overlay-layout-demo
 
@@ -236,7 +233,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:proofErr` | 156 | 0 |
 | `w:overflowPunct` | 8 | 0 |
 | `w:textAlignment` | 7 | 0 |
 | `w:fldChar` | 6 | 0 |
@@ -252,9 +248,7 @@ No round-trip drops.
 ### generic-render-regression
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:proofErr` | 17 | 0 |
+No tags vanished on round-trip.
 
 ### styled-content
 
@@ -263,9 +257,7 @@ No round-trip drops.
 ### EP_ZMVZ_MULTI_v4
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:proofErr` | 92 | 0 |
+No tags vanished on round-trip.
 
 ### issue-387-font-theme-override
 
@@ -282,10 +274,7 @@ No round-trip drops.
 
 ### template-with-hf-rule
 
-
-| Tag | In | Out |
-|-----|----|-----|
-| `w:proofErr` | 38 | 0 |
+No round-trip drops.
 
 ### textbox-test
 
@@ -312,9 +301,7 @@ No round-trip drops.
 ### generic-header-footer-horizontal-regression
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:proofErr` | 17 | 0 |
+No tags vanished on round-trip.
 
 ### float-wrap-comprehensive-test
 
@@ -350,7 +337,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:proofErr` | 180 | 0 |
 | `w:gridAfter` | 1 | 0 |
 | `w:wAfter` | 1 | 0 |
 

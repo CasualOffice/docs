@@ -853,6 +853,8 @@ function serializeParagraphContent(content: ParagraphContent): string {
     case 'mathEquation':
       // Round-trip the raw OMML XML directly
       return content.ommlXml || '';
+    case 'proofErr':
+      return `<w:proofErr w:type="${content.errorType}"/>`;
     default:
       return '';
   }
