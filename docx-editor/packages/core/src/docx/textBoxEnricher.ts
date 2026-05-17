@@ -225,7 +225,8 @@ function extractShapeFromWsp(
   parsedRun: RunContent,
   ctx: Ctx,
   anchorPosition: ImagePosition | undefined,
-  anchorWrap: ImageWrap | undefined
+  anchorWrap: ImageWrap | undefined,
+  parentOffsetEmu: { x: number; y: number } = { x: 0, y: 0 }
 ): void {
   const wspChildren = getChildElements(wsp);
   const spPr = wspChildren.find((el) => el.name === 'wps:spPr');
@@ -239,6 +240,8 @@ function extractShapeFromWsp(
   // shapes still get a non-zero footprint.
   let cx = 952500;
   let cy = 952500;
+  let offX = 0;
+  let offY = 0;
   if (spPr) {
     const xfrm = getChildElements(spPr).find((el) => el.name === 'a:xfrm');
     if (xfrm) {
@@ -247,11 +250,22 @@ function extractShapeFromWsp(
         cx = Number(getAttribute(ext, null, 'cx') ?? cx);
         cy = Number(getAttribute(ext, null, 'cy') ?? cy);
       }
+      const off = getChildElements(xfrm).find((el) => el.name === 'a:off');
+      if (off) {
+        offX = Number(getAttribute(off, null, 'x') ?? 0);
+        offY = Number(getAttribute(off, null, 'y') ?? 0);
+      }
     }
   }
 
   const fill = parseFill(spPr ?? null) ?? undefined;
   const outline = parseOutline(spPr ?? null) ?? undefined;
+
+  // Combine the group's outer anchor with the parent-group's running
+  // offset and this child's own xfrm.off so each shape lands at its
+  // correct absolute position rather than stacking at the group origin.
+  const totalOff = { x: parentOffsetEmu.x + offX, y: parentOffsetEmu.y + offY };
+  const childPosition = addOffsetToAnchor(anchorPosition, totalOff);
 
   // Inner text content, if this wsp is text-bearing.
   let content: Paragraph[] = [{ type: 'paragraph', content: [] }];
@@ -276,7 +290,7 @@ function extractShapeFromWsp(
     type: 'shape',
     shapeType: 'rect',
     size: { width: cx, height: cy },
-    position: anchorPosition,
+    position: childPosition,
     wrap: anchorWrap,
     fill,
     outline,
@@ -325,19 +339,80 @@ function walkGroupChildren(
   parsedRun: RunContent,
   ctx: Ctx,
   anchorPosition: ImagePosition | undefined,
-  anchorWrap: ImageWrap | undefined
+  anchorWrap: ImageWrap | undefined,
+  parentOffsetEmu: { x: number; y: number } = { x: 0, y: 0 }
 ): void {
   for (const child of getChildElements(group)) {
     const local = getLocalName(child.name ?? '');
     if (local === 'wsp') {
-      extractShapeFromWsp(child, parsedRun, ctx, anchorPosition, anchorWrap);
+      extractShapeFromWsp(child, parsedRun, ctx, anchorPosition, anchorWrap, parentOffsetEmu);
     } else if (local === 'pic') {
-      extractImageFromPic(child, parsedRun, ctx, anchorPosition, anchorWrap);
+      extractImageFromPic(child, parsedRun, ctx, anchorPosition, anchorWrap, parentOffsetEmu);
     } else if (local === 'grpSp') {
-      walkGroupChildren(child, parsedRun, ctx, anchorPosition, anchorWrap);
+      // Nested group — read its own a:xfrm/a:off and add to the running
+      // offset before recursing so deeply nested children land in
+      // absolute group coordinates.
+      const grpSpPr = findChild(child, 'wpg:grpSpPr');
+      const innerOffset = readXfrmOff(grpSpPr);
+      walkGroupChildren(child, parsedRun, ctx, anchorPosition, anchorWrap, {
+        x: parentOffsetEmu.x + innerOffset.x,
+        y: parentOffsetEmu.y + innerOffset.y,
+      });
     }
-    // Other group children (cNvGrpSpPr, grpSpPr, etc.) are metadata; skip.
+    // Other group children (cNvGrpSpPr, etc.) are metadata; skip.
   }
+}
+
+/** Read `<a:xfrm><a:off x cy>` EMU offset from a wps:spPr / wpg:grpSpPr. */
+function readXfrmOff(spPr: XmlElement | undefined): { x: number; y: number } {
+  if (!spPr) return { x: 0, y: 0 };
+  const xfrm = findChild(spPr, 'a:xfrm');
+  if (!xfrm) return { x: 0, y: 0 };
+  const off = findChild(xfrm, 'a:off');
+  if (!off) return { x: 0, y: 0 };
+  return {
+    x: Number(getAttribute(off, null, 'x') ?? 0),
+    y: Number(getAttribute(off, null, 'y') ?? 0),
+  };
+}
+
+/**
+ * Combine the group's outer anchor position with a child's offset (in
+ * EMU). The result is the absolute on-page position the child should
+ * paint at. If the group has no anchor (inline drawing), return
+ * undefined so the child falls back to inline flow.
+ */
+function addOffsetToAnchor(
+  anchor: ImagePosition | undefined,
+  childOffsetEmu: { x: number; y: number }
+): ImagePosition | undefined {
+  if (!anchor) {
+    // Inline-group: synthesize a position relative to the paragraph so
+    // children at non-zero offsets don't all stack at the line origin.
+    if (childOffsetEmu.x === 0 && childOffsetEmu.y === 0) return undefined;
+    return {
+      horizontal: { relativeTo: 'margin', posOffset: childOffsetEmu.x },
+      vertical: { relativeTo: 'paragraph', posOffset: childOffsetEmu.y },
+    };
+  }
+  const next: ImagePosition = { ...anchor };
+  if (anchor.horizontal) {
+    next.horizontal = {
+      ...anchor.horizontal,
+      posOffset: (anchor.horizontal.posOffset ?? 0) + childOffsetEmu.x,
+    };
+  } else {
+    next.horizontal = { relativeTo: 'margin', posOffset: childOffsetEmu.x };
+  }
+  if (anchor.vertical) {
+    next.vertical = {
+      ...anchor.vertical,
+      posOffset: (anchor.vertical.posOffset ?? 0) + childOffsetEmu.y,
+    };
+  } else {
+    next.vertical = { relativeTo: 'paragraph', posOffset: childOffsetEmu.y };
+  }
+  return next;
 }
 
 /**
@@ -352,7 +427,8 @@ function extractImageFromPic(
   parsedRun: RunContent,
   ctx: Ctx,
   anchorPosition: ImagePosition | undefined,
-  anchorWrap: ImageWrap | undefined
+  anchorWrap: ImageWrap | undefined,
+  parentOffsetEmu: { x: number; y: number } = { x: 0, y: 0 }
 ): void {
   const blipFill = findChild(pic, 'pic:blipFill');
   const blip = blipFill ? findChild(blipFill, 'a:blip') : undefined;
@@ -363,6 +439,8 @@ function extractImageFromPic(
   const spPr = findChild(pic, 'pic:spPr');
   let cx = 0;
   let cy = 0;
+  let offX = 0;
+  let offY = 0;
   if (spPr) {
     const xfrm = findChild(spPr, 'a:xfrm');
     if (xfrm) {
@@ -370,6 +448,11 @@ function extractImageFromPic(
       if (ext) {
         cx = Number(getAttribute(ext, null, 'cx') ?? 0);
         cy = Number(getAttribute(ext, null, 'cy') ?? 0);
+      }
+      const off = findChild(xfrm, 'a:off');
+      if (off) {
+        offX = Number(getAttribute(off, null, 'x') ?? 0);
+        offY = Number(getAttribute(off, null, 'y') ?? 0);
       }
     }
   }
@@ -384,6 +467,9 @@ function extractImageFromPic(
   const alt = cNvPr ? (getAttribute(cNvPr, null, 'descr') ?? undefined) : undefined;
   const name = cNvPr ? (getAttribute(cNvPr, null, 'name') ?? undefined) : undefined;
 
+  const totalOff = { x: parentOffsetEmu.x + offX, y: parentOffsetEmu.y + offY };
+  const childPosition = addOffsetToAnchor(anchorPosition, totalOff);
+
   const image: Image = {
     type: 'image',
     rId,
@@ -396,7 +482,7 @@ function extractImageFromPic(
     // with the group anchor (closest match to "no wrap" in the
     // OOXML WrapType enum).
     wrap: anchorWrap ?? { type: 'inFront' },
-    position: anchorPosition,
+    position: childPosition,
   };
   if (id) image.id = id;
   if (alt) image.alt = alt;
