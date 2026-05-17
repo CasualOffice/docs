@@ -389,6 +389,25 @@ export function serializeTextFormatting(formatting: TextFormatting | undefined):
     parts.push('<w:cs/>');
   }
 
+  // Language identifier (w:lang). All three script slots are optional;
+  // emit only the attributes we parsed so we round-trip the exact input
+  // rather than padding with defaults.
+  if (formatting.lang) {
+    const langAttrs: string[] = [];
+    if (formatting.lang.val) {
+      langAttrs.push(`w:val="${escapeXml(formatting.lang.val)}"`);
+    }
+    if (formatting.lang.eastAsia) {
+      langAttrs.push(`w:eastAsia="${escapeXml(formatting.lang.eastAsia)}"`);
+    }
+    if (formatting.lang.bidi) {
+      langAttrs.push(`w:bidi="${escapeXml(formatting.lang.bidi)}"`);
+    }
+    if (langAttrs.length > 0) {
+      parts.push(`<w:lang ${langAttrs.join(' ')}/>`);
+    }
+  }
+
   if (parts.length === 0) return '';
 
   return `<w:rPr>${parts.join('')}</w:rPr>`;

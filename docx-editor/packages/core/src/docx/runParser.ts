@@ -388,6 +388,22 @@ export function parseRunProperties(
     if (val) formatting.styleId = val;
   }
 
+  // Language identifier (w:lang). Three independent script slots —
+  // preserve every present attribute so round-trip keeps the original
+  // hint set rather than collapsing to the Latin one.
+  const langEl = findChild(rPr, 'w', 'lang');
+  if (langEl) {
+    const langVal = getAttribute(langEl, 'w', 'val');
+    const langEast = getAttribute(langEl, 'w', 'eastAsia');
+    const langBidi = getAttribute(langEl, 'w', 'bidi');
+    if (langVal || langEast || langBidi) {
+      formatting.lang = {};
+      if (langVal) formatting.lang.val = langVal;
+      if (langEast) formatting.lang.eastAsia = langEast;
+      if (langBidi) formatting.lang.bidi = langBidi;
+    }
+  }
+
   return Object.keys(formatting).length > 0 ? formatting : undefined;
 }
 

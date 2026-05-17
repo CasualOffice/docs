@@ -188,6 +188,22 @@ export interface TextFormatting {
   // Style reference
   /** Character style ID (w:rStyle) */
   styleId?: string;
+
+  /**
+   * Language identifier (`<w:lang>`, ECMA-376 §17.3.2.20). Drives proofing
+   * tools, screen readers, and hyphenation. Round-tripped verbatim — we
+   * don't act on the value, but losing it on save degrades accessibility
+   * and re-introduces spell-check noise. Each child attribute maps 1:1
+   * to its OOXML counterpart.
+   */
+  lang?: {
+    /** Latin script language tag, e.g. `"en-US"` (`w:val`). */
+    val?: string;
+    /** East-Asian script language (`w:eastAsia`). */
+    eastAsia?: string;
+    /** Bidi/complex script language (`w:bidi`). */
+    bidi?: string;
+  };
 }
 
 // ============================================================================

@@ -13,7 +13,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 
 | Tag | Total dropped | Fixtures affected |
 |-----|---------------|-------------------|
-| `w:lang` | 693 | 9 |
 | `w:proofErr` | 544 | 8 |
 | `w:noProof` | 175 | 6 |
 | `w:webHidden` | 119 | 1 |
@@ -73,6 +72,7 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:start` | 4 | 2 |
 | `w:end` | 4 | 2 |
 | `w:cnfStyle` | 4 | 2 |
+| `w:pgNumType` | 4 | 4 |
 
 ## Per-fixture detail
 
@@ -138,7 +138,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:lang` | 66 | 0 |
 | `w:trPr` | 6 | 0 |
 | `w:start` | 2 | 0 |
 | `w:end` | 2 | 0 |
@@ -212,7 +211,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 38 | 0 |
-| `w:lang` | 16 | 0 |
 | `w:tblBorders` | 10 | 0 |
 | `w:insideH` | 10 | 0 |
 | `w:insideV` | 10 | 0 |
@@ -251,7 +249,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:lang` | 407 | 0 |
 | `w:proofErr` | 156 | 0 |
 | `w:autoSpaceDE` | 48 | 0 |
 | `w:autoSpaceDN` | 48 | 0 |
@@ -282,7 +279,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 17 | 0 |
-| `w:lang` | 6 | 0 |
 | `a:noFill` | 2 | 0 |
 | `w:noProof` | 1 | 0 |
 | `a:picLocks` | 1 | 0 |
@@ -302,7 +298,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 92 | 0 |
-| `w:lang` | 37 | 0 |
 | `w:tcBorders` | 4 | 0 |
 | `w:cols` | 1 | 0 |
 
@@ -311,7 +306,6 @@ No round-trip drops.
 
 | Tag | In | Out |
 |-----|----|-----|
-| `w:lang` | 66 | 0 |
 | `w:trPr` | 6 | 0 |
 | `w:start` | 2 | 0 |
 | `w:end` | 2 | 0 |
@@ -326,7 +320,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 38 | 0 |
-| `w:lang` | 16 | 0 |
 | `w:tblBorders` | 10 | 0 |
 | `w:insideH` | 10 | 0 |
 | `w:insideV` | 10 | 0 |
@@ -360,7 +353,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 17 | 0 |
-| `w:lang` | 6 | 0 |
 | `a:noFill` | 2 | 0 |
 | `w:noProof` | 1 | 0 |
 | `a:picLocks` | 1 | 0 |
@@ -405,7 +397,6 @@ No round-trip drops.
 | Tag | In | Out |
 |-----|----|-----|
 | `w:proofErr` | 180 | 0 |
-| `w:lang` | 73 | 0 |
 | `w:autoSpaceDE` | 36 | 0 |
 | `w:autoSpaceDN` | 36 | 0 |
 | `w:adjustRightInd` | 36 | 0 |
