@@ -35,6 +35,7 @@ import type {
 } from '../../types/document';
 
 import { serializeRun, serializeTextFormatting } from './runSerializer';
+import { serializeSectionProperties } from './documentSerializer';
 
 import { escapeXml, intAttr } from './xmlUtils';
 
@@ -905,8 +906,22 @@ export function serializeParagraph(paragraph: Paragraph): string {
   }
   const attrsStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
 
-  // Add paragraph properties if present
-  const pPrXml = serializeParagraphFormatting(paragraph.formatting, paragraph.propertyChanges);
+  // Add paragraph properties. Per ECMA-376 §17.3.1.26 the schema-last
+  // child of <w:pPr> is <w:sectPr>, which marks "this paragraph ends
+  // a section". Without this, multi-section docs (e.g. sds-real-world's
+  // seven sections) collapse to a single section on save —
+  // scripts/roundtrip-audit.mjs surfaces w:type / w:col / w:cols /
+  // w:pgSz / w:pgMar etc. all dropping for every section except the
+  // final body-level one.
+  let pPrXml = serializeParagraphFormatting(paragraph.formatting, paragraph.propertyChanges);
+  if (paragraph.sectionProperties) {
+    const sectPrXml = serializeSectionProperties(paragraph.sectionProperties);
+    if (sectPrXml) {
+      pPrXml = pPrXml
+        ? pPrXml.replace(/<\/w:pPr>$/, `${sectPrXml}</w:pPr>`)
+        : `<w:pPr>${sectPrXml}</w:pPr>`;
+    }
+  }
   if (pPrXml) {
     parts.push(pPrXml);
   }

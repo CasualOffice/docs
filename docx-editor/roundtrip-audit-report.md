@@ -19,12 +19,9 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `v:rect` | 18 | 3 |
 | `w10:wrap` | 18 | 2 |
 | `wps:txbx` | 16 | 3 |
-| `w:type` | 15 | 1 |
-| `w:col` | 14 | 1 |
 | `v:f` | 12 | 1 |
 | `v:shape` | 11 | 2 |
 | `v:textbox` | 8 | 2 |
-| `w:cols` | 7 | 1 |
 | `v:group` | 6 | 2 |
 | `w:rFonts` | 6 | 1 |
 | `w:fldChar` | 6 | 1 |
@@ -61,7 +58,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `v:stroke` | 3 | 1 |
 | `v:path` | 3 | 2 |
 | `a:spAutoFit` | 3 | 1 |
-| `w:headerReference` | 3 | 2 |
 | `v:shapetype` | 2 | 1 |
 | `v:imagedata` | 2 | 1 |
 | `a:shade` | 2 | 1 |
@@ -73,6 +69,10 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `wp14:sizeRelV` | 2 | 1 |
 | `wp14:pctHeight` | 2 | 1 |
 | `w:highlight` | 2 | 1 |
+| `wpg:grpSp` | 1 | 1 |
+| `wpg:cNvPr` | 1 | 1 |
+| `wps:cNvCnPr` | 1 | 1 |
+| `v:formulas` | 1 | 1 |
 
 ## Per-fixture detail
 
@@ -227,7 +227,6 @@ No round-trip drops.
 |-----|----|-----|
 | `w:fldChar` | 6 | 0 |
 | `w:rStyle` | 4 | 0 |
-| `w:headerReference` | 2 | 0 |
 | `wp14:sizeRelH` | 2 | 0 |
 | `wp14:pctWidth` | 2 | 0 |
 | `wp14:sizeRelV` | 2 | 0 |
@@ -308,16 +307,11 @@ No round-trip drops.
 | `w:pict` | 16 | 0 |
 | `v:fill` | 16 | 0 |
 | `v:rect` | 15 | 0 |
-| `w:type` | 15 | 0 |
-| `w:col` | 14 | 0 |
-| `w:cols` | 7 | 0 |
 | `v:shape` | 4 | 0 |
 | `v:group` | 3 | 0 |
 | `v:textbox` | 3 | 0 |
 | `w:txbxContent` | 3 | 0 |
 | `v:path` | 1 | 0 |
-| `w:headerReference` | 1 | 0 |
-| `w:footerReference` | 1 | 0 |
 | `w:pgNumType` | 1 | 0 |
 
 ### Form025U
