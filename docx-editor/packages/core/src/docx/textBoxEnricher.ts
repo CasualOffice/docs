@@ -232,7 +232,19 @@ function extractShapeFromWsp(
   const spPr = wspChildren.find((el) => el.name === 'wps:spPr');
   const txbx = wspChildren.find((el) => el.name === 'wps:txbx');
   const cNvPr = wspChildren.find((el) => el.name === 'wps:cNvPr');
+  const cNvCnPr = wspChildren.find((el) => el.name === 'wps:cNvCnPr');
   const id = cNvPr ? (getAttribute(cNvPr, null, 'id') ?? undefined) : undefined;
+
+  // Geometry hint: prstGeom of "line" / "straightConnector1" indicates a
+  // connector / divider shape rather than a content rectangle. Combined
+  // with the presence of `wps:cNvCnPr` we can be confident the wsp is
+  // really a line.
+  let geomPrst: string | null = null;
+  if (spPr) {
+    const prstGeom = getChildElements(spPr).find((el) => el.name === 'a:prstGeom');
+    if (prstGeom) geomPrst = getAttribute(prstGeom, null, 'prst');
+  }
+  const isConnector = !!cNvCnPr || geomPrst === 'line' || geomPrst?.startsWith('straightConnector') === true;
 
   // Size from xfrm.ext inside spPr (per OOXML §20.4.2.3, shapes inside
   // a group carry their own a:xfrm with offsets relative to the group's
@@ -258,8 +270,21 @@ function extractShapeFromWsp(
     }
   }
 
-  const fill = parseFill(spPr ?? null) ?? undefined;
+  let fill = parseFill(spPr ?? null) ?? undefined;
   const outline = parseOutline(spPr ?? null) ?? undefined;
+
+  // Connector shapes (lines / dividers) come through with `cy=0` (or
+  // `cx=0` for vertical lines). The painter renders fill+border on a
+  // 0-thickness box as nothing, so the divider disappears. Bump the
+  // thin axis to a few EMU + force the outline color into `fill` so the
+  // line paints as a solid colored strip.
+  if (isConnector || cy === 0 || cx === 0) {
+    if (cy === 0) cy = Math.max(outline?.width ?? 0, 19050); // ≈ 2 px floor
+    if (cx === 0) cx = Math.max(outline?.width ?? 0, 19050);
+    if (!fill && outline?.color) {
+      fill = { type: 'solid', color: outline.color };
+    }
+  }
 
   // Combine the group's outer anchor with the parent-group's running
   // offset and this child's own xfrm.off so each shape lands at its
