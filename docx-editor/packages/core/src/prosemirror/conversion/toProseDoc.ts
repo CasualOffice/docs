@@ -58,6 +58,32 @@ export interface ToProseDocOptions {
 }
 
 /**
+ * Translate an OOXML `<a:prstDash w:val="...">` value to a CSS
+ * `border-style` keyword. CSS only knows `solid` / `dotted` / `dashed`
+ * (and a couple of stylistic ones); OOXML has 11 named variants.
+ * Without this mapping a value like `"dashDot"` lands directly in a
+ * CSS `border` rule and the browser falls back to `none`, so the
+ * outline disappears entirely.
+ */
+function ooxmlDashToCssBorderStyle(prstDashVal: string | undefined): string {
+  if (!prstDashVal) return 'solid';
+  const map: Record<string, string> = {
+    solid: 'solid',
+    dot: 'dotted',
+    sysDot: 'dotted',
+    dash: 'dashed',
+    lgDash: 'dashed',
+    sysDash: 'dashed',
+    dashDot: 'dashed',
+    sysDashDot: 'dashed',
+    lgDashDot: 'dashed',
+    sysDashDotDot: 'dashed',
+    lgDashDotDot: 'dashed',
+  };
+  return map[prstDashVal] ?? 'solid';
+}
+
+/**
  * Convert a Document to a ProseMirror document
  *
  * @param document - The Document to convert
@@ -1487,21 +1513,7 @@ function convertImage(image: Image): PMNode {
     if (image.outline.color?.rgb) {
       borderColor = `#${image.outline.color.rgb}`;
     }
-    // Map OOXML dash styles to CSS border styles
-    const styleMap: Record<string, string> = {
-      solid: 'solid',
-      dot: 'dotted',
-      dash: 'dashed',
-      lgDash: 'dashed',
-      dashDot: 'dashed',
-      lgDashDot: 'dashed',
-      lgDashDotDot: 'dashed',
-      sysDot: 'dotted',
-      sysDash: 'dashed',
-      sysDashDot: 'dashed',
-      sysDashDotDot: 'dashed',
-    };
-    borderStyle = image.outline.style ? styleMap[image.outline.style] || 'solid' : 'solid';
+    borderStyle = ooxmlDashToCssBorderStyle(image.outline.style);
   }
 
   // Effect extent (shadow/glow padding) is parsed in EMU; convert to px so
@@ -1805,7 +1817,7 @@ function convertShape(shape: Shape): PMNode {
     if (shape.outline.color?.rgb) {
       outlineColor = `#${shape.outline.color.rgb}`;
     }
-    outlineStyle = shape.outline.style || 'solid';
+    outlineStyle = ooxmlDashToCssBorderStyle(shape.outline.style);
   }
 
   let transform: string | undefined;
@@ -1930,7 +1942,7 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
     if (textBox.outline.color?.rgb) {
       outlineColor = `#${textBox.outline.color.rgb}`;
     }
-    outlineStyle = textBox.outline.style || 'solid';
+    outlineStyle = ooxmlDashToCssBorderStyle(textBox.outline.style);
   }
 
   // Convert margins from EMU to pixels
