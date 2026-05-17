@@ -786,6 +786,17 @@ export interface TextBox {
     left?: number;
     right?: number;
   };
+  /**
+   * Text-fit mode from wps:bodyPr (a:spAutoFit / a:noAutofit / a:normAutofit).
+   *
+   * - `spAutoFit` — textbox height auto-grows to fit content. Word keeps the
+   *   saved `ext.cy` in sync at edit time, but cross-platform font metrics
+   *   often disagree, so the saved height is best treated as a *minimum*
+   *   when rendering; otherwise text clips.
+   * - `noAutofit` — fixed size, content may overflow (Word clips).
+   * - `normAutofit` — shrink text to fit (rare; renderer treats as fixed).
+   */
+  autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
 }
 
 // ============================================================================

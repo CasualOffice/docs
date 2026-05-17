@@ -508,6 +508,12 @@ export type TextBoxBlock = {
   margins?: { top: number; bottom: number; left: number; right: number };
   /** Paragraph blocks inside the text box */
   content: ParagraphBlock[];
+  /**
+   * Text-fit mode from wps:bodyPr. When `'spAutoFit'`, the measure treats
+   * `height` as a minimum and grows it to fit content so text doesn't clip
+   * when our font metrics disagree with Word's saved ext.cy.
+   */
+  autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
   pmStart?: number;
   pmEnd?: number;
 };

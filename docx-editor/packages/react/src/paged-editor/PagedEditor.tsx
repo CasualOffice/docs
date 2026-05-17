@@ -1028,7 +1028,14 @@ function measureBlock(
       const innerWidth = (tb.width ?? DEFAULT_TEXTBOX_WIDTH) - margins.left - margins.right;
       const innerMeasures = tb.content.map((p) => measureParagraph(p, innerWidth));
       const contentHeight = innerMeasures.reduce((sum, m) => sum + m.totalHeight, 0);
-      const totalHeight = tb.height ?? contentHeight + margins.top + margins.bottom;
+      const intrinsicHeight = contentHeight + margins.top + margins.bottom;
+      // With a:spAutoFit, Word's saved ext.cy is treated as a *minimum* —
+      // grow the box if our font metrics produce taller content, otherwise
+      // text clips against `overflow: hidden` in renderTextBox.
+      const totalHeight =
+        tb.autoFit === 'spAutoFit'
+          ? Math.max(tb.height ?? 0, intrinsicHeight)
+          : (tb.height ?? intrinsicHeight);
       return {
         kind: 'textBox' as const,
         width: tb.width ?? DEFAULT_TEXTBOX_WIDTH,

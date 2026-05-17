@@ -75,12 +75,13 @@ const DEFAULT_MARGIN_EMU = 91440;
  */
 function parseBodyProperties(bodyPr: XmlElement | null): {
   margins?: TextBox['margins'];
+  autoFit?: TextBox['autoFit'];
 } {
   if (!bodyPr) {
     return {};
   }
 
-  const result: { margins?: TextBox['margins'] } = {};
+  const result: { margins?: TextBox['margins']; autoFit?: TextBox['autoFit'] } = {};
 
   // Margins (insets) in EMUs
   const lIns = parseNumericAttribute(bodyPr, null, 'lIns');
@@ -95,6 +96,24 @@ function parseBodyProperties(bodyPr: XmlElement | null): {
       top: tIns,
       bottom: bIns,
     };
+  }
+
+  // Text-fit mode (a:spAutoFit / a:noAutofit / a:normAutofit) — exactly one
+  // appears as a child of bodyPr per ECMA-376 §21.1.2.1.2.
+  const bodyChildren = getChildElements(bodyPr);
+  for (const el of bodyChildren) {
+    if (el.name === 'a:spAutoFit') {
+      result.autoFit = 'spAutoFit';
+      break;
+    }
+    if (el.name === 'a:noAutofit') {
+      result.autoFit = 'noAutofit';
+      break;
+    }
+    if (el.name === 'a:normAutofit') {
+      result.autoFit = 'normAutofit';
+      break;
+    }
   }
 
   return result;
@@ -387,6 +406,7 @@ export function parseTextBox(drawingEl: XmlElement): TextBox | null {
   if (fill) textBox.fill = fill;
   if (outline) textBox.outline = outline;
   if (bodyProps.margins) textBox.margins = bodyProps.margins;
+  if (bodyProps.autoFit) textBox.autoFit = bodyProps.autoFit;
 
   // Parse position for anchored text boxes
   if (isAnchor) {
@@ -461,6 +481,7 @@ export function parseTextBoxFromShape(
   if (fill) textBox.fill = fill;
   if (outline) textBox.outline = outline;
   if (bodyProps.margins) textBox.margins = bodyProps.margins;
+  if (bodyProps.autoFit) textBox.autoFit = bodyProps.autoFit;
   if (position) textBox.position = position;
   if (wrap) textBox.wrap = wrap;
 

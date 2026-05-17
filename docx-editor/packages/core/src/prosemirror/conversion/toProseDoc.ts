@@ -1976,6 +1976,7 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
       marginBottom,
       marginLeft,
       marginRight,
+      autoFit: textBox.autoFit,
     },
     contentNodes
   );

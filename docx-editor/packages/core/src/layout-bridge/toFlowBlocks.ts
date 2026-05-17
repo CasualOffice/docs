@@ -1365,6 +1365,7 @@ function convertTextBoxNode(
       right: (attrs.marginRight as number) ?? DEFAULT_TEXTBOX_MARGINS.right,
     },
     content: contentBlocks,
+    autoFit: (attrs.autoFit as TextBoxBlock['autoFit']) ?? undefined,
     pmStart: startPos,
     pmEnd: startPos + node.nodeSize,
   };

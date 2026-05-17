@@ -39,6 +39,13 @@ export interface TextBoxAttrs {
   cssFloat?: 'left' | 'right' | 'none';
   /** Wrap type */
   wrapType?: string;
+  /**
+   * Text-fit mode parsed from a:spAutoFit / a:noAutofit / a:normAutofit.
+   * `spAutoFit` makes the stored `height` a *minimum* — the layout engine
+   * grows the box if content exceeds it (so text doesn't clip when our
+   * font metrics disagree with Word's saved ext.cy).
+   */
+  autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
 }
 
 export const TextBoxExtension = createNodeExtension({
@@ -65,6 +72,7 @@ export const TextBoxExtension = createNodeExtension({
       displayMode: { default: 'inline' },
       cssFloat: { default: null },
       wrapType: { default: 'inline' },
+      autoFit: { default: null },
     },
     parseDOM: [
       {
@@ -87,6 +95,7 @@ export const TextBoxExtension = createNodeExtension({
             displayMode: (el.dataset.displayMode as TextBoxAttrs['displayMode']) || undefined,
             cssFloat: (el.dataset.cssFloat as TextBoxAttrs['cssFloat']) || undefined,
             wrapType: el.dataset.wrapType || undefined,
+            autoFit: (el.dataset.autoFit as TextBoxAttrs['autoFit']) || undefined,
           };
         },
       },
@@ -113,6 +122,7 @@ export const TextBoxExtension = createNodeExtension({
       if (attrs.displayMode) domAttrs['data-display-mode'] = attrs.displayMode;
       if (attrs.cssFloat) domAttrs['data-css-float'] = attrs.cssFloat;
       if (attrs.wrapType) domAttrs['data-wrap-type'] = attrs.wrapType;
+      if (attrs.autoFit) domAttrs['data-auto-fit'] = attrs.autoFit;
 
       // Build inline styles
       const styles: string[] = [];
