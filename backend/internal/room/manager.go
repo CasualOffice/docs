@@ -19,22 +19,52 @@ package room
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
-// Room is the per-docId in-memory state. The authoritative Y.Doc
-// (a placeholder `[]byte` for now; will be a wrapper over the
-// Yjs binary state once the protocol layer is wired) sits here
-// alongside the active client count.
+// outboundQueue is the per-client buffered channel of binary frames
+// waiting to be written to the websocket. Sized to absorb a small
+// burst of updates without blocking the broadcast path — when a
+// client falls this far behind, the room drops the frame rather
+// than block every other peer.
+const outboundQueue = 64
+
+// Client is one connected websocket in a room. The room holds a
+// pointer to it; the gateway's writer goroutine drains `Send` and
+// pumps frames to the underlying conn.
 //
-// Future fields:
-//   - doc      *yjs.Doc            // CRDT state
-//   - clients  map[uuid.UUID]chan  // per-client write channels
-//   - drainer  chan struct{}       // triggers WOPI snapshot
-//   - lastSeen time.Time           // for idle-eviction policies
+// Equality on `*Client` is pointer equality — Broadcast uses that
+// to skip the sender. Clients are allocated by `Room.AddClient`,
+// removed by `Room.RemoveClient`; callers never construct them
+// directly.
+type Client struct {
+	// Send carries binary frames the writer goroutine should
+	// dispatch over the websocket. Closed by RemoveClient as the
+	// "writer can exit" signal.
+	Send chan []byte
+
+	// id is a monotonically-increasing per-process counter used
+	// for stable identification in logs. Not meaningful across
+	// process restarts.
+	id uint64
+}
+
+// ID returns this client's per-process identifier. Stable for the
+// lifetime of the connection.
+func (c *Client) ID() uint64 { return c.id }
+
+// Room is the per-docId in-memory state. Tracks every connected
+// Client in a set so Broadcast can fan a frame out to peers
+// without holding a write-lock during channel sends.
+//
+// Future fields (M2+):
+//   - doc          authoritative Y.Doc bytes (host integration seed)
+//   - drainCh      triggers host.Snapshot on last-disconnect
+//   - lastSeen     time.Time for idle-eviction policies
 type Room struct {
 	mu      sync.RWMutex
 	docID   string
-	clients int
+	clients map[*Client]struct{}
 }
 
 // Clients returns the current number of connected clients. Safe
@@ -42,7 +72,7 @@ type Room struct {
 func (r *Room) Clients() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.clients
+	return len(r.clients)
 }
 
 // DocID returns the document identifier this room is serving.
@@ -50,12 +80,78 @@ func (r *Room) DocID() string {
 	return r.docID
 }
 
+// AddClient registers a fresh websocket connection and returns a
+// Client handle. The caller spawns a writer goroutine draining
+// `client.Send` and a reader goroutine that calls Broadcast for
+// each inbound frame.
+func (r *Room) AddClient(id uint64) *Client {
+	c := &Client{
+		Send: make(chan []byte, outboundQueue),
+		id:   id,
+	}
+	r.mu.Lock()
+	r.clients[c] = struct{}{}
+	r.mu.Unlock()
+	return c
+}
+
+// RemoveClient deregisters a client and closes its Send channel
+// (signaling the writer goroutine to exit). Idempotent — calling
+// twice on the same client is a no-op.
+func (r *Room) RemoveClient(c *Client) {
+	r.mu.Lock()
+	_, present := r.clients[c]
+	if present {
+		delete(r.clients, c)
+		close(c.Send)
+	}
+	r.mu.Unlock()
+}
+
+// Broadcast forwards a binary frame to every connected client
+// EXCEPT the sender. Drops the frame for any client whose Send
+// buffer is full — the y-websocket protocol is tolerant of
+// dropped Update messages (the next SyncStep1 will reconcile),
+// so per-frame backpressure is preferable to head-of-line
+// blocking on the broadcast path.
+//
+// `sender` may be nil for server-originated frames (the future
+// initial-sync-from-host path), in which case every client
+// receives the frame.
+func (r *Room) Broadcast(sender *Client, frame []byte) {
+	// Copy the recipient list under the read-lock so the
+	// per-client channel sends happen without holding it. Even
+	// in a 100-client room the slice is cheap; the alternative
+	// (sending while locked) would let one slow client throttle
+	// every other peer for the duration of its send.
+	r.mu.RLock()
+	recipients := make([]*Client, 0, len(r.clients))
+	for c := range r.clients {
+		if c == sender {
+			continue
+		}
+		recipients = append(recipients, c)
+	}
+	r.mu.RUnlock()
+
+	for _, c := range recipients {
+		select {
+		case c.Send <- frame:
+			// queued
+		default:
+			// Buffer full; drop. The Yjs sync protocol catches
+			// up on the next SyncStep1.
+		}
+	}
+}
+
 // Manager is the registry of active rooms keyed by docId. The
 // gateway's WS handler calls Join on connect and Leave on
 // disconnect; Manager handles room creation + reclaim.
 type Manager struct {
-	mu    sync.Mutex
-	rooms map[string]*Room
+	mu       sync.Mutex
+	rooms    map[string]*Room
+	nextID   atomic.Uint64
 }
 
 // NewManager constructs an empty Manager. Rooms are lazily
@@ -66,40 +162,46 @@ func NewManager() *Manager {
 
 // Join records a new client for docID. If the room doesn't yet
 // exist, it's created; this is the future hook point for the
-// WOPI seed flow. Returns a snapshot of the Room so the caller
-// can read its current state without holding the manager lock.
-func (m *Manager) Join(docID string) *Room {
+// host.Integration seed flow. Returns the Room and a fresh
+// Client handle whose `Send` channel the caller should drain
+// from a writer goroutine.
+func (m *Manager) Join(docID string) (*Room, *Client) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	r, ok := m.rooms[docID]
 	if !ok {
-		r = &Room{docID: docID}
+		r = &Room{docID: docID, clients: make(map[*Client]struct{})}
 		m.rooms[docID] = r
-		// TODO(m2): WOPI GetFile + Y.Doc seed.
+		// TODO(m2): host.Integration.Fetch + Y.Doc seed.
 	}
-	r.mu.Lock()
-	r.clients++
-	r.mu.Unlock()
-	return r
+	m.mu.Unlock()
+	id := m.nextID.Add(1)
+	c := r.AddClient(id)
+	return r, c
 }
 
 // Leave records a client disconnect. When the last client
 // disconnects from a room, the room is removed from the manager;
-// in M2 this is also the trigger for the WOPI snapshot worker.
-func (m *Manager) Leave(docID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	r, ok := m.rooms[docID]
-	if !ok {
+// in M2 this is also the trigger for the host.Integration
+// snapshot.
+//
+// `r` and `c` come from a prior Join.
+func (m *Manager) Leave(r *Room, c *Client) {
+	if r == nil {
 		return
 	}
-	r.mu.Lock()
-	r.clients--
-	clients := r.clients
-	r.mu.Unlock()
-	if clients <= 0 {
-		// TODO(m2): trigger WOPI PutFile snapshot before dropping.
-		delete(m.rooms, docID)
+	r.RemoveClient(c)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Re-check via the room registry — a concurrent Join could
+	// have added more clients between RemoveClient and here. We
+	// only reclaim when the room is genuinely empty.
+	stored, ok := m.rooms[r.DocID()]
+	if !ok || stored != r {
+		return
+	}
+	if r.Clients() == 0 {
+		// TODO(m2): trigger host.Integration.Snapshot before dropping.
+		delete(m.rooms, r.DocID())
 	}
 }
 
@@ -109,4 +211,13 @@ func (m *Manager) Count() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.rooms)
+}
+
+// Lookup returns the Room for docID, or nil if no room is open.
+// Used by HTTP handlers that need read-only access to room state
+// (e.g. /api/rooms/{id}/info) without forcing a Join.
+func (m *Manager) Lookup(docID string) *Room {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.rooms[docID]
 }

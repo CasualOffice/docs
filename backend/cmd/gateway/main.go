@@ -27,6 +27,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/schnsrw/docx/backend/internal/room"
+	"github.com/schnsrw/docx/backend/internal/yws"
 )
 
 // listenAddr returns the TCP address the gateway should bind to.
@@ -64,11 +65,12 @@ func docIDFromPath(path string) string {
 	return rest
 }
 
-// wsHandler upgrades to a WebSocket and hands the connection to
-// the room manager. The actual y-websocket protocol is driven by
-// internal/yws once that lands; for now we accept and immediately
-// close — enough to prove the upgrade path works end-to-end and
-// the rooms map gets populated.
+// wsHandler upgrades to a WebSocket, registers the client with
+// the room manager, and runs a reader+writer pair until the
+// connection drops. Inbound binary frames are fanned to peers
+// via Room.Broadcast — the gateway is a pure relay for the
+// y-websocket protocol (see docs/05 §"Why our own protocol
+// implementation").
 func wsHandler(rooms *room.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		docID := docIDFromPath(r.URL.Path)
@@ -79,32 +81,105 @@ func wsHandler(rooms *room.Manager) http.HandlerFunc {
 
 		// AcceptOptions are intentionally permissive for M1.
 		// Production: lock origins down via the auth layer
-		// (`docs/05-backend-design.md` §Auth).
-		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		// (docs/05-backend-design.md §Auth).
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
 			log.Printf("ws accept failed for doc=%s: %v", docID, err)
 			return
 		}
+		// Default to "going away" on any unhandled exit; we
+		// override with NormalClosure on the clean-shutdown path
+		// below.
+		defer conn.CloseNow()
 
-		room := rooms.Join(docID)
-		defer rooms.Leave(docID)
+		rm, client := rooms.Join(docID)
+		defer rooms.Leave(rm, client)
 
-		// Placeholder: send a "hello" text frame so we can verify
-		// the round-trip end-to-end without yet implementing the
-		// binary y-websocket protocol.
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		if err := c.Write(ctx, websocket.MessageText, []byte(
-			fmt.Sprintf("hello, you joined room %s (clients=%d)", docID, room.Clients()),
-		)); err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("ws hello write failed for doc=%s: %v", docID, err)
+		log.Printf("ws join doc=%s client=%d total=%d", docID, client.ID(), rm.Clients())
+
+		// Tie the WS lifetime to the request context so an HTTP
+		// server shutdown unblocks both reader and writer loops.
+		ctx := r.Context()
+
+		// Run reader inline and writer in a goroutine. When the
+		// reader returns (connection closed by peer, frame error,
+		// or context cancel), RemoveClient closes client.Send
+		// which terminates the writer.
+		writerDone := make(chan struct{})
+		go runWriter(ctx, conn, client, writerDone)
+		runReader(ctx, conn, rm, client, docID)
+		<-writerDone
+
+		log.Printf("ws leave doc=%s client=%d remaining=%d", docID, client.ID(), rm.Clients())
+		_ = conn.Close(websocket.StatusNormalClosure, "")
+	}
+}
+
+// runReader pumps inbound binary frames into the room's
+// broadcast hub. Text frames are ignored (the y-websocket protocol
+// is binary-only); empty frames are dropped before broadcast (a
+// protocol violation per yws.Classify, but cheap to tolerate).
+//
+// Returns on any read error — peer close, protocol failure, or
+// the request context being canceled.
+func runReader(ctx context.Context, conn *websocket.Conn, rm *room.Room, client *room.Client, docID string) {
+	for {
+		mt, data, err := conn.Read(ctx)
+		if err != nil {
+			// CloseError is expected on peer-initiated close;
+			// other errors are surfaced as a single log line.
+			var ce websocket.CloseError
+			if !errors.As(err, &ce) && !errors.Is(err, context.Canceled) {
+				log.Printf("ws read err doc=%s client=%d: %v", docID, client.ID(), err)
+			}
+			return
 		}
+		if mt != websocket.MessageBinary {
+			// y-websocket carries everything in binary frames;
+			// drop anything else without dropping the conn.
+			continue
+		}
+		msgType, ok := yws.Classify(data)
+		if !ok {
+			// Empty frame — protocol violation. Don't echo;
+			// loop continues and may receive a valid frame next.
+			continue
+		}
+		// Awareness frames are also pure pass-through — they
+		// just don't touch any doc state — but we log message
+		// type to make traffic patterns visible during M1 dev.
+		_ = msgType
+		rm.Broadcast(client, data)
+	}
+}
 
-		// Close cleanly — the real loop (read binary frames →
-		// yws.Handle → broadcast) lands in a follow-up commit.
-		_ = c.Close(websocket.StatusNormalClosure, "M1 scaffold: protocol not yet wired")
+// runWriter drains client.Send and writes each frame to the WS as
+// a binary message. Exits when Send is closed (RemoveClient) or
+// the context is canceled. The done channel signals the parent
+// handler that the writer has fully exited so it can close the
+// underlying conn without a race.
+func runWriter(ctx context.Context, conn *websocket.Conn, client *room.Client, done chan struct{}) {
+	defer close(done)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case frame, ok := <-client.Send:
+			if !ok {
+				return
+			}
+			writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			err := conn.Write(writeCtx, websocket.MessageBinary, frame)
+			cancel()
+			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					log.Printf("ws write err client=%d: %v", client.ID(), err)
+				}
+				return
+			}
+		}
 	}
 }
 
