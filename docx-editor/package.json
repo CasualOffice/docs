@@ -28,6 +28,8 @@
     "i18n:fix": "node scripts/validate-i18n.mjs validate --fix",
     "i18n:new": "node scripts/validate-i18n.mjs new",
     "i18n:status": "node scripts/validate-i18n.mjs status",
+    "fidelity:audit": "bun run scripts/roundtrip-audit.mjs",
+    "fidelity:compare": "bun run scripts/compare-fidelity.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "bun run build && changeset publish",

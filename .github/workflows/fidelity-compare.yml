@@ -1,0 +1,106 @@
+name: Fidelity comparison
+
+# Three-way round-trip score: us vs LibreOffice vs OnlyOffice
+# DocumentBuilder, against the full fixture set in
+# docx-editor/e2e/fixtures/. Posts the resulting report as an
+# artifact and fails the run if our pristine share dips below the
+# floor.
+#
+# Why a separate workflow:
+#   - Pulls the OnlyOffice docbuilder Docker image (~1 GB) and apt
+#     installs LibreOffice (~700 MB). That overhead doesn't belong
+#     on every PR.
+#   - The pristine-share floor gates desktop releases — we ship a
+#     Tauri build with confidence that we're not regressing on
+#     fidelity.
+#
+# Triggered:
+#   - on push to main (track score over time)
+#   - on label `fidelity-compare` (request the score on a PR
+#     deliberately)
+#   - manual workflow_dispatch with optional fixture filter
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docx-editor/packages/core/**'
+      - 'docx-editor/scripts/compare-fidelity.mjs'
+      - 'docx-editor/e2e/fixtures/**'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      fixtures:
+        description: 'Comma-separated fixture names (empty = all)'
+        required: false
+        default: ''
+
+concurrency:
+  group: fidelity-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'fidelity-compare'
+    name: Compare against LibreOffice + OnlyOffice
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: docx-editor
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+
+      - name: Install editor deps
+        run: bun install --frozen-lockfile
+
+      - name: Install LibreOffice
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libreoffice
+          soffice --version
+
+      - name: Pull OnlyOffice DocumentBuilder image
+        # Documentbuilder ships as a sizeable image; pull it once
+        # before the script so per-fixture runs only see the cached
+        # layers.
+        run: docker pull onlyoffice/documentbuilder:latest || echo 'docbuilder pull failed; engine will be skipped'
+
+      - name: Run comparison
+        env:
+          # 50% pristine floor matches our current measured baseline.
+          # Raise as we close gap-matrix items.
+          FIDELITY_FLOOR: '0.5'
+        run: |
+          args=()
+          if [ -n "${{ github.event.inputs.fixtures }}" ]; then
+            args+=("--fixtures=${{ github.event.inputs.fixtures }}")
+          fi
+          bun run scripts/compare-fidelity.mjs "${args[@]}"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidelity-compare-report
+          path: docx-editor/fidelity-compare-report.md
+          retention-days: 30
+
+      - name: Summary in job UI
+        if: always()
+        run: |
+          if [ -f fidelity-compare-report.md ]; then
+            {
+              echo '## Fidelity comparison report'
+              echo ''
+              head -80 fidelity-compare-report.md
+              echo ''
+              echo '_See the `fidelity-compare-report` artifact for the full table._'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

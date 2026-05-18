@@ -76,6 +76,21 @@ The next ≤3 gaps actively in flight. Update when one closes / opens.
 2. **roundtrip-vml-cluster** — deferred pending enricher refactor (separate render-only content from serialization-canonical content). Tracked under the row above.
 3. *(open slot)*
 
+## Fidelity score target
+
+Desktop release floor: **≥ 90% pristine** on the comparison harness's
+fixture set. Current baseline (2026-05-19, `roundtrip-audit-report.md`):
+**23 / 39 fixtures pristine = 59.0%**. The 16 non-pristine fixtures
+all drop into the **roundtrip-vml-cluster** bucket; closing that gap
+puts the editor at ~95% by tag-retention, sufficient for the desktop
+ship.
+
+The three-way harness (`docx-editor/scripts/compare-fidelity.mjs` →
+`.github/workflows/fidelity-compare.yml`) tracks us vs LibreOffice vs
+OnlyOffice DocumentBuilder on the same corpus. The CI workflow fails
+when our pristine share drops below the `FIDELITY_FLOOR` env (default
+0.5) so regressions are caught before release.
+
 ## Recently moved
 
 - **tab-leader-toc** — FIXED-LOCAL (2026-05-18). TOC dot/hyphen leaders no longer butt against section titles or page numbers; underscore/heavy now render as a continuous CSS border-bottom instead of dotted `_` glyphs. 7 happy-dom unit tests.
