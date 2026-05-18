@@ -1,26 +1,62 @@
 # 05 — Backend design: y-websocket gateway in Go
 
-> Resolves two of the open questions from `docs/00-overview.md`:
-> the y-websocket implementation path, and the WOPI integration target.
+> Resolves the open backend questions from `docs/00-overview.md`.
 > Captures the design before any Go code is written so future work
 > isn't left re-deriving these decisions.
+
+## What this service is (and what it isn't)
+
+Casual Editor's backend is an **integration component**, not a
+document storage system. The deployment target is "another product
+spins up our container alongside theirs and we orchestrate a live
+co-editing session for one of their files."
+
+That shapes everything else:
+
+- **No persistence at this layer, ever.** State lives only while
+  the file is open in an active session. After last-disconnect (+
+  optional grace period) the in-memory Y.Doc is gone. The host
+  service owns durability.
+- **Two integration phases**, sharing the same gateway:
+  - **v0 (current target).** Self-contained mode — user uploads
+    `.docx` directly, gets a share link, others join, anyone
+    downloads the latest snapshot. Matches what `services/sheet`
+    already ships as v1. Lets us prove the collab loop without
+    waiting on a host system.
+  - **v1+.** Host-integration mode — the host calls our HTTP API
+    with a JWT + a docId + callback URLs. We fetch the source
+    file on first connect, snapshot back to the host on session
+    end. WOPI is one implementation of this protocol; the host
+    can also expose a simpler "GET file, POST snapshot" pair if
+    they don't want to implement WOPI's full surface. Same shape,
+    different wire.
 
 ## TL;DR
 
 - **Build our own y-websocket protocol implementation in Go** rather
-  than bridge to a Hocuspocus-equivalent.
-- **Start with a local mock WOPI host** for integration tests.
-  Real-host integration (Nextcloud or similar) comes after the
-  protocol gateway is round-trip-proven.
+  than bridge to a Hocuspocus-equivalent. Surface area is ~120
+  lines of binary protocol; sheet went the other way and that
+  choice cost them a 233-LOC custom client-side bridge anyway, so
+  the savings aren't where you'd expect.
+- **v0 = direct upload + share-link.** A `POST /api/docs` endpoint
+  takes a `.docx` upload, mints a docId, returns the share URL. No
+  external host required.
+- **v1+ = pluggable host integration.** A `host.Integration`
+  interface with two concrete impls: `inline` (the v0 upload path
+  stores bytes in process memory) and `wopi` (real WOPI host).
+  Future "API integration via JWT" hosts implement the same
+  interface with their own REST shape — we don't lock into WOPI's
+  spec.
 - **One Y.Doc per active room, in process memory.** When the last
-  client disconnects, snapshot → WOPI → drop the doc. No DB, no
-  on-disk update log. Process restart re-seeds from WOPI on
-  reconnect.
-- **JWT in the WS query string**, validated once at connect time
-  against a JWKS endpoint. No per-message auth.
-- **Single-node-per-doc routing** for the first cut; revisit Redis /
-  cross-node fanout when (and only when) a single Go process can't
-  hold the active-doc working set in RAM.
+  client disconnects, snapshot → host.Integration.PutFile → drop
+  the doc. No DB, no on-disk update log. Process restart wipes
+  every active room (clients re-upload or the host re-seeds).
+- **JWT in the WS query string**, validated once at connect time.
+  v0 = anonymous (room URL is the capability). v1+ = JWT signed
+  by the host, validated against a JWKS the host advertises.
+- **Single-node-per-doc routing** for the first cut; revisit Redis
+  / cross-node fanout when (and only when) a single Go process
+  can't hold the active-doc working set in RAM.
 
 ## Why our own protocol implementation, not Hocuspocus
 
@@ -56,14 +92,62 @@ Reasons to build our own:
 What we give up:
 
 - Hocuspocus' rich extension ecosystem (auth providers, history,
-  versioning). We don't need most of it (storage = WOPI; history =
-  WOPI versions; auth = JWT).
+  versioning). We don't need most of it — host integration owns
+  history + auth at the layer above us.
 - Reference test corpus battle-tested against real Yjs clients.
   Mitigated by: the eigenpal `examples/collaboration/` reference
   client lets us drive the same WS protocol from two browsers
   during dev.
 
-## Why mock WOPI before real WOPI
+## Host integration (v0 inline, v1+ WOPI-or-similar)
+
+The gateway is meant to plug *into* another product, not run
+standalone in production. But "another product" can mean any of:
+
+- A WOPI host (Nextcloud, SharePoint, …).
+- A homegrown service that exposes `GET /files/{id}` + `PUT
+  /files/{id}` over JWT-authenticated REST — simpler than full
+  WOPI, similar shape.
+- The gateway itself in v0 — user uploads a `.docx` to the
+  gateway and the gateway holds the source in process until
+  someone downloads it back. Self-contained, no external host.
+
+All three shapes converge on the same in-process abstraction:
+
+```go
+// internal/host
+type Integration interface {
+    Fetch(ctx, docID, authToken) ([]byte, *FileInfo, error)
+    Snapshot(ctx, docID, authToken, contents []byte) error
+}
+```
+
+Three concrete implementations land in this order:
+
+1. **`inline`** (v0) — `POST /api/docs` accepts a `.docx` upload
+   into an in-process map keyed by docId. Fetch returns those
+   bytes; Snapshot replaces them. No external host. This is the
+   share-link demo: spin up the container, upload, share URL,
+   collaborate, download.
+
+2. **`wopi`** (v1) — real WOPI client over HTTP. Fetch ↔
+   `GET /wopi/files/{id}/contents`; Snapshot ↔ `PUT /wopi/files/
+   {id}/contents`; uses the host's `access_token` query-param
+   convention plus `CheckFileInfo` for metadata.
+
+3. **`jwtapi`** (v1+) — a leaner "API integration" host (the
+   user's "similar to WOPI but not exactly"). Fetch ↔
+   `GET <fetchURL>` with `Authorization: Bearer <jwt>`; Snapshot
+   ↔ `POST <callbackURL>` with the same auth. Useful when the
+   integrating service doesn't want to implement WOPI's full
+   surface.
+
+Adding a fourth (S3, raw filesystem, Git, …) is a single new
+struct implementing `Integration`. The gateway never grows a
+case-on-host-type — host selection happens once at startup via
+config / env, and the room manager just calls the interface.
+
+### Why inline first
 
 A real WOPI host (Nextcloud, ownCloud, SharePoint, etc.) brings:
 
@@ -72,40 +156,41 @@ A real WOPI host (Nextcloud, ownCloud, SharePoint, etc.) brings:
   endpoints.
 - Operational dependencies (installation, DB, file storage).
 
-Starting with a real host means coupling our protocol bring-up to
-debugging someone else's host. Bad ratio.
+Starting with any real host means coupling our protocol bring-up
+to debugging someone else's host. Bad ratio.
 
-Instead, a **local mock WOPI** = a tiny Go HTTP server in the
-same repo that:
-
-- Serves `CheckFileInfo` from a JSON fixture per `docId`.
-- Serves `GetFile` from a `.docx` on disk.
-- Accepts `PutFile` and writes it back to disk.
-- Mints / validates a synthetic JWT for the WOPI access_token.
-
-That's ~200 LOC and lets us close the round-trip loop:
+The **inline** integration is ~50 LOC of `map[docID][]byte` plus
+a couple of HTTP handlers and proves the round-trip loop
+end-to-end:
 
 ```
-browser → backend → mock-WOPI.GetFile → seed Y.Doc → edit → snapshot
-                  → mock-WOPI.PutFile → reload → re-seed → verify
+browser → backend → inline.Fetch → seed Y.Doc → edit → snapshot
+                  → inline.Snapshot → next-joiner Fetch → re-seed
 ```
 
-Once that's stable, swapping the URL for Nextcloud is a config
+Once that's stable, plugging in `wopi` or `jwtapi` is a config
 change plus whatever real-host quirks surface.
 
 ## Wire-level lifecycle
 
 ```
-1. CONNECT
-   client → ws://gateway/doc/{docId}?token=JWT
+0. UPLOAD (v0 only — inline integration)
+   user → POST /api/docs (multipart .docx)
    gateway:
-     - validate JWT against tenant JWKS (RS256)
-     - check permissions on docId (read / write)
+     - mint a docId (random URL-safe token)
+     - inline.Store(docId, bytes)
+     - return { docId, shareUrl: "/r/{docId}" }
+
+1. CONNECT
+   client → ws://gateway/doc/{docId}?token=…
+   gateway:
+     - v0:   anonymous — room URL is the capability
+       v1+: validate JWT against host's JWKS (RS256)
      - join or create the room for docId
-       - if creating: GET WOPI/files/{docId}/contents
+       - if creating: integration.Fetch(docId, token)
                       → parse .docx via the eigenpal headless
-                        deserializer (running embedded as a WASM
-                        module or out-of-process Node)
+                        serializer (out-of-process Bun pool for
+                        v0; wazero-embedded WASM later)
                       → seed an empty Y.Doc with the parsed model
      - send sync-step-1 over the WS, expect sync-step-2 back
      - then stream client awareness + updates
@@ -120,11 +205,20 @@ change plus whatever real-host quirks surface.
 3. DISCONNECT (last client)
    - Mark room "draining"
    - Serialize Y.Doc → .docx via the headless serializer
-   - PUT WOPI/files/{docId}/contents
+   - integration.Snapshot(docId, token, contents)
+     - v0 inline:  update the in-process map
+     - v1 wopi:    PUT /wopi/files/{id}/contents
+     - v1+ jwtapi: POST <callbackURL> with bearer JWT
    - Drop the in-memory Y.Doc (free room)
 
-4. RECONNECT after process restart
-   - Same as 1; room is rebuilt from WOPI
+4. DOWNLOAD (v0 only)
+   user → GET /api/docs/{docId}/download
+   gateway: integration.Fetch(docId, "") → respond with bytes
+
+5. RECONNECT after process restart
+   - v0 inline:  process restart wipes every active room; user
+                 must re-upload (acceptable for the MVP)
+   - v1+:        room is rebuilt from host on next connect
 ```
 
 The .docx-aware steps (deserialize on seed, serialize on snapshot)
@@ -143,22 +237,30 @@ serializer:
 v0 plan: out-of-process Bun pool. Reassess after first usable
 build.
 
-## Auth: JWT + JWKS
+## Auth: anonymous (v0) → JWT + JWKS (v1+)
 
-- **Token lives in the WS query string** at connect: `?token=…`.
-  WebSockets can't carry custom Authorization headers from
-  browsers cross-origin, so this is the standard placement.
-- **JWKS endpoint is per-tenant**, configured at gateway startup
-  via `WOPI_JWKS_URL` env var (or a static file for the mock).
-- **Validation runs once at connect**; subsequent messages on
-  the established WS inherit the connection's auth context.
-- **Permissions claim** (`docId`, `permissions: 'r' | 'rw'`)
-  on the JWT body, validated against the connect URL's `docId`.
+**v0** — no JWT. The capability *is* the room URL. Anyone with
+the `/r/{docId}` link can join and edit. This is the share-link
+model sheet ships today: low ceremony, fine for the "spin up a
+container, demo it" path, and matches what an integration host
+would do with a one-off share URL anyway.
 
-If a JWT expires mid-session, the client must reconnect with a
-fresh token — we don't refresh tokens on the WS. Frontend handles
-this by listening for `4001` close codes and re-fetching from
-its identity provider.
+**v1+** — JWT in the WS query string at connect: `?token=…`. The
+host (the service integrating with us) signs the token; we
+validate against the host's JWKS endpoint, configured at gateway
+startup via `HOST_JWKS_URL`. The token carries `{ docId,
+permissions: 'r' | 'rw', exp }`; we validate `docId` matches the
+URL path and gate `MessageUpdate` frames on `permissions === 'rw'`.
+
+- WebSockets can't carry custom `Authorization` headers from
+  browsers cross-origin, so query-string placement is the
+  standard.
+- Validation runs once at connect; subsequent WS frames inherit
+  the connection's auth context.
+- If a JWT expires mid-session, the client gets a `4001` close
+  code and is responsible for fetching a fresh token from its
+  identity provider, then reconnecting. We don't refresh on the
+  WS.
 
 ## Stateless cross-node story
 
@@ -183,40 +285,81 @@ process can't carry.
 services/document/
 ├── docx-editor/           — the React + ProseMirror editor (existing)
 ├── docs/                  — this directory
-└── backend/               — NEW (Go module, TBD)
-    ├── cmd/gateway/       — main entry: WS + HTTP health
-    ├── internal/yws/      — y-websocket protocol implementation
+└── backend/               — Go module (M1 scaffold landed)
+    ├── cmd/gateway/       — main entry: HTTP + WS
+    ├── internal/yws/      — y-websocket binary protocol
     ├── internal/room/     — in-memory Y.Doc room manager
-    ├── internal/wopi/     — WOPI client (real + mock)
-    ├── internal/auth/     — JWT + JWKS validation
-    └── test/mock-wopi/    — local mock WOPI HTTP server
+    ├── internal/host/     — Integration interface +
+    │   ├── inline/        —   in-process map (v0)
+    │   ├── wopi/          —   WOPI client (v1)
+    │   └── jwtapi/        —   "WOPI-like but simpler" REST client (v1+)
+    ├── internal/auth/     — JWT + JWKS validation (v1+)
+    └── test/mock-host/    — local HTTP host harness for integration tests
 ```
 
-`backend/` doesn't exist yet — this doc establishes the layout
-ahead of any code.
+Note: the M1 scaffold currently has `internal/wopi/` rather than
+the wider `internal/host/` tree above — the rename + interface
+generalisation lands with the first `inline` integration.
+
+## Relationship to `services/sheet`
+
+The sibling project `casual-sheets` arrived at the same MVP shape
+ahead of us:
+
+- Self-contained Docker image, upload → share link → collaborate
+  → download.
+- In-process room registry (`apps/server/src/rooms.ts`) with
+  idle-GC.
+- Optional Redis snapshot for restart-survival (we don't need
+  this — see "intentional non-decisions" below).
+
+Sheet's server chose Hocuspocus instead of building its own
+y-websocket. The architectural intent (per the user) is that
+both services eventually adopt the **same host-integration
+plugin** — WOPI or JWT-API host — for the v1+ "integrate with
+another product" path. The `host.Integration` interface defined
+here is the shape both projects should converge on; the actual
+package will likely move into a shared module once both services
+need it.
 
 ## First implementation milestone
 
-**M1: two-browser local round-trip.**
+**M1: two-browser local round-trip via inline integration.**
 
-1. Stand up `cmd/gateway` accepting WS connections at
-   `/doc/{docId}`.
-2. Implement `internal/yws` for the four y-websocket message
-   types. Lift logic from the `y-crdt/y-sync` Go reference.
-3. Stand up `test/mock-wopi` serving `examples/vite/public/
-   docx-editor-demo.docx` as docId `demo`.
-4. `internal/room` loads the doc via mock-WOPI on first
-   connect, broadcasts updates, snapshots via mock-WOPI on last
-   disconnect.
-5. Local test: two browsers at
-   `http://localhost:5173/?docId=demo&backend=ws://localhost:8080`
-   should see each other's edits live.
+1. ✅ Stand up `cmd/gateway` accepting WS connections at
+   `/doc/{docId}` (commit `451c4e6`).
+2. ✅ Room manager with thread-safe Join/Leave (commit `451c4e6`,
+   7 unit tests).
+3. ✅ y-websocket protocol message-type stubs (commit `451c4e6`).
+4. ⏳ Implement the four y-websocket message handlers — sync-1,
+   sync-2, update, awareness — with a per-room broadcast hub.
+5. ⏳ `host.Integration` interface + `inline` implementation.
+   `POST /api/docs` accepts an upload; `GET /api/docs/{id}/
+   download` returns the latest snapshot.
+6. ⏳ Wire room creation to `inline.Fetch` (seed on first connect)
+   and room drain to `inline.Snapshot` (snapshot on last
+   disconnect).
+7. ⏳ Local test: two browsers each call `POST /api/docs` once,
+   share the returned `shareUrl`, connect via WS, see each
+   other's edits live.
 
-No auth in M1 (or a hardcoded dev JWT). No real WOPI in M1. Focus
+No auth in M1. No real WOPI / JWT host in M1. Focus
 is the protocol layer + lifecycle.
 
-After M1 lands, scope M2: JWT + JWKS validation against the mock
-WOPI's signing key, plus presence (awareness diffs).
+After M1 lands, scope M2:
+
+1. **Awareness / presence** — multi-cursor rendering, name
+   badges. Y.Awareness is on the same WS channel, separate
+   message type from updates.
+2. **`host` interface generalisation** — rename `internal/wopi`
+   to `internal/host`, move the existing scaffold under
+   `internal/host/wopi/`, add `internal/host/inline/` (the v0
+   path already running as part of M1) and `internal/host/jwtapi/`
+   (the "WOPI-like but simpler" REST client the user described).
+3. **JWT + JWKS** validation at connect when a non-inline host
+   is configured.
+4. **Docker image** — multi-stage build mirroring sheet's, single
+   image that bundles the gateway + the static Vite editor.
 
 ## What this design intentionally defers
 
