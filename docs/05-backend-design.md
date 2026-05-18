@@ -397,6 +397,11 @@ After M1 lands, scope M2:
    is configured.
 4. **Docker image** — multi-stage build mirroring sheet's, single
    image that bundles the gateway + the static Vite editor.
+   Landed: `Dockerfile` at the repo root, three stages
+   (bun → go → alpine). The Go gateway gained an optional
+   `STATIC_DIR` env that, when set, serves the SPA on `/` with an
+   index.html fallback so client-side routes (`/r/{docId}`) survive
+   a hard refresh.
 
 ## What this design intentionally defers
 

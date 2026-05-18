@@ -48,6 +48,44 @@ func listenAddr() string {
 	return ":8080"
 }
 
+// staticDir returns the directory the gateway should serve the built
+// SPA from, or "" if it should only handle API + WS routes (the
+// local-dev story where Vite serves the editor on :5173). The
+// production Docker image bakes the editor into /static and sets
+// STATIC_DIR=/static so both live behind the same origin.
+func staticDir() string {
+	return os.Getenv("STATIC_DIR")
+}
+
+// staticHandler serves the bundled editor's index.html / assets out
+// of dir, with an SPA fallback: any request that doesn't match a
+// file on disk (and isn't an API/WS route — those are caught by
+// more-specific handlers registered on the mux first) returns
+// index.html so the client-side router can resolve it.
+func staticHandler(dir string) http.HandlerFunc {
+	fs := http.FileServer(http.Dir(dir))
+	indexPath := filepath.Join(dir, "index.html")
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Reject anything that escapes the static root before
+		// touching the filesystem.
+		clean := filepath.Clean(r.URL.Path)
+		if strings.Contains(clean, "..") {
+			http.Error(w, "bad path", http.StatusBadRequest)
+			return
+		}
+		full := filepath.Join(dir, clean)
+		info, err := os.Stat(full)
+		if err == nil && !info.IsDir() {
+			fs.ServeHTTP(w, r)
+			return
+		}
+		// SPA fallback: serve index.html for any unmatched path
+		// so /r/{docId} and other client-side routes work after a
+		// hard refresh.
+		http.ServeFile(w, r, indexPath)
+	}
+}
+
 // healthHandler is a lightweight liveness probe. Returns 200 with
 // the running gateway version. Reserved for container health
 // checks; not part of the WS protocol.
@@ -414,6 +452,15 @@ func main() {
 	mux.HandleFunc("/api/docs", uploadHandler(store))
 	mux.HandleFunc("/api/docs/", downloadHandler(store))
 	mux.HandleFunc("/doc/", wsHandler(rooms, store))
+
+	// Bundled-image mode: when STATIC_DIR is set, also serve the
+	// built editor SPA on / with a fallback to index.html for
+	// client-side routes. Local dev leaves it unset and runs Vite
+	// on :5173 against this gateway on :8080.
+	if dir := staticDir(); dir != "" {
+		log.Printf("serving static SPA from %s", dir)
+		mux.Handle("/", staticHandler(dir))
+	}
 
 	addr := listenAddr()
 	srv := &http.Server{

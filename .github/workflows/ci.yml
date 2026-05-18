@@ -1,7 +1,9 @@
 name: CI
 
-# Runs against the editor fork at docx-editor/ (the actual buildable
-# package; the outer repo's root holds infra docs + planning).
+# Two parallel surfaces:
+#   - docx-editor/   editor fork (Bun + React, see jobs that set
+#                    working-directory at the job level)
+#   - backend/       Go gateway (jobs without that default)
 
 on:
   push:
@@ -117,3 +119,27 @@ jobs:
             docx-editor/playwright-report
             docx-editor/screenshots/test-results
           retention-days: 7
+
+  backend:
+    name: Backend (Go vet + test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test (race)
+        run: go test -race ./...
+
+      - name: Build
+        run: go build ./...

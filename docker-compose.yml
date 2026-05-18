@@ -1,55 +1,70 @@
-# Local dev stack for the document service.
+# Local dev stack for Casual Editor.
 #
-# Design note: this service is stateless. Document persistence is delegated
-# to a WOPI host (added in a later milestone) via GetFile / PutFile. The
-# backend will hold the Y.Doc in memory while a session is live, fan
-# updates out to connected clients, and flush snapshots back to WOPI on
-# save / session-end. No database, no on-disk update log.
+# Design note: this service is stateless. The inline host stores the
+# uploaded .docx in process memory keyed by docId; the gateway holds
+# the live Y.Doc per session and drops it when the last peer leaves.
+# Persistence (WOPI / JWT-API) will hang off the host.Integration
+# interface in a future milestone.
 #
-# Currently defined:
-#   - editor: runs the eigenpal-derived editor's Vite dev server in
-#             oven/bun. No system-side bun/node install required.
+# Two profiles:
 #
-# Planned (added when the Go backend code lands):
-#   - backend: WS gateway + snapshot worker
+#   `dev`     — Vite dev server (hot reload) on :5173 + Go gateway on
+#               :8080. The frontend points at the gateway via
+#               VITE_BACKEND=http://localhost:8080. Use this while
+#               iterating on either side.
 #
-# Usage:
-#   docker compose up -d editor       # first run: bun install ~30-90s
-#   docker compose logs -f editor     # wait for "Local:   http://0.0.0.0:5173/"
-#   open http://localhost:5173/
-#   docker compose down
-#   docker compose down -v            # also wipes node_modules volume
+#               docker compose --profile dev up
+#               open http://localhost:5173/
+#
+#   default   — Bundled image: the gateway serves both the API/WS
+#               AND the pre-built SPA on :8080. This is what users
+#               of the Docker Hub image get.
+#
+#               docker compose up
+#               open http://localhost:8080/
 
 services:
-  editor:
-    image: oven/bun:1
-    container_name: docx-editor-dev
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: casual-editor:local
+    container_name: casual-editor
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  editor-dev:
+    profiles: ["dev"]
+    image: oven/bun:1.3.14
+    container_name: casual-editor-dev
     working_dir: /app
     command: sh -c "bun install && bunx vite --config examples/vite/vite.config.ts --host 0.0.0.0"
+    environment:
+      VITE_COLLAB_ENABLED: "true"
+      VITE_BACKEND: "http://localhost:8080"
     ports:
       - "5173:5173"
     volumes:
-      # Source: bind-mount the fork so edits hot-reload.
       - ./docx-editor:/app
-      # Keep node_modules inside the container (named volume) so the host
-      # never gets a node_modules dir, and Linux-built native deps stay
-      # separate from any host install.
       - editor-node-modules:/app/node_modules
     restart: unless-stopped
 
-  # backend:
-  #   build: ./backend
-  #   container_name: docx-backend
-  #   restart: unless-stopped
-  #   environment:
-  #     JWT_SECRET: dev-secret-not-for-production
-  #     LISTEN_ADDR: ":8080"
-  #   ports:
-  #     - "8080:8080"
-
-  # Future possibilities (not required for v1):
-  # - mock-wopi: local WOPI host for testing storage integration end-to-end
-  # - redis: cross-node pubsub if/when we scale past a single backend node
+  gateway-dev:
+    profiles: ["dev"]
+    image: golang:1.24-alpine
+    container_name: casual-editor-gateway-dev
+    working_dir: /src
+    command: sh -c "go run ./cmd/gateway"
+    environment:
+      GATEWAY_ADDR: ":8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/src
+      - go-mod-cache:/go
+    restart: unless-stopped
 
 volumes:
   editor-node-modules:
+  go-mod-cache:

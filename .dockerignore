@@ -1,0 +1,46 @@
+# Docker build context exclusions.
+#
+# The bundled image needs the editor source + the Go backend; nothing
+# else. Everything large or generated stays out of the build context
+# so `docker build` doesn't ship 2 GB of node_modules / build output /
+# fixtures to the daemon.
+
+# Top-level build artifacts + IDE
+.git/
+.idea/
+*.iml
+.DS_Store
+
+# Per-language artifacts
+**/node_modules/
+**/dist/
+**/build/
+**/out/
+**/target/
+**/.next/
+
+# Test outputs
+**/playwright-report/
+**/test-results/
+**/screenshots/
+
+# Local-only env / secrets
+**/.env
+**/.env.local
+**/.env.*
+
+# Reference docs / large fixtures we don't ship.
+# Use `/<path>` so they match only at the build-context root and we
+# don't accidentally exclude (e.g.) docx-editor/assets/ from the
+# editor build.
+/docx-editor/reference/
+/docx-editor/e2e/fixtures/
+/docx-editor/playwright-report/
+/docx-editor/test-results/
+/docx-editor/screenshots/
+/docx-editor/roundtrip-audit-report.md
+/docs/
+/assets/
+
+# Editor doesn't need this — the gateway builds from backend/ only
+**/*.log
