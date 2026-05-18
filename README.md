@@ -24,12 +24,13 @@
 ---
 
 Open a `.docx`, edit it in the browser with WYSIWYG fidelity, save it
-back as `.docx`. The plan adds a small Go sync server so multiple
-people can edit the same document live — driven by Yjs over a
-WebSocket, with persistence handed off to a WOPI host. **No database,
-no on-disk update log.** The only live state is the in-memory Y.Doc
-for an active session; when the last client disconnects it's gone, and
-the next session re-seeds from WOPI.
+back as `.docx`, share a link, edit it live with someone else. The Go
+sync server speaks the standard y-websocket protocol and is stateless
+end-to-end — persistence is delegated to whichever host (inline, WOPI,
+or a JWT-API integration) the operator picks at startup. **No
+database, no on-disk update log.** The only live state is the
+in-memory Y.Doc for an active session; when the last client
+disconnects it's gone, and the next session re-seeds from the host.
 
 ## Live demo
 
@@ -78,7 +79,29 @@ Editor (in `docx-editor/`):
   it produces visible output) an e2e spec in
   `docx-editor/e2e/tests/`.
 
-Backend: not written yet. Next milestone is the y-websocket gateway.
+Backend (`backend/`, Go):
+
+- y-websocket gateway: peers connecting to `/doc/{docId}` are
+  registered with the in-process room manager and have their
+  binary frames fanned out to every other peer in the same room.
+  Pure relay — the gateway never interprets the CRDT.
+- `host.Integration` interface (`backend/internal/host/`) with three
+  planned implementations: `inline` (in-memory, the v0 share-link
+  flow — done), `wopi` (full WOPI HTTP, deferred), and `jwtapi`
+  (lighter "WOPI-but-simpler" REST, deferred).
+- REST surface: `POST /api/docs` for upload (multipart or raw),
+  `GET /api/docs/{docId}/download` to stream the latest snapshot,
+  `GET /health` for the container probe.
+- Bundled image (`Dockerfile`): editor SPA + gateway in one
+  container behind a single port, ready to push to Docker Hub.
+
+## Deployment shapes
+
+| Where | Collab | Notes |
+|---|---|---|
+| [`doc.schnsrw.live`](https://doc.schnsrw.live/) (GitHub Pages) | off | the single-user demo; no backend behind it |
+| `docker run -p 8080:8080 casual-editor:latest` | on | the share-link flow; everyone hitting the same container co-edits |
+| Tauri desktop (in progress) | off | single-user, local-only |
 
 ## Repo layout
 
@@ -87,15 +110,26 @@ Backend: not written yet. Next milestone is the y-websocket gateway.
 ├── README.md                  -- this file
 ├── assets/                    -- logo + favicon (original artwork)
 ├── CLAUDE.md                  -- working rules for AI coding sessions
-├── docker-compose.yml         -- local dev stack (editor at :5173)
+├── Dockerfile                 -- bundled image (editor SPA + gateway)
+├── .dockerignore              -- build-context exclusions
+├── docker-compose.yml         -- local dev stack (gateway + dev profile)
 ├── docs/
 │   ├── 00-overview.md         -- goals + locked decisions
 │   ├── 02-pipeline.md         -- how a fidelity gap moves repro → PR
-│   └── 03-gap-matrix.md       -- per-gap status table
+│   ├── 03-gap-matrix.md       -- per-gap status table
+│   ├── 04-architecture-review-response.md -- review + response
+│   └── 05-backend-design.md   -- backend design + lifecycle
+├── backend/                   -- Go gateway (this repo's proprietary)
+│   ├── cmd/gateway/           -- entry point, REST + WS handlers
+│   └── internal/
+│       ├── host/              -- host.Integration interface + impls
+│       ├── room/              -- per-docId room manager
+│       └── yws/               -- y-websocket protocol helpers
 ├── docx-editor/               -- inlined fork of eigenpal/docx-editor
 │   ├── packages/core/         -- DOCX parser, serializer, layout engine
 │   ├── packages/react/        -- React `<DocxEditor>` component
 │   ├── examples/vite/         -- the demo deployed at doc.schnsrw.live
+│   ├── examples/vite/src/collab/ -- Yjs wire-up, share dialog, status
 │   ├── e2e/                   -- Playwright e2e specs
 │   └── scripts/               -- audit + fixture-generator scripts
 └── .github/workflows/         -- CI + Pages deploy
@@ -103,16 +137,18 @@ Backend: not written yet. Next milestone is the y-websocket gateway.
 
 ## Local dev
 
+Two ways depending on what you're working on:
+
 ```bash
-# Brings up the Vite demo at http://localhost:5173 inside a Bun
-# container. No host-side Bun install required.
-docker compose up -d editor
+# Try the bundled image (editor + gateway baked into one container).
+# First run builds the image — subsequent runs reuse the build cache.
+docker compose up
+open http://localhost:8080/
 
-# Tail logs:
-docker compose logs -f editor
-
-# Tear down:
-docker compose down
+# Hot-reload dev: Vite at :5173, gateway at :8080, both with
+# bind-mounted source so saves trigger live reload / Go rebuild.
+docker compose --profile dev up
+open http://localhost:5173/
 ```
 
 To run the editor toolchain directly (requires Bun ≥ 1.3.14):
@@ -122,13 +158,22 @@ cd docx-editor
 bun install
 bun run dev           # vite at :5173
 bun run typecheck
-bun test              # unit tests (currently 629/629)
+bun test              # unit tests
 bun run test:e2e      # Playwright e2e
+```
+
+For the Go gateway:
+
+```bash
+cd backend
+go vet ./...
+go test -race ./...
+go run ./cmd/gateway   # listens on :8080
 ```
 
 ## Continuous integration
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs three jobs
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs four jobs
 in parallel on every push to `main` and every PR:
 
 | Job | Steps |
@@ -136,6 +181,7 @@ in parallel on every push to `main` and every PR:
 | `lint` | `bun run format:check` + `bun run lint` |
 | `unit` | `bun run typecheck` + `bun test` + `bun run build` + round-trip audit |
 | `e2e` | Playwright with chromium, cached browser binaries |
+| `backend` | `go vet` + `go test -race` + `go build` |
 
 [`.github/workflows/deploy-demo.yml`](.github/workflows/deploy-demo.yml)
 builds the Vite demo and publishes it to GitHub Pages (with the
@@ -159,10 +205,11 @@ behind each.
 
 ## Open questions
 
-- y-websocket implementation — write our own in Go vs. bridge to a
-  Hocuspocus-equivalent.
 - First WOPI host target for integration testing (own mock vs.
   Nextcloud).
+- Y.Doc → `.docx` serialization worker pool (Bun headless) — needed
+  before drain-time snapshot can produce edited bytes rather than
+  re-serve the original upload.
 
 ## License
 
