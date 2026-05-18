@@ -398,8 +398,16 @@ func withCORS(next http.Handler) http.Handler {
 }
 
 func main() {
-	rooms := room.NewManager()
 	store := inline.New()
+	rooms := room.NewManager(room.WithDrainFunc(func(docID string) {
+		// v0 snapshot: every joiner already has the original .docx
+		// bytes via /api/docs/{id}/download, and the gateway can't
+		// re-serialize the Y.Doc back to .docx without a worker
+		// pool (M2 / Bun headless serializer). Log the drain so
+		// operators can see room lifecycle; the original bytes
+		// remain in the inline store for re-seed on the next join.
+		log.Printf("room drain doc=%s — original snapshot retained", docID)
+	}))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)

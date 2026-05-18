@@ -149,15 +149,41 @@ func (r *Room) Broadcast(sender *Client, frame []byte) {
 // gateway's WS handler calls Join on connect and Leave on
 // disconnect; Manager handles room creation + reclaim.
 type Manager struct {
-	mu       sync.Mutex
-	rooms    map[string]*Room
-	nextID   atomic.Uint64
+	mu      sync.Mutex
+	rooms   map[string]*Room
+	nextID  atomic.Uint64
+	onDrain DrainFunc
 }
+
+// DrainFunc is invoked once when the last client leaves a room,
+// just before the manager forgets the room. The implementation
+// should kick off whatever snapshot/persistence work the host
+// integration requires; the call is synchronous but cheap because
+// the actual host I/O happens in a goroutine the impl spawns.
+//
+// `docID` is the doc the room was serving. Errors are logged and
+// otherwise ignored — the room is dropped regardless so the
+// memory is reclaimed.
+type DrainFunc func(docID string)
 
 // NewManager constructs an empty Manager. Rooms are lazily
 // allocated on first Join.
-func NewManager() *Manager {
-	return &Manager{rooms: make(map[string]*Room)}
+func NewManager(opts ...ManagerOption) *Manager {
+	m := &Manager{rooms: make(map[string]*Room)}
+	for _, o := range opts {
+		o(m)
+	}
+	return m
+}
+
+// ManagerOption is a functional option for Manager construction.
+type ManagerOption func(*Manager)
+
+// WithDrainFunc registers a callback fired when the last client
+// leaves a room. This is where the host.Integration snapshot is
+// wired in (see cmd/gateway/main.go for the v0 wiring).
+func WithDrainFunc(fn DrainFunc) ManagerOption {
+	return func(m *Manager) { m.onDrain = fn }
 }
 
 // Join records a new client for docID. If the room doesn't yet
@@ -180,9 +206,9 @@ func (m *Manager) Join(docID string) (*Room, *Client) {
 }
 
 // Leave records a client disconnect. When the last client
-// disconnects from a room, the room is removed from the manager;
-// in M2 this is also the trigger for the host.Integration
-// snapshot.
+// disconnects from a room, the room is removed from the manager
+// and the DrainFunc (if any) is invoked — that's the hook the
+// host.Integration snapshot wires into.
 //
 // `r` and `c` come from a prior Join.
 func (m *Manager) Leave(r *Room, c *Client) {
@@ -191,17 +217,25 @@ func (m *Manager) Leave(r *Room, c *Client) {
 	}
 	r.RemoveClient(c)
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	// Re-check via the room registry — a concurrent Join could
 	// have added more clients between RemoveClient and here. We
 	// only reclaim when the room is genuinely empty.
 	stored, ok := m.rooms[r.DocID()]
 	if !ok || stored != r {
+		m.mu.Unlock()
 		return
 	}
+	drained := false
 	if r.Clients() == 0 {
-		// TODO(m2): trigger host.Integration.Snapshot before dropping.
 		delete(m.rooms, r.DocID())
+		drained = true
+	}
+	drain := m.onDrain
+	docID := r.DocID()
+	m.mu.Unlock()
+
+	if drained && drain != nil {
+		drain(docID)
 	}
 }
 

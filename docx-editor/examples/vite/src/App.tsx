@@ -7,6 +7,9 @@ import {
 import { useCollab } from './collab/useCollab';
 import { StatusBadge } from './collab/StatusBadge';
 import { ShareDialog } from './collab/Share';
+import { LoadingPanel } from './collab/LoadingPanel';
+import { ErrorPanel } from './collab/ErrorPanel';
+import { DisconnectedBanner } from './collab/DisconnectedBanner';
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -169,6 +172,17 @@ export function App() {
 
   const [shareOpen, setShareOpen] = useState(false);
 
+  // Collab is only available when the build has a real backend to
+  // talk to. The Pages demo builds with this off because there's no
+  // gateway behind doc.schnsrw.live; the Docker image and local dev
+  // builds set VITE_COLLAB_ENABLED=true. Hiding the Share button in
+  // the disabled case prevents the user from hitting a dead /api/docs
+  // POST and having no idea why.
+  const collabEnabled = useMemo(() => {
+    const raw = (import.meta as { env?: Record<string, string> }).env?.VITE_COLLAB_ENABLED;
+    return raw === 'true' || raw === '1';
+  }, []);
+
   // Under `?e2e=1`, expose the editor ref on window so Playwright can
   // call addComment/getComments/findInDocument programmatically. Off by
   // default so the live demo at docx-editor.dev doesn't leak the API.
@@ -283,16 +297,18 @@ export function App() {
         <button style={styles.button} onClick={handleSave}>
           Save
         </button>
-        <button
-          style={{ ...styles.button, background: '#2563eb', color: '#fff', border: 'none' }}
-          onClick={() => setShareOpen(true)}
-        >
-          Share
-        </button>
+        {collabEnabled && (
+          <button
+            style={{ ...styles.button, background: '#2563eb', color: '#fff', border: 'none' }}
+            onClick={() => setShareOpen(true)}
+          >
+            Share
+          </button>
+        )}
         {status && <span style={styles.status}>{status}</span>}
       </div>
     ),
-    [handleFileSelect, handleNewDocument, handleSave, status]
+    [handleFileSelect, handleNewDocument, handleSave, status, collabEnabled]
   );
 
   // Collab mode is a hard fork: the editor binds to a Y.Doc fed by
@@ -306,6 +322,7 @@ export function App() {
         editorRef={editorRef}
         room={collabParams.room}
         backend={collabParams.backend}
+        backendHttp={backendHttp}
         author={randomAuthor}
         zoom={autoZoom}
         isMobile={isMobile}
@@ -363,7 +380,8 @@ interface CollabAppProps {
   editorRef: React.RefObject<DocxEditorRef | null>;
   room: string;
   backend: string;
-  author: { name: string; color: string };
+  backendHttp: string;
+  author: string;
   zoom: number;
   isMobile: boolean;
   commentIdBase: number | undefined;
@@ -373,10 +391,19 @@ interface CollabAppProps {
   onFontsLoaded: () => void;
 }
 
+// Seed-fetch state. Loading is the default until the gateway hands
+// back the original .docx bytes; without those there's nothing for
+// the editor (and therefore for ySyncPlugin) to paint.
+type SeedState =
+  | { kind: 'loading' }
+  | { kind: 'ready'; buffer: ArrayBuffer; fileName: string }
+  | { kind: 'error'; message: string };
+
 function CollabApp({
   editorRef,
   room,
   backend,
+  backendHttp,
   author,
   zoom,
   isMobile,
@@ -387,6 +414,44 @@ function CollabApp({
   onFontsLoaded,
 }: CollabAppProps) {
   const { plugins, status, peers } = useCollab({ room, backend, user });
+  const [seed, setSeed] = useState<SeedState>({ kind: 'loading' });
+  // Bumped via "Try again" to re-trigger the fetch effect.
+  const [attempt, setAttempt] = useState(0);
+
+  // Fetch the seed .docx for this room. Every joiner does this on
+  // mount — ySyncPlugin reconciles divergent loads (the first
+  // joiner's PM → Y.Doc capture wins, subsequent joiners' loads
+  // get overwritten by the Y.Doc state during plugin init).
+  useEffect(() => {
+    let cancelled = false;
+    setSeed({ kind: 'loading' });
+
+    fetch(`${backendHttp}/api/docs/${encodeURIComponent(room)}/download`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+        const fromHeader = parseFileNameFromDisposition(
+          res.headers.get('Content-Disposition')
+        );
+        const buffer = await res.arrayBuffer();
+        return { buffer, fileName: fromHeader ?? `${room}.docx` };
+      })
+      .then(({ buffer, fileName }) => {
+        if (cancelled) return;
+        setSeed({ kind: 'ready', buffer, fileName });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : String(err);
+        setSeed({ kind: 'error', message });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backendHttp, room, attempt]);
 
   const renderTitleBarRight = useCallback(
     () => (
@@ -405,12 +470,26 @@ function CollabApp({
     [room]
   );
 
+  if (seed.kind === 'loading') {
+    return <LoadingPanel />;
+  }
+
+  if (seed.kind === 'error') {
+    return (
+      <ErrorPanel
+        error={seed.message}
+        onRetry={() => setAttempt((n) => n + 1)}
+      />
+    );
+  }
+
   return (
     <div style={styles.container}>
+      <DisconnectedBanner status={status} />
       <main style={styles.main}>
         <DocxEditor
           ref={editorRef}
-          externalContent={true}
+          documentBuffer={seed.buffer}
           externalPlugins={plugins}
           author={author}
           onError={onError}
@@ -421,11 +500,30 @@ function CollabApp({
           initialZoom={zoom}
           disableFindReplaceShortcuts={disableFindReplaceShortcuts}
           commentIdBase={commentIdBase}
-          documentName={`Shared session ${room.slice(0, 8)}`}
+          documentName={seed.fileName}
           renderTitleBarRight={renderTitleBarRight}
         />
       </main>
       <StatusBadge status={status} peers={peers} />
     </div>
   );
+}
+
+// Pull a filename out of a Content-Disposition header, handling
+// both `filename="..."` and the RFC 5987 `filename*=UTF-8''...`
+// form the gateway emits. Returns undefined on anything we can't
+// confidently parse.
+function parseFileNameFromDisposition(header: string | null): string | undefined {
+  if (!header) return undefined;
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star && star[1]) {
+    try {
+      return decodeURIComponent(star[1]);
+    } catch {
+      /* fall through */
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  if (plain && plain[1]) return plain[1];
+  return undefined;
 }
