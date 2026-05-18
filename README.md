@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://doc.schnsrw.live/">
-    <img src="./assets/logo.svg" alt="Casual Editor" width="96" height="96" />
+    <img src="https://raw.githubusercontent.com/schnsrw/docx/main/assets/logo.svg" alt="Casual Editor" width="96" height="96" />
   </a>
 </p>
 

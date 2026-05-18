@@ -79,6 +79,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Sync README + short description to Docker Hub
+        # Pushes the repo's README.md as the Docker Hub long
+        # description so the image's "Overview" tab has the same
+        # quickstart / deployment instructions visitors see on
+        # GitHub. Skipped on prereleases — the docker hub copy
+        # tracks the latest production release.
+        if: steps.ver.outputs.prerelease == 'false'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/casual-editor
+          short-description: 'Word-flavored web .docx editor with real-time co-editing via a stateless Go gateway. MIT.'
+          readme-filepath: ./README.md
+
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
