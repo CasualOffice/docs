@@ -1,0 +1,50 @@
+Casual Editor
+Copyright 2026 Casual Editor contributors
+
+This product is licensed under the Apache License, Version 2.0
+(see LICENSE).
+
+─── Inlined upstream code ────────────────────────────────────────────
+
+The `docx-editor/` directory is a working fork of:
+
+  eigenpal/docx-editor (https://github.com/eigenpal/docx-editor)
+  Copyright (c) 2024 EigenPal
+  Licensed under the MIT License.
+
+The upstream MIT license is preserved verbatim at `docx-editor/LICENSE`
+and continues to govern the files under `docx-editor/` (parser,
+serializer, ProseMirror schema, layout-painter, React component, e2e
+suite). Our fork's modifications to those files inherit the MIT terms;
+new files added under `docx-editor/` are also MIT for consistency with
+the upstream tree.
+
+Files outside `docx-editor/` — including the Go backend at `backend/`,
+the bundled Dockerfile, docker-compose configuration, CI workflows,
+fidelity-comparison scripts, and project documentation — are Apache-2.0
+(this repo's NOTICE and LICENSE).
+
+─── Runtime dependencies ─────────────────────────────────────────────
+
+This product depends on the following Open Source software at runtime
+(non-exhaustive — see the per-package package.json + backend/go.mod for
+the full dependency list):
+
+  Editor (docx-editor/, MIT or compatible):
+    * react              — MIT          (Meta Platforms, Inc.)
+    * prosemirror-*      — MIT          (Marijn Haverbeke and contributors)
+    * yjs                — MIT          (Kevin Jahns)
+    * y-prosemirror      — MIT          (Kevin Jahns)
+    * y-websocket        — MIT          (Kevin Jahns)
+    * jszip              — MIT or GPL-3 (Stuart Knightley)
+    * xml-js             — MIT          (Nashwaan)
+
+  Gateway (backend/, Apache-2.0):
+    * github.com/coder/websocket — ISC  (Coder Technologies, Inc.)
+    * Go standard library         — BSD-3-Clause (The Go Authors)
+
+─── Trademarks ──────────────────────────────────────────────────────
+
+"Casual Editor" is a project name only and conveys no implication of
+endorsement by, or affiliation with, Microsoft Corporation, ECMA
+International, or the authors of any other software referenced here.

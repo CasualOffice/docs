@@ -91,7 +91,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/casual-editor
-          short-description: 'Word-flavored web .docx editor with real-time co-editing via a stateless Go gateway. MIT.'
+          short-description: 'Word-flavored web .docx editor with real-time co-editing via a stateless Go gateway. Apache-2.0.'
           readme-filepath: ./README.md
 
   github-release:

@@ -18,7 +18,7 @@
   <a href="https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml">
     <img src="https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml/badge.svg?branch=main" alt="Deploy demo" />
   </a>
-  <img src="https://img.shields.io/badge/license-MIT-2563eb?style=flat-square" alt="License: MIT" />
+  <img src="https://img.shields.io/badge/license-Apache--2.0-2563eb?style=flat-square" alt="License: Apache-2.0" />
 </p>
 
 ---
@@ -213,7 +213,13 @@ behind each.
 
 ## License
 
-MIT for all code in this repo and under `docx-editor/`. The upstream
-fork's MIT
-[`LICENSE`](docx-editor/LICENSE) covers the inlined editor codebase
-and is preserved as required for attribution.
+**Apache-2.0** for this repository — the Go gateway, Dockerfile,
+docker-compose, CI workflows, fidelity-comparison scripts, and
+project docs. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+The inlined editor under [`docx-editor/`](docx-editor/) is a working
+fork of [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor)
+and remains under its original **MIT** terms — see
+[`docx-editor/LICENSE`](docx-editor/LICENSE). Apache-2.0 + MIT are
+compatible; the combined work is distributed under Apache-2.0 with
+MIT attribution preserved.
