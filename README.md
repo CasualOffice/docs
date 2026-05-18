@@ -118,7 +118,8 @@ Backend (`backend/`, Go):
 │   ├── 02-pipeline.md         -- how a fidelity gap moves repro → PR
 │   ├── 03-gap-matrix.md       -- per-gap status table
 │   ├── 04-architecture-review-response.md -- review + response
-│   └── 05-backend-design.md   -- backend design + lifecycle
+│   ├── 05-backend-design.md   -- backend design + lifecycle
+│   └── 06-deployment.md       -- deployment + ops guide
 ├── backend/                   -- Go gateway (this repo's proprietary)
 │   ├── cmd/gateway/           -- entry point, REST + WS handlers
 │   └── internal/
@@ -135,13 +136,29 @@ Backend (`backend/`, Go):
 └── .github/workflows/         -- CI + Pages deploy
 ```
 
+## Run with Docker
+
+The fastest path from "git clone" to "shareable live doc" is the
+bundled image — editor SPA + Go gateway in one container, behind
+one port, no DB or sidecars.
+
+```bash
+# Pull + run the published image (single command).
+docker run --rm -p 8080:8080 schnsrw/casual-editor:latest
+# open http://localhost:8080 — upload a .docx, click Share, send the link
+```
+
+For configuration (env vars, reverse-proxy + TLS, scaling notes,
+troubleshooting), see [`docs/06-deployment.md`](docs/06-deployment.md).
+For all variables in one place, see [`.env.example`](.env.example).
+
 ## Local dev
 
 Two ways depending on what you're working on:
 
 ```bash
-# Try the bundled image (editor + gateway baked into one container).
-# First run builds the image — subsequent runs reuse the build cache.
+# Build + run the bundled image from source.
+# First run takes a few minutes — subsequent runs reuse the cache.
 docker compose up
 open http://localhost:8080/
 
