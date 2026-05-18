@@ -135,16 +135,26 @@ export function App() {
     return { room, backend };
   }, []);
 
-  // Backend HTTP base — used for the upload (POST /api/docs) in the
-  // Share dialog. Convert the ws:// URL back into http:// since the
-  // share-link query string carries the WS URL.
+  // Backend HTTP base — used for the upload (POST /api/docs) in
+  // the Share dialog and the seed-download fetch in CollabApp.
+  //
+  // Resolution order:
+  //   1. ?backend=ws(s)://... in the URL → use that, converting back
+  //      to http(s) for the REST surface. Set by the share link
+  //      generator.
+  //   2. VITE_BACKEND env at build time → for the Vite dev story
+  //      where the editor is on :5173 and the gateway on :8080.
+  //   3. window.location.origin in production builds → the bundled
+  //      Docker image serves both the editor and the gateway from
+  //      the same origin, so this is the only correct default.
+  //   4. http://localhost:8080 in dev as a last-resort fallback.
   const backendHttp = useMemo(() => {
     const fromQS = new URLSearchParams(window.location.search).get('backend');
     if (fromQS) return fromQS.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
-    // Single-user mode default: look for VITE_BACKEND env, then
-    // fall back to localhost.
     const env = (import.meta as { env?: Record<string, string> }).env?.VITE_BACKEND;
     if (env) return env;
+    const isDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+    if (!isDev) return window.location.origin;
     return 'http://localhost:8080';
   }, []);
 
