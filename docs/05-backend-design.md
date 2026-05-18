@@ -4,12 +4,49 @@
 > Captures the design before any Go code is written so future work
 > isn't left re-deriving these decisions.
 
+## Deployment shapes (collab is opt-in, single-channel)
+
+The editor ships in three deployment shapes; only one of them
+includes the Go backend at all:
+
+| Distribution | Mode | Backend |
+|---|---|---|
+| **GitHub Pages** — `doc.schnsrw.live` | single-user demo | none |
+| **Docker Hub** — `schnsrw/casual-doc` (planned) | collab on | the Go gateway in this repo |
+| **Tauri desktop app** (in progress) | single-user | none |
+
+Mode 1 (Pages) already ships. Mode 3 (Tauri) reuses the same
+React+ProseMirror bundle inside a native window — no network calls,
+no gateway, the user owns the file locally. Mode 2 (Docker) is the
+only place collab + the Go gateway live.
+
+This matches what sheet does: GitHub Pages demo at
+`sheet.schnsrw.live` is single-user, the `schnsrw/casual-sheets`
+Docker image bundles the Hocuspocus server for collab.
+
+It shapes everything else:
+
+- The web build **must not import** any code that requires the
+  gateway. Collab is a feature of the Docker distribution, not of
+  the React package. The same Vite bundle ships to Pages, Docker,
+  and Tauri.
+- The gateway only ever runs as **a self-contained Docker
+  service** in v0 — bundled with the static editor bundle in the
+  same image, both served from the same Fastify-style HTTP root.
+  Once v1+ host-integration lands, the gateway can also be
+  deployed as a standalone service for another product to
+  integrate with.
+- The editor's existing `.docx` round-trip (parse + serialize)
+  is the **only path** for bytes in and out in modes 1 and 3.
+  Mode 2 reuses it: the gateway delegates to the editor's
+  headless serializer rather than running its own.
+
 ## What this service is (and what it isn't)
 
-Casual Editor's backend is an **integration component**, not a
-document storage system. The deployment target is "another product
-spins up our container alongside theirs and we orchestrate a live
-co-editing session for one of their files."
+The Go backend in this doc is **only the collab orchestrator** —
+it does nothing single-user clients need. Its deployment target
+is the Docker Hub image that bundles editor + gateway, plus the
+future "integration component for another product" v1+ path.
 
 That shapes everything else:
 
