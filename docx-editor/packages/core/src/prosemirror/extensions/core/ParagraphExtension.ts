@@ -854,6 +854,15 @@ export const ParagraphExtension = createNodeExtension({
           };
         },
       },
+      keyboardShortcuts: {
+        // Word / Google Docs paragraph alignment shortcuts.
+        // Surfaced by AlignmentButtons in the toolbar; bound here so the
+        // shortcut works whether or not the dropdown is open.
+        'Mod-l': makeSetAlignment('left'),
+        'Mod-e': makeSetAlignment('center'),
+        'Mod-r': makeSetAlignment('right'),
+        'Mod-j': makeSetAlignment('both'),
+      },
     };
   },
 });
