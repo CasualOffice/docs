@@ -120,8 +120,30 @@ export function DocImage({
     ...additionalStyle,
   };
 
-  // Handle missing image data
-  if (!image.src) {
+  // Browsers can't render Windows metafiles or EPS — the data URL is
+  // still set so a round-trip preserves the original bytes, but the
+  // <img> tag would just render empty. Treat those formats like a
+  // missing-image case so the user sees the placeholder card with the
+  // original filename instead of a blank gap (especially noticeable
+  // for header / footer logos which would otherwise look like a layout
+  // bug). A future server-side conversion step can replace this with a
+  // PNG fallback.
+  const UNRENDERABLE_MIME = new Set([
+    'image/x-emf',
+    'image/emf',
+    'image/x-wmf',
+    'image/wmf',
+    'image/x-eps',
+    'image/eps',
+    'application/postscript',
+  ]);
+  const unrenderable = !!image.mimeType && UNRENDERABLE_MIME.has(image.mimeType);
+
+  // Handle missing or unrenderable image data
+  if (!image.src || unrenderable) {
+    const label = unrenderable
+      ? (image.mimeType?.replace(/^image\/(x-)?/, '').toUpperCase() ?? 'image')
+      : 'Image';
     return (
       <span
         className={classNames.join(' ')}
@@ -132,9 +154,13 @@ export function DocImage({
           ...additionalStyle,
         }}
         onClick={onClick}
-        title={image.title || image.alt || 'Image'}
+        title={
+          unrenderable
+            ? `${image.filename ?? 'Image'} — ${label} format isn't supported by web previews. The original is preserved in the file.`
+            : image.title || image.alt || 'Image'
+        }
       >
-        [Image]
+        [{label}]
         {image.filename && <br />}
         {image.filename && <small>{image.filename}</small>}
       </span>

@@ -132,6 +132,38 @@ export function renderImageFragment(
     containerEl.dataset.pmEnd = String(fragment.pmEnd);
   }
 
+  // Detect formats that browsers can't render natively. The bytes are
+  // still preserved in the source data URL (so a round-trip save keeps
+  // the original EMF / WMF / EPS), but trying to put them in <img>
+  // produces an empty rectangle that looks like a layout bug —
+  // especially noticeable on header / footer logos. Render a soft
+  // placeholder div instead.
+  const m = /^data:(image\/(?:x-)?(emf|wmf|eps)|application\/postscript)[;,]/i.exec(block.src);
+  if (m) {
+    const label = (m[2] ?? 'image').toUpperCase();
+    const placeholder = doc.createElement('div');
+    placeholder.style.cssText = [
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'width:100%',
+      'height:100%',
+      'border:1px dashed #cbd5e1',
+      'background:#f8fafc',
+      'color:#64748b',
+      'font:11px/1.3 system-ui, sans-serif',
+      'box-sizing:border-box',
+      'border-radius:4px',
+      'padding:6px',
+      'text-align:center',
+      'user-select:none',
+    ].join(';');
+    placeholder.textContent = `[${label}]`;
+    placeholder.title = `Image is in ${label} format — web previews can't render it. The original file content is preserved on save.`;
+    containerEl.appendChild(placeholder);
+    return containerEl;
+  }
+
   // Create the actual image element
   const imgEl = doc.createElement('img');
   imgEl.src = block.src;
