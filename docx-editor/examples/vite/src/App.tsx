@@ -209,7 +209,35 @@ export function App() {
   const { zoom: autoZoom, isMobile } = useResponsiveLayout();
 
   useEffect(() => {
-    // Prefix with Vite's BASE_URL so the seed doc loads under both:
+    // Inside deskApp (Tauri shell), the host injects `window.__deskApp__`
+    // with the file path the user opened. Skip the web demo's fetch and
+    // read straight from disk. If filePath is null (blank window), start
+    // with an empty document.
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (bridge?.isDesktop) {
+      if (bridge.filePath) {
+        const name = bridge.filePath.split(/[\\/]/).pop() || 'Untitled.docx';
+        bridge
+          .loadDocument()
+          .then((buffer) => {
+            setDocumentBuffer(buffer);
+            setFileName(name);
+          })
+          .catch((err) => {
+            console.error('deskApp loadDocument failed', err);
+            setCurrentDocument(createEmptyDocument());
+            setFileName(name);
+            setStatus(`Could not open file: ${err}`);
+          });
+      } else {
+        setCurrentDocument(createEmptyDocument());
+        setFileName('Untitled.docx');
+      }
+      return;
+    }
+
+    // Web-only path. Prefix with Vite's BASE_URL so the seed doc loads
+    // under both:
     //   - Local dev / Vercel (BASE_URL = '/'): fetches '/docx-editor-demo.docx'
     //   - GitHub Pages (BASE_URL = '/docx/'): fetches '/docx/docx-editor-demo.docx'
     // The catch below already falls back to an empty doc on 404, but on
@@ -256,29 +284,66 @@ export function App() {
 
   const handleSave = useCallback(async () => {
     if (!editorRef.current) return;
-
     try {
-      setStatus('Saving...');
+      setStatus('Saving…');
       const buffer = await editorRef.current.save();
-      if (buffer) {
-        const blob = new Blob([buffer], {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName || 'document.docx';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setStatus('Saved!');
-        setTimeout(() => setStatus(''), 2000);
+      if (!buffer) return;
+      const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+      if (bridge?.isDesktop) {
+        const written = await bridge.save(buffer);
+        const name = written.split(/[\\/]/).pop();
+        if (name) setFileName(name);
+        setStatus('Saved');
+        setTimeout(() => setStatus(''), 1500);
+        return;
       }
-    } catch {
+      // Web fallback: browser download.
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'document.docx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStatus('Saved!');
+      setTimeout(() => setStatus(''), 2000);
+    } catch (err) {
+      console.error('save failed', err);
       setStatus('Save failed');
     }
   }, [fileName]);
+
+  const handleSaveAs = useCallback(async () => {
+    if (!editorRef.current) return;
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (!bridge?.isDesktop) {
+      // No native Save As on web — fall through to Save (which downloads).
+      return handleSave();
+    }
+    try {
+      setStatus('Saving…');
+      const buffer = await editorRef.current.save();
+      if (!buffer) return;
+      const written = await bridge.saveAs(fileName || 'Untitled.docx', buffer);
+      if (written) {
+        const name = written.split(/[\\/]/).pop();
+        if (name) setFileName(name);
+        setStatus('Saved');
+        setTimeout(() => setStatus(''), 1500);
+      } else {
+        setStatus('');
+      }
+    } catch (err) {
+      console.error('saveAs failed', err);
+      setStatus('Save As failed');
+    }
+  }, [fileName, handleSave]);
+
+  const isDesktop = typeof window !== 'undefined' && window.__deskApp__?.isDesktop === true;
 
   const handleError = useCallback((error: Error) => {
     console.error('Editor error:', error);
