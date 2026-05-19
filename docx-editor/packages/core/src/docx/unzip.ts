@@ -88,8 +88,73 @@ export interface RawDocxContent {
  * @param buffer - DOCX file as ArrayBuffer
  * @returns Promise resolving to extracted content
  */
+/**
+ * Sniff the first few bytes of `buffer` to detect common
+ * mis-recognised-as-docx file shapes. Returns a friendly Error when the
+ * input is clearly *not* a docx archive, or null when the bytes look
+ * plausibly zip-shaped and we should hand off to JSZip.
+ *
+ * The check matters because users rename `.doc` → `.docx` and expect it
+ * to open; JSZip's actual failure message ("Can't find end of central
+ * directory") is opaque and looks like editor breakage.
+ */
+function classifyNonDocxInput(buffer: ArrayBuffer): Error | null {
+  if (buffer.byteLength < 8) {
+    return new Error('Not a .docx file: input is empty or too small to be a valid archive.');
+  }
+  const head = new Uint8Array(buffer, 0, 8);
+  // CFB / OLE Compound File header — legacy `.doc` (Word 97-2003), `.xls`,
+  // `.ppt`, all share this signature.
+  if (
+    head[0] === 0xd0 &&
+    head[1] === 0xcf &&
+    head[2] === 0x11 &&
+    head[3] === 0xe0 &&
+    head[4] === 0xa1 &&
+    head[5] === 0xb1 &&
+    head[6] === 0x1a &&
+    head[7] === 0xe1
+  ) {
+    return new Error(
+      'This file is a legacy Word `.doc` (binary) document, not a `.docx` ' +
+        '(OOXML) archive. Casual Editor does not open `.doc`; save it as ' +
+        '`.docx` in Microsoft Word, LibreOffice, or Pages first.'
+    );
+  }
+  // RTF
+  if (head[0] === 0x7b && head[1] === 0x5c && head[2] === 0x72 && head[3] === 0x74) {
+    return new Error('This file is RTF, not a `.docx` archive.');
+  }
+  // ODT (and any zip in general) starts with PK (0x50 0x4B). ODT-specific
+  // content (mimetype "application/vnd.oasis.opendocument.text") is
+  // checked later by content-types inspection; here we just accept PK
+  // archives and let JSZip + the content-type probe handle the rest.
+  // Anything else with non-PK magic is rejected.
+  if (head[0] !== 0x50 || head[1] !== 0x4b) {
+    const hex = Array.from(head)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join(' ');
+    return new Error(`Not a .docx file: unexpected magic bytes ${hex}`);
+  }
+  return null;
+}
+
 export async function unzipDocx(buffer: ArrayBuffer): Promise<RawDocxContent> {
-  const zip = await JSZip.loadAsync(buffer);
+  const preflight = classifyNonDocxInput(buffer);
+  if (preflight) throw preflight;
+
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(buffer);
+  } catch (e) {
+    // The pre-flight catches the common cases; if we still got here with
+    // PK magic but JSZip couldn't load it, the archive is truncated or
+    // corrupt. Surface that rather than the raw library message.
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `Failed to read .docx archive — the file looks like a ZIP (PK header) but is corrupt or truncated: ${msg}`
+    );
+  }
 
   const content: RawDocxContent = {
     documentXml: null,
