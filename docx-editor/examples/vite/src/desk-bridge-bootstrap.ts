@@ -39,19 +39,22 @@ if (isDesktop) {
 
   if (isTopLevel && tauriCore?.invoke) {
     const inv = tauriCore.invoke;
-    // Tauri 2 supports raw binary transfer when the JS arg is a Uint8Array:
-    // it's deserialized as Vec<u8> on the Rust side without going through a
-    // JSON number array. This is the difference between a 50 MB save taking
-    // ~300 ms vs >30 seconds.
-    const bytesOf = (b: ArrayBuffer | Uint8Array): Uint8Array =>
-      b instanceof Uint8Array ? b : new Uint8Array(b);
-    // Reverse: Tauri returns Vec<u8> as ArrayBuffer/Uint8Array on modern
-    // versions; older builds returned number[]. Handle both.
+    // load_document returns tauri::ipc::Response::new(bytes) on the Rust
+    // side — over binary IPC that resolves to ArrayBuffer directly. No
+    // JSON number-array cost, no truncation on large files.
+    // save_document / save_document_as still go through the JSON path
+    // for now (Array.from + send as number array). That's the next
+    // optimization once we can verify the Tauri 2 binary-input path
+    // for our Linux build.
     const asArrayBuffer = (raw: unknown): ArrayBuffer => {
       if (raw instanceof ArrayBuffer) return raw;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((raw as any) instanceof Uint8Array) return (raw as Uint8Array).buffer as ArrayBuffer;
-      return new Uint8Array(raw as number[]).buffer;
+      if (raw instanceof Uint8Array) {
+        const u8 = raw;
+        return u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength
+          ? (u8.buffer as ArrayBuffer)
+          : (u8.slice().buffer as ArrayBuffer);
+      }
+      return new Uint8Array(raw as number[]).buffer as ArrayBuffer;
     };
     async function updateWindowTitleFromPath(newPath: string) {
       try {
@@ -76,7 +79,10 @@ if (isDesktop) {
       },
       async save(bytes: ArrayBuffer): Promise<string | null> {
         if (filePath) {
-          await inv('save_document', { path: filePath, bytes: bytesOf(bytes) });
+          await inv('save_document', {
+            path: filePath,
+            bytes: Array.from(new Uint8Array(bytes)),
+          });
           return filePath;
         }
         return bridge!.saveAs('Untitled.docx', bytes);
@@ -84,7 +90,7 @@ if (isDesktop) {
       async saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null> {
         const written = (await inv('save_document_as', {
           suggestedName,
-          bytes: bytesOf(bytes),
+          bytes: Array.from(new Uint8Array(bytes)),
         })) as string | null;
         if (written) {
           filePath = written;
