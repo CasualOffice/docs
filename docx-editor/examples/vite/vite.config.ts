@@ -21,6 +21,15 @@ export default defineConfig(async () => {
     plugins: [react()],
     root: __dirname,
     resolve: {
+      // Force a single React + React-DOM copy across the workspace. After
+      // examples/vite was added to the bun workspaces array, bun installed
+      // a second physical React under examples/vite/node_modules/react —
+      // separate from packages/react's hoisted copy. Vite ended up loading
+      // one React for the alias-resolved `@eigenpal/docx-js-editor` source
+      // and another for components that import React directly inside the
+      // example, which crashed Radix Select with "Cannot read properties
+      // of null (reading 'useMemo')" on the toolbar's ZoomControl.
+      dedupe: ['react', 'react-dom'],
       alias: [
         // Resolve package imports to source for live development
         // Order matters: more-specific prefixes before less-specific ones

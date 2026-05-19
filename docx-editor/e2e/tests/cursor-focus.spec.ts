@@ -84,20 +84,19 @@ test.describe('Cursor Focus - Toolbar Interactions', () => {
   test('cursor stays visible after clicking alignment buttons', async ({ page }) => {
     await editor.typeText('Test text');
 
-    // Click Center alignment
-    await page.getByRole('button', { name: 'Center (Ctrl+E)' }).click();
-
-    // Verify focus is maintained
+    // Alignment lives in a dropdown popover now (AlignmentButtons.tsx —
+    // single trigger with a popover panel). Use the dedicated helpers
+    // so this test stays in sync with the toolbar's actual shape; the
+    // old `getByRole('button', { name: 'Center (Ctrl+E)' })` no longer
+    // matches because the named buttons are inside the closed popover.
+    await editor.alignCenter();
     const editorHasFocus = await page.evaluate(() => {
       const editor = document.querySelector('.ProseMirror');
       return document.activeElement === editor || editor?.contains(document.activeElement);
     });
     expect(editorHasFocus).toBe(true);
 
-    // Click Right alignment
-    await page.getByRole('button', { name: 'Align Right (Ctrl+R)' }).click();
-
-    // Verify focus is still maintained
+    await editor.alignRight();
     const stillHasFocus = await page.evaluate(() => {
       const editor = document.querySelector('.ProseMirror');
       return document.activeElement === editor || editor?.contains(document.activeElement);
@@ -335,8 +334,10 @@ test.describe('Cursor Focus - Background Click', () => {
     // Type some text first
     await editor.typeText('Some text');
 
-    // Click on the toolbar area (but not on a button)
-    const toolbar = page.getByTestId('toolbar');
+    // Click on the toolbar area (but not on a button). The editor mounts
+    // `<EditorToolbar>` (testid `editor-toolbar`), not the bare `<Toolbar>`
+    // — the older `getByTestId('toolbar')` was a stale upstream reference.
+    const toolbar = page.getByTestId('editor-toolbar');
     const box = await toolbar.boundingBox();
     if (box) {
       // Click on empty area of toolbar (far right where there are no buttons)

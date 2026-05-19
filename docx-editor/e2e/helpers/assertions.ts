@@ -334,7 +334,18 @@ export async function assertParagraphAlignment(
 }
 
 /**
- * Assert paragraph is a list item
+ * Assert paragraph is a list item.
+ *
+ * The painter's actual DOM (`layout-painter/renderParagraph.ts`) emits a
+ * `<span class="layout-list-marker">` containing the bullet glyph or
+ * formatted counter; there is no `data-paragraph-index` attribute and no
+ * `docx-list-*` classes — those belonged to an older rendering scheme.
+ *
+ * Detection here walks `.layout-paragraph` elements in document order,
+ * picks the Nth, and asks whether its list-marker matches the requested
+ * type. Bullet markers are common bullet glyphs; numbered markers are
+ * decimal/roman/alpha forms allowed by `layout-bridge/toFlowBlocks.ts`
+ * `formatCounter()`.
  */
 export async function assertParagraphIsList(
   page: Page,
@@ -343,32 +354,26 @@ export async function assertParagraphIsList(
 ): Promise<void> {
   const isList = await page.evaluate(
     ({ pIndex, type }) => {
-      const paragraph = document.querySelector(`p[data-paragraph-index="${pIndex}"]`);
+      // Painter virtualizes pages — only the visible paragraphs are
+      // present in the DOM. For the assertion's flat indexing we look
+      // at all `.layout-paragraph` elements globally in document order.
+      const paragraphs = Array.from(document.querySelectorAll('.layout-paragraph'));
+      const paragraph = paragraphs[pIndex];
       if (!paragraph) return false;
 
-      // Check for our editor's list classes
-      if (type === 'bullet' && paragraph.classList.contains('docx-list-bullet')) return true;
-      if (type === 'numbered' && paragraph.classList.contains('docx-list-numbered')) return true;
+      const marker = paragraph.querySelector('.layout-list-marker');
+      if (!marker) return false;
 
-      // Also check for generic list-item class with list marker check
-      if (paragraph.classList.contains('docx-list-item')) {
-        // Look for list marker
-        const marker = paragraph.querySelector('.docx-list-marker');
-        if (marker) {
-          const markerText = marker.textContent || '';
-          if (type === 'bullet' && /^[•○▪◦▸]$/.test(markerText)) return true;
-          if (type === 'numbered' && /^\d+\.$/.test(markerText)) return true;
-        }
+      const markerText = (marker.textContent || '').trim();
+      if (type === 'bullet') {
+        // Common bullet glyphs from the OOXML default lvlText set plus
+        // Wingdings replacements the editor normalises into Unicode.
+        return /^[•○▪◦▸◆◇■□●–-]$/.test(markerText);
       }
-
-      // Fallback: Check for ul/ol parent (for standard HTML lists)
-      const parent = paragraph.closest('ul, ol');
-      if (parent) {
-        if (type === 'bullet' && parent.tagName === 'UL') return true;
-        if (type === 'numbered' && parent.tagName === 'OL') return true;
-      }
-
-      return false;
+      // Numbered formats: decimal (1.), roman (i. / I.), alpha (a. / A.),
+      // chicago / parenthesized variants. Be lenient — the painter has
+      // 9+ numFmt branches in formatCounter().
+      return /[0-9ivxlcdmIVXLCDMa-zA-Z①②③④⑤⑥⑦⑧⑨]/.test(markerText);
     },
     { pIndex: paragraphIndex, type: listType }
   );

@@ -381,8 +381,12 @@ test.describe('Border Color Picker', () => {
   });
 
   test('border color picker shows theme matrix in table context', async ({ page }) => {
-    // Find and click the border color picker button in the toolbar
-    const borderColorBtn = page.locator('.docx-color-picker-button[title="Border Color"]');
+    // The table-context color pickers render as split-button — an `apply`
+    // half (left, applies the current swatch) and an `arrow` half (right,
+    // opens the dropdown). The dropdown trigger is the arrow.
+    const borderColorBtn = page.locator(
+      '.docx-color-picker-arrow[title="Border Color"]'
+    );
     await expect(borderColorBtn).toBeVisible({ timeout: 5000 });
     await borderColorBtn.click();
 
@@ -398,8 +402,10 @@ test.describe('Border Color Picker', () => {
   });
 
   test('apply border color from standard colors', async ({ page }) => {
-    // Open border color picker
-    const borderColorBtn = page.locator('.docx-color-picker-button[title="Border Color"]');
+    // Open border color picker (dropdown arrow half of the split button)
+    const borderColorBtn = page.locator(
+      '.docx-color-picker-arrow[title="Border Color"]'
+    );
     await expect(borderColorBtn).toBeVisible({ timeout: 5000 });
     await borderColorBtn.click();
 
