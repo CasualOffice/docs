@@ -75,7 +75,49 @@ if (isDesktop) {
       async loadDocument(p?: string): Promise<ArrayBuffer> {
         const path = p ?? filePath;
         if (!path) throw new Error('no file path bound to this window');
-        return asArrayBuffer(await inv('load_document', { path }));
+        // Chunked read in 1 MB slices to avoid IPC payload truncation
+        // for big files (the default JSON number-array path silently
+        // drops the file's tail past a few MB, breaking JSZip's EOCD
+        // lookup).
+        const total = (await inv('document_size', { path })) as number;
+        const CHUNK = 1 << 20;
+        const out = new Uint8Array(total);
+        let offset = 0;
+        while (offset < total) {
+          const length = Math.min(CHUNK, total - offset);
+          const chunk = asArrayBuffer(
+            await inv('read_document_chunk', { path, offset, length }),
+          );
+          out.set(new Uint8Array(chunk), offset);
+          offset += chunk.byteLength;
+          if (chunk.byteLength === 0) break;
+        }
+        // Magic-byte sniff: a .docx is just a renamed zip and must start
+        // with the local-file-header signature PK. Anything
+        // else — an OLE compound file (encrypted .docx or legacy .doc
+        // format), HTML, plain text — gets handed to JSZip which throws
+        // "Can't find end of central directory", a confusing error that
+        // looks like a parse failure. Catch it earlier with a clear
+        // message so the user knows the file itself is the problem.
+        if (out.byteLength < 4 ||
+            out[0] !== 0x50 || out[1] !== 0x4b ||
+            out[2] !== 0x03 || out[3] !== 0x04) {
+          // OLE compound signature for legacy .doc / encrypted .docx
+          const isOLE = out.byteLength >= 8 &&
+            out[0] === 0xd0 && out[1] === 0xcf && out[2] === 0x11 && out[3] === 0xe0;
+          if (isOLE) {
+            throw new Error(
+              "This file isn't a plain .docx — it's an OLE compound file " +
+              "(usually a password-protected .docx or a legacy .doc). " +
+              "Open it in Word or LibreOffice and Save As .docx (without a password), then try again."
+            );
+          }
+          throw new Error(
+            "This file doesn't look like a valid .docx. It's missing the ZIP header " +
+            "(first bytes should be PK 03 04). It may be corrupted or not actually a Word document."
+          );
+        }
+        return out.buffer as ArrayBuffer;
       },
       async save(bytes: ArrayBuffer): Promise<string | null> {
         if (filePath) {
