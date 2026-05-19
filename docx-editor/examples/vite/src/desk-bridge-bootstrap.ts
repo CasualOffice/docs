@@ -140,6 +140,19 @@ if (isDesktop) {
         }
         return written;
       },
+      // Profile exposed to the editor so it can show a user chip instead
+      // of the collab Share button. Read-only — Casual Office's Settings
+      // panel owns mutation.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async getProfile() {
+        return (await inv('get_profile')) as {
+          name: string;
+          avatar_hue: number;
+          timezone: string | null;
+          email: string | null;
+          avatar_path: string | null;
+        } | null;
+      },
     };
   } else {
     // Iframe mode — postMessage to launcher.

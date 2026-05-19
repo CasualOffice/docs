@@ -345,6 +345,28 @@ export function App() {
 
   const isDesktop = typeof window !== 'undefined' && window.__deskApp__?.isDesktop === true;
 
+  // Local-user profile shown in the title bar (replaces the Share
+  // button slot when running inside Casual Office). Fetched once on
+  // mount via the bridge — read-only here; edits live in the launcher.
+  const [deskProfile, setDeskProfile] = useState<{
+    name: string;
+    avatar_hue: number;
+    timezone: string | null;
+    email: string | null;
+    avatar_path: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!isDesktop) return;
+    const bridge = window.__deskApp__;
+    if (!bridge?.getProfile) return;
+    let cancelled = false;
+    bridge
+      .getProfile()
+      .then((p) => { if (!cancelled) setDeskProfile(p); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [isDesktop]);
+
   const handleError = useCallback((error: Error) => {
     console.error('Editor error:', error);
     setStatus(`Error: ${error.message}`);
@@ -357,22 +379,28 @@ export function App() {
   const renderTitleBarRight = useCallback(
     () => (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <label style={styles.fileInputLabel} onMouseDown={(e) => e.stopPropagation()}>
-          <input
-            type="file"
-            accept=".docx"
-            onChange={handleFileSelect}
-            style={{ display: 'none' }}
-          />
-          Open DOCX
-        </label>
+        {/* Hide the open-from-disk control in desktop mode — Casual
+            Office owns the open flow via the launcher window. */}
+        {!isDesktop && (
+          <label style={styles.fileInputLabel} onMouseDown={(e) => e.stopPropagation()}>
+            <input
+              type="file"
+              accept=".docx"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            Open DOCX
+          </label>
+        )}
         <button style={styles.newButton} onClick={handleNewDocument}>
           New
         </button>
         <button style={styles.button} onClick={handleSave}>
           Save
         </button>
-        {collabEnabled && (
+        {/* Collab Share is gated by collabEnabled AND not in desktop
+            mode (Casual Office is single-user). */}
+        {collabEnabled && !isDesktop && (
           <button
             style={{ ...styles.button, background: '#2563eb', color: '#fff', border: 'none' }}
             onClick={() => setShareOpen(true)}
@@ -380,10 +408,53 @@ export function App() {
             Share
           </button>
         )}
+        {/* Local-user chip in place of Share when running in Casual
+            Office. Click is informational; profile edits live in the
+            launcher window's Settings panel. */}
+        {isDesktop && deskProfile && (
+          <div
+            title={deskProfile.name}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 10px 4px 4px',
+              borderRadius: '999px',
+              border: '1px solid #e2e8f0',
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#334155',
+              userSelect: 'none',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-grid',
+                placeItems: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: `hsl(${deskProfile.avatar_hue}, 55%, 50%)`,
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 600,
+              }}
+              aria-hidden="true"
+            >
+              {deskProfile.name
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((p) => p[0]?.toUpperCase() ?? '')
+                .join('') || '?'}
+            </span>
+            <span>{deskProfile.name.split(/\s+/)[0]}</span>
+          </div>
+        )}
         {status && <span style={styles.status}>{status}</span>}
       </div>
     ),
-    [handleFileSelect, handleNewDocument, handleSave, status, collabEnabled]
+    [handleFileSelect, handleNewDocument, handleSave, status, collabEnabled, isDesktop, deskProfile]
   );
 
   // Collab mode is a hard fork: the editor binds to a Y.Doc fed by

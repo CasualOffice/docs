@@ -37,6 +37,16 @@ declare global {
        * user cancelled the dialog.
        */
       saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null>;
+      /** Returns the local user's profile so the editor can render a
+       *  user chip instead of the collab Share button. Read-only;
+       *  edits go through Casual Office's Settings panel. */
+      getProfile?(): Promise<{
+        name: string;
+        avatar_hue: number;
+        timezone: string | null;
+        email: string | null;
+        avatar_path: string | null;
+      } | null>;
     };
   }
 }
