@@ -196,13 +196,58 @@ export function App() {
   // Under `?e2e=1`, expose the editor ref on window so Playwright can
   // call addComment/getComments/findInDocument programmatically. Off by
   // default so the live demo at docx-editor.dev doesn't leak the API.
+  //
+  // Also installs `window.__DOCX_EDITOR_E2E__` with the navigation helpers
+  // (`scrollToPage`, `getTotalPages`, `scrollToParaId`, `scrollToPosition`)
+  // used by the scroll-to-page / scroll-to-paragraph specs. Agent-bridge
+  // methods on the same global were removed with the AGPL `@eigenpal/
+  // docx-editor-agents` purge; only the non-agent helpers remain here.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const isE2E = new URLSearchParams(window.location.search).get('e2e') === '1';
     if (!isE2E) return;
+
     (window as unknown as { __editorRef?: typeof editorRef }).__editorRef = editorRef;
+
+    const helpers = {
+      getTotalPages: () => editorRef.current?.getTotalPages() ?? 0,
+      scrollToPage: (n: number) => editorRef.current?.scrollToPage(n),
+      scrollToParaId: (id: string) => editorRef.current?.scrollToParaId(id) ?? false,
+      scrollToPosition: (pos: number) => editorRef.current?.scrollToPosition(pos),
+      /**
+       * Return the paraId of the first paginated textblock (from the visible
+       * pages). The painter stamps `data-para-id` on each paragraph element,
+       * so walking the DOM is faster than touching PM and works for the
+       * virtualized-pages case.
+       */
+      getFirstTextblockParaId: (): string | null => {
+        const el = document.querySelector('.paged-editor__pages [data-para-id]');
+        return el?.getAttribute('data-para-id') ?? null;
+      },
+      /** Paraid of the last paginated textblock (mirror of First helper). */
+      getLastTextblockParaId: (): string | null => {
+        const all = document.querySelectorAll('.paged-editor__pages [data-para-id]');
+        const last = all[all.length - 1];
+        return last?.getAttribute('data-para-id') ?? null;
+      },
+      /** PM position where the paragraph with the given paraId starts. */
+      getPmStartForParaId: (id: string): number | null => {
+        const el = document.querySelector(`[data-para-id="${id}"][data-pm-start]`);
+        const raw = el?.getAttribute('data-pm-start');
+        return raw == null ? null : Number(raw);
+      },
+      /** PM position where the paragraph with the given paraId ends (text-end). */
+      getTextblockEndForParaId: (id: string): number | null => {
+        const el = document.querySelector(`[data-para-id="${id}"][data-pm-end]`);
+        const raw = el?.getAttribute('data-pm-end');
+        return raw == null ? null : Number(raw);
+      },
+    };
+    (window as unknown as { __DOCX_EDITOR_E2E__?: typeof helpers }).__DOCX_EDITOR_E2E__ = helpers;
+
     return () => {
       delete (window as unknown as { __editorRef?: typeof editorRef }).__editorRef;
+      delete (window as unknown as { __DOCX_EDITOR_E2E__?: typeof helpers }).__DOCX_EDITOR_E2E__;
     };
   }, []);
 
