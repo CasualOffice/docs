@@ -43,8 +43,13 @@ test.describe('Demo.docx - Document Loading', () => {
   test('shows correct filename after loading', async ({ page }) => {
     await editor.loadDocxFile(DEMO_DOCX_PATH);
 
-    // Filename should appear in header
-    await expect(page.locator('text=demo.docx')).toBeVisible();
+    // Filename should appear in the title-bar DocumentName input.
+    // DocumentName strips the `.docx` extension before displaying
+    // (see packages/react/src/components/TitleBar.tsx → stripExtension),
+    // so the visible/input value is "demo" rather than "demo.docx".
+    const nameInput = page.getByRole('textbox', { name: 'Document name' });
+    await expect(nameInput).toBeVisible();
+    await expect(nameInput).toHaveValue('demo');
   });
 });
 

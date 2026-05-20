@@ -183,6 +183,7 @@
   },
   "dependencies": {
     "docxtemplater": "^3.50.0",
+    "emf-converter": "^1.1.6",
     "jszip": "^3.10.1",
     "pizzip": "^3.1.7",
     "xml-js": "^1.6.11"

@@ -478,16 +478,39 @@ function rotatedBoundingBox(w: number, h: number, deg: number): { w: number; h: 
 /**
  * Detect formats no major browser renders natively in an `<img>`
  * tag. Chrome and Firefox both refuse `data:image/tiff;base64,…` —
- * Safari handles it. Without a converter (UTIF.js etc.) we ship a
- * styled placeholder rather than a broken-image icon.
+ * Safari handles it. EMF / WMF (Windows Metafile vector formats Word
+ * embeds for native chart / shape thumbnails) are universally
+ * unsupported across every browser engine. Without a converter
+ * (UTIF.js, emf-renderer, …) we ship a styled placeholder rather than
+ * a broken-image icon so the surrounding page layout stays stable.
  *
  * Cited in gap-matrix `tiff-images` + GH #146.
  */
 function isUnrenderableImageFormat(src: string): boolean {
   if (!src.startsWith('data:')) return false;
   const head = src.slice(5, 30).toLowerCase();
-  // image/tiff or image/tif both appear in saved DOCXs.
-  return head.startsWith('image/tif');
+  // image/tiff or image/tif, image/x-emf / image/emf, image/x-wmf / image/wmf
+  // all appear in saved DOCXs.
+  return (
+    head.startsWith('image/tif') ||
+    head.includes('image/x-emf') ||
+    head.includes('image/emf') ||
+    head.includes('image/x-wmf') ||
+    head.includes('image/wmf')
+  );
+}
+
+/**
+ * Human label for the placeholder, derived from the data URL MIME so
+ * the user knows *why* there's a placeholder. EMF / WMF are very
+ * common in older Word docs (charts, shapes saved as a Windows
+ * Metafile thumbnail) so they get explicit naming.
+ */
+function unrenderableLabelForSrc(src: string): string {
+  const head = src.slice(5, 30).toLowerCase();
+  if (head.includes('image/x-emf') || head.includes('image/emf')) return 'EMF';
+  if (head.includes('image/x-wmf') || head.includes('image/wmf')) return 'WMF';
+  return 'TIFF';
 }
 
 /**
@@ -525,8 +548,11 @@ function renderImagePlaceholder(
   placeholder.style.alignItems = 'center';
   placeholder.style.justifyContent = 'center';
   placeholder.style.textAlign = 'center';
+  const fmt = unrenderableLabelForSrc(run.src);
   const label =
-    run.alt && run.alt.trim().length > 0 ? `${run.alt} (TIFF)` : 'TIFF image — preview unavailable';
+    run.alt && run.alt.trim().length > 0
+      ? `${run.alt} (${fmt})`
+      : `${fmt} image — preview unavailable`;
   placeholder.textContent = label;
   placeholder.title = label;
   return placeholder;

@@ -67,9 +67,18 @@ jobs:
         run: bun run scripts/roundtrip-audit.mjs
 
   e2e:
-    name: Playwright e2e
+    name: Playwright e2e (shard ${{ matrix.shard }} / 4)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    # Sharded matrix — Playwright's `--shard N/M` splits the test files
+    # deterministically across N parallel jobs. Each shard runs four
+    # workers internally, so wall-clock = (full-suite-time / N / workers
+    # / overhead). 4 shards × 4 workers turns a single 30-min serial run
+    # into ~6 min × 4 parallel jobs.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
 
@@ -105,8 +114,8 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run Playwright tests
-        run: bun run test:e2e
+      - name: Run Playwright tests (shard ${{ matrix.shard }}/4)
+        run: bunx playwright test --shard=${{ matrix.shard }}/4
         env:
           CI: 'true'
 
@@ -114,7 +123,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: |
             docx-editor/playwright-report
             docx-editor/screenshots/test-results

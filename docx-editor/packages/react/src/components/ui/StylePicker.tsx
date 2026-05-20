@@ -187,30 +187,50 @@ export function StylePicker({
     // Show all paragraph styles that are visible:
     // - Not hidden and not semiHidden, OR
     // - Marked as qFormat (quick format / gallery style)
-    const docStyles = styles
+    const visibleDocStyles = styles
       .filter((s) => s.type === 'paragraph')
       .filter((s) => {
         if (s.qFormat) return true;
         if (s.hidden || s.semiHidden) return false;
         return true;
-      })
-      .map((s) => {
-        const defaultStyle = DEFAULT_STYLES.find((d) => d.styleId === s.styleId);
-        return {
-          styleId: s.styleId,
-          name: s.name || s.styleId,
-          nameKey: defaultStyle?.nameKey,
-          type: s.type,
-          isDefault: s.default,
-          qFormat: s.qFormat,
-          priority: s.uiPriority ?? 99,
-          // Extract visual properties from rPr, fall back to hardcoded defaults
-          fontSize: s.rPr?.fontSize ?? defaultStyle?.fontSize,
-          bold: s.rPr?.bold ?? defaultStyle?.bold,
-          italic: s.rPr?.italic ?? defaultStyle?.italic,
-          color: s.rPr?.color?.rgb ?? defaultStyle?.color,
-        };
       });
+
+    // Some real-world Word docs ship without a `Normal` (or other
+    // built-in) style entry, or mark it semiHidden — leaving the user
+    // unable to clear back to the default. Pull in any DEFAULT_STYLES
+    // that the document didn't supply so the gallery is always
+    // navigable. Doc-provided styles win on collision.
+    const docStyleIds = new Set(visibleDocStyles.map((s) => s.styleId));
+    const fallbackStyles: typeof styles = DEFAULT_STYLES.filter(
+      (d) => !docStyleIds.has(d.styleId)
+    ).map((d) => ({
+      // Synth a minimal Style shape from the hardcoded preset. Cast
+      // through `unknown` since the synthetic record only fills the
+      // properties the mapper below reads.
+      styleId: d.styleId,
+      name: d.name,
+      type: 'paragraph',
+      qFormat: d.qFormat,
+      uiPriority: d.priority,
+    })) as typeof styles;
+
+    const docStyles = [...visibleDocStyles, ...fallbackStyles].map((s) => {
+      const defaultStyle = DEFAULT_STYLES.find((d) => d.styleId === s.styleId);
+      return {
+        styleId: s.styleId,
+        name: s.name || s.styleId,
+        nameKey: defaultStyle?.nameKey,
+        type: s.type,
+        isDefault: s.default,
+        qFormat: s.qFormat,
+        priority: s.uiPriority ?? 99,
+        // Extract visual properties from rPr, fall back to hardcoded defaults
+        fontSize: s.rPr?.fontSize ?? defaultStyle?.fontSize,
+        bold: s.rPr?.bold ?? defaultStyle?.bold,
+        italic: s.rPr?.italic ?? defaultStyle?.italic,
+        color: s.rPr?.color?.rgb ?? defaultStyle?.color,
+      };
+    });
 
     // Sort by priority
     return docStyles.sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));

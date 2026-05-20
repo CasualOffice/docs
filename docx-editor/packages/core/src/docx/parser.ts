@@ -38,6 +38,7 @@ import { parseNumbering, type NumberingMap } from './numberingParser';
 import { parseDocumentBody, extractAllTemplateVariables } from './documentParser';
 import { parseHeader, parseFooter } from './headerFooterParser';
 import { parseFootnotes, parseEndnotes } from './footnoteParser';
+import { convertEmfWmfMediaFiles } from './emfWmfConverter';
 import { parseComments } from './commentParser';
 import { parseCoreProperties } from './corePropertiesParser';
 import { loadFontsWithMapping } from '../utils/fontLoader';
@@ -169,6 +170,13 @@ export async function parseDocx(input: DocxInput, options: ParseOptions = {}): P
     // ========================================================================
     onProgress('Processing media files...', 35);
     const media = timeStage('media', () => buildMediaMap(raw, rels));
+    // EMF / WMF are vector formats no browser renders in <img>. The
+    // converter replays the metafile records onto a Canvas and replaces
+    // the entry's `dataUrl` with a `data:image/png;base64,…` URL so the
+    // painter can show the actual picture instead of the placeholder.
+    // Tolerant of failure — leaves entries unchanged when the converter
+    // throws or the host lacks canvas APIs (Bun, audit script).
+    await convertEmfWmfMediaFiles(media);
     onProgress('Processed media', 40);
 
     // ========================================================================

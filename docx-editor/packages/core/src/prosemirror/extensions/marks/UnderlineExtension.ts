@@ -2,9 +2,8 @@
  * Underline Mark Extension
  */
 
-import { toggleMark } from 'prosemirror-commands';
 import { createMarkExtension } from '../create';
-import { setMark } from './markUtils';
+import { setMark, toggleMark } from './markUtils';
 import type { TextColorAttrs } from '../../schema/marks';
 import type { UnderlineAttrs } from '../../schema/marks';
 import type { ExtensionContext, ExtensionRuntime } from '../types';

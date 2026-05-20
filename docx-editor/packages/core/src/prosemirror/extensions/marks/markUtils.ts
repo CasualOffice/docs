@@ -115,6 +115,29 @@ function dispatchStoredMarks(
   dispatch(tr);
 }
 
+/**
+ * Resolve the effective "current" stored-mark set at a collapsed cursor.
+ *
+ * Priority: explicit storedMarks → $from.marks() → marks derived from the
+ * paragraph's defaultTextFormatting. The last step matters for empty
+ * paragraphs that inherit doc/style defaults (e.g. fontSize, fontFamily)
+ * but have no inline content for $from.marks() to draw from — without it,
+ * toggling bold on a fresh empty paragraph would silently strip the
+ * inherited font defaults from defaultTextFormatting.
+ */
+function effectiveCursorMarks(state: EditorState): readonly Mark[] {
+  if (state.storedMarks) return state.storedMarks;
+  const $from = state.selection.$from;
+  const fromMarks = $from.marks();
+  if (fromMarks.length > 0) return fromMarks;
+  const parent = $from.parent;
+  if (parent.type.name !== 'paragraph') return fromMarks;
+  if (parent.textContent.length > 0) return fromMarks;
+  const dtf = parent.attrs.defaultTextFormatting as TextFormatting | null | undefined;
+  if (!dtf) return fromMarks;
+  return textFormattingToMarks(dtf, state.schema);
+}
+
 export function setMark(markType: MarkType, attrs: MarkAttrs): Command {
   return (state, dispatch) => {
     const { from, to, empty } = state.selection;
@@ -122,7 +145,7 @@ export function setMark(markType: MarkType, attrs: MarkAttrs): Command {
 
     if (empty) {
       if (dispatch) {
-        const current = state.storedMarks || state.selection.$from.marks();
+        const current = effectiveCursorMarks(state);
         const sansType = markType.isInSet(current)
           ? current.filter((m) => m.type !== markType)
           : current;
@@ -144,9 +167,7 @@ export function removeMark(markType: MarkType): Command {
 
     if (empty) {
       if (dispatch) {
-        const next = (state.storedMarks || state.selection.$from.marks()).filter(
-          (m) => m.type !== markType
-        );
+        const next = effectiveCursorMarks(state).filter((m) => m.type !== markType);
         dispatchStoredMarks(state, dispatch, next);
       }
       return true;
@@ -154,6 +175,58 @@ export function removeMark(markType: MarkType): Command {
 
     if (dispatch) {
       dispatch(state.tr.removeMark(from, to, markType).scrollIntoView());
+    }
+    return true;
+  };
+}
+
+/**
+ * Toggle a mark with empty-paragraph defaultTextFormatting persistence.
+ *
+ * For non-collapsed selections this delegates to the standard
+ * addMark/removeMark behaviour. For collapsed cursors it routes through
+ * `setMark` / `removeMark` so the paragraph's `defaultTextFormatting`
+ * attr stays in sync — the toolbar relies on that attr to light up bold/
+ * italic/etc. after the user navigates away from an empty paragraph and
+ * comes back.
+ */
+export function toggleMark(markType: MarkType, attrs: MarkAttrs = {}): Command {
+  return (state, dispatch, view) => {
+    const { from, to, empty } = state.selection;
+
+    if (empty) {
+      const current = effectiveCursorMarks(state);
+      const isActive = markType.isInSet(current);
+      if (isActive) {
+        return removeMark(markType)(state, dispatch, view);
+      }
+      return setMark(markType, attrs)(state, dispatch, view);
+    }
+
+    // Non-empty selection: match prosemirror-commands.toggleMark semantics —
+    // if every text node in the range already has the mark, remove it;
+    // otherwise add it.
+    let allHave = true;
+    let anyText = false;
+    state.doc.nodesBetween(from, to, (node) => {
+      if (node.isText) {
+        anyText = true;
+        if (!markType.isInSet(node.marks)) {
+          allHave = false;
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (dispatch) {
+      const tr = state.tr;
+      if (anyText && allHave) {
+        tr.removeMark(from, to, markType);
+      } else {
+        tr.addMark(from, to, markType.create(attrs));
+      }
+      dispatch(tr.scrollIntoView());
     }
     return true;
   };

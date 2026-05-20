@@ -51,6 +51,13 @@ function createParaIdAllocatorPlugin(): Plugin {
       for (const u of updates) tr.setNodeMarkup(u.pos, undefined, u.attrs);
       tr.setMeta(paraIdAllocatorKey, 'allocated');
       tr.setMeta('addToHistory', false);
+      // setNodeMarkup is a ReplaceStep that clears tr.storedMarks. We need
+      // to preserve whatever the upstream transaction left in storedMarks
+      // — e.g. font marks set by Enter on an empty paragraph — otherwise
+      // typed text immediately after Enter falls back to the editor default.
+      if (newState.storedMarks) {
+        tr.setStoredMarks(newState.storedMarks);
+      }
       return tr;
     },
   });

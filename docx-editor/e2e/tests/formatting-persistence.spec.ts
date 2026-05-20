@@ -223,8 +223,9 @@ test.describe('Formatting Persistence - Font Properties', () => {
     // Set font size on empty paragraph
     await editor.setFontSize(24);
 
-    // Verify in toolbar
-    await expect(page.locator('[aria-label="Select font size"]')).toContainText('24');
+    // Verify in toolbar — the size picker is the FontSizePicker button, not
+    // a Radix combobox, so we target its testid rather than an aria-label.
+    await expect(page.getByTestId('font-size-display')).toContainText('24');
 
     // Press Enter to create new paragraph
     await page.keyboard.press('Enter');
@@ -233,7 +234,7 @@ test.describe('Formatting Persistence - Font Properties', () => {
     await page.keyboard.press('ArrowUp');
 
     // Font size should persist
-    await expect(page.locator('[aria-label="Select font size"]')).toContainText('24');
+    await expect(page.getByTestId('font-size-display')).toContainText('24');
   });
 });
 
@@ -269,7 +270,9 @@ test.describe('Formatting Persistence - Enter then Change Property in Empty Run'
     await editor.setFontSize(24);
     await editor.typeText('Big text');
 
-    await assertions.assertTextHasFontSize(page, 'Big text', '24pt');
+    // assertTextHasFontSize reads computed `fontSize`, which the browser
+    // always reports in pixels. 24pt × 4/3 = 32px.
+    await assertions.assertTextHasFontSize(page, 'Big text', '32px');
   });
 
   test('text color applied in empty run after Enter is used by typed text', async ({ page }) => {
@@ -292,7 +295,8 @@ test.describe('Formatting Persistence - Enter then Change Property in Empty Run'
     await editor.typeText('Styled text');
 
     await assertions.assertTextHasFontFamily(page, 'Styled text', 'Verdana');
-    await assertions.assertTextHasFontSize(page, 'Styled text', '18pt');
+    // 18pt × 4/3 = 24px.
+    await assertions.assertTextHasFontSize(page, 'Styled text', '24px');
     await assertions.assertTextHasColor(page, 'Styled text', 'rgb(0, 0, 255)');
   });
 
@@ -352,11 +356,15 @@ test.describe('Formatting Persistence - Toggling Off', () => {
     // Type - should not be bold
     await editor.typeText('Not bold');
 
-    // The text should not be bold
+    // The text should not be bold. Query against the hidden ProseMirror
+    // tree — that's where mark elements (e.g. <strong>) live; the visible
+    // pages are repainted by layout-painter and don't necessarily emit a
+    // <strong> wrapper. Using `== null` (not `!== null`) so a missing `p`
+    // doesn't masquerade as "bold present".
     const isBold = await page.evaluate(() => {
-      const p = document.querySelector('.prosemirror-editor-content p');
-      const strong = p?.querySelector('strong');
-      return strong !== null;
+      const p = document.querySelector('.ProseMirror p');
+      if (!p) return false;
+      return p.querySelector('strong') != null;
     });
     expect(isBold).toBe(false);
   });

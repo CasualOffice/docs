@@ -28,15 +28,17 @@ test.describe('Font Family', () => {
     await editor.selectAll();
     await editor.setFontFamily('Arial');
 
-    // Verify font was applied
+    // Verify font was applied to the rendered text. The painter
+    // emits each run as a `<span style="font-family: …">` inside
+    // `.layout-paragraph`; window.getSelection's parent element rolls
+    // up to the ProseMirror root (system font), so look at the actual
+    // painted span instead.
     const fontFamily = await page.evaluate(() => {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const element = range.startContainer.parentElement;
-        return window.getComputedStyle(element!).fontFamily;
-      }
-      return '';
+      const para = document.querySelector('.layout-paragraph');
+      if (!para) return '';
+      const styledSpan = para.querySelector('span[style*="font-family"]');
+      if (!styledSpan) return '';
+      return window.getComputedStyle(styledSpan).fontFamily;
     });
     expect(fontFamily).toContain('Arial');
   });

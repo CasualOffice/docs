@@ -14,6 +14,7 @@ import {
   selectParentNode,
 } from 'prosemirror-commands';
 import type { Mark } from 'prosemirror-model';
+import { Plugin } from 'prosemirror-state';
 import { createExtension } from '../create';
 import { textFormattingToMarks } from '../marks/markUtils';
 import { Priority } from '../types';
@@ -211,6 +212,41 @@ const splitBlockClearBorders: Command = (state, dispatch, view) => {
   return true;
 };
 
+/**
+ * When the cursor lands in an empty paragraph that carries a non-empty
+ * `defaultTextFormatting` (set by toolbar toggles on empty paragraphs, or
+ * inherited via splitBlockClearBorders), seed `storedMarks` so the first
+ * typed character actually picks up those marks. The selection-state
+ * toolbar already reads `defaultTextFormatting` directly to light up the
+ * right buttons; without this seed the toolbar would show e.g. bold ON
+ * but the typed text would still be plain.
+ */
+const seedStoredMarksFromDefaultFormatting = new Plugin({
+  appendTransaction(transactions, _oldState, newState) {
+    // Only react when selection changed and no transaction touched storedMarks.
+    if (!transactions.some((t) => t.selectionSet)) return null;
+    if (transactions.some((t) => t.storedMarksSet)) return null;
+    if (newState.storedMarks && newState.storedMarks.length > 0) return null;
+
+    const { selection, schema } = newState;
+    if (!selection.empty) return null;
+    const parent = selection.$from.parent;
+    if (parent.type.name !== 'paragraph') return null;
+    if (parent.textContent.length > 0) return null;
+
+    const dtf = parent.attrs.defaultTextFormatting as TextFormatting | null | undefined;
+    if (!dtf) return null;
+
+    const marks = textFormattingToMarks(dtf, schema);
+    if (marks.length === 0) return null;
+
+    const tr = newState.tr;
+    tr.setStoredMarks(marks);
+    tr.setMeta('addToHistory', false);
+    return tr;
+  },
+});
+
 export const BaseKeymapExtension = createExtension({
   name: 'baseKeymap',
   priority: Priority.Low,
@@ -226,6 +262,7 @@ export const BaseKeymapExtension = createExtension({
         'Mod-a': selectAll,
         Escape: selectParentNode,
       },
+      plugins: [seedStoredMarksFromDefaultFormatting],
     };
   },
 });

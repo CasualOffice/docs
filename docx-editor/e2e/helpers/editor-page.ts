@@ -75,10 +75,13 @@ export class EditorPage {
 
     // Main component locators
     this.editor = page.locator('[data-testid="docx-editor"]');
-    // The demo renders FormattingBar (data-testid="formatting-bar"), not the
-    // legacy Toolbar component (data-testid="toolbar"). Match either so the
-    // helper works regardless of which is mounted.
-    this.toolbar = page.locator('[data-testid="toolbar"], [data-testid="formatting-bar"]');
+    // The demo mounts EditorToolbar (data-testid="editor-toolbar") today;
+    // older tree shapes used FormattingBar (data-testid="formatting-bar") or
+    // the bare Toolbar (data-testid="toolbar"). Match all three so the helper
+    // keeps working through editor-shell refactors.
+    this.toolbar = page.locator(
+      '[data-testid="editor-toolbar"], [data-testid="formatting-bar"], [data-testid="toolbar"]'
+    );
     this.variablePanel = page.locator('.variable-panel');
     this.zoomControl = page.locator('.zoom-control');
 
@@ -573,10 +576,16 @@ export class EditorPage {
     // Click on font size picker display button to open dropdown
     const fontSizePicker = this.toolbar.locator('[data-testid="font-size-display"]');
     await fontSizePicker.click();
-    // Wait for dropdown to open and select the size with exact text match
-    await this.page.getByRole('option', { name: size.toString(), exact: true }).click();
+    // FontSizePicker's listbox sometimes flickers in/out as the size picker
+    // gets focus. Wait for an option to settle before clicking — otherwise
+    // playwright snaps a still-mid-transition element and the click lands
+    // after the dropdown has already detached.
+    const option = this.page.getByRole('option', { name: size.toString(), exact: true });
+    await option.waitFor({ state: 'visible', timeout: 5000 });
+    await option.click();
     // Refocus editor after selecting from dropdown
     await this.focus();
+    await this.page.waitForTimeout(50);
   }
 
   /**
@@ -842,12 +851,41 @@ export class EditorPage {
   // ============================================================================
 
   /**
-   * Set paragraph style
+   * Set paragraph style.
+   *
+   * The toolbar now renders a Radix-Select combobox for paragraph styles,
+   * not a native `<select>` element — `selectOption` doesn't apply. We
+   * click the combobox to open its listbox, then click the option whose
+   * accessible name matches `style`. Falls back to the legacy native-
+   * select path in case any older shell variant is still mounted, so the
+   * helper works through editor-shell refactors.
+   *
+   * The StylePicker renders Google-Docs-style display names (e.g.
+   * `Normal text` for the `Normal` styleId), so callers passing the
+   * styleId-style names get auto-translated to the visible label.
    */
   async setParagraphStyle(style: string): Promise<void> {
-    // Native <select> — use selectOption for reliable interaction
-    const stylePicker = this.toolbar.locator('select[aria-label="Select paragraph style"]');
-    await stylePicker.selectOption({ label: style });
+    const displayAliases: Record<string, string> = {
+      Normal: 'Normal text',
+    };
+    const displayLabel = displayAliases[style] ?? style;
+
+    const nativeSelect = this.toolbar.locator('select[aria-label="Select paragraph style"]');
+    if (await nativeSelect.count()) {
+      // Some older mounts emit a `<select>`; try both name forms before
+      // bailing so the helper works across shell variants.
+      try {
+        await nativeSelect.selectOption({ label: displayLabel });
+      } catch {
+        await nativeSelect.selectOption({ label: style });
+      }
+    } else {
+      const trigger = this.toolbar.getByRole('combobox', { name: 'Select paragraph style' });
+      await trigger.click();
+      // Radix portals the listbox into document.body, so the option
+      // lookup is page-rooted, not toolbar-scoped.
+      await this.page.getByRole('option', { name: displayLabel, exact: true }).click();
+    }
     // Refocus editor after selecting style
     await this.focus();
   }

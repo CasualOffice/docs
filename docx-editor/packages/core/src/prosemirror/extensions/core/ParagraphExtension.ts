@@ -8,6 +8,7 @@
 
 import { Fragment, type NodeSpec, type Schema } from 'prosemirror-model';
 import type { Command, EditorState } from 'prosemirror-state';
+import { closeHistory } from 'prosemirror-history';
 import type {
   ParagraphAlignment,
   LineSpacingRule,
@@ -524,7 +525,13 @@ function makeApplyStyle(schema: Schema) {
 
       if (!dispatch) return true;
 
-      let tr = state.tr;
+      // Style changes should be discrete undo steps. Without
+      // `closeHistory`, prosemirror-history coalesces a fresh style
+      // application with whatever text-typing transaction preceded it
+      // (small time window, no selection change in between), so a
+      // single Ctrl-Z would wipe the typing in addition to the style.
+      // Force a fresh history group here.
+      let tr = closeHistory(state.tr);
       const seen = new Set<number>();
 
       // Build marks from run formatting if provided
@@ -846,6 +853,15 @@ export const ParagraphExtension = createNodeExtension({
             return setParagraphAttr('tabs', newTabs.length > 0 ? newTabs : null)(state, dispatch);
           };
         },
+      },
+      keyboardShortcuts: {
+        // Word / Google Docs paragraph alignment shortcuts.
+        // Surfaced by AlignmentButtons in the toolbar; bound here so the
+        // shortcut works whether or not the dropdown is open.
+        'Mod-l': makeSetAlignment('left'),
+        'Mod-e': makeSetAlignment('center'),
+        'Mod-r': makeSetAlignment('right'),
+        'Mod-j': makeSetAlignment('both'),
       },
     };
   },
