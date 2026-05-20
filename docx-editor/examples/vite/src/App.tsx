@@ -500,6 +500,31 @@ export function App() {
           documentName={fileName}
           onDocumentNameChange={setFileName}
           renderTitleBarRight={renderTitleBarRight}
+          onSave={async (buffer) => {
+            // Tauri shell: route every Save (toolbar button, File→Save,
+            // Ctrl+S) through the bridge so it overwrites the bound
+            // filesystem path instead of producing a phantom download.
+            // Web mode: DocxEditor falls back to its own blob-download
+            // path because no onSave handler is registered here.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const bridge = typeof window !== 'undefined' ? (window as any).__deskApp__ : undefined;
+            if (!bridge?.isDesktop) return;
+            setStatus('Saving…');
+            try {
+              const written = await bridge.save(buffer);
+              if (typeof written === 'string') {
+                const name = written.split(/[\\/]/).pop();
+                if (name) setFileName(name);
+              }
+              setStatus('Saved');
+              setTimeout(() => setStatus(''), 1500);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('desktop save failed', err);
+              setStatus('Save failed');
+              setTimeout(() => setStatus(''), 2500);
+            }
+          }}
         />
       </main>
       <ShareDialog

@@ -3807,6 +3807,12 @@ body { background: white; }
   const handleDownloadDocument = useCallback(async () => {
     const buffer = await handleSave();
     if (!buffer) return;
+    // When a parent supplied `onSave`, it owns persistence — `handleSave`
+    // has already passed it the buffer (line 3694). Doing a browser
+    // blob download on top of that would drop a duplicate file into
+    // ~/Downloads every time the user hits Save inside the Tauri shell,
+    // which is exactly the "save creates new files" bug.
+    if (onSave) return;
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
@@ -3817,11 +3823,32 @@ body { background: white; }
     a.click();
     // Defer revoke so Safari has time to start the download.
     setTimeout(() => URL.revokeObjectURL(url), 0);
-  }, [handleSave, documentName]);
+  }, [handleSave, documentName, onSave]);
 
   const handleOpenDocument = useCallback(() => {
     docxInputRef.current?.click();
   }, []);
+
+  // Ctrl/Cmd-S — fire the same save flow the toolbar's File→Save uses.
+  // Without this, the browser's default "save webpage as HTML" dialog
+  // kicks in. handleDownloadDocument respects the `onSave` prop, so in
+  // Tauri-shell mode this routes through the bridge → no blob download,
+  // overwrites the bound file in place. Placed AFTER
+  // handleDownloadDocument so the dep array doesn't read it in the
+  // temporal dead zone.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const meta = e.ctrlKey || e.metaKey;
+      if (!meta || e.shiftKey || e.altKey) return;
+      if (e.key.toLowerCase() !== 's') return;
+      e.preventDefault();
+      void handleDownloadDocument();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [handleDownloadDocument]);
 
   const handleDocxFileChange = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,7 +1,21 @@
+// Tailwind v3 resolves `content` globs relative to process.cwd(), not
+// to this config file's directory. When the build runs from
+// `examples/vite/`, the previous relative globs resolved to
+// `examples/vite/packages/...` (which doesn't exist) and no utility
+// classes were generated. Anchor the globs at this config's directory
+// so the scan works regardless of where postcss is invoked from.
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['class'],
-  content: ['./packages/react/src/**/*.{ts,tsx}', './examples/**/*.{ts,tsx}'],
+  content: [
+    join(__dirname, 'packages/react/src/**/*.{ts,tsx}'),
+    join(__dirname, 'examples/**/*.{ts,tsx}'),
+  ],
   theme: {
     extend: {
       colors: {

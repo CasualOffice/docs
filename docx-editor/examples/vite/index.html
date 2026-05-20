@@ -8,12 +8,16 @@
   <meta name="description" content="Casual Editor — a casual, real-time collaborative .docx editor. Open a Word document, edit it in the browser, save it back as .docx." />
   <meta name="theme-color" content="#2563eb" />
 
-  <!-- Preconnect to Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <!-- Load Material Symbols font early with display=block to prevent FOUT -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
+  <!-- Self-hosted Material Symbols — offline-first, no CDN. -->
+  <style>
+    @font-face {
+      font-family: 'Material Symbols Outlined';
+      font-style: normal;
+      font-weight: 100 700;
+      font-display: block;
+      src: url('./fonts/material-symbols-outlined.woff2') format('woff2');
+    }
+  </style>
 
   <style>
     * {
