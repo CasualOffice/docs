@@ -270,6 +270,7 @@ test.describe('State Consistency', () => {
     await editor.typeText('Hello');
     await editor.selectAll();
     await editor.applyBold();
+    await page.keyboard.press('End');
     await editor.typeText(' World');
 
     await assertions.assertDocumentContainsText(page, 'Hello World');

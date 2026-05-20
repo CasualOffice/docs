@@ -217,7 +217,7 @@
         { "action": "newDocument" },
         { "action": "focus" },
         { "action": "typeText", "args": { "text": "Delete me" } },
-        { "action": "selectAll" },
+        { "action": "selectText", "args": { "text": "Delete me" } },
         { "action": "pressBackspace" },
         { "assert": "expectDocumentNotContains", "args": { "text": "Delete me" } },
         { "action": "undo" },

@@ -155,8 +155,9 @@ export class EditorPage {
    * Get a specific paragraph by index (0-based)
    */
   getParagraph(index: number): Locator {
-    // Use 'p' prefix to avoid matching span elements that also have data-paragraph-index
-    return this.page.locator(`p[data-paragraph-index="${index}"]`);
+    return this.page
+      .locator(`p[data-paragraph-index="${index}"], .layout-paragraph`)
+      .nth(index);
   }
 
   /**
@@ -164,13 +165,17 @@ export class EditorPage {
    */
   async focusParagraph(index: number): Promise<void> {
     const paragraph = this.getParagraph(index);
-    await paragraph.click();
+    await paragraph.click({ force: true });
   }
 
   /**
    * Type text at the current cursor position
    */
   async typeText(text: string): Promise<void> {
+    if (text.length > 1000) {
+      await this.page.keyboard.insertText(text);
+      return;
+    }
     await this.page.keyboard.type(text);
   }
 
@@ -216,6 +221,13 @@ export class EditorPage {
   }
 
   /**
+   * Move cursor to the end of the current line/selection.
+   */
+  async pressEnd(): Promise<void> {
+    await this.page.keyboard.press('End');
+  }
+
+  /**
    * Press Tab
    */
   async pressTab(): Promise<void> {
@@ -235,44 +247,62 @@ export class EditorPage {
    * We must walk text nodes and create a range spanning from first to last.
    */
   async selectAll(): Promise<void> {
-    await this.page.evaluate(() => {
-      const contentArea =
-        document.querySelector('.ProseMirror') ||
-        document.querySelector('.docx-editor-pages') ||
-        document.querySelector('.docx-ai-editor');
-      if (!contentArea) return;
-
-      // Walk all text nodes to find first and last with actual content
-      const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
-      let firstTextNode: Text | null = null;
-      let lastTextNode: Text | null = null;
-
-      while (walker.nextNode()) {
-        const text = walker.currentNode.textContent || '';
-        // Include nodes with content (even spaces)
-        if (text.length > 0) {
-          if (!firstTextNode) firstTextNode = walker.currentNode as Text;
-          lastTextNode = walker.currentNode as Text;
-        }
-      }
-
-      if (!firstTextNode || !lastTextNode) return;
-
-      const selection = window.getSelection();
-      if (!selection) return;
-
-      selection.removeAllRanges();
-      const range = document.createRange();
-      range.setStart(firstTextNode, 0);
-      range.setEnd(lastTextNode, lastTextNode.textContent?.length || 0);
-      selection.addRange(range);
-    });
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await this.page.locator('.ProseMirror').focus();
+    await this.page.keyboard.press(`${modifier}+a`);
+    await this.page.waitForTimeout(100);
   }
 
   /**
    * Select specific text by searching for it in the document
    */
   async selectText(searchText: string): Promise<boolean> {
+    const selectedViaEditorRef = await this.page.evaluate((text) => {
+      type E2EWindow = Window & {
+        __editorRef?: {
+          current?: {
+            getEditorRef?: () => {
+              getView?: () => {
+                state: {
+                  doc: {
+                    descendants: (
+                      fn: (node: { isText?: boolean; text?: string; nodeSize: number }, pos: number) => boolean | void
+                    ) => void;
+                  };
+                };
+              } | null;
+              setSelection?: (anchor: number, head?: number) => void;
+              focus?: () => void;
+            } | null;
+          };
+        };
+      };
+
+      const editor = (window as E2EWindow).__editorRef?.current?.getEditorRef?.();
+      const view = editor?.getView?.();
+      if (!editor || !view) return false;
+
+      let match: { from: number; to: number } | null = null;
+      view.state.doc.descendants((node, pos) => {
+        if (!node.isText || typeof node.text !== 'string') return;
+        const index = node.text.indexOf(text);
+        if (index === -1) return;
+        match = { from: pos + index, to: pos + index + text.length };
+        return false;
+      });
+
+      if (!match) return false;
+
+      editor.focus?.();
+      editor.setSelection?.(match.from, match.to);
+      return true;
+    }, searchText);
+
+    if (selectedViaEditorRef) {
+      await this.page.waitForTimeout(100);
+      return true;
+    }
+
     // First, get the bounding rect of the text we want to select
     const textInfo = await this.page.evaluate((text) => {
       // Search only within the editor content area (not toolbar which contains icon text like "format_bold")
@@ -940,6 +970,9 @@ export class EditorPage {
    * Undo via toolbar
    */
   async undo(): Promise<void> {
+    if (await this.undoButton.isDisabled()) {
+      return;
+    }
     await this.undoButton.click();
   }
 
@@ -955,6 +988,9 @@ export class EditorPage {
    * Redo via toolbar
    */
   async redo(): Promise<void> {
+    if (await this.redoButton.isDisabled()) {
+      return;
+    }
     await this.redoButton.click();
   }
 
@@ -1024,22 +1060,57 @@ export class EditorPage {
    * Click on a specific table cell
    */
   async clickTableCell(tableIndex: number, row: number, col: number): Promise<void> {
-    // Visual pages render tables as div.layout-table (not <table> elements)
-    // Click on the visual cell — the paged editor maps clicks to ProseMirror
+    const pmCell = this.page
+      .locator('.ProseMirror table')
+      .nth(tableIndex)
+      .locator('tr')
+      .nth(row)
+      .locator('td, th')
+      .nth(col);
+
+    if ((await pmCell.count()) > 0) {
+      await pmCell.scrollIntoViewIfNeeded().catch(() => {});
+      await pmCell.click({ force: true });
+      await this.page.waitForTimeout(50);
+      return;
+    }
+
     const table = this.page.locator('.paged-editor__pages .layout-table').nth(tableIndex);
     const cell = table.locator('.layout-table-row').nth(row).locator('.layout-table-cell').nth(col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const box = await cell.boundingBox();
+    if (!box) {
+      throw new Error(`Could not resolve visual bounds for table cell (${row}, ${col})`);
+    }
+    await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await this.page.waitForTimeout(50);
   }
 
   /**
    * Right-click on a specific visual table cell to open the text context menu
    */
   async rightClickTableCell(tableIndex: number, row: number, col: number): Promise<void> {
+    const pmCell = this.page
+      .locator('.ProseMirror table')
+      .nth(tableIndex)
+      .locator('tr')
+      .nth(row)
+      .locator('td, th')
+      .nth(col);
+
+    if ((await pmCell.count()) > 0) {
+      await pmCell.scrollIntoViewIfNeeded().catch(() => {});
+      await pmCell.click({ button: 'right', force: true });
+      await this.page.waitForSelector('[role="menu"]', { state: 'visible', timeout: 5000 });
+      return;
+    }
+
     const table = this.page.locator('.paged-editor__pages .layout-table').nth(tableIndex);
     const cell = table.locator('.layout-table-row').nth(row).locator('.layout-table-cell').nth(col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click({ button: 'right' });
+    const box = await cell.boundingBox();
+    if (!box) {
+      throw new Error(`Could not resolve visual bounds for table cell (${row}, ${col})`);
+    }
+    await this.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
     await this.page.waitForSelector('[role="menu"]', { state: 'visible', timeout: 5000 });
   }
 
@@ -1284,8 +1355,8 @@ export class EditorPage {
    * Replace current match
    */
   async replace(replaceText: string): Promise<void> {
-    await this.page.locator('[data-testid="replace-input"]').fill(replaceText);
-    await this.page.locator('[data-testid="replace-button"]').click();
+    await this.page.locator('#replace-text').fill(replaceText);
+    await this.findReplaceDialog.getByRole('button', { name: /^Replace$/ }).click();
   }
 
   /**
@@ -1293,8 +1364,8 @@ export class EditorPage {
    */
   async replaceAll(searchText: string, replaceText: string): Promise<void> {
     await this.page.locator('[data-testid="find-input"]').fill(searchText);
-    await this.page.locator('[data-testid="replace-input"]').fill(replaceText);
-    await this.page.locator('[data-testid="replace-all-button"]').click();
+    await this.page.locator('#replace-text').fill(replaceText);
+    await this.findReplaceDialog.getByRole('button', { name: /^Replace All$/ }).click();
   }
 
   /**

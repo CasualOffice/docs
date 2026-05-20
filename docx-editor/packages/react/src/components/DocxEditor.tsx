@@ -53,6 +53,7 @@ import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
+import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
 import type { Comment, BlockContent, ParagraphContent } from '@eigenpal/docx-core/types/content';
@@ -1786,6 +1787,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       pagedEditorRef.current?.redo();
     }
   }, [hfEditPosition]);
+
+  const canUndoActiveEditor = useMemo(() => {
+    const view = getActiveEditorView();
+    return view ? pmUndo(view.state) : false;
+  }, [getActiveEditorView, state.selectionFormatting, hfEditPosition]);
+
+  const canRedoActiveEditor = useMemo(() => {
+    const view = getActiveEditorView();
+    return view ? pmRedo(view.state) : false;
+  }, [getActiveEditorView, state.selectionFormatting, hfEditPosition]);
 
   // Find/Replace hook
   const findReplace = useFindReplace();
@@ -5040,8 +5051,8 @@ body { background: white; }
                       onFormat={handleFormat}
                       onUndo={undoActiveEditor}
                       onRedo={redoActiveEditor}
-                      canUndo={true}
-                      canRedo={true}
+                      canUndo={canUndoActiveEditor}
+                      canRedo={canRedoActiveEditor}
                       disabled={readOnly}
                       documentStyles={history.state?.package.styles?.styles}
                       theme={history.state?.package.theme || theme}

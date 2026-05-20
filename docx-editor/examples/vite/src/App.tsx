@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   DocxEditor,
   type DocxEditorRef,
+  type Document as DocxDocument,
   createEmptyDocument,
 } from '@eigenpal/docx-js-editor';
 import { useCollab } from './collab/useCollab';
@@ -96,7 +97,8 @@ export function App() {
     []
   );
   const editorRef = useRef<DocxEditorRef>(null);
-  const [currentDocument, setCurrentDocument] = useState<Document | null>(null);
+  const suppressSeedDocumentRef = useRef(false);
+  const [currentDocument, setCurrentDocument] = useState<DocxDocument | null>(null);
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
   const [status, setStatus] = useState<string>('');
@@ -254,6 +256,8 @@ export function App() {
   const { zoom: autoZoom, isMobile } = useResponsiveLayout();
 
   useEffect(() => {
+    let cancelled = false;
+
     // Prefix with Vite's BASE_URL so the seed doc loads under both:
     //   - Local dev / Vercel (BASE_URL = '/'): fetches '/docx-editor-demo.docx'
     //   - GitHub Pages (BASE_URL = '/docx/'): fetches '/docx/docx-editor-demo.docx'
@@ -267,16 +271,23 @@ export function App() {
         return res.arrayBuffer();
       })
       .then((buffer) => {
+        if (cancelled || suppressSeedDocumentRef.current) return;
         setDocumentBuffer(buffer);
         setFileName('docx-editor-demo.docx');
       })
       .catch(() => {
+        if (cancelled || suppressSeedDocumentRef.current) return;
         setCurrentDocument(createEmptyDocument());
         setFileName('Untitled.docx');
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleNewDocument = useCallback(() => {
+    suppressSeedDocumentRef.current = true;
     setCurrentDocument(createEmptyDocument());
     setDocumentBuffer(null);
     setFileName('Untitled.docx');
@@ -288,6 +299,7 @@ export function App() {
     if (!file) return;
 
     try {
+      suppressSeedDocumentRef.current = true;
       setStatus('Loading...');
       const buffer = await file.arrayBuffer();
       setCurrentDocument(null);
