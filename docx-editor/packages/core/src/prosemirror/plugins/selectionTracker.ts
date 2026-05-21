@@ -203,9 +203,7 @@ function extractTextFormatting(state: EditorState): TextFormatting {
       if (intersection === null) {
         intersection = [...node.marks];
       } else {
-        intersection = intersection.filter((m) =>
-          node.marks.some((n) => n.eq(m))
-        );
+        intersection = intersection.filter((m) => node.marks.some((n) => n.eq(m)));
       }
       return false;
     });
