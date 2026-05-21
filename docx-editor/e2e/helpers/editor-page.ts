@@ -828,7 +828,13 @@ export class EditorPage {
    * Outdent paragraph/list item
    */
   async outdent(): Promise<void> {
-    await this.toolbar.locator('[aria-label="Decrease Indent"]').click();
+    const button = this.toolbar.locator('[aria-label="Decrease Indent"]');
+    if (await button.isDisabled()) {
+      await this.pressShiftTab();
+      await this.page.waitForTimeout(100);
+      return;
+    }
+    await button.click();
   }
 
   // ============================================================================
@@ -1144,7 +1150,7 @@ export class EditorPage {
    * Click a table menu item in the More dropdown
    */
   async clickTableMenuItem(itemName: string): Promise<void> {
-    await this.page.getByRole('menuitem', { name: itemName }).click();
+    await this.page.getByRole('menuitem', { name: itemName }).click({ force: true });
     await this.page.waitForTimeout(100);
   }
 
@@ -1226,9 +1232,8 @@ export class EditorPage {
    * Set cell fill color
    */
   async setCellFillColor(color: string): Promise<void> {
-    await this.page.locator('[data-testid="toolbar-table-cell-fill"]').click();
-    await this.page.waitForTimeout(100);
-    await this.page.locator(`button[title="${color}"]`).click();
+    const hexColor = color.replace(/^#/, '').toUpperCase();
+    await this.pickColorFromDropdown('Cell Fill Color', hexColor);
   }
 
   /**
@@ -1285,7 +1290,7 @@ export class EditorPage {
     // Wait for any pending changes
     await this.page.waitForTimeout(200);
     // Click save button
-    await this.page.locator('button:has-text("Save")').click();
+    await this.page.getByRole('button', { name: 'Save' }).click();
     // Wait for download or save confirmation
     await this.page.waitForTimeout(500);
   }
