@@ -5385,6 +5385,8 @@ body { background: white; }
                         <Tooltip content="Add comment" side="bottom" delayMs={300}>
                           <button
                             type="button"
+                            data-testid="floating-add-comment-button"
+                            aria-label="Add comment"
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();

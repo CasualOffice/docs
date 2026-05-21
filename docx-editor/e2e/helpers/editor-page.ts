@@ -222,6 +222,7 @@ export class EditorPage {
    */
   async pressDelete(): Promise<void> {
     await this.page.keyboard.press('Delete');
+    await this.page.waitForTimeout(50);
   }
 
   /**

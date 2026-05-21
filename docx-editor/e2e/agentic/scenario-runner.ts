@@ -155,6 +155,7 @@ export class ScenarioRunner {
 
       case 'pressKey':
         await this.page.keyboard.press(args.key as string);
+        await this.page.waitForTimeout(50);
         break;
 
       case 'pressEnter':

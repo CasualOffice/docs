@@ -577,6 +577,7 @@ test.describe('Demo.docx - Round-trip Save', () => {
 
   test('saved document preserves formatting', async ({ page }) => {
     // Verify basic text editing works (save/re-load infrastructure not yet available)
+    await editor.focus();
     await editor.typeText('Edited by test');
     await expect(page.locator('.ProseMirror')).toContainText('Edited by test');
   });
