@@ -16,6 +16,7 @@ export type ActionType =
   | 'pressKey'
   | 'pressEnter'
   | 'pressEnd'
+  | 'collapseSelectionToEnd'
   | 'pressShiftEnter'
   | 'pressBackspace'
   | 'pressDelete'

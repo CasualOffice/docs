@@ -317,19 +317,22 @@ test.describe('Lists with Formatting', () => {
   });
 
   test('different formatting per list item', async ({ page }) => {
-    // Type first item and make it bold using Shift+Home to select
+    // Type first item and make it bold using Shift+Home to select.
+    // Shift+Home / ArrowRight via raw keyboard race with role="toolbar"
+    // roving-tabindex when a format button still owns focus, so do the
+    // selection + collapse through PM dispatch helpers.
     await editor.typeText('Bold');
-    await page.keyboard.press('Shift+Home'); // Select to beginning of line
+    await editor.selectText('Bold');
     await editor.applyBold();
-    await page.keyboard.press('ArrowRight'); // Collapse selection
+    await editor.collapseSelectionToEnd();
     await editor.toggleBulletList();
     await editor.pressEnter();
 
     // Type second item and make it italic
     await editor.typeText('Italic');
-    await page.keyboard.press('Shift+Home');
+    await editor.selectText('Italic');
     await editor.applyItalic();
-    await page.keyboard.press('ArrowRight');
+    await editor.collapseSelectionToEnd();
     await editor.pressEnter();
 
     // Type third item (normal)

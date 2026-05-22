@@ -170,13 +170,19 @@ export class EditorPage {
   }
 
   /**
-   * Type text at the current cursor position
+   * Type text at the current cursor position.
+   *
+   * Refocuses ProseMirror first so the keystrokes can't be eaten by a
+   * stale activeElement (toolbar button after a click, document-name
+   * input after the New flow, etc.). Without this guard, the first
+   * typeText() after a cold-start beforeEach would routinely fail on CI
+   * with the PM doc empty.
    */
   async typeText(text: string): Promise<void> {
-    // Long payloads are faster and more stable via insertText; per-character
-    // keyboard.type can monopolize a worker long enough to starve parallel
-    // scenarios and cause unrelated navigation flakes.
+    await this.refocusEditor();
     if (text.length > 200) {
+      // Long payloads: insertText for speed/stability. Per-char type() can
+      // monopolize a worker and starve parallel scenarios.
       await this.page.keyboard.insertText(text);
       return;
     }
@@ -198,6 +204,11 @@ export class EditorPage {
    * Includes a small delay to allow focus restoration to complete
    */
   async pressEnter(): Promise<void> {
+    // Defensive refocus: tests often call pressEnter right after a toolbar
+    // click whose own refocus may race React re-renders. If keyboard.press
+    // fires while focus is on a toolbar button, the button gets activated
+    // (Enter == click) instead of inserting a paragraph.
+    await this.refocusEditor();
     await this.page.keyboard.press('Enter');
     // Wait for React to complete re-render and focus restoration
     await this.page.waitForTimeout(50);
@@ -230,6 +241,36 @@ export class EditorPage {
    */
   async pressEnd(): Promise<void> {
     await this.page.keyboard.press('End');
+  }
+
+  /**
+   * Collapse the current PM selection to its head (right-edge for forward
+   * selections, equivalent to pressing End / ArrowRight on a range). Routes
+   * through PM dispatch so it works regardless of which DOM element owns
+   * focus — keyboard.press('End') after a toolbar click can be eaten by the
+   * role="toolbar" roving-tabindex handler and never reach PM, leaving the
+   * range selection live and causing a following insertText to replace it.
+   */
+  async collapseSelectionToEnd(): Promise<void> {
+    await this.page.evaluate(() => {
+      type View = { state: { selection: { from: number; to: number; head: number } }; focus(): void };
+      type EditorAPI = { getView?: () => View | null; setSelection?: (anchor: number, head?: number) => void; focus?: () => void };
+      const w = window as unknown as {
+        __editorRef?: { current?: { getEditorRef?: () => EditorAPI | null } };
+      };
+      const editor = w.__editorRef?.current?.getEditorRef?.();
+      const view = editor?.getView?.();
+      if (!editor || !view) return;
+      const sel = view.state.selection;
+      if (sel.from === sel.to) return;
+      // Use the editor's setSelection(anchor, head) — it handles all
+      // selection kinds (TextSelection, AllSelection, etc.) by routing
+      // through view.state.doc.resolve, whereas trying to call
+      // sel.constructor.create(doc, pos) blows up for AllSelection (which
+      // has no static create method) with "Ctor.create is not a function".
+      editor.setSelection?.(sel.head);
+      editor.focus?.();
+    });
   }
 
   /**
@@ -520,9 +561,8 @@ export class EditorPage {
    */
   async applyBold(): Promise<void> {
     await this.boldButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -538,9 +578,8 @@ export class EditorPage {
    */
   async applyItalic(): Promise<void> {
     await this.italicButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -556,9 +595,8 @@ export class EditorPage {
    */
   async applyUnderline(): Promise<void> {
     await this.underlineButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -574,9 +612,8 @@ export class EditorPage {
    */
   async applyStrikethrough(): Promise<void> {
     await this.strikethroughButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -794,6 +831,7 @@ export class EditorPage {
    */
   async toggleBulletList(): Promise<void> {
     await this.toolbar.locator('[aria-label="Bullet List"]').click();
+    await this.refocusEditor();
   }
 
   /**
@@ -808,6 +846,7 @@ export class EditorPage {
    */
   async toggleNumberedList(): Promise<void> {
     await this.toolbar.locator('[aria-label="Numbered List"]').click();
+    await this.refocusEditor();
   }
 
   /**
@@ -1300,8 +1339,25 @@ export class EditorPage {
    */
   async newDocument(): Promise<void> {
     await this.page.locator('button:has-text("New")').click();
-    // Wait for document to be replaced with empty state
-    await this.page.waitForTimeout(500);
+    // Wait for the new (empty) ProseMirror to be attached and reporting an
+    // empty doc via the e2e editor ref. The previous 500ms fixed wait raced
+    // with bootstrap on cold CI runs — a subsequent typeText() then landed
+    // on a stale contenteditable from before the remount, and the test saw
+    // an empty PM doc.
+    await this.page.locator('.ProseMirror').first().waitFor({ state: 'attached', timeout: 5000 });
+    await this.page.waitForFunction(
+      () => {
+        const w = window as unknown as {
+          __editorRef?: {
+            current?: { getEditorRef?: () => { getView?: () => { state: { doc: { textContent: string } } } | null } | null };
+          };
+        };
+        const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
+        return view ? view.state.doc.textContent.length === 0 : false;
+      },
+      undefined,
+      { timeout: 5000 }
+    );
     this.currentTableCell = null;
   }
 
@@ -1557,11 +1613,55 @@ export class EditorPage {
   }
 
   /**
-   * Focus the editor content area
+   * Focus the hidden ProseMirror and wait until it actually owns focus.
+   *
+   * `.first()` on `[contenteditable="true"]` can match an unrelated editable
+   * region (run-editable spans, dialog fields, etc.), so target the
+   * ProseMirror root explicitly. Then poll until document.activeElement is
+   * inside `.ProseMirror`, since Playwright's focus() returns before
+   * browser-side focus changes settle in CI under load — a typeText() that
+   * runs while focus is still on a previously-clicked button or a stale
+   * contenteditable lands its keystrokes there, and subsequent assertions
+   * see an empty PM doc.
+   *
+   * The toolbar is also role="toolbar" with ARIA roving tabindex — if a
+   * format button still owns focus, a following End / ArrowRight key moves
+   * focus along the toolbar instead of reaching ProseMirror, so we must do
+   * this refocus after every toolbar click as well.
    */
   async focus(): Promise<void> {
-    const contentArea = this.getContentArea();
-    await contentArea.focus();
+    const pm = this.page.locator('.ProseMirror').first();
+    await pm.waitFor({ state: 'attached', timeout: 5000 });
+    // Drive focus through PM's view when the e2e ref is available — that
+    // calls focusPreventScroll(dom) AND selectionToDOM(view), so the DOM
+    // caret reflects the PM selection. A plain dom.focus() preserves
+    // whatever the DOM selection happens to be (often nothing on a fresh
+    // mount), which then makes the first keyboard.type land in a place the
+    // test author didn't expect.
+    const refUsed = await this.page.evaluate(() => {
+      type View = { focus(): void };
+      const w = window as unknown as {
+        __editorRef?: { current?: { getEditorRef?: () => { getView?: () => View | null } | null } };
+      };
+      const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
+      if (!view) return false;
+      view.focus();
+      return true;
+    });
+    if (!refUsed) await pm.focus();
+    await this.page.waitForFunction(
+      () => !!document.activeElement?.closest('.ProseMirror'),
+      undefined,
+      { timeout: 2000 }
+    );
+  }
+
+  /**
+   * Alias kept so existing format-button helpers read clearly. Internally
+   * the same robust focus path as focus().
+   */
+  async refocusEditor(): Promise<void> {
+    await this.focus();
   }
 
   /**

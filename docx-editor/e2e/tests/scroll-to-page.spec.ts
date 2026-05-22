@@ -22,6 +22,15 @@ test.describe('scrollToPage / getTotalPages (issue #280)', () => {
     await page.waitForFunction(() => (window.__DOCX_EDITOR_E2E__?.getTotalPages() ?? 0) > 1, {
       timeout: 10000,
     });
+    // getTotalPages reflects the layout calculation, but the .layout-page
+    // shells render asynchronously after that. scrollToPage(n) is a no-op
+    // until shell n exists in the DOM, which on CI sometimes lags the
+    // total-pages signal by a few hundred ms — wait for at least two shells
+    // so the first scroll target is present before the test acts.
+    await page.waitForFunction(
+      () => document.querySelectorAll('.layout-page').length >= 2,
+      { timeout: 10000 }
+    );
   });
 
   test('getTotalPages reports the layout page count (>1) without scrolling', async ({ page }) => {

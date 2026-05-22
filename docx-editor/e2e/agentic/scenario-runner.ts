@@ -166,6 +166,10 @@ export class ScenarioRunner {
         await this.editor.pressEnd();
         break;
 
+      case 'collapseSelectionToEnd':
+        await this.editor.collapseSelectionToEnd();
+        break;
+
       case 'pressShiftEnter':
         await this.editor.pressShiftEnter();
         break;

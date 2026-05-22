@@ -299,7 +299,10 @@ test.describe('Formatting with Selection', () => {
     await editor.typeText('Hello');
     await editor.selectText('Hello');
     await editor.applyBold();
-    await page.keyboard.press('ArrowRight');
+    // ArrowRight after a toolbar click can be eaten by the role="toolbar"
+    // roving-tabindex handler before reaching ProseMirror — collapse via
+    // PM dispatch so the next typeText extends instead of replacing.
+    await editor.collapseSelectionToEnd();
     await editor.typeText(' World');
 
     await assertions.assertDocumentContainsText(page, 'Hello World');

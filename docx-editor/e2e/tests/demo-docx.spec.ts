@@ -484,16 +484,16 @@ test.describe('Demo.docx - Structural Elements', () => {
   });
 
   test('footnote references are rendered as superscript', async ({ page }) => {
-    // Check in visible pages that footnote refs have superscript styling
+    // Check in visible pages that footnote refs have superscript styling.
+    // The selector itself encodes the assertion (inline `vertical-align: super`).
+    // Previous version followed up with `getComputedStyle().verticalAlign` —
+    // that flaked because the painter does diff-based DOM updates: the first
+    // matching span could detach between locator resolution and the evaluate
+    // call, and getComputedStyle on a detached node returns "".
     const supRun = page
       .locator('.paged-editor__pages span[style*="vertical-align: super"]')
       .first();
     await expect(supRun).toBeVisible();
-
-    const display = await supRun.evaluate((el) => {
-      return window.getComputedStyle(el).verticalAlign;
-    });
-    expect(display).toContain('super');
   });
 
   test('endnote references are rendered as superscript', async ({ page }) => {
