@@ -3887,6 +3887,40 @@ body { background: white; }
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }, [handleSave, documentName]);
 
+  const handleExportAs = useCallback(
+    async (target: 'odt' | 'md' | 'txt') => {
+      try {
+        const buffer = await handleSave();
+        if (!buffer) return;
+        const { exportDocxAs } = await import('../lib/format-converter');
+        const out = await exportDocxAs(new Uint8Array(buffer), target);
+        const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
+        const mime =
+          target === 'odt'
+            ? 'application/vnd.oasis.opendocument.text'
+            : target === 'md'
+              ? 'text/markdown'
+              : 'text/plain';
+        const blob =
+          typeof out === 'string'
+            ? new Blob([out], { type: mime })
+            : new Blob([out as BlobPart], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = `${base}.${target}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      } catch (error) {
+        onError?.(error instanceof Error ? error : new Error(`Failed to export as ${target}`));
+      }
+    },
+    [handleSave, documentName, onError],
+  );
+  const handleExportOdt = useCallback(() => handleExportAs('odt'), [handleExportAs]);
+  const handleExportMd = useCallback(() => handleExportAs('md'), [handleExportAs]);
+  const handleExportTxt = useCallback(() => handleExportAs('txt'), [handleExportAs]);
+
   const handleOpenDocument = useCallback(() => {
     docxInputRef.current?.click();
   }, []);
@@ -3899,8 +3933,24 @@ body { background: white; }
       if (!file) return;
       try {
         const buffer = await file.arrayBuffer();
-        await loadBuffer(buffer);
-        onDocumentNameChange?.(file.name.replace(/\.docx$/i, ''));
+        const { formatFromFilename, isForeignFormat, convertToDocx } = await import(
+          '../lib/format-converter'
+        );
+        const fmt = formatFromFilename(file.name);
+        let docxBuffer: ArrayBuffer = buffer;
+        if (fmt && isForeignFormat(fmt)) {
+          // .odt / .md / .txt → DOCX via the WASM worker, then feed the
+          // existing parser. PDF is intentionally not handled.
+          const out = await convertToDocx(new Uint8Array(buffer), fmt);
+          // Take ownership of just the populated slice so the buffer
+          // passed to loadBuffer is exactly the converter's output.
+          docxBuffer = out.buffer.slice(
+            out.byteOffset,
+            out.byteOffset + out.byteLength,
+          ) as ArrayBuffer;
+        }
+        await loadBuffer(docxBuffer);
+        onDocumentNameChange?.(file.name.replace(/\.(docx|odt|md|markdown|txt)$/i, ''));
       } catch (error) {
         onError?.(error instanceof Error ? error : new Error('Failed to open document'));
       }
@@ -5141,6 +5191,9 @@ body { background: white; }
                       onPageSetup={handleOpenPageSetup}
                       onFileProperties={handleOpenFileProperties}
                       onExportPdf={handleExportPdf}
+                      onExportOdt={handleExportOdt}
+                      onExportMd={handleExportMd}
+                      onExportTxt={handleExportTxt}
                       onReportBug={handleReportBug}
                       onShowAbout={handleShowAbout}
                       tableContext={state.pmTableContext}
@@ -5757,7 +5810,7 @@ body { background: white; }
             <input
               ref={docxInputRef}
               type="file"
-              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".docx,.odt,.md,.markdown,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               style={{ display: 'none' }}
               onChange={handleDocxFileChange}
             />

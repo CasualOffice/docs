@@ -232,6 +232,15 @@ export interface ToolbarProps {
   /** Callback for Export as PDF — opens the print pipeline so the user
    *  can pick "Save as PDF" as the destination. */
   onExportPdf?: () => void;
+  /** Callback for Export as .odt — routes the serialized DOCX bytes through
+   *  the @schnsrw/core WASM converter. */
+  onExportOdt?: () => void;
+  /** Callback for Export as .md — routes the serialized DOCX bytes through
+   *  the @schnsrw/core WASM converter. */
+  onExportMd?: () => void;
+  /** Callback for Export as .txt — routes the serialized DOCX bytes through
+   *  the @schnsrw/core WASM converter. */
+  onExportTxt?: () => void;
   /** Help → Report a bug — opens the GitHub issue template prefilled with env info. */
   onReportBug?: () => void;
   /** Help → About — opens the About dialog. */
@@ -392,6 +401,9 @@ export function Toolbar({
   onPageSetup,
   onFileProperties,
   onExportPdf,
+  onExportOdt,
+  onExportMd,
+  onExportTxt,
   onReportBug,
   onShowAbout,
   onInsertImage,
@@ -520,6 +532,33 @@ export function Toolbar({
                       icon: 'file_download',
                       label: 'Export as PDF',
                       onClick: onExportPdf,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onExportOdt
+                ? [
+                    {
+                      icon: 'file_download',
+                      label: 'Export as ODT',
+                      onClick: onExportOdt,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onExportMd
+                ? [
+                    {
+                      icon: 'file_download',
+                      label: 'Export as Markdown',
+                      onClick: onExportMd,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onExportTxt
+                ? [
+                    {
+                      icon: 'file_download',
+                      label: 'Export as Plain Text',
+                      onClick: onExportTxt,
                     } as MenuEntry,
                   ]
                 : []),
