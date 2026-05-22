@@ -110,6 +110,12 @@ export function extractSelectionContext(state: EditorState): SelectionContext {
     if (paragraph.attrs.styleId) {
       paragraphFormatting.styleId = paragraph.attrs.styleId;
     }
+    if (paragraph.attrs.spaceBefore != null) {
+      paragraphFormatting.spaceBefore = paragraph.attrs.spaceBefore;
+    }
+    if (paragraph.attrs.spaceAfter != null) {
+      paragraphFormatting.spaceAfter = paragraph.attrs.spaceAfter;
+    }
   }
 
   // List detection
@@ -258,6 +264,17 @@ function extractTextFormatting(state: EditorState): TextFormatting {
         break;
       case 'subscript':
         formatting.vertAlign = 'subscript';
+        break;
+      case 'smallCaps':
+        formatting.smallCaps = true;
+        break;
+      case 'allCaps':
+        formatting.allCaps = true;
+        break;
+      case 'characterSpacing':
+        if (mark.attrs.spacing != null) {
+          formatting.spacing = mark.attrs.spacing;
+        }
         break;
     }
   }

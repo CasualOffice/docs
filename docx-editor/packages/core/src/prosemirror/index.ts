@@ -69,6 +69,9 @@ export {
   toggleStrike,
   toggleSuperscript,
   toggleSubscript,
+  toggleSmallCaps,
+  toggleAllCaps,
+  setCharacterSpacing,
   setTextColor,
   clearTextColor,
   setHighlight,
@@ -115,6 +118,8 @@ export {
   getStyleId,
   setRtl,
   setLtr,
+  setSpaceBefore,
+  setSpaceAfter,
   // Table operations
   isInTable,
   getTableContext,

@@ -33,6 +33,8 @@ import {
   renderPages,
   isFloatingImageRun,
   isTextWrappingFloatingImageRun,
+  forceRenderAllPages,
+  restoreVirtualization,
   type RenderContext,
   type RenderPagesUpdateKind,
 } from './renderPage';
@@ -59,6 +61,8 @@ export {
   TEXTBOX_CLASS_NAMES,
   isFloatingImageRun,
   isTextWrappingFloatingImageRun,
+  forceRenderAllPages,
+  restoreVirtualization,
   type RenderContext,
 };
 export type { RenderPagesUpdateKind };

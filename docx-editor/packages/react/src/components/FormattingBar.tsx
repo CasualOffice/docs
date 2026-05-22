@@ -560,6 +560,10 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
               value={currentFormatting.lineSpacing}
               onChange={handleLineSpacingChange}
               disabled={disabled}
+              spaceBefore={currentFormatting.spaceBefore}
+              spaceAfter={currentFormatting.spaceAfter}
+              onSpaceBeforeChange={(twips) => onFormat?.({ type: 'spaceBefore', value: twips })}
+              onSpaceAfterChange={(twips) => onFormat?.({ type: 'spaceAfter', value: twips })}
             />
           )}
         </ToolbarGroup>

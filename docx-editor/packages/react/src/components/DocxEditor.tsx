@@ -120,6 +120,8 @@ import type { WrapType } from '@eigenpal/docx-core/docx/wrapTypes';
 import {
   captureInlinePositionEmu,
   toolbarValueToLayoutTarget,
+  forceRenderAllPages,
+  restoreVirtualization,
 } from '@eigenpal/docx-core/layout-painter';
 import { HyperlinkPopup, type HyperlinkPopupData } from './ui/HyperlinkPopup';
 import { Toaster, toast } from 'sonner';
@@ -190,6 +192,13 @@ import {
   // Text direction commands
   setRtl,
   setLtr,
+  // Small caps / all caps / character spacing
+  toggleSmallCaps,
+  toggleAllCaps,
+  setCharacterSpacing,
+  // Space before/after
+  setSpaceBefore,
+  setSpaceAfter,
   // Page break command
   insertPageBreak,
   // Table of Contents command
@@ -2142,12 +2151,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         strike: textFormatting.strike,
         superscript: textFormatting.vertAlign === 'superscript',
         subscript: textFormatting.vertAlign === 'subscript',
+        smallCaps: textFormatting.smallCaps,
+        allCaps: textFormatting.allCaps,
         fontFamily,
         fontSize,
         color: textColor,
         highlight: textFormatting.highlight,
         alignment: paragraphFormatting.alignment,
         lineSpacing: paragraphFormatting.lineSpacing,
+        spaceBefore: paragraphFormatting.spaceBefore,
+        spaceAfter: paragraphFormatting.spaceAfter,
         listState,
         styleId: selectionState.styleId ?? undefined,
         indentLeft: paragraphFormatting.indentLeft,
@@ -2882,6 +2895,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         setLtr(view.state, view.dispatch);
         return;
       }
+      if (action === 'selectAll') {
+        const { doc } = view.state;
+        const tr = view.state.tr.setSelection(
+          TextSelection.create(doc, 0, doc.content.size)
+        );
+        view.dispatch(tr);
+        return;
+      }
+      if (action === 'toggleSmallCaps') {
+        toggleSmallCaps(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleAllCaps') {
+        toggleAllCaps(view.state, view.dispatch);
+        return;
+      }
       if (action === 'insertLink') {
         // Get the selected text for the hyperlink dialog
         const selectedText = getSelectedText(view.state);
@@ -2933,6 +2962,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             break;
           case 'lineSpacing':
             setLineSpacing(action.value)(view.state, view.dispatch);
+            break;
+          case 'spaceBefore':
+            setSpaceBefore(action.value)(view.state, view.dispatch);
+            break;
+          case 'spaceAfter':
+            setSpaceAfter(action.value)(view.state, view.dispatch);
+            break;
+          case 'charSpacing':
+            setCharacterSpacing(action.value)(view.state, view.dispatch);
             break;
           case 'applyStyle': {
             // Resolve style to get its formatting properties
@@ -3755,6 +3793,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
 
+      // Force-render all virtualized page shells so the clone captures every
+      // page's content, not just the pages near the viewport (issue #141).
+      forceRenderAllPages(pagesEl as HTMLElement);
+
       // Clone pages and remove transforms/shadows
       const pagesClone = pagesEl.cloneNode(true) as HTMLElement;
       pagesClone.style.cssText = 'display: block; margin: 0; padding: 0;';
@@ -3763,6 +3805,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         el.style.boxShadow = 'none';
         el.style.margin = '0';
       }
+
+      // Restore memory-efficient virtualization after the clone is done.
+      requestAnimationFrame(() => {
+        restoreVirtualization(pagesEl as HTMLElement);
+      });
 
       const titleEscaped = windowTitle
         .replace(/&/g, '&amp;')

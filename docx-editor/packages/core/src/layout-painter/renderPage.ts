@@ -2183,3 +2183,70 @@ function depopulatePageShell(
   shell.innerHTML = '';
   data.rendered = false;
 }
+
+/**
+ * Force-render all virtualized page shells so that cloneNode(true) captures
+ * every page's content — not just the pages near the viewport.
+ *
+ * Call this immediately before cloning the `.paged-editor__pages` container
+ * for print/PDF export (issue #141). For documents with fewer than
+ * VIRTUALIZATION_THRESHOLD pages, all pages are already rendered eagerly and
+ * this is a no-op.
+ *
+ * After the clone is done, call `restoreVirtualization()` in a
+ * `requestAnimationFrame` to free the temporarily-rendered pages.
+ */
+export function forceRenderAllPages(container: HTMLElement): void {
+  const pc = container as PageContainer;
+  const state = pc.__pageRenderState;
+  if (!state) return; // Not virtualized — all pages already rendered.
+
+  const { pageDataMap, totalPages, currentOptions } = state;
+  for (const [shell, data] of pageDataMap) {
+    if (!data.rendered) {
+      populatePageShell(shell, pageDataMap, totalPages, currentOptions);
+    }
+  }
+}
+
+/**
+ * Restore memory-efficient virtualization after a print/PDF clone.
+ *
+ * Depopulates pages whose index is farther from the viewport center than
+ * VIRTUALIZATION_BUFFER + 1. Pages within the buffer stay rendered so the
+ * editor remains responsive immediately after print completes.
+ *
+ * This is a best-effort cleanup; skipping it is safe (just wastes RAM until
+ * the next IntersectionObserver tick depopulates far pages automatically).
+ */
+export function restoreVirtualization(container: HTMLElement): void {
+  const pc = container as PageContainer;
+  const state = pc.__pageRenderState;
+  if (!state) return;
+
+  const { pageDataMap } = state;
+
+  // Find the currently-visible center page by looking for a rendered shell
+  // near the scroll mid-point.
+  const scrollable = container.parentElement ?? container;
+  const viewportTop = scrollable.scrollTop;
+  const viewportBottom = viewportTop + scrollable.clientHeight;
+  const viewportMid = (viewportTop + viewportBottom) / 2;
+
+  let nearestIdx = 0;
+  let nearestDist = Infinity;
+  for (const [shell, data] of pageDataMap) {
+    const shellMid = shell.offsetTop + shell.offsetHeight / 2;
+    const dist = Math.abs(shellMid - viewportMid);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestIdx = data.index;
+    }
+  }
+
+  for (const [shell, data] of pageDataMap) {
+    if (Math.abs(data.index - nearestIdx) > VIRTUALIZATION_BUFFER + 1) {
+      depopulatePageShell(shell, pageDataMap);
+    }
+  }
+}

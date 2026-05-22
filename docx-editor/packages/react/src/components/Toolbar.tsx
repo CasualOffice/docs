@@ -52,6 +52,10 @@ export interface SelectionFormatting {
   superscript?: boolean;
   /** Whether selected text is subscript */
   subscript?: boolean;
+  /** Whether selected text is small caps */
+  smallCaps?: boolean;
+  /** Whether selected text is all caps */
+  allCaps?: boolean;
   /** Font family of selected text */
   fontFamily?: string;
   /** Font size of selected text (in half-points) */
@@ -66,6 +70,10 @@ export interface SelectionFormatting {
   listState?: ListState;
   /** Line spacing in twips (OOXML value, 240 = single spacing) */
   lineSpacing?: number;
+  /** Paragraph space before in twips */
+  spaceBefore?: number;
+  /** Paragraph space after in twips */
+  spaceAfter?: number;
   /** Paragraph style ID */
   styleId?: string;
   /** Paragraph left indentation in twips */
@@ -92,12 +100,18 @@ export type FormattingAction =
   | 'insertLink'
   | 'setRtl'
   | 'setLtr'
+  | 'selectAll'
+  | 'toggleSmallCaps'
+  | 'toggleAllCaps'
   | { type: 'fontFamily'; value: string }
   | { type: 'fontSize'; value: number }
   | { type: 'textColor'; value: ColorValue | string }
   | { type: 'highlightColor'; value: string }
   | { type: 'alignment'; value: ParagraphAlignment }
   | { type: 'lineSpacing'; value: number }
+  | { type: 'spaceBefore'; value: number }
+  | { type: 'spaceAfter'; value: number }
+  | { type: 'charSpacing'; value: number }
   | { type: 'applyStyle'; value: string };
 
 /**
@@ -116,6 +130,14 @@ export interface ToolbarProps {
   canUndo?: boolean;
   /** Whether redo is available */
   canRedo?: boolean;
+  /** Callback to open Find dialog (Ctrl+F) */
+  onOpenFind?: () => void;
+  /** Callback to open Find & Replace dialog (Ctrl+H) */
+  onOpenFindReplace?: () => void;
+  /** Callback to toggle browser spellcheck on the editor */
+  onToggleSpellCheck?: () => void;
+  /** Whether spellcheck is currently enabled */
+  spellCheckEnabled?: boolean;
   /** Whether the toolbar is disabled */
   disabled?: boolean;
   /** Additional CSS class name */
@@ -351,6 +373,14 @@ export function Toolbar({
   style,
   disabled = false,
   onFormat,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  onOpenFind,
+  onOpenFindReplace,
+  onToggleSpellCheck,
+  spellCheckEnabled,
   onPrint,
   showPrintButton = true,
   onOpen,
@@ -364,6 +394,7 @@ export function Toolbar({
   onInsertPageBreak,
   onInsertTOC,
   onRefocusEditor,
+  currentFormatting,
   ...restProps
 }: ToolbarProps) {
   const { t } = useTranslation();
@@ -509,11 +540,127 @@ export function Toolbar({
         );
       })()}
 
+      {/* Edit Menu */}
+      <MenuDropdown
+        label="Edit"
+        disabled={disabled}
+        items={[
+          {
+            icon: 'undo',
+            label: 'Undo',
+            shortcut: '⌘Z',
+            onClick: onUndo ?? (() => handleFormat('bold')), // overridden below
+            disabled: !canUndo,
+          } as MenuEntry,
+          {
+            icon: 'redo',
+            label: 'Redo',
+            shortcut: '⌘Y',
+            onClick: onRedo ?? (() => {}),
+            disabled: !canRedo,
+          } as MenuEntry,
+          { type: 'separator' as const },
+          ...(onOpenFind
+            ? [
+                {
+                  icon: 'search',
+                  label: 'Find',
+                  shortcut: '⌘F',
+                  onClick: onOpenFind,
+                } as MenuEntry,
+              ]
+            : []),
+          ...(onOpenFindReplace
+            ? [
+                {
+                  icon: 'find_replace',
+                  label: 'Find and Replace',
+                  shortcut: '⌘H',
+                  onClick: onOpenFindReplace,
+                } as MenuEntry,
+              ]
+            : []),
+          ...(onOpenFind || onOpenFindReplace ? [{ type: 'separator' as const }] : []),
+          {
+            icon: 'select_all',
+            label: 'Select All',
+            shortcut: '⌘A',
+            onClick: () => handleFormat('selectAll'),
+          } as MenuEntry,
+          ...(onToggleSpellCheck
+            ? [
+                { type: 'separator' as const },
+                {
+                  icon: 'spellcheck',
+                  label: spellCheckEnabled ? '✓ Spelling' : 'Spelling',
+                  onClick: onToggleSpellCheck,
+                } as MenuEntry,
+              ]
+            : []),
+        ]}
+      />
+
       {/* Format Menu */}
       <MenuDropdown
         label={t('toolbar.format')}
         disabled={disabled}
         items={[
+          {
+            label: `${currentFormatting?.bold ? '✓ ' : ''}Bold`,
+            shortcut: '⌘B',
+            onClick: () => handleFormat('bold'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.italic ? '✓ ' : ''}Italic`,
+            shortcut: '⌘I',
+            onClick: () => handleFormat('italic'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.underline ? '✓ ' : ''}Underline`,
+            shortcut: '⌘U',
+            onClick: () => handleFormat('underline'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.strike ? '✓ ' : ''}Strikethrough`,
+            onClick: () => handleFormat('strikethrough'),
+          } as MenuEntry,
+          { type: 'separator' as const },
+          {
+            label: `${currentFormatting?.smallCaps ? '✓ ' : ''}Small Caps`,
+            onClick: () => handleFormat('toggleSmallCaps'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.allCaps ? '✓ ' : ''}All Caps`,
+            onClick: () => handleFormat('toggleAllCaps'),
+          } as MenuEntry,
+          { type: 'separator' as const },
+          {
+            label: 'Character spacing',
+            submenuContent: (closeMenu: () => void) => (
+              <div className="py-1 min-w-[180px]">
+                {[
+                  { label: 'Normal', value: 0 },
+                  { label: 'Expanded (+1pt)', value: 20 },
+                  { label: 'Expanded (+2pt)', value: 40 },
+                  { label: 'Condensed (−1pt)', value: -20 },
+                  { label: 'Condensed (−2pt)', value: -40 },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleFormat({ type: 'charSpacing', value: item.value });
+                      closeMenu();
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            ),
+          } as MenuEntry,
+          { type: 'separator' as const },
           {
             icon: 'format_textdirection_l_to_r',
             label: t('toolbar.leftToRight'),

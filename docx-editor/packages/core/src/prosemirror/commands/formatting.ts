@@ -80,6 +80,35 @@ export function setUnderlineStyle(style: string, color?: TextColorAttrs): Comman
   return cmds.setUnderlineStyle(style, color);
 }
 
+// Character styling — smallCaps, allCaps, characterSpacing
+// These marks have no dedicated commands in the extension yet; drive them via
+// the generic toggleMark / createSetMarkCommand / createRemoveMarkCommand helpers.
+import { toggleMark, createSetMarkCommand, createRemoveMarkCommand } from '../extensions/marks/markUtils';
+
+export const toggleSmallCaps: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['smallCaps'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+export const toggleAllCaps: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['allCaps'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+/** Set character spacing (letter-spacing) in twips. Pass 0 to remove. */
+export function setCharacterSpacing(spacingTwips: number): Command {
+  return (state, dispatch, view) => {
+    const markType = state.schema.marks['characterSpacing'];
+    if (!markType) return false;
+    if (spacingTwips === 0) {
+      return createRemoveMarkCommand(markType)(state, dispatch, view);
+    }
+    return createSetMarkCommand(markType, { spacing: spacingTwips })(state, dispatch, view);
+  };
+}
+
 // Hyperlink commands
 export function setHyperlink(href: string, tooltip?: string): Command {
   return cmds.setHyperlink(href, tooltip);
