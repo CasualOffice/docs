@@ -180,9 +180,13 @@ export class EditorPage {
    */
   async typeText(text: string): Promise<void> {
     await this.refocusEditor();
-    if (text.length > 200) {
-      // Long payloads: insertText for speed/stability. Per-char type() can
-      // monopolize a worker and starve parallel scenarios.
+    if (text.length > 100) {
+      // Payloads longer than 100 chars: insertText for speed/stability.
+      // Per-char keyboard.type() at Playwright's default timing takes ~30 ms/char
+      // — 109 chars = ~3 s — which burns CI budget and causes flaky timeouts on
+      // loaded 2-vCPU runners.  insertText dispatches a single InputEvent and
+      // is ~30× faster; all scenario assertions operate on doc content, not
+      // individual key events, so the trade-off is safe.
       await this.page.keyboard.insertText(text);
       return;
     }
@@ -1031,6 +1035,10 @@ export class EditorPage {
    * Undo via keyboard shortcut
    */
   async undoShortcut(): Promise<void> {
+    // Guarantee PM focus before the shortcut — a preceding toolbar click or
+    // dropdown selection may have moved focus to a toolbar button, in which
+    // case the keystroke would activate the button instead of reaching PM.
+    await this.refocusEditor();
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await this.page.keyboard.press(`${modifier}+z`);
     await this.page.waitForTimeout(100);
@@ -1051,6 +1059,11 @@ export class EditorPage {
    * Redo via keyboard shortcut (Ctrl+Y or Ctrl+Shift+Z)
    */
   async redoShortcut(): Promise<void> {
+    // Guarantee PM focus before the shortcut — undo processing can trigger
+    // React re-renders that briefly move the active element; without this
+    // guard the Ctrl+Y lands on whatever the browser thinks has focus and
+    // ProseMirror never sees the redo command.
+    await this.refocusEditor();
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await this.page.keyboard.press(`${modifier}+y`);
     await this.page.waitForTimeout(100);
