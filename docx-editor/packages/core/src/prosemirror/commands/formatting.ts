@@ -83,7 +83,11 @@ export function setUnderlineStyle(style: string, color?: TextColorAttrs): Comman
 // Character styling — smallCaps, allCaps, characterSpacing
 // These marks have no dedicated commands in the extension yet; drive them via
 // the generic toggleMark / createSetMarkCommand / createRemoveMarkCommand helpers.
-import { toggleMark, createSetMarkCommand, createRemoveMarkCommand } from '../extensions/marks/markUtils';
+import {
+  toggleMark,
+  createSetMarkCommand,
+  createRemoveMarkCommand,
+} from '../extensions/marks/markUtils';
 
 export const toggleSmallCaps: Command = (state, dispatch, view) => {
   const markType = state.schema.marks['smallCaps'];

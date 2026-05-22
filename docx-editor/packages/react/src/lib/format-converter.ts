@@ -62,10 +62,7 @@ function send<T extends WorkerResponse>(req: WorkerRequest, transfer: Transferab
  * when the user picks a .odt/.md/.txt file — we hand the result to the
  * existing DOCX parser.
  */
-export async function convertToDocx(
-  bytes: Uint8Array,
-  from: ForeignFormat,
-): Promise<Uint8Array> {
+export async function convertToDocx(bytes: Uint8Array, from: ForeignFormat): Promise<Uint8Array> {
   const req: ConvertRequest = {
     id: nextId++,
     kind: 'convert',
@@ -91,7 +88,7 @@ export async function convertToDocx(
  */
 export async function exportDocxAs(
   docxBytes: Uint8Array,
-  to: ForeignFormat,
+  to: ForeignFormat
 ): Promise<Uint8Array | string> {
   const req: ConvertRequest = {
     id: nextId++,
@@ -115,10 +112,9 @@ export async function exportDocxAs(
 /** Sniff the format of a file by its bytes. Falls back to the extension. */
 export async function detectFormat(bytes: Uint8Array): Promise<Format | null> {
   const req: DetectRequest = { id: nextId++, kind: 'detect', bytes };
-  const reply = await send<{ id: number; ok: true; kind: 'detect'; format: Format | null }>(
-    req,
-    [bytes.buffer],
-  );
+  const reply = await send<{ id: number; ok: true; kind: 'detect'; format: Format | null }>(req, [
+    bytes.buffer,
+  ]);
   return reply.format;
 }
 

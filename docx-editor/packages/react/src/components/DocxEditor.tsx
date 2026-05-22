@@ -2907,9 +2907,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
       if (action === 'selectAll') {
         const { doc } = view.state;
-        const tr = view.state.tr.setSelection(
-          TextSelection.create(doc, 0, doc.content.size)
-        );
+        const tr = view.state.tr.setSelection(TextSelection.create(doc, 0, doc.content.size));
         view.dispatch(tr);
         return;
       }
@@ -3915,7 +3913,7 @@ body { background: white; }
         onError?.(error instanceof Error ? error : new Error(`Failed to export as ${target}`));
       }
     },
-    [handleSave, documentName, onError],
+    [handleSave, documentName, onError]
   );
   const handleExportOdt = useCallback(() => handleExportAs('odt'), [handleExportAs]);
   const handleExportMd = useCallback(() => handleExportAs('md'), [handleExportAs]);
@@ -3933,9 +3931,8 @@ body { background: white; }
       if (!file) return;
       try {
         const buffer = await file.arrayBuffer();
-        const { formatFromFilename, isForeignFormat, convertToDocx } = await import(
-          '../lib/format-converter'
-        );
+        const { formatFromFilename, isForeignFormat, convertToDocx } =
+          await import('../lib/format-converter');
         const fmt = formatFromFilename(file.name);
         let docxBuffer: ArrayBuffer = buffer;
         if (fmt && isForeignFormat(fmt)) {
@@ -3946,7 +3943,7 @@ body { background: white; }
           // passed to loadBuffer is exactly the converter's output.
           docxBuffer = out.buffer.slice(
             out.byteOffset,
-            out.byteOffset + out.byteLength,
+            out.byteOffset + out.byteLength
           ) as ArrayBuffer;
         }
         await loadBuffer(docxBuffer);
@@ -5793,9 +5790,7 @@ body { background: white; }
                   }}
                 />
               )}
-              {showAbout && (
-                <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />
-              )}
+              {showAbout && <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />}
             </Suspense>
             {/* InlineHeaderFooterEditor is rendered inside the editor content area (position:relative div) */}
             {/* Hidden file input for image insertion */}

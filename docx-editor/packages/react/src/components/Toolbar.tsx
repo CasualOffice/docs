@@ -776,9 +776,7 @@ export function Toolbar({
                   } as MenuEntry,
                 ]
               : []),
-            ...(onReportBug && onShowAbout
-              ? [{ type: 'separator' as const } as MenuEntry]
-              : []),
+            ...(onReportBug && onShowAbout ? [{ type: 'separator' as const } as MenuEntry] : []),
             ...(onShowAbout
               ? [
                   {

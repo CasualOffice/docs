@@ -146,12 +146,7 @@ export function AboutDialog({
           </dl>
         </div>
         <div style={footerStyle}>
-          <button
-            type="button"
-            style={btnStyle}
-            onClick={onClose}
-            data-testid="about-close"
-          >
+          <button type="button" style={btnStyle} onClick={onClose} data-testid="about-close">
             Close
           </button>
         </div>
