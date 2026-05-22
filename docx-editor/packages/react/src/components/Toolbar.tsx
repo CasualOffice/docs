@@ -232,6 +232,10 @@ export interface ToolbarProps {
   /** Callback for Export as PDF — opens the print pipeline so the user
    *  can pick "Save as PDF" as the destination. */
   onExportPdf?: () => void;
+  /** Help → Report a bug — opens the GitHub issue template prefilled with env info. */
+  onReportBug?: () => void;
+  /** Help → About — opens the About dialog. */
+  onShowAbout?: () => void;
   /** Table context when cursor is in a table */
   tableContext?: {
     isInTable: boolean;
@@ -388,6 +392,8 @@ export function Toolbar({
   onPageSetup,
   onFileProperties,
   onExportPdf,
+  onReportBug,
+  onShowAbout,
   onInsertImage,
   onInsertTable,
   showTableInsert = true,
@@ -715,6 +721,37 @@ export function Toolbar({
           },
         ]}
       />
+
+      {/* Help Menu */}
+      {(onReportBug || onShowAbout) && (
+        <MenuDropdown
+          label={t('toolbar.help')}
+          disabled={disabled}
+          items={[
+            ...(onReportBug
+              ? [
+                  {
+                    icon: 'bug_report',
+                    label: t('toolbar.reportIssue'),
+                    onClick: onReportBug,
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onReportBug && onShowAbout
+              ? [{ type: 'separator' as const } as MenuEntry]
+              : []),
+            ...(onShowAbout
+              ? [
+                  {
+                    icon: 'info',
+                    label: 'About Casual Editor',
+                    onClick: onShowAbout,
+                  } as MenuEntry,
+                ]
+              : []),
+          ]}
+        />
+      )}
 
       {/* Formatting icons — rendered inline (display:contents) */}
       <FormattingBar

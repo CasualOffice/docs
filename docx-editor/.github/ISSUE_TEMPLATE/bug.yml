@@ -1,0 +1,51 @@
+name: Bug report
+description: Something doesn't work the way it should — a crash, wrong result, broken UI, regression after an update.
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report — the more concrete the repro, the faster we can fix it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: One or two sentences. What did you do, what did you expect, what did you get instead?
+      placeholder: "I clicked X, expected Y, but Z happened."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A short numbered list. Start from "open the app".
+      placeholder: |
+        1. Open the app
+        2. Open my document.docx (attach below if possible)
+        3. Click Format → Small Caps
+        4. Notice that …
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: The URL of the page where it happened (e.g. the live demo or your local dev server).
+      placeholder: https://doc.schnsrw.live/
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Browser / OS / viewport — Help → Report a bug prefills this automatically.
+      placeholder: "Chrome 134 / macOS / viewport 1440×900"
+
+  - type: textarea
+    id: sample-docx
+    attributes:
+      label: Sample .docx (optional)
+      description: If the bug requires a specific document, attach it here (drag & drop the file). Strip anything sensitive first.

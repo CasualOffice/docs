@@ -1,4 +1,4 @@
-# 06 — Deployment Guide
+# Deployment Guide
 
 Practical guide to running Casual Editor in the three supported
 shapes: **single-user demo** (GitHub Pages), **collab Docker

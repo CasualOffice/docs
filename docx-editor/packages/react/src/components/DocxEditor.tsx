@@ -107,6 +107,9 @@ const PageSetupDialog = lazy(() =>
 const FilePropertiesDialog = lazy(() =>
   import('./dialogs/FilePropertiesDialog').then((m) => ({ default: m.FilePropertiesDialog }))
 );
+const AboutDialog = lazy(() =>
+  import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -1820,6 +1823,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // File → Properties dialog state.
   const [showFileProperties, setShowFileProperties] = useState(false);
   const handleOpenFileProperties = useCallback(() => setShowFileProperties(true), []);
+
+  // Help → About dialog state.
+  const [showAbout, setShowAbout] = useState(false);
+  const handleShowAbout = useCallback(() => setShowAbout(true), []);
+  const handleReportBug = useCallback(() => {
+    void import('./report-bug').then((m) => m.openBugReport());
+  }, []);
 
   // Hyperlink popup state (Google Docs-style floating popup on link click)
   const [hyperlinkPopupData, setHyperlinkPopupData] = useState<HyperlinkPopupData | null>(null);
@@ -5131,6 +5141,8 @@ body { background: white; }
                       onPageSetup={handleOpenPageSetup}
                       onFileProperties={handleOpenFileProperties}
                       onExportPdf={handleExportPdf}
+                      onReportBug={handleReportBug}
+                      onShowAbout={handleShowAbout}
                       tableContext={state.pmTableContext}
                       onTableAction={handleTableAction}
                     >
@@ -5727,6 +5739,9 @@ body { background: white; }
                     pkg.properties = next;
                   }}
                 />
+              )}
+              {showAbout && (
+                <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />
               )}
             </Suspense>
             {/* InlineHeaderFooterEditor is rendered inside the editor content area (position:relative div) */}

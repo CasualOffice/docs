@@ -1,242 +1,219 @@
-<p align="center">
-  <a href="https://doc.schnsrw.live/">
-    <img src="https://raw.githubusercontent.com/schnsrw/docx/main/assets/logo.svg" alt="Casual Editor" width="96" height="96" />
-  </a>
-</p>
+<div align="center">
 
-<h1 align="center">Casual Editor</h1>
+<a href="https://doc.schnsrw.live/">
+  <img src="https://raw.githubusercontent.com/schnsrw/docx/main/assets/logo.svg" alt="Casual Editor" width="96" height="96" />
+</a>
 
-<p align="center">A casual, real-time collaborative <code>.docx</code> editor.</p>
+# Casual Editor
 
-<p align="center">
-  <a href="https://doc.schnsrw.live/">
-    <img src="https://img.shields.io/badge/live-doc.schnsrw.live-2563eb?style=flat-square" alt="Live demo" />
-  </a>
-  <a href="https://github.com/schnsrw/docx/actions/workflows/ci.yml">
-    <img src="https://github.com/schnsrw/docx/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" />
-  </a>
-  <a href="https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml">
-    <img src="https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml/badge.svg?branch=main" alt="Deploy demo" />
-  </a>
-  <img src="https://img.shields.io/badge/license-Apache--2.0-2563eb?style=flat-square" alt="License: Apache-2.0" />
-</p>
+**Word-flavored web `.docx` editor with real-time collaborative editing**
+
+[![CI](https://github.com/schnsrw/docx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/schnsrw/docx/actions/workflows/ci.yml)
+[![Deploy](https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml/badge.svg?branch=main)](https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/schnsrw/casual-editor?logo=docker)](https://hub.docker.com/r/schnsrw/casual-editor)
+[![Image Size](https://img.shields.io/docker/image-size/schnsrw/casual-editor/latest?logo=docker&label=image)](https://hub.docker.com/r/schnsrw/casual-editor)
+[![E2E Tests](https://img.shields.io/badge/e2e-661%20passing-brightgreen?logo=playwright)](./docx-editor/e2e)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
+
+[**Live Demo →**](https://doc.schnsrw.live/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/schnsrw/casual-editor) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md)
+
+</div>
 
 ---
 
-Open a `.docx`, edit it in the browser with WYSIWYG fidelity, save it
-back as `.docx`, share a link, edit it live with someone else. The Go
-sync server speaks the standard y-websocket protocol and is stateless
-end-to-end — persistence is delegated to whichever host (inline, WOPI,
-or a JWT-API integration) the operator picks at startup. **No
-database, no on-disk update log.** The only live state is the
-in-memory Y.Doc for an active session; when the last client
-disconnects it's gone, and the next session re-seeds from the host.
+Casual Editor is a self-hostable, browser-based `.docx` editor that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with real-time multi-user co-editing built in. Upload a `.docx`, share a link, and edit together instantly. No accounts, no database, no lock-in.
 
-## Live demo
+Built on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) with a stateless Go sync server layered on top.
 
-→ **[doc.schnsrw.live](https://doc.schnsrw.live/)** — rebuilt and
-deployed from `main` on every push via
-[`.github/workflows/deploy-demo.yml`](.github/workflows/deploy-demo.yml).
+---
 
-## How the pieces fit
+## ✨ What's Inside
 
-```
-Browser
-  <DocxEditor>  +  y-prosemirror  +  Y.Doc   ⇄   y-websocket   ⇄   Go backend (stateless)
-                                                                    ├─ WS gateway
-                                                                    ├─ In-memory Y.Doc per live session
-                                                                    ├─ JWT auth, awareness, presence
-                                                                    └─ Snapshot worker  →  WOPI host
-                                                                                            ├─ GetFile  (seed)
-                                                                                            └─ PutFile  (save)
-```
+### Document Engine
 
-The editor view is based on the MIT
-[`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor)
-codebase (React + ProseMirror, OOXML model kept intact end-to-end),
-inlined under [`docx-editor/`](docx-editor/). The AGPL
-`@eigenpal/docx-editor-agents` package and everything that depended on
-it has been removed; only MIT code remains.
+- **Paginated WYSIWYG layout** — true page breaks, headers/footers, page numbers, section breaks
+- **Full WordprocessingML core** — paragraphs, runs, tables, lists, sections, hyperlinks, footnotes/endnotes, custom XML, math equations
+- **DrawingML rendering** — pictures, shapes, textboxes (modern + VML fallback), `wpg:wgp` groups with per-child positioning and rotation/flip, decorative shapes, connector lines, image hyperlinks
+- **Comments and tracked changes** — inline markers, comments sidebar, accept/reject revisions
+- **Styles** — paragraph + character styles, theme colors, theme fonts, style inheritance chain
+- **Tables** — borders (7 modes + color picker), shading, merged cells, header row, row height, table styles
+- **Lists** — bullet and numbered, multi-level, list level inc/dec, contextual spacing
+- **Find & Replace** dialog with match-case, whole-word, and regex modes
+- **Formatting** — bold, italic, underline (styles + color), strikethrough, super/subscript, small caps, all caps, character spacing, RTL/LTR
+- **Print** with page setup (orientation + margins) and Export-as-PDF
+- **File → Properties** dialog, **Help → Report a Bug** (GitHub issue prefill), **Help → About**
 
-## What works today
+### File I/O
 
-Editor (in `docx-editor/`):
+| Format | Open | Save / Export |
+| --- | :---: | :---: |
+| `.docx` | ✅ | ✅ |
+| PDF | — | ✅ (via print) |
 
-- Parser + serializer for the full WordprocessingML core (paragraphs,
-  runs, tables, lists, sections, headers/footers, comments, tracked
-  changes, hyperlinks, footnotes/endnotes, custom XML, math equations).
-- DrawingML rendering: pictures, shapes, textboxes (modern + VML
-  fallback), `wpg:wgp` groups with per-child positioning and
-  rotation/flip, decorative `<v:rect>`/`<v:oval>`/`<v:line>`,
-  connector lines inside groups, image hyperlinks.
-- Round-trip audit
-  ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs))
-  that parses every fixture, re-serializes, and diffs the resulting
-  document.xml at the tag level. Current state: **19 of 39 fixtures
-  round-trip with zero element drops**; remaining drops are tracked.
-- Each fidelity gap fix is pinned by a unit test in
-  `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where
-  it produces visible output) an e2e spec in
-  `docx-editor/e2e/tests/`.
+- Round-trip audit ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses every fixture, re-serializes, and diffs the resulting `document.xml` at the tag level
+- Each fidelity gap fix is pinned by a unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where it produces visible output) an e2e spec in `docx-editor/e2e/tests/`
 
-Backend (`backend/`, Go):
+### Keyboard Shortcuts
 
-- y-websocket gateway: peers connecting to `/doc/{docId}` are
-  registered with the in-process room manager and have their
-  binary frames fanned out to every other peer in the same room.
-  Pure relay — the gateway never interprets the CRDT.
-- `host.Integration` interface (`backend/internal/host/`) with three
-  planned implementations: `inline` (in-memory, the v0 share-link
-  flow — done), `wopi` (full WOPI HTTP, deferred), and `jwtapi`
-  (lighter "WOPI-but-simpler" REST, deferred).
-- REST surface: `POST /api/docs` for upload (multipart or raw),
-  `GET /api/docs/{docId}/download` to stream the latest snapshot,
-  `GET /health` for the container probe.
-- Bundled image (`Dockerfile`): editor SPA + gateway in one
-  container behind a single port, ready to push to Docker Hub.
+Canonical Word shortcuts wired: Ctrl+B/I/U/Shift+X (bold/italic/underline/strike), Ctrl+L/E/R/J (alignment), Ctrl+Z/Y (undo/redo), Ctrl+F/H (find / replace), Ctrl+K (hyperlink), Ctrl+P (print), Ctrl+A (select all), Tab/Shift+Tab (list indent), and more.
 
-## Deployment shapes
+### Co-editing
 
-| Where | Collab | Notes |
-|---|---|---|
-| [`doc.schnsrw.live`](https://doc.schnsrw.live/) (GitHub Pages) | off | the single-user demo; no backend behind it |
-| `docker run -p 8080:8080 casual-editor:latest` | on | the share-link flow; everyone hitting the same container co-edits |
-| Tauri desktop (in progress) | off | single-user, local-only |
+Available in the Docker image. Single-user on the hosted demo.
 
-## Repo layout
+- **Share dialog** — File → Share for co-editing. Set a password, get two copyable URLs (edit + view-only)
+- **Presence avatars** in the title bar with "Active now / Last seen Ns ago" tooltips
+- **Live cursors** — each peer's selection range in their color with a name label
+- **Full mutation sync** — text edits, formatting, lists, tables, images, comments, headers/footers all propagate cross-peer
+- **View-only enforcement** at the Y.Doc layer — view-only joiners cannot mutate the document
+- **Password-protected rooms** — SHA-256 + constant-time compare; wrong password → HTTP 401 on the WS upgrade
+- **Stateless backend** — no DB, no on-disk update log. Rooms live in memory; persistence is delegated to the host (inline, WOPI, or JWT-API)
 
-```
-.
-├── README.md                  -- this file
-├── assets/                    -- logo + favicon (original artwork)
-├── CLAUDE.md                  -- working rules for AI coding sessions
-├── Dockerfile                 -- bundled image (editor SPA + gateway)
-├── .dockerignore              -- build-context exclusions
-├── docker-compose.yml         -- local dev stack (gateway + dev profile)
-├── docs/
-│   ├── 00-overview.md         -- goals + locked decisions
-│   ├── 02-pipeline.md         -- how a fidelity gap moves repro → PR
-│   ├── 03-gap-matrix.md       -- per-gap status table
-│   ├── 04-architecture-review-response.md -- review + response
-│   ├── 05-backend-design.md   -- backend design + lifecycle
-│   └── 06-deployment.md       -- deployment + ops guide
-├── backend/                   -- Go gateway (this repo's proprietary)
-│   ├── cmd/gateway/           -- entry point, REST + WS handlers
-│   └── internal/
-│       ├── host/              -- host.Integration interface + impls
-│       ├── room/              -- per-docId room manager
-│       └── yws/               -- y-websocket protocol helpers
-├── docx-editor/               -- inlined fork of eigenpal/docx-editor
-│   ├── packages/core/         -- DOCX parser, serializer, layout engine
-│   ├── packages/react/        -- React `<DocxEditor>` component
-│   ├── examples/vite/         -- the demo deployed at doc.schnsrw.live
-│   ├── examples/vite/src/collab/ -- Yjs wire-up, share dialog, status
-│   ├── e2e/                   -- Playwright e2e specs
-│   └── scripts/               -- audit + fixture-generator scripts
-└── .github/workflows/         -- CI + Pages deploy
-```
+See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full design.
 
-## Run with Docker
+---
 
-The fastest path from "git clone" to "shareable live doc" is the
-bundled image — editor SPA + Go gateway in one container, behind
-one port, no DB or sidecars.
+## 🐳 Self-Host with Docker
 
-```bash
-# Pull + run the published image (single command).
+A single multi-arch image (`linux/amd64` + `linux/arm64`). Editor SPA and Go gateway run in one container behind a single port.
+
+### Quick start
+
+```sh
 docker run --rm -p 8080:8080 schnsrw/casual-editor:latest
-# open http://localhost:8080 — upload a .docx, click Share, send the link
 ```
 
-For configuration (env vars, reverse-proxy + TLS, scaling notes,
-troubleshooting), see [`docs/06-deployment.md`](docs/06-deployment.md).
-For all variables in one place, see [`.env.example`](.env.example).
+Open `http://localhost:8080`. Upload a `.docx`, click Share, send the link.
 
-## Local dev
+### Recommended: with `docker-compose`
 
-Two ways depending on what you're working on:
+Paste this `docker-compose.yml` and run `docker compose up -d`:
 
-```bash
-# Build + run the bundled image from source.
-# First run takes a few minutes — subsequent runs reuse the cache.
-docker compose up
-open http://localhost:8080/
-
-# Hot-reload dev: Vite at :5173, gateway at :8080, both with
-# bind-mounted source so saves trigger live reload / Go rebuild.
-docker compose --profile dev up
-open http://localhost:5173/
+```yaml
+services:
+  app:
+    image: schnsrw/casual-editor:latest
+    restart: unless-stopped
+    ports: ['8080:8080']
+    environment:
+      GATEWAY_ADDR: ':8080'
+      ROOM_TTL_MIN: '15'
 ```
 
-To run the editor toolchain directly (requires Bun ≥ 1.3.14):
+### Try co-editing
 
-```bash
+1. Open `http://localhost:8080`. Upload a `.docx`, then **File → Share for co-editing…** to set a password and get two URLs.
+2. Paste either URL into another browser or device — the joiner connects in under a second.
+3. Type in the document — peers see characters appear in real time, with named cursors tracking selection.
+
+### API surface
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/` | Serves the built editor SPA |
+| `GET` | `/d/:docId` | Same SPA; bridges into the named Y.Doc |
+| `POST` | `/api/docs` | Upload a `.docx` — returns `{docId}` |
+| `GET` | `/api/docs/:id/download` | Download the latest snapshot as `.docx` |
+| `GET` | `/health` | Liveness probe |
+| `WS` | `/doc/:docId` | y-websocket sync; `?p=<password>` |
+
+### Configuration
+
+| Env var | Scope | Default | Description |
+| --- | --- | --- | --- |
+| `GATEWAY_ADDR` | server | `:8080` | HTTP + WebSocket listen address |
+| `STATIC_DIR` | server | `/srv/static` | Where the editor SPA is served from |
+| `ROOM_TTL_MIN` | server | `15` | Minutes a room stays alive after the last client leaves |
+| `MAX_UPLOAD_MB` | server | `25` | Upload cap for `.docx` |
+| `HOST_INTEGRATION` | server | `inline` | `inline`, `wopi`, or `jwtapi` |
+| `VITE_COLLAB_ENABLED` | build | `true` in image | Include co-edit code in the bundle |
+
+`VITE_*` vars are baked in at build time. Pass them with `--build-arg` on `docker build`, or via the `args:` block in `docker-compose.yml`.
+
+---
+
+## 🛠 Develop
+
+**Prerequisites:** Bun ≥ 1.3.14, Go ≥ 1.24
+
+```sh
+# Editor (browser side)
 cd docx-editor
 bun install
-bun run dev           # vite at :5173
-bun run typecheck
-bun test              # unit tests
-bun run test:e2e      # Playwright e2e
-```
+bun run dev               # Vite dev server  →  http://localhost:5173
+bun run typecheck         # tsc across all packages
+bun test                  # unit tests
+bun run test:e2e          # Playwright suite (Chromium)
+bun run build             # build core + react libs
 
-For the Go gateway:
-
-```bash
+# Gateway (Go server)
 cd backend
 go vet ./...
 go test -race ./...
-go run ./cmd/gateway   # listens on :8080
+go run ./cmd/gateway      # listens on :8080
 ```
 
-## Continuous integration
+**Co-editing in dev** requires both servers running. Open the Vite dev server, upload a doc, click Share — the editor proxies the y-websocket connection to `:8080` automatically.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs four jobs
-in parallel on every push to `main` and every PR:
+---
 
-| Job | Steps |
-|-----|-------|
-| `lint` | `bun run format:check` + `bun run lint` |
-| `unit` | `bun run typecheck` + `bun test` + `bun run build` + round-trip audit |
-| `e2e` | Playwright with chromium, cached browser binaries |
-| `backend` | `go vet` + `go test -race` + `go build` |
+## 📁 Repo Layout
 
-[`.github/workflows/deploy-demo.yml`](.github/workflows/deploy-demo.yml)
-builds the Vite demo and publishes it to GitHub Pages (with the
-`doc.schnsrw.live` CNAME pinned in the artifact so the custom-domain
-mapping survives every deploy).
+```
+.
+├── docx-editor/                  # Editor (browser side) — built on eigenpal/docx-editor (MIT)
+│   ├── packages/core/            # DOCX parser, serializer, layout engine, ProseMirror schema
+│   ├── packages/react/           # React <DocxEditor> component
+│   ├── examples/vite/            # Demo app deployed at doc.schnsrw.live
+│   ├── examples/vite/src/collab/ # Yjs wire-up, share dialog, presence
+│   ├── e2e/                      # Playwright suite — 661 tests across 79 files
+│   └── scripts/                  # Round-trip audit + fixture-generator scripts
+├── backend/                      # Go gateway (this repo)
+│   ├── cmd/gateway/              # Entry point, REST + WS handlers
+│   └── internal/
+│       ├── host/                 # host.Integration interface + impls (inline / wopi / jwtapi)
+│       ├── room/                 # Per-docId room manager (in-memory Y.Doc lifecycle)
+│       └── yws/                  # y-websocket protocol helpers
+├── docs/
+│   ├── ARCHITECTURE.md           # System design — editor ↔ gateway ↔ host
+│   ├── CO-EDITING.md             # Y.Doc + presence model
+│   ├── DEPLOYMENT.md             # Operating the bundled image
+│   └── ROUNDTRIP.md              # Fidelity pipeline & gap matrix
+├── Dockerfile                    # Multi-stage build (web → gateway → runtime)
+├── docker-compose.yml            # Local dev stack
+├── CLAUDE.md                     # Project guardrails for AI-assisted development
+└── .github/workflows/            # CI + Pages deploy
+```
 
-## Architectural decisions (locked)
+---
 
-| | |
-|-|-|
-| Editor | Fork of `eigenpal/docx-editor` (MIT), inlined |
-| CRDT | Yjs + `y-prosemirror` |
-| Transport | y-websocket protocol |
-| Backend language | Go |
-| Backend state | None on disk; in-memory Y.Doc per active session |
-| Storage | Handed off to an external WOPI host |
+## 🧱 Stack
+
+| Concern | Choice |
+| --- | --- |
+| Editor model | ProseMirror schema preserving OOXML round-trip |
+| Layout | Custom paginated layout-painter (preserves Word-fidelity output) |
+| Frontend | React 18 + Vite + TypeScript (strict mode) |
+| DOCX parser / serializer | In-house — based on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) |
+| Collab transport | Yjs (CRDT) + `y-prosemirror` over y-websocket |
+| Backend | Go 1.24 — stateless gateway, in-memory Y.Doc per room |
+| Persistence | Delegated to host (inline, WOPI, or JWT-API integration) |
+| E2E tests | Playwright (Chromium) |
 | Editor toolchain | Bun |
 
-See [`docs/00-overview.md`](docs/00-overview.md) for the reasoning
-behind each.
+---
 
-## Open questions
+## 🚫 Explicit Non-Goals
 
-- First WOPI host target for integration testing (own mock vs.
-  Nextcloud).
-- Y.Doc → `.docx` serialization worker pool (Bun headless) — needed
-  before drain-time snapshot can produce edited bytes rather than
-  re-serve the original upload.
+- **No database on the gateway** — sessions are in-memory; persistence is the host's job. The gateway dies cleanly and restarts cleanly.
+- **No AI / LLM features** — the editor is a pure document tool. Wire your own model in via the extension system if you need one.
+- **No mobile editor** — desktop browsers only. The shell is responsive to 768 px, but the paginated editing UX assumes a pointer device.
+- **No `@eigenpal/docx-editor-agents`** — the AGPL agent package has been removed; only MIT code remains in `docx-editor/`.
 
-## License
+---
 
-**Apache-2.0** for this repository — the Go gateway, Dockerfile,
-docker-compose, CI workflows, fidelity-comparison scripts, and
-project docs. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+## 📄 License
 
-The inlined editor under [`docx-editor/`](docx-editor/) is a working
-fork of [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor)
-and remains under its original **MIT** terms — see
-[`docx-editor/LICENSE`](docx-editor/LICENSE). Apache-2.0 + MIT are
-compatible; the combined work is distributed under Apache-2.0 with
-MIT attribution preserved.
+Apache-2.0 for this repository — the Go gateway, Dockerfile, docker-compose, CI workflows, and project docs. See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE).
+
+The editor under [`docx-editor/`](./docx-editor/) is based on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) and remains under its original **MIT** terms — see [`docx-editor/LICENSE`](./docx-editor/LICENSE). Apache-2.0 + MIT are compatible; the combined work is distributed under Apache-2.0 with MIT attribution preserved.
