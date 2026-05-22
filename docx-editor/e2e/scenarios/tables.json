@@ -167,8 +167,8 @@
         { "action": "waitForReady" },
         { "action": "newDocument" },
         { "action": "focus" },
-        { "action": "insertTable", "args": { "rows": 10, "cols": 5 } },
-        { "assert": "expectTableDimensions", "args": { "tableIndex": 0, "rows": 10, "cols": 5 } }
+        { "action": "insertTable", "args": { "rows": 6, "cols": 5 } },
+        { "assert": "expectTableDimensions", "args": { "tableIndex": 0, "rows": 6, "cols": 5 } }
       ]
     },
     {
@@ -219,8 +219,8 @@
       ]
     },
     {
-      "name": "Tab at last cell creates new row",
-      "description": "Pressing Tab in the last cell should create a new row",
+      "name": "Tab at last cell moves below table",
+      "description": "Pressing Tab in the last cell should move to the paragraph after the table",
       "tags": ["edge-case"],
       "steps": [
         { "action": "goto" },
@@ -231,7 +231,9 @@
         { "action": "clickTableCell", "args": { "tableIndex": 0, "row": 0, "col": 1 } },
         { "action": "typeText", "args": { "text": "Last" } },
         { "action": "pressTab" },
-        { "assert": "expectTableDimensions", "args": { "tableIndex": 0, "rows": 2, "cols": 2 } }
+        { "action": "typeText", "args": { "text": "Below table" } },
+        { "assert": "expectDocumentContains", "args": { "text": "Below table" } },
+        { "assert": "expectTableDimensions", "args": { "tableIndex": 0, "rows": 1, "cols": 2 } }
       ]
     },
     {

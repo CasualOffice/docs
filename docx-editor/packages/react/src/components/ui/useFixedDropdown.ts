@@ -72,7 +72,18 @@ export function useFixedDropdown({
       if (e.key === 'Escape') onClose();
     };
 
-    const handleScroll = () => onClose();
+    // Close when something *outside* the dropdown scrolls — the trigger
+    // moves so the fixed-position dropdown desyncs. Scrolling *inside* the
+    // dropdown (its own overflow:auto listbox, e.g. font-size 8…72) must
+    // not close it; otherwise Playwright's "scroll the option into view
+    // before click" detaches the option mid-click. Listen in capture so we
+    // still see scrolls on overflow ancestors, but ignore events whose
+    // target is the dropdown itself.
+    const handleScroll = (e: Event) => {
+      const target = e.target as Node | null;
+      if (target && dropdownRef.current?.contains(target)) return;
+      onClose();
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);

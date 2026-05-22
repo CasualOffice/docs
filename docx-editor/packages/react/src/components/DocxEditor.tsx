@@ -53,6 +53,7 @@ import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
+import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
 import type { Comment, BlockContent, ParagraphContent } from '@eigenpal/docx-core/types/content';
@@ -1786,6 +1787,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       pagedEditorRef.current?.redo();
     }
   }, [hfEditPosition]);
+
+  const canUndoActiveEditor = useMemo(() => {
+    const view = getActiveEditorView();
+    return view ? pmUndo(view.state) : false;
+  }, [getActiveEditorView, state.selectionFormatting, hfEditPosition]);
+
+  const canRedoActiveEditor = useMemo(() => {
+    const view = getActiveEditorView();
+    return view ? pmRedo(view.state) : false;
+  }, [getActiveEditorView, state.selectionFormatting, hfEditPosition]);
 
   // Find/Replace hook
   const findReplace = useFindReplace();
@@ -3846,16 +3857,21 @@ body { background: white; }
 
   // Store the current find result for navigation
   const findResultRef = useRef<FindResult | null>(null);
+  const getFindDocument = useCallback(
+    () => pagedEditorRef.current?.getDocument() ?? history.state,
+    [history.state]
+  );
 
   // Handle find operation
   const handleFind = useCallback(
     (searchText: string, options: FindOptions): FindResult | null => {
-      if (!history.state || !searchText.trim()) {
+      const document = getFindDocument();
+      if (!document || !searchText.trim()) {
         findResultRef.current = null;
         return null;
       }
 
-      const matches = findInDocument(history.state, searchText, options);
+      const matches = findInDocument(document, searchText, options);
       const result: FindResult = {
         matches,
         totalCount: matches.length,
@@ -3872,7 +3888,7 @@ body { background: white; }
 
       return result;
     },
-    [history.state, findReplace]
+    [getFindDocument, findReplace]
   );
 
   // Handle find next
@@ -3912,7 +3928,8 @@ body { background: white; }
   // Handle replace current match
   const handleReplace = useCallback(
     (replaceText: string): boolean => {
-      if (!history.state || !findResultRef.current || findResultRef.current.matches.length === 0) {
+      const document = getFindDocument();
+      if (!document || !findResultRef.current || findResultRef.current.matches.length === 0) {
         return false;
       }
 
@@ -3921,7 +3938,7 @@ body { background: white; }
 
       // Execute replace command
       try {
-        const newDoc = executeCommand(history.state, {
+        const newDoc = executeCommand(document, {
           type: 'replaceText',
           range: {
             start: {
@@ -3943,22 +3960,23 @@ body { background: white; }
         return false;
       }
     },
-    [history.state, handleDocumentChange]
+    [getFindDocument, handleDocumentChange]
   );
 
   // Handle replace all matches
   const handleReplaceAll = useCallback(
     (searchText: string, replaceText: string, options: FindOptions): number => {
-      if (!history.state || !searchText.trim()) {
+      const document = getFindDocument();
+      if (!document || !searchText.trim()) {
         return 0;
       }
 
       // Find all matches first
-      const matches = findInDocument(history.state, searchText, options);
+      const matches = findInDocument(document, searchText, options);
       if (matches.length === 0) return 0;
 
       // Replace from end to start to maintain correct indices
-      let doc = history.state;
+      let doc = document;
       const sortedMatches = [...matches].sort((a, b) => {
         if (a.paragraphIndex !== b.paragraphIndex) {
           return b.paragraphIndex - a.paragraphIndex;
@@ -3993,7 +4011,7 @@ body { background: white; }
 
       return matches.length;
     },
-    [history.state, handleDocumentChange, findReplace]
+    [getFindDocument, handleDocumentChange, findReplace]
   );
 
   // Expose ref methods
@@ -5040,8 +5058,8 @@ body { background: white; }
                       onFormat={handleFormat}
                       onUndo={undoActiveEditor}
                       onRedo={redoActiveEditor}
-                      canUndo={true}
-                      canRedo={true}
+                      canUndo={canUndoActiveEditor}
+                      canRedo={canRedoActiveEditor}
                       disabled={readOnly}
                       documentStyles={history.state?.package.styles?.styles}
                       theme={history.state?.package.theme || theme}
@@ -5367,6 +5385,8 @@ body { background: white; }
                         <Tooltip content="Add comment" side="bottom" delayMs={300}>
                           <button
                             type="button"
+                            data-testid="floating-add-comment-button"
+                            aria-label="Add comment"
                             onMouseDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();

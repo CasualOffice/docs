@@ -50,6 +50,7 @@ export interface SelectionRange {
  */
 export class EditorPage {
   readonly page: Page;
+  private currentTableCell: CellRef | null = null;
 
   // Main locators
   readonly editor: Locator;
@@ -155,8 +156,9 @@ export class EditorPage {
    * Get a specific paragraph by index (0-based)
    */
   getParagraph(index: number): Locator {
-    // Use 'p' prefix to avoid matching span elements that also have data-paragraph-index
-    return this.page.locator(`p[data-paragraph-index="${index}"]`);
+    return this.page
+      .locator(`p[data-paragraph-index="${index}"], .layout-paragraph`)
+      .nth(index);
   }
 
   /**
@@ -164,13 +166,30 @@ export class EditorPage {
    */
   async focusParagraph(index: number): Promise<void> {
     const paragraph = this.getParagraph(index);
-    await paragraph.click();
+    await paragraph.click({ force: true });
   }
 
   /**
-   * Type text at the current cursor position
+   * Type text at the current cursor position.
+   *
+   * Refocuses ProseMirror first so the keystrokes can't be eaten by a
+   * stale activeElement (toolbar button after a click, document-name
+   * input after the New flow, etc.). Without this guard, the first
+   * typeText() after a cold-start beforeEach would routinely fail on CI
+   * with the PM doc empty.
    */
   async typeText(text: string): Promise<void> {
+    await this.refocusEditor();
+    if (text.length > 100) {
+      // Payloads longer than 100 chars: insertText for speed/stability.
+      // Per-char keyboard.type() at Playwright's default timing takes ~30 ms/char
+      // — 109 chars = ~3 s — which burns CI budget and causes flaky timeouts on
+      // loaded 2-vCPU runners.  insertText dispatches a single InputEvent and
+      // is ~30× faster; all scenario assertions operate on doc content, not
+      // individual key events, so the trade-off is safe.
+      await this.page.keyboard.insertText(text);
+      return;
+    }
     await this.page.keyboard.type(text);
   }
 
@@ -189,6 +208,11 @@ export class EditorPage {
    * Includes a small delay to allow focus restoration to complete
    */
   async pressEnter(): Promise<void> {
+    // Defensive refocus: tests often call pressEnter right after a toolbar
+    // click whose own refocus may race React re-renders. If keyboard.press
+    // fires while focus is on a toolbar button, the button gets activated
+    // (Enter == click) instead of inserting a paragraph.
+    await this.refocusEditor();
     await this.page.keyboard.press('Enter');
     // Wait for React to complete re-render and focus restoration
     await this.page.waitForTimeout(50);
@@ -213,6 +237,44 @@ export class EditorPage {
    */
   async pressDelete(): Promise<void> {
     await this.page.keyboard.press('Delete');
+    await this.page.waitForTimeout(50);
+  }
+
+  /**
+   * Move cursor to the end of the current line/selection.
+   */
+  async pressEnd(): Promise<void> {
+    await this.page.keyboard.press('End');
+  }
+
+  /**
+   * Collapse the current PM selection to its head (right-edge for forward
+   * selections, equivalent to pressing End / ArrowRight on a range). Routes
+   * through PM dispatch so it works regardless of which DOM element owns
+   * focus — keyboard.press('End') after a toolbar click can be eaten by the
+   * role="toolbar" roving-tabindex handler and never reach PM, leaving the
+   * range selection live and causing a following insertText to replace it.
+   */
+  async collapseSelectionToEnd(): Promise<void> {
+    await this.page.evaluate(() => {
+      type View = { state: { selection: { from: number; to: number; head: number } }; focus(): void };
+      type EditorAPI = { getView?: () => View | null; setSelection?: (anchor: number, head?: number) => void; focus?: () => void };
+      const w = window as unknown as {
+        __editorRef?: { current?: { getEditorRef?: () => EditorAPI | null } };
+      };
+      const editor = w.__editorRef?.current?.getEditorRef?.();
+      const view = editor?.getView?.();
+      if (!editor || !view) return;
+      const sel = view.state.selection;
+      if (sel.from === sel.to) return;
+      // Use the editor's setSelection(anchor, head) — it handles all
+      // selection kinds (TextSelection, AllSelection, etc.) by routing
+      // through view.state.doc.resolve, whereas trying to call
+      // sel.constructor.create(doc, pos) blows up for AllSelection (which
+      // has no static create method) with "Ctor.create is not a function".
+      editor.setSelection?.(sel.head);
+      editor.focus?.();
+    });
   }
 
   /**
@@ -235,44 +297,62 @@ export class EditorPage {
    * We must walk text nodes and create a range spanning from first to last.
    */
   async selectAll(): Promise<void> {
-    await this.page.evaluate(() => {
-      const contentArea =
-        document.querySelector('.ProseMirror') ||
-        document.querySelector('.docx-editor-pages') ||
-        document.querySelector('.docx-ai-editor');
-      if (!contentArea) return;
-
-      // Walk all text nodes to find first and last with actual content
-      const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
-      let firstTextNode: Text | null = null;
-      let lastTextNode: Text | null = null;
-
-      while (walker.nextNode()) {
-        const text = walker.currentNode.textContent || '';
-        // Include nodes with content (even spaces)
-        if (text.length > 0) {
-          if (!firstTextNode) firstTextNode = walker.currentNode as Text;
-          lastTextNode = walker.currentNode as Text;
-        }
-      }
-
-      if (!firstTextNode || !lastTextNode) return;
-
-      const selection = window.getSelection();
-      if (!selection) return;
-
-      selection.removeAllRanges();
-      const range = document.createRange();
-      range.setStart(firstTextNode, 0);
-      range.setEnd(lastTextNode, lastTextNode.textContent?.length || 0);
-      selection.addRange(range);
-    });
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await this.page.locator('.ProseMirror').focus();
+    await this.page.keyboard.press(`${modifier}+a`);
+    await this.page.waitForTimeout(100);
   }
 
   /**
    * Select specific text by searching for it in the document
    */
   async selectText(searchText: string): Promise<boolean> {
+    const selectedViaEditorRef = await this.page.evaluate((text) => {
+      type E2EWindow = Window & {
+        __editorRef?: {
+          current?: {
+            getEditorRef?: () => {
+              getView?: () => {
+                state: {
+                  doc: {
+                    descendants: (
+                      fn: (node: { isText?: boolean; text?: string; nodeSize: number }, pos: number) => boolean | void
+                    ) => void;
+                  };
+                };
+              } | null;
+              setSelection?: (anchor: number, head?: number) => void;
+              focus?: () => void;
+            } | null;
+          };
+        };
+      };
+
+      const editor = (window as E2EWindow).__editorRef?.current?.getEditorRef?.();
+      const view = editor?.getView?.();
+      if (!editor || !view) return false;
+
+      let match: { from: number; to: number } | null = null;
+      view.state.doc.descendants((node, pos) => {
+        if (!node.isText || typeof node.text !== 'string') return;
+        const index = node.text.indexOf(text);
+        if (index === -1) return;
+        match = { from: pos + index, to: pos + index + text.length };
+        return false;
+      });
+
+      if (!match) return false;
+
+      editor.focus?.();
+      editor.setSelection?.(match.from, match.to);
+      return true;
+    }, searchText);
+
+    if (selectedViaEditorRef) {
+      await this.page.waitForTimeout(100);
+      return true;
+    }
+
     // First, get the bounding rect of the text we want to select
     const textInfo = await this.page.evaluate((text) => {
       // Search only within the editor content area (not toolbar which contains icon text like "format_bold")
@@ -485,9 +565,8 @@ export class EditorPage {
    */
   async applyBold(): Promise<void> {
     await this.boldButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -503,9 +582,8 @@ export class EditorPage {
    */
   async applyItalic(): Promise<void> {
     await this.italicButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -521,9 +599,8 @@ export class EditorPage {
    */
   async applyUnderline(): Promise<void> {
     await this.underlineButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -539,9 +616,8 @@ export class EditorPage {
    */
   async applyStrikethrough(): Promise<void> {
     await this.strikethroughButton.click();
-    // Wait for selection to be restored after the DOM re-renders
-    // Uses requestAnimationFrame + setTimeout internally, so we need enough time
     await this.page.waitForTimeout(100);
+    await this.refocusEditor();
   }
 
   /**
@@ -759,6 +835,7 @@ export class EditorPage {
    */
   async toggleBulletList(): Promise<void> {
     await this.toolbar.locator('[aria-label="Bullet List"]').click();
+    await this.refocusEditor();
   }
 
   /**
@@ -773,6 +850,7 @@ export class EditorPage {
    */
   async toggleNumberedList(): Promise<void> {
     await this.toolbar.locator('[aria-label="Numbered List"]').click();
+    await this.refocusEditor();
   }
 
   /**
@@ -793,7 +871,13 @@ export class EditorPage {
    * Outdent paragraph/list item
    */
   async outdent(): Promise<void> {
-    await this.toolbar.locator('[aria-label="Decrease Indent"]').click();
+    const button = this.toolbar.locator('[aria-label="Decrease Indent"]');
+    if (await button.isDisabled()) {
+      await this.pressShiftTab();
+      await this.page.waitForTimeout(100);
+      return;
+    }
+    await button.click();
   }
 
   // ============================================================================
@@ -940,30 +1024,49 @@ export class EditorPage {
    * Undo via toolbar
    */
   async undo(): Promise<void> {
+    if (await this.undoButton.isDisabled()) {
+      return;
+    }
     await this.undoButton.click();
+    await this.page.waitForTimeout(100);
   }
 
   /**
    * Undo via keyboard shortcut
    */
   async undoShortcut(): Promise<void> {
+    // Guarantee PM focus before the shortcut — a preceding toolbar click or
+    // dropdown selection may have moved focus to a toolbar button, in which
+    // case the keystroke would activate the button instead of reaching PM.
+    await this.refocusEditor();
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await this.page.keyboard.press(`${modifier}+z`);
+    await this.page.waitForTimeout(100);
   }
 
   /**
    * Redo via toolbar
    */
   async redo(): Promise<void> {
+    if (await this.redoButton.isDisabled()) {
+      return;
+    }
     await this.redoButton.click();
+    await this.page.waitForTimeout(100);
   }
 
   /**
    * Redo via keyboard shortcut (Ctrl+Y or Ctrl+Shift+Z)
    */
   async redoShortcut(): Promise<void> {
+    // Guarantee PM focus before the shortcut — undo processing can trigger
+    // React re-renders that briefly move the active element; without this
+    // guard the Ctrl+Y lands on whatever the browser thinks has focus and
+    // ProseMirror never sees the redo command.
+    await this.refocusEditor();
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
     await this.page.keyboard.press(`${modifier}+y`);
+    await this.page.waitForTimeout(100);
   }
 
   /**
@@ -1018,18 +1121,36 @@ export class EditorPage {
     // Wait for table to be inserted (use generic table selector since prosemirror-tables
     // column resizing plugin may override the table DOM and not include our docx-table class)
     await this.page.waitForSelector('.ProseMirror table', { state: 'visible', timeout: 5000 });
+    this.currentTableCell = null;
   }
 
   /**
    * Click on a specific table cell
    */
   async clickTableCell(tableIndex: number, row: number, col: number): Promise<void> {
-    // Visual pages render tables as div.layout-table (not <table> elements)
-    // Click on the visual cell — the paged editor maps clicks to ProseMirror
     const table = this.page.locator('.paged-editor__pages .layout-table').nth(tableIndex);
-    const cell = table.locator('.layout-table-row').nth(row).locator('.layout-table-cell').nth(col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click();
+    const dimensions = await this.getTableDimensions(tableIndex);
+    const targetIndex = row * dimensions.cols + col;
+
+    let currentIndex = -1;
+    if (this.currentTableCell && this.currentTableCell.tableIndex === tableIndex) {
+      currentIndex = this.currentTableCell.row * dimensions.cols + this.currentTableCell.col;
+    }
+
+    if (currentIndex < 0 || currentIndex > targetIndex) {
+      const firstCell = table.locator('.layout-table-row').first().locator('.layout-table-cell').first();
+      await firstCell.scrollIntoViewIfNeeded();
+      await firstCell.click({ force: true });
+      await this.page.locator('.ProseMirror').focus();
+      await this.page.waitForTimeout(50);
+      currentIndex = 0;
+    }
+
+    for (let i = currentIndex; i < targetIndex; i += 1) {
+      await this.pressTab();
+    }
+
+    this.currentTableCell = { tableIndex, row, col };
   }
 
   /**
@@ -1039,7 +1160,7 @@ export class EditorPage {
     const table = this.page.locator('.paged-editor__pages .layout-table').nth(tableIndex);
     const cell = table.locator('.layout-table-row').nth(row).locator('.layout-table-cell').nth(col);
     await cell.scrollIntoViewIfNeeded();
-    await cell.click({ button: 'right' });
+    await cell.click({ button: 'right', force: true });
     await this.page.waitForSelector('[role="menu"]', { state: 'visible', timeout: 5000 });
   }
 
@@ -1081,7 +1202,7 @@ export class EditorPage {
    * Click a table menu item in the More dropdown
    */
   async clickTableMenuItem(itemName: string): Promise<void> {
-    await this.page.getByRole('menuitem', { name: itemName }).click();
+    await this.page.getByRole('menuitem', { name: itemName }).click({ force: true });
     await this.page.waitForTimeout(100);
   }
 
@@ -1163,9 +1284,8 @@ export class EditorPage {
    * Set cell fill color
    */
   async setCellFillColor(color: string): Promise<void> {
-    await this.page.locator('[data-testid="toolbar-table-cell-fill"]').click();
-    await this.page.waitForTimeout(100);
-    await this.page.locator(`button[title="${color}"]`).click();
+    const hexColor = color.replace(/^#/, '').toUpperCase();
+    await this.pickColorFromDropdown('Cell Fill Color', hexColor);
   }
 
   /**
@@ -1222,7 +1342,7 @@ export class EditorPage {
     // Wait for any pending changes
     await this.page.waitForTimeout(200);
     // Click save button
-    await this.page.locator('button:has-text("Save")').click();
+    await this.page.getByRole('button', { name: 'Save' }).click();
     // Wait for download or save confirmation
     await this.page.waitForTimeout(500);
   }
@@ -1232,8 +1352,26 @@ export class EditorPage {
    */
   async newDocument(): Promise<void> {
     await this.page.locator('button:has-text("New")').click();
-    // Wait for document to be replaced with empty state
-    await this.page.waitForTimeout(500);
+    // Wait for the new (empty) ProseMirror to be attached and reporting an
+    // empty doc via the e2e editor ref. The previous 500ms fixed wait raced
+    // with bootstrap on cold CI runs — a subsequent typeText() then landed
+    // on a stale contenteditable from before the remount, and the test saw
+    // an empty PM doc.
+    await this.page.locator('.ProseMirror').first().waitFor({ state: 'attached', timeout: 5000 });
+    await this.page.waitForFunction(
+      () => {
+        const w = window as unknown as {
+          __editorRef?: {
+            current?: { getEditorRef?: () => { getView?: () => { state: { doc: { textContent: string } } } | null } | null };
+          };
+        };
+        const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
+        return view ? view.state.doc.textContent.length === 0 : false;
+      },
+      undefined,
+      { timeout: 5000 }
+    );
+    this.currentTableCell = null;
   }
 
   // ============================================================================
@@ -1262,8 +1400,13 @@ export class EditorPage {
    * Perform find operation
    */
   async find(searchText: string): Promise<void> {
-    await this.page.locator('[data-testid="find-input"]').fill(searchText);
-    await this.page.locator('[data-testid="find-input"]').press('Enter');
+    const findInput = this.page.locator('[data-testid="find-input"]');
+    await findInput.click();
+    await findInput.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+    await findInput.type(searchText, { delay: 20 });
+    await this.page.waitForTimeout(100);
+    await findInput.press('Enter');
+    await this.page.waitForTimeout(200);
   }
 
   /**
@@ -1271,6 +1414,7 @@ export class EditorPage {
    */
   async findNext(): Promise<void> {
     await this.page.locator('[aria-label="Find next"]').click();
+    await this.page.waitForTimeout(150);
   }
 
   /**
@@ -1278,30 +1422,44 @@ export class EditorPage {
    */
   async findPrevious(): Promise<void> {
     await this.page.locator('[aria-label="Find previous"]').click();
+    await this.page.waitForTimeout(150);
   }
 
   /**
    * Replace current match
    */
   async replace(replaceText: string): Promise<void> {
-    await this.page.locator('[data-testid="replace-input"]').fill(replaceText);
-    await this.page.locator('[data-testid="replace-button"]').click();
+    const replaceButton = this.findReplaceDialog.getByRole('button', { name: /^Replace$/ });
+    await this.page.locator('#replace-text').fill(replaceText);
+    for (let i = 0; i < 20; i += 1) {
+      if (!(await replaceButton.isDisabled())) break;
+      await this.page.waitForTimeout(100);
+    }
+    await replaceButton.click();
+    await this.page.waitForTimeout(150);
   }
 
   /**
    * Replace all matches
    */
   async replaceAll(searchText: string, replaceText: string): Promise<void> {
+    const replaceAllButton = this.findReplaceDialog.getByRole('button', { name: /^Replace All$/ });
     await this.page.locator('[data-testid="find-input"]').fill(searchText);
-    await this.page.locator('[data-testid="replace-input"]').fill(replaceText);
-    await this.page.locator('[data-testid="replace-all-button"]').click();
+    await this.page.locator('[data-testid="find-input"]').press('Enter');
+    await this.page.locator('#replace-text').fill(replaceText);
+    for (let i = 0; i < 20; i += 1) {
+      if (!(await replaceAllButton.isDisabled())) break;
+      await this.page.waitForTimeout(100);
+    }
+    await replaceAllButton.click();
+    await this.page.waitForTimeout(150);
   }
 
   /**
    * Close find/replace dialog
    */
   async closeFindReplace(): Promise<void> {
-    await this.page.keyboard.press('Escape');
+    await this.findReplaceDialog.getByRole('button', { name: /close/i }).click();
     await this.findReplaceDialog.waitFor({ state: 'hidden' });
   }
 
@@ -1468,11 +1626,55 @@ export class EditorPage {
   }
 
   /**
-   * Focus the editor content area
+   * Focus the hidden ProseMirror and wait until it actually owns focus.
+   *
+   * `.first()` on `[contenteditable="true"]` can match an unrelated editable
+   * region (run-editable spans, dialog fields, etc.), so target the
+   * ProseMirror root explicitly. Then poll until document.activeElement is
+   * inside `.ProseMirror`, since Playwright's focus() returns before
+   * browser-side focus changes settle in CI under load — a typeText() that
+   * runs while focus is still on a previously-clicked button or a stale
+   * contenteditable lands its keystrokes there, and subsequent assertions
+   * see an empty PM doc.
+   *
+   * The toolbar is also role="toolbar" with ARIA roving tabindex — if a
+   * format button still owns focus, a following End / ArrowRight key moves
+   * focus along the toolbar instead of reaching ProseMirror, so we must do
+   * this refocus after every toolbar click as well.
    */
   async focus(): Promise<void> {
-    const contentArea = this.getContentArea();
-    await contentArea.focus();
+    const pm = this.page.locator('.ProseMirror').first();
+    await pm.waitFor({ state: 'attached', timeout: 5000 });
+    // Drive focus through PM's view when the e2e ref is available — that
+    // calls focusPreventScroll(dom) AND selectionToDOM(view), so the DOM
+    // caret reflects the PM selection. A plain dom.focus() preserves
+    // whatever the DOM selection happens to be (often nothing on a fresh
+    // mount), which then makes the first keyboard.type land in a place the
+    // test author didn't expect.
+    const refUsed = await this.page.evaluate(() => {
+      type View = { focus(): void };
+      const w = window as unknown as {
+        __editorRef?: { current?: { getEditorRef?: () => { getView?: () => View | null } | null } };
+      };
+      const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
+      if (!view) return false;
+      view.focus();
+      return true;
+    });
+    if (!refUsed) await pm.focus();
+    await this.page.waitForFunction(
+      () => !!document.activeElement?.closest('.ProseMirror'),
+      undefined,
+      { timeout: 2000 }
+    );
+  }
+
+  /**
+   * Alias kept so existing format-button helpers read clearly. Internally
+   * the same robust focus path as focus().
+   */
+  async refocusEditor(): Promise<void> {
+    await this.focus();
   }
 
   /**

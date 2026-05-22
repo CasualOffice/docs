@@ -48,10 +48,14 @@ test.describe('Font Family', () => {
     await editor.selectAll();
     await editor.setFontFamily('Times New Roman');
 
-    // Verify font was applied by checking toolbar reflects the change
-    // (computed style depends on system font availability)
-    const toolbarFont = await page.locator('[aria-label="Select font family"]').textContent();
-    expect(toolbarFont?.toLowerCase()).toContain('times');
+    const fontFamily = await page.evaluate(() => {
+      const para = document.querySelector('.layout-paragraph');
+      if (!para) return '';
+      const styledSpan = para.querySelector('span[style*="font-family"]');
+      if (!styledSpan) return '';
+      return window.getComputedStyle(styledSpan).fontFamily;
+    });
+    expect(fontFamily.toLowerCase()).toContain('times');
 
     await assertions.assertDocumentContainsText(page, 'Times font test');
   });

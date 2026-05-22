@@ -196,7 +196,8 @@ test.describe('Cursor-Only Alignment Operations', () => {
     await page.keyboard.press('Home');
 
     // Use keyboard shortcut
-    await page.keyboard.press('Control+e');
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+e`);
 
     const paragraph = page.locator('.ProseMirror p');
     const textAlign = await paragraph.evaluate((el) => {

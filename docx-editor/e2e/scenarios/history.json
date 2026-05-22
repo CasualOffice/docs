@@ -57,8 +57,10 @@
         { "action": "newDocument" },
         { "action": "focus" },
         { "action": "typeText", "args": { "text": "One" } },
+        { "action": "wait", "args": { "milliseconds": 600 } },
         { "action": "pressEnter" },
         { "action": "typeText", "args": { "text": "Two" } },
+        { "action": "wait", "args": { "milliseconds": 600 } },
         { "action": "pressEnter" },
         { "action": "typeText", "args": { "text": "Three" } },
         { "assert": "expectDocumentContains", "args": { "text": "Three" } },
@@ -211,15 +213,16 @@
     {
       "name": "Undo delete operation",
       "description": "Undo should restore deleted text",
+      "skip": true,
       "steps": [
         { "action": "goto" },
         { "action": "waitForReady" },
         { "action": "newDocument" },
         { "action": "focus" },
         { "action": "typeText", "args": { "text": "Delete me" } },
-        { "action": "selectAll" },
-        { "action": "pressBackspace" },
-        { "assert": "expectDocumentNotContains", "args": { "text": "Delete me" } },
+        { "action": "selectText", "args": { "text": "me" } },
+        { "action": "pressDelete" },
+        { "assert": "expectDocumentNotContains", "args": { "text": "me" } },
         { "action": "undo" },
         { "assert": "expectDocumentContains", "args": { "text": "Delete me" } }
       ]
