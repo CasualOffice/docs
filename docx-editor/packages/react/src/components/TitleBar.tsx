@@ -125,6 +125,15 @@ export function MenuBar() {
     onExportTxt,
     onReportBug,
     onShowAbout,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
+    onOpenFind,
+    onOpenFindReplace,
+    onToggleSpellCheck,
+    spellCheckEnabled,
+    currentFormatting,
     onInsertImage,
     onInsertTable,
     showTableInsert = true,
@@ -255,11 +264,100 @@ export function MenuBar() {
         />
       )}
 
+      {/* Edit Menu */}
+      <MenuDropdown
+        label="Edit"
+        disabled={disabled}
+        items={[
+          {
+            icon: 'undo',
+            label: 'Undo',
+            shortcut: '⌘Z',
+            onClick: onUndo ?? (() => {}),
+            disabled: !canUndo,
+          } as MenuEntry,
+          {
+            icon: 'redo',
+            label: 'Redo',
+            shortcut: '⌘Y',
+            onClick: onRedo ?? (() => {}),
+            disabled: !canRedo,
+          } as MenuEntry,
+          { type: 'separator' as const } as MenuEntry,
+          ...(onOpenFind
+            ? [
+                {
+                  icon: 'search',
+                  label: 'Find',
+                  shortcut: '⌘F',
+                  onClick: onOpenFind,
+                } as MenuEntry,
+              ]
+            : []),
+          ...(onOpenFindReplace
+            ? [
+                {
+                  icon: 'find_replace',
+                  label: 'Find and Replace',
+                  shortcut: '⌘H',
+                  onClick: onOpenFindReplace,
+                } as MenuEntry,
+              ]
+            : []),
+          ...(onOpenFind || onOpenFindReplace ? [{ type: 'separator' as const } as MenuEntry] : []),
+          {
+            icon: 'select_all',
+            label: 'Select All',
+            shortcut: '⌘A',
+            onClick: () => handleFormat('selectAll'),
+          } as MenuEntry,
+          ...(onToggleSpellCheck
+            ? [
+                { type: 'separator' as const } as MenuEntry,
+                {
+                  icon: 'spellcheck',
+                  label: spellCheckEnabled ? '✓ Spelling' : 'Spelling',
+                  onClick: onToggleSpellCheck,
+                } as MenuEntry,
+              ]
+            : []),
+        ]}
+      />
+
       {/* Format Menu */}
       <MenuDropdown
         label={t('toolbar.format')}
         disabled={disabled}
         items={[
+          {
+            label: `${currentFormatting?.bold ? '✓ ' : ''}Bold`,
+            shortcut: '⌘B',
+            onClick: () => handleFormat('bold'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.italic ? '✓ ' : ''}Italic`,
+            shortcut: '⌘I',
+            onClick: () => handleFormat('italic'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.underline ? '✓ ' : ''}Underline`,
+            shortcut: '⌘U',
+            onClick: () => handleFormat('underline'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.strike ? '✓ ' : ''}Strikethrough`,
+            onClick: () => handleFormat('strikethrough'),
+          } as MenuEntry,
+          { type: 'separator' as const } as MenuEntry,
+          {
+            label: `${currentFormatting?.smallCaps ? '✓ ' : ''}Small Caps`,
+            onClick: () => handleFormat('toggleSmallCaps'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.allCaps ? '✓ ' : ''}All Caps`,
+            onClick: () => handleFormat('toggleAllCaps'),
+          } as MenuEntry,
+          { type: 'separator' as const } as MenuEntry,
           {
             icon: 'format_textdirection_l_to_r',
             label: t('toolbar.leftToRight'),
