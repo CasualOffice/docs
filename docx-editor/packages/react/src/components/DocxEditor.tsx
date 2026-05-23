@@ -1732,7 +1732,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
     };
-    visit((doc as { body?: { content?: readonly unknown[] } }).body?.content);
+    visit((doc as { content?: readonly unknown[] }).content);
     const text = parts.join('');
     const words = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
     // "characters (no spaces)" matches Word's convention.
