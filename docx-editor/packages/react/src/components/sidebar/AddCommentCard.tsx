@@ -26,7 +26,7 @@ export function AddCommentCard({ measureRef, onSubmit, onCancel }: AddCommentCar
       style={{
         padding: 12,
         borderRadius: 8,
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--doc-surface, white)',
         boxShadow: '0 1px 3px rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15)',
         zIndex: 50,
       }}
@@ -60,7 +60,7 @@ export function AddCommentCard({ measureRef, onSubmit, onCancel }: AddCommentCar
           fontFamily: 'inherit',
           minHeight: 40,
           boxSizing: 'border-box',
-          color: '#202124',
+          color: 'var(--doc-text-on-surface, #1f2937)',
         }}
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>

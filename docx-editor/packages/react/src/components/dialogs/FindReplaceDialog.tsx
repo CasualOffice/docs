@@ -92,7 +92,7 @@ const DIALOG_OVERLAY_STYLE: CSSProperties = {
 };
 
 const DIALOG_CONTENT_STYLE: CSSProperties = {
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   borderRadius: '4px',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
   minWidth: '360px',

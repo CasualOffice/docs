@@ -350,7 +350,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
       ref={barRef}
       className={cn(
         !inline &&
-          'flex items-center px-2 py-1 bg-[#f1f5f9] rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
+          'flex items-center px-2 py-1 bg-[color:var(--doc-bg-subtle,#f1f5f9)] text-[color:var(--doc-text-on-surface,#1f2937)] rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
         className
       )}
       style={inline ? { display: 'contents', ...style } : style}

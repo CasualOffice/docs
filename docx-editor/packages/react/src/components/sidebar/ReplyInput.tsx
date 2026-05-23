@@ -11,7 +11,7 @@ const ACTIVE_INPUT_STYLE: React.CSSProperties = {
   padding: '8px 16px',
   fontFamily: 'inherit',
   boxSizing: 'border-box',
-  color: '#202124',
+  color: 'var(--doc-text-on-surface, #1f2937)',
 };
 
 const INACTIVE_INPUT_STYLE: React.CSSProperties = {
@@ -24,7 +24,7 @@ const INACTIVE_INPUT_STYLE: React.CSSProperties = {
   fontFamily: 'inherit',
   color: '#80868b',
   cursor: 'text',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--doc-surface, white)',
   boxSizing: 'border-box',
 };
 

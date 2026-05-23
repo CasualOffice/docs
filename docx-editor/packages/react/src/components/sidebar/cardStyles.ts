@@ -11,7 +11,7 @@ export const CARD_STYLE_COLLAPSED: CSSProperties = {
 export const CARD_STYLE_EXPANDED: CSSProperties = {
   padding: '10px 12px',
   borderRadius: 8,
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--doc-surface, white)',
   cursor: 'pointer',
   boxShadow: '0 1px 3px rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15)',
 };

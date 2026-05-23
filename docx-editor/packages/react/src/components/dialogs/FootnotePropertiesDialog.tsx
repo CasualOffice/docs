@@ -47,7 +47,7 @@ const overlayStyle: CSSProperties = {
 };
 
 const dialogStyle: CSSProperties = {
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   borderRadius: 8,
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
   padding: 24,
@@ -100,7 +100,7 @@ const buttonStyle: CSSProperties = {
   borderRadius: 4,
   cursor: 'pointer',
   fontSize: 13,
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
 };
 
 const primaryButtonStyle: CSSProperties = {

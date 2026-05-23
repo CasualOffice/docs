@@ -78,7 +78,7 @@ const DIALOG_OVERLAY_STYLE: CSSProperties = {
 };
 
 const DIALOG_CONTENT_STYLE: CSSProperties = {
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   borderRadius: '8px',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
   minWidth: '450px',
@@ -213,7 +213,7 @@ const LOCK_BUTTON_STYLE: CSSProperties = {
   padding: '6px 10px',
   border: '1px solid var(--doc-border-input)',
   borderRadius: '4px',
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   cursor: 'pointer',
   fontSize: '16px',
 };

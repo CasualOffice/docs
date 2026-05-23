@@ -70,7 +70,9 @@ export function CommentCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={avatarStyle(comment.author || 'U')}>{getInitials(comment.author || 'U')}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#202124' }}>
+          <div
+            style={{ fontSize: 13, fontWeight: 600, color: 'var(--doc-text-on-surface, #1f2937)' }}
+          >
             {comment.author || t('comments.unknown')}
           </div>
           <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(comment.date)}</div>
@@ -109,7 +111,7 @@ export function CommentCard({
                   position: 'absolute',
                   top: 32,
                   right: 0,
-                  background: '#fff',
+                  background: 'var(--doc-surface, white)',
                   borderRadius: 8,
                   boxShadow: '0 2px 6px rgba(60,64,67,0.3), 0 1px 2px rgba(60,64,67,0.15)',
                   zIndex: 100,
@@ -130,7 +132,7 @@ export function CommentCard({
                     background: 'none',
                     textAlign: 'left',
                     fontSize: 14,
-                    color: '#202124',
+                    color: 'var(--doc-text-on-surface, #1f2937)',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
                   }}
@@ -149,7 +151,14 @@ export function CommentCard({
         )}
       </div>
 
-      <div style={{ fontSize: 13, color: '#202124', lineHeight: '20px', marginTop: 6 }}>
+      <div
+        style={{
+          fontSize: 13,
+          color: 'var(--doc-text-on-surface, #1f2937)',
+          lineHeight: '20px',
+          marginTop: 6,
+        }}
+      >
         {getCommentText(comment.content)}
       </div>
 

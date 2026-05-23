@@ -40,7 +40,11 @@ export function TrackedChangeCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={avatarStyle(authorName)}>{getInitials(authorName)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#202124' }}>{authorName}</div>
+          <div
+            style={{ fontSize: 13, fontWeight: 600, color: 'var(--doc-text-on-surface, #1f2937)' }}
+          >
+            {authorName}
+          </div>
           {change.date && (
             <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(change.date)}</div>
           )}
@@ -71,7 +75,14 @@ export function TrackedChangeCard({
         )}
       </div>
 
-      <div style={{ fontSize: 13, lineHeight: '20px', color: '#202124', marginTop: 6 }}>
+      <div
+        style={{
+          fontSize: 13,
+          lineHeight: '20px',
+          color: 'var(--doc-text-on-surface, #1f2937)',
+          marginTop: 6,
+        }}
+      >
         {change.type === 'replacement' ? (
           <>
             {t('trackedChanges.replaced')}{' '}

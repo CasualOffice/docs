@@ -122,6 +122,7 @@
   --doc-border-input: #3c4043;
   --doc-bg-subtle: #2d2f31;
   --doc-bg-hover: #3c4043;
+  --doc-hover: #3c4043;
   --doc-bg-input: #2d2f31;
   --doc-primary-light: #1a3a5e;
   --doc-link: #8ab4f8;
@@ -148,6 +149,7 @@
     --doc-border-input: #3c4043;
     --doc-bg-subtle: #2d2f31;
     --doc-bg-hover: #3c4043;
+    --doc-hover: #3c4043;
     --doc-bg-input: #2d2f31;
     --doc-primary-light: #1a3a5e;
     --doc-link: #8ab4f8;

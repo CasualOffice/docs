@@ -43,7 +43,13 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
               {getInitials(reply.author || 'U')}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#202124' }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--doc-text-on-surface, #1f2937)',
+                }}
+              >
                 {reply.author || t('comments.unknown')}
               </div>
               <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(reply.date)}</div>
@@ -52,7 +58,7 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
           <div
             style={{
               fontSize: 13,
-              color: '#202124',
+              color: 'var(--doc-text-on-surface, #1f2937)',
               lineHeight: '20px',
               marginTop: 4,
               ...(!isExpanded
