@@ -550,10 +550,11 @@ export function parseSectionProperties(
   // ============================================================================
   const footnotePr = findChild(sectPr, 'w', 'footnotePr');
   if (footnotePr) {
-    const fnProps = parseFootnoteProperties(footnotePr);
-    if (Object.keys(fnProps).length > 0) {
-      props.footnotePr = fnProps;
-    }
+    // Always record the props object when the element exists — even an
+    // empty <w:footnotePr/> is meaningful (it forces Word's section
+    // footnote-numbering reset behavior). The serializer rehydrates the
+    // self-closing form.
+    props.footnotePr = parseFootnoteProperties(footnotePr);
   }
 
   // ============================================================================
@@ -561,10 +562,8 @@ export function parseSectionProperties(
   // ============================================================================
   const endnotePr = findChild(sectPr, 'w', 'endnotePr');
   if (endnotePr) {
-    const enProps = parseEndnoteProperties(endnotePr);
-    if (Object.keys(enProps).length > 0) {
-      props.endnotePr = enProps;
-    }
+    // Same as footnotePr: keep the object even when empty.
+    props.endnotePr = parseEndnoteProperties(endnotePr);
   }
 
   // ============================================================================

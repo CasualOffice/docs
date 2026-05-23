@@ -201,7 +201,9 @@ function serializeFootnoteProperties(props: FootnoteProperties | undefined): str
     parts.push(`<w:numRestart w:val="${props.numRestart}"/>`);
   }
 
-  if (parts.length === 0) return '';
+  // Empty footnotePr is meaningful (forces section-scoped numbering
+  // behavior). Emit the self-closing form when no children landed.
+  if (parts.length === 0) return '<w:footnotePr/>';
 
   return `<w:footnotePr>${parts.join('')}</w:footnotePr>`;
 }
@@ -230,7 +232,9 @@ function serializeEndnoteProperties(props: EndnoteProperties | undefined): strin
     parts.push(`<w:numRestart w:val="${props.numRestart}"/>`);
   }
 
-  if (parts.length === 0) return '';
+  // Empty endnotePr is meaningful — emit the self-closing form so an
+  // input <w:endnotePr/> survives round-trip.
+  if (parts.length === 0) return '<w:endnotePr/>';
 
   return `<w:endnotePr>${parts.join('')}</w:endnotePr>`;
 }
