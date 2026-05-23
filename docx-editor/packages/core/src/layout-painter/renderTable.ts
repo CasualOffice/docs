@@ -14,6 +14,7 @@ import type {
   TableMeasure,
   TableCell,
   TableCellMeasure,
+  CellBorderSpec,
   ParagraphBlock,
   ParagraphMeasure,
   ParagraphFragment,
@@ -389,6 +390,12 @@ function renderNestedTable(
   // Track spanning cells across rows
   const spanningCells = new Map<string, SpanningCell>();
 
+  // Word-compat (#395): same heuristic as top-level tables — only fires on
+  // last body row + bottom undefined + non-empty firstRow border.
+  const wordCompatClosingBorders = context.wordCompat
+    ? computeWordCompatClosingBorders(block, measure.columnWidths.length)
+    : undefined;
+
   // Render all rows
   let y = 0;
   for (let rowIndex = 0; rowIndex < block.rows.length; rowIndex++) {
@@ -407,7 +414,9 @@ function renderNestedTable(
       context,
       doc,
       spanningCells,
-      rowYPositions
+      rowYPositions,
+      undefined,
+      wordCompatClosingBorders
     );
     tableEl.appendChild(rowEl);
     y += rowMeasure.height;
@@ -416,6 +425,35 @@ function renderNestedTable(
   tableEl.style.height = `${y}px`;
 
   return tableEl;
+}
+
+/**
+ * Word-compat (#395): build the firstRow's bottom border for each column,
+ * to be applied under the last body row when that row has no bottom of its
+ * own. `cell.borders?.bottom === undefined` at the apply site implies no
+ * tblBorders, no lastRow style, and no explicit nil — exactly the cases
+ * Word draws an extra closing line on.
+ *
+ * Returns undefined when no first row exists.
+ */
+function computeWordCompatClosingBorders(
+  block: TableBlock,
+  columnCount: number
+): Array<CellBorderSpec | undefined> | undefined {
+  const firstRow = block.rows[0];
+  if (!firstRow) return undefined;
+  const out: Array<CellBorderSpec | undefined> = new Array(columnCount).fill(undefined);
+  let columnIndex = 0;
+  for (const cell of firstRow.cells) {
+    const colSpan = cell.colSpan ?? 1;
+    for (let c = 0; c < colSpan && columnIndex + c < columnCount; c++) {
+      out[columnIndex + c] = cell.borders?.bottom;
+    }
+    columnIndex += colSpan;
+  }
+  // If no column has a firstRow bottom border, the heuristic can't add anything.
+  if (out.every((b) => b === undefined)) return undefined;
+  return out;
 }
 
 /**
@@ -457,7 +495,13 @@ function renderTableCell(
     isLastCol: boolean;
   },
   context: RenderContext,
-  doc: Document
+  doc: Document,
+  /**
+   * Word-compat (#395) closing border for this column. Applied below the
+   * last body row when wordCompat is on AND the cell has no bottom of its
+   * own (i.e. no tblBorders, no lastRow style, no explicit nil).
+   */
+  wordCompatClosingBorder?: CellBorderSpec
 ): HTMLElement {
   const cellEl = doc.createElement('div');
   cellEl.className = TABLE_CLASS_NAMES.cell;
@@ -493,6 +537,20 @@ function renderTableCell(
     if (borderFlags.isFirstCol) applyBorder(cellEl, 'left', cell.borders.left);
   }
   // No default border - cells without explicit borders should be borderless
+
+  // Word-compat (#395): if the last row has no bottom border of its own
+  // and the renderer was told to mirror Word's closing-line behavior,
+  // draw the firstRow's bottom border under this cell. cell.borders?.bottom
+  // === undefined excludes both `tblBorders` (would set every cell's bottom)
+  // and explicit `<w:bottom w:val="nil"/>` (would set bottom to a 'nil' spec).
+  if (
+    context.wordCompat &&
+    borderFlags.isLastRow &&
+    cell.borders?.bottom === undefined &&
+    wordCompatClosingBorder !== undefined
+  ) {
+    applyBorder(cellEl, 'bottom', wordCompatClosingBorder);
+  }
 
   // Background color
   if (cell.background) {
@@ -571,7 +629,8 @@ function renderTableRow(
   doc: Document,
   spanningCells?: Map<string, SpanningCell>,
   rowYPositions?: number[],
-  isFirstRowInFragment?: boolean
+  isFirstRowInFragment?: boolean,
+  wordCompatClosingBorders?: Array<CellBorderSpec | undefined>
 ): HTMLElement {
   const rowEl = doc.createElement('div');
   rowEl.className = TABLE_CLASS_NAMES.row;
@@ -645,7 +704,8 @@ function renderTableRow(
       cellHeight,
       { isFirstRow, isLastRow, isFirstCol, isLastCol },
       context,
-      doc
+      doc,
+      wordCompatClosingBorders?.[columnIndex]
     );
     cellEl.dataset.cellIndex = String(cellIndex);
     cellEl.dataset.columnIndex = String(columnIndex);
@@ -767,6 +827,13 @@ export function renderTableFragment(
   // Track spanning cells across rows
   const spanningCells = new Map<string, SpanningCell>();
 
+  // Word-compat (#395): precompute the firstRow's bottom border per column,
+  // off unless context.wordCompat is set. Apply happens in renderTableCell
+  // when the cell is in the last body row and has no bottom of its own.
+  const wordCompatClosingBorders = context.wordCompat
+    ? computeWordCompatClosingBorders(block, measure.columnWidths.length)
+    : undefined;
+
   // Render repeated header rows for continuation fragments
   const headerRowCount = fragment.headerRowCount ?? 0;
   let y = 0;
@@ -787,7 +854,8 @@ export function renderTableFragment(
         doc,
         spanningCells,
         rowYPositions,
-        hdrIdx === 0 // first header row draws top border
+        hdrIdx === 0, // first header row draws top border
+        wordCompatClosingBorders
       );
       rowEl.dataset.repeatedHeader = 'true';
       tableEl.appendChild(rowEl);
@@ -819,7 +887,8 @@ export function renderTableFragment(
       doc,
       spanningCells,
       rowYPositions,
-      isFirstRowInFragment
+      isFirstRowInFragment,
+      wordCompatClosingBorders
     );
 
     tableEl.appendChild(rowEl);

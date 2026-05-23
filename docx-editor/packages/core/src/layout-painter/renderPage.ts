@@ -154,6 +154,15 @@ export interface RenderContext {
    * fact (#379).
    */
   positioning?: 'absolute' | 'flow';
+  /**
+   * Word-compat opt-in (#395): when true, table renderers may apply
+   * Word-specific rendering quirks that don't follow ECMA-376 strictly.
+   * Currently used by renderTable.ts to extend the firstRow's bottom
+   * border under the last body row when no explicit lastRow/tblBorders
+   * border exists — matches Word Online's behavior; LibreOffice / Google
+   * Docs do not draw this line. Default off.
+   */
+  wordCompat?: boolean;
 }
 
 /**
@@ -228,6 +237,8 @@ export interface RenderPageOptions {
   footnoteArea?: FootnoteRenderItem[];
   /** Comment IDs that are resolved — skip highlight for these */
   resolvedCommentIds?: Set<number>;
+  /** Word-compat (#395). See PainterOptions.wordCompat. */
+  wordCompat?: boolean;
 }
 
 export interface HeaderFooterLayoutInfo {
@@ -1662,6 +1673,7 @@ function buildPageRenderArgs(
     totalPages,
     section: 'body',
     resolvedCommentIds: options.resolvedCommentIds,
+    wordCompat: options.wordCompat,
   };
   const pageOptions: RenderPageOptions = { ...options };
   // Per-page header/footer selection when titlePg is enabled
