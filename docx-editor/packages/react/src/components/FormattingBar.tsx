@@ -366,7 +366,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         <ToolbarButton
           onClick={handleUndo}
           disabled={disabled || !canUndo}
-          title={t('formattingBar.undoShortcut')}
+          title={t('formattingBar.undo')}
+          shortcut="⌘Z"
           ariaLabel={t('formattingBar.undo')}
         >
           <MaterialSymbol name="undo" size={ICON_SIZE} />
@@ -374,7 +375,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         <ToolbarButton
           onClick={handleRedo}
           disabled={disabled || !canRedo}
-          title={t('formattingBar.redoShortcut')}
+          title={t('formattingBar.redo')}
+          shortcut="⌘Y"
           ariaLabel={t('formattingBar.redo')}
         >
           <MaterialSymbol name="redo" size={ICON_SIZE} />
@@ -538,7 +540,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('subscript')}
           active={currentFormatting.subscript}
           disabled={disabled}
-          title={t('formattingBar.subscriptShortcut')}
+          title={t('formattingBar.subscript')}
+          shortcut="⌘,"
           ariaLabel={t('formattingBar.subscript')}
         >
           <MaterialSymbol name="subscript" size={ICON_SIZE} />
@@ -640,6 +643,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         onClick={() => handleFormat('clearFormatting')}
         disabled={disabled}
         title={t('formattingBar.clearFormatting')}
+        shortcut={'⌘\\'}
         ariaLabel={t('formattingBar.clearFormatting')}
       >
         <MaterialSymbol name="format_clear" size={ICON_SIZE} />
