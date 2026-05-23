@@ -116,6 +116,21 @@ const footerStyle: CSSProperties = {
   gap: 8,
 };
 
+const sectionTitleStyle: CSSProperties = {
+  fontSize: 11,
+  color: 'var(--doc-text-on-surface-muted, #6b7280)',
+  margin: '4px 0 8px',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+};
+
+const sectionStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
+
 const btnStyle: CSSProperties = {
   padding: '6px 16px',
   fontSize: 13,
@@ -195,100 +210,104 @@ export function FilePropertiesDialog({
       <div style={dialogStyle} onMouseDown={stop} onClick={stop}>
         <div style={headerStyle}>File Properties</div>
         <div style={bodyStyle}>
-          <div style={rowStyle}>
-            <label style={labelStyle} htmlFor="fp-title">
-              Title
-            </label>
-            <input
-              id="fp-title"
-              data-testid="fp-title"
-              style={inputStyle}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-          <div style={rowStyle}>
-            <label style={labelStyle} htmlFor="fp-subject">
-              Subject
-            </label>
-            <input
-              id="fp-subject"
-              data-testid="fp-subject"
-              style={inputStyle}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
-          </div>
-          <div style={rowStyle}>
-            <label style={labelStyle} htmlFor="fp-creator">
-              Author
-            </label>
-            <input
-              id="fp-creator"
-              data-testid="fp-creator"
-              style={inputStyle}
-              value={creator}
-              onChange={(e) => setCreator(e.target.value)}
-            />
-          </div>
-          <div style={rowStyle}>
-            <label style={labelStyle} htmlFor="fp-keywords">
-              Keywords
-            </label>
-            <input
-              id="fp-keywords"
-              data-testid="fp-keywords"
-              style={inputStyle}
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              placeholder="e.g. finance; annual; report"
-            />
-          </div>
-          <div style={rowStyle}>
-            <label style={labelStyle} htmlFor="fp-category">
-              Category
-            </label>
-            <input
-              id="fp-category"
-              data-testid="fp-category"
-              style={inputStyle}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            />
-          </div>
-          <div style={rowStyle}>
-            <label style={labelStyle} htmlFor="fp-description">
-              Description
-            </label>
-            <textarea
-              id="fp-description"
-              data-testid="fp-description"
-              style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
+          <section style={sectionStyle}>
+            <h3 style={sectionTitleStyle}>Metadata</h3>
+            <div style={rowStyle}>
+              <label style={labelStyle} htmlFor="fp-title">
+                Title
+              </label>
+              <input
+                id="fp-title"
+                data-testid="fp-title"
+                style={inputStyle}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+            <div style={rowStyle}>
+              <label style={labelStyle} htmlFor="fp-subject">
+                Subject
+              </label>
+              <input
+                id="fp-subject"
+                data-testid="fp-subject"
+                style={inputStyle}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+            </div>
+            <div style={rowStyle}>
+              <label style={labelStyle} htmlFor="fp-creator">
+                Author
+              </label>
+              <input
+                id="fp-creator"
+                data-testid="fp-creator"
+                style={inputStyle}
+                value={creator}
+                onChange={(e) => setCreator(e.target.value)}
+              />
+            </div>
+            <div style={rowStyle}>
+              <label style={labelStyle} htmlFor="fp-keywords">
+                Keywords
+              </label>
+              <input
+                id="fp-keywords"
+                data-testid="fp-keywords"
+                style={inputStyle}
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder="e.g. finance; annual; report"
+              />
+            </div>
+            <div style={rowStyle}>
+              <label style={labelStyle} htmlFor="fp-category">
+                Category
+              </label>
+              <input
+                id="fp-category"
+                data-testid="fp-category"
+                style={inputStyle}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              />
+            </div>
+            <div style={rowStyle}>
+              <label style={labelStyle} htmlFor="fp-description">
+                Description
+              </label>
+              <textarea
+                id="fp-description"
+                data-testid="fp-description"
+                style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </section>
 
-          <div style={{ borderTop: '1px solid var(--doc-border, #eee)', margin: '4px 0' }} />
-
-          <div style={rowStyle}>
-            <span style={labelStyle}>Last modified by</span>
-            <span style={readonlyValueStyle} data-testid="fp-lastModifiedBy">
-              {current?.lastModifiedBy ?? '—'}
-            </span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>Revision</span>
-            <span style={readonlyValueStyle}>{current?.revision ?? '—'}</span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>Created</span>
-            <span style={readonlyValueStyle}>{formatDate(current?.created)}</span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>Modified</span>
-            <span style={readonlyValueStyle}>{formatDate(current?.modified)}</span>
-          </div>
+          <section style={{ ...sectionStyle, marginTop: 16 }}>
+            <h3 style={sectionTitleStyle}>File info</h3>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Last modified by</span>
+              <span style={readonlyValueStyle} data-testid="fp-lastModifiedBy">
+                {current?.lastModifiedBy ?? '—'}
+              </span>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Revision</span>
+              <span style={readonlyValueStyle}>{current?.revision ?? '—'}</span>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Created</span>
+              <span style={readonlyValueStyle}>{formatDate(current?.created)}</span>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Modified</span>
+              <span style={readonlyValueStyle}>{formatDate(current?.modified)}</span>
+            </div>
+          </section>
         </div>
         <div style={footerStyle}>
           <button type="button" style={btnStyle} onClick={onClose}>
