@@ -70,3 +70,6 @@ examples/plugins/*/package-lock.json
 
 # Reference documentation (large files - can be re-downloaded)
 reference/ecma-376/*.zip
+
+# Ground-truth renders (reproducible via scripts/ground-truth/render.py)
+scripts/ground-truth/libreoffice/

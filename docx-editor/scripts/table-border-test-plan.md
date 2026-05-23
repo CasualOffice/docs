@@ -17,17 +17,28 @@ last body row?"
 
 | # | Fixture | Table | Style | Word Online | Word Desktop | Google Docs | LibreOffice |
 |---|---|---|---|---|---|---|---|
-| A1 | `docx-editor-numbering.docx` | first | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | _open?_ |
-| A2 | `docx-editor-numbering.docx` | second | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | _open?_ |
-| A3 | `issue-387-font-theme-override.docx` | first | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | _open?_ |
-| A4 | `issue-387-font-theme-override.docx` | second | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | _open?_ |
-| B1 | `demo.docx` | Table 5 (Calendar3) | `Calendar3` | _open?_ | _open?_ | _open?_ | _open?_ |
-| C1 | `table-indent.docx` | first | (none, 1-row, empty `tcBorders`) | _open?_ | _open?_ | _open?_ | _open?_ |
-| D1 | `header-with-textbox.docx` | first | (inline `bottom="nil"`) | _open?_ | _open?_ | _open?_ | _open?_ |
+| A1 | `docx-editor-numbering.docx` | first | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | **No** |
+| A2 | `docx-editor-numbering.docx` | second | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | **No** |
+| A3 | `issue-387-font-theme-override.docx` | first | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | **No** |
+| A4 | `issue-387-font-theme-override.docx` | second | `VeriCasaHeader` | _open?_ | _open?_ | _open?_ | **No** |
+| B1 | `demo.docx` | Table 5 (Calendar3) | `Calendar3` | _open?_ | _open?_ | _open?_ | **No** |
+| C1 | `table-indent.docx` | first | (none, 1-row, empty `tcBorders`) | _open?_ | _open?_ | _open?_ | **No** |
+| D1 | `header-with-textbox.docx` | first | (inline `bottom="nil"`) | _open?_ | _open?_ | _open?_ | **No** |
 
 Rows A1–A4 are the #395 candidates. Rows B1, C1, D1 are controls
 that test the boundary — they're "suspect" by the classifier but
 should not get a closing line under any reasonable rule.
+
+The LibreOffice column was filled in headlessly using
+`soffice --headless --convert-to pdf` followed by a PyMuPDF script
+(`scripts/ground-truth/find-closing-lines.py`) that extracts every
+horizontal line segment from the rendered PDF and checks whether one
+falls within 20pt below the named table's last body row (and isn't
+the next table's top border). Result: LibreOffice draws **no**
+closing line in any of the seven cases — i.e. it agrees with our
+renderer and the strict ECMA-376 reading. That's the boring,
+spec-faithful outcome. The interesting variance, if any, lives in
+Word / Word Online / Google Docs.
 
 ## What each fixture's OOXML actually says
 
@@ -132,8 +143,28 @@ The fixtures live in `e2e/fixtures/`. Drag-and-drop each into:
 - Word Online: https://office.com/launch/word (sign in, "Open from this device")
 - Word Desktop: just open
 - Google Docs: https://docs.google.com/ → File → Open → Upload
-- LibreOffice: just open (if installed)
+- LibreOffice: already done — see `scripts/ground-truth/`.
 
 Take a screenshot of the last row's bottom edge in each renderer
 and paste into the table above. Once filled in, run the heuristic
 implementation matching the decision tree.
+
+### Reproducing the LibreOffice column
+
+```sh
+# 1) Render each fixture to PDF (headless)
+for f in docx-editor-numbering issue-387-font-theme-override demo \
+         table-indent header-with-textbox; do
+  soffice --headless --convert-to pdf \
+    --outdir scripts/ground-truth/libreoffice \
+    e2e/fixtures/$f.docx
+done
+
+# 2) Detect closing-line presence
+python3 scripts/ground-truth/find-closing-lines.py
+```
+
+The detector reads horizontal line segments from each PDF, anchors
+on the last body text of the named table, and reports YES/NO with
+the matching line's position. See the script for the search window
+(20pt below last text) and next-table disambiguation logic.
