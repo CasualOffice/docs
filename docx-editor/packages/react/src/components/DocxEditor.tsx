@@ -1879,6 +1879,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     async (buffer: DocxInput) => {
       const generation = ++loadGenerationRef.current;
       resetForNewDocument();
+      // Loading a fresh buffer wipes the prior edit state, so the new
+      // document starts clean.
+      isDirtyRef.current = false;
       setState((prev) => ({ ...prev, isLoading: true, parseError: null }));
       try {
         const doc = await parseDocx(buffer);
@@ -1968,9 +1971,27 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history]
   );
 
+  // Tracks whether the user has unsaved edits. Set by `handleDocumentChange`,
+  // cleared by save / open / new. Read by the `beforeunload` listener.
+  const isDirtyRef = useRef(false);
+
+  // beforeunload guard — browsers show the native confirm dialog when
+  // `event.returnValue` is set to a non-empty string (the actual string is
+  // ignored in modern browsers; only the presence matters).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
   // Handle document change
   const handleDocumentChange = useCallback(
     (newDocument: Document) => {
+      isDirtyRef.current = true;
       pushDocument(newDocument);
       onChange?.(newDocument);
       // Fan out to bridge subscribers (errors in one don't break the others).
@@ -3919,17 +3940,28 @@ body { background: white; }
     const url = URL.createObjectURL(blob);
     const a = window.document.createElement('a');
     a.href = url;
-    a.download = `${(documentName?.trim() || 'document').replace(/\.docx$/i, '')}.docx`;
+    const fileName = `${(documentName?.trim() || 'document').replace(/\.docx$/i, '')}.docx`;
+    a.download = fileName;
     a.click();
     // Defer revoke so Safari has time to start the download.
     setTimeout(() => URL.revokeObjectURL(url), 0);
+    isDirtyRef.current = false;
+    toast.success(`Saved ${fileName}`);
   }, [handleSave, documentName]);
 
   const handleExportAs = useCallback(
     async (target: 'odt' | 'md' | 'txt') => {
+      const label = target === 'odt' ? 'ODT' : target === 'md' ? 'Markdown' : 'Plain Text';
+      // Loading toast — kept until convert finishes. The first non-DOCX
+      // conversion in a session boots the ~7MB WASM bundle so this can
+      // take a couple seconds; the toast tells the user it's working.
+      const toastId = toast.loading(`Converting to ${label}…`);
       try {
         const buffer = await handleSave();
-        if (!buffer) return;
+        if (!buffer) {
+          toast.dismiss(toastId);
+          return;
+        }
         const { exportDocxAs } = await import('../lib/format-converter');
         const out = await exportDocxAs(new Uint8Array(buffer), target);
         const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
@@ -3949,7 +3981,9 @@ body { background: white; }
         a.download = `${base}.${target}`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 0);
+        toast.success(`Downloaded ${base}.${target}`, { id: toastId });
       } catch (error) {
+        toast.error(`Failed to export as ${label}`, { id: toastId });
         onError?.(error instanceof Error ? error : new Error(`Failed to export as ${target}`));
       }
     },

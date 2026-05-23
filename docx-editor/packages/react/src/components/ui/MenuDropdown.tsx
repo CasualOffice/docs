@@ -183,79 +183,100 @@ export function MenuDropdown({ label, items, disabled }: MenuDropdownProps) {
       </button>
 
       {isOpen && (
-        <div
-          ref={dropdownRef}
-          style={{
-            position: 'fixed',
-            top: dropdownPos.top,
-            left: dropdownPos.left,
-            backgroundColor: 'white',
-            border: '1px solid var(--doc-border, #d1d5db)',
-            borderRadius: 6,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
-            padding: '4px 0',
-            zIndex: 10000,
-            minWidth: 200,
-          }}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {items.map((entry, i) => {
-            if (isSeparator(entry)) {
-              return <div key={`sep-${i}`} style={separatorStyle} />;
-            }
-            const item = entry;
-            if (item.customContent) {
+        <>
+          {/* Invisible backdrop — catches clicks anywhere outside the
+              dropdown so the underlying toolbar buttons (e.g. the
+              numbered-list / TOC icon below the menu bar) don't fire
+              when the user clicks away to dismiss the menu. Word and
+              Google Docs both swallow that first click. */}
+          <div
+            aria-hidden="true"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              closeMenu();
+            }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9998,
+              background: 'transparent',
+            }}
+          />
+          <div
+            ref={dropdownRef}
+            style={{
+              position: 'fixed',
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              backgroundColor: 'white',
+              border: '1px solid var(--doc-border, #d1d5db)',
+              borderRadius: 6,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+              padding: '4px 0',
+              zIndex: 9999,
+              minWidth: 200,
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {items.map((entry, i) => {
+              if (isSeparator(entry)) {
+                return <div key={`sep-${i}`} style={separatorStyle} />;
+              }
+              const item = entry;
+              if (item.customContent) {
+                return (
+                  <div key={item.label} onMouseDown={(e) => e.preventDefault()}>
+                    {item.customContent}
+                  </div>
+                );
+              }
+
+              const hasSubmenu = !!item.submenuContent;
+              const isSubmenuOpen = hoveredSubmenu === item.label;
+
               return (
-                <div key={item.label} onMouseDown={(e) => e.preventDefault()}>
-                  {item.customContent}
+                <div
+                  key={item.label}
+                  style={{ position: 'relative' }}
+                  onMouseEnter={() => hasSubmenu && setHoveredSubmenu(item.label)}
+                  onMouseLeave={() => hasSubmenu && setHoveredSubmenu(null)}
+                >
+                  <button
+                    type="button"
+                    style={item.disabled ? menuItemDisabledStyle : menuItemStyle}
+                    onClick={() => handleItemClick(item)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseOver={(e) => {
+                      if (!item.disabled) {
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                          'var(--doc-hover, #f3f4f6)';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                    }}
+                    disabled={item.disabled}
+                  >
+                    {item.icon && <MaterialSymbol name={item.icon} size={18} />}
+                    <span>{item.label}</span>
+                    {item.shortcut && <span style={shortcutStyle}>{item.shortcut}</span>}
+                    {hasSubmenu && (
+                      <span style={{ marginLeft: 'auto' }}>
+                        <MaterialSymbol name="keyboard_arrow_right" size={16} />
+                      </span>
+                    )}
+                  </button>
+                  {hasSubmenu && isSubmenuOpen && (
+                    <div style={submenuPanelStyle} onMouseDown={(e) => e.preventDefault()}>
+                      {item.submenuContent!(closeMenu)}
+                    </div>
+                  )}
                 </div>
               );
-            }
-
-            const hasSubmenu = !!item.submenuContent;
-            const isSubmenuOpen = hoveredSubmenu === item.label;
-
-            return (
-              <div
-                key={item.label}
-                style={{ position: 'relative' }}
-                onMouseEnter={() => hasSubmenu && setHoveredSubmenu(item.label)}
-                onMouseLeave={() => hasSubmenu && setHoveredSubmenu(null)}
-              >
-                <button
-                  type="button"
-                  style={item.disabled ? menuItemDisabledStyle : menuItemStyle}
-                  onClick={() => handleItemClick(item)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseOver={(e) => {
-                    if (!item.disabled) {
-                      (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                        'var(--doc-hover, #f3f4f6)';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                  }}
-                  disabled={item.disabled}
-                >
-                  {item.icon && <MaterialSymbol name={item.icon} size={18} />}
-                  <span>{item.label}</span>
-                  {item.shortcut && <span style={shortcutStyle}>{item.shortcut}</span>}
-                  {hasSubmenu && (
-                    <span style={{ marginLeft: 'auto' }}>
-                      <MaterialSymbol name="keyboard_arrow_right" size={16} />
-                    </span>
-                  )}
-                </button>
-                {hasSubmenu && isSubmenuOpen && (
-                  <div style={submenuPanelStyle} onMouseDown={(e) => e.preventDefault()}>
-                    {item.submenuContent!(closeMenu)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+            })}
+          </div>
+        </>
       )}
     </div>
   );

@@ -22,14 +22,16 @@ import { openReportIssue } from './reportIssue';
 // Default Doc Icon (shown when no Logo is provided)
 // ============================================================================
 
+// Casual Editor brand mark — same shape and palette as the About dialog
+// logo so the title-bar icon and the About icon are visually identical.
 function DefaultDocIcon() {
   return (
     <svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M2 0C0.9 0 0 0.9 0 2V38C0 39.1 0.9 40 2 40H30C31.1 40 32 39.1 32 38V10L22 0H2Z"
-        fill="#cbd5e1"
+        fill="#1a73e8"
       />
-      <path d="M22 0L32 10H24C22.9 10 22 9.1 22 8V0Z" fill="#94a3b8" />
+      <path d="M22 0L32 10H24C22.9 10 22 9.1 22 8V0Z" fill="#1557b0" />
       <rect x="7" y="18" width="18" height="2" rx="1" fill="#fff" />
       <rect x="7" y="23" width="18" height="2" rx="1" fill="#fff" />
       <rect x="7" y="28" width="12" height="2" rx="1" fill="#fff" />
