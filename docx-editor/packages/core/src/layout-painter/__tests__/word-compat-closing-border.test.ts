@@ -45,10 +45,7 @@ function make2RowTable(lastRowBottom: CellBorderSpec | undefined | null): {
   // null sentinel means "no borders object at all" — distinct from
   // `borders: { bottom: undefined }` which exercises the same branch
   // but goes through cell.borders defined-but-empty.
-  const lastRowBorders =
-    lastRowBottom === null
-      ? undefined
-      : { bottom: lastRowBottom };
+  const lastRowBorders = lastRowBottom === null ? undefined : { bottom: lastRowBottom };
 
   const block: TableBlock = {
     kind: 'table',
@@ -56,9 +53,7 @@ function make2RowTable(lastRowBottom: CellBorderSpec | undefined | null): {
     rows: [
       {
         id: 'r0',
-        cells: [
-          { id: 'c0', blocks: [], borders: { bottom: FIRST_ROW_BORDER } },
-        ],
+        cells: [{ id: 'c0', blocks: [], borders: { bottom: FIRST_ROW_BORDER } }],
       },
       {
         id: 'r1',
