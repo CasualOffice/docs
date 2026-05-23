@@ -111,6 +111,9 @@ const FilePropertiesDialog = lazy(() =>
 const AboutDialog = lazy(() =>
   import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
 );
+const CommandPaletteDialog = lazy(() =>
+  import('./dialogs/CommandPaletteDialog').then((m) => ({ default: m.CommandPaletteDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -1881,6 +1884,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     void import('./report-bug').then((m) => m.openBugReport());
   }, []);
 
+  // Command palette state (⌘⇧P / Ctrl+Shift+P). Searchable list of every
+  // menu action, sourced from the same callbacks the menus use.
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+
   // Color theme: 'auto' (follow OS) | 'light' | 'dark'. Persisted in
   // localStorage. editor.css selects `[data-theme="dark"]` and
   // `[data-theme="auto"]` (the latter only when the OS reports dark).
@@ -2445,6 +2452,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           e.preventDefault();
           shortcutActionsRef.current.zoomReset?.();
         }
+      }
+
+      // Mod+Shift+P → command palette. Word / VS Code / Notion convention.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setShowCommandPalette(true);
       }
     };
 
@@ -6011,6 +6024,250 @@ body { background: white; }
                 />
               )}
               {showAbout && <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />}
+              {showCommandPalette && (
+                <CommandPaletteDialog
+                  isOpen={showCommandPalette}
+                  onClose={() => setShowCommandPalette(false)}
+                  items={[
+                    ...(onNew
+                      ? [
+                          {
+                            id: 'file.new',
+                            label: 'New document',
+                            path: 'File',
+                            shortcut: '⌘N',
+                            run: onNew,
+                          },
+                        ]
+                      : []),
+                    {
+                      id: 'file.open',
+                      label: 'Open…',
+                      path: 'File',
+                      shortcut: '⌘O',
+                      run: handleOpenDocument,
+                    },
+                    {
+                      id: 'file.save',
+                      label: 'Save (download .docx)',
+                      path: 'File',
+                      shortcut: '⌘S',
+                      run: handleDownloadDocument,
+                    },
+                    {
+                      id: 'file.print',
+                      label: 'Print',
+                      path: 'File',
+                      shortcut: '⌘P',
+                      run: handleDirectPrint,
+                    },
+                    {
+                      id: 'file.export.pdf',
+                      label: 'Export as PDF',
+                      path: 'File · Export',
+                      run: handleExportPdf,
+                    },
+                    {
+                      id: 'file.export.odt',
+                      label: 'Export as ODT',
+                      path: 'File · Export',
+                      run: handleExportOdt,
+                    },
+                    {
+                      id: 'file.export.md',
+                      label: 'Export as Markdown',
+                      path: 'File · Export',
+                      run: handleExportMd,
+                    },
+                    {
+                      id: 'file.export.txt',
+                      label: 'Export as Plain Text',
+                      path: 'File · Export',
+                      run: handleExportTxt,
+                    },
+                    {
+                      id: 'file.pageSetup',
+                      label: 'Page Setup…',
+                      path: 'File',
+                      run: handleOpenPageSetup,
+                    },
+                    {
+                      id: 'file.properties',
+                      label: 'Properties…',
+                      path: 'File',
+                      run: handleOpenFileProperties,
+                    },
+
+                    {
+                      id: 'edit.find',
+                      label: 'Find',
+                      path: 'Edit',
+                      shortcut: '⌘F',
+                      run: () => findReplace.openFind(''),
+                    },
+                    {
+                      id: 'edit.findReplace',
+                      label: 'Find and Replace',
+                      path: 'Edit',
+                      shortcut: '⌘H',
+                      run: () => findReplace.openReplace(''),
+                    },
+                    {
+                      id: 'edit.selectAll',
+                      label: 'Select All',
+                      path: 'Edit',
+                      shortcut: '⌘A',
+                      run: () => handleFormat('selectAll'),
+                    },
+
+                    {
+                      id: 'format.bold',
+                      label: 'Bold',
+                      path: 'Format',
+                      shortcut: '⌘B',
+                      run: () => handleFormat('bold'),
+                    },
+                    {
+                      id: 'format.italic',
+                      label: 'Italic',
+                      path: 'Format',
+                      shortcut: '⌘I',
+                      run: () => handleFormat('italic'),
+                    },
+                    {
+                      id: 'format.underline',
+                      label: 'Underline',
+                      path: 'Format',
+                      shortcut: '⌘U',
+                      run: () => handleFormat('underline'),
+                    },
+                    {
+                      id: 'format.strike',
+                      label: 'Strikethrough',
+                      path: 'Format',
+                      shortcut: '⌘⇧X',
+                      run: () => handleFormat('strikethrough'),
+                    },
+                    {
+                      id: 'format.super',
+                      label: 'Superscript',
+                      path: 'Format',
+                      shortcut: '⌘.',
+                      run: () => handleFormat('superscript'),
+                    },
+                    {
+                      id: 'format.sub',
+                      label: 'Subscript',
+                      path: 'Format',
+                      shortcut: '⌘,',
+                      run: () => handleFormat('subscript'),
+                    },
+                    {
+                      id: 'format.smallCaps',
+                      label: 'Small Caps',
+                      path: 'Format',
+                      run: () => handleFormat('toggleSmallCaps'),
+                    },
+                    {
+                      id: 'format.allCaps',
+                      label: 'All Caps',
+                      path: 'Format',
+                      run: () => handleFormat('toggleAllCaps'),
+                    },
+                    {
+                      id: 'format.clear',
+                      label: 'Clear formatting',
+                      path: 'Format',
+                      shortcut: '⌘\\',
+                      run: () => handleFormat('clearFormatting'),
+                    },
+                    {
+                      id: 'format.ltr',
+                      label: 'Left-to-right text',
+                      path: 'Format',
+                      run: () => handleFormat('setLtr'),
+                    },
+                    {
+                      id: 'format.rtl',
+                      label: 'Right-to-left text',
+                      path: 'Format',
+                      run: () => handleFormat('setRtl'),
+                    },
+
+                    {
+                      id: 'view.zoomIn',
+                      label: 'Zoom in',
+                      path: 'View',
+                      shortcut: '⌘=',
+                      run: () => handleZoomChange(Math.min(state.zoom * 1.1, 4)),
+                    },
+                    {
+                      id: 'view.zoomOut',
+                      label: 'Zoom out',
+                      path: 'View',
+                      shortcut: '⌘−',
+                      run: () => handleZoomChange(Math.max(state.zoom / 1.1, 0.25)),
+                    },
+                    {
+                      id: 'view.zoomReset',
+                      label: 'Reset zoom to 100%',
+                      path: 'View',
+                      shortcut: '⌘0',
+                      run: () => handleZoomChange(1),
+                    },
+                    {
+                      id: 'view.themeAuto',
+                      label: 'Theme: match system',
+                      path: 'View',
+                      run: () => handleSetColorTheme('auto'),
+                    },
+                    {
+                      id: 'view.themeLight',
+                      label: 'Theme: light',
+                      path: 'View',
+                      run: () => handleSetColorTheme('light'),
+                    },
+                    {
+                      id: 'view.themeDark',
+                      label: 'Theme: dark',
+                      path: 'View',
+                      run: () => handleSetColorTheme('dark'),
+                    },
+
+                    {
+                      id: 'insert.pageBreak',
+                      label: 'Insert page break',
+                      path: 'Insert',
+                      run: () => handleInsertPageBreak(),
+                    },
+                    {
+                      id: 'insert.toc',
+                      label: 'Insert table of contents',
+                      path: 'Insert',
+                      run: () => handleInsertTOC(),
+                    },
+                    {
+                      id: 'insert.image',
+                      label: 'Insert image',
+                      path: 'Insert',
+                      run: handleInsertImageClick,
+                    },
+
+                    {
+                      id: 'help.report',
+                      label: 'Report a bug',
+                      path: 'Help',
+                      run: handleReportBug,
+                    },
+                    {
+                      id: 'help.about',
+                      label: 'About Casual Editor',
+                      path: 'Help',
+                      run: handleShowAbout,
+                    },
+                  ]}
+                />
+              )}
             </Suspense>
             {/* InlineHeaderFooterEditor is rendered inside the editor content area (position:relative div) */}
             {/* Hidden file input for image insertion */}
