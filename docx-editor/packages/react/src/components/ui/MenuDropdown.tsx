@@ -210,19 +210,17 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
     document.addEventListener('keydown', handleEscape);
     document.addEventListener('keydown', handleArrows);
     window.addEventListener('scroll', handleScroll, true);
-    // Focus the first interactive item shortly after the menu opens so
-    // keyboard users land on something predictable. Delay one frame so
-    // the dropdown DOM has rendered.
-    const focusTimer = window.setTimeout(() => {
-      const first = dropdownRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])');
-      first?.focus();
-    }, 0);
+    // Intentionally NOT auto-focusing the first menu item on open.
+    // Word and Google Docs don't paint a focus ring on the first item
+    // when a menu is opened via mouse click — it only appears once the
+    // user starts navigating with the keyboard. The first ArrowDown
+    // press inside handleArrows() above focuses item 0 from its `idx <
+    // 0` branch, so keyboard accessibility is preserved.
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('keydown', handleArrows);
       window.removeEventListener('scroll', handleScroll, true);
-      window.clearTimeout(focusTimer);
     };
   }, [isOpen, closeMenu]);
 

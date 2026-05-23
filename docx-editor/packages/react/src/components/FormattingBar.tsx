@@ -445,7 +445,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('bold')}
           active={currentFormatting.bold}
           disabled={disabled}
-          title={t('formattingBar.boldShortcut')}
+          title={t('formattingBar.bold')}
+          shortcut="⌘B"
           ariaLabel={t('formattingBar.bold')}
         >
           <MaterialSymbol name="format_bold" size={ICON_SIZE} />
@@ -454,7 +455,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('italic')}
           active={currentFormatting.italic}
           disabled={disabled}
-          title={t('formattingBar.italicShortcut')}
+          title={t('formattingBar.italic')}
+          shortcut="⌘I"
           ariaLabel={t('formattingBar.italic')}
         >
           <MaterialSymbol name="format_italic" size={ICON_SIZE} />
@@ -463,7 +465,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('underline')}
           active={currentFormatting.underline}
           disabled={disabled}
-          title={t('formattingBar.underlineShortcut')}
+          title={t('formattingBar.underline')}
+          shortcut="⌘U"
           ariaLabel={t('formattingBar.underline')}
         >
           <MaterialSymbol name="format_underlined" size={ICON_SIZE} />
@@ -473,6 +476,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           active={currentFormatting.strike}
           disabled={disabled}
           title={t('formattingBar.strikethrough')}
+          shortcut="⌘⇧X"
           ariaLabel={t('formattingBar.strikethrough')}
         >
           <MaterialSymbol name="strikethrough_s" size={ICON_SIZE} />
@@ -500,7 +504,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         <ToolbarButton
           onClick={() => handleFormat('insertLink')}
           disabled={disabled}
-          title={t('formattingBar.insertLinkShortcut')}
+          title={t('formattingBar.insertLink')}
+          shortcut="⌘K"
           ariaLabel={t('formattingBar.insertLink')}
         >
           <MaterialSymbol name="link" size={ICON_SIZE} />
@@ -523,7 +528,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('superscript')}
           active={currentFormatting.superscript}
           disabled={disabled}
-          title={t('formattingBar.superscriptShortcut')}
+          title={t('formattingBar.superscript')}
+          shortcut="⌘."
           ariaLabel={t('formattingBar.superscript')}
         >
           <MaterialSymbol name="superscript" size={ICON_SIZE} />
