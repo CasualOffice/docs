@@ -20,7 +20,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:ind` | 5 | 1 |
 | `w:start` | 4 | 2 |
 | `w:end` | 4 | 2 |
-| `w:pgNumType` | 4 | 4 |
 | `w:rStyle` | 4 | 1 |
 | `w:formProt` | 2 | 2 |
 | `w:textDirection` | 2 | 2 |
@@ -72,7 +71,6 @@ No round-trip drops.
 |-----|----|-----|
 | `w:start` | 2 | 0 |
 | `w:end` | 2 | 0 |
-| `w:pgNumType` | 1 | 0 |
 | `w:formProt` | 1 | 0 |
 | `w:textDirection` | 1 | 0 |
 
@@ -125,10 +123,7 @@ No round-trip drops.
 
 ### border-overlay-layout-demo
 
-
-| Tag | In | Out |
-|-----|----|-----|
-| `w:pgNumType` | 1 | 0 |
+No round-trip drops.
 
 ### three-section-header
 
@@ -181,7 +176,6 @@ No tags vanished on round-trip.
 |-----|----|-----|
 | `w:start` | 2 | 0 |
 | `w:end` | 2 | 0 |
-| `w:pgNumType` | 1 | 0 |
 | `w:formProt` | 1 | 0 |
 | `w:textDirection` | 1 | 0 |
 
@@ -222,9 +216,7 @@ No round-trip drops.
 ### sds-real-world
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:pgNumType` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### Form025U
 

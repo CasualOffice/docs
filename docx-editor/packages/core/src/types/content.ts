@@ -1530,6 +1530,23 @@ export interface SectionProperties {
   /** Endnote properties for this section */
   endnotePr?: EndnoteProperties;
 
+  // Page numbering
+  /** Page numbering settings (w:pgNumType) — ECMA-376 §17.6.12 */
+  pageNumberType?: {
+    /** Starting page number (w:start) */
+    start?: number;
+    /**
+     * Numbering format (w:fmt). Common: 'decimal', 'lowerLetter',
+     * 'upperLetter', 'lowerRoman', 'upperRoman'. Full list is the
+     * `ST_NumberFormat` enumeration in ECMA-376.
+     */
+    fmt?: string;
+    /** Chapter heading style reference (w:chapStyle) — integer */
+    chapStyle?: number;
+    /** Chapter / page-number separator character (w:chapSep) */
+    chapSep?: 'hyphen' | 'period' | 'colon' | 'emDash' | 'enDash';
+  };
+
   // Document grid
   /** Document grid */
   docGrid?: {

@@ -288,6 +288,33 @@ export function parseSectionProperties(
   }
 
   // ============================================================================
+  // PAGE NUMBER TYPE (w:pgNumType) — ECMA-376 §17.6.12
+  // ============================================================================
+  const pgNumType = findChild(sectPr, 'w', 'pgNumType');
+  if (pgNumType) {
+    const pnt: NonNullable<SectionProperties['pageNumberType']> = {};
+    const start = parseNumericAttribute(pgNumType, 'w', 'start');
+    if (start !== undefined) pnt.start = start;
+    const fmt = getAttribute(pgNumType, 'w', 'fmt');
+    if (fmt) pnt.fmt = fmt;
+    const chapStyle = parseNumericAttribute(pgNumType, 'w', 'chapStyle');
+    if (chapStyle !== undefined) pnt.chapStyle = chapStyle;
+    const chapSep = getAttribute(pgNumType, 'w', 'chapSep');
+    if (
+      chapSep === 'hyphen' ||
+      chapSep === 'period' ||
+      chapSep === 'colon' ||
+      chapSep === 'emDash' ||
+      chapSep === 'enDash'
+    ) {
+      pnt.chapSep = chapSep;
+    }
+    if (Object.keys(pnt).length > 0) {
+      props.pageNumberType = pnt;
+    }
+  }
+
+  // ============================================================================
   // COLUMNS (w:cols)
   // ============================================================================
   const cols = findChild(sectPr, 'w', 'cols');

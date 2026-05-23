@@ -532,6 +532,19 @@ export function serializeSectionProperties(props: SectionProperties | undefined)
     parts.push(pgBordersXml);
   }
 
+  // Page numbering (w:pgNumType) — ECMA-376 §17.6.12
+  if (props.pageNumberType) {
+    const pnt = props.pageNumberType;
+    const pntAttrs: string[] = [];
+    if (pnt.fmt) pntAttrs.push(`w:fmt="${pnt.fmt}"`);
+    if (pnt.start !== undefined) pntAttrs.push(`w:start="${pnt.start}"`);
+    if (pnt.chapStyle !== undefined) pntAttrs.push(`w:chapStyle="${pnt.chapStyle}"`);
+    if (pnt.chapSep) pntAttrs.push(`w:chapSep="${pnt.chapSep}"`);
+    if (pntAttrs.length > 0) {
+      parts.push(`<w:pgNumType ${pntAttrs.join(' ')}/>`);
+    }
+  }
+
   // Line numbers
   const lnNumXml = serializeLineNumbers(props);
   if (lnNumXml) {
