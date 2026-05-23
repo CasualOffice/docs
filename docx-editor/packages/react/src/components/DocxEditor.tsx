@@ -1914,7 +1914,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       resetForNewDocument();
       // Loading a fresh buffer wipes the prior edit state, so the new
       // document starts clean.
-      isDirtyRef.current = false;
+      markDirty(false);
       setState((prev) => ({ ...prev, isLoading: true, parseError: null }));
       try {
         const doc = await parseDocx(buffer);
@@ -2004,9 +2004,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history]
   );
 
-  // Tracks whether the user has unsaved edits. Set by `handleDocumentChange`,
-  // cleared by save / open / new. Read by the `beforeunload` listener.
+  // Tracks whether the user has unsaved edits. The ref is read by the
+  // `beforeunload` listener (which can't trigger React re-renders).
+  // The state mirrors the ref so the title-bar UnsavedIndicator updates
+  // when the value flips.
   const isDirtyRef = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const markDirty = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty;
+    // Only re-render when the displayed state actually changes.
+    setIsDirty((prev) => (prev === dirty ? prev : dirty));
+  }, []);
+  // True while a save / download is in flight — drives the
+  // "Saving…" indicator in the title bar.
+  const [isSaving, setIsSaving] = useState(false);
 
   // beforeunload guard — browsers show the native confirm dialog when
   // `event.returnValue` is set to a non-empty string (the actual string is
@@ -2024,7 +2035,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Handle document change
   const handleDocumentChange = useCallback(
     (newDocument: Document) => {
-      isDirtyRef.current = true;
+      markDirty(true);
       pushDocument(newDocument);
       onChange?.(newDocument);
       // Fan out to bridge subscribers (errors in one don't break the others).
@@ -3965,22 +3976,27 @@ body { background: white; }
   }, [triggerPrintFlow, documentName]);
 
   const handleDownloadDocument = useCallback(async () => {
-    const buffer = await handleSave();
-    if (!buffer) return;
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = window.document.createElement('a');
-    a.href = url;
-    const fileName = `${(documentName?.trim() || 'document').replace(/\.docx$/i, '')}.docx`;
-    a.download = fileName;
-    a.click();
-    // Defer revoke so Safari has time to start the download.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-    isDirtyRef.current = false;
-    toast.success(`Saved ${fileName}`);
-  }, [handleSave, documentName]);
+    setIsSaving(true);
+    try {
+      const buffer = await handleSave();
+      if (!buffer) return;
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      const fileName = `${(documentName?.trim() || 'document').replace(/\.docx$/i, '')}.docx`;
+      a.download = fileName;
+      a.click();
+      // Defer revoke so Safari has time to start the download.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      markDirty(false);
+      toast.success(`Saved ${fileName}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [handleSave, documentName, markDirty]);
 
   const handleExportAs = useCallback(
     async (target: 'odt' | 'md' | 'txt') => {
@@ -5314,6 +5330,8 @@ body { background: white; }
                       onShowAbout={handleShowAbout}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
+                      isDirty={isDirty}
+                      isSaving={isSaving}
                       tableContext={state.pmTableContext}
                       onTableAction={handleTableAction}
                     >

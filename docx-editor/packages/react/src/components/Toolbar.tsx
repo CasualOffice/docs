@@ -251,6 +251,10 @@ export interface ToolbarProps {
   onSetColorTheme?: (theme: 'light' | 'dark' | 'auto') => void;
   /** Current colorTheme setting; drives the title-bar toggle's icon. */
   colorTheme?: 'light' | 'dark' | 'auto';
+  /** True when the document has unsaved edits — title bar shows a dot. */
+  isDirty?: boolean;
+  /** True while save is in flight — title bar shows "Saving…". */
+  isSaving?: boolean;
   /** Table context when cursor is in a table */
   tableContext?: {
     isInTable: boolean;
@@ -275,6 +279,8 @@ export interface ToolbarButtonProps {
   disabled?: boolean;
   /** Button title/tooltip */
   title?: string;
+  /** Optional keyboard shortcut hint shown in the tooltip in a kbd style. */
+  shortcut?: string;
   /** Click handler */
   onClick?: () => void;
   /** Button content */
@@ -308,6 +314,7 @@ export function ToolbarButton({
   active = false,
   disabled = false,
   title,
+  shortcut,
   onClick,
   children,
   className,
@@ -351,7 +358,20 @@ export function ToolbarButton({
   );
 
   if (title) {
-    return <Tooltip content={title}>{button}</Tooltip>;
+    const tooltipContent = shortcut ? (
+      <span className="inline-flex items-center gap-2">
+        <span>{title}</span>
+        <kbd
+          className="inline-flex items-center rounded border border-white/30 px-1 py-[1px] text-[10px] font-mono opacity-80"
+          style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+        >
+          {shortcut}
+        </kbd>
+      </span>
+    ) : (
+      title
+    );
+    return <Tooltip content={tooltipContent}>{button}</Tooltip>;
   }
 
   return button;

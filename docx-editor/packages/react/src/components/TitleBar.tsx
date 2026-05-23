@@ -105,10 +105,57 @@ export interface TitleBarRightProps {
 export function TitleBarRight({ children }: TitleBarRightProps) {
   return (
     <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+      <SaveStatusIndicator />
       <ThemeToggleButton />
       {children}
     </div>
   );
+}
+
+// ============================================================================
+// SaveStatusIndicator — shows "Saving…" while a save is in flight, then
+// a "•" dot when there are unsaved edits, then nothing when clean.
+// Wired from the host through ToolbarProps.isDirty / isSaving via the
+// EditorToolbar context.
+// ============================================================================
+
+function SaveStatusIndicator() {
+  const ctx = useEditorToolbar();
+  const { isDirty, isSaving } = ctx;
+  if (isSaving) {
+    return (
+      <span
+        className="text-xs text-[color:var(--doc-text-on-surface-muted,#5f6368)] flex items-center gap-1"
+        aria-live="polite"
+      >
+        <span
+          aria-hidden="true"
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            border: '1.5px solid currentColor',
+            borderTopColor: 'transparent',
+            animation: 'docx-spin 0.7s linear infinite',
+            display: 'inline-block',
+          }}
+        />
+        Saving…
+      </span>
+    );
+  }
+  if (isDirty) {
+    return (
+      <span
+        className="text-xs text-[color:var(--doc-text-on-surface-muted,#5f6368)]"
+        title="Unsaved changes"
+        aria-label="Unsaved changes"
+      >
+        ●&nbsp;Unsaved
+      </span>
+    );
+  }
+  return null;
 }
 
 // ============================================================================

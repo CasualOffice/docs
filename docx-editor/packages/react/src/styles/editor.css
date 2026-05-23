@@ -731,6 +731,13 @@
   background: var(--doc-bg-hover, #f1f3f4);
 }
 
+/* Title-bar "Saving…" spinner. */
+@keyframes docx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* =============================================================================
  * ProseMirror decoration forwarding overlay
  *
