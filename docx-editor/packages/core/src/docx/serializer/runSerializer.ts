@@ -841,6 +841,7 @@ function serializeDrawingContent(content: DrawingContent): string {
     ? serializePosition(image.position)
     : '<wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>';
   const wrap = serializeWrap(image.wrap);
+  const sizeRel = serializeRelativeSize(image.relativeSize);
 
   return [
     '<w:drawing>',
@@ -853,9 +854,36 @@ function serializeDrawingContent(content: DrawingContent): string {
     buildDocPr(docPrId, docPrName, image),
     '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>',
     graphic,
+    sizeRel,
     '</wp:anchor>',
     '</w:drawing>',
   ].join('');
+}
+
+/**
+ * Serialize wp14:sizeRelH / wp14:sizeRelV (Word 2010+ percent-of-anchor
+ * sizing hints). Returns '' when no relative-size info is present so the
+ * anchor doesn't grow unnecessary children. Children sit at the end of
+ * the anchor per the wp14 schema.
+ */
+function serializeRelativeSize(rel: Image['relativeSize']): string {
+  if (!rel) return '';
+  const parts: string[] = [];
+  if (rel.horizontal) {
+    const relFrom = rel.horizontal.relativeFrom || 'margin';
+    const pct = rel.horizontal.pct;
+    parts.push(
+      `<wp14:sizeRelH relativeFrom="${relFrom}"><wp14:pctWidth>${pct ?? 0}</wp14:pctWidth></wp14:sizeRelH>`
+    );
+  }
+  if (rel.vertical) {
+    const relFrom = rel.vertical.relativeFrom || 'margin';
+    const pct = rel.vertical.pct;
+    parts.push(
+      `<wp14:sizeRelV relativeFrom="${relFrom}"><wp14:pctHeight>${pct ?? 0}</wp14:pctHeight></wp14:sizeRelV>`
+    );
+  }
+  return parts.join('');
 }
 
 /** Serialize text body content for shapes/textboxes */

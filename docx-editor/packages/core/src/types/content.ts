@@ -455,6 +455,18 @@ export interface Image {
    * the author's intent.
    */
   allowOverlap?: boolean;
+  /**
+   * Relative size metadata (wp14:sizeRelH / wp14:sizeRelV). Optional Word
+   * 2010+ extension that records the percentage-of-anchor sizing rule.
+   * The actual size in EMUs still lives on `size` (wp:extent); these
+   * fields exist purely to round-trip the wp14 hints Word emits — they
+   * don't drive layout in this renderer. Dropping them was the
+   * `wp14:sizeRel*` fixture audit miss.
+   */
+  relativeSize?: {
+    horizontal?: { relativeFrom: string; pct?: number };
+    vertical?: { relativeFrom: string; pct?: number };
+  };
   /** Hyperlink URL for clickable image */
   hlinkHref?: string;
   /**

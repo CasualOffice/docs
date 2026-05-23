@@ -23,17 +23,11 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 | `w:rStyle` | 4 | 1 |
 | `w:formProt` | 2 | 2 |
 | `w:textDirection` | 2 | 2 |
-| `wp14:sizeRelH` | 2 | 1 |
-| `wp14:pctWidth` | 2 | 1 |
-| `wp14:sizeRelV` | 2 | 1 |
-| `wp14:pctHeight` | 2 | 1 |
 | `w:highlight` | 2 | 1 |
 | `w:bookmarkEnd` | 1 | 1 |
 | `w:bdr` | 1 | 1 |
 | `w:delInstrText` | 1 | 1 |
 | `w:instrText` | 1 | 1 |
-| `w:footnotePr` | 1 | 1 |
-| `w:endnotePr` | 1 | 1 |
 
 ## Per-fixture detail
 
@@ -148,10 +142,6 @@ No round-trip drops.
 |-----|----|-----|
 | `w:fldChar` | 6 | 0 |
 | `w:rStyle` | 4 | 0 |
-| `wp14:sizeRelH` | 2 | 0 |
-| `wp14:pctWidth` | 2 | 0 |
-| `wp14:sizeRelV` | 2 | 0 |
-| `wp14:pctHeight` | 2 | 0 |
 | `w:delInstrText` | 1 | 0 |
 | `w:instrText` | 1 | 0 |
 
@@ -197,8 +187,6 @@ No round-trip drops.
 | `w:spacing` | 5 | 0 |
 | `w:ind` | 5 | 0 |
 | `w:highlight` | 2 | 0 |
-| `w:footnotePr` | 1 | 0 |
-| `w:endnotePr` | 1 | 0 |
 
 ### generic-header-footer-horizontal-regression
 
