@@ -232,11 +232,15 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
   };
 
   return (
-    // position: relative scopes the dropdown's absolutely-positioned
-    // children. The trigger sits at z-index above the open-menu backdrop
-    // so clicks on adjacent triggers go directly through to them
-    // (Word / Google Docs: one click swaps between menus, not two).
-    <div style={{ position: 'relative', zIndex: isOpen ? 10000 : 1 }}>
+    // The wrapper needs position:relative so the submenu panel can
+    // position itself with `left: 100%`. We DO NOT set zIndex on the
+    // wrapper because that would create a stacking context and trap
+    // the trigger button's high zIndex inside it (the trigger needs
+    // to escape to the root stacking context so it sits above the
+    // open menu's full-viewport backdrop — without that, clicking an
+    // adjacent menu trigger requires two clicks: first to dismiss the
+    // backdrop, then to open the new menu).
+    <div style={{ position: 'relative' }}>
       <button
         ref={triggerRef}
         type="button"
@@ -260,6 +264,9 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
         style={{
           ...(isOpen ? triggerOpenStyle : triggerStyle),
           position: 'relative',
+          // Above the backdrop (9998) so clicks on adjacent triggers
+          // reach them in one go instead of being eaten by the open
+          // menu's backdrop.
           zIndex: 10001,
         }}
       >
