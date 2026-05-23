@@ -88,56 +88,6 @@
 }
 
 /* ============================================================================
- * Dark theme — applied when:
- *   • the OS / browser reports a dark color preference, OR
- *   • an ancestor has `data-theme="dark"` (manual override hook for the
- *     toggle in the future View menu).
- *
- * Only the editor *chrome* goes dark (title bar, menu bar, sidebars,
- * formatting bar). The document page itself stays white to match what
- * will print — Google Docs and Word both keep the page light in dark
- * mode for the same reason.
- * ============================================================================ */
-
-@media (prefers-color-scheme: dark) {
-  :root,
-  .ep-root {
-    --doc-bg: #1f1f1f;
-    --doc-text: #e8eaed;
-    --doc-text-muted: #9aa0a6;
-    --doc-text-subtle: #6e7378;
-    --doc-text-placeholder: #6e7378;
-    --doc-border: #3c4043;
-    --doc-border-light: #2d2f31;
-    --doc-border-dark: #5f6368;
-    --doc-border-input: #3c4043;
-    --doc-bg-subtle: #2d2f31;
-    --doc-bg-hover: #303134;
-    --doc-bg-input: #2d2f31;
-    --doc-primary-light: #1a3a5e;
-    --doc-link: #8ab4f8;
-  }
-}
-
-[data-theme='dark'],
-[data-theme='dark'] .ep-root {
-  --doc-bg: #1f1f1f;
-  --doc-text: #e8eaed;
-  --doc-text-muted: #9aa0a6;
-  --doc-text-subtle: #6e7378;
-  --doc-text-placeholder: #6e7378;
-  --doc-border: #3c4043;
-  --doc-border-light: #2d2f31;
-  --doc-border-dark: #5f6368;
-  --doc-border-input: #3c4043;
-  --doc-bg-subtle: #2d2f31;
-  --doc-bg-hover: #303134;
-  --doc-bg-input: #2d2f31;
-  --doc-primary-light: #1a3a5e;
-  --doc-link: #8ab4f8;
-}
-
-/* ============================================================================
  * CURSOR / CARET STYLING
  * ============================================================================ */
 

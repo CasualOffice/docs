@@ -1835,32 +1835,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     void import('./report-bug').then((m) => m.openBugReport());
   }, []);
 
-  // View → Theme. Persisted in localStorage; 'auto' yields no
-  // data-theme attribute, letting the prefers-color-scheme media
-  // query in editor.css decide. Setting 'light' or 'dark' overrides.
-  const [colorTheme, setColorTheme] = useState<'light' | 'dark' | 'auto'>(() => {
-    if (typeof window === 'undefined') return 'auto';
-    const stored = window.localStorage.getItem('casual-editor:color-theme');
-    return stored === 'light' || stored === 'dark' ? stored : 'auto';
-  });
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    if (colorTheme === 'auto') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', colorTheme);
-    }
-    try {
-      window.localStorage.setItem('casual-editor:color-theme', colorTheme);
-    } catch {
-      // localStorage may be unavailable (private mode); harmless.
-    }
-  }, [colorTheme]);
-  const handleSetColorTheme = useCallback((t: 'light' | 'dark' | 'auto') => {
-    setColorTheme(t);
-  }, []);
-
   // Hyperlink popup state (Google Docs-style floating popup on link click)
   const [hyperlinkPopupData, setHyperlinkPopupData] = useState<HyperlinkPopupData | null>(null);
 
@@ -5305,8 +5279,6 @@ body { background: white; }
                       onExportTxt={handleExportTxt}
                       onReportBug={handleReportBug}
                       onShowAbout={handleShowAbout}
-                      onSetColorTheme={handleSetColorTheme}
-                      colorTheme={colorTheme}
                       tableContext={state.pmTableContext}
                       onTableAction={handleTableAction}
                     >

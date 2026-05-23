@@ -41,8 +41,6 @@ Built on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) w
 - **Find & Replace** dialog with match-case, whole-word, and regex modes
 - **Formatting** — bold, italic, underline (styles + color), strikethrough, super/subscript, small caps, all caps, character spacing, RTL/LTR
 - **Print** with page setup (orientation + margins) and Export-as-PDF
-- **Dark theme** that follows the OS preference, with manual override (View → Theme)
-- **Reliability** — unsaved-changes guard on tab close, toast confirmations on save and export
 - **File → Properties** dialog, **Help → Report a Bug** (GitHub issue prefill), **Help → About**
 
 ### File I/O
@@ -50,26 +48,14 @@ Built on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) w
 | Format | Open | Save / Export |
 | --- | :---: | :---: |
 | `.docx` | ✅ | ✅ |
-| `.odt` | ✅ | ✅ (via [@schnsrw/core](https://www.npmjs.com/package/@schnsrw/core) WASM converter) |
-| `.md` / `.txt` | ✅ | ✅ (via [@schnsrw/core](https://www.npmjs.com/package/@schnsrw/core) WASM converter) |
-| PDF | — | ✅ (via browser print) |
+| PDF | — | ✅ (via print) |
 
-- ODT / Markdown / Plain Text are routed through a Web Worker that lazy-loads [@schnsrw/core](https://github.com/schnsrw/core) — the editor only pays the ~7 MB WASM cost on first non-DOCX open or export.
-- Round-trip audit ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses every fixture, re-serializes, and diffs the resulting `document.xml` at the tag level.
-- Each fidelity gap fix is pinned by a unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where it produces visible output) an e2e spec in `docx-editor/e2e/tests/`.
+- Round-trip audit ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses every fixture, re-serializes, and diffs the resulting `document.xml` at the tag level
+- Each fidelity gap fix is pinned by a unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where it produces visible output) an e2e spec in `docx-editor/e2e/tests/`
 
 ### Keyboard Shortcuts
 
-Word + Google Docs parity. Cmd on macOS, Ctrl on Windows/Linux.
-
-| Category | Shortcuts |
-| --- | --- |
-| File | `⌘N` New · `⌘O` Open · `⌘S` Save · `⌘P` Print |
-| Edit | `⌘Z` Undo · `⌘Y` / `⌘⇧Z` Redo · `⌘X` Cut · `⌘C` Copy · `⌘V` Paste · `⌘⇧V` Paste w/o formatting · `⌘A` Select all · `⌘F` Find · `⌘H` Find & Replace |
-| Text formatting | `⌘B` Bold · `⌘I` Italic · `⌘U` Underline · `⌘⇧X` Strikethrough · `⌘.` Superscript · `⌘,` Subscript · `⌘\` Clear formatting |
-| Hyperlinks | `⌘K` Insert / edit hyperlink |
-| Alignment | `⌘L` Left · `⌘E` Center · `⌘R` Right · `⌘J` Justify |
-| Lists | `⌘⇧7` Numbered list · `⌘⇧8` Bullet list · `⌘]` Indent · `⌘[` Outdent · `Tab` / `⇧Tab` Inside list |
+Canonical Word shortcuts wired: Ctrl+B/I/U/Shift+X (bold/italic/underline/strike), Ctrl+L/E/R/J (alignment), Ctrl+Z/Y (undo/redo), Ctrl+F/H (find / replace), Ctrl+K (hyperlink), Ctrl+P (print), Ctrl+A (select all), Tab/Shift+Tab (list indent), and more.
 
 ### Co-editing
 

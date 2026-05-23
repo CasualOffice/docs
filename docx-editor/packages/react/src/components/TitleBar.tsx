@@ -128,8 +128,6 @@ export function MenuBar() {
     onExportTxt,
     onReportBug,
     onShowAbout,
-    onSetColorTheme,
-    colorTheme,
     onUndo,
     onRedo,
     canUndo,
@@ -438,29 +436,6 @@ export function MenuBar() {
           } as MenuEntry,
         ]}
       />
-
-      {/* View Menu — minimal for now: just the theme switcher. */}
-      {onSetColorTheme && (
-        <MenuDropdown
-          label="View"
-          disabled={disabled}
-          items={[
-            {
-              icon: 'visibility',
-              label: `${colorTheme === 'auto' || !colorTheme ? '✓ ' : ''}Theme: match system`,
-              onClick: () => onSetColorTheme('auto'),
-            } as MenuEntry,
-            {
-              label: `${colorTheme === 'light' ? '✓ ' : ''}Theme: light`,
-              onClick: () => onSetColorTheme('light'),
-            } as MenuEntry,
-            {
-              label: `${colorTheme === 'dark' ? '✓ ' : ''}Theme: dark`,
-              onClick: () => onSetColorTheme('dark'),
-            } as MenuEntry,
-          ]}
-        />
-      )}
 
       {/* Insert Menu */}
       <MenuDropdown
