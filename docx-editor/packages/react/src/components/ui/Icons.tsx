@@ -821,6 +821,91 @@ export function IconAgentSparkle(props: IconProps) {
   );
 }
 
+// Material Symbols Outlined — paths sourced from fonts.google.com/icons.
+
+export function IconNoteAdd(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M440-360h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-560v-160H240v640h480v-480H520ZM240-800v160-160 640-640Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconContentCut(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M760-120 480-400l-94 94q5 14 9.5 28.5T400-248q0 50-35 84t-85 35q-50 0-85-35t-35-85q0-50 35-84.5t85-34.5q14 0 27.5 4.5T336-352l60-66-60-68q-12 8-26.5 12t-29.5 4q-50 0-85-35t-35-84q0-50 35-85t85-35q50 0 85 35t35 85q0 17-4.5 31.5T384-526l440 442v-2q12 12 12 27.5T824-32q-15 15-32 15t-32-15v-88ZM568-560l-88-88 280-280v88L568-560ZM280-560q17 0 28.5-11.5T320-600q0-17-11.5-28.5T280-640q-17 0-28.5 11.5T240-600q0 17 11.5 28.5T280-560Zm200 80q8 0 14-6t6-14q0-8-6-14t-14-6q-8 0-14 6t-6 14q0 8 6 14t14 6Zm-200 320q17 0 28.5-11.5T320-200q0-17-11.5-28.5T280-240q-17 0-28.5 11.5T240-200q0 17 11.5 28.5T280-160Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconContentCopy(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconContentPaste(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h168q13-36 43.5-58t68.5-22q38 0 68.5 22t43.5 58h168q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm280-560q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760ZM200-200v-560 560Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconContentPasteGo(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h168q13-36 43.5-58t68.5-22q38 0 68.5 22t43.5 58h168q33 0 56.5 23.5T840-760v260h-80v-260H200v560h280v80H200Zm280-640q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Zm160 600v-120H440v-80h200v-120l160 160-160 160Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconFindReplace(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M796-121 622-295q-29 18-61 26.5T496-260q-90 0-153-63t-63-153q0-90 63-153t153-63q90 0 153 63t63 153q0 32-8.5 64T677-355l174 174-55 60ZM496-336q56 0 96-40t40-96q0-56-40-96t-96-40q-56 0-96 40t-40 96q0 56 40 96t96 40Zm0-336L368-800h256L496-672Zm0 536L368-264h256L496-136Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconSelectAll(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M200-200v80q-33 0-56.5-23.5T120-200h80Zm-80-80v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm80-160h-80q0-33 23.5-56.5T200-840v80Zm80 640v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80ZM360-360v-240h240v240H360Zm80-80h80v-80h-80v80Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconSpellcheck(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="m480-120-58-56 142-142-142-142 58-56 142 142 142-142 58 56-142 142 142 142-58 56-142-142-142 142ZM240-280h-80q-17 0-28.5-11.5T120-320v-440h80v160h160v-160h80v440h-80v-200H200v200h40Zm-40-280v-120 120Zm320 0v-120 120Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconInfo(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconBugReport(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M480-200q66 0 113-47t47-113v-160q0-66-47-113t-113-47q-66 0-113 47t-47 113v160q0 66 47 113t113 47Zm-80-120h160v-80H400v80Zm0-160h160v-80H400v80Zm80 40Zm0 240q-65 0-120.5-32t-87.5-88H160v-80h83q-3-20-3-40t3-40h-83v-80h92q11-21 24-39.5t30-32.5l-58-60 56-56 74 72q26-13 53.5-19.5T480-720q29 0 56.5 6.5T590-694l74-72 56 56-58 60q17 14 30 32.5t24 39.5h92v80h-83q3 20 3 40t-3 40h83v80h-92q-32 56-87.5 88T480-200Z" />
+    </SvgIcon>
+  );
+}
+
+// (IconTune and IconSettings are defined earlier in this file — reused by
+// File → Properties and File → Page Setup respectively. No duplicates here.)
+
 // ============================================================================
 // ICON MAP - for MaterialSymbol compatibility
 // ============================================================================
@@ -930,6 +1015,19 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   format_textdirection_r_to_l: IconTextDirectionRtl,
   // Agent
   'agent-sparkle': IconAgentSparkle,
+  // File menu — `tune` and `settings` already registered above
+  note_add: IconNoteAdd,
+  // Edit menu — clipboard ops
+  content_cut: IconContentCut,
+  content_copy: IconContentCopy,
+  content_paste: IconContentPaste,
+  content_paste_go: IconContentPasteGo,
+  find_replace: IconFindReplace,
+  select_all: IconSelectAll,
+  spellcheck: IconSpellcheck,
+  // Help menu
+  info: IconInfo,
+  bug_report: IconBugReport,
 };
 
 /**
@@ -951,12 +1049,20 @@ export function MaterialSymbol({
   const IconComponent = iconMap[name];
 
   if (!IconComponent) {
-    // Fallback: render the name as text (for debugging)
-    console.warn(`Icon not found: ${name}`);
+    // Silently degrade for unmapped icons — rendering the raw name as
+    // text was visually broken (the user sees "note_add" / "tune" /
+    // "settings" instead of an icon). Console-warn in dev so we know
+    // to fill the gap, but return a blank slot sized like a real icon
+    // so the menu layout stays consistent.
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+      console.warn(`Icon not found: ${name}`);
+    }
     return (
-      <span className={className} style={{ fontSize: size, width: size, height: size, ...style }}>
-        {name}
-      </span>
+      <span
+        aria-hidden="true"
+        className={className}
+        style={{ display: 'inline-block', width: size, height: size, ...style }}
+      />
     );
   }
 

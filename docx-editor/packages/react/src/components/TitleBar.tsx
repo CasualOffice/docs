@@ -296,6 +296,51 @@ export function MenuBar() {
             disabled: !canRedo,
           } as MenuEntry,
           { type: 'separator' as const } as MenuEntry,
+          // Clipboard ops — execCommand only works while the editor has focus,
+          // so refocus first. Modern browsers block JS-initiated paste; the
+          // shortcut label educates users to fall back to ⌘V.
+          {
+            icon: 'content_cut',
+            label: 'Cut',
+            shortcut: '⌘X',
+            onClick: () => {
+              onRefocusEditor?.();
+              document.execCommand('cut');
+            },
+          } as MenuEntry,
+          {
+            icon: 'content_copy',
+            label: 'Copy',
+            shortcut: '⌘C',
+            onClick: () => {
+              onRefocusEditor?.();
+              document.execCommand('copy');
+            },
+          } as MenuEntry,
+          {
+            icon: 'content_paste',
+            label: 'Paste',
+            shortcut: '⌘V',
+            onClick: () => {
+              onRefocusEditor?.();
+              document.execCommand('paste');
+            },
+          } as MenuEntry,
+          {
+            icon: 'content_paste_go',
+            label: 'Paste without formatting',
+            shortcut: '⌘⇧V',
+            onClick: async () => {
+              onRefocusEditor?.();
+              try {
+                const text = await navigator.clipboard.readText();
+                if (text) document.execCommand('insertText', false, text);
+              } catch {
+                // Browser blocked the read; user can fall back to ⌘⇧V.
+              }
+            },
+          } as MenuEntry,
+          { type: 'separator' as const } as MenuEntry,
           ...(onOpenFind
             ? [
                 {
@@ -368,6 +413,13 @@ export function MenuBar() {
           {
             label: `${currentFormatting?.allCaps ? '✓ ' : ''}All Caps`,
             onClick: () => handleFormat('toggleAllCaps'),
+          } as MenuEntry,
+          { type: 'separator' as const } as MenuEntry,
+          {
+            icon: 'format_clear',
+            label: 'Clear formatting',
+            shortcut: '⌘\\',
+            onClick: () => handleFormat('clearFormatting'),
           } as MenuEntry,
           { type: 'separator' as const } as MenuEntry,
           {

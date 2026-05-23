@@ -427,6 +427,13 @@ export const ListExtension = createExtension({
         'Shift-Enter': () => false, // Let base keymap handle this
         Enter: chainCommands(exitListOnEmptyEnter(), splitListItem()),
         Backspace: backspaceExitList(),
+        // Google Docs list shortcuts
+        'Mod-Shift-7': toggleNumberedList,
+        'Mod-Shift-8': toggleBulletList,
+        // Indent / outdent for paragraphs (works inside or outside lists —
+        // increaseListLevel handles both via the existing list-aware path).
+        'Mod-]': increaseListLevel,
+        'Mod-[': decreaseListLevel,
       },
     };
   },
