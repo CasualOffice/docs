@@ -106,6 +106,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
     onOpenImageProperties,
     tableContext,
     onTableAction,
+    onInsertImage,
     inline = false,
   } = props as FormattingBarProps;
 
@@ -504,6 +505,16 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         >
           <MaterialSymbol name="link" size={ICON_SIZE} />
         </ToolbarButton>
+        {onInsertImage && (
+          <ToolbarButton
+            onClick={onInsertImage}
+            disabled={disabled}
+            title={t('toolbar.image')}
+            ariaLabel={t('toolbar.image')}
+          >
+            <MaterialSymbol name="image" size={ICON_SIZE} />
+          </ToolbarButton>
+        )}
       </ToolbarGroup>
 
       {/* Superscript/Subscript Group */}

@@ -216,6 +216,10 @@ export function MenuBar() {
     onExportTxt,
     onReportBug,
     onShowAbout,
+    onSetColorTheme,
+    colorTheme,
+    zoom,
+    onZoomChange,
     onUndo,
     onRedo,
     canUndo,
@@ -524,6 +528,60 @@ export function MenuBar() {
           } as MenuEntry,
         ]}
       />
+
+      {/* View Menu — zoom + theme. Shown if either is wired. */}
+      {(onZoomChange || onSetColorTheme) && (
+        <MenuDropdown
+          label="View"
+          disabled={disabled}
+          items={[
+            ...(onZoomChange
+              ? [
+                  {
+                    icon: 'add',
+                    label: 'Zoom in',
+                    shortcut: '⌘=',
+                    onClick: () => onZoomChange(Math.min((zoom ?? 1) * 1.1, 4)),
+                  } as MenuEntry,
+                  {
+                    icon: 'remove',
+                    label: 'Zoom out',
+                    shortcut: '⌘−',
+                    onClick: () => onZoomChange(Math.max((zoom ?? 1) / 1.1, 0.25)),
+                  } as MenuEntry,
+                  {
+                    icon: 'restart_alt',
+                    label: 'Reset zoom (100%)',
+                    shortcut: '⌘0',
+                    onClick: () => onZoomChange(1),
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onZoomChange && onSetColorTheme
+              ? [{ type: 'separator' as const } as MenuEntry]
+              : []),
+            ...(onSetColorTheme
+              ? [
+                  {
+                    icon: 'contrast',
+                    label: `${colorTheme === 'auto' || !colorTheme ? '✓ ' : ''}Theme: match system`,
+                    onClick: () => onSetColorTheme('auto'),
+                  } as MenuEntry,
+                  {
+                    icon: 'light_mode',
+                    label: `${colorTheme === 'light' ? '✓ ' : ''}Theme: light`,
+                    onClick: () => onSetColorTheme('light'),
+                  } as MenuEntry,
+                  {
+                    icon: 'dark_mode',
+                    label: `${colorTheme === 'dark' ? '✓ ' : ''}Theme: dark`,
+                    onClick: () => onSetColorTheme('dark'),
+                  } as MenuEntry,
+                ]
+              : []),
+          ]}
+        />
+      )}
 
       {/* Insert Menu */}
       <MenuDropdown

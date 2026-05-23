@@ -2387,6 +2387,18 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             e.preventDefault();
             clearFormatting(view.state, view.dispatch);
           }
+        } else if (e.key === '=' || e.key === '+') {
+          // Mod+= / Mod++: Zoom in.
+          e.preventDefault();
+          shortcutActionsRef.current.zoomIn?.();
+        } else if (e.key === '-') {
+          // Mod+-: Zoom out.
+          e.preventDefault();
+          shortcutActionsRef.current.zoomOut?.();
+        } else if (e.key === '0') {
+          // Mod+0: Reset zoom to 100%.
+          e.preventDefault();
+          shortcutActionsRef.current.zoomReset?.();
         }
       }
     };
@@ -2406,6 +2418,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     print?: () => void;
     new?: () => void;
     open?: () => void;
+    zoomIn?: () => void;
+    zoomOut?: () => void;
+    zoomReset?: () => void;
   }>({});
 
   // Handle table insert from toolbar
@@ -4054,8 +4069,18 @@ body { background: white; }
       print: handleDirectPrint,
       new: onNew,
       open: handleOpenDocument,
+      zoomIn: () => handleZoomChange(Math.min(state.zoom * 1.1, 4)),
+      zoomOut: () => handleZoomChange(Math.max(state.zoom / 1.1, 0.25)),
+      zoomReset: () => handleZoomChange(1),
     };
-  }, [handleDownloadDocument, handleDirectPrint, onNew, handleOpenDocument]);
+  }, [
+    handleDownloadDocument,
+    handleDirectPrint,
+    onNew,
+    handleOpenDocument,
+    handleZoomChange,
+    state.zoom,
+  ]);
 
   const handleDocxFileChange = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
