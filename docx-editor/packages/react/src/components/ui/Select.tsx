@@ -23,7 +23,7 @@ function SelectTrigger({
       className={cn(
         'flex h-8 items-center justify-between gap-1 rounded px-2 py-1',
         'text-sm text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent',
-        'hover:bg-slate-100/80 focus:outline-none focus:bg-slate-100/80',
+        'hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:outline-none focus:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
         'disabled:cursor-not-allowed disabled:opacity-50',
         'transition-colors duration-150',
         '[&>span]:truncate',
@@ -37,7 +37,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="h-4 w-4 text-slate-400 shrink-0" />
+        <ChevronDownIcon className="h-4 w-4 text-[color:var(--doc-text-on-surface-muted,#5f6368)] shrink-0" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -95,7 +95,10 @@ function SelectLabel({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>) {
   return (
     <SelectPrimitive.Label
-      className={cn('px-2 py-1.5 text-xs font-medium text-slate-500', className)}
+      className={cn(
+        'px-2 py-1.5 text-xs font-medium text-[color:var(--doc-text-on-surface-muted,#5f6368)]',
+        className
+      )}
       {...props}
     />
   );
@@ -112,7 +115,7 @@ function SelectItem({
       className={cn(
         'relative flex w-full cursor-pointer select-none items-center',
         'rounded px-2 py-1.5 text-sm text-[color:var(--doc-text-on-surface,#1f2937)] outline-none',
-        'hover:bg-slate-100 focus:bg-slate-100',
+        'hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         className
       )}
@@ -138,7 +141,7 @@ function SelectSeparator({
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>) {
   return (
     <SelectPrimitive.Separator
-      className={cn('-mx-1 my-1 h-px bg-slate-100', className)}
+      className={cn('-mx-1 my-1 h-px bg-[color:var(--doc-border-light,#e5e7eb)]', className)}
       {...props}
     />
   );
