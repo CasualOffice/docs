@@ -19,15 +19,15 @@ test.describe('Hyperlinks', () => {
 
   test.beforeEach(async ({ page }) => {
     editorPage = new EditorPage(page);
-    await page.goto('/');
-    // Wait for editor to be ready
-    await page.waitForSelector('[data-testid="docx-editor"]');
-    await page.waitForTimeout(500);
-    // Start from an empty document — the auto-loaded demo doc has
-    // hundreds of links/paragraphs, and a select-all in the tests
-    // below would otherwise hit every <a> on the page instead of
-    // just the text the test typed.
-    await page.locator('button:has-text("New")').click();
+    await editorPage.goto();
+    await editorPage.waitForReady();
+    // Start from an empty document — the auto-seeded doc may carry
+    // residual content from prior tests in the same context, and a
+    // select-all below would otherwise hit every <a> on the page
+    // instead of just the text the test typed. newDocument() opens
+    // the File menu and clicks the New item — the bare 'New' button
+    // was moved into the File dropdown in 0da2a75.
+    await editorPage.newDocument();
     await page.waitForTimeout(300);
   });
 
