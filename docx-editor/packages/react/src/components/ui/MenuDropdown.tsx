@@ -144,7 +144,31 @@ export function MenuDropdown({ label, items, disabled }: MenuDropdownProps) {
     }
 
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeMenu();
+      if (e.key === 'Escape') {
+        closeMenu();
+        // Return focus to the trigger so keyboard users don't lose their place.
+        triggerRef.current?.focus();
+      }
+    }
+
+    // Arrow keys cycle through interactive menu items. Home/End jump to ends.
+    function handleArrows(e: KeyboardEvent) {
+      if (!dropdownRef.current) return;
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End')
+        return;
+      const buttons = Array.from(
+        dropdownRef.current.querySelectorAll<HTMLButtonElement>('button:not([disabled])')
+      );
+      if (buttons.length === 0) return;
+      const active = document.activeElement as HTMLElement | null;
+      const idx = active ? buttons.indexOf(active as HTMLButtonElement) : -1;
+      e.preventDefault();
+      let next: number;
+      if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = buttons.length - 1;
+      else if (e.key === 'ArrowDown') next = idx < 0 ? 0 : (idx + 1) % buttons.length;
+      else next = idx <= 0 ? buttons.length - 1 : idx - 1;
+      buttons[next]?.focus();
     }
 
     // Close on scroll of any ancestor (dropdown position would be stale)
@@ -154,11 +178,21 @@ export function MenuDropdown({ label, items, disabled }: MenuDropdownProps) {
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleArrows);
     window.addEventListener('scroll', handleScroll, true);
+    // Focus the first interactive item shortly after the menu opens so
+    // keyboard users land on something predictable. Delay one frame so
+    // the dropdown DOM has rendered.
+    const focusTimer = window.setTimeout(() => {
+      const first = dropdownRef.current?.querySelector<HTMLButtonElement>('button:not([disabled])');
+      first?.focus();
+    }, 0);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleArrows);
       window.removeEventListener('scroll', handleScroll, true);
+      window.clearTimeout(focusTimer);
     };
   }, [isOpen, closeMenu]);
 
@@ -185,14 +219,25 @@ export function MenuDropdown({ label, items, disabled }: MenuDropdownProps) {
 
       {isOpen && (
         <>
-          {/* Invisible backdrop — catches clicks anywhere outside the
-              dropdown so the underlying toolbar buttons (e.g. the
-              numbered-list / TOC icon below the menu bar) don't fire
-              when the user clicks away to dismiss the menu. Word and
-              Google Docs both swallow that first click. */}
+          {/* Invisible backdrop — catches the WHOLE click cycle (down→up→click)
+              so the underlying toolbar buttons (e.g. the numbered-list / TOC
+              icon below the menu bar) don't fire when the user clicks away.
+              Closing on mousedown alone wasn't enough: React's re-render
+              removed the backdrop between mousedown and mouseup, so the
+              click event then landed on whatever was underneath. Closing
+              on click (and swallowing all three pointer events) keeps the
+              backdrop alive for the full cycle. */}
           <div
             aria-hidden="true"
             onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onMouseUp={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               closeMenu();
@@ -202,6 +247,7 @@ export function MenuDropdown({ label, items, disabled }: MenuDropdownProps) {
               inset: 0,
               zIndex: 9998,
               background: 'transparent',
+              pointerEvents: 'auto',
             }}
           />
           <div
