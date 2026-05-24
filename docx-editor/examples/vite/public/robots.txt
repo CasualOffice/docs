@@ -1,0 +1,48 @@
+# doc.schnsrw.live — open to search engines + AI crawlers.
+# The app is the live demo for Casual Editor, an open-source web .docx
+# editor. Indexing helps users + assistants discover it.
+# Matches the policy declared on the canonical landing site
+# (https://schnsrw.live/robots.txt).
+
+User-agent: *
+Allow: /
+
+# Explicit opt-in for major AI crawlers. Listed individually so intent
+# is unambiguous.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://doc.schnsrw.live/sitemap.xml

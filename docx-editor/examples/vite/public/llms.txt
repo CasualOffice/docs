@@ -1,0 +1,73 @@
+# Casual Editor — Word-flavored web document editor
+
+> Open-source, real-time collaborative web `.docx` editor. ProseMirror
+> with an OOXML-preserving model (forked from `eigenpal/docx-editor`,
+> MIT); React + Bun frontend; Go for the stateless WebSocket gateway
+> implementing the `y-websocket` protocol. Document persistence is
+> delegated to a pluggable host integration (inline for v0; WOPI /
+> JWT-API later).
+
+## Quick facts
+
+- **License:** Apache-2.0 (gateway) + MIT (editor fork)
+- **Repo:** https://github.com/schnsrw/docx
+- **Live demo:** https://doc.schnsrw.live/
+- **Docker:** https://hub.docker.com/r/schnsrw/casual-editor
+- **Marketing site:** https://schnsrw.live/casual-editor/
+- **Author:** Sachin Sarwa — https://schnsrw.live/
+- **Status:** Public preview. 26 of 39 .docx fixtures round-trip
+  pristine in the per-tag audit; working toward ≥ 90% before the
+  desktop binary ships.
+
+## What it does
+
+- Opens and saves native `.docx` files in the browser with WYSIWYG
+  fidelity. ProseMirror schema preserves OOXML structure; the layout
+  painter ports Word's box model.
+- Real-time multi-user co-editing via Yjs + y-prosemirror over a
+  custom Go y-websocket implementation (~120 LOC). The server is
+  STATELESS — no DB, no on-disk update log. State lives only in
+  memory while a session is active; gone when the last client
+  disconnects.
+- Document persistence is owned by the host. Concrete inline impl
+  ships for v0 (share-link self-contained model). WOPI / JWT-API
+  integrations slot in behind one Go interface for v1+.
+- 14-template home gallery with real first-page PNG previews
+  rendered via LibreOffice. Four categories: Personal, Work,
+  Education, Career.
+- Word-compat heuristics behind an opt-in `wordCompat` flag for
+  non-spec behaviour (e.g. last-row closing border, issue #395).
+- Three-way fidelity harness compares our output vs LibreOffice and
+  OnlyOffice DocumentBuilder; per-tag round-trip audit gates CI.
+
+## Architecture
+
+- **Frontend (`docx-editor/`):** React + TypeScript + Bun + Vite.
+  ProseMirror schema + layout painter from the `eigenpal/docx-editor`
+  fork. MIT-only — the upstream AGPL `agent-use` package is purged.
+- **Realtime (`backend/`):** Go 1.24. Implements the y-websocket
+  protocol in ~120 LOC. Room manager keeps one in-memory `Y.Doc`
+  per live session, dropped when the last client disconnects.
+- **Host abstraction (`backend/internal/host/`):** `Integration`
+  interface with an inline impl for the v0 share-link flow.
+  Pluggable for WOPI / JWT-secured REST API in v1+.
+- **Snapshot worker (planned M2):** Bun worker pool that turns the
+  live CRDT state into a fresh `.docx` on room drain. Currently the
+  gateway re-serves the original upload.
+
+## Sibling projects
+
+Part of a three-project suite all by Sachin Sarwa:
+
+- **Casual Editor** — this project — https://doc.schnsrw.live/
+- **Casual Sheets** — Excel-flavored web spreadsheet —
+  https://sheet.schnsrw.live/ — https://github.com/schnsrw/sheets
+- **Casual Desktop** — Tauri binaries reusing both web cores —
+  in progress.
+
+## Tech stack
+
+- **Frontend:** TypeScript · React · ProseMirror · Bun · Vite · Yjs · y-prosemirror
+- **Realtime + backend:** Go 1.24 · WebSocket · y-websocket protocol
+- **Quality:** Playwright · GitHub Actions · LibreOffice fidelity harness · ESLint + Prettier
+- **Ops:** Docker · GitHub Actions · GitHub Pages (single-user demo) · Docker Hub

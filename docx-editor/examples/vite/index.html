@@ -3,10 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Casual Editor</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <meta name="description" content="Casual Editor — a casual, real-time collaborative .docx editor. Open a Word document, edit it in the browser, save it back as .docx." />
+  <title>Casual Editor — Word-flavored web document editor · Open source</title>
+  <meta name="description" content="Open-source web .docx editor with real-time co-editing via a stateless Go gateway. ProseMirror with an OOXML-preserving model. Open a Word document, edit it in the browser, save it back as .docx. Apache-2.0 + MIT." />
+  <meta name="author" content="Sachin Sarwa" />
   <meta name="theme-color" content="#2563eb" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Casual Editor" />
+  <meta property="og:title" content="Casual Editor — Word-flavored web document editor" />
+  <meta property="og:description" content="Open .docx in the browser, edit like the web, save back. Real-time co-editing via a stateless Go gateway. ProseMirror + OOXML-preserving model. Open source." />
+  <meta property="og:url" content="https://doc.schnsrw.live/" />
+  <meta property="og:image" content="https://doc.schnsrw.live/og.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Casual Editor — Word-flavored web document editor by Sachin Sarwa" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter / X card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Casual Editor — Word-flavored web document editor" />
+  <meta name="twitter:description" content="Open .docx in the browser, edit like the web, save back. Real-time co-editing. ProseMirror + OOXML-preserving model. Open source." />
+  <meta name="twitter:image" content="https://doc.schnsrw.live/og.png" />
+  <meta name="twitter:image:alt" content="Casual Editor — Word-flavored web document editor" />
+
+  <!-- Discoverability — explicit AI-crawler opt-in lives in /robots.txt -->
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="keywords" content="web document editor, .docx editor, Word for the web, open-source document editor, real-time document editing, collaborative .docx, ProseMirror, OOXML, Yjs, y-prosemirror, Go gateway, stateless backend, WOPI, eigenpal docx-editor, Apache-2.0, MIT, Casual Editor, Sachin Sarwa" />
+
+  <link rel="canonical" href="https://doc.schnsrw.live/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/favicon.svg" />
+
+  <!--
+    JSON-LD: SoftwareApplication + Person + WebSite.
+    Google's rich-results indexer + LLM crawlers (Perplexity, ChatGPT
+    web search, Claude web search) preferentially absorb structured
+    data. Keep `featureList` and `screenshot` fresh.
+  -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://doc.schnsrw.live/#app",
+          "name": "Casual Editor",
+          "alternateName": "casual-editor",
+          "applicationCategory": "BusinessApplication",
+          "applicationSubCategory": "WordProcessor",
+          "operatingSystem": "Web Browser, Docker (Linux/amd64, Linux/arm64)",
+          "url": "https://doc.schnsrw.live/",
+          "codeRepository": "https://github.com/schnsrw/docx",
+          "license": "https://www.apache.org/licenses/LICENSE-2.0",
+          "description": "Open-source, real-time collaborative .docx editor. ProseMirror with an OOXML-preserving model; React + Bun on the frontend; Go for the stateless WebSocket gateway implementing the y-websocket protocol. Document persistence is delegated to a pluggable host integration (inline for v0; WOPI / JWT-API later).",
+          "image": "https://doc.schnsrw.live/og.png",
+          "screenshot": "https://doc.schnsrw.live/og.png",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock"
+          },
+          "author": { "@id": "https://schnsrw.live/#person" },
+          "creator": { "@id": "https://schnsrw.live/#person" },
+          "publisher": { "@id": "https://schnsrw.live/#person" },
+          "featureList": [
+            "Open and save native .docx files",
+            "Real-time multi-user co-editing via Yjs and y-prosemirror",
+            "Stateless Go gateway — no DB, no on-disk update log",
+            "ProseMirror with an OOXML-preserving model (forked from eigenpal/docx-editor, MIT)",
+            "14-template home gallery with real first-page PNG previews",
+            "Word-compat heuristics behind an opt-in flag (e.g. last-row closing border)",
+            "Three-way fidelity harness vs LibreOffice and OnlyOffice DocumentBuilder",
+            "Per-tag round-trip audit in CI",
+            "Pluggable host integration (inline / WOPI / JWT-API behind a single Go interface)"
+          ],
+          "softwareRequirements": "Modern desktop browser. Docker 20+ for self-hosting the collab image.",
+          "isAccessibleForFree": true,
+          "keywords": "docx editor, word processor, open source, real-time, collaborative, ProseMirror, Yjs, Go, OOXML"
+        },
+        {
+          "@type": "Person",
+          "@id": "https://schnsrw.live/#person",
+          "name": "Sachin Sarwa",
+          "url": "https://schnsrw.live/",
+          "sameAs": [
+            "https://github.com/schnsrw",
+            "https://hub.docker.com/u/schnsrw"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://doc.schnsrw.live/#website",
+          "url": "https://doc.schnsrw.live/",
+          "name": "Casual Editor",
+          "publisher": { "@id": "https://schnsrw.live/#person" }
+        }
+      ]
+    }
+  </script>
 
   <!-- Preconnect to Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
