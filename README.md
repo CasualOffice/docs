@@ -45,10 +45,15 @@ Built on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) w
 
 ### File I/O
 
-| Format | Open | Save / Export |
-| --- | :---: | :---: |
-| `.docx` | ✅ | ✅ |
-| PDF | — | ✅ (via print) |
+| Format  | Open | Save / Export | Path |
+| ---     | :---: | :---: | --- |
+| `.docx` | ✅ | ✅ | native parser + serializer |
+| `.odt`  | ✅ | ✅ | via [`@schnsrw/core`](https://www.npmjs.com/package/@schnsrw/core) WASM worker (lazy-loaded) |
+| `.md`   | ✅ | ✅ | via `@schnsrw/core` WASM worker (lazy-loaded) |
+| `.txt`  | ✅ | ✅ | via `@schnsrw/core` WASM worker (lazy-loaded) |
+| PDF     | — | ✅ | browser print pipeline (Save as PDF) |
+
+Non-DOCX formats route through a Web Worker that converts to/from DOCX bytes via `@schnsrw/core` (Rust + WASM). The ~3.3 MB WASM artifact is lazy-loaded on first use so the editor's initial bundle stays slim.
 
 - Round-trip audit ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses every fixture, re-serializes, and diffs the resulting `document.xml` at the tag level
 - Each fidelity gap fix is pinned by a unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where it produces visible output) an e2e spec in `docx-editor/e2e/tests/`
