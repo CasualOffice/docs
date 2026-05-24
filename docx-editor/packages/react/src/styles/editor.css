@@ -842,5 +842,18 @@
     min-height: 44px !important;
     min-width: 44px !important;
   }
+
+  /* Caret is drawn as a 2 px element inside the viewport's scale
+     transform — at the mobile auto-zoom (≈0.6) it collapses to ~1 px
+     and visually disappears, especially mid-blink. Force a minimum
+     visible width independent of zoom by counter-scaling the X axis.
+     The 2 / scale ratio approximates the desktop appearance; we round
+     to the typical mobile zoom (1 / 0.6 ≈ 1.67) and clip with
+     transform-origin: left so the caret stays anchored at the cursor
+     position rather than expanding outward. */
+  [data-testid="selection-overlay"] [data-testid="caret"] {
+    transform: scaleX(2);
+    transform-origin: left top;
+  }
 }
 

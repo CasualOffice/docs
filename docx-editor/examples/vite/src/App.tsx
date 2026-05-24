@@ -89,10 +89,24 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 function useResponsiveLayout() {
+  // Auto-zoom strategy:
+  // - Desktop / tablet (vw ≥ page-with-padding): no zoom — render at 100%.
+  // - Mid-width: scale to fit the full page width inside the viewport, so
+  //   the margins are visible (Word-like preview).
+  // - Phone (vw ≤ 720): scale to fit the *content* width (page minus the
+  //   1-inch margins), so text fills the screen and stays readable.
+  //   Otherwise the auto-fit math gives 45% on iPhone, which leaves
+  //   text at ≈4 pt and a near-invisible caret.
   const calcZoom = () => {
-    const pageWidth = 816 + 48; // 8.5in * 96dpi + padding
+    const PAGE_WIDTH = 816; // 8.5in × 96dpi
+    const PAGE_PADDING = 48;
+    const CONTENT_WIDTH = PAGE_WIDTH - 96 - 96; // standard 1-inch margins
     const vw = window.innerWidth;
-    return vw < pageWidth ? Math.max(0.35, Math.floor((vw / pageWidth) * 20) / 20) : 1.0;
+    if (vw >= PAGE_WIDTH + PAGE_PADDING) return 1.0;
+    const usableVw = Math.max(280, vw - 16); // breathing room on phones
+    const target = vw <= 720 ? usableVw / CONTENT_WIDTH : usableVw / (PAGE_WIDTH + PAGE_PADDING);
+    // Round down to 0.05 to keep the indicator clean (40%, 45%, … not 43%).
+    return Math.max(0.35, Math.min(1.0, Math.floor(target * 20) / 20));
   };
 
   const [zoom, setZoom] = useState(calcZoom);
