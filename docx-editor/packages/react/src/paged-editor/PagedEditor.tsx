@@ -35,6 +35,7 @@ import type { EditorView } from 'prosemirror-view';
 import { HiddenProseMirror, type HiddenProseMirrorRef } from './HiddenProseMirror';
 import { SelectionOverlay } from './SelectionOverlay';
 import { MobileFormatBar } from '../components/ui/MobileFormatBar';
+import { usePinchZoom } from '../components/hooks/usePinchZoom';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { DecorationLayer } from './DecorationLayer';
 
@@ -277,6 +278,9 @@ export interface PagedEditorProps {
   selectionFormatting?: import('../components/Toolbar').SelectionFormatting;
   /** Format command sink for the mobile chip. Same shape as Toolbar's onFormat. */
   onFormat?: (cmd: import('../components/Toolbar').FormattingAction) => void;
+  /** Emit the new zoom value after a phone pinch-zoom gesture. The
+   *  host (DocxEditor) is expected to feed it back via the `zoom` prop. */
+  onZoomChange?: (zoom: number) => void;
   /** Whether comments sidebar is open (shifts document left). */
   commentsSidebarOpen?: boolean;
   /** Sidebar overlay rendered inside the scroll container (scrolls with document). */
@@ -1260,6 +1264,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       style,
       selectionFormatting,
       onFormat,
+      onZoomChange,
       commentsSidebarOpen = false,
       sidebarOverlay,
       scrollContainerRef: scrollContainerRefProp,
@@ -1281,6 +1286,16 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // Refs
     const containerRef = useRef<HTMLDivElement>(null);
     const pagesContainerRef = useRef<HTMLDivElement>(null);
+
+    // Phone-only: two-finger pinch on the editor area updates zoom.
+    // The hook self-gates via matchMedia('(max-width: 720px)'); on
+    // desktop nothing is attached. Commits the new zoom on touchend.
+    usePinchZoom({
+      target: containerRef.current,
+      zoom: zoom,
+      onZoomChange: onZoomChange ?? (() => undefined),
+      disabled: !onZoomChange,
+    });
     /** Viewport wrapper: sync minHeight/marginBottom in layout pipeline before scroll restore. */
     const viewportLayoutRef = useRef<HTMLDivElement>(null);
     const pendingScrollRestoreRef = useRef<{

@@ -5603,6 +5603,7 @@ body { background: white; }
                         extensionManager={extensionManager}
                         selectionFormatting={state.selectionFormatting}
                         onFormat={handleFormat}
+                        onZoomChange={handleZoomChange}
                         onDocumentChange={handleDocumentChange}
                         onSelectionChange={(_from, _to) => {
                           // Extract full selection state from PM and use the standard handler
