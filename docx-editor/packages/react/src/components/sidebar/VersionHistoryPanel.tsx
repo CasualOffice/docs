@@ -139,7 +139,7 @@ export function VersionHistoryPanel({
   // semantics stay obvious.
   const sorted = useMemo(
     () => [...history.entries].sort((a, b) => b.time - a.time),
-    [history.entries],
+    [history.entries]
   );
   const now = Date.now();
 
@@ -190,9 +190,7 @@ function EditHistoryEntryRow({
         <span style={AUTHOR_STYLE}>{entry.author}</span>
         <span>·</span>
         <span title={new Date(entry.time).toLocaleString()}>{relativeTime(entry.time, now)}</span>
-        {entry.txCount > 1 && (
-          <span style={{ marginLeft: 'auto' }}>{entry.txCount} edits</span>
-        )}
+        {entry.txCount > 1 && <span style={{ marginLeft: 'auto' }}>{entry.txCount} edits</span>}
       </div>
       <div style={SUMMARY_STYLE}>{entry.summary}</div>
       <button

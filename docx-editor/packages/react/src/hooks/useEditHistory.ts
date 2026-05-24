@@ -100,7 +100,6 @@ function summarize(tr: Transaction): string {
   // "replaceAround" etc. We coarse-bucket.
   const buckets = new Set<string>();
   let charsAdded = 0;
-  let charsRemoved = 0;
   for (const step of steps) {
     const json = step.toJSON() as { stepType?: string; slice?: { content?: unknown[] } };
     const type = json.stepType ?? 'edit';
@@ -113,15 +112,15 @@ function summarize(tr: Transaction): string {
   if (buckets.has('addMark') || buckets.has('removeMark')) {
     return buckets.has('addMark') ? 'Formatting applied' : 'Formatting removed';
   }
-  if (charsAdded > 0 && charsRemoved === 0) return 'Text inserted';
-  if (charsAdded === 0 && charsRemoved > 0) return 'Text removed';
-  if (charsAdded > 0 && charsRemoved > 0) return 'Text replaced';
+  // Step JSON exposes `slice.content` (insertions) but not deletions in a
+  // friendly form — so we only differentiate insert / no-op for now.
+  // Replace-style steps that net-zero (e.g. exact-length replacement)
+  // fall through to the generic label.
+  if (charsAdded > 0) return 'Text inserted';
   return 'Edit applied';
 }
 
-export function useEditHistory(
-  options: UseEditHistoryOptions = {},
-): UseEditHistoryReturn {
+export function useEditHistory(options: UseEditHistoryOptions = {}): UseEditHistoryReturn {
   const { author = 'You', cap = 500, coalesceMs = 2000 } = options;
 
   const [entries, setEntries] = useState<EditHistoryEntry[]>([]);
@@ -218,7 +217,7 @@ export function useEditHistory(
         // observer and the EditorView is on its way out.
       };
     },
-    [recordTx],
+    [recordTx]
   );
 
   const revert = useCallback((entryId: string) => {
@@ -243,8 +242,5 @@ export function useEditHistory(
 
   const clear = useCallback(() => setEntries([]), []);
 
-  return useMemo(
-    () => ({ entries, revert, clear, attach }),
-    [entries, revert, clear, attach],
-  );
+  return useMemo(() => ({ entries, revert, clear, attach }), [entries, revert, clear, attach]);
 }
