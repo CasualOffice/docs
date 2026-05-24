@@ -21,6 +21,7 @@ Every item has a citation. P0/P1/P2/P3 are severity. ⬜ pending · 🔵 in prog
 | ✅ | **#28** Inline-host eviction now logs a slog.Warn so silent data-loss surfaces | `backend/internal/host/inline/inline.go` |
 | 🟠 | **#41** Audit overstated unguarded console.log — most are debug-gated or public-API helpers (`printExplorationSummary`, MCP `debug: true`). Not a leak; closing without code change. | n/a |
 | 🟠 | **#29** Awareness exposure isn't a code gap — the existing `plugins` prop already lets consumers wire `yCursorPlugin` (see `examples/collaboration/`). Closing as a doc-only item; consider a guide page. | n/a |
+| ✅ | **P0 #2** — Drawings / images / tables register as edits. `ParagraphChangeTrackerExtension` now tracks `changedBlockTypes` alongside paraIds; `tr.before` walked on deletions; selective-save falls back to full re-pack when a drawing was touched. 4 new unit tests, 801/801 suite pass. | `features/ParagraphChangeTrackerExtension.ts`, `DocxEditor.tsx` |
 
 ---
 
@@ -29,7 +30,7 @@ Every item has a citation. P0/P1/P2/P3 are severity. ⬜ pending · 🔵 in prog
 | ⬜ | # | Issue | Where | Notes |
 |---|---|---|---|---|
 | ⬜ | 1 | **Y.Doc edits never serialized back to `.docx` on room drain** — gateway logs "original snapshot retained" and discards collab edits | `backend/cmd/gateway/main.go:502-509` | M2 work. Needs a Bun worker pool that takes Y.Doc state → fresh `.docx` bytes. Until then, real-time edits are lost when the last client disconnects. |
-| ⬜ | 2 | **Drawings / textboxes bypass change tracker** — `TextBoxExtension` + `Image` block nodes don't sync through `ySyncPlugin`; `ParagraphChangeTrackerExtension` only tracks paragraphs | `packages/core/src/prosemirror/extensions/features/ParagraphChangeTrackerExtension.ts`, `extensions/nodes/TextBoxExtension.ts:11-48` | User-reported. Schema bridge or custom sync wrapper required. Investigate before fix. |
+| ✅ | 2 | **Drawings / textboxes bypass change tracker** — *now fixed* (see "Recently shipped"). Diagnosis was off: y-prosemirror does sync drawings (no schema filter); the gap was in `ParagraphChangeTracker`'s paragraph-only walk, which left selective-save with an empty paraId set on drawing-only transactions. | `features/ParagraphChangeTrackerExtension.ts` |
 
 ## P1 — Visible regressions / high impact
 
