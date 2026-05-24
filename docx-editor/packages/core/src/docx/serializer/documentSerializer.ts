@@ -676,6 +676,27 @@ export function serializeDocument(doc: Document): string {
   const nsDecl = buildNamespaceDeclarations();
   parts.push(`<w:document ${nsDecl} mc:Ignorable="w14 w15 wp14">`);
 
+  // Doc-level `<w:background>` (OOXML §17.2.1). Must precede `<w:body>`.
+  // Round-trips the "Page color" the user picked in our dialog AND any
+  // background that came in from the source DOCX.
+  const bg = doc.package.document.background;
+  if (bg) {
+    const attrs: string[] = [];
+    if (bg.color?.rgb) attrs.push(`w:color="${bg.color.rgb}"`);
+    if (bg.themeColor) attrs.push(`w:themeColor="${bg.themeColor}"`);
+    if (bg.themeTint) attrs.push(`w:themeTint="${bg.themeTint}"`);
+    if (bg.themeShade) attrs.push(`w:themeShade="${bg.themeShade}"`);
+    // Word requires at least `w:color` to be present on a non-empty
+    // background. If the model carries only theme info without color,
+    // emit `w:color="auto"` so the element is well-formed.
+    if (!bg.color?.rgb && (bg.themeColor || bg.themeTint || bg.themeShade)) {
+      attrs.unshift('w:color="auto"');
+    }
+    if (attrs.length > 0) {
+      parts.push(`<w:background ${attrs.join(' ')}/>`);
+    }
+  }
+
   // Document body
   parts.push('<w:body>');
   parts.push(serializeDocumentBody(doc.package.document));

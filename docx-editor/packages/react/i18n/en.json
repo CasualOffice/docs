@@ -338,6 +338,8 @@
       "bottom": "Bottom",
       "left": "Left",
       "right": "Right",
+      "pageColor": "Page color",
+      "pageColorReset": "None",
       "pageSizes": {
         "letter": "Letter (8.5\" × 11\")",
         "a4": "A4 (8.27\" × 11.69\")",

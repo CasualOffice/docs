@@ -33,6 +33,18 @@ export interface PageSetupDialogProps {
   onClose: () => void;
   onApply: (props: Partial<SectionProperties>) => void;
   currentProps?: SectionProperties;
+  /**
+   * Current doc-level page color as `#RRGGBB`, or undefined for the
+   * default white (no `<w:background>` in the saved doc). Word and
+   * Google Docs both surface this as "Page color" inside Page Setup.
+   */
+  currentPageColor?: string;
+  /**
+   * Called when the user changes the page color. Pass `undefined` to
+   * clear the background (the host removes the `<w:background>`
+   * element on the next save).
+   */
+  onPageColorChange?: (color: string | undefined) => void;
 }
 
 // ============================================================================
@@ -164,6 +176,8 @@ export function PageSetupDialog({
   onClose,
   onApply,
   currentProps,
+  currentPageColor,
+  onPageColorChange,
 }: PageSetupDialogProps): React.ReactElement | null {
   const { t } = useTranslation();
   const [pageWidth, setPageWidth] = useState(DEFAULT_WIDTH);
@@ -173,6 +187,9 @@ export function PageSetupDialog({
   const [marginBottom, setMarginBottom] = useState(DEFAULT_MARGIN);
   const [marginLeft, setMarginLeft] = useState(DEFAULT_MARGIN);
   const [marginRight, setMarginRight] = useState(DEFAULT_MARGIN);
+  // Page color (#RRGGBB) or undefined for default white. Tracked
+  // locally so the user can preview before clicking Apply.
+  const [pageColor, setPageColor] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -186,7 +203,8 @@ export function PageSetupDialog({
     setMarginBottom(currentProps?.marginBottom ?? DEFAULT_MARGIN);
     setMarginLeft(currentProps?.marginLeft ?? DEFAULT_MARGIN);
     setMarginRight(currentProps?.marginRight ?? DEFAULT_MARGIN);
-  }, [isOpen, currentProps]);
+    setPageColor(currentPageColor);
+  }, [isOpen, currentProps, currentPageColor]);
 
   const handlePageSizeChange = useCallback(
     (index: number) => {
@@ -224,6 +242,12 @@ export function PageSetupDialog({
       marginLeft,
       marginRight,
     });
+    // Emit page-color change only when it actually differs from the
+    // current value so hosts that don't supply `onPageColorChange`
+    // don't have to defensively no-op every Apply click.
+    if (onPageColorChange && pageColor !== currentPageColor) {
+      onPageColorChange(pageColor);
+    }
     onClose();
   }, [
     pageWidth,
@@ -233,7 +257,10 @@ export function PageSetupDialog({
     marginBottom,
     marginLeft,
     marginRight,
+    pageColor,
+    currentPageColor,
     onApply,
+    onPageColorChange,
     onClose,
   ]);
 
@@ -350,6 +377,36 @@ export function PageSetupDialog({
             />
             <span style={unitStyle}>in</span>
           </div>
+
+          {/* Page color — Google-Docs-style. Hosts opt in by passing
+              onPageColorChange; if absent the row stays hidden so we
+              don't surface a setting we can't honor. */}
+          {onPageColorChange && (
+            <>
+              <div style={{ ...sectionLabelStyle, marginTop: 4 }}>
+                {t('dialogs.pageSetup.pageColor')}
+              </div>
+              <div style={rowStyle}>
+                <label style={labelStyle}>{t('dialogs.pageSetup.pageColor')}</label>
+                <input
+                  type="color"
+                  style={{ ...inputStyle, padding: 2, height: 28 }}
+                  value={pageColor ?? '#ffffff'}
+                  onChange={(e) => setPageColor(e.target.value)}
+                  data-testid="page-setup-page-color"
+                />
+                <button
+                  type="button"
+                  style={{ ...btnStyle, padding: '4px 10px', fontSize: 12 }}
+                  onClick={() => setPageColor(undefined)}
+                  disabled={pageColor === undefined}
+                  data-testid="page-setup-page-color-reset"
+                >
+                  {t('dialogs.pageSetup.pageColorReset')}
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         <div style={footerStyle}>

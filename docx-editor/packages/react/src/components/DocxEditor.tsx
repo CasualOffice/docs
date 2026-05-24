@@ -3798,6 +3798,31 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history.state, readOnly, handleDocumentChange]
   );
 
+  // Page-color apply handler — writes the new color into the
+  // doc-level <w:background> slot so the painter picks it up on
+  // the next render and the next save round-trips it. `undefined`
+  // clears the background entirely (the serializer skips emitting
+  // <w:background> when `body.background` is absent).
+  const handlePageColorChange = useCallback(
+    (color: string | undefined) => {
+      if (!history.state || readOnly) return;
+      const rgb = color?.replace(/^#/, '').toUpperCase();
+      const nextBg = rgb ? { color: { rgb } } : undefined;
+      const newDoc = {
+        ...history.state,
+        package: {
+          ...history.state.package,
+          document: {
+            ...history.state.package.document,
+            background: nextBg,
+          },
+        },
+      };
+      handleDocumentChange(newDoc);
+    },
+    [history.state, readOnly, handleDocumentChange]
+  );
+
   // Paragraph indent handlers (for ruler)
   const handleIndentLeftChange = useCallback(
     (twips: number) => {
@@ -6020,6 +6045,12 @@ body { background: white; }
                   onClose={() => setShowPageSetup(false)}
                   onApply={handlePageSetupApply}
                   currentProps={history.state?.package.document?.finalSectionProperties}
+                  currentPageColor={
+                    history.state?.package.document?.background?.color?.rgb
+                      ? `#${history.state.package.document.background.color.rgb}`
+                      : undefined
+                  }
+                  onPageColorChange={handlePageColorChange}
                 />
               )}
               {footnotePropsOpen && (

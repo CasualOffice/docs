@@ -1786,11 +1786,22 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               ? buildFootnoteRenderItems(pageFootnoteMap, footnoteContentMap, document)
               : undefined;
 
+            // Honor the doc-level `<w:background>` (OOXML §17.2.1)
+            // — Word + Google Docs surface this as "Page color". The
+            // host can still override via its own `pageBackground`
+            // prop; falls back to white when neither is set. The
+            // painter's `applyPageStyles` reads `backgroundColor`
+            // (not `pageBackground`), so we set both keys to keep
+            // `LayoutPainter`'s own `pageBackground` option happy too.
+            const docBgColor = document?.package.document.background?.color?.rgb ?? undefined;
+            const pageBackground = docBgColor ? `#${docBgColor}` : '#fff';
+
             // Render pages to container
             const renderPagesKind = renderPages(newLayout.pages, pagesContainerRef.current, {
               pageGap,
               showShadow: true,
-              pageBackground: '#fff',
+              pageBackground,
+              backgroundColor: pageBackground,
               blockLookup,
               headerContent: headerContentForRender,
               footerContent: footerContentForRender,

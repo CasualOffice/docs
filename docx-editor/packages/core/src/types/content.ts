@@ -1630,4 +1630,17 @@ export interface DocumentBody {
   finalSectionProperties?: SectionProperties;
   /** Comments from comments.xml */
   comments?: Comment[];
+  /**
+   * Document-wide page background, from the doc-level `<w:background>`
+   * sibling of `<w:body>` (OOXML §17.2.1). Word + Google Docs both
+   * surface this as "Page color" in their Page Setup UI. Painter uses
+   * it as the default `pageBackground` when the host hasn't set one
+   * via `PainterOptions.pageBackground`.
+   */
+  background?: {
+    color?: ColorValue;
+    themeColor?: ThemeColorSlot;
+    themeTint?: string;
+    themeShade?: string;
+  };
 }
