@@ -837,7 +837,10 @@
      user-zoom controls cover that case. */
   [role='menubar'] button,
   [data-testid='toolbar'] button,
-  [data-testid='editor-toolbar'] button {
+  [data-testid='editor-toolbar'] button,
+  /* Status-bar zoom +/- buttons are 22×22 px on desktop — below the
+     Apple HIG floor. Bump them on mobile so thumbs can hit them. */
+  .docx-status-zoom-btn {
     min-height: 44px !important;
     min-width: 44px !important;
     padding-top: 10px !important;

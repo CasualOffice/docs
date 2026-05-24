@@ -2480,6 +2480,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         e.preventDefault();
         setShowCommandPalette(true);
       }
+
+      // Mod+Shift+L → toggle bullet list. Word convention; also matches
+      // Google Docs (Ctrl+Shift+8 there, but L is the documented Word
+      // binding and the doc community expects it). Routes through the
+      // same handleFormat path the toolbar uses so behavior stays
+      // identical to clicking the bullet button.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        const view = getActiveEditorView();
+        if (view) {
+          toggleBulletList(view.state, view.dispatch);
+        }
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);

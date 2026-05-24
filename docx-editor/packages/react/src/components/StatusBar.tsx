@@ -140,6 +140,7 @@ export function StatusBar({
         <span style={cellStyle}>
           <button
             type="button"
+            className="docx-status-zoom-btn"
             style={zoomButtonStyle}
             onClick={zoomOut}
             onMouseDown={(e) => e.preventDefault()}
@@ -161,6 +162,7 @@ export function StatusBar({
           </button>
           <button
             type="button"
+            className="docx-status-zoom-btn"
             style={zoomButtonStyle}
             onClick={zoomIn}
             onMouseDown={(e) => e.preventDefault()}

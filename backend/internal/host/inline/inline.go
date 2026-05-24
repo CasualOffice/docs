@@ -25,6 +25,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -173,20 +174,33 @@ func (s *Store) Count() int {
 // evictIfNeededLocked drops the least-recently-accessed entry
 // when adding a fresh doc would exceed maxDocs. Caller must hold
 // the write lock.
+//
+// Eviction is a data-loss event in the inline backend: there is
+// no external persistence layer, so the bytes for the evicted doc
+// are gone. Log loudly so the operator can either bump maxDocs or
+// swap in a persistent host integration before the next demo.
 func (s *Store) evictIfNeededLocked() {
 	if s.maxDocs <= 0 || len(s.docs) < s.maxDocs {
 		return
 	}
 	var oldestID string
 	var oldestAt time.Time
+	var oldestSize int
 	for id, e := range s.docs {
 		if oldestID == "" || e.lastAccessed.Before(oldestAt) {
 			oldestID = id
 			oldestAt = e.lastAccessed
+			oldestSize = len(e.contents)
 		}
 	}
 	if oldestID != "" {
 		delete(s.docs, oldestID)
+		slog.Warn("inline host evicted least-recently-accessed doc — bytes lost",
+			"docID", oldestID,
+			"bytes", oldestSize,
+			"lastAccessed", oldestAt.Format(time.RFC3339),
+			"maxDocs", s.maxDocs,
+		)
 	}
 }
 
