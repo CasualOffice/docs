@@ -264,7 +264,12 @@ export function MenuBar() {
 
   return (
     <MenuBarProvider>
-      <div className="flex items-center overflow-x-auto whitespace-nowrap min-w-0" style={{ scrollbarWidth: 'none' }} role="menubar" aria-label={t('titleBar.menuBarAriaLabel')}>
+      <div
+        className="flex items-center overflow-x-auto whitespace-nowrap min-w-0"
+        style={{ scrollbarWidth: 'none' }}
+        role="menubar"
+        aria-label={t('titleBar.menuBarAriaLabel')}
+      >
         {/* File Menu */}
         {hasFileMenu && (
           <MenuDropdown
@@ -725,7 +730,10 @@ export function TitleBar({ children }: TitleBarProps) {
           <div className="flex items-center gap-2 px-1 min-w-0">{middleTopItems}</div>
         )}
         {menuBarItems.length > 0 && (
-          <div className="flex items-center px-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div
+            className="flex items-center px-1 min-w-0 overflow-x-auto"
+            style={{ scrollbarWidth: 'none' }}
+          >
             {menuBarItems}
           </div>
         )}

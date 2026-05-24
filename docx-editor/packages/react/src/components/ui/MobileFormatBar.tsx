@@ -133,12 +133,7 @@ export function MobileFormatBar({
   if (!visible || rects.length === 0) return null;
 
   return (
-    <MobileFormatBarInner
-      rects={rects}
-      formatting={formatting}
-      onFormat={onFormat}
-      zoom={zoom}
-    />
+    <MobileFormatBarInner rects={rects} formatting={formatting} onFormat={onFormat} zoom={zoom} />
   );
 }
 
@@ -179,11 +174,7 @@ function MobileFormatBarInner({
           fontWeight: cmd === 'bold' ? 700 : 600,
           fontStyle: cmd === 'italic' ? 'italic' : 'normal',
           textDecoration:
-            cmd === 'underline'
-              ? 'underline'
-              : cmd === 'strikethrough'
-                ? 'line-through'
-                : 'none',
+            cmd === 'underline' ? 'underline' : cmd === 'strikethrough' ? 'line-through' : 'none',
         };
         return (
           <button

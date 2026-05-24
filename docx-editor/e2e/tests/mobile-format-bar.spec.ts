@@ -8,6 +8,11 @@
  */
 import { test, expect } from '@playwright/test';
 
+// CI runs on Linux (Ctrl), local dev is usually macOS (Meta). Use the
+// platform modifier Playwright already detected so the same spec runs
+// on both.
+const SELECT_ALL_MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
+
 test.describe('Mobile floating format bar', () => {
   test.describe('desktop viewport — chip hidden', () => {
     test.use({ viewport: { width: 1280, height: 800 } });
@@ -18,7 +23,7 @@ test.describe('Mobile floating format bar', () => {
       await page.waitForTimeout(500);
       await page.locator('.ProseMirror').focus();
       await page.keyboard.type('Hello desktop');
-      await page.keyboard.press('Control+a');
+      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
       await page.waitForTimeout(400);
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toHaveCount(0);
     });
@@ -45,7 +50,7 @@ test.describe('Mobile floating format bar', () => {
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toHaveCount(0);
 
       // Range selection — chip should appear.
-      await page.keyboard.press('Meta+a');
+      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toBeVisible({
         timeout: 3000,
       });

@@ -4117,10 +4117,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           />
 
           {/* Mobile floating format chip — only renders on phone
-             *  widths when a non-collapsed selection exists. The chip
-             *  reads its own viewport-fixed coordinates from the
-             *  selection-overlay rect; we just pass the overlay-local
-             *  rects + zoom. */}
+           *  widths when a non-collapsed selection exists. The chip
+           *  reads its own viewport-fixed coordinates from the
+           *  selection-overlay rect; we just pass the overlay-local
+           *  rects + zoom. */}
           {!readOnly && selectionFormatting && onFormat && (
             <MobileFormatBar
               rects={selectionRects}
