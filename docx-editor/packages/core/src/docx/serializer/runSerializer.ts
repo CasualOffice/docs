@@ -58,9 +58,21 @@ export function resetAutoIdCounter(): void {
   nextAutoId = 100000;
 }
 
-/** Get a unique positive integer ID, using the provided value or generating one */
+/**
+ * Get a unique positive integer ID, using the provided value or
+ * generating one.
+ *
+ * The "0" check matters: template-engine-generated DOCX files routinely
+ * emit `<pic:cNvPr id="0"/>` on every image (the engine never bothers
+ * to allocate unique ids, since Word renders the file fine even with
+ * dupes when the relationship target differs). Our parser carries that
+ * id through verbatim, so without this guard every image we serialise
+ * lands with `id="0"` and Word fails to render any but the first.
+ * Treat both numeric 0 and the string "0" as falsy → fall through to
+ * the auto-incrementing counter.
+ */
 function getUniqueId(id: string | number | undefined): string {
-  if (id !== undefined && id !== null && id !== '' && id !== 0) {
+  if (id !== undefined && id !== null && id !== '' && id !== 0 && id !== '0') {
     return String(id);
   }
   return String(nextAutoId++);
