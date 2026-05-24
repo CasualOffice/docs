@@ -15,6 +15,12 @@ Every item has a citation. P0/P1/P2/P3 are severity. ⬜ pending · 🔵 in prog
 | ✅ | Comment resolve/reopen + three-dot buttons missing `aria-label` | `CommentCard.tsx:93, 103` |
 | ✅ | 9 dialogs overflow phone viewport with fixed `minWidth` | swept to `min(<n>px, calc(100vw - 32px))` |
 | ✅ | Dark-mode contrast pass (35 hardcoded hex colors → CSS vars) | sidebar / hyperlink popup / dialogs (commit `8df7c5e`) |
+| ✅ | **F1** — Version-history side panel + `useEditHistory` hook (Sheets parity) | new `hooks/useEditHistory.ts`, `components/sidebar/VersionHistoryPanel.tsx` |
+| ✅ | **#31** Ctrl+Shift+L bullet shortcut wired into the global keymap | `DocxEditor.tsx` (Mod+Shift+L → toggleBulletList) |
+| ✅ | **#39** Status-bar zoom buttons hit 44 px tap target on mobile | `StatusBar.tsx` + `editor.css` media query |
+| ✅ | **#28** Inline-host eviction now logs a slog.Warn so silent data-loss surfaces | `backend/internal/host/inline/inline.go` |
+| 🟠 | **#41** Audit overstated unguarded console.log — most are debug-gated or public-API helpers (`printExplorationSummary`, MCP `debug: true`). Not a leak; closing without code change. | n/a |
+| 🟠 | **#29** Awareness exposure isn't a code gap — the existing `plugins` prop already lets consumers wire `yCursorPlugin` (see `examples/collaboration/`). Closing as a doc-only item; consider a guide page. | n/a |
 
 ---
 
