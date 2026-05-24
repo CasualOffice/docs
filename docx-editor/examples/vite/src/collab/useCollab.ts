@@ -39,6 +39,20 @@ export interface CollabState {
   peers: CollabPeer[];
   /** The Yjs awareness instance — exposed for advanced consumers. */
   awareness: WebsocketProvider['awareness'];
+  /**
+   * Shared document metadata (filename, etc.). Lives in the same
+   * Y.Doc as the editor content so it travels over the same WS,
+   * with the same offline-resilience and conflict-resolution
+   * guarantees — no extra channel to keep in sync.
+   *
+   * Keys today:
+   *   - `fileName: string` — document name shown in the title bar.
+   *
+   * Hosts read via `metaMap.get('fileName')` and observe via
+   * `metaMap.observe(...)`. To rename, set the key from any peer;
+   * Yjs propagates to all others.
+   */
+  metaMap: Y.Map<unknown>;
 }
 
 export interface UseCollabOptions {
@@ -56,7 +70,7 @@ export interface UseCollabOptions {
  * loader doesn't overwrite the Yjs-populated PM state.
  */
 export function useCollab({ room, backend, user }: UseCollabOptions): CollabState {
-  const { ydoc, provider, plugins } = useMemo(() => {
+  const { ydoc, provider, plugins, metaMap } = useMemo(() => {
     const ydoc = new Y.Doc();
     // WebsocketProvider takes a *URL prefix* and appends `/${room}`.
     // Gateway routes /doc/{docId}, so the prefix is `${backend}/doc`.
@@ -70,7 +84,11 @@ export function useCollab({ room, backend, user }: UseCollabOptions): CollabStat
       yCursorPlugin(provider.awareness),
       yUndoPlugin(),
     ];
-    return { ydoc, provider, plugins };
+    // Shared document metadata. Lives in the same Y.Doc as the
+    // editor content so rename, future title-bar settings, etc.
+    // travel through the same WS without needing a side channel.
+    const metaMap = ydoc.getMap('meta');
+    return { ydoc, provider, plugins, metaMap };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, backend]);
 
@@ -124,5 +142,5 @@ export function useCollab({ room, backend, user }: UseCollabOptions): CollabStat
     };
   }, [provider, ydoc]);
 
-  return { plugins, status, peers, awareness: provider.awareness };
+  return { plugins, status, peers, awareness: provider.awareness, metaMap };
 }

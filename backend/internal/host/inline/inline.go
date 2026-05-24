@@ -128,6 +128,27 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	return nil
 }
 
+// Rename updates the stored fileName so a subsequent /download
+// advertises the new name in Content-Disposition. Does not bump
+// the version — the file CONTENT hasn't changed, only its
+// metadata. Used by the live-rename path: when a peer renames the
+// doc in the editor, the React layer PATCHes here so the server
+// stays in sync with the (Y.Map-synchronised) client state.
+func (s *Store) Rename(docID, newName string) error {
+	if newName == "" {
+		return errors.New("inline: empty fileName")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.docs[docID]
+	if !ok {
+		return host.ErrNotFound
+	}
+	e.fileName = newName
+	e.lastAccessed = time.Now()
+	return nil
+}
+
 // Delete drops a doc from the store. Used by an explicit teardown
 // path (host UI's "stop sharing" button, future) and during
 // eviction.

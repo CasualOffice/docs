@@ -597,10 +597,57 @@ function CollabApp({
   onError,
   onFontsLoaded,
 }: CollabAppProps) {
-  const { plugins, status, peers } = useCollab({ room, backend, user });
+  const { plugins, status, peers, metaMap } = useCollab({ room, backend, user });
   const [seed, setSeed] = useState<SeedState>({ kind: 'loading' });
   // Bumped via "Try again" to re-trigger the fetch effect.
   const [attempt, setAttempt] = useState(0);
+  // Live filename — initialised from the server-seeded value, then
+  // tracked through the shared Y.Map so renames propagate across
+  // peers in real time. `null` until the seed download completes.
+  const [collabFileName, setCollabFileName] = useState<string | null>(null);
+
+  // Observe metaMap.fileName so a peer's rename updates our title
+  // bar without any HTTP round-trip — same channel the editor
+  // content already syncs through.
+  useEffect(() => {
+    const apply = () => {
+      const v = metaMap.get('fileName');
+      if (typeof v === 'string' && v.length > 0) setCollabFileName(v);
+    };
+    apply();
+    metaMap.observe(apply);
+    return () => {
+      metaMap.unobserve(apply);
+    };
+  }, [metaMap]);
+
+  // When the user renames locally:
+  //   1. Write into metaMap → Yjs fans the change to every peer.
+  //   2. PATCH the gateway so /api/docs/{id}/download advertises
+  //      the new name and future re-joiners pick it up from the
+  //      seed fetch.
+  // Both updates are best-effort — Yjs is the source of truth for
+  // live peers; the HTTP call is what makes new joiners + the
+  // share-link UI see the new name.
+  const handleRename = useCallback(
+    (newName: string) => {
+      const trimmed = newName.trim();
+      if (!trimmed) return;
+      if (metaMap.get('fileName') !== trimmed) {
+        metaMap.set('fileName', trimmed);
+      }
+      void fetch(`${backendHttp}/api/docs/${encodeURIComponent(room)}/rename`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: trimmed }),
+      }).catch(() => {
+        // Non-fatal — the live Y.Doc still has the new name; next
+        // page load may show the stale server name if the PATCH
+        // really failed (rare), but the editor keeps working.
+      });
+    },
+    [metaMap, backendHttp, room]
+  );
 
   // Fetch the seed .docx for this room. Every joiner does this on
   // mount — ySyncPlugin reconciles divergent loads (the first
@@ -684,7 +731,8 @@ function CollabApp({
           initialZoom={zoom}
           disableFindReplaceShortcuts={disableFindReplaceShortcuts}
           commentIdBase={commentIdBase}
-          documentName={seed.fileName}
+          documentName={collabFileName ?? seed.fileName}
+          onDocumentNameChange={handleRename}
           renderTitleBarRight={renderTitleBarRight}
         />
       </main>

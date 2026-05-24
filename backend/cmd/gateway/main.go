@@ -124,6 +124,18 @@ func docIDFromDownloadPath(path string) string {
 	return path[len(prefix) : len(path)-len(suffix)]
 }
 
+// docIDFromRenamePath extracts `{docId}` from
+// `/api/docs/{docId}/rename`. Returns the empty string for any
+// other shape.
+func docIDFromRenamePath(path string) string {
+	const prefix = "/api/docs/"
+	const suffix = "/rename"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return ""
+	}
+	return path[len(prefix) : len(path)-len(suffix)]
+}
+
 // maxUploadBytes bounds the .docx upload size. The browser's
 // File Open path accepts files up to this size; anything larger
 // is rejected before allocating server-side buffers. 100 MB
@@ -227,6 +239,56 @@ func uploadHandler(store *inline.Store) http.HandlerFunc {
 // downloadHandler streams the latest snapshot of a doc out as
 // a .docx response. Content-Disposition advertises the original
 // filename so the browser's Save dialog defaults to it.
+// renameHandler updates the stored fileName for a doc. Same path
+// shape as download (`/api/docs/{docId}/rename`) but PATCH-only.
+// JSON body: `{ "fileName": "new name.docx" }`. 200 on success
+// with `{ "fileName": "..." }`, 404 if the docId is unknown.
+//
+// Cross-peer sync is the client's job — the React layer also
+// writes the new name into the shared Y.Doc's meta map so live
+// peers see it without polling the server.
+func renameHandler(store *inline.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			writeJSONError(w, http.StatusMethodNotAllowed, "method", "PATCH required")
+			return
+		}
+		docID := docIDFromRenamePath(r.URL.Path)
+		if docID == "" {
+			writeJSONError(w, http.StatusBadRequest, "path", "expected /api/docs/{docId}/rename")
+			return
+		}
+		var body struct {
+			FileName string `json:"fileName"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&body); err != nil {
+			writeJSONError(w, http.StatusBadRequest, "json", "invalid body: "+err.Error())
+			return
+		}
+		body.FileName = strings.TrimSpace(body.FileName)
+		if body.FileName == "" {
+			writeJSONError(w, http.StatusBadRequest, "fileName", "fileName required")
+			return
+		}
+		if len(body.FileName) > 255 {
+			writeJSONError(w, http.StatusBadRequest, "fileName", "fileName too long (>255 chars)")
+			return
+		}
+		if err := store.Rename(docID, body.FileName); err != nil {
+			if errors.Is(err, host.ErrNotFound) {
+				writeJSONError(w, http.StatusNotFound, "not_found", "no such doc")
+				return
+			}
+			writeJSONError(w, http.StatusInternalServerError, "rename", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(struct {
+			FileName string `json:"fileName"`
+		}{FileName: body.FileName})
+	}
+}
+
 func downloadHandler(store *inline.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -450,7 +512,20 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/api/docs", uploadHandler(store))
-	mux.HandleFunc("/api/docs/", downloadHandler(store))
+	// `/api/docs/{id}/{action}` — dispatch on the trailing path
+	// segment so download + rename share the same prefix without
+	// needing a router lib. Adding a new action only requires a
+	// new case here + a new docIDFrom<Action>Path helper.
+	docsActionHandler := downloadHandler(store)
+	docsRenameHandler := renameHandler(store)
+	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/rename"):
+			docsRenameHandler(w, r)
+		default:
+			docsActionHandler(w, r)
+		}
+	})
 	mux.HandleFunc("/doc/", wsHandler(rooms, store))
 
 	// Bundled-image mode: when STATIC_DIR is set, also serve the
