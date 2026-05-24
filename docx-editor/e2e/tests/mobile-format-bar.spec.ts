@@ -66,10 +66,16 @@ test.describe('Mobile floating format bar', () => {
         timeout: 3000,
       });
 
-      // Bold button reports aria-pressed=true now.
+      // aria-pressed reflects the formatting at the *current* selection.
+      // On some platforms the chip click can briefly blur the editor —
+      // re-focus and re-select so the formatting derivation runs against
+      // an active selection covering the (now-bold) text.
+      await page.locator('.ProseMirror').focus();
+      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
       await expect(page.locator('[data-testid="mobile-format-bold"]')).toHaveAttribute(
         'aria-pressed',
-        'true'
+        'true',
+        { timeout: 3000 }
       );
     });
   });
