@@ -1,8 +1,44 @@
 # 05 — Backend design: y-websocket gateway in Go
 
-> Resolves the open backend questions from `docs/00-overview.md`.
-> Captures the design before any Go code is written so future work
-> isn't left re-deriving these decisions.
+> Resolves the open backend questions from `00-overview.md`.
+> Originally written before any Go code existed, to lock the design
+> so future work didn't re-derive these decisions.
+
+## M1 status — shipped (2026-05-24)
+
+The v0 self-contained shape described below is implemented and
+unit-tested in `backend/`:
+
+- **Entry point:** `backend/cmd/gateway/main.go`
+- **Module:** `github.com/schnsrw/docx/backend` (`go 1.24`,
+  one third-party dep: `github.com/coder/websocket`)
+- **Routes wired:**
+  - `POST /api/docs` — upload a .docx, mint a docId, return
+    `{ docId, shareUrl }`.
+  - `GET  /api/docs/{docId}/download` — stream the latest snapshot.
+  - `GET  /doc/{docId}` — WebSocket; client joins the live
+    co-edit session.
+  - `GET  /health` — liveness probe.
+  - Static SPA fallback (when `STATIC_DIR` is set) so the editor
+    and gateway share one origin in the bundled image.
+- **Packages:**
+  - `internal/yws` — y-websocket binary protocol parsing
+    (`protocol.go`).
+  - `internal/room` — room manager (`manager.go` + tests).
+  - `internal/host` — `Integration` interface (`host.go`).
+  - `internal/host/inline` — in-process map host for v0
+    (`inline.go` + tests).
+- **Tests cover:** broadcast, room manager, upload, static-SPA path.
+
+What's still ahead:
+- **M2** — replace the "re-serve original upload on drain" snapshot
+  path with a Bun-worker pool that turns live Y.Doc state into a
+  fresh `.docx`.
+- **M3** — concrete WOPI host integration. The
+  `host.Integration` interface is already plug-in-ready; needs the
+  WOPI HTTP impl + a real host to integrate against.
+- **JWT auth on the WS query string** — designed below but not
+  enforced yet (v0 is anonymous; the room URL is the capability).
 
 ## Deployment shapes (collab is opt-in, single-channel)
 

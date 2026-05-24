@@ -53,10 +53,18 @@ Each fidelity gap fix is pinned by:
 1. A unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` that asserts the parse→serialize round-trip preserves the relevant attribute(s).
 2. Where the gap produces a visible output difference, an e2e spec in `docx-editor/e2e/tests/` that opens the fixture and asserts the rendered DOM matches expectations.
 
-Both are required before a fidelity PR lands. The pattern means a regression always trips at least one of CI's 661 e2e tests.
+Both are required before a fidelity PR lands. The pattern means a regression always trips at least one of CI's 800+ e2e tests.
 
 ---
 
-## Current status
+## Current status (2026-05-24)
 
-19 of 39 fixtures round-trip with zero element drops. The remaining drops are tracked in [`internal/03-gap-matrix.md`](./internal/03-gap-matrix.md) with the file/line of the relevant parser/serializer.
+**26 of 39 fixtures** round-trip with zero element drops (= 66.7%
+pristine). Target ≥ 90% before the desktop ship — the remaining 13
+non-pristine fixtures all sit in the `roundtrip-vml-cluster` bucket
+in [`internal/03-gap-matrix.md`](./internal/03-gap-matrix.md), which
+needs an enricher refactor before its drops can land without breaking
+the wpg-group rendering we already fixed.
+
+The full per-tag history (~2,400 dropped tags eliminated across 16+
+commits) is in `roundtrip-audit-report.md` in the editor repo root.

@@ -145,4 +145,4 @@ backend/
 | Backend state | None on disk; in-memory Y.Doc per active room | Stateless = trivial to scale + restart cleanly |
 | Persistence | Delegated to host integration | inline / WOPI / JWT-API — keeps the gateway storage-agnostic |
 | Editor toolchain | Bun | Fast install, fast test, native TS |
-| Test runner | Playwright (Chromium) | 661 e2e tests, deterministic enough to gate releases |
+| Test runner | Playwright (Chromium) | 836 e2e tests on the editor, plus `go test -race ./...` on the backend; both gate every push |
