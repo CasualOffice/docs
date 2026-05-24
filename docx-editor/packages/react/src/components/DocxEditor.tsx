@@ -5601,6 +5601,8 @@ body { background: white; }
                         zoom={state.zoom}
                         readOnly={readOnly}
                         extensionManager={extensionManager}
+                        selectionFormatting={state.selectionFormatting}
+                        onFormat={handleFormat}
                         onDocumentChange={handleDocumentChange}
                         onSelectionChange={(_from, _to) => {
                           // Extract full selection state from PM and use the standard handler

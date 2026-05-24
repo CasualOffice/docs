@@ -34,6 +34,7 @@ import type { EditorView } from 'prosemirror-view';
 // Internal components
 import { HiddenProseMirror, type HiddenProseMirrorRef } from './HiddenProseMirror';
 import { SelectionOverlay } from './SelectionOverlay';
+import { MobileFormatBar } from '../components/ui/MobileFormatBar';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { DecorationLayer } from './DecorationLayer';
 
@@ -270,6 +271,12 @@ export interface PagedEditorProps {
   className?: string;
   /** Custom styles. */
   style?: CSSProperties;
+  /** Selection-formatting bitfield (bold/italic/underline/strike/etc).
+   *  When passed, the paged editor renders a floating mobile format
+   *  chip near the selection on phone viewports. Desktop is unaffected. */
+  selectionFormatting?: import('../components/Toolbar').SelectionFormatting;
+  /** Format command sink for the mobile chip. Same shape as Toolbar's onFormat. */
+  onFormat?: (cmd: import('../components/Toolbar').FormattingAction) => void;
   /** Whether comments sidebar is open (shifts document left). */
   commentsSidebarOpen?: boolean;
   /** Sidebar overlay rendered inside the scroll container (scrolls with document). */
@@ -1251,6 +1258,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onBodyClick,
       className,
       style,
+      selectionFormatting,
+      onFormat,
       commentsSidebarOpen = false,
       sidebarOverlay,
       scrollContainerRef: scrollContainerRefProp,
@@ -4091,6 +4100,21 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             pageGap={pageGap}
             readOnly={readOnly}
           />
+
+          {/* Mobile floating format chip — only renders on phone
+             *  widths when a non-collapsed selection exists. The chip
+             *  reads its own viewport-fixed coordinates from the
+             *  selection-overlay rect; we just pass the overlay-local
+             *  rects + zoom. */}
+          {!readOnly && selectionFormatting && onFormat && (
+            <MobileFormatBar
+              rects={selectionRects}
+              formatting={selectionFormatting}
+              onFormat={onFormat}
+              visible={isFocused && selectionRects.length > 0}
+              zoom={zoom}
+            />
+          )}
 
           {/* Image selection overlay */}
           <ImageSelectionOverlay
