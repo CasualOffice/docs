@@ -1,10 +1,17 @@
-import React, { useRef, useState, type CSSProperties } from 'react';
-import { TEMPLATES, type TemplateEntry } from './templates/manifest';
+import React, { useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  CATEGORIES,
+  TEMPLATES,
+  type TemplateCategory,
+  type TemplateEntry,
+} from './templates/manifest';
 
 interface HomeProps {
   onSelectTemplate: (entry: TemplateEntry) => void;
   onOpenFile: (file: File) => void;
 }
+
+type CategoryFilter = 'All' | TemplateCategory;
 
 const COLORS = {
   ink: '#0f172a',
@@ -24,7 +31,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: '100vh',
     background:
-      'radial-gradient(1000px 600px at 12% -10%, #dbeafe 0%, transparent 55%),' +
+      'radial-gradient(1100px 700px at 8% -10%, #dbeafe 0%, transparent 55%),' +
       'radial-gradient(900px 500px at 100% 0%, #f3e8ff 0%, transparent 50%),' +
       `linear-gradient(180deg, ${COLORS.surface} 0%, ${COLORS.surface2} 100%)`,
     boxSizing: 'border-box',
@@ -43,10 +50,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     gap: '12px',
   },
-  brandLogo: {
-    width: '32px',
-    height: '32px',
-  },
+  brandLogo: { width: '32px', height: '32px' },
   brandName: {
     fontSize: '17px',
     fontWeight: 600,
@@ -67,11 +71,11 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: '6px',
     transition: 'background 0.15s, color 0.15s',
   },
+
   hero: {
-    maxWidth: '1120px',
+    maxWidth: '1180px',
     margin: '0 auto',
-    padding: '40px 40px 24px',
-    textAlign: 'left',
+    padding: '32px 40px 12px',
   },
   heroEyebrow: {
     display: 'inline-block',
@@ -100,38 +104,116 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.5,
     maxWidth: '640px',
   },
-  inner: {
-    maxWidth: '1120px',
+
+  controls: {
+    maxWidth: '1180px',
     margin: '0 auto',
-    padding: '24px 40px 64px',
+    padding: '24px 40px 8px',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '12px',
+    alignItems: 'center',
   },
-  sectionHeader: {
+  searchWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: COLORS.paper,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: '10px',
+    padding: '8px 12px',
+    minWidth: '260px',
+    flex: '1 1 320px',
+    maxWidth: '480px',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+  },
+  searchInput: {
+    border: 'none',
+    outline: 'none',
+    background: 'transparent',
+    fontSize: '14px',
+    color: COLORS.ink,
+    width: '100%',
+    font: 'inherit',
+  },
+  openFileBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: COLORS.ink,
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '10px',
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+    font: 'inherit',
+  },
+  pillRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginLeft: 'auto',
+  },
+  pill: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: COLORS.inkMuted,
+    background: COLORS.paper,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: '999px',
+    padding: '6px 14px',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    font: 'inherit',
+  },
+  pillActive: {
+    background: COLORS.ink,
+    color: '#ffffff',
+    borderColor: COLORS.ink,
+  },
+
+  section: {
+    maxWidth: '1180px',
+    margin: '0 auto',
+    padding: '24px 40px 8px',
+  },
+  sectionHead: {
     display: 'flex',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    margin: '12px 0 18px',
+    margin: '16px 0 14px',
   },
-  sectionLabel: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: COLORS.inkMuted,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
+  sectionTitle: {
+    fontSize: '14px',
+    fontWeight: 700,
+    color: COLORS.ink,
+    letterSpacing: '-0.005em',
+    textTransform: 'none',
   },
-  sectionSub: {
-    fontSize: '13px',
+  sectionHint: {
+    fontSize: '12.5px',
     color: COLORS.inkSubtle,
+  },
+
+  featuredRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '18px',
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(232px, 1fr))',
-    gap: '20px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))',
+    gap: '18px',
   },
+
   card: {
     background: COLORS.paper,
     border: `1px solid ${COLORS.border}`,
     borderRadius: '12px',
-    padding: '0',
+    padding: 0,
     cursor: 'pointer',
     overflow: 'hidden',
     display: 'flex',
@@ -146,83 +228,81 @@ const styles: Record<string, CSSProperties> = {
   cardHover: {
     borderColor: '#cbd5e1',
     boxShadow:
-      '0 12px 24px -12px rgba(15, 23, 42, 0.15), 0 4px 6px -2px rgba(15, 23, 42, 0.04)',
-    transform: 'translateY(-2px)',
+      '0 14px 28px -16px rgba(15, 23, 42, 0.18), 0 4px 8px -2px rgba(15, 23, 42, 0.06)',
+    transform: 'translateY(-3px)',
   },
-  cardThumb: {
-    aspectRatio: '200 / 140',
-    display: 'block',
-    width: '100%',
+  cardThumbWrap: {
+    aspectRatio: '11 / 14',
     background: COLORS.surface,
     borderBottom: `1px solid ${COLORS.border}`,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  cardBody: {
-    padding: '14px 16px 16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
+  cardThumb: {
+    width: '100%',
+    height: '100%',
+    display: 'block',
+    objectFit: 'cover',
+    objectPosition: 'top center',
+    transition: 'transform 0.3s ease',
   },
-  cardTitleRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
+  cardThumbHover: {
+    transform: 'scale(1.025)',
   },
   cardIconBadge: {
-    width: '20px',
-    height: '20px',
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    width: '28px',
+    height: '28px',
+    borderRadius: '8px',
+    background: 'rgba(255, 255, 255, 0.96)',
+    border: `1px solid ${COLORS.border}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: COLORS.inkMuted,
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+  },
+  cardBody: {
+    padding: '12px 14px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
   },
   cardTitle: {
-    fontSize: '14px',
+    fontSize: '13.5px',
     fontWeight: 600,
     color: COLORS.ink,
     letterSpacing: '-0.005em',
   },
-  cardDescription: {
-    fontSize: '12.5px',
-    color: COLORS.inkMuted,
-    lineHeight: 1.45,
-  },
-  openCard: {
-    background: COLORS.paper,
-    border: `1px dashed ${COLORS.borderHover}`,
-    borderRadius: '12px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px',
-    color: COLORS.inkMuted,
-    cursor: 'pointer',
-    padding: '28px 16px',
-    transition: 'border-color 0.18s, background 0.18s, color 0.18s',
-    font: 'inherit',
-    textAlign: 'center',
-  },
-  openLabel: {
-    fontSize: '14px',
-    fontWeight: 600,
-  },
-  openSub: {
-    fontSize: '12px',
+  cardCategory: {
+    fontSize: '11.5px',
     color: COLORS.inkSubtle,
+    fontWeight: 500,
   },
-  hiddenInput: {
-    display: 'none',
-  },
-  footer: {
-    maxWidth: '1120px',
+
+  empty: {
+    maxWidth: '1180px',
     margin: '0 auto',
-    padding: '32px 40px',
+    padding: '36px 40px',
+    textAlign: 'center',
+    color: COLORS.inkMuted,
+    fontSize: '14px',
+  },
+
+  footer: {
+    maxWidth: '1180px',
+    margin: '32px auto 0',
+    padding: '24px 40px 32px',
     fontSize: '12px',
     color: COLORS.inkSubtle,
     borderTop: `1px solid ${COLORS.border}`,
     display: 'flex',
     justifyContent: 'space-between',
   },
+
+  hiddenInput: { display: 'none' },
 };
 
 function TemplateCard({
@@ -243,78 +323,66 @@ function TemplateCard({
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
       data-testid={`template-card-${entry.id}`}
-      aria-label={`${entry.name}: ${entry.description}`}
+      aria-label={`${entry.name} — ${entry.category}`}
     >
-      <img
-        src={entry.thumbnail}
-        alt=""
-        style={styles.cardThumb}
-        aria-hidden="true"
-        draggable={false}
-      />
-      <div style={styles.cardBody}>
-        <div style={styles.cardTitleRow}>
-          <span style={styles.cardIconBadge} aria-hidden="true">
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-              {entry.icon}
-            </span>
+      <div style={styles.cardThumbWrap}>
+        <img
+          src={entry.thumbnail}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          loading="lazy"
+          style={{ ...styles.cardThumb, ...(hovered ? styles.cardThumbHover : null) }}
+        />
+        <span style={styles.cardIconBadge} aria-hidden="true">
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+            {entry.icon}
           </span>
-          <span style={styles.cardTitle}>{entry.name}</span>
-        </div>
-        <div style={styles.cardDescription}>{entry.description}</div>
+        </span>
       </div>
-    </button>
-  );
-}
-
-function OpenFromDiskCard({
-  onPick,
-}: {
-  onPick: () => void;
-}): React.JSX.Element {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      type="button"
-      style={{
-        ...styles.openCard,
-        ...(hovered
-          ? {
-              borderColor: COLORS.brand,
-              background: COLORS.brandSoft,
-              color: COLORS.brandHover,
-            }
-          : null),
-      }}
-      onClick={onPick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocus={() => setHovered(true)}
-      onBlur={() => setHovered(false)}
-      data-testid="home-open-from-disk"
-    >
-      <span
-        className="material-symbols-outlined"
-        style={{ fontSize: 32, color: hovered ? COLORS.brand : COLORS.inkMuted }}
-        aria-hidden="true"
-      >
-        upload_file
-      </span>
-      <span style={styles.openLabel}>Open from disk</span>
-      <span style={styles.openSub}>.docx</span>
+      <div style={styles.cardBody}>
+        <div style={styles.cardTitle}>{entry.name}</div>
+        <div style={styles.cardCategory}>{entry.category}</div>
+      </div>
     </button>
   );
 }
 
 export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<CategoryFilter>('All');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) onOpenFile(file);
-    // Reset so picking the same file again re-fires onChange.
     e.target.value = '';
   };
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return TEMPLATES.filter((t) => {
+      // Blank always shows (cosmetic Personal, but useful from every filter).
+      if (category !== 'All' && t.category !== category && t.id !== 'blank') return false;
+      if (!q) return true;
+      return (
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q)
+      );
+    });
+  }, [query, category]);
+
+  const featured = useMemo(() => TEMPLATES.filter((t) => t.featured), []);
+
+  const byCategory = useMemo(() => {
+    const m = new Map<TemplateCategory, TemplateEntry[]>();
+    for (const c of CATEGORIES) m.set(c, []);
+    for (const t of TEMPLATES) m.get(t.category)?.push(t);
+    return m;
+  }, []);
+
+  const isFiltered = query.trim() !== '' || category !== 'All';
 
   return (
     <div style={styles.page} data-testid="home-page">
@@ -346,50 +414,140 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
       <section style={styles.hero}>
         <div style={styles.heroEyebrow}>Casual Editor</div>
         <h1 style={styles.heroTitle}>
-          Open a Word document.
-          <br />
-          Edit it like it&rsquo;s the web.
+          Start something today.
         </h1>
         <p style={styles.heroLede}>
           A real-time collaborative <code>.docx</code> editor that runs in the browser.
-          Pick a template to start, or drop in your own document.
+          Pick a template designed for the way you actually work — or open a file from
+          your computer.
         </p>
       </section>
 
-      <section style={styles.inner}>
-        <div style={styles.sectionHeader}>
-          <div style={styles.sectionLabel}>Start a new document</div>
-          <div style={styles.sectionSub}>{TEMPLATES.length} templates · or open your own</div>
+      <section style={styles.controls}>
+        <label style={styles.searchWrap}>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: 18, color: COLORS.inkSubtle }}
+            aria-hidden="true"
+          >
+            search
+          </span>
+          <input
+            type="search"
+            placeholder="Search templates"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={styles.searchInput}
+            data-testid="home-search"
+          />
+        </label>
+        <button
+          type="button"
+          style={styles.openFileBtn}
+          onClick={() => fileInputRef.current?.click()}
+          onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.brandHover)}
+          onMouseLeave={(e) => (e.currentTarget.style.background = COLORS.ink)}
+          data-testid="home-open-from-disk"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">
+            folder_open
+          </span>
+          Open file
+        </button>
+        <div style={styles.pillRow} role="group" aria-label="Filter by category">
+          {(['All', ...CATEGORIES] as CategoryFilter[]).map((c) => {
+            const active = category === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                style={{ ...styles.pill, ...(active ? styles.pillActive : null) }}
+                onClick={() => setCategory(c)}
+                data-testid={`home-category-${c.toLowerCase()}`}
+                aria-pressed={active}
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
-        <div style={styles.grid}>
-          {TEMPLATES.map((entry) => (
-            <TemplateCard key={entry.id} entry={entry} onSelect={onSelectTemplate} />
-          ))}
-          <OpenFromDiskCard onPick={() => fileInputRef.current?.click()} />
-        </div>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".docx"
-          style={styles.hiddenInput}
-          onChange={handleFileChange}
-          data-testid="home-file-input"
-        />
       </section>
 
+      {!isFiltered && (
+        <section style={styles.section}>
+          <div style={styles.sectionHead}>
+            <h2 style={styles.sectionTitle}>Featured</h2>
+            <span style={styles.sectionHint}>A few picks to get going.</span>
+          </div>
+          <div style={styles.featuredRow}>
+            {featured.map((t) => (
+              <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isFiltered ? (
+        <section style={styles.section}>
+          <div style={styles.sectionHead}>
+            <h2 style={styles.sectionTitle}>
+              {query.trim() ? `Results for “${query.trim()}”` : category}
+            </h2>
+            <span style={styles.sectionHint}>
+              {filtered.length} template{filtered.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          {filtered.length === 0 ? (
+            <div style={styles.empty}>No templates match. Try a different keyword.</div>
+          ) : (
+            <div style={styles.grid}>
+              {filtered.map((t) => (
+                <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        CATEGORIES.map((cat) => {
+          const items = byCategory.get(cat) ?? [];
+          if (items.length === 0) return null;
+          return (
+            <section key={cat} style={styles.section}>
+              <div style={styles.sectionHead}>
+                <h2 style={styles.sectionTitle}>{cat}</h2>
+                <span style={styles.sectionHint}>
+                  {items.length} template{items.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div style={styles.grid}>
+                {items.map((t) => (
+                  <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} />
+                ))}
+              </div>
+            </section>
+          );
+        })
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".docx"
+        style={styles.hiddenInput}
+        onChange={handleFileChange}
+        data-testid="home-file-input"
+      />
+
       <footer style={styles.footer}>
-        <span>MIT-licensed fork of eigenpal/docx-editor · stateless real-time backend in Go</span>
-        <span>
-          <a
-            href="https://github.com/schnsrw/docx"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: COLORS.inkMuted, textDecoration: 'none' }}
-          >
-            schnsrw/docx
-          </a>
-        </span>
+        <span>MIT fork of eigenpal/docx-editor · stateless real-time backend in Go</span>
+        <a
+          href="https://github.com/schnsrw/docx"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: COLORS.inkMuted, textDecoration: 'none' }}
+        >
+          schnsrw/docx
+        </a>
       </footer>
     </div>
   );

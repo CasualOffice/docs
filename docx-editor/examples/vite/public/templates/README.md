@@ -1,70 +1,58 @@
 # Home-page templates
 
-`.docx` files that back the template gallery on the Casual Editor
-home page (`examples/vite/src/Home.tsx`). All current entries are
-synthesized programmatically by `scripts/make-home-templates.mjs` —
-re-run that script if you change the content.
+`.docx` files + PNG thumbnails that back the Casual Editor home-page
+template gallery (`examples/vite/src/Home.tsx`).
 
-## Files in this directory
+## Two-step pipeline
 
-| File                          | What it is                                                       |
-| ----------------------------- | ---------------------------------------------------------------- |
-| `resume.docx`                 | Single-column résumé with experience and skills.                 |
-| `letter.docx`                 | Formal letter with sender block, salutation, body, closing.      |
-| `meeting-notes.docx`          | Agenda, discussion, action items, next-meeting block.            |
-| `project-proposal.docx`       | Executive summary, objectives, approach, milestones table.       |
-| `thumbs/<id>.svg`             | 200×140 SVG mockup shown on the home-page card.                  |
+1. **Generate the .docx files** — `bun scripts/make-home-templates.mjs`
+   builds every template from a small `h / p / r / bullet / numbered /
+   table` DSL and writes the `.docx` here.
+2. **Render the PNG thumbnails** — `bun scripts/make-template-thumbs.mjs`
+   shells out to LibreOffice (`soffice --headless --convert-to png`)
+   to render each `.docx`'s first page into `thumbs/<id>.png`. Real
+   rendered previews, the same way Google Docs does it — users see
+   the actual layout before picking.
 
-The Blank and Sample cards don't have files here — Blank uses the
-in-memory `createEmptyDocument()` and Sample reads `/sample.docx`
-from the parent `public/` directory.
+Re-run both scripts after edits. The first regenerates the document
+content; the second regenerates the thumbnail to match.
+
+## What lives where
+
+| Path                          | What it is                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| `<id>.docx`                   | The actual template (fetched on click, parsed by the editor).              |
+| `thumbs/<id>.png`             | First-page rendered preview (~817×1057, ~100 KB each).                     |
+| `thumbs/blank.svg`            | Hand-drawn — Blank has no .docx so there's nothing to render.              |
+
+`sample.docx` lives at `examples/vite/public/sample.docx` (root) so the
+URL stays `/sample.docx` for back-compat; its thumbnail is here.
 
 ## Adding a new template
 
-There are two paths:
-
-**A. Add via the generator script (recommended for simple templates):**
-
 1. Open `scripts/make-home-templates.mjs`. Define a new body via the
-   `h` / `p` / `r` / `bullet` / `numbered` / `table` helpers.
-2. Add a `writeDocx(..., NEW_BODY)` call at the bottom of the script.
-3. Add a matching SVG thumbnail to `public/templates/thumbs/`.
-4. Push an entry into `examples/vite/src/templates/manifest.ts`.
-5. Run `bun scripts/make-home-templates.mjs` to regenerate.
+   DSL helpers; add a `writeDocx(..., NEW_BODY)` line at the bottom.
+2. Push an entry into `examples/vite/src/templates/manifest.ts` —
+   pick a `category` (`Personal | Work | Education | Career`), an
+   `icon` from Material Symbols Outlined, and set `featured: true`
+   if it should show in the hero strip.
+3. Run `bun scripts/make-home-templates.mjs` then
+   `bun scripts/make-template-thumbs.mjs`.
+4. Reload the editor.
 
-**B. Drop in a hand-authored .docx (recommended for complex Word output):**
+## Requirements
 
-1. Author the file in Microsoft Word and save as `.docx`. Real Word
-   output exercises styles, theme colors, and section properties in
-   ways the synthesized OOXML can't.
-2. Drop it into this directory.
-3. Add the manifest entry (`kind: 'docx', path: '/templates/<file>.docx'`).
-4. Add a matching SVG thumbnail.
+- LibreOffice for the thumbnail step:
+  `brew install --cask libreoffice` (macOS) or
+  `apt-get install libreoffice` (Linux).
+- The CI workflow doesn't re-render thumbnails — they're committed.
 
-## Card metadata (in `manifest.ts`)
+## Why LibreOffice and not the editor itself?
 
-| Field             | What it does                                                                            |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `id`              | Stable identifier; used as the `data-testid` on the card (`template-card-<id>`).        |
-| `name`            | Card title.                                                                             |
-| `description`     | One-line subtitle.                                                                      |
-| `icon`            | Material Symbols Outlined glyph name — see https://fonts.google.com/icons.              |
-| `accent`          | Soft pastel background for the icon panel.                                              |
-| `source`          | `synthesized` (in-memory), `docx` (fetched), or `coming-soon` (disabled).               |
-| `thumbnail`       | Path to the per-template SVG mockup in `public/templates/thumbs/`.                      |
-| `defaultFileName` | What the title-bar shows after the template lands in the editor.                        |
-
-## Where the file is served from
-
-Anything in `examples/vite/public/` is served at the root in dev and
-prod. So `public/templates/resume.docx` is fetched as `/templates/resume.docx`.
-The `loadTemplate()` helper does the `fetch` + `arrayBuffer()` and
-hands the bytes to `<DocxEditor documentBuffer={…} />`.
-
-## Why not synthesize templates from the `Document` model?
-
-We can — `createEmptyDocument()` is exactly that — but real Word
-output exercises styles, theme colors, multi-section breaks, list
-numbering definitions, etc. in ways that synthetic builders don't.
-Templates double as a fidelity-test corpus, so we prefer real `.docx`
-authored by Word.
+Two reasons. (1) LibreOffice is already on the CI box for the
+fidelity-comparison harness (`scripts/compare-fidelity.mjs`), so no
+new dependency. (2) Rendering through the editor would require
+spinning up Playwright + a dev server per template — slower and more
+moving parts. The trade-off is that thumbnails don't quite match the
+in-editor render, but they read clearly enough that users can pick
+the right template at a glance.

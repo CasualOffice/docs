@@ -13,7 +13,6 @@ export type LoadedTemplate =
  *
  * - 'synthesized' → in-memory Document (no network).
  * - 'docx' → fetched ArrayBuffer (the editor parses it on mount).
- * - 'coming-soon' → throws; callers should not invoke for disabled cards.
  */
 export async function loadTemplate(entry: TemplateEntry): Promise<LoadedTemplate> {
   if (entry.source.kind === 'synthesized') {
@@ -23,16 +22,13 @@ export async function loadTemplate(entry: TemplateEntry): Promise<LoadedTemplate
       fileName: entry.defaultFileName,
     };
   }
-  if (entry.source.kind === 'docx') {
-    const res = await fetch(entry.source.path);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch ${entry.source.path}: HTTP ${res.status}`);
-    }
-    return {
-      kind: 'buffer',
-      buffer: await res.arrayBuffer(),
-      fileName: entry.defaultFileName,
-    };
+  const res = await fetch(entry.source.path);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${entry.source.path}: HTTP ${res.status}`);
   }
-  throw new Error(`Template "${entry.id}" is not available yet.`);
+  return {
+    kind: 'buffer',
+    buffer: await res.arrayBuffer(),
+    fileName: entry.defaultFileName,
+  };
 }
