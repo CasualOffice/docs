@@ -46,7 +46,9 @@ export function TrackedChangeCard({
             {authorName}
           </div>
           {change.date && (
-            <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>{formatDate(change.date)}</div>
+            <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
+              {formatDate(change.date)}
+            </div>
           )}
         </div>
         {isExpanded && (

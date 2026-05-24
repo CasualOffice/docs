@@ -52,7 +52,9 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
               >
                 {reply.author || t('comments.unknown')}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>{formatDate(reply.date)}</div>
+              <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
+                {formatDate(reply.date)}
+              </div>
             </div>
           </div>
           <div
