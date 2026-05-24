@@ -52,7 +52,7 @@ const dialogStyle: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   borderRadius: 8,
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 360,
+  minWidth: 'min(360px, calc(100vw - 32px))',
   maxWidth: 440,
   width: '100%',
   margin: 20,
@@ -165,6 +165,7 @@ export function TablePropertiesDialog({
         style={dialogStyle}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-label={t('dialogs.tableProperties.title')}
       >
         <div style={headerStyle}>{t('dialogs.tableProperties.title')}</div>

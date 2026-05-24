@@ -91,6 +91,7 @@ export function CommentCard({
                 }
               }}
               title={comment.done ? t('comments.reopen') : t('comments.resolve')}
+              aria-label={comment.done ? t('comments.reopen') : t('comments.resolve')}
               style={ICON_BUTTON_STYLE}
             >
               <MaterialSymbol name={comment.done ? 'undo' : 'check'} size={20} />
@@ -101,6 +102,9 @@ export function CommentCard({
                 setMenuOpen(!menuOpen);
               }}
               title={t('comments.moreOptions')}
+              aria-label={t('comments.moreOptions')}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
               style={ICON_BUTTON_STYLE}
             >
               <MaterialSymbol name="more_vert" size={20} />

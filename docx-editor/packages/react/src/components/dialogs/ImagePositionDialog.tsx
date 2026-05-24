@@ -60,7 +60,7 @@ const dialogStyle: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   borderRadius: 8,
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 400,
+  minWidth: 'min(400px, calc(100vw - 32px))',
   maxWidth: 480,
   width: '100%',
   margin: 20,
@@ -235,6 +235,7 @@ export function ImagePositionDialog({
         style={dialogStyle}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-label={t('dialogs.imagePosition.title')}
       >
         <div style={headerStyle}>{t('dialogs.imagePosition.title')}</div>

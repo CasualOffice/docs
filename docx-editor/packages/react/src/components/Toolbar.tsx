@@ -30,6 +30,7 @@ import type { TableAction } from './ui/TableToolbar';
 import type { ListState } from './ui/ListButtons';
 import type { FontOption } from './ui/FontPicker';
 import { cn } from '../lib/utils';
+import { formatShortcut } from '../lib/platform';
 import { FormattingBar } from './FormattingBar';
 
 // ============================================================================
@@ -623,16 +624,19 @@ export function Toolbar({
           {
             icon: 'undo',
             label: 'Undo',
-            shortcut: '⌘Z',
-            onClick: onUndo ?? (() => handleFormat('bold')), // overridden below
-            disabled: !canUndo,
+            shortcut: formatShortcut('Ctrl+Z'),
+            // Disable when no handler is wired — previous fallback ran
+            // `handleFormat('bold')`, which silently bolded the selection
+            // when a host forgot to pass onUndo. Refuse to act instead.
+            onClick: onUndo ?? (() => undefined),
+            disabled: !canUndo || !onUndo,
           } as MenuEntry,
           {
             icon: 'redo',
             label: 'Redo',
-            shortcut: '⌘Y',
-            onClick: onRedo ?? (() => {}),
-            disabled: !canRedo,
+            shortcut: formatShortcut('Ctrl+Y'),
+            onClick: onRedo ?? (() => undefined),
+            disabled: !canRedo || !onRedo,
           } as MenuEntry,
           { type: 'separator' as const },
           ...(onOpenFind
@@ -640,7 +644,7 @@ export function Toolbar({
                 {
                   icon: 'search',
                   label: 'Find',
-                  shortcut: '⌘F',
+                  shortcut: formatShortcut('Ctrl+F'),
                   onClick: onOpenFind,
                 } as MenuEntry,
               ]
@@ -650,7 +654,7 @@ export function Toolbar({
                 {
                   icon: 'find_replace',
                   label: 'Find and Replace',
-                  shortcut: '⌘H',
+                  shortcut: formatShortcut('Ctrl+H'),
                   onClick: onOpenFindReplace,
                 } as MenuEntry,
               ]
@@ -659,7 +663,7 @@ export function Toolbar({
           {
             icon: 'select_all',
             label: 'Select All',
-            shortcut: '⌘A',
+            shortcut: formatShortcut('Ctrl+A'),
             onClick: () => handleFormat('selectAll'),
           } as MenuEntry,
           ...(onToggleSpellCheck
@@ -682,17 +686,17 @@ export function Toolbar({
         items={[
           {
             label: `${currentFormatting?.bold ? '✓ ' : ''}Bold`,
-            shortcut: '⌘B',
+            shortcut: formatShortcut('Ctrl+B'),
             onClick: () => handleFormat('bold'),
           } as MenuEntry,
           {
             label: `${currentFormatting?.italic ? '✓ ' : ''}Italic`,
-            shortcut: '⌘I',
+            shortcut: formatShortcut('Ctrl+I'),
             onClick: () => handleFormat('italic'),
           } as MenuEntry,
           {
             label: `${currentFormatting?.underline ? '✓ ' : ''}Underline`,
-            shortcut: '⌘U',
+            shortcut: formatShortcut('Ctrl+U'),
             onClick: () => handleFormat('underline'),
           } as MenuEntry,
           {

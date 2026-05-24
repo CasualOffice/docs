@@ -70,7 +70,7 @@ const DIALOG_CONTENT_STYLE: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   borderRadius: '8px',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: '450px',
+  minWidth: 'min(450px, calc(100vw - 32px))',
   maxWidth: '550px',
   width: '100%',
   margin: '20px',

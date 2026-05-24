@@ -518,25 +518,11 @@ const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
 // HELPER FUNCTIONS
 // ============================================================================
 
-/**
- * Detect if running on Mac
- */
-function isMac(): boolean {
-  return typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-}
+import { formatShortcut } from '../../lib/platform';
 
-/**
- * Format key combination for current platform
- */
-function formatKeys(keys: string): string {
-  if (isMac()) {
-    return keys
-      .replace(/Ctrl\+/g, '\u2318')
-      .replace(/Alt\+/g, '\u2325')
-      .replace(/Shift\+/g, '\u21E7');
-  }
-  return keys;
-}
+// Re-export so existing callers keep working; the canonical helper lives
+// in lib/platform.ts and is used by Toolbar.tsx as well.
+const formatKeys = formatShortcut;
 
 // ============================================================================
 // SHORTCUT ITEM COMPONENT
@@ -780,6 +766,7 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
           overflow: 'hidden',
         }}
         role="dialog"
+        aria-modal="true"
         aria-label={t('dialogs.keyboardShortcuts.ariaLabel')}
       >
         {/* Header */}

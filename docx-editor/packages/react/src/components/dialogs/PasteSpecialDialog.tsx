@@ -387,6 +387,7 @@ export const PasteSpecialDialog: React.FC<PasteSpecialDialogProps> = ({
       className={`docx-paste-special-dialog ${className}`}
       style={getDialogStyle()}
       role="dialog"
+      aria-modal="true"
       aria-label={t('dialogs.pasteSpecial.title')}
     >
       {/* Header */}
