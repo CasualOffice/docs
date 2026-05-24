@@ -38,6 +38,8 @@ export {
   getChangedParagraphIds,
   hasStructuralChanges,
   hasUntrackedChanges,
+  getChangedBlockTypes,
+  hasNonParagraphBlockChanges,
   clearTrackedChanges,
 } from './features/ParagraphChangeTrackerExtension';
 export {

@@ -29,7 +29,37 @@ export interface ParagraphChangeTrackerState {
   hasUntrackedChanges: boolean;
   /** Cached paragraph count to avoid full doc traversal on every transaction */
   paragraphCount: number;
+  /**
+   * Block-level node-type names that changed in this transaction sequence,
+   * excluding `paragraph` (which goes through `changedParaIds`). Captures
+   * `textBox`, `image`, `shape`, `table`, etc. so consumers that key
+   * selective-save / autosave on `changedParaIds` know a drawing was
+   * touched and force a full re-serialise. Without this, a transaction
+   * that only inserts/moves an image lands with an empty `changedParaIds`
+   * set and the .docx round-trip silently drops the new node.
+   */
+  changedBlockTypes: Set<string>;
 }
+
+/**
+ * Block-level ProseMirror node types that aren't tracked via paraId but
+ * still need to surface as edits. Keep this list aligned with the
+ * block-group nodes in `StarterKit.ts`. `paragraph` is intentionally
+ * excluded — it has its own paraId-based path.
+ */
+const NON_PARAGRAPH_BLOCK_TYPES = new Set([
+  'textBox',
+  'image',
+  'shape',
+  'table',
+  'tableRow',
+  'tableCell',
+  'horizontalRule',
+  'pageBreak',
+  'field',
+  'sdt',
+  'math',
+]);
 
 /**
  * Count paragraph nodes in a ProseMirror document
@@ -45,28 +75,37 @@ function countParagraphs(doc: EditorState['doc']): number {
 }
 
 /**
- * Collect paraIds of all paragraphs that overlap with the given range
+ * Collect paraIds of all paragraphs that overlap with the given range,
+ * plus the names of any non-paragraph block-level nodes touched
+ * (textBox / image / shape / table / …). Drawings live in the block
+ * group but have no paraId, so they need their own bucket — otherwise
+ * a drawing-only transaction returns an empty paraId set and the
+ * selective-save pipeline drops the change.
  */
 function collectAffectedParaIds(
   doc: EditorState['doc'],
   from: number,
   to: number
-): { ids: Set<string>; hasUntracked: boolean } {
+): { ids: Set<string>; hasUntracked: boolean; blockTypes: Set<string> } {
   const ids = new Set<string>();
+  const blockTypes = new Set<string>();
   let hasUntracked = false;
 
   doc.nodesBetween(from, to, (node) => {
-    if (node.type.name === 'paragraph') {
+    const name = node.type.name;
+    if (name === 'paragraph') {
       const paraId = node.attrs.paraId as string | undefined | null;
       if (paraId) {
         ids.add(paraId);
       } else {
         hasUntracked = true;
       }
+    } else if (NON_PARAGRAPH_BLOCK_TYPES.has(name)) {
+      blockTypes.add(name);
     }
   });
 
-  return { ids, hasUntracked };
+  return { ids, hasUntracked, blockTypes };
 }
 
 /**
@@ -78,12 +117,12 @@ function collectAffectedParaIdsFromMarkLikeStep(
   doc: EditorState['doc'],
   from: number,
   to: number
-): { ids: Set<string>; hasUntracked: boolean } {
+): { ids: Set<string>; hasUntracked: boolean; blockTypes: Set<string> } {
   const lo = Math.min(from, to);
   const hi = Math.max(from, to);
   const end = hi > lo ? hi : lo + 1;
   const primary = collectAffectedParaIds(doc, lo, end);
-  if (primary.ids.size > 0 || primary.hasUntracked) {
+  if (primary.ids.size > 0 || primary.hasUntracked || primary.blockTypes.size > 0) {
     return primary;
   }
   // Collapsed range (e.g. empty paragraph): walk up to enclosing paragraph
@@ -94,15 +133,15 @@ function collectAffectedParaIdsFromMarkLikeStep(
       if (n.type.name === 'paragraph') {
         const paraId = n.attrs.paraId as string | undefined | null;
         if (paraId) {
-          return { ids: new Set([paraId]), hasUntracked: false };
+          return { ids: new Set([paraId]), hasUntracked: false, blockTypes: new Set() };
         }
-        return { ids: new Set(), hasUntracked: true };
+        return { ids: new Set(), hasUntracked: true, blockTypes: new Set() };
       }
     }
   } catch {
     // ignore
   }
-  return { ids: new Set(), hasUntracked: false };
+  return { ids: new Set(), hasUntracked: false, blockTypes: new Set() };
 }
 
 function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerState> {
@@ -115,6 +154,7 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
           structuralChange: false,
           hasUntrackedChanges: false,
           paragraphCount: countParagraphs(state.doc),
+          changedBlockTypes: new Set(),
         };
       },
       apply(tr: Transaction, prevState: ParagraphChangeTrackerState): ParagraphChangeTrackerState {
@@ -125,6 +165,7 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
             structuralChange: false,
             hasUntrackedChanges: false,
             paragraphCount: prevState.paragraphCount,
+            changedBlockTypes: new Set(),
           };
         }
 
@@ -142,6 +183,7 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
           structuralChange: prevState.structuralChange,
           hasUntrackedChanges: prevState.hasUntrackedChanges,
           paragraphCount: newCount,
+          changedBlockTypes: new Set(prevState.changedBlockTypes),
         };
 
         // Check for structural changes (paragraph count changed)
@@ -169,9 +211,16 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
               // Range fully covered by a later deletion; nothing to track.
               continue;
             }
-            const { ids, hasUntracked } = collectAffectedParaIdsFromMarkLikeStep(tr.doc, from, to);
+            const { ids, hasUntracked, blockTypes } = collectAffectedParaIdsFromMarkLikeStep(
+              tr.doc,
+              from,
+              to
+            );
             for (const id of ids) {
               newState.changedParaIds.add(id);
+            }
+            for (const t of blockTypes) {
+              newState.changedBlockTypes.add(t);
             }
             if (hasUntracked) {
               newState.hasUntrackedChanges = true;
@@ -187,9 +236,12 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
               continue;
             }
             const end = pos + node.nodeSize;
-            const { ids, hasUntracked } = collectAffectedParaIds(tr.doc, pos, end);
+            const { ids, hasUntracked, blockTypes } = collectAffectedParaIds(tr.doc, pos, end);
             for (const id of ids) {
               newState.changedParaIds.add(id);
+            }
+            for (const t of blockTypes) {
+              newState.changedBlockTypes.add(t);
             }
             if (hasUntracked) {
               newState.hasUntrackedChanges = true;
@@ -200,16 +252,32 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
           // ReplaceStep / ReplaceAroundStep emit (newStart, newEnd) coords
           // in the doc *after this step*. Remap those forward to `tr.doc`.
           const stepMap = step.getMap();
-          stepMap.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+          stepMap.forEach((oldStart, oldEnd, newStart, newEnd) => {
             const from = remap.map(newStart, 1);
             const to = remap.map(newEnd, -1);
-            if (to < from) return;
-            const { ids, hasUntracked } = collectAffectedParaIds(tr.doc, from, to);
-            for (const id of ids) {
-              newState.changedParaIds.add(id);
+            if (to >= from) {
+              const { ids, hasUntracked, blockTypes } = collectAffectedParaIds(tr.doc, from, to);
+              for (const id of ids) {
+                newState.changedParaIds.add(id);
+              }
+              for (const t of blockTypes) {
+                newState.changedBlockTypes.add(t);
+              }
+              if (hasUntracked) {
+                newState.hasUntrackedChanges = true;
+              }
             }
-            if (hasUntracked) {
-              newState.hasUntrackedChanges = true;
+
+            // Also walk tr.before in the pre-step range to catch
+            // deletions. A drawing-only delete (image removed) doesn't
+            // touch any paragraph; the post-step walk above sees an
+            // empty range and the change would be invisible to the
+            // selective-save signal without this second pass.
+            if (oldEnd > oldStart) {
+              const beforeWalk = collectAffectedParaIds(tr.before, oldStart, oldEnd);
+              for (const t of beforeWalk.blockTypes) {
+                newState.changedBlockTypes.add(t);
+              }
             }
           });
         }
@@ -248,6 +316,33 @@ export function hasStructuralChanges(state: EditorState): boolean {
 export function hasUntrackedChanges(state: EditorState): boolean {
   const trackerState = getChangeTrackerState(state);
   return trackerState?.hasUntrackedChanges ?? false;
+}
+
+/**
+ * Get the set of non-paragraph block-level node types that changed.
+ * Returns names like `textBox`, `image`, `shape`, `table`, etc.
+ *
+ * Selective save / autosave pipelines that previously keyed only on
+ * `changedParaIds` were silently dropping drawing edits — a transaction
+ * that inserts an image touches no paragraphs and produced an empty
+ * paraId set. Use this getter (or `hasNonParagraphBlockChanges`) to
+ * force a full re-serialise when a drawing changed.
+ */
+export function getChangedBlockTypes(state: EditorState): Set<string> {
+  return getChangeTrackerState(state)?.changedBlockTypes ?? new Set();
+}
+
+/**
+ * True if any block-level node other than a paragraph changed in the
+ * tracked window. Drawings (textBox, image, shape), tables, page-breaks,
+ * structured document tags, math nodes, etc. all surface here.
+ *
+ * Recommended use: combine with `getChangedParagraphIds` to decide
+ * "selective save (only paragraphs)" vs "full save (drawings touched)".
+ */
+export function hasNonParagraphBlockChanges(state: EditorState): boolean {
+  const trackerState = getChangeTrackerState(state);
+  return (trackerState?.changedBlockTypes.size ?? 0) > 0;
 }
 
 /**

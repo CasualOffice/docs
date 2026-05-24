@@ -250,6 +250,7 @@ import {
   getChangedParagraphIds,
   hasStructuralChanges,
   hasUntrackedChanges,
+  hasNonParagraphBlockChanges,
   clearTrackedChanges,
 } from '@eigenpal/docx-core/prosemirror/extensions';
 
@@ -3969,11 +3970,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           // which selective save can't handle since the affected paragraphs may not
           // be in changedParaIds)
           const hasInjectedReplies = comments.some((c) => c.parentId != null);
+          // Non-paragraph block changes (textBox / image / shape / table)
+          // bypass the paraId-keyed selective path entirely — the
+          // changed paraId set is empty for a drawing-only transaction
+          // and the round-trip would silently drop the new node. Treat
+          // them as untracked so the serializer falls back to a full
+          // re-pack. See ParagraphChangeTrackerExtension for the source
+          // of this signal.
           selectiveOptions = {
             selective: {
               changedParaIds: getChangedParagraphIds(editorState),
               structuralChange: hasStructuralChanges(editorState) || hasInjectedReplies,
-              hasUntrackedChanges: hasUntrackedChanges(editorState),
+              hasUntrackedChanges:
+                hasUntrackedChanges(editorState) || hasNonParagraphBlockChanges(editorState),
             },
           };
         }
