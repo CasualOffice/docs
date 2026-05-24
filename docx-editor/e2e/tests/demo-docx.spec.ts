@@ -92,23 +92,22 @@ test.describe('Demo.docx - Title Formatting', () => {
   });
 
   test('title has theme color', async ({ page }) => {
-    const titleColor = await page.evaluate(() => {
-      const el = document.evaluate(
-        "//*[contains(text(), 'Demonstration of DOCX support')]",
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null
-      ).singleNodeValue as HTMLElement;
-      if (el) {
-        return window.getComputedStyle(el).color;
-      }
-      return null;
-    });
-
-    // Title should have a dark blue color (theme text2 with shade)
-    // The exact color depends on theme resolution, but it should be blue-ish
-    expect(titleColor).toBeTruthy();
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const el = document.evaluate(
+              "//*[contains(text(), 'Demonstration of DOCX support')]",
+              document,
+              null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null
+            ).singleNodeValue as HTMLElement | null;
+            return el ? window.getComputedStyle(el).color : null;
+          }),
+        { timeout: 5000 }
+      )
+      .toBeTruthy();
   });
 
   test('title has bottom border (horizontal rule)', async ({ page }) => {
@@ -153,53 +152,61 @@ test.describe('Demo.docx - Inline Text Formatting', () => {
   });
 
   test('renders underlined text', async ({ page }) => {
-    const hasUnderline = await page.evaluate(() => {
-      const walker = document.createTreeWalker(
-        document.querySelector('.ProseMirror') || document.body,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-      while (walker.nextNode()) {
-        if (walker.currentNode.textContent?.includes('underlined')) {
-          let el = walker.currentNode.parentElement;
-          while (el) {
-            const style = window.getComputedStyle(el);
-            if (style.textDecorationLine.includes('underline')) {
-              return true;
+    // Poll instead of one-shot evaluate — loadDocxFile() resolves before
+    // the painter has had a chance to mount all the inline marks, so an
+    // immediate walker can miss the styled run. expect.poll re-runs the
+    // walker until the underline is present or the timeout hits.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const walker = document.createTreeWalker(
+              document.querySelector('.ProseMirror') || document.body,
+              NodeFilter.SHOW_TEXT,
+              null
+            );
+            while (walker.nextNode()) {
+              if (walker.currentNode.textContent?.includes('underlined')) {
+                let el = walker.currentNode.parentElement;
+                while (el) {
+                  const style = window.getComputedStyle(el);
+                  if (style.textDecorationLine.includes('underline')) return true;
+                  el = el.parentElement;
+                }
+              }
             }
-            el = el.parentElement;
-          }
-        }
-      }
-      return false;
-    });
-
-    expect(hasUnderline).toBe(true);
+            return false;
+          }),
+        { timeout: 5000 }
+      )
+      .toBe(true);
   });
 
   test('renders strikethrough text', async ({ page }) => {
-    const hasStrike = await page.evaluate(() => {
-      const walker = document.createTreeWalker(
-        document.querySelector('.ProseMirror') || document.body,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-      while (walker.nextNode()) {
-        if (walker.currentNode.textContent?.includes('struck out')) {
-          let el = walker.currentNode.parentElement;
-          while (el) {
-            const style = window.getComputedStyle(el);
-            if (style.textDecorationLine.includes('line-through')) {
-              return true;
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const walker = document.createTreeWalker(
+              document.querySelector('.ProseMirror') || document.body,
+              NodeFilter.SHOW_TEXT,
+              null
+            );
+            while (walker.nextNode()) {
+              if (walker.currentNode.textContent?.includes('struck out')) {
+                let el = walker.currentNode.parentElement;
+                while (el) {
+                  const style = window.getComputedStyle(el);
+                  if (style.textDecorationLine.includes('line-through')) return true;
+                  el = el.parentElement;
+                }
+              }
             }
-            el = el.parentElement;
-          }
-        }
-      }
-      return false;
-    });
-
-    expect(hasStrike).toBe(true);
+            return false;
+          }),
+        { timeout: 5000 }
+      )
+      .toBe(true);
   });
 
   test('renders superscript text', async ({ page }) => {
@@ -213,34 +220,34 @@ test.describe('Demo.docx - Inline Text Formatting', () => {
   });
 
   test('renders red colored text', async ({ page }) => {
-    const hasRedText = await page.evaluate(() => {
-      const walker = document.createTreeWalker(
-        document.querySelector('.ProseMirror') || document.body,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-      while (walker.nextNode()) {
-        if (walker.currentNode.textContent?.trim() === 'red') {
-          let el = walker.currentNode.parentElement;
-          while (el) {
-            const style = window.getComputedStyle(el);
-            const color = style.color;
-            // Red should have high R value, low G and B
-            const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-            if (match) {
-              const [, r, g, b] = match.map(Number);
-              if (r > 200 && g < 100 && b < 100) {
-                return true;
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const walker = document.createTreeWalker(
+              document.querySelector('.ProseMirror') || document.body,
+              NodeFilter.SHOW_TEXT,
+              null
+            );
+            while (walker.nextNode()) {
+              if (walker.currentNode.textContent?.trim() === 'red') {
+                let el = walker.currentNode.parentElement;
+                while (el) {
+                  const style = window.getComputedStyle(el);
+                  const match = style.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                  if (match) {
+                    const [, r, g, b] = match.map(Number);
+                    if (r > 200 && g < 100 && b < 100) return true;
+                  }
+                  el = el.parentElement;
+                }
               }
             }
-            el = el.parentElement;
-          }
-        }
-      }
-      return false;
-    });
-
-    expect(hasRedText).toBe(true);
+            return false;
+          }),
+        { timeout: 5000 }
+      )
+      .toBe(true);
   });
 
   test('renders yellow highlighted text', async ({ page }) => {
@@ -400,9 +407,11 @@ test.describe('Demo.docx - Images', () => {
   });
 
   test('renders images', async ({ page }) => {
-    // The demo document contains several images
-    const imageCount = await page.locator('.ProseMirror img').count();
-    expect(imageCount).toBeGreaterThan(0);
+    // The demo document contains several images. Poll the count rather
+    // than reading once — image decoding lags the initial paint.
+    await expect.poll(async () => page.locator('.ProseMirror img').count(), {
+      timeout: 5000,
+    }).toBeGreaterThan(0);
   });
 
   test('images have src attribute', async ({ page }) => {
@@ -441,22 +450,25 @@ test.describe('Demo.docx - Paragraph Formatting', () => {
   });
 
   test('renders right-aligned paragraph with background', async ({ page }) => {
-    // The "Paragraph level formatting" section has a right-aligned gray paragraph
-    const rightAlignedPara = await page.evaluate(() => {
-      const paras = document.querySelectorAll('.ProseMirror p');
-      for (const p of paras) {
-        const style = window.getComputedStyle(p);
-        if (style.textAlign === 'right' && p.textContent?.includes('crazy things')) {
-          return {
-            textAlign: style.textAlign,
-            backgroundColor: style.backgroundColor,
-          };
-        }
-      }
-      return null;
-    });
-
-    expect(rightAlignedPara?.textAlign).toBe('right');
+    // The "Paragraph level formatting" section has a right-aligned gray
+    // paragraph containing "crazy things". Poll until the paragraph is
+    // mounted with its alignment style applied.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const paras = document.querySelectorAll('.ProseMirror p');
+            for (const p of paras) {
+              const style = window.getComputedStyle(p);
+              if (style.textAlign === 'right' && p.textContent?.includes('crazy things')) {
+                return style.textAlign;
+              }
+            }
+            return null;
+          }),
+        { timeout: 5000 }
+      )
+      .toBe('right');
   });
 
   test('renders heading styles with proper colors', async ({ page }) => {
