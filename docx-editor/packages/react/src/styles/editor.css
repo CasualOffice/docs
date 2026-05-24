@@ -782,3 +782,32 @@
   user-select: none;
   pointer-events: none;
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Mobile (≤ 720px) — the layout-painter renders every .layout-page at
+   its full intrinsic width (816 px for US Letter) and only applies the
+   user's zoom level via a CSS scale transform. CSS scale does not
+   shrink the layout box, so the editor's intrinsic content width is
+   still 816 px even on a 390 px viewport. Without these rules the
+   editor expands its parent flex children to ~1000 px, the document
+   page shifts off-screen to the right, and the menu/toolbar rows
+   horizontally overflow the whole layout instead of just themselves.
+   Clipping at the .paged-editor boundary plus a hard max-width keeps
+   the visual page within the visible viewport; horizontal scroll on
+   the title/menu/toolbar rows handles their own overflow without
+   widening the layout.
+   ───────────────────────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .ep-root.paged-editor {
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+  /* Older Safari versions don't recognise `overflow-x: clip` — fall back
+     to `hidden`. The reflow penalty is negligible at the editor root. */
+  @supports not (overflow-x: clip) {
+    .ep-root.paged-editor {
+      overflow-x: hidden;
+    }
+  }
+}
+

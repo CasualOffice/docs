@@ -1,10 +1,26 @@
-import React, { useMemo, useRef, useState, type CSSProperties } from 'react';
+import React, { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   CATEGORIES,
   TEMPLATES,
   type TemplateCategory,
   type TemplateEntry,
 } from './templates/manifest';
+
+/** Track viewport breakpoint. <720 = phone (single-col controls,
+ *  2-col card grid, reduced padding, smaller hero). */
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() =>
+    typeof window === 'undefined' ? false : window.innerWidth < 720
+  );
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 719px)');
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
+    setMobile(mql.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return mobile;
+}
 
 interface HomeProps {
   onSelectTemplate: (entry: TemplateEntry) => void;
@@ -305,12 +321,39 @@ const styles: Record<string, CSSProperties> = {
   hiddenInput: { display: 'none' },
 };
 
+/** Per-element overrides applied when `useIsMobile()` returns true.
+ *  Keeps the desktop layout untouched and stacks/scales for phones. */
+const mobile: Record<string, CSSProperties> = {
+  topBar: { padding: '14px 16px' },
+  hero: { padding: '24px 16px 8px' },
+  heroTitle: { fontSize: '30px', letterSpacing: '-0.02em' },
+  heroLede: { fontSize: '15px', marginTop: '10px' },
+  controls: { padding: '20px 16px 4px', flexDirection: 'column', alignItems: 'stretch', gap: '10px' },
+  searchWrap: { minWidth: 0, flex: '1 1 auto', maxWidth: 'none' },
+  openFileBtn: { justifyContent: 'center' },
+  pillRow: { marginLeft: 0, overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: '4px' },
+  pill: { whiteSpace: 'nowrap', flex: '0 0 auto' },
+  inner: { padding: '12px 16px 40px' },
+  section: { padding: '12px 16px 4px' },
+  sectionHead: { margin: '12px 0 10px' },
+  featuredRow: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' },
+  grid: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' },
+  cardThumbWrap: { aspectRatio: '4 / 5' },
+  cardBody: { padding: '10px 12px 12px' },
+  cardTitle: { fontSize: '12.5px' },
+  cardCategory: { fontSize: '10.5px' },
+  cardIconBadge: { width: '24px', height: '24px', top: '6px', right: '6px' },
+  footer: { padding: '20px 16px 24px', flexDirection: 'column', gap: '6px', textAlign: 'center', alignItems: 'center' },
+};
+
 function TemplateCard({
   entry,
   onSelect,
+  isMobile,
 }: {
   entry: TemplateEntry;
   onSelect: (entry: TemplateEntry) => void;
+  isMobile: boolean;
 }): React.JSX.Element {
   const [hovered, setHovered] = useState(false);
   return (
@@ -325,7 +368,7 @@ function TemplateCard({
       data-testid={`template-card-${entry.id}`}
       aria-label={`${entry.name} — ${entry.category}`}
     >
-      <div style={styles.cardThumbWrap}>
+      <div style={{ ...styles.cardThumbWrap, ...(isMobile && mobile.cardThumbWrap) }}>
         <img
           src={entry.thumbnail}
           alt=""
@@ -334,15 +377,15 @@ function TemplateCard({
           loading="lazy"
           style={{ ...styles.cardThumb, ...(hovered ? styles.cardThumbHover : null) }}
         />
-        <span style={styles.cardIconBadge} aria-hidden="true">
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+        <span style={{ ...styles.cardIconBadge, ...(isMobile && mobile.cardIconBadge) }} aria-hidden="true">
+          <span className="material-symbols-outlined" style={{ fontSize: isMobile ? 14 : 16 }}>
             {entry.icon}
           </span>
         </span>
       </div>
-      <div style={styles.cardBody}>
-        <div style={styles.cardTitle}>{entry.name}</div>
-        <div style={styles.cardCategory}>{entry.category}</div>
+      <div style={{ ...styles.cardBody, ...(isMobile && mobile.cardBody) }}>
+        <div style={{ ...styles.cardTitle, ...(isMobile && mobile.cardTitle) }}>{entry.name}</div>
+        <div style={{ ...styles.cardCategory, ...(isMobile && mobile.cardCategory) }}>{entry.category}</div>
       </div>
     </button>
   );
@@ -352,6 +395,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
+  const isMobile = useIsMobile();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -386,7 +430,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
 
   return (
     <div style={styles.page} data-testid="home-page">
-      <header style={styles.topBar}>
+      <header style={{ ...styles.topBar, ...(isMobile && mobile.topBar) }}>
         <div style={styles.brandRow}>
           <img src="/logo.svg" alt="" style={styles.brandLogo} aria-hidden="true" />
           <div style={styles.brandName}>Casual Editor</div>
@@ -411,20 +455,20 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
         </div>
       </header>
 
-      <section style={styles.hero}>
+      <section style={{ ...styles.hero, ...(isMobile && mobile.hero) }}>
         <div style={styles.heroEyebrow}>Casual Editor</div>
-        <h1 style={styles.heroTitle}>
+        <h1 style={{ ...styles.heroTitle, ...(isMobile && mobile.heroTitle) }}>
           Start something today.
         </h1>
-        <p style={styles.heroLede}>
+        <p style={{ ...styles.heroLede, ...(isMobile && mobile.heroLede) }}>
           A real-time collaborative <code>.docx</code> editor that runs in the browser.
           Pick a template designed for the way you actually work — or open a file from
           your computer.
         </p>
       </section>
 
-      <section style={styles.controls}>
-        <label style={styles.searchWrap}>
+      <section style={{ ...styles.controls, ...(isMobile && mobile.controls) }}>
+        <label style={{ ...styles.searchWrap, ...(isMobile && mobile.searchWrap) }}>
           <span
             className="material-symbols-outlined"
             style={{ fontSize: 18, color: COLORS.inkSubtle }}
@@ -443,7 +487,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
         </label>
         <button
           type="button"
-          style={styles.openFileBtn}
+          style={{ ...styles.openFileBtn, ...(isMobile && mobile.openFileBtn) }}
           onClick={() => fileInputRef.current?.click()}
           onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.brandHover)}
           onMouseLeave={(e) => (e.currentTarget.style.background = COLORS.ink)}
@@ -454,14 +498,14 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           </span>
           Open file
         </button>
-        <div style={styles.pillRow} role="group" aria-label="Filter by category">
+        <div style={{ ...styles.pillRow, ...(isMobile && mobile.pillRow) }} role="group" aria-label="Filter by category">
           {(['All', ...CATEGORIES] as CategoryFilter[]).map((c) => {
             const active = category === c;
             return (
               <button
                 key={c}
                 type="button"
-                style={{ ...styles.pill, ...(active ? styles.pillActive : null) }}
+                style={{ ...styles.pill, ...(isMobile && mobile.pill), ...(active ? styles.pillActive : null) }}
                 onClick={() => setCategory(c)}
                 data-testid={`home-category-${c.toLowerCase()}`}
                 aria-pressed={active}
@@ -474,22 +518,22 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
       </section>
 
       {!isFiltered && (
-        <section style={styles.section}>
-          <div style={styles.sectionHead}>
+        <section style={{ ...styles.section, ...(isMobile && mobile.section) }}>
+          <div style={{ ...styles.sectionHead, ...(isMobile && mobile.sectionHead) }}>
             <h2 style={styles.sectionTitle}>Featured</h2>
             <span style={styles.sectionHint}>A few picks to get going.</span>
           </div>
-          <div style={styles.featuredRow}>
+          <div style={{ ...styles.featuredRow, ...(isMobile && mobile.featuredRow) }}>
             {featured.map((t) => (
-              <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} />
+              <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} isMobile={isMobile} />
             ))}
           </div>
         </section>
       )}
 
       {isFiltered ? (
-        <section style={styles.section}>
-          <div style={styles.sectionHead}>
+        <section style={{ ...styles.section, ...(isMobile && mobile.section) }}>
+          <div style={{ ...styles.sectionHead, ...(isMobile && mobile.sectionHead) }}>
             <h2 style={styles.sectionTitle}>
               {query.trim() ? `Results for “${query.trim()}”` : category}
             </h2>
@@ -500,9 +544,9 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           {filtered.length === 0 ? (
             <div style={styles.empty}>No templates match. Try a different keyword.</div>
           ) : (
-            <div style={styles.grid}>
+            <div style={{ ...styles.grid, ...(isMobile && mobile.grid) }}>
               {filtered.map((t) => (
-                <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} />
+                <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} isMobile={isMobile} />
               ))}
             </div>
           )}
@@ -512,16 +556,16 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           const items = byCategory.get(cat) ?? [];
           if (items.length === 0) return null;
           return (
-            <section key={cat} style={styles.section}>
-              <div style={styles.sectionHead}>
+            <section key={cat} style={{ ...styles.section, ...(isMobile && mobile.section) }}>
+              <div style={{ ...styles.sectionHead, ...(isMobile && mobile.sectionHead) }}>
                 <h2 style={styles.sectionTitle}>{cat}</h2>
                 <span style={styles.sectionHint}>
                   {items.length} template{items.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <div style={styles.grid}>
+              <div style={{ ...styles.grid, ...(isMobile && mobile.grid) }}>
                 {items.map((t) => (
-                  <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} />
+                  <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} isMobile={isMobile} />
                 ))}
               </div>
             </section>
@@ -538,7 +582,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
         data-testid="home-file-input"
       />
 
-      <footer style={styles.footer}>
+      <footer style={{ ...styles.footer, ...(isMobile && mobile.footer) }}>
         <span>MIT fork of eigenpal/docx-editor · stateless real-time backend in Go</span>
         <a
           href="https://github.com/schnsrw/docx"
