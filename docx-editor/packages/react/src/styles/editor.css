@@ -809,5 +809,38 @@
       overflow-x: hidden;
     }
   }
+
+  /* Touch-friendly tap targets — Apple HIG says 44×44 minimum.
+     The title-bar menu buttons (File / Edit / …) and the toolbar
+     buttons are inline-styled at 28–32 px on desktop, which is half
+     the touchable threshold. Bump everything in the chrome to ≥44 px
+     for mobile, using `!important` so the inline styles in the
+     component source files lose to the media query. Body content
+     (the paginated pages themselves) keeps its desktop sizing — the
+     user-zoom controls cover that case. */
+  [role="menubar"] button,
+  [data-testid="toolbar"] button,
+  [data-testid="editor-toolbar"] button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  /* The doc-name input is 20 px tall on desktop — give it room to
+     be tapped + show the cursor when renaming a doc on touch. */
+  [data-testid="title-bar"] input[type="text"] {
+    min-height: 36px !important;
+    font-size: 16px !important; /* iOS Safari won't zoom in on focus at ≥16 px. */
+  }
+
+  /* Logo-as-home-button and theme toggle live outside the menubar but
+     deserve the same touch floor. The selectors are intentionally
+     specific so they don't broaden into the paginated content. */
+  [data-testid="title-bar"] [data-testid="title-bar-home"],
+  [data-testid="title-bar"] > div > button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
 }
 
