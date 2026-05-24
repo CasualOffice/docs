@@ -69,7 +69,8 @@ This shifts the durability story entirely to the host. We become a pure realtime
 - Bundle size and TTFI on the editor — benchmark after first integration test.
 - **Y.Doc → .docx serializer worker pool (M2)** — gateway currently re-serves the original upload on drain. Replace with a Bun worker pool that turns the live CRDT state into a fresh `.docx` before snapshot.
 - **WOPI mock + integration (M3)** — concrete WOPI host we integrate against; Nextcloud is the leading candidate.
-- **Tauri desktop binary** — first binary ships after web fidelity crosses the 90% floor.
+- **Tauri desktop binary (M4)** — first binary ships after web fidelity crosses the 90% floor.
+- **Notebook mode (M5)** — second editor surface for `.md` / `.txt` that uses a markdown-native ProseMirror schema instead of routing through MD→DOCX. Closes the "feels like a doc, not a notebook" gap. Design captured at [`06-notebook-mode-design.md`](06-notebook-mode-design.md); lands after M4. Half-measure for the interim: "View source" toggle on notebook-opened docx files (cheap, closes the trust gap until M5).
 
 ## What this is not
 
@@ -87,6 +88,7 @@ This shifts the durability story entirely to the host. We become a pure realtime
 | **M2 — Live Y.Doc → .docx serializer on drain** | open | Replaces the current "re-serve original upload" snapshot path with a Bun worker pool that emits a fresh .docx from the CRDT state. |
 | **M3 — WOPI integration** | open | Pluggable host interface already in place; needs the WOPI concrete impl + a real host to integrate against. |
 | **M4 — Tauri desktop binary** | open | Early scaffolding only. First binary after fidelity hits 90%. |
+| **M5 — Notebook mode** | planned | Second editor surface (Obsidian-flavoured, markdown-native, single-column, no pagination) sharing the same engine + Yjs collab + Go gateway as the document surface. Split the home page into Documents + Notebooks; `.md` defaults to notebook, with an "Open as document" escape hatch. Full design in [`06-notebook-mode-design.md`](06-notebook-mode-design.md). Lands after M4. |
 
 ## Status
 
@@ -94,7 +96,7 @@ Pivot completed 2026-05-16. AGPL code purged from the fork. Statelessness commit
 
 **Editor side (since pivot):**
 - Round-trip audit harness — eliminated ~2,400 dropped tags across 16+ commits.
-- 19 → 26 fixtures round-trip pristine (per the audit). Target ≥ 35 (≈ 90%) before desktop ship.
+- 19 → 26 → **39 / 39 fixtures round-trip pristine** (per-tag audit, re-run 2026-05-24). The ≥ 90 % desktop-ship floor is cleared. VML cluster closed via raw-XML envelope capture in `302c210`. Remaining gaps are visual (rendering), not round-trip.
 - Header textboxes (DrawingML + VML), wpg:wgp groups with child positioning, w:sym Wingdings glyphs, theme-color round-trip, multi-section sectPr, paragraph between/bar borders, list multi-indent, table merged cells (gridSpan + vMerge), table indent offset, header-image inheritance, find-replace scroll, image hyperlinks, file-properties dialog, export-as-PDF, drawing-shapes (modern + VML).
 - **Home page (this week)** — template gallery with 14 real .docx templates (Resume, Cover letter, Letter, Meeting notes, Project proposal, Memo, Weekly status, Press release, Travel itinerary, Recipe, Essay, Lab report, Course syllabus, Sample), 4 categories, real first-page PNG previews from LibreOffice. Title-bar logo click confirms + returns to home (Google Docs pattern). 8/8 home-page e2e specs pass.
 - **#395 Word-compat closing border (this week)** — opt-in `wordCompat` flag plumbed through `RenderContext` / `PainterOptions` / `RenderPageOptions`. 5 unit tests cover on/off + skip paths. Renderer-only for now; no UI surface.

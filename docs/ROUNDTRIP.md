@@ -57,14 +57,21 @@ Both are required before a fidelity PR lands. The pattern means a regression alw
 
 ---
 
-## Current status (2026-05-24)
+## Current status (re-audited 2026-05-24)
 
-**26 of 39 fixtures** round-trip with zero element drops (= 66.7%
-pristine). Target ≥ 90% before the desktop ship — the remaining 13
-non-pristine fixtures all sit in the `roundtrip-vml-cluster` bucket
-in [`internal/03-gap-matrix.md`](./internal/03-gap-matrix.md), which
-needs an enricher refactor before its drops can land without breaking
-the wpg-group rendering we already fixed.
+**39 of 39 fixtures** round-trip with zero per-tag drops = **100 % pristine**.
+Target was ≥ 90 % before the desktop ship — **floor cleared**. The
+previously-deferred VML cluster (~108 dropped tags across
+medical-incident-form + sds-real-world) closed in commit `302c210`
+via raw-XML envelope capture in the enricher; the re-audit confirms
+every fixture is now zero-drop.
+
+What this *does not* claim: it's not byte-equal (attribute ordering
+etc. may differ — tag-count parity is stricter than byte-equal in
+practice but weaker than literal byte-equal), and it's not visual
+fidelity. The remaining open gaps in
+[`internal/03-gap-matrix.md`](./internal/03-gap-matrix.md) are about
+on-screen rendering, not whether bytes survive a load → save cycle.
 
 The full per-tag history (~2,400 dropped tags eliminated across 16+
 commits) is in `roundtrip-audit-report.md` in the editor repo root.

@@ -64,7 +64,7 @@ Columns:
 | **wpg-connector-shape** | `<wps:wsp>` with `<wps:cNvCnPr/>` and `prstGeom prst="line"` (or just `cy=0` / `cx=0` extent) is a connector / divider line. Renders with 0 height/width as nothing. Medical form's tagline-divider line was invisible. | Audited 2026-05-17 | P2 | S | Y | **fixed-local** — `extractShapeFromWsp` detects connector shapes (`cNvCnPr`, `prstGeom='line'`, or zero extent on an axis), bumps the zero axis to `max(outline width, 2 px)` floor, and copies the outline color into `fill` so the line paints as a colored strip rather than relying on the painter's border-on-zero-height behavior. | `e2e/tests/wpg-group-and-sym.spec.ts` |
 | **roundtrip-tag-audit** | Sweeping audit of every OOXML element name dropped on parse → serialize round-trip across all 39 e2e fixtures. Caught the silent parse-but-drop losses no individual gap row had surfaced. | Audited 2026-05-17/18 | P1 | L | Y | **fixed-local (mass)** — new `scripts/roundtrip-audit.mjs` walks every fixture, parses + re-serializes, diffs element-name counts, filters to *vanish* drops (in > 0, out = 0). Across 16+ commits eliminated ~2,396 dropped tags: `w:lang` (693), `w:proofErr` (544), `w:autoSpace*`+`adjustRightInd` (252), `w:left/w:right` table borders (224), `w:noProof` (175), `w:webHidden` (119), `w:insideH/V` (64), `w14:checkbox`+state+`w:id`+`w15:color` (40), `w:type/w:col/w:cols` multi-section (36), `a:extLst`+`a14:useLocalDpi` (36), `a:noFill` (35), `w:tblBorders` (20), `a:picLocks` (20), `a:srcRect` (17), `a:ln` no-outline (17), `w:textAlignment`+`w:overflowPunct` (16), `w:trPr` (12), `w:cols` single-col (11), `wps:cNvPr` (10), `w:cnfStyle` row (4), `w:gridAfter`+`wAfter` (2), `a:hlinkClick` on image docPr (1). Each fix has a focused unit test under `packages/core/src/docx/__tests__/`. After-state: 19/39 fixtures round-trip with zero element drops; remaining 20 only drop the VML cluster (see `roundtrip-vml-cluster`). | `scripts/roundtrip-audit.mjs` + `roundtrip-audit-report.md` + many `*-roundtrip.test.ts` |
 | **roundtrip-multi-section** | Per-paragraph `<w:sectPr>` (multi-section docs delimited by mid-document section breaks) collapsed to one section on save — only the final body-level sectPr was emitted. | scripts/roundtrip-audit.mjs | P1 | S | Y | **fixed-local** — `serializeParagraph` in `paragraphSerializer.ts` now imports `serializeSectionProperties` from `documentSerializer.ts` and splices the paragraph's `sectionProperties` into the `<w:pPr>` wrapper before its closing tag (per ECMA-376 §17.3.1.26 the schema-last child of `<w:pPr>` is `<w:sectPr>`). sds-real-world's 7 sections round-trip; `w:type` (-15), `w:col` (-14), `w:cols` (-7) drops all recovered. 4 unit tests pin continuous + ordering + no-other-children + absent-section cases. | `packages/core/src/docx/__tests__/multi-section-sectPr-roundtrip.test.ts` |
-| **roundtrip-vml-cluster** | VML constructs (`v:rect`/`v:shape`/`v:textbox`/`v:fill`/`v:group`/`w:pict`/`w10:wrap`/`v:f`/`wps:txbx`/`w:txbxContent`) drop on round-trip. ~108 tag drops across medical-incident-form + sds-real-world. | scripts/roundtrip-audit.mjs | P2 | L | ? | **deferred** — root cause is that `textBoxEnricher` walks raw XML to inject Shape/Image content into `run.content` for *rendering*, while the same XML also needs to serialize back via the existing `<w:drawing>` path. Verbatim-preservation approaches investigated (capture mc:Fallback XML, re-emit envelope, swap raw-blob into RunContent) all tangle with the enricher's flattening for visible rendering: emit-both produces duplicate content, emit-raw-only breaks editor rendering of the wpg-group shapes we already fixed. Needs a structural split between render-only content and serialization-canonical content. | — |
+| **roundtrip-vml-cluster** | VML constructs (`v:rect`/`v:shape`/`v:textbox`/`v:fill`/`v:group`/`w:pict`/`w10:wrap`/`v:f`/`wps:txbx`/`w:txbxContent`) drop on round-trip. ~108 tag drops across medical-incident-form + sds-real-world. | scripts/roundtrip-audit.mjs | P2 | L | ? | **fixed-local (raw-XML capture)** — closed in commit `302c210` (`feat(fidelity): close VML round-trip cluster via enricher raw-XML capture`). The enricher now captures the source envelope XML alongside the parsed Shape/Image content; on serialize, the captured envelope is re-emitted verbatim instead of being re-derived from the flattened RunContent. Verified by re-running `scripts/roundtrip-audit.mjs` on 2026-05-24 — every previously-affected fixture is now zero-drop. | — |
 | **ci-pipeline** | No CI / deploy pipeline on `schnsrw/docx`. Inherited eigenpal CI/release workflows are wired to npm scopes + a CLA bot that don't apply to this fork. | This fork, May 2026 | P1 (gate) | M | — | **fixed-local** — `.github/workflows/ci.yml` runs three parallel jobs (lint+format / typecheck+unit+build+round-trip-audit / Playwright e2e with chromium-cached) on push to `main` + PRs. `.github/workflows/deploy-demo.yml` builds the Vite demo and publishes to GitHub Pages at `doc.schnsrw.live` (custom-domain CNAME written into the artifact so it survives every deploy). Eigenpal `cla.yml` + `release.yml` removed (eigenpal npm scope + CLA bot don't apply here). Orphan `agent-*.spec.ts` tests `testIgnore`d at the Playwright config — they depend on the AGPL `agent-use` package that was purged from this fork. | `.github/workflows/ci.yml` + `.github/workflows/deploy-demo.yml` |
 | **branding-casual-editor** | Repo inherited eigenpal README + `docx-editor.dev` links + npm badges that don't apply. Demo HTML used the fork's `favicon.ico`. | This fork, May 2026 | P3 | S | — | **fixed-local** — outer `README.md` rewritten as the project front page (logo + badges + ASCII architecture + what-works-today + dev/CI commands). Inner `docx-editor/README.md` slimmed to a package-only README. New `assets/logo.svg` + `assets/favicon.svg` (original artwork: rounded #2563eb tile + tilted document silhouette with folded corner + four text bars). Demo HTML titled "Casual Editor" with SVG favicon + theme-color meta. | `assets/logo.svg` + `assets/favicon.svg` |
 
@@ -72,18 +72,33 @@ Columns:
 
 The next ≤3 gaps actively in flight. Update when one closes / opens.
 
-1. **roundtrip-vml-cluster** — still deferred pending enricher refactor (separate render-only content from serialization-canonical content). Largest remaining bucket on the fidelity score.
-2. **floating-image-wrap** — still open. XL effort: needs per-line floating-image-zone measurement + render changes. Largest remaining *visual* gap.
+1. **floating-image-wrap** — still open. XL effort: needs per-line floating-image-zone measurement + render changes. The single biggest visual gap left now that round-trip is at 100%.
+2. **table-overlap-text** — table content can render over following text. M effort, visible bug on multi-section docs.
 3. **table-last-row-border React surface** — renderer wired (`wordCompat` flag); needs a `<DocxEditor wordCompat>` prop on the published React package + a changeset before users can flip it on without going through `PainterOptions` directly.
 
 ## Fidelity score target
 
 Desktop release floor: **≥ 90% pristine** on the comparison harness's
-fixture set. Current baseline (2026-05-24, `roundtrip-audit-report.md`):
-**26 / 39 fixtures pristine = 66.7%**. The 13 non-pristine fixtures
-all drop into the **roundtrip-vml-cluster** bucket; closing that gap
-puts the editor at ~95% by tag-retention, sufficient for the desktop
-ship.
+fixture set. Current baseline (re-run 2026-05-24,
+`roundtrip-audit-report.md`):
+**39 / 39 fixtures pristine = 100%** — floor cleared. ✅
+
+The VML cluster turned out to have closed quietly during the recent
+enricher work (`feat(fidelity): close VML round-trip cluster via
+enricher raw-XML capture`, commit `302c210`); the audit re-run after
+the M1 backend work confirms every fixture is now zero-drop on the
+per-tag check, including the previously-stubborn SDS real-world doc,
+the Medical Incident Form, and the EP_ZMVZ multi-section letter.
+
+What this *does not* claim:
+- It's not byte-equal — semantic equivalents like attribute ordering
+  may differ. Tag-count parity is a stricter bar than byte-equal in
+  practice (semantically-equivalent XML can still fail it) but a
+  weaker bar than literal byte-equal.
+- It's not visual fidelity. The remaining gaps in this matrix
+  (floating-image-wrap, table-overlap-text, etc.) are about how
+  things render on screen, not whether their bytes survive a load
+  → save cycle.
 
 The three-way harness (`docx-editor/scripts/compare-fidelity.mjs` →
 `.github/workflows/fidelity-compare.yml`) tracks us vs LibreOffice vs

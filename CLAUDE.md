@@ -56,7 +56,7 @@ Browser
 
 ## Status (2026-05-24)
 
-- **Editor fork** — 26 of 39 fixtures round-trip pristine in the per-tag audit (target ≥ 90% before desktop ship); the remaining drops are clustered in the VML envelope (see `roundtrip-vml-cluster` in `docs/internal/03-gap-matrix.md`).
+- **Editor fork** — **39 of 39 fixtures round-trip pristine** in the per-tag audit (re-audited 2026-05-24). The ≥ 90 % desktop-ship floor is cleared. Previously-deferred VML cluster closed via raw-XML envelope capture (`302c210`). Remaining gaps are visual (floating-image-wrap, table-overlap-text) not round-trip.
 - **Home page** — Template gallery shipped with 14 real .docx templates across 4 categories (Personal / Work / Education / Career) and real first-page PNG previews rendered via LibreOffice. Title-bar logo click confirms + returns to gallery (Google Docs pattern).
 - **Word-compat heuristics** — #395 last-row closing border wired behind an opt-in `wordCompat` flag (off by default), with 5 unit tests.
 - **Backend M1** — Go gateway in `backend/`. POST /api/docs upload, GET /api/docs/{id}/download snapshot, GET /doc/{id} WebSocket. Inline host for the v0 share-link flow. WS broker fans frames between room members. Tests cover broadcast / room manager / upload / static SPA path. Three-way fidelity harness already in CI.
