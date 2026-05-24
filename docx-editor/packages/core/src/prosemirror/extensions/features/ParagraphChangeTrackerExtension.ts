@@ -273,10 +273,27 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
             // touch any paragraph; the post-step walk above sees an
             // empty range and the change would be invisible to the
             // selective-save signal without this second pass.
-            if (oldEnd > oldStart) {
-              const beforeWalk = collectAffectedParaIds(tr.before, oldStart, oldEnd);
-              for (const t of beforeWalk.blockTypes) {
-                newState.changedBlockTypes.add(t);
+            //
+            // CAVEAT: `oldStart`/`oldEnd` are valid in the doc *before
+            // this step ran*, which only matches `tr.before` for step 0.
+            // For later steps, a prior step may have expanded the doc
+            // and the coords could exceed `tr.before.content.size`,
+            // crashing `nodesBetween`. Gate on stepIndex === 0 and an
+            // explicit bounds check.
+            if (
+              stepIndex === 0 &&
+              oldEnd > oldStart &&
+              oldEnd <= tr.before.content.size
+            ) {
+              try {
+                const beforeWalk = collectAffectedParaIds(tr.before, oldStart, oldEnd);
+                for (const t of beforeWalk.blockTypes) {
+                  newState.changedBlockTypes.add(t);
+                }
+              } catch {
+                // Defensive — if the walk throws for any reason
+                // (stale coords, schema mismatch), treat as no
+                // observable deletion and move on.
               }
             }
           });
