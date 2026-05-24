@@ -752,6 +752,16 @@ export {
 } from '@eigenpal/docx-core/core-plugins';
 
 // ============================================================================
+// FOCUS TRAP — opt-in primitive for dialog focus management
+// ============================================================================
+//
+// Wraps a modal subtree so Tab / Shift+Tab cycle inside it and focus
+// restores to the previously-active element on unmount. See
+// docs/internal/08-improvement-tracker.md § F3.
+
+export { FocusTrap, type FocusTrapProps } from './components/ui/FocusTrap';
+
+// ============================================================================
 // VERSION HISTORY — opt-in side panel + ProseMirror transaction feed
 // ============================================================================
 //
