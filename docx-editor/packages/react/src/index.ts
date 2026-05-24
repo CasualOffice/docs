@@ -750,3 +750,22 @@ export {
   type McpToolResult,
   type McpSession,
 } from '@eigenpal/docx-core/core-plugins';
+
+// ============================================================================
+// VERSION HISTORY — opt-in side panel + ProseMirror transaction feed
+// ============================================================================
+//
+// Captures every committed transaction into a coalesced, human-readable
+// timeline with revert-to support. Mirrors Casual Sheets' HistoryPanel.
+// See docs/internal/08-improvement-tracker.md § F1.
+
+export {
+  VersionHistoryPanel,
+  type VersionHistoryPanelProps,
+} from './components/sidebar/VersionHistoryPanel';
+export {
+  useEditHistory,
+  type EditHistoryEntry,
+  type UseEditHistoryOptions,
+  type UseEditHistoryReturn,
+} from './hooks/useEditHistory';

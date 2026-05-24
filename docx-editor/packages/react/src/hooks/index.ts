@@ -7,6 +7,13 @@
 export { useHistory, useAutoHistory, useDocumentHistory, HistoryManager } from './useHistory';
 export type { HistoryEntry, UseHistoryOptions, UseHistoryReturn } from './useHistory';
 
+export { useEditHistory } from './useEditHistory';
+export type {
+  EditHistoryEntry,
+  UseEditHistoryOptions,
+  UseEditHistoryReturn,
+} from './useEditHistory';
+
 export { useTableSelection, TABLE_DATA_ATTRIBUTES } from './useTableSelection';
 export type {
   TableSelectionState,
