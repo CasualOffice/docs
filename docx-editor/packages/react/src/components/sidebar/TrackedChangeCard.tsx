@@ -46,7 +46,7 @@ export function TrackedChangeCard({
             {authorName}
           </div>
           {change.date && (
-            <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(change.date)}</div>
+            <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>{formatDate(change.date)}</div>
           )}
         </div>
         {isExpanded && (
@@ -86,11 +86,11 @@ export function TrackedChangeCard({
         {change.type === 'replacement' ? (
           <>
             {t('trackedChanges.replaced')}{' '}
-            <span style={{ color: '#c5221f', fontWeight: 500 }}>
+            <span style={{ color: 'var(--doc-error)', fontWeight: 500 }}>
               &quot;{truncateText(change.deletedText || '')}&quot;
             </span>{' '}
             {t('trackedChanges.with')}{' '}
-            <span style={{ color: '#137333', fontWeight: 500 }}>
+            <span style={{ color: 'var(--doc-success)', fontWeight: 500 }}>
               &quot;{truncateText(change.text)}&quot;
             </span>
           </>
@@ -99,7 +99,7 @@ export function TrackedChangeCard({
             {change.type === 'insertion' ? t('trackedChanges.added') : t('trackedChanges.deleted')}{' '}
             <span
               style={{
-                color: change.type === 'insertion' ? '#137333' : '#c5221f',
+                color: change.type === 'insertion' ? 'var(--doc-success)' : 'var(--doc-error)',
                 fontWeight: 500,
               }}
             >

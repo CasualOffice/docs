@@ -20,7 +20,7 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
           style={{
             fontSize: 12,
             fontWeight: 500,
-            color: '#1a73e8',
+            color: 'var(--doc-primary)',
             paddingTop: 6,
             paddingBottom: 6,
             borderTop: '1px solid #e8eaed',
@@ -52,7 +52,7 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
               >
                 {reply.author || t('comments.unknown')}
               </div>
-              <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(reply.date)}</div>
+              <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>{formatDate(reply.date)}</div>
             </div>
           </div>
           <div

@@ -148,8 +148,17 @@
   --doc-bg-hover: #3c4043;
   --doc-hover: #3c4043;
   --doc-bg-input: #2d2f31;
+  --doc-primary: #8ab4f8; /* lighter primary blue for dark surfaces */
+  --doc-primary-hover: #a8c7fa;
   --doc-primary-light: #1a3a5e;
   --doc-link: #8ab4f8;
+  /* Status colors — light shades so red/green/yellow stay legible on dark */
+  --doc-error: #f28b82;
+  --doc-error-bg: #5c2b29;
+  --doc-success: #81c995;
+  --doc-success-bg: #1e3a26;
+  --doc-warning: #fdd663;
+  --doc-warning-bg: #4e3c1a;
   --doc-surface: #2d2f31;
   --doc-surface-raised: #3c4043;
   --doc-surface-sunken: #1f1f1f;
@@ -196,8 +205,16 @@
     --doc-bg-hover: #3c4043;
     --doc-hover: #3c4043;
     --doc-bg-input: #2d2f31;
+    --doc-primary: #8ab4f8;
+    --doc-primary-hover: #a8c7fa;
     --doc-primary-light: #1a3a5e;
     --doc-link: #8ab4f8;
+    --doc-error: #f28b82;
+    --doc-error-bg: #5c2b29;
+    --doc-success: #81c995;
+    --doc-success-bg: #1e3a26;
+    --doc-warning: #fdd663;
+    --doc-warning-bg: #4e3c1a;
     --doc-surface: #2d2f31;
     --doc-surface-raised: #3c4043;
     --doc-surface-sunken: #1f1f1f;

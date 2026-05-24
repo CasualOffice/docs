@@ -399,7 +399,7 @@ export function ToolbarGroup({ label, children, className }: ToolbarGroupProps) 
  * Toolbar separator
  */
 export function ToolbarSeparator() {
-  return <div className="w-px h-6 bg-slate-200 mx-1.5" role="separator" />;
+  return <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1.5" role="separator" />;
 }
 
 // ============================================================================
@@ -722,7 +722,7 @@ export function Toolbar({
                 ].map((item) => (
                   <button
                     key={item.value}
-                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100"
+                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleFormat({ type: 'charSpacing', value: item.value });

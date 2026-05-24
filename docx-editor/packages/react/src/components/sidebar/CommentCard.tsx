@@ -75,7 +75,7 @@ export function CommentCard({
           >
             {comment.author || t('comments.unknown')}
           </div>
-          <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(comment.date)}</div>
+          <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>{formatDate(comment.date)}</div>
         </div>
         {isExpanded && (
           <div style={{ display: 'flex', gap: 4, marginTop: 2, position: 'relative' }}>

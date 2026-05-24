@@ -143,9 +143,9 @@ const btnStyle: CSSProperties = {
 
 const primaryBtnStyle: CSSProperties = {
   ...btnStyle,
-  background: '#1a73e8',
+  background: 'var(--doc-primary)',
   color: 'white',
-  borderColor: '#1a73e8',
+  borderColor: 'var(--doc-primary)',
 };
 
 function formatDate(d: Date | undefined): string {

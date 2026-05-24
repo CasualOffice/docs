@@ -22,7 +22,7 @@ const INACTIVE_INPUT_STYLE: React.CSSProperties = {
   fontSize: 14,
   padding: '8px 16px',
   fontFamily: 'inherit',
-  color: '#80868b',
+  color: 'var(--doc-text-subtle)',
   cursor: 'text',
   backgroundColor: 'var(--doc-surface, white)',
   boxSizing: 'border-box',

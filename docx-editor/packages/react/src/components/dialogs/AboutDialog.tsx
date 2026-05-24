@@ -123,14 +123,14 @@ const primaryBtnStyle: CSSProperties = {
   padding: '6px 16px',
   fontSize: 13,
   border: '1px solid #1a73e8',
-  background: '#1a73e8',
+  background: 'var(--doc-primary)',
   color: 'white',
   borderRadius: 4,
   cursor: 'pointer',
 };
 
 const linkStyle: CSSProperties = {
-  color: '#1a73e8',
+  color: 'var(--doc-primary)',
   textDecoration: 'none',
 };
 

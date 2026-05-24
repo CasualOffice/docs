@@ -305,8 +305,8 @@ export function FontSizePicker({
               onClick={() => handleSizeSelect(size)}
               className={cn(
                 'w-full px-3 py-1.5 text-sm text-left',
-                'hover:bg-slate-100',
-                size === currentValue && 'bg-slate-100 font-medium'
+                'hover:bg-slate-100 dark:hover:bg-slate-800',
+                size === currentValue && 'bg-slate-100 dark:bg-slate-800 font-medium'
               )}
               role="option"
               aria-selected={size === currentValue}

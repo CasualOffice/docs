@@ -242,7 +242,7 @@ export function AgentPanel({
           background: 'var(--doc-surface, white)',
         }}
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', color: '#0b57d0' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--doc-primary)' }}>
           {icon ?? <MaterialSymbol name="agent-sparkle" size={22} />}
         </span>
         <span
@@ -250,7 +250,7 @@ export function AgentPanel({
             flex: 1,
             fontSize: 15,
             fontWeight: 500,
-            color: '#1f1f1f',
+            color: 'var(--doc-text)',
             letterSpacing: 0.1,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -274,7 +274,7 @@ export function AgentPanel({
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#444746',
+              color: 'var(--doc-text-muted)',
               borderRadius: 999,
               transition: 'background 0.15s',
             }}

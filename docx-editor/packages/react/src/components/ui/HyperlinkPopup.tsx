@@ -77,14 +77,14 @@ const ICON_STYLE: CSSProperties = {
   width: '20px',
   height: '20px',
   flexShrink: 0,
-  color: '#5f6368',
+  color: 'var(--doc-text-muted)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
 const URL_LINK_STYLE: CSSProperties = {
-  color: '#1a73e8',
+  color: 'var(--doc-primary)',
   textDecoration: 'none',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -105,7 +105,7 @@ const ICON_BUTTON_STYLE: CSSProperties = {
   background: 'none',
   borderRadius: '4px',
   cursor: 'pointer',
-  color: '#5f6368',
+  color: 'var(--doc-text-muted)',
   padding: 0,
   flexShrink: 0,
 };
@@ -135,7 +135,7 @@ const EDIT_INPUT_STYLE: CSSProperties = {
 };
 
 const APPLY_BUTTON_STYLE: CSSProperties = {
-  color: '#1a73e8',
+  color: 'var(--doc-primary)',
   fontWeight: 600,
   fontSize: '14px',
   border: 'none',
@@ -389,7 +389,7 @@ export function HyperlinkPopup({
             onChange={(e) => setEditText(e.target.value)}
             onKeyDown={handleEditKeyDown}
             placeholder={t('hyperlinkPopup.displayTextPlaceholder')}
-            onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--doc-primary)')}
             onBlur={(e) => (e.target.style.borderColor = '#dadce0')}
           />
         </div>
@@ -406,7 +406,7 @@ export function HyperlinkPopup({
             onChange={(e) => setEditUrl(e.target.value)}
             onKeyDown={handleEditKeyDown}
             placeholder={t('hyperlinkPopup.urlPlaceholder')}
-            onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--doc-primary)')}
             onBlur={(e) => (e.target.style.borderColor = '#dadce0')}
           />
           <button

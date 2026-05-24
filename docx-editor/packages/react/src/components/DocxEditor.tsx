@@ -809,7 +809,7 @@ function OutlineToggleButton({
         alignItems: 'center',
       }}
     >
-      <MaterialSymbol name="format_list_bulleted" size={20} style={{ color: '#444746' }} />
+      <MaterialSymbol name="format_list_bulleted" size={20} style={{ color: 'var(--doc-text-muted)' }} />
     </button>
   );
 }
@@ -955,7 +955,7 @@ function EditingModeDropdown({
                 <MaterialSymbol
                   name="check"
                   size={18}
-                  style={{ marginLeft: 'auto', color: '#1a73e8' }}
+                  style={{ marginLeft: 'auto', color: 'var(--doc-primary)' }}
                 />
               )}
             </button>
@@ -5753,7 +5753,7 @@ body { background: white; }
                               borderRadius: 6,
                               border: '1px solid rgba(26, 115, 232, 0.3)',
                               backgroundColor: '#fff',
-                              color: '#1a73e8',
+                              color: 'var(--doc-primary)',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
