@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Comment } from '@eigenpal/docx-core/types/content';
 import { MaterialSymbol } from '../ui/Icons';
 import type { SidebarItemRenderProps } from '../../plugin-api/types';
@@ -35,6 +35,40 @@ export function CommentCard({
   onDelete,
 }: CommentCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Close the menu on Escape + auto-focus the first menu item on open
+  // so keyboard users can act without reaching for the mouse. Also
+  // click-outside-to-close so opening the menu doesn't trap focus.
+  useEffect(() => {
+    if (!menuOpen) return;
+    // Auto-focus first menu item when the popup mounts.
+    const first = menuRef.current?.querySelector('button');
+    first?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setMenuOpen(false);
+        // Return focus to the trigger — standard menu pattern.
+        menuTriggerRef.current?.focus();
+      }
+    };
+    const onClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (menuRef.current?.contains(target)) return;
+      if (menuTriggerRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('mousedown', onClickOutside);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onClickOutside);
+    };
+  }, [menuOpen]);
   const { t } = useTranslation();
 
   return (
@@ -97,6 +131,7 @@ export function CommentCard({
               <MaterialSymbol name={comment.done ? 'undo' : 'check'} size={20} />
             </button>
             <button
+              ref={menuTriggerRef}
               onClick={(e) => {
                 e.stopPropagation();
                 setMenuOpen(!menuOpen);
@@ -111,6 +146,8 @@ export function CommentCard({
             </button>
             {menuOpen && (
               <div
+                ref={menuRef}
+                role="menu"
                 onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={{
@@ -126,6 +163,7 @@ export function CommentCard({
                 }}
               >
                 <button
+                  role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
                     onDelete?.(comment.id);
