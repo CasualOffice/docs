@@ -61,7 +61,13 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
             style={{
               fontSize: 13,
               color: 'var(--doc-text-on-surface, #1f2937)',
-              lineHeight: '20px',
+              // Unitless line-height scales with font-size, so the
+              // 2-line clamp stays consistent across system fonts /
+              // OS scaling (was 'lineHeight: 20px' which forced a
+              // fixed leading that didn't match the actual line
+              // height under different fonts, producing 1.5 / 2.5
+              // visible lines instead of exactly 2).
+              lineHeight: 1.4,
               marginTop: 4,
               ...(!isExpanded
                 ? {
