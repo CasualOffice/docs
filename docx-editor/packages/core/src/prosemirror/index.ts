@@ -164,6 +164,9 @@ export {
   insertPageBreak,
   // Field insert (PAGE / NUMPAGES / DATE / TIME / …)
   insertField,
+  // List numbering control
+  restartListNumbering,
+  continueListNumbering,
   // Section break
   insertSectionBreak,
   // Table of Contents

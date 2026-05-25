@@ -125,6 +125,7 @@ export type { TableContextInfo, BorderPreset } from './table';
 export { insertPageBreak } from './pageBreak';
 export { insertField } from './field';
 export type { InsertableFieldType } from './field';
+export { restartListNumbering, continueListNumbering } from './listNumbering';
 
 // Image commands
 export { setImageWrapType } from './image';

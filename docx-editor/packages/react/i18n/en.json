@@ -51,6 +51,8 @@
     "fieldSaveDate": "Last saved",
     "fieldAuthor": "Author",
     "fieldFileName": "File name",
+    "restartListNumbering": "Restart numbering at 1",
+    "continueListNumbering": "Continue previous numbering",
     "tableOfContents": "Table of contents",
     "symbol": "Symbol",
     "help": "Help",

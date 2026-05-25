@@ -220,6 +220,9 @@ import {
   insertSectionBreak,
   // Field insert command (PAGE / NUMPAGES / DATE / …)
   insertField,
+  // List numbering control
+  restartListNumbering,
+  continueListNumbering,
   // Table of Contents command
   generateTOC,
   // Table commands
@@ -3218,6 +3221,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
       if (action === 'toggleTextOutline') {
         toggleTextOutline(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'restartListNumbering') {
+        restartListNumbering(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'continueListNumbering') {
+        continueListNumbering(view.state, view.dispatch);
         return;
       }
       if (action === 'insertLink') {

@@ -119,6 +119,8 @@ export type FormattingAction =
   | 'toggleImprint'
   | 'toggleTextShadow'
   | 'toggleTextOutline'
+  | 'restartListNumbering'
+  | 'continueListNumbering'
   | { type: 'fontFamily'; value: string }
   | { type: 'fontSize'; value: number }
   | { type: 'textColor'; value: ColorValue | string }
@@ -842,6 +844,24 @@ export function Toolbar({
             icon: 'format_textdirection_r_to_l',
             label: t('toolbar.rightToLeft'),
             onClick: () => handleFormat('setRtl'),
+          } as MenuEntry,
+          { type: 'separator' as const },
+          // List numbering control. Disabled when the cursor isn't
+          // in a list paragraph — the command itself early-returns
+          // false in that case, but disabling the menu row gives a
+          // clearer affordance. listState carries the in-list signal
+          // from selectionState.
+          {
+            icon: 'restart_alt',
+            label: t('toolbar.restartListNumbering'),
+            onClick: () => handleFormat('restartListNumbering'),
+            disabled: !currentFormatting?.listState?.isInList,
+          } as MenuEntry,
+          {
+            icon: 'arrow_downward',
+            label: t('toolbar.continueListNumbering'),
+            onClick: () => handleFormat('continueListNumbering'),
+            disabled: !currentFormatting?.listState?.isInList,
           } as MenuEntry,
         ]}
       />
