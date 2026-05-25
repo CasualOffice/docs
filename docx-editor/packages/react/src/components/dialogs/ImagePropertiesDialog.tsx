@@ -165,7 +165,17 @@ export function ImagePropertiesDialog({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
-      if (e.key === 'Enter' && !e.shiftKey) handleApply();
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // Don't hijack Enter when the user is typing inside a
+        // multiline field or focused on a button — textareas need
+        // newlines, buttons need their default click. The dialog-level
+        // submit only fires when focus is on the dialog chrome or on
+        // single-line inputs where Enter-to-submit is the convention.
+        const target = e.target as HTMLElement | null;
+        const tag = target?.tagName;
+        if (tag === 'TEXTAREA' || tag === 'BUTTON') return;
+        handleApply();
+      }
     },
     [onClose, handleApply]
   );
