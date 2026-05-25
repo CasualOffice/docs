@@ -179,11 +179,12 @@ describe('Theme text color PM round-trip preserves theme attrs', () => {
     expect(fmt?.color?.rgb).toBe('2F5496');
   });
 
-  // THIS IS THE BUG — auto + themeColor is dropped today.
-  // toProseDoc currently does `if (formatting.color && !formatting.color.auto)`,
-  // so an auto-themed color never produces a textColor mark, and on
-  // export the whole `<w:color>` element disappears — Word loses the
-  // theme slot reference and falls back to a different color.
+  // Regression: `auto + themeColor` previously dropped at the toProseDoc
+  // boundary (the gate was `!formatting.color.auto`), so the theme slot
+  // reference vanished on export and Word fell back to a different
+  // color. The gate is now `!auto || themeColor`, and `auto` is
+  // forwarded into the textColor mark attrs so fromProseDoc can emit
+  // `<w:color w:val="auto" w:themeColor="..."/>` again.
   test('auto + themeColor — theme slot must survive PM round-trip', () => {
     const inDoc = makeDocument(
       makeParagraph(

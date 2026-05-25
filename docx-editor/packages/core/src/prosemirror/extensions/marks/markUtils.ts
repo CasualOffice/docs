@@ -330,13 +330,19 @@ export function textFormattingToMarks(formatting: TextFormatting, schema: Schema
   if (formatting.doubleStrike) {
     marks.push(schema.marks.strike.create({ double: true }));
   }
-  if (formatting.color) {
+  // Color: skip pure `auto` (no themeColor) — that's the doc-default
+  // black and doesn't need a mark. But `auto + themeColor` carries
+  // Word's theme-resolved intent and must survive the round-trip;
+  // matches the gate in toProseDoc.ts. Forward `auto` so fromProseDoc
+  // can write `<w:color w:val="auto" w:themeColor="..."/>` back.
+  if (formatting.color && (!formatting.color.auto || formatting.color.themeColor)) {
     marks.push(
       schema.marks.textColor.create({
         rgb: formatting.color.rgb,
         themeColor: formatting.color.themeColor,
         themeTint: formatting.color.themeTint,
         themeShade: formatting.color.themeShade,
+        auto: formatting.color.auto || null,
       })
     );
   }

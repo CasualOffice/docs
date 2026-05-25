@@ -568,13 +568,18 @@ function makeApplyStyle(schema: Schema) {
             })
           );
         }
-        if (rpr.color && !rpr.color.auto) {
+        // Match the toProseDoc gate: skip pure `auto` (no themeColor)
+        // but keep `auto + themeColor` so the style cascade's
+        // theme-resolved intent survives. Forward `auto` so the
+        // fromProseDoc serializer can write `<w:color w:val="auto" ... />` back.
+        if (rpr.color && (!rpr.color.auto || rpr.color.themeColor)) {
           styleMarks.push(
             schema.marks.textColor.create({
               rgb: rpr.color.rgb,
               themeColor: rpr.color.themeColor,
               themeTint: rpr.color.themeTint,
               themeShade: rpr.color.themeShade,
+              auto: rpr.color.auto || null,
             })
           );
         }
