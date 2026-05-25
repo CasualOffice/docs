@@ -21,12 +21,14 @@ async function readListMetadata(
     const view = handle.getEditorRef?.()?.getView?.();
     if (!view) return [];
     const out: Array<{ inList: boolean; ilvl: number | null }> = [];
-    view.state.doc.descendants((node: { type: { name: string }; attrs: Record<string, unknown> }) => {
-      if (node.type.name === 'paragraph') {
-        const numPr = node.attrs.numPr as { ilvl?: number } | null;
-        out.push({ inList: !!numPr, ilvl: numPr?.ilvl ?? null });
+    view.state.doc.descendants(
+      (node: { type: { name: string }; attrs: Record<string, unknown> }) => {
+        if (node.type.name === 'paragraph') {
+          const numPr = node.attrs.numPr as { ilvl?: number } | null;
+          out.push({ inList: !!numPr, ilvl: numPr?.ilvl ?? null });
+        }
       }
-    });
+    );
     return out;
   });
 }
@@ -35,11 +37,6 @@ test.describe('Multi-select list toggle', () => {
   test('clicking bullet toggle on a fully-selected bullet list removes it from every item', async ({
     page,
   }) => {
-    test.fixme(
-      true,
-      'Fully-selected list toggles do not currently remove list metadata from every paragraph in one action.'
-    );
-
     const editor = new EditorPage(page);
     await page.goto('/?e2e=1');
     await editor.waitForReady();
