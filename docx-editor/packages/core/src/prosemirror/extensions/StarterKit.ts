@@ -66,6 +66,7 @@ import { ImagePasteExtension } from './features/ImagePasteExtension';
 import { DropCursorExtension } from './features/DropCursorExtension';
 import { ParagraphChangeTrackerExtension } from './features/ParagraphChangeTrackerExtension';
 import { ParaIdAllocatorExtension } from './features/ParaIdAllocatorExtension';
+import { StoredMarksRestoreExtension } from './features/StoredMarksRestoreExtension';
 import { BidiShortcutExtension } from './features/BidiShortcutExtension';
 import { PasteStyleInlinerExtension } from './features/PasteStyleInlinerExtension';
 
@@ -169,6 +170,10 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // state. Allocates `paraId` for any paragraph without one (e.g. new
   // paragraphs from Enter / paste / programmatic insertion).
   add('paraIdAllocator', ParaIdAllocatorExtension());
+  // Restore storedMarks from a paragraph's defaultTextFormatting after
+  // edits that clear storedMarks (e.g. select-all + Backspace). Must
+  // run after paraIdAllocator so the paragraph's attrs are final.
+  add('storedMarksRestore', StoredMarksRestoreExtension());
   add('bidiShortcut', BidiShortcutExtension());
 
   return extensions;
