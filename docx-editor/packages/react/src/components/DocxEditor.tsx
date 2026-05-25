@@ -48,6 +48,8 @@ import {
   OUTLINE_RESERVED_SPACE,
 } from './DocumentOutline';
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
+import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
+import { useEditHistory } from '../hooks/useEditHistory';
 import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
@@ -696,6 +698,22 @@ function CommentsSidebarToggle({ active, onClick }: { active: boolean; onClick: 
   return (
     <ToolbarButton onClick={onClick} active={active} title={title} ariaLabel={title}>
       <MaterialSymbol name="comment" size={20} />
+    </ToolbarButton>
+  );
+}
+
+// Version-history side-panel toggle. Same shape as CommentsSidebarToggle —
+// wrapped so the button title runs through `t()` which only works inside
+// the LocaleProvider that DocxEditor's body lives in.
+function VersionHistoryToggle({ active, onClick }: { active: boolean; onClick: () => void }) {
+  // Fall back to the english label if the translation key isn't defined
+  // — keeps the button labelled even on locales that haven't added it
+  // yet. Material Symbol "history" matches Word's File → Info → Version
+  // History affordance.
+  const title = 'Version history';
+  return (
+    <ToolbarButton onClick={onClick} active={active} title={title} ariaLabel={title}>
+      <MaterialSymbol name="history" size={20} />
     </ToolbarButton>
   );
 }
@@ -1436,6 +1454,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Comments sidebar state
   const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
   const [expandedSidebarItem, setExpandedSidebarItem] = useState<string | null>(null);
+
+  // Version-history side-panel state (F1 mount). The hook owns the
+  // capture plugin; attach it to the body PM view once it's mounted.
+  // Comments + version-history are mutually exclusive — opening one
+  // closes the other so the right rail doesn't double-stack panels.
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const editHistory = useEditHistory({ author: 'You' });
   // Comments live in internal state by default; if the consumer passes
   // `comments` as a prop, we treat the editor as controlled — `setComments`
   // routes mutations through `onCommentsChange` instead of touching internal
@@ -1720,6 +1745,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Keep history.state accessible in stable callbacks without stale closures
   const historyStateRef = useRef(history.state);
   historyStateRef.current = history.state;
+
+  // F1: attach the edit-history capture plugin once the body PM view is
+  // ready. `pmState != null` flips false→true exactly when the view is
+  // first available; subsequent state changes don't re-trigger the
+  // effect since the dep is a boolean. attach() returns a cleanup that
+  // detaches the plugin on unmount.
+  const isBodyPmReady = pmState != null;
+  const editHistoryAttach = editHistory.attach;
+  useEffect(() => {
+    if (!isBodyPmReady) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    return editHistoryAttach(view);
+  }, [isBodyPmReady, editHistoryAttach]);
 
   // Word + character counts for the status bar. Derived from the live
   // ProseMirror doc (not `history.state` — that only refreshes on major
@@ -5364,6 +5403,19 @@ body { background: white; }
           // collapsed state — resolved threads stay as checkmarks, not opened.
           setShowCommentsSidebar((v) => !v);
           setExpandedSidebarItem(null);
+          // Mutually exclusive with version-history panel.
+          setShowVersionHistory(false);
+        }}
+      />
+      <VersionHistoryToggle
+        active={showVersionHistory}
+        onClick={() => {
+          setShowVersionHistory((v) => !v);
+          // Mutually exclusive with the comments sidebar.
+          if (!showVersionHistory) {
+            setShowCommentsSidebar(false);
+            setExpandedSidebarItem(null);
+          }
         }}
       />
       {/* Resolved comments use margin markers instead of toolbar toggle */}
@@ -5761,6 +5813,28 @@ body { background: white; }
                                 setShowCommentsSidebar(true);
                               }}
                             />
+                            {showVersionHistory && (
+                              // Fixed-width right-rail overlay. Renders
+                              // independently of the per-anchor sidebar
+                              // pipeline because version-history entries
+                              // aren't paragraph-anchored — they're a
+                              // single document-level timeline. The panel
+                              // owns its own `data-testid` and aria —
+                              // wrapper is purely positional.
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  width: 300,
+                                  zIndex: 5,
+                                  pointerEvents: 'auto',
+                                }}
+                              >
+                                <VersionHistoryPanel history={editHistory} />
+                              </div>
+                            )}
                           </>
                         }
                       />
