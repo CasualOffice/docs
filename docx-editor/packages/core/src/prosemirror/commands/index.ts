@@ -14,6 +14,7 @@ export {
   toggleSubscript,
   toggleSmallCaps,
   toggleAllCaps,
+  toggleHidden,
   setCharacterSpacing,
   setTextColor,
   clearTextColor,

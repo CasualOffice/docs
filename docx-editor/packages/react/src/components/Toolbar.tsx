@@ -57,6 +57,8 @@ export interface SelectionFormatting {
   smallCaps?: boolean;
   /** Whether selected text is all caps */
   allCaps?: boolean;
+  /** Whether selected text is hidden (w:vanish) */
+  hidden?: boolean;
   /** Font family of selected text */
   fontFamily?: string;
   /** Font size of selected text (in half-points) */
@@ -104,6 +106,7 @@ export type FormattingAction =
   | 'selectAll'
   | 'toggleSmallCaps'
   | 'toggleAllCaps'
+  | 'toggleHidden'
   | { type: 'fontFamily'; value: string }
   | { type: 'fontSize'; value: number }
   | { type: 'textColor'; value: ColorValue | string }
@@ -711,6 +714,10 @@ export function Toolbar({
           {
             label: `${currentFormatting?.allCaps ? '✓ ' : ''}All Caps`,
             onClick: () => handleFormat('toggleAllCaps'),
+          } as MenuEntry,
+          {
+            label: `${currentFormatting?.hidden ? '✓ ' : ''}Hidden`,
+            onClick: () => handleFormat('toggleHidden'),
           } as MenuEntry,
           { type: 'separator' as const },
           {

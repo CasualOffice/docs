@@ -271,6 +271,9 @@ function extractTextFormatting(state: EditorState): TextFormatting {
       case 'allCaps':
         formatting.allCaps = true;
         break;
+      case 'hidden':
+        formatting.hidden = true;
+        break;
       case 'characterSpacing':
         if (mark.attrs.spacing != null) {
           formatting.spacing = mark.attrs.spacing;

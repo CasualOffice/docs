@@ -190,6 +190,9 @@ export function extractSelectionState(state: EditorState): SelectionState | null
       case 'allCaps':
         textFormatting.allCaps = true;
         break;
+      case 'hidden':
+        textFormatting.hidden = true;
+        break;
     }
   }
 

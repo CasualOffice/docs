@@ -101,6 +101,18 @@ export const toggleAllCaps: Command = (state, dispatch, view) => {
   return toggleMark(markType)(state, dispatch, view);
 };
 
+/**
+ * Toggle the `hidden` mark (w:vanish in OOXML) on the selection.
+ * Hidden text remains in the document — visible in the editor as
+ * dimmed + dotted-underline per HiddenExtension.toDOM — but is
+ * conditionally suppressed by Word on print/export.
+ */
+export const toggleHidden: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['hidden'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
 /** Set character spacing (letter-spacing) in twips. Pass 0 to remove. */
 export function setCharacterSpacing(spacingTwips: number): Command {
   return (state, dispatch, view) => {

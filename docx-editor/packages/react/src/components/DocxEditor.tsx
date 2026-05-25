@@ -201,9 +201,10 @@ import {
   // Text direction commands
   setRtl,
   setLtr,
-  // Small caps / all caps / character spacing
+  // Small caps / all caps / hidden / character spacing
   toggleSmallCaps,
   toggleAllCaps,
+  toggleHidden,
   setCharacterSpacing,
   // Space before/after
   setSpaceBefore,
@@ -2327,6 +2328,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         subscript: textFormatting.vertAlign === 'subscript',
         smallCaps: textFormatting.smallCaps,
         allCaps: textFormatting.allCaps,
+        hidden: textFormatting.hidden,
         fontFamily,
         fontSize,
         color: textColor,
@@ -3151,6 +3153,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
       if (action === 'toggleAllCaps') {
         toggleAllCaps(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleHidden') {
+        toggleHidden(view.state, view.dispatch);
         return;
       }
       if (action === 'insertLink') {
