@@ -173,8 +173,11 @@ export function TablePropertiesDialog({
         <div style={bodyStyle}>
           {/* Width type */}
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.tableProperties.widthType')}</label>
+            <label htmlFor="table-props-width-type" style={labelStyle}>
+              {t('dialogs.tableProperties.widthType')}
+            </label>
             <select
+              id="table-props-width-type"
               style={selectStyle}
               value={widthType}
               onChange={(e) => setWidthType(e.target.value)}
@@ -188,8 +191,11 @@ export function TablePropertiesDialog({
           {/* Width value */}
           {widthType !== 'auto' && (
             <div style={rowStyle}>
-              <label style={labelStyle}>{t('dialogs.tableProperties.widthLabel')}</label>
+              <label htmlFor="table-props-width" style={labelStyle}>
+                {t('dialogs.tableProperties.widthLabel')}
+              </label>
               <input
+                id="table-props-width"
                 type="number"
                 style={inputStyle}
                 min={0}
@@ -207,8 +213,11 @@ export function TablePropertiesDialog({
 
           {/* Alignment */}
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.tableProperties.alignmentLabel')}</label>
+            <label htmlFor="table-props-alignment" style={labelStyle}>
+              {t('dialogs.tableProperties.alignmentLabel')}
+            </label>
             <select
+              id="table-props-alignment"
               style={selectStyle}
               value={justification}
               onChange={(e) => setJustification(e.target.value)}

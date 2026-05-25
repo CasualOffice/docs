@@ -293,8 +293,11 @@ export function PageSetupDialog({
           <div style={sectionLabelStyle}>{t('dialogs.pageSetup.pageSize')}</div>
 
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.pageSetup.sizeLabel')}</label>
+            <label htmlFor="page-setup-size" style={labelStyle}>
+              {t('dialogs.pageSetup.sizeLabel')}
+            </label>
             <select
+              id="page-setup-size"
               style={selectStyle}
               value={sizeIndex}
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
@@ -309,8 +312,11 @@ export function PageSetupDialog({
           </div>
 
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.pageSetup.orientation')}</label>
+            <label htmlFor="page-setup-orientation" style={labelStyle}>
+              {t('dialogs.pageSetup.orientation')}
+            </label>
             <select
+              id="page-setup-orientation"
               style={selectStyle}
               value={orientation}
               onChange={(e) => handleOrientationChange(e.target.value as 'portrait' | 'landscape')}
@@ -324,8 +330,11 @@ export function PageSetupDialog({
           <div style={{ ...sectionLabelStyle, marginTop: 4 }}>{t('dialogs.pageSetup.margins')}</div>
 
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.pageSetup.top')}</label>
+            <label htmlFor="page-setup-margin-top" style={labelStyle}>
+              {t('dialogs.pageSetup.top')}
+            </label>
             <input
+              id="page-setup-margin-top"
               type="number"
               style={inputStyle}
               min={0}
@@ -338,8 +347,11 @@ export function PageSetupDialog({
           </div>
 
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.pageSetup.bottom')}</label>
+            <label htmlFor="page-setup-margin-bottom" style={labelStyle}>
+              {t('dialogs.pageSetup.bottom')}
+            </label>
             <input
+              id="page-setup-margin-bottom"
               type="number"
               style={inputStyle}
               min={0}
@@ -352,8 +364,11 @@ export function PageSetupDialog({
           </div>
 
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.pageSetup.left')}</label>
+            <label htmlFor="page-setup-margin-left" style={labelStyle}>
+              {t('dialogs.pageSetup.left')}
+            </label>
             <input
+              id="page-setup-margin-left"
               type="number"
               style={inputStyle}
               min={0}
@@ -366,8 +381,11 @@ export function PageSetupDialog({
           </div>
 
           <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.pageSetup.right')}</label>
+            <label htmlFor="page-setup-margin-right" style={labelStyle}>
+              {t('dialogs.pageSetup.right')}
+            </label>
             <input
+              id="page-setup-margin-right"
               type="number"
               style={inputStyle}
               min={0}
@@ -388,8 +406,11 @@ export function PageSetupDialog({
                 {t('dialogs.pageSetup.pageColor')}
               </div>
               <div style={rowStyle}>
-                <label style={labelStyle}>{t('dialogs.pageSetup.pageColor')}</label>
+                <label htmlFor="page-setup-page-color" style={labelStyle}>
+                  {t('dialogs.pageSetup.pageColor')}
+                </label>
                 <input
+                  id="page-setup-page-color"
                   type="color"
                   style={{ ...inputStyle, padding: 2, height: 28 }}
                   value={pageColor ?? '#ffffff'}
