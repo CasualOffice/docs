@@ -483,6 +483,29 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         >
           <MaterialSymbol name="strikethrough_s" size={ICON_SIZE} />
         </ToolbarButton>
+        {/* Small caps / All caps — same toggle pattern as bold/italic.
+            Marks come from SmallCapsExtension / AllCapsExtension; the
+            existing Format menu already drives the same `toggleSmallCaps`
+            / `toggleAllCaps` actions. Surfacing here so doc users with
+            Word muscle memory can find them in the toolbar. */}
+        <ToolbarButton
+          onClick={() => handleFormat('toggleSmallCaps')}
+          active={currentFormatting.smallCaps}
+          disabled={disabled}
+          title={t('formattingBar.smallCaps')}
+          ariaLabel={t('formattingBar.smallCaps')}
+        >
+          <MaterialSymbol name="format_letter_spacing" size={ICON_SIZE} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => handleFormat('toggleAllCaps')}
+          active={currentFormatting.allCaps}
+          disabled={disabled}
+          title={t('formattingBar.allCaps')}
+          ariaLabel={t('formattingBar.allCaps')}
+        >
+          <MaterialSymbol name="format_size" size={ICON_SIZE} />
+        </ToolbarButton>
         {showTextColorPicker && (
           <ColorPicker
             mode="text"

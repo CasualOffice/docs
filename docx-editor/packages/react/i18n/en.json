@@ -66,6 +66,8 @@
     "underline": "Underline",
     "underlineShortcut": "Underline (Ctrl+U)",
     "strikethrough": "Strikethrough",
+    "smallCaps": "Small caps",
+    "allCaps": "All caps",
     "fontColor": "Font Color",
     "highlightColor": "Text Highlight Color",
     "insertLink": "Insert link",
