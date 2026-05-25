@@ -12,6 +12,7 @@ import type { CSSProperties } from 'react';
 import type { SectionProperties } from '@eigenpal/docx-core/types/document';
 import { TWIPS_PER_INCH } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 /** Common page sizes in twips (width x height in portrait orientation) */
 const PAGE_SIZES = [
@@ -278,177 +279,183 @@ export function PageSetupDialog({
 
   return (
     <div style={overlayStyle} onClick={onClose} onKeyDown={handleKeyDown}>
-      <div
-        style={dialogStyle}
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('dialogs.pageSetup.title')}
-      >
-        <div style={headerStyle}>{t('dialogs.pageSetup.title')}</div>
+      <FocusTrap>
+        <div
+          style={dialogStyle}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('dialogs.pageSetup.title')}
+        >
+          <div style={headerStyle}>{t('dialogs.pageSetup.title')}</div>
 
-        <div style={bodyStyle}>
-          {/* Page size section */}
-          <div style={sectionLabelStyle}>{t('dialogs.pageSetup.pageSize')}</div>
+          <div style={bodyStyle}>
+            {/* Page size section */}
+            <div style={sectionLabelStyle}>{t('dialogs.pageSetup.pageSize')}</div>
 
-          <div style={rowStyle}>
-            <label htmlFor="page-setup-size" style={labelStyle}>
-              {t('dialogs.pageSetup.sizeLabel')}
-            </label>
-            <select
-              id="page-setup-size"
-              style={selectStyle}
-              value={sizeIndex}
-              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            >
-              {PAGE_SIZES.map((size, i) => (
-                <option key={size.labelKey} value={i}>
-                  {t(size.labelKey)}
-                </option>
-              ))}
-              {sizeIndex < 0 && <option value={-1}>{t('dialogs.pageSetup.custom')}</option>}
-            </select>
-          </div>
+            <div style={rowStyle}>
+              <label htmlFor="page-setup-size" style={labelStyle}>
+                {t('dialogs.pageSetup.sizeLabel')}
+              </label>
+              <select
+                id="page-setup-size"
+                style={selectStyle}
+                value={sizeIndex}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              >
+                {PAGE_SIZES.map((size, i) => (
+                  <option key={size.labelKey} value={i}>
+                    {t(size.labelKey)}
+                  </option>
+                ))}
+                {sizeIndex < 0 && <option value={-1}>{t('dialogs.pageSetup.custom')}</option>}
+              </select>
+            </div>
 
-          <div style={rowStyle}>
-            <label htmlFor="page-setup-orientation" style={labelStyle}>
-              {t('dialogs.pageSetup.orientation')}
-            </label>
-            <select
-              id="page-setup-orientation"
-              style={selectStyle}
-              value={orientation}
-              onChange={(e) => handleOrientationChange(e.target.value as 'portrait' | 'landscape')}
-            >
-              <option value="portrait">{t('dialogs.pageSetup.portrait')}</option>
-              <option value="landscape">{t('dialogs.pageSetup.landscape')}</option>
-            </select>
-          </div>
+            <div style={rowStyle}>
+              <label htmlFor="page-setup-orientation" style={labelStyle}>
+                {t('dialogs.pageSetup.orientation')}
+              </label>
+              <select
+                id="page-setup-orientation"
+                style={selectStyle}
+                value={orientation}
+                onChange={(e) =>
+                  handleOrientationChange(e.target.value as 'portrait' | 'landscape')
+                }
+              >
+                <option value="portrait">{t('dialogs.pageSetup.portrait')}</option>
+                <option value="landscape">{t('dialogs.pageSetup.landscape')}</option>
+              </select>
+            </div>
 
-          {/* Margins section */}
-          <div style={{ ...sectionLabelStyle, marginTop: 4 }}>{t('dialogs.pageSetup.margins')}</div>
+            {/* Margins section */}
+            <div style={{ ...sectionLabelStyle, marginTop: 4 }}>
+              {t('dialogs.pageSetup.margins')}
+            </div>
 
-          <div style={rowStyle}>
-            <label htmlFor="page-setup-margin-top" style={labelStyle}>
-              {t('dialogs.pageSetup.top')}
-            </label>
-            <input
-              id="page-setup-margin-top"
-              type="number"
-              style={inputStyle}
-              min={0}
-              max={10}
-              step={0.1}
-              value={twipsToInches(marginTop)}
-              onChange={(e) => setMarginTop(inchesToTwips(Number(e.target.value) || 0))}
-            />
-            <span style={unitStyle}>in</span>
-          </div>
+            <div style={rowStyle}>
+              <label htmlFor="page-setup-margin-top" style={labelStyle}>
+                {t('dialogs.pageSetup.top')}
+              </label>
+              <input
+                id="page-setup-margin-top"
+                type="number"
+                style={inputStyle}
+                min={0}
+                max={10}
+                step={0.1}
+                value={twipsToInches(marginTop)}
+                onChange={(e) => setMarginTop(inchesToTwips(Number(e.target.value) || 0))}
+              />
+              <span style={unitStyle}>in</span>
+            </div>
 
-          <div style={rowStyle}>
-            <label htmlFor="page-setup-margin-bottom" style={labelStyle}>
-              {t('dialogs.pageSetup.bottom')}
-            </label>
-            <input
-              id="page-setup-margin-bottom"
-              type="number"
-              style={inputStyle}
-              min={0}
-              max={10}
-              step={0.1}
-              value={twipsToInches(marginBottom)}
-              onChange={(e) => setMarginBottom(inchesToTwips(Number(e.target.value) || 0))}
-            />
-            <span style={unitStyle}>in</span>
-          </div>
+            <div style={rowStyle}>
+              <label htmlFor="page-setup-margin-bottom" style={labelStyle}>
+                {t('dialogs.pageSetup.bottom')}
+              </label>
+              <input
+                id="page-setup-margin-bottom"
+                type="number"
+                style={inputStyle}
+                min={0}
+                max={10}
+                step={0.1}
+                value={twipsToInches(marginBottom)}
+                onChange={(e) => setMarginBottom(inchesToTwips(Number(e.target.value) || 0))}
+              />
+              <span style={unitStyle}>in</span>
+            </div>
 
-          <div style={rowStyle}>
-            <label htmlFor="page-setup-margin-left" style={labelStyle}>
-              {t('dialogs.pageSetup.left')}
-            </label>
-            <input
-              id="page-setup-margin-left"
-              type="number"
-              style={inputStyle}
-              min={0}
-              max={10}
-              step={0.1}
-              value={twipsToInches(marginLeft)}
-              onChange={(e) => setMarginLeft(inchesToTwips(Number(e.target.value) || 0))}
-            />
-            <span style={unitStyle}>in</span>
-          </div>
+            <div style={rowStyle}>
+              <label htmlFor="page-setup-margin-left" style={labelStyle}>
+                {t('dialogs.pageSetup.left')}
+              </label>
+              <input
+                id="page-setup-margin-left"
+                type="number"
+                style={inputStyle}
+                min={0}
+                max={10}
+                step={0.1}
+                value={twipsToInches(marginLeft)}
+                onChange={(e) => setMarginLeft(inchesToTwips(Number(e.target.value) || 0))}
+              />
+              <span style={unitStyle}>in</span>
+            </div>
 
-          <div style={rowStyle}>
-            <label htmlFor="page-setup-margin-right" style={labelStyle}>
-              {t('dialogs.pageSetup.right')}
-            </label>
-            <input
-              id="page-setup-margin-right"
-              type="number"
-              style={inputStyle}
-              min={0}
-              max={10}
-              step={0.1}
-              value={twipsToInches(marginRight)}
-              onChange={(e) => setMarginRight(inchesToTwips(Number(e.target.value) || 0))}
-            />
-            <span style={unitStyle}>in</span>
-          </div>
+            <div style={rowStyle}>
+              <label htmlFor="page-setup-margin-right" style={labelStyle}>
+                {t('dialogs.pageSetup.right')}
+              </label>
+              <input
+                id="page-setup-margin-right"
+                type="number"
+                style={inputStyle}
+                min={0}
+                max={10}
+                step={0.1}
+                value={twipsToInches(marginRight)}
+                onChange={(e) => setMarginRight(inchesToTwips(Number(e.target.value) || 0))}
+              />
+              <span style={unitStyle}>in</span>
+            </div>
 
-          {/* Page color — Google-Docs-style. Hosts opt in by passing
+            {/* Page color — Google-Docs-style. Hosts opt in by passing
               onPageColorChange; if absent the row stays hidden so we
               don't surface a setting we can't honor. */}
-          {onPageColorChange && (
-            <>
-              <div style={{ ...sectionLabelStyle, marginTop: 4 }}>
-                {t('dialogs.pageSetup.pageColor')}
-              </div>
-              <div style={rowStyle}>
-                <label htmlFor="page-setup-page-color" style={labelStyle}>
+            {onPageColorChange && (
+              <>
+                <div style={{ ...sectionLabelStyle, marginTop: 4 }}>
                   {t('dialogs.pageSetup.pageColor')}
-                </label>
-                <input
-                  id="page-setup-page-color"
-                  type="color"
-                  style={{ ...inputStyle, padding: 2, height: 28 }}
-                  value={pageColor ?? '#ffffff'}
-                  onChange={(e) => setPageColor(e.target.value)}
-                  data-testid="page-setup-page-color"
-                />
-                <button
-                  type="button"
-                  style={{ ...btnStyle, padding: '4px 10px', fontSize: 12 }}
-                  onClick={() => setPageColor(undefined)}
-                  disabled={pageColor === undefined}
-                  data-testid="page-setup-page-color-reset"
-                >
-                  {t('dialogs.pageSetup.pageColorReset')}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+                </div>
+                <div style={rowStyle}>
+                  <label htmlFor="page-setup-page-color" style={labelStyle}>
+                    {t('dialogs.pageSetup.pageColor')}
+                  </label>
+                  <input
+                    id="page-setup-page-color"
+                    type="color"
+                    style={{ ...inputStyle, padding: 2, height: 28 }}
+                    value={pageColor ?? '#ffffff'}
+                    onChange={(e) => setPageColor(e.target.value)}
+                    data-testid="page-setup-page-color"
+                  />
+                  <button
+                    type="button"
+                    style={{ ...btnStyle, padding: '4px 10px', fontSize: 12 }}
+                    onClick={() => setPageColor(undefined)}
+                    disabled={pageColor === undefined}
+                    data-testid="page-setup-page-color-reset"
+                  >
+                    {t('dialogs.pageSetup.pageColorReset')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
-        <div style={footerStyle}>
-          <button type="button" style={btnStyle} onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            style={{
-              ...btnStyle,
-              backgroundColor: 'var(--doc-primary)',
-              color: 'white',
-              borderColor: 'var(--doc-primary)',
-            }}
-            onClick={handleApply}
-          >
-            {t('common.apply')}
-          </button>
+          <div style={footerStyle}>
+            <button type="button" style={btnStyle} onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                backgroundColor: 'var(--doc-primary)',
+                color: 'white',
+                borderColor: 'var(--doc-primary)',
+              }}
+              onClick={handleApply}
+            >
+              {t('common.apply')}
+            </button>
+          </div>
         </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }

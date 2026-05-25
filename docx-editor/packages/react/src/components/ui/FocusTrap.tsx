@@ -111,8 +111,13 @@ export function FocusTrap({ children, active = true, initialFocus, className }: 
     };
   }, [active, initialFocus]);
 
+  // `display: contents` removes this wrapper from the layout tree so
+  // it doesn't break parent flex / grid centering (most modal dialogs
+  // use a flex overlay to center their content). The ref still
+  // resolves to a real DOM node so we can query focusable descendants;
+  // the wrapper just doesn't render its own box.
   return (
-    <div ref={wrapperRef} className={className}>
+    <div ref={wrapperRef} className={className} style={{ display: 'contents' }}>
       {children}
     </div>
   );
