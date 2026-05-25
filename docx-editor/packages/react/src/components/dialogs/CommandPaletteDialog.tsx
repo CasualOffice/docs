@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { FocusTrap } from '../ui/FocusTrap';
 
 export interface CommandPaletteItem {
   /** Stable key for React + tests. */
@@ -186,76 +187,78 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
   };
 
   return (
-    <div
-      style={overlayStyle}
-      onMouseDown={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Command palette"
-    >
-      <div style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
-        <div style={inputWrapStyle}>
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Type a command…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (filtered.length > 0)
-                  setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (filtered.length > 0) setActiveIndex((i) => Math.max(i - 1, 0));
-              } else if (e.key === 'Home') {
-                e.preventDefault();
-                setActiveIndex(0);
-              } else if (e.key === 'End') {
-                e.preventDefault();
-                setActiveIndex(Math.max(0, filtered.length - 1));
-              } else if (e.key === 'Enter') {
-                e.preventDefault();
-                void run(current);
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-              }
-            }}
-            style={inputStyle}
-            data-testid="command-palette-input"
-          />
-        </div>
-        <div ref={listRef} style={listStyle} role="listbox">
-          {filtered.length === 0 ? (
-            <div style={emptyStyle}>No matching commands.</div>
-          ) : (
-            filtered.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                data-cp-index={index}
-                data-testid={`command-palette-item-${item.id}`}
-                style={itemStyle(index === currentIndex)}
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => void run(item)}
-              >
-                <span style={labelStyle}>
-                  <span>{item.label}</span>
-                  <span style={pathStyle}>{item.path}</span>
-                </span>
-                {item.shortcut && <span style={shortcutStyle}>{item.shortcut}</span>}
-              </button>
-            ))
-          )}
-        </div>
-        <div style={hintStyle}>
-          <span>↑↓ navigate · ↵ run · Esc close</span>
-          <span>{filtered.length} commands</span>
+    <FocusTrap initialFocus={inputRef}>
+      <div
+        style={overlayStyle}
+        onMouseDown={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+      >
+        <div style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
+          <div style={inputWrapStyle}>
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Type a command…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (filtered.length > 0)
+                    setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (filtered.length > 0) setActiveIndex((i) => Math.max(i - 1, 0));
+                } else if (e.key === 'Home') {
+                  e.preventDefault();
+                  setActiveIndex(0);
+                } else if (e.key === 'End') {
+                  e.preventDefault();
+                  setActiveIndex(Math.max(0, filtered.length - 1));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void run(current);
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  onClose();
+                }
+              }}
+              style={inputStyle}
+              data-testid="command-palette-input"
+            />
+          </div>
+          <div ref={listRef} style={listStyle} role="listbox">
+            {filtered.length === 0 ? (
+              <div style={emptyStyle}>No matching commands.</div>
+            ) : (
+              filtered.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  data-cp-index={index}
+                  data-testid={`command-palette-item-${item.id}`}
+                  style={itemStyle(index === currentIndex)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => void run(item)}
+                >
+                  <span style={labelStyle}>
+                    <span>{item.label}</span>
+                    <span style={pathStyle}>{item.path}</span>
+                  </span>
+                  {item.shortcut && <span style={shortcutStyle}>{item.shortcut}</span>}
+                </button>
+              ))
+            )}
+          </div>
+          <div style={hintStyle}>
+            <span>↑↓ navigate · ↵ run · Esc close</span>
+            <span>{filtered.length} commands</span>
+          </div>
         </div>
       </div>
-    </div>
+    </FocusTrap>
   );
 }

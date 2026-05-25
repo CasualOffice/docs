@@ -14,6 +14,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { CSSProperties } from 'react';
+import { FocusTrap } from '../ui/FocusTrap';
 
 export interface FilePropertiesValue {
   title?: string;
@@ -199,130 +200,132 @@ export function FilePropertiesDialog({
   if (!isOpen) return null;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="File properties"
-      data-testid="file-properties-dialog"
-      style={overlayStyle}
-      onMouseDown={onClose}
-    >
-      <div style={dialogStyle} onMouseDown={stop} onClick={stop}>
-        <div style={headerStyle}>File Properties</div>
-        <div style={bodyStyle}>
-          <section style={sectionStyle}>
-            <h3 style={sectionTitleStyle}>Metadata</h3>
-            <div style={rowStyle}>
-              <label style={labelStyle} htmlFor="fp-title">
-                Title
-              </label>
-              <input
-                id="fp-title"
-                data-testid="fp-title"
-                style={inputStyle}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle} htmlFor="fp-subject">
-                Subject
-              </label>
-              <input
-                id="fp-subject"
-                data-testid="fp-subject"
-                style={inputStyle}
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle} htmlFor="fp-creator">
-                Author
-              </label>
-              <input
-                id="fp-creator"
-                data-testid="fp-creator"
-                style={inputStyle}
-                value={creator}
-                onChange={(e) => setCreator(e.target.value)}
-              />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle} htmlFor="fp-keywords">
-                Keywords
-              </label>
-              <input
-                id="fp-keywords"
-                data-testid="fp-keywords"
-                style={inputStyle}
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                placeholder="e.g. finance; annual; report"
-              />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle} htmlFor="fp-category">
-                Category
-              </label>
-              <input
-                id="fp-category"
-                data-testid="fp-category"
-                style={inputStyle}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              />
-            </div>
-            <div style={rowStyle}>
-              <label style={labelStyle} htmlFor="fp-description">
-                Description
-              </label>
-              <textarea
-                id="fp-description"
-                data-testid="fp-description"
-                style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-          </section>
+    <FocusTrap>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="File properties"
+        data-testid="file-properties-dialog"
+        style={overlayStyle}
+        onMouseDown={onClose}
+      >
+        <div style={dialogStyle} onMouseDown={stop} onClick={stop}>
+          <div style={headerStyle}>File Properties</div>
+          <div style={bodyStyle}>
+            <section style={sectionStyle}>
+              <h3 style={sectionTitleStyle}>Metadata</h3>
+              <div style={rowStyle}>
+                <label style={labelStyle} htmlFor="fp-title">
+                  Title
+                </label>
+                <input
+                  id="fp-title"
+                  data-testid="fp-title"
+                  style={inputStyle}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+              <div style={rowStyle}>
+                <label style={labelStyle} htmlFor="fp-subject">
+                  Subject
+                </label>
+                <input
+                  id="fp-subject"
+                  data-testid="fp-subject"
+                  style={inputStyle}
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+              </div>
+              <div style={rowStyle}>
+                <label style={labelStyle} htmlFor="fp-creator">
+                  Author
+                </label>
+                <input
+                  id="fp-creator"
+                  data-testid="fp-creator"
+                  style={inputStyle}
+                  value={creator}
+                  onChange={(e) => setCreator(e.target.value)}
+                />
+              </div>
+              <div style={rowStyle}>
+                <label style={labelStyle} htmlFor="fp-keywords">
+                  Keywords
+                </label>
+                <input
+                  id="fp-keywords"
+                  data-testid="fp-keywords"
+                  style={inputStyle}
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                  placeholder="e.g. finance; annual; report"
+                />
+              </div>
+              <div style={rowStyle}>
+                <label style={labelStyle} htmlFor="fp-category">
+                  Category
+                </label>
+                <input
+                  id="fp-category"
+                  data-testid="fp-category"
+                  style={inputStyle}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                />
+              </div>
+              <div style={rowStyle}>
+                <label style={labelStyle} htmlFor="fp-description">
+                  Description
+                </label>
+                <textarea
+                  id="fp-description"
+                  data-testid="fp-description"
+                  style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </section>
 
-          <section style={{ ...sectionStyle, marginTop: 16 }}>
-            <h3 style={sectionTitleStyle}>File info</h3>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Last modified by</span>
-              <span style={readonlyValueStyle} data-testid="fp-lastModifiedBy">
-                {current?.lastModifiedBy ?? '—'}
-              </span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Revision</span>
-              <span style={readonlyValueStyle}>{current?.revision ?? '—'}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Created</span>
-              <span style={readonlyValueStyle}>{formatDate(current?.created)}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Modified</span>
-              <span style={readonlyValueStyle}>{formatDate(current?.modified)}</span>
-            </div>
-          </section>
-        </div>
-        <div style={footerStyle}>
-          <button type="button" style={btnStyle} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            style={primaryBtnStyle}
-            data-testid="fp-apply"
-            onClick={handleApply}
-          >
-            Apply
-          </button>
+            <section style={{ ...sectionStyle, marginTop: 16 }}>
+              <h3 style={sectionTitleStyle}>File info</h3>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Last modified by</span>
+                <span style={readonlyValueStyle} data-testid="fp-lastModifiedBy">
+                  {current?.lastModifiedBy ?? '—'}
+                </span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Revision</span>
+                <span style={readonlyValueStyle}>{current?.revision ?? '—'}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Created</span>
+                <span style={readonlyValueStyle}>{formatDate(current?.created)}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Modified</span>
+                <span style={readonlyValueStyle}>{formatDate(current?.modified)}</span>
+              </div>
+            </section>
+          </div>
+          <div style={footerStyle}>
+            <button type="button" style={btnStyle} onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              style={primaryBtnStyle}
+              data-testid="fp-apply"
+              onClick={handleApply}
+            >
+              Apply
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </FocusTrap>
   );
 }

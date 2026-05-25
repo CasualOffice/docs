@@ -12,6 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '../../i18n';
 import type { TranslationKey } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 // ============================================================================
 // TYPES
@@ -736,192 +737,196 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
   if (!isOpen) return null;
 
   return (
-    <div
-      className="docx-shortcuts-overlay"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10001,
-      }}
-    >
+    <FocusTrap>
       <div
-        ref={dialogRef}
-        className={`docx-shortcuts-dialog ${className}`}
+        className="docx-shortcuts-overlay"
         style={{
-          width: '600px',
-          maxWidth: '90vw',
-          maxHeight: '80vh',
-          backgroundColor: 'var(--doc-surface, white)',
-          borderRadius: '12px',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
         }}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('dialogs.keyboardShortcuts.ariaLabel')}
       >
-        {/* Header */}
         <div
+          ref={dialogRef}
+          className={`docx-shortcuts-dialog ${className}`}
           style={{
+            width: '600px',
+            maxWidth: '90vw',
+            maxHeight: '80vh',
+            backgroundColor: 'var(--doc-surface, white)',
+            borderRadius: '12px',
+            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--doc-border)',
+            flexDirection: 'column',
+            overflow: 'hidden',
           }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('dialogs.keyboardShortcuts.ariaLabel')}
         >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: '18px',
-              fontWeight: 600,
-              color: 'var(--doc-text)',
-            }}
-          >
-            {t('dialogs.keyboardShortcuts.ariaLabel')}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common.closeDialog')}
+          {/* Header */}
+          <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              width: '32px',
-              height: '32px',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              borderRadius: '50%',
-              color: 'var(--doc-text-muted)',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--doc-border)',
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M5 5l10 10M15 5L5 15"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {/* Search */}
-        {showSearch && (
-          <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--doc-border)' }}>
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('dialogs.keyboardShortcuts.searchPlaceholder')}
+            <h2
               style={{
-                width: '100%',
-                padding: '10px 12px',
-                fontSize: '14px',
-                border: '1px solid var(--doc-border-light)',
-                borderRadius: '6px',
-                outline: 'none',
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: 600,
+                color: 'var(--doc-text)',
               }}
-            />
-          </div>
-        )}
-
-        {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '16px 20px',
-          }}
-        >
-          {groupedShortcuts.length === 0 ? (
-            <div
+            >
+              {t('dialogs.keyboardShortcuts.ariaLabel')}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('common.closeDialog')}
               style={{
-                textAlign: 'center',
-                padding: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                borderRadius: '50%',
                 color: 'var(--doc-text-muted)',
               }}
             >
-              {t('dialogs.keyboardShortcuts.noResults', { query: searchQuery })}
-            </div>
-          ) : (
-            groupedShortcuts.map(({ category, shortcuts }) => (
-              <div key={category} style={{ marginBottom: '24px' }}>
-                <h3
-                  style={{
-                    margin: '0 0 12px 0',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: 'var(--doc-primary)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  {t(CATEGORY_LABEL_KEYS[category])}
-                </h3>
-                <div>
-                  {shortcuts.map((shortcut) => (
-                    <ShortcutItem
-                      key={shortcut.id}
-                      shortcut={shortcut}
-                      translatedName={shortcut.nameKey ? t(shortcut.nameKey) : shortcut.name}
-                      translatedDescription={
-                        shortcut.descriptionKey ? t(shortcut.descriptionKey) : shortcut.description
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M5 5l10 10M15 5L5 15"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
 
-        {/* Footer */}
-        <div
-          style={{
-            padding: '12px 20px',
-            borderTop: '1px solid var(--doc-border)',
-            backgroundColor: 'var(--doc-bg)',
-            fontSize: '12px',
-            color: 'var(--doc-text-muted)',
-            textAlign: 'center',
-          }}
-        >
-          {(() => {
-            const text = t('dialogs.keyboardShortcuts.pressEscToClose', { key: 'Esc' });
-            const parts = text.split('Esc');
-            return (
-              <>
-                {parts[0]}
-                <kbd
-                  style={{
-                    padding: '2px 6px',
-                    backgroundColor: 'var(--doc-surface, white)',
-                    borderRadius: '4px',
-                    border: '1px solid var(--doc-border-light)',
-                  }}
-                >
-                  Esc
-                </kbd>
-                {parts[1]}
-              </>
-            );
-          })()}
+          {/* Search */}
+          {showSearch && (
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--doc-border)' }}>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('dialogs.keyboardShortcuts.searchPlaceholder')}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: '1px solid var(--doc-border-light)',
+                  borderRadius: '6px',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Content */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px 20px',
+            }}
+          >
+            {groupedShortcuts.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '32px',
+                  color: 'var(--doc-text-muted)',
+                }}
+              >
+                {t('dialogs.keyboardShortcuts.noResults', { query: searchQuery })}
+              </div>
+            ) : (
+              groupedShortcuts.map(({ category, shortcuts }) => (
+                <div key={category} style={{ marginBottom: '24px' }}>
+                  <h3
+                    style={{
+                      margin: '0 0 12px 0',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--doc-primary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {t(CATEGORY_LABEL_KEYS[category])}
+                  </h3>
+                  <div>
+                    {shortcuts.map((shortcut) => (
+                      <ShortcutItem
+                        key={shortcut.id}
+                        shortcut={shortcut}
+                        translatedName={shortcut.nameKey ? t(shortcut.nameKey) : shortcut.name}
+                        translatedDescription={
+                          shortcut.descriptionKey
+                            ? t(shortcut.descriptionKey)
+                            : shortcut.description
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              padding: '12px 20px',
+              borderTop: '1px solid var(--doc-border)',
+              backgroundColor: 'var(--doc-bg)',
+              fontSize: '12px',
+              color: 'var(--doc-text-muted)',
+              textAlign: 'center',
+            }}
+          >
+            {(() => {
+              const text = t('dialogs.keyboardShortcuts.pressEscToClose', { key: 'Esc' });
+              const parts = text.split('Esc');
+              return (
+                <>
+                  {parts[0]}
+                  <kbd
+                    style={{
+                      padding: '2px 6px',
+                      backgroundColor: 'var(--doc-surface, white)',
+                      borderRadius: '4px',
+                      border: '1px solid var(--doc-border-light)',
+                    }}
+                  >
+                    Esc
+                  </kbd>
+                  {parts[1]}
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
-    </div>
+    </FocusTrap>
   );
 };
 

@@ -14,6 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { useTranslation } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 // ============================================================================
 // TYPES
@@ -753,133 +754,135 @@ export function InsertSymbolDialog({
   ];
 
   return (
-    <div
-      className={`docx-insert-symbol-dialog-overlay ${className || ''}`}
-      style={{ ...DIALOG_OVERLAY_STYLE, ...style }}
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="insert-symbol-dialog-title"
-    >
-      <div className="docx-insert-symbol-dialog" style={DIALOG_CONTENT_STYLE}>
-        {/* Header */}
-        <div className="docx-insert-symbol-dialog-header" style={DIALOG_HEADER_STYLE}>
-          <h2 id="insert-symbol-dialog-title" style={DIALOG_TITLE_STYLE}>
-            {t('dialogs.insertSymbol.title')}
-          </h2>
-          <button
-            type="button"
-            className="docx-insert-symbol-dialog-close"
-            style={CLOSE_BUTTON_STYLE}
-            onClick={onClose}
-            aria-label={t('common.closeDialog')}
-          >
-            &times;
-          </button>
-        </div>
+    <FocusTrap>
+      <div
+        className={`docx-insert-symbol-dialog-overlay ${className || ''}`}
+        style={{ ...DIALOG_OVERLAY_STYLE, ...style }}
+        onClick={handleOverlayClick}
+        onKeyDown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="insert-symbol-dialog-title"
+      >
+        <div className="docx-insert-symbol-dialog" style={DIALOG_CONTENT_STYLE}>
+          {/* Header */}
+          <div className="docx-insert-symbol-dialog-header" style={DIALOG_HEADER_STYLE}>
+            <h2 id="insert-symbol-dialog-title" style={DIALOG_TITLE_STYLE}>
+              {t('dialogs.insertSymbol.title')}
+            </h2>
+            <button
+              type="button"
+              className="docx-insert-symbol-dialog-close"
+              style={CLOSE_BUTTON_STYLE}
+              onClick={onClose}
+              aria-label={t('common.closeDialog')}
+            >
+              &times;
+            </button>
+          </div>
 
-        {/* Body */}
-        <div className="docx-insert-symbol-dialog-body" style={DIALOG_BODY_STYLE}>
-          {/* Search */}
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder={t('dialogs.insertSymbol.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={SEARCH_INPUT_STYLE}
-          />
+          {/* Body */}
+          <div className="docx-insert-symbol-dialog-body" style={DIALOG_BODY_STYLE}>
+            {/* Search */}
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder={t('dialogs.insertSymbol.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={SEARCH_INPUT_STYLE}
+            />
 
-          {/* Category tabs */}
-          {!searchQuery && (
-            <div className="docx-insert-symbol-categories" style={CATEGORY_TABS_STYLE}>
-              {categories.map((cat) => (
+            {/* Category tabs */}
+            {!searchQuery && (
+              <div className="docx-insert-symbol-categories" style={CATEGORY_TABS_STYLE}>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.name}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.name)}
+                    style={
+                      selectedCategory === cat.name ? CATEGORY_TAB_ACTIVE_STYLE : CATEGORY_TAB_STYLE
+                    }
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Symbols grid */}
+            <div className="docx-insert-symbol-grid" style={SYMBOLS_GRID_STYLE}>
+              {filteredSymbols.map((symbol, index) => (
                 <button
-                  key={cat.name}
+                  key={`${symbol}-${index}`}
                   type="button"
-                  onClick={() => setSelectedCategory(cat.name)}
-                  style={
-                    selectedCategory === cat.name ? CATEGORY_TAB_ACTIVE_STYLE : CATEGORY_TAB_STYLE
-                  }
+                  onClick={() => handleSymbolClick(symbol)}
+                  onDoubleClick={() => handleSymbolDoubleClick(symbol)}
+                  onMouseEnter={() => setHoveredSymbol(symbol)}
+                  onMouseLeave={() => setHoveredSymbol(null)}
+                  style={{
+                    ...SYMBOL_BUTTON_STYLE,
+                    ...(selectedSymbol === symbol
+                      ? {
+                          backgroundColor: 'var(--doc-primary-light)',
+                          borderColor: 'var(--doc-primary)',
+                        }
+                      : {}),
+                  }}
+                  title={`${symbol} - U+${symbol.codePointAt(0)?.toString(16).toUpperCase()}`}
                 >
-                  {cat.label}
+                  {symbol}
                 </button>
               ))}
             </div>
-          )}
 
-          {/* Symbols grid */}
-          <div className="docx-insert-symbol-grid" style={SYMBOLS_GRID_STYLE}>
-            {filteredSymbols.map((symbol, index) => (
-              <button
-                key={`${symbol}-${index}`}
-                type="button"
-                onClick={() => handleSymbolClick(symbol)}
-                onDoubleClick={() => handleSymbolDoubleClick(symbol)}
-                onMouseEnter={() => setHoveredSymbol(symbol)}
-                onMouseLeave={() => setHoveredSymbol(null)}
-                style={{
-                  ...SYMBOL_BUTTON_STYLE,
-                  ...(selectedSymbol === symbol
-                    ? {
-                        backgroundColor: 'var(--doc-primary-light)',
-                        borderColor: 'var(--doc-primary)',
-                      }
-                    : {}),
-                }}
-                title={`${symbol} - U+${symbol.codePointAt(0)?.toString(16).toUpperCase()}`}
-              >
-                {symbol}
-              </button>
-            ))}
-          </div>
+            {/* No results */}
+            {filteredSymbols.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--doc-text-muted)' }}>
+                {t('dialogs.insertSymbol.noResults', { query: searchQuery })}
+              </div>
+            )}
 
-          {/* No results */}
-          {filteredSymbols.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--doc-text-muted)' }}>
-              {t('dialogs.insertSymbol.noResults', { query: searchQuery })}
-            </div>
-          )}
-
-          {/* Preview */}
-          {symbolInfo && (
-            <div className="docx-insert-symbol-preview" style={PREVIEW_SECTION_STYLE}>
-              <div style={PREVIEW_SYMBOL_STYLE}>{symbolInfo.character}</div>
-              <div style={PREVIEW_INFO_STYLE}>
-                <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
-                  {symbolInfo.codePoint}
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--doc-text-muted)' }}>
-                  {t('dialogs.insertSymbol.decimal', { value: symbolInfo.decimal })}
+            {/* Preview */}
+            {symbolInfo && (
+              <div className="docx-insert-symbol-preview" style={PREVIEW_SECTION_STYLE}>
+                <div style={PREVIEW_SYMBOL_STYLE}>{symbolInfo.character}</div>
+                <div style={PREVIEW_INFO_STYLE}>
+                  <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
+                    {symbolInfo.codePoint}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--doc-text-muted)' }}>
+                    {t('dialogs.insertSymbol.decimal', { value: symbolInfo.decimal })}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="docx-insert-symbol-dialog-footer" style={DIALOG_FOOTER_STYLE}>
-          <button
-            type="button"
-            className="docx-insert-symbol-dialog-cancel"
-            style={SECONDARY_BUTTON_STYLE}
-            onClick={onClose}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="docx-insert-symbol-dialog-insert"
-            style={canInsert ? PRIMARY_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
-            onClick={handleInsert}
-            disabled={!canInsert}
-          >
-            {t('common.insert')}
-          </button>
+          {/* Footer */}
+          <div className="docx-insert-symbol-dialog-footer" style={DIALOG_FOOTER_STYLE}>
+            <button
+              type="button"
+              className="docx-insert-symbol-dialog-cancel"
+              style={SECONDARY_BUTTON_STYLE}
+              onClick={onClose}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="docx-insert-symbol-dialog-insert"
+              style={canInsert ? PRIMARY_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+              onClick={handleInsert}
+              disabled={!canInsert}
+            >
+              {t('common.insert')}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </FocusTrap>
   );
 }
 
