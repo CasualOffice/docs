@@ -1693,6 +1693,48 @@ function convertPMTextBox(node: PMNode): Paragraph {
     };
   }
 
+  // Round-trip anchor position so a save-then-reload preserves the
+  // shape's posOffset / relativeFrom / alignment. The layout engine
+  // doesn't yet honor these (gap-matrix → anchored-shape-position-
+  // lost) but the data needs to survive editing — otherwise every
+  // save degrades anchored shapes to inline-flow, even if the user
+  // never touched them.
+  if (
+    attrs.posOffsetH != null ||
+    attrs.posOffsetV != null ||
+    attrs.posAlignH ||
+    attrs.posAlignV ||
+    attrs.posRelFromH ||
+    attrs.posRelFromV
+  ) {
+    shape.position = {
+      horizontal: {
+        relativeTo:
+          (attrs.posRelFromH as import('../../types/content').ImagePosition['horizontal']['relativeTo']) ??
+          'column',
+        ...(attrs.posOffsetH != null ? { posOffset: pixelsToEmu(attrs.posOffsetH) } : {}),
+        ...(attrs.posAlignH
+          ? {
+              alignment:
+                attrs.posAlignH as import('../../types/content').ImagePosition['horizontal']['alignment'],
+            }
+          : {}),
+      },
+      vertical: {
+        relativeTo:
+          (attrs.posRelFromV as import('../../types/content').ImagePosition['vertical']['relativeTo']) ??
+          'paragraph',
+        ...(attrs.posOffsetV != null ? { posOffset: pixelsToEmu(attrs.posOffsetV) } : {}),
+        ...(attrs.posAlignV
+          ? {
+              alignment:
+                attrs.posAlignV as import('../../types/content').ImagePosition['vertical']['alignment'],
+            }
+          : {}),
+      },
+    };
+  }
+
   // Convert outline back
   if (attrs.outlineWidth && attrs.outlineWidth > 0) {
     const cssToOoxmlOutline: Record<string, string> = {

@@ -1962,6 +1962,18 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
     contentNodes.push(schema.node('paragraph', {}, []));
   }
 
+  // Surface the parsed anchor position on the PM node so it
+  // round-trips through save without data loss. The layout engine
+  // doesn't honor these yet (gap-matrix → anchored-shape-position-
+  // lost): the first attempt made anchored shapes float as overlays
+  // and shifted real-world docs by a page. Carrying the data is
+  // safe and unblocks future layout work without losing it on the
+  // next save.
+  const posH = textBox.position?.horizontal;
+  const posV = textBox.position?.vertical;
+  const posOffsetH = posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
+  const posOffsetV = posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
+
   return schema.node(
     'textBox',
     {
@@ -1977,6 +1989,12 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
       marginLeft,
       marginRight,
       autoFit: textBox.autoFit,
+      posOffsetH,
+      posOffsetV,
+      posRelFromH: posH?.relativeTo ?? null,
+      posRelFromV: posV?.relativeTo ?? null,
+      posAlignH: posH?.alignment ?? null,
+      posAlignV: posV?.alignment ?? null,
     },
     contentNodes
   );
