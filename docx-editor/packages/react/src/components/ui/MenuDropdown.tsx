@@ -9,6 +9,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { MaterialSymbol } from './MaterialSymbol';
 import { useMenuBar } from './MenuBarContext';
+import { Z_INDEX } from '../../styles/zIndex';
 
 export interface MenuItem {
   icon?: string;
@@ -264,10 +265,10 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
         style={{
           ...(isOpen ? triggerOpenStyle : triggerStyle),
           position: 'relative',
-          // Above the backdrop (9998) so clicks on adjacent triggers
-          // reach them in one go instead of being eaten by the open
-          // menu's backdrop.
-          zIndex: 10001,
+          // Above the backdrop so clicks on adjacent triggers reach
+          // them in one go instead of being eaten by the open menu's
+          // backdrop. See `styles/zIndex.ts` for the stacking order.
+          zIndex: Z_INDEX.menubarTrigger,
         }}
       >
         {label}
@@ -302,7 +303,7 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
             style={{
               position: 'fixed',
               inset: 0,
-              zIndex: 9998,
+              zIndex: Z_INDEX.menubarBackdrop,
               background: 'transparent',
               pointerEvents: 'auto',
             }}
@@ -319,7 +320,7 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
               borderRadius: 6,
               boxShadow: 'var(--doc-shadow, 0 4px 12px rgba(0, 0, 0, 0.12))',
               padding: '4px 0',
-              zIndex: 9999,
+              zIndex: Z_INDEX.menubarPanel,
               minWidth: 200,
             }}
             onMouseDown={(e) => e.preventDefault()}
