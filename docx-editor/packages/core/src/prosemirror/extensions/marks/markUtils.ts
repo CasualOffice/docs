@@ -5,7 +5,7 @@
  */
 
 import type { Command, EditorState, Transaction } from 'prosemirror-state';
-import type { MarkType, Mark, Schema } from 'prosemirror-model';
+import type { MarkType, Mark, ResolvedPos, Schema } from 'prosemirror-model';
 import type { TextFormatting } from '../../../types/document';
 
 type MarkAttrs = Record<string, unknown>;
@@ -233,6 +233,38 @@ export function toggleMark(markType: MarkType, attrs: MarkAttrs = {}): Command {
 }
 
 /**
+ * Union of marks on the text nodes immediately before and after a
+ * cursor position. Used by `isMarkActive` / `getMarkAttr` so the
+ * toolbar reports the formatting *adjacent* to a collapsed cursor,
+ * not just the formatting of the LEFT text node.
+ *
+ * Why: PM's `$pos.marks()` returns the left-side text node's marks
+ * (with inclusive adjustments). That makes the toolbar light up
+ * correctly when the cursor sits *after* a bold word (left = bold)
+ * but go dark when the cursor sits *before* a bold word (left =
+ * plain, right = bold). Word + Google Docs both light the toolbar
+ * up on either side of a formatted run, so we union both neighbors.
+ *
+ * Note this is intentionally not used by the storedMarks pipeline —
+ * typing a character at the boundary still picks up the LEFT side
+ * (matching Word's typing semantics, where typing before a bold word
+ * produces plain text). Only the *display* path changes.
+ */
+function boundaryMarks($pos: ResolvedPos): readonly Mark[] {
+  const before = $pos.nodeBefore;
+  const after = $pos.nodeAfter;
+  const left = before?.marks ?? [];
+  const right = after?.marks ?? [];
+  if (right.length === 0) return left;
+  if (left.length === 0) return right;
+  const out: Mark[] = [...left];
+  for (const m of right) {
+    if (!out.some((o) => o.eq(m))) out.push(m);
+  }
+  return out;
+}
+
+/**
  * Check if a mark is active in the current selection
  */
 export function isMarkActive(
@@ -243,7 +275,7 @@ export function isMarkActive(
   const { from, to, empty } = state.selection;
 
   if (empty) {
-    const marks = state.storedMarks || state.selection.$from.marks();
+    const marks = state.storedMarks || boundaryMarks(state.selection.$from);
     return marks.some((mark) => {
       if (mark.type !== markType) return false;
       if (!attrs) return true;
@@ -280,7 +312,7 @@ export function getMarkAttr(state: EditorState, markType: MarkType, attr: string
   const { empty, $from, from, to } = state.selection;
 
   if (empty) {
-    const marks = state.storedMarks || $from.marks();
+    const marks = state.storedMarks || boundaryMarks($from);
     for (const mark of marks) {
       if (mark.type === markType) {
         return mark.attrs[attr];

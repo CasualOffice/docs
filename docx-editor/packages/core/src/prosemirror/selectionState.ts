@@ -5,6 +5,7 @@
  */
 
 import type { EditorState } from 'prosemirror-state';
+import type { Mark } from 'prosemirror-model';
 import type { TextFormatting, ParagraphFormatting } from '../types/document';
 
 // ============================================================================
@@ -34,6 +35,49 @@ export interface SelectionState {
 // ============================================================================
 // FUNCTIONS
 // ============================================================================
+
+/**
+ * Boundary marks at a collapsed cursor: stored marks first, otherwise
+ * the union of marks on `$from.nodeBefore` and `$from.nodeAfter`.
+ * Deduped by type+attrs so the same mark from both sides doesn't show
+ * twice. See the comment on the call site in extractSelectionState for
+ * why a union rather than `$from.marks()` alone.
+ */
+function cursorBoundaryMarks(state: EditorState): readonly Mark[] {
+  if (state.storedMarks) return state.storedMarks;
+  const $from = state.selection.$from;
+  const left = $from.nodeBefore?.marks ?? [];
+  const right = $from.nodeAfter?.marks ?? [];
+  if (right.length === 0) return left;
+  if (left.length === 0) return right;
+  const seen = new Set<string>();
+  const out: Mark[] = [];
+  for (const m of [...left, ...right]) {
+    const key = m.type.name + JSON.stringify(m.attrs);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(m);
+  }
+  return out;
+}
+
+/**
+ * Intersection of marks across every text node in a non-empty range.
+ * Returns the marks every covered character carries.
+ */
+function selectionRangeMarks(state: EditorState, from: number, to: number): readonly Mark[] {
+  let intersection: Mark[] | null = null;
+  state.doc.nodesBetween(from, to, (node) => {
+    if (!node.isText) return true;
+    if (intersection === null) {
+      intersection = [...node.marks];
+    } else {
+      intersection = intersection.filter((m) => node.marks.some((n) => n.eq(m)));
+    }
+    return false;
+  });
+  return intersection ?? [];
+}
 
 /**
  * Extract selection state from editor state.
@@ -70,9 +114,24 @@ export function extractSelectionState(state: EditorState): SelectionState | null
     | TextFormatting
     | undefined;
 
-  // For empty selection (cursor), use stored marks or marks at cursor position
-  // For non-empty selection, check marks at the start of selection
-  const marks = state.storedMarks || selection.$from.marks();
+  // For empty selection (cursor): stored marks → union of marks on the
+  // text nodes immediately before AND after the cursor. The union
+  // matches Word + Google Docs' toolbar behaviour: cursor at the start
+  // of a bold run lights the bold button (the bold run is `nodeAfter`),
+  // and cursor at the end of a bold run keeps it lit (the bold run is
+  // `nodeBefore`). PM's $from.marks() is left-leaning, so without the
+  // nodeAfter union the start-of-bold case reads bold-inactive.
+  //
+  // For non-empty selections: walk every text node in the range and
+  // intersect the marks. A formatting is "active" only when every
+  // covered character carries it — so a selection that's half bold,
+  // half plain shows bold-inactive (matching Word). This catches the
+  // selectText('bold') + applyBold sequence: after addMark the
+  // selection still covers all four characters of "bold", every text
+  // node in range has the mark, and the toolbar lights up.
+  const marks: readonly Mark[] = empty
+    ? cursorBoundaryMarks(state)
+    : selectionRangeMarks(state, from, to);
 
   // If in empty paragraph with no marks but has defaultTextFormatting, use that
   if (isEmptyParagraph && marks.length === 0 && paragraphDefaultFormatting) {

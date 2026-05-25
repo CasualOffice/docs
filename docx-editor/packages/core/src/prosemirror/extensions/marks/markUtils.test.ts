@@ -11,7 +11,7 @@
 import { describe, test, expect } from 'bun:test';
 import { Schema } from 'prosemirror-model';
 import { EditorState, TextSelection } from 'prosemirror-state';
-import { setMark, removeMark } from './markUtils';
+import { setMark, removeMark, isMarkActive } from './markUtils';
 
 // Includes a nested-block container (table cell) so we can verify that the
 // "paragraph inside a wrapper" shape — same shape as header/footer content
@@ -206,5 +206,75 @@ describe('setMark on paragraph nested inside a wrapper block', () => {
     expect(para.attrs.defaultTextFormatting).toEqual({
       fontFamily: { ascii: 'Georgia', hAnsi: 'Georgia' },
     });
+  });
+});
+
+// ============================================================================
+// isMarkActive at cursor boundaries (P2 #20)
+// ============================================================================
+
+describe('isMarkActive at cursor boundaries', () => {
+  // Builds: "Normal **bold** normal" — three text nodes, the middle one
+  // carries a bold mark. Each test positions the cursor at a different
+  // boundary and asserts the toolbar's bold-detection logic.
+  function createBoundaryState() {
+    const bold = schema.marks.bold.create();
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [
+        schema.text('Normal '),
+        schema.text('bold', [bold]),
+        schema.text(' normal'),
+      ]),
+    ]);
+    return EditorState.create({ doc });
+  }
+
+  function withCursor(state: EditorState, pos: number): EditorState {
+    return state.apply(state.tr.setSelection(TextSelection.create(state.doc, pos)));
+  }
+
+  test('cursor inside bold word reports bold active', () => {
+    // "Normal " is 7 chars, "bold" starts at pos 8 (1 = inside paragraph,
+    // then 7 chars of "Normal "). Position 10 = middle of "bold".
+    const state = withCursor(createBoundaryState(), 10);
+    expect(isMarkActive(state, schema.marks.bold)).toBe(true);
+  });
+
+  test('cursor at start of bold word reports bold active (the boundary fix)', () => {
+    // Position 8 = right before 'b' of "bold". $from.marks() alone
+    // returns LEFT node marks ("Normal " — empty). The boundaryMarks
+    // helper must consult nodeAfter too.
+    const state = withCursor(createBoundaryState(), 8);
+    expect(isMarkActive(state, schema.marks.bold)).toBe(true);
+  });
+
+  test('cursor at end of bold word reports bold active', () => {
+    // Position 12 = right after 'd' of "bold". LEFT is bold, so this
+    // already worked pre-fix; the union doesn't regress it.
+    const state = withCursor(createBoundaryState(), 12);
+    expect(isMarkActive(state, schema.marks.bold)).toBe(true);
+  });
+
+  test('cursor inside plain run reports bold inactive', () => {
+    // Position 4 = middle of "Normal ". No bold mark anywhere nearby.
+    const state = withCursor(createBoundaryState(), 4);
+    expect(isMarkActive(state, schema.marks.bold)).toBe(false);
+  });
+
+  test('cursor in trailing plain run reports bold inactive', () => {
+    // Position 15 = middle of " normal" (after the bold run, with one
+    // intervening character so neither nodeBefore nor nodeAfter is the
+    // bold text node).
+    const state = withCursor(createBoundaryState(), 15);
+    expect(isMarkActive(state, schema.marks.bold)).toBe(false);
+  });
+
+  test('storedMarks override boundary marks when set', () => {
+    // Set storedMarks=[] (= "no marks") at a position inside the bold
+    // run. The explicit clear should win over the boundary lookup, so
+    // the toolbar reflects what the next typed character will receive.
+    let state = withCursor(createBoundaryState(), 10);
+    state = state.apply(state.tr.setStoredMarks([]));
+    expect(isMarkActive(state, schema.marks.bold)).toBe(false);
   });
 });
