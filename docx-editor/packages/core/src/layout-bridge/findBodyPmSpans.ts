@@ -58,3 +58,30 @@ export function findBodyPmAnchor(container: ParentNode, pmStart: number): HTMLEl
   if (!Number.isFinite(pmStart)) return null;
   return container.querySelector<HTMLElement>(`${BODY_SCOPE} [data-pm-start="${pmStart}"]`);
 }
+
+const HEADER_SCOPE = '.layout-page-header';
+const FOOTER_SCOPE = '.layout-page-footer';
+
+/**
+ * First header- or footer-tree element whose `data-pm-start` exactly
+ * matches `pmStart`. Mirrors {@link findBodyPmAnchor} but scopes the
+ * query to the active HF region so we don't cross trees: HF runs are
+ * parsed via a separate ProseMirror document and their PM positions
+ * overlap body positions one-for-one.
+ *
+ * Used by the HF editing path (image-selection resolution, etc.) so
+ * resize handles + drag overlays attach to the correct DOM element
+ * when the user is inside the header or footer.
+ *
+ * `which === 'header'` searches under `.layout-page-header`;
+ * `which === 'footer'` under `.layout-page-footer`.
+ */
+export function findHeaderFooterPmAnchor(
+  container: ParentNode,
+  pmStart: number,
+  which: 'header' | 'footer'
+): HTMLElement | null {
+  if (!Number.isFinite(pmStart)) return null;
+  const scope = which === 'header' ? HEADER_SCOPE : FOOTER_SCOPE;
+  return container.querySelector<HTMLElement>(`${scope} [data-pm-start="${pmStart}"]`);
+}

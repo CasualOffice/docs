@@ -93,6 +93,7 @@ import {
   findBodyPmAnchor,
   findBodyPmAnchors,
   findBodyPmSpans,
+  findHeaderFooterPmAnchor,
 } from '@eigenpal/docx-core/layout-bridge';
 import {
   selectionToRects,
@@ -2406,8 +2407,17 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           const { selection: sel } = view.state;
           if (sel instanceof NodeSelection && sel.node.type.name === 'image') {
             const pmPos = sel.from;
+            // Header/footer images live in a SEPARATE ProseMirror
+            // document, painted into `.layout-page-header` or
+            // `.layout-page-footer` — the body-scoped lookup misses
+            // them entirely and we'd silently drop the selection
+            // info → no resize handles on HF images (GH #266).
+            // Route through the HF-scoped helper when hfEditMode is
+            // active so handles attach to the correct DOM element.
             const imgEl = pagesContainerRef.current
-              ? findBodyPmAnchor(pagesContainerRef.current, pmPos)
+              ? hfEditMode
+                ? findHeaderFooterPmAnchor(pagesContainerRef.current, pmPos, hfEditMode)
+                : findBodyPmAnchor(pagesContainerRef.current, pmPos)
               : null;
             if (imgEl) {
               setSelectedImageInfo(buildImageSelectionInfo(imgEl, pmPos));
@@ -2419,7 +2429,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
         });
       },
-      [updateSelectionOverlay, zoom, buildImageSelectionInfo, syncCoordinator]
+      [updateSelectionOverlay, zoom, buildImageSelectionInfo, syncCoordinator, hfEditMode]
     );
 
     /**
