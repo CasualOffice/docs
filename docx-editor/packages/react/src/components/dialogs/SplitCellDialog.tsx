@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 export interface SplitCellDialogProps {
   isOpen: boolean;
@@ -149,69 +150,71 @@ export function SplitCellDialog({
       onKeyDown={handleKeyDown}
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <div
-        style={dialogStyle}
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('dialogs.splitCell.title')}
-      >
-        <div style={headerStyle}>{t('dialogs.splitCell.title')}</div>
+      <FocusTrap>
+        <div
+          style={dialogStyle}
+          onClick={(event) => event.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('dialogs.splitCell.title')}
+        >
+          <div style={headerStyle}>{t('dialogs.splitCell.title')}</div>
 
-        <div style={bodyStyle}>
-          <div style={helperStyle}>{t('dialogs.splitCell.description')}</div>
+          <div style={bodyStyle}>
+            <div style={helperStyle}>{t('dialogs.splitCell.description')}</div>
 
-          <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.splitCell.rowsLabel')}</label>
-            <input
-              type="number"
-              style={inputStyle}
-              min={minRows}
-              step={1}
-              value={rows}
-              onChange={(event) => setRows(Math.max(0, Number(event.target.value) || 0))}
-            />
+            <div style={rowStyle}>
+              <label style={labelStyle}>{t('dialogs.splitCell.rowsLabel')}</label>
+              <input
+                type="number"
+                style={inputStyle}
+                min={minRows}
+                step={1}
+                value={rows}
+                onChange={(event) => setRows(Math.max(0, Number(event.target.value) || 0))}
+              />
+            </div>
+
+            <div style={rowStyle}>
+              <label style={labelStyle}>{t('dialogs.splitCell.columnsLabel')}</label>
+              <input
+                type="number"
+                style={inputStyle}
+                min={minCols}
+                step={1}
+                value={cols}
+                onChange={(event) => setCols(Math.max(0, Number(event.target.value) || 0))}
+              />
+            </div>
+
+            <div style={validationError ? errorStyle : helperStyle}>
+              {validationError ??
+                t('dialogs.splitCell.currentMinimum', { rows: minRows, cols: minCols })}
+            </div>
           </div>
 
-          <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.splitCell.columnsLabel')}</label>
-            <input
-              type="number"
-              style={inputStyle}
-              min={minCols}
-              step={1}
-              value={cols}
-              onChange={(event) => setCols(Math.max(0, Number(event.target.value) || 0))}
-            />
-          </div>
-
-          <div style={validationError ? errorStyle : helperStyle}>
-            {validationError ??
-              t('dialogs.splitCell.currentMinimum', { rows: minRows, cols: minCols })}
+          <div style={footerStyle}>
+            <button type="button" style={btnStyle} onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                backgroundColor: 'var(--doc-primary)',
+                color: 'white',
+                borderColor: 'var(--doc-primary)',
+                opacity: validationError ? 0.6 : 1,
+                cursor: validationError ? 'not-allowed' : 'pointer',
+              }}
+              disabled={!!validationError}
+              onClick={handleApply}
+            >
+              {t('common.apply')}
+            </button>
           </div>
         </div>
-
-        <div style={footerStyle}>
-          <button type="button" style={btnStyle} onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            style={{
-              ...btnStyle,
-              backgroundColor: 'var(--doc-primary)',
-              color: 'white',
-              borderColor: 'var(--doc-primary)',
-              opacity: validationError ? 0.6 : 1,
-              cursor: validationError ? 'not-allowed' : 'pointer',
-            }}
-            disabled={!!validationError}
-            onClick={handleApply}
-          >
-            {t('common.apply')}
-          </button>
-        </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }

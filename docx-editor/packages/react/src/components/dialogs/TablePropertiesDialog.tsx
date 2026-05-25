@@ -9,6 +9,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 // ============================================================================
 // TYPES
@@ -161,92 +162,94 @@ export function TablePropertiesDialog({
 
   return (
     <div style={overlayStyle} onClick={onClose} onKeyDown={handleKeyDown}>
-      <div
-        style={dialogStyle}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('dialogs.tableProperties.title')}
-      >
-        <div style={headerStyle}>{t('dialogs.tableProperties.title')}</div>
+      <FocusTrap>
+        <div
+          style={dialogStyle}
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('dialogs.tableProperties.title')}
+        >
+          <div style={headerStyle}>{t('dialogs.tableProperties.title')}</div>
 
-        <div style={bodyStyle}>
-          {/* Width type */}
-          <div style={rowStyle}>
-            <label htmlFor="table-props-width-type" style={labelStyle}>
-              {t('dialogs.tableProperties.widthType')}
-            </label>
-            <select
-              id="table-props-width-type"
-              style={selectStyle}
-              value={widthType}
-              onChange={(e) => setWidthType(e.target.value)}
-            >
-              <option value="auto">{t('dialogs.tableProperties.widthTypes.auto')}</option>
-              <option value="dxa">{t('dialogs.tableProperties.widthTypes.fixed')}</option>
-              <option value="pct">{t('dialogs.tableProperties.widthTypes.percentage')}</option>
-            </select>
-          </div>
-
-          {/* Width value */}
-          {widthType !== 'auto' && (
+          <div style={bodyStyle}>
+            {/* Width type */}
             <div style={rowStyle}>
-              <label htmlFor="table-props-width" style={labelStyle}>
-                {t('dialogs.tableProperties.widthLabel')}
+              <label htmlFor="table-props-width-type" style={labelStyle}>
+                {t('dialogs.tableProperties.widthType')}
               </label>
-              <input
-                id="table-props-width"
-                type="number"
-                style={inputStyle}
-                min={0}
-                step={widthType === 'pct' ? 5 : 100}
-                value={width}
-                onChange={(e) => setWidth(Number(e.target.value) || 0)}
-              />
-              <span style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
-                {widthType === 'pct'
-                  ? t('dialogs.tableProperties.units.fiftiethsPercent')
-                  : t('dialogs.tableProperties.units.twips')}
-              </span>
+              <select
+                id="table-props-width-type"
+                style={selectStyle}
+                value={widthType}
+                onChange={(e) => setWidthType(e.target.value)}
+              >
+                <option value="auto">{t('dialogs.tableProperties.widthTypes.auto')}</option>
+                <option value="dxa">{t('dialogs.tableProperties.widthTypes.fixed')}</option>
+                <option value="pct">{t('dialogs.tableProperties.widthTypes.percentage')}</option>
+              </select>
             </div>
-          )}
 
-          {/* Alignment */}
-          <div style={rowStyle}>
-            <label htmlFor="table-props-alignment" style={labelStyle}>
-              {t('dialogs.tableProperties.alignmentLabel')}
-            </label>
-            <select
-              id="table-props-alignment"
-              style={selectStyle}
-              value={justification}
-              onChange={(e) => setJustification(e.target.value)}
+            {/* Width value */}
+            {widthType !== 'auto' && (
+              <div style={rowStyle}>
+                <label htmlFor="table-props-width" style={labelStyle}>
+                  {t('dialogs.tableProperties.widthLabel')}
+                </label>
+                <input
+                  id="table-props-width"
+                  type="number"
+                  style={inputStyle}
+                  min={0}
+                  step={widthType === 'pct' ? 5 : 100}
+                  value={width}
+                  onChange={(e) => setWidth(Number(e.target.value) || 0)}
+                />
+                <span style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
+                  {widthType === 'pct'
+                    ? t('dialogs.tableProperties.units.fiftiethsPercent')
+                    : t('dialogs.tableProperties.units.twips')}
+                </span>
+              </div>
+            )}
+
+            {/* Alignment */}
+            <div style={rowStyle}>
+              <label htmlFor="table-props-alignment" style={labelStyle}>
+                {t('dialogs.tableProperties.alignmentLabel')}
+              </label>
+              <select
+                id="table-props-alignment"
+                style={selectStyle}
+                value={justification}
+                onChange={(e) => setJustification(e.target.value)}
+              >
+                <option value="left">{t('dialogs.tableProperties.alignOptions.left')}</option>
+                <option value="center">{t('dialogs.tableProperties.alignOptions.center')}</option>
+                <option value="right">{t('dialogs.tableProperties.alignOptions.right')}</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={footerStyle}>
+            <button type="button" style={btnStyle} onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                backgroundColor: 'var(--doc-primary)',
+                color: 'white',
+                borderColor: 'var(--doc-primary)',
+              }}
+              onClick={handleApply}
             >
-              <option value="left">{t('dialogs.tableProperties.alignOptions.left')}</option>
-              <option value="center">{t('dialogs.tableProperties.alignOptions.center')}</option>
-              <option value="right">{t('dialogs.tableProperties.alignOptions.right')}</option>
-            </select>
+              {t('common.apply')}
+            </button>
           </div>
         </div>
-
-        <div style={footerStyle}>
-          <button type="button" style={btnStyle} onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            style={{
-              ...btnStyle,
-              backgroundColor: 'var(--doc-primary)',
-              color: 'white',
-              borderColor: 'var(--doc-primary)',
-            }}
-            onClick={handleApply}
-          >
-            {t('common.apply')}
-          </button>
-        </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }
