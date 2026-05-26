@@ -3,6 +3,7 @@
   "common": {
     "cancel": "Cancel",
     "ok": "OK",
+    "add": "Add",
     "insert": "Insert",
     "apply": "Apply",
     "close": "Close",
@@ -398,9 +399,8 @@
     },
     "bookmarks": {
       "title": "Bookmarks",
-      "filterPlaceholder": "Filter bookmarks…",
-      "noBookmarks": "This document has no bookmarks.",
-      "noMatches": "No bookmarks match the filter.",
+      "addPlaceholder": "Name new bookmark…",
+      "noBookmarks": "No bookmarks yet — type a name above to add one.",
       "goTo": "Go to"
     },
     "bordersShading": {

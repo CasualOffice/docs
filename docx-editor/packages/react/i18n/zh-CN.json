@@ -19,7 +19,8 @@
     "change": "更改",
     "px": "px",
     "closeDialog": "关闭对话框",
-    "ok": null
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "格式工具栏",
@@ -537,11 +538,10 @@
       "or": "或"
     },
     "bookmarks": {
-      "filterPlaceholder": null,
       "goTo": null,
       "noBookmarks": null,
-      "noMatches": null,
-      "title": null
+      "title": null,
+      "addPlaceholder": null
     },
     "characterSpacing": {
       "condensed": null,

@@ -19,7 +19,8 @@
     "change": "Zmień",
     "px": "px",
     "closeDialog": "Zamknij okno dialogowe",
-    "ok": null
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "Pasek narzędzi formatowania",
@@ -537,11 +538,10 @@
       "or": "lub"
     },
     "bookmarks": {
-      "filterPlaceholder": null,
       "goTo": null,
       "noBookmarks": null,
-      "noMatches": null,
-      "title": null
+      "title": null,
+      "addPlaceholder": null
     },
     "characterSpacing": {
       "condensed": null,

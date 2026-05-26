@@ -19,7 +19,8 @@
     "change": "שינוי",
     "px": "px",
     "closeDialog": "סגור חלון",
-    "ok": null
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "סרגל כלים לעיצוב",
@@ -537,11 +538,10 @@
       "or": "או"
     },
     "bookmarks": {
-      "filterPlaceholder": null,
       "goTo": null,
       "noBookmarks": null,
-      "noMatches": null,
-      "title": null
+      "title": null,
+      "addPlaceholder": null
     },
     "characterSpacing": {
       "condensed": null,

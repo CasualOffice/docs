@@ -6470,10 +6470,6 @@ body { background: white; }
                   isOpen={bookmarksDialogOpen}
                   onClose={() => setBookmarksDialogOpen(false)}
                   bookmarks={(() => {
-                    // Walk the live PM doc and collect bookmarks. They
-                    // live on paragraph attrs (paragraph.attrs.bookmarks)
-                    // — same shape we read in toProseDoc.ts:230. The
-                    // paragraph's paraId becomes the scroll target.
                     const list: Array<{ paraId: string; name: string }> = [];
                     const view = pagedEditorRef.current?.getView();
                     const doc = view?.state.doc;
@@ -6486,12 +6482,62 @@ body { background: white; }
                         | undefined;
                       if (!bms || !paraId) return;
                       for (const bm of bms) list.push({ paraId, name: bm.name });
-                      return false; // paragraphs don't contain paragraphs
+                      return false;
                     });
                     return list;
                   })()}
                   onGoTo={(paraId) => {
                     pagedEditorRef.current?.scrollToParaId(paraId);
+                  }}
+                  onAdd={(name) => {
+                    const view = getActiveEditorView();
+                    if (!view) return;
+                    const { $from } = view.state.selection;
+                    let paraNode = $from.parent;
+                    for (let d = $from.depth; d > 0 && paraNode.type.name !== 'paragraph'; d--) {
+                      paraNode = $from.node(d - 1);
+                    }
+                    if (paraNode.type.name !== 'paragraph') return;
+                    const existing =
+                      (paraNode.attrs.bookmarks as Array<{ id: number; name: string }> | null) ??
+                      [];
+                    if (existing.some((b) => b.name === name)) return;
+                    const nextId =
+                      existing.reduce((m, b) => Math.max(m, b.id), 0) +
+                      Math.floor(Math.random() * 1000) +
+                      1;
+                    setParagraphAttrs({
+                      bookmarks: [...existing, { id: nextId, name }],
+                    })(view.state, view.dispatch);
+                    focusActiveEditor();
+                  }}
+                  onDelete={(entry) => {
+                    const view = getActiveEditorView();
+                    if (!view) return;
+                    let targetPos: number | null = null;
+                    let targetNode: ReturnType<typeof view.state.doc.nodeAt> | null = null;
+                    view.state.doc.descendants((node, pos) => {
+                      if (targetPos !== null) return false;
+                      if (node.type.name !== 'paragraph') return;
+                      if (node.attrs.paraId === entry.paraId) {
+                        targetPos = pos;
+                        targetNode = node;
+                      }
+                      return false;
+                    });
+                    if (targetPos === null || !targetNode) return;
+                    const existing =
+                      ((targetNode as { attrs: Record<string, unknown> }).attrs.bookmarks as Array<{
+                        id: number;
+                        name: string;
+                      }> | null) ?? [];
+                    const next = existing.filter((b) => b.name !== entry.name);
+                    const tr = view.state.tr.setNodeMarkup(targetPos, undefined, {
+                      ...(targetNode as { attrs: Record<string, unknown> }).attrs,
+                      bookmarks: next.length > 0 ? next : null,
+                    });
+                    view.dispatch(tr);
+                    focusActiveEditor();
                   }}
                 />
               )}

@@ -19,7 +19,8 @@
     "change": "Değiştir",
     "px": "px",
     "closeDialog": "İletişim kutusunu kapat",
-    "ok": null
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "Biçimlendirme araç çubuğu",
@@ -537,11 +538,10 @@
       "or": "veya"
     },
     "bookmarks": {
-      "filterPlaceholder": null,
       "goTo": null,
       "noBookmarks": null,
-      "noMatches": null,
-      "title": null
+      "title": null,
+      "addPlaceholder": null
     },
     "characterSpacing": {
       "condensed": null,

@@ -19,7 +19,8 @@
     "change": "Alterar",
     "px": "px",
     "closeDialog": "Fechar diálogo",
-    "ok": null
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "Barra de formatação",
@@ -537,11 +538,10 @@
       "or": "ou"
     },
     "bookmarks": {
-      "filterPlaceholder": null,
       "goTo": null,
       "noBookmarks": null,
-      "noMatches": null,
-      "title": null
+      "title": null,
+      "addPlaceholder": null
     },
     "characterSpacing": {
       "condensed": null,

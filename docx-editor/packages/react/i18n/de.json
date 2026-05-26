@@ -19,7 +19,8 @@
     "change": "Ändern",
     "px": "px",
     "closeDialog": "Dialogfeld schließen",
-    "ok": null
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "Formatierungssymbolleiste",
@@ -537,11 +538,10 @@
       "or": "oder"
     },
     "bookmarks": {
-      "filterPlaceholder": null,
       "goTo": null,
       "noBookmarks": null,
-      "noMatches": null,
-      "title": null
+      "title": null,
+      "addPlaceholder": null
     },
     "characterSpacing": {
       "condensed": null,
