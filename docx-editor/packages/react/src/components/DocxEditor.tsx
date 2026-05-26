@@ -2778,15 +2778,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }) => {
       const view = getActiveEditorView();
       if (!view) return;
-      const indentFirstLine =
-        v.special === 'firstLine' ? v.specialBy : v.special === 'hanging' ? v.specialBy : 0;
-      const hangingIndent = v.special === 'hanging';
+      // Collapse degenerate "hanging with 0 value" / "firstLine with 0 value"
+      // to plain "none". The serializer writes w:hanging from the same slot
+      // as w:firstLine and uses the hangingIndent flag to choose attribute;
+      // letting hangingIndent=true through with value=0 produces w:hanging="0"
+      // which is meaningless OOXML.
+      let indentFirstLine: number | null = null;
+      let hangingIndent = false;
+      if (v.special === 'firstLine' && v.specialBy > 0) {
+        indentFirstLine = v.specialBy;
+      } else if (v.special === 'hanging' && v.specialBy > 0) {
+        indentFirstLine = v.specialBy;
+        hangingIndent = true;
+      }
       setParagraphAttrs({
         alignment: v.alignment,
         outlineLevel: v.outlineLevel,
         indentLeft: v.indentLeft || null,
         indentRight: v.indentRight || null,
-        indentFirstLine: indentFirstLine || null,
+        indentFirstLine,
         hangingIndent,
         spaceBefore: v.spaceBefore || null,
         spaceAfter: v.spaceAfter || null,

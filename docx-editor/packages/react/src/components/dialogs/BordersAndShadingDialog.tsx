@@ -241,7 +241,9 @@ export function BordersAndShadingDialog({
   return (
     <div
       style={overlayStyle}
-      onMouseDown={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
@@ -249,7 +251,6 @@ export function BordersAndShadingDialog({
       <FocusTrap>
         <div
           style={dialogStyle}
-          onMouseDown={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-label={t('dialogs.bordersShading.title')}

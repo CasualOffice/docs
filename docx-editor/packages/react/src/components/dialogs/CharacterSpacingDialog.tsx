@@ -220,7 +220,9 @@ export function CharacterSpacingDialog({
   return (
     <div
       style={overlayStyle}
-      onMouseDown={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
         else if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') submit();
@@ -229,7 +231,6 @@ export function CharacterSpacingDialog({
       <FocusTrap>
         <div
           style={dialogStyle}
-          onMouseDown={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-label={t('dialogs.characterSpacing.title')}

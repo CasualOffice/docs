@@ -136,7 +136,9 @@ export function BookmarksDialog({
   return (
     <div
       style={overlayStyle}
-      onMouseDown={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
@@ -144,7 +146,6 @@ export function BookmarksDialog({
       <FocusTrap>
         <div
           style={dialogStyle}
-          onMouseDown={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-label={t('dialogs.bookmarks.title')}

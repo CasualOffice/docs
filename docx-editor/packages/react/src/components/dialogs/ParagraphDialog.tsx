@@ -225,7 +225,9 @@ export function ParagraphDialog({
   return (
     <div
       style={overlayStyle}
-      onMouseDown={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
@@ -233,7 +235,6 @@ export function ParagraphDialog({
       <FocusTrap>
         <div
           style={dialogStyle}
-          onMouseDown={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-label={t('dialogs.paragraph.title')}
