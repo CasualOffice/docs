@@ -249,6 +249,8 @@ export interface ToolbarProps {
   onInsertTOC?: () => void;
   /** Open the Bookmarks dialog (list of named anchors). */
   onOpenBookmarks?: () => void;
+  /** Open the Character Spacing dialog (Word: Format > Font > Advanced). */
+  onOpenCharacterSpacing?: () => void;
   /** Callback when user wants to insert a shape */
   onInsertShape?: (data: {
     shapeType: string;

@@ -18,7 +18,8 @@
     "dismiss": "Kapat",
     "change": "Değiştir",
     "px": "px",
-    "closeDialog": "İletişim kutusunu kapat"
+    "closeDialog": "İletişim kutusunu kapat",
+    "ok": null
   },
   "toolbar": {
     "ariaLabel": "Biçimlendirme araç çubuğu",
@@ -40,7 +41,25 @@
     "tableOfContents": "İçindekiler tablosu",
     "symbol": "Sembol",
     "help": "Yardım",
-    "reportIssue": "Sorun bildir"
+    "reportIssue": "Sorun bildir",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +95,9 @@
     "subscriptShortcut": "Alt simge (Ctrl+=)",
     "imageProperties": "Görsel özellikleri",
     "imagePropertiesShortcut": "Görsel özellikleri (alternatif metin, kenarlık)...",
-    "clearFormatting": "Biçimlendirmeyi temizle"
+    "clearFormatting": "Biçimlendirmeyi temizle",
+    "allCaps": null,
+    "smallCaps": null
   },
   "alignment": {
     "alignLeft": "Sola hizala",
@@ -203,7 +224,8 @@
       "replaceAllTitle": "Tüm eşleşmeleri değiştir",
       "matchCase": "Büyük/küçük harf eşleştir",
       "wholeWords": "Tam sözcük",
-      "toggleReplace": "+ Değiştir"
+      "toggleReplace": "+ Değiştir",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "Köprüyü düzenle",
@@ -368,7 +390,9 @@
         "left": "Sol",
         "center": "Orta",
         "right": "Sağ"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "Özel yapıştır",
@@ -509,6 +533,31 @@
       "noResults": "\"{query}\" eşleşen kısayol yok",
       "pressEscToClose": "Kapatmak için {key} tuşuna bas",
       "or": "veya"
+    },
+    "bookmarks": {
+      "filterPlaceholder": null,
+      "goTo": null,
+      "noBookmarks": null,
+      "noMatches": null,
+      "title": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
     }
   },
   "comments": {
@@ -744,7 +793,9 @@
     "insertPageNumber": "Mevcut sayfa numarasını ekle",
     "insertTotalPages": "Toplam sayfa sayısını ekle",
     "remove": "{label} kaldır",
-    "closeEditing": "{label} düzenlemeyi kapat"
+    "closeEditing": "{label} düzenlemeyi kapat",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "Görsel yer tutucu",

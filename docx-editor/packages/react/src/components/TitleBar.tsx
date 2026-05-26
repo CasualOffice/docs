@@ -238,6 +238,7 @@ export function MenuBar() {
     onInsertField,
     onInsertTOC,
     onOpenBookmarks,
+    onOpenCharacterSpacing,
     onRefocusEditor,
   } = ctx;
 
@@ -519,6 +520,13 @@ export function MenuBar() {
             {
               label: `${currentFormatting?.allCaps ? '✓ ' : ''}All Caps`,
               onClick: () => handleFormat('toggleAllCaps'),
+            } as MenuEntry,
+            { type: 'separator' as const } as MenuEntry,
+            {
+              icon: 'format_letter_spacing',
+              label: t('toolbar.characterSpacing'),
+              onClick: onOpenCharacterSpacing,
+              disabled: !onOpenCharacterSpacing,
             } as MenuEntry,
             { type: 'separator' as const } as MenuEntry,
             {

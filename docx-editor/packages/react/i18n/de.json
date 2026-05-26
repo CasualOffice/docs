@@ -18,7 +18,8 @@
     "dismiss": "Verwerfen",
     "change": "Ändern",
     "px": "px",
-    "closeDialog": "Dialogfeld schließen"
+    "closeDialog": "Dialogfeld schließen",
+    "ok": null
   },
   "toolbar": {
     "ariaLabel": "Formatierungssymbolleiste",
@@ -40,7 +41,25 @@
     "open": "Öffnen",
     "openShortcut": "Strg+O",
     "save": "Speichern",
-    "saveShortcut": "Strg+S"
+    "saveShortcut": "Strg+S",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +95,9 @@
     "subscriptShortcut": "Tiefgestellt (Strg+=)",
     "imageProperties": "Bildeigenschaften",
     "imagePropertiesShortcut": "Bildeigenschaften (Alternativtext, Rahmen)...",
-    "clearFormatting": "Formatierung löschen"
+    "clearFormatting": "Formatierung löschen",
+    "allCaps": null,
+    "smallCaps": null
   },
   "alignment": {
     "alignLeft": "Linksbündig",
@@ -203,7 +224,8 @@
       "replaceAllTitle": "Alle Treffer ersetzen",
       "matchCase": "Groß-/Kleinschreibung beachten",
       "wholeWords": "Nur ganzes Wort suchen",
-      "toggleReplace": "+ Ersetzen"
+      "toggleReplace": "+ Ersetzen",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "Hyperlink bearbeiten",
@@ -368,7 +390,9 @@
         "left": "Links",
         "center": "Zentriert",
         "right": "Rechts"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "Inhalte einfügen",
@@ -509,6 +533,31 @@
       "noResults": "Keine Tastenkombinationen für \"{query}\" gefunden",
       "pressEscToClose": "{key} drücken, um zu schließen",
       "or": "oder"
+    },
+    "bookmarks": {
+      "filterPlaceholder": null,
+      "goTo": null,
+      "noBookmarks": null,
+      "noMatches": null,
+      "title": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
     }
   },
   "comments": {
@@ -741,7 +790,9 @@
     "insertPageNumber": "Aktuelle Seitenzahl einfügen",
     "insertTotalPages": "Gesamtseitenzahl einfügen",
     "remove": "{label} entfernen",
-    "closeEditing": "{label}-Bearbeitung schließen"
+    "closeEditing": "{label}-Bearbeitung schließen",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "Bildplatzhalter",

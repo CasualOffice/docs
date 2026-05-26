@@ -18,7 +18,8 @@
     "dismiss": "Odrzuć",
     "change": "Zmień",
     "px": "px",
-    "closeDialog": "Zamknij okno dialogowe"
+    "closeDialog": "Zamknij okno dialogowe",
+    "ok": null
   },
   "toolbar": {
     "ariaLabel": "Pasek narzędzi formatowania",
@@ -40,7 +41,25 @@
     "open": "Otwórz",
     "openShortcut": "Ctrl+O",
     "save": "Zapisz",
-    "saveShortcut": "Ctrl+S"
+    "saveShortcut": "Ctrl+S",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +95,9 @@
     "subscriptShortcut": "Indeks dolny (Ctrl+=)",
     "imageProperties": "Właściwości obrazu",
     "imagePropertiesShortcut": "Właściwości obrazu (tekst alternatywny, obramowanie)...",
-    "clearFormatting": "Wyczyść formatowanie"
+    "clearFormatting": "Wyczyść formatowanie",
+    "allCaps": null,
+    "smallCaps": null
   },
   "alignment": {
     "alignLeft": "Wyrównaj do lewej",
@@ -203,7 +224,8 @@
       "replaceAllTitle": "Zamień wszystkie dopasowania",
       "matchCase": "Uwzględnij wielkość liter",
       "wholeWords": "Całe wyrazy",
-      "toggleReplace": "+ Zamień"
+      "toggleReplace": "+ Zamień",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "Edytuj hiperłącze",
@@ -368,7 +390,9 @@
         "left": "Do lewej",
         "center": "Do środka",
         "right": "Do prawej"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "Wklej specjalnie",
@@ -509,6 +533,31 @@
       "noResults": "Nie znaleziono skrótów pasujących do \"{query}\"",
       "pressEscToClose": "Naciśnij {key}, aby zamknąć",
       "or": "lub"
+    },
+    "bookmarks": {
+      "filterPlaceholder": null,
+      "goTo": null,
+      "noBookmarks": null,
+      "noMatches": null,
+      "title": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
     }
   },
   "comments": {
@@ -741,7 +790,9 @@
     "insertPageNumber": "Wstaw numer bieżącej strony",
     "insertTotalPages": "Wstaw łączną liczbę stron",
     "remove": "Usuń — {label}",
-    "closeEditing": "Zamknij edycję — {label}"
+    "closeEditing": "Zamknij edycję — {label}",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "Symbol zastępczy obrazu",

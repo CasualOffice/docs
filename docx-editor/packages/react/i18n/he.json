@@ -18,7 +18,8 @@
     "dismiss": "סגירה",
     "change": "שינוי",
     "px": "px",
-    "closeDialog": "סגור חלון"
+    "closeDialog": "סגור חלון",
+    "ok": null
   },
   "toolbar": {
     "ariaLabel": "סרגל כלים לעיצוב",
@@ -40,7 +41,25 @@
     "open": "פתיחה",
     "openShortcut": "Ctrl+O",
     "save": "שמירה",
-    "saveShortcut": "Ctrl+S"
+    "saveShortcut": "Ctrl+S",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +95,9 @@
     "subscriptShortcut": "כתב תחתי",
     "imageProperties": "מאפייני תמונה",
     "imagePropertiesShortcut": "מאפייני תמונה",
-    "clearFormatting": "נקה עיצוב"
+    "clearFormatting": "נקה עיצוב",
+    "allCaps": null,
+    "smallCaps": null
   },
   "alignment": {
     "alignLeft": "יישור לשמאל",
@@ -203,7 +224,8 @@
       "replaceAllTitle": "החלף את כל התוצאות",
       "matchCase": "התאמה לאותיות רישיות",
       "wholeWords": "חיפוש לפי מילה שלמה",
-      "toggleReplace": "+ החלף"
+      "toggleReplace": "+ החלף",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "ערוך קישור",
@@ -368,7 +390,9 @@
         "left": "שמאל",
         "center": "מרכז",
         "right": "ימין"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "הדבקה מיוחדת",
@@ -509,6 +533,31 @@
       "noResults": "לא נמצאו קיצורים עבור \"{query}\"",
       "pressEscToClose": "לחץ {key} כדי לסגור",
       "or": "או"
+    },
+    "bookmarks": {
+      "filterPlaceholder": null,
+      "goTo": null,
+      "noBookmarks": null,
+      "noMatches": null,
+      "title": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
     }
   },
   "comments": {
@@ -741,7 +790,9 @@
     "insertPageNumber": "הוסף מספר עמוד נוכחי",
     "insertTotalPages": "הוסף סך כל העמודים",
     "remove": "הסר {label}",
-    "closeEditing": "סגור עריכת {label}"
+    "closeEditing": "סגור עריכת {label}",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "מיקום תמונה",

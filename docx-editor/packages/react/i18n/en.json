@@ -2,6 +2,7 @@
   "_lang": "en",
   "common": {
     "cancel": "Cancel",
+    "ok": "OK",
     "insert": "Insert",
     "apply": "Apply",
     "close": "Close",
@@ -55,6 +56,7 @@
     "continueListNumbering": "Continue previous numbering",
     "tableOfContents": "Table of contents",
     "bookmarks": "Bookmarks…",
+    "characterSpacing": "Character spacing…",
     "symbol": "Symbol",
     "help": "Help",
     "reportIssue": "Report issue"
@@ -398,6 +400,24 @@
       "noBookmarks": "This document has no bookmarks.",
       "noMatches": "No bookmarks match the filter.",
       "goTo": "Go to"
+    },
+    "characterSpacing": {
+      "title": "Character spacing",
+      "scale": "Scale:",
+      "spacing": "Spacing:",
+      "spacingBy": "By (pt)",
+      "position": "Position:",
+      "positionBy": "By (pt)",
+      "kerning": "Kerning",
+      "kerningHint": "for fonts",
+      "kerningThreshold": "Points and above",
+      "normal": "Normal",
+      "expanded": "Expanded",
+      "condensed": "Condensed",
+      "raised": "Raised",
+      "lowered": "Lowered",
+      "preview": "Preview",
+      "previewSample": "The quick brown fox jumps over the lazy dog."
     },
     "pasteSpecial": {
       "title": "Paste Special",

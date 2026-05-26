@@ -20,6 +20,8 @@ export {
   toggleTextShadow,
   toggleTextOutline,
   setCharacterSpacing,
+  setCharacterAttrs,
+  type CharacterAttrs,
   setTextColor,
   clearTextColor,
   setHighlight,

@@ -113,6 +113,9 @@ const FilePropertiesDialog = lazy(() =>
 const BookmarksDialog = lazy(() =>
   import('./dialogs/BookmarksDialog').then((m) => ({ default: m.BookmarksDialog }))
 );
+const CharacterSpacingDialog = lazy(() =>
+  import('./dialogs/CharacterSpacingDialog').then((m) => ({ default: m.CharacterSpacingDialog }))
+);
 const AboutDialog = lazy(() =>
   import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
 );
@@ -214,6 +217,8 @@ import {
   toggleTextShadow,
   toggleTextOutline,
   setCharacterSpacing,
+  setCharacterAttrs,
+  type CharacterAttrs,
   // Space before/after
   setSpaceBefore,
   setSpaceAfter,
@@ -1444,6 +1449,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [tablePropsOpen, setTablePropsOpen] = useState(false);
   // Bookmarks dialog state (Phase 1.5 U14)
   const [bookmarksDialogOpen, setBookmarksDialogOpen] = useState(false);
+  // Character spacing dialog state (Phase 1.5 U1)
+  const [characterSpacingDialogOpen, setCharacterSpacingDialogOpen] = useState(false);
+  const [characterSpacingInitial, setCharacterSpacingInitial] = useState<{
+    scale: number | null;
+    spacing: number | null;
+    position: number | null;
+    kerning: number | null;
+  }>({ scale: null, spacing: null, position: null, kerning: null });
   const [splitCellDialogState, setSplitCellDialogState] = useState({
     isOpen: false,
     initialRows: 1,
@@ -2579,6 +2592,55 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     insertPageBreak(view.state, view.dispatch);
     focusActiveEditor();
   }, [getActiveEditorView, focusActiveEditor]);
+
+  // Open the Character Spacing dialog with attrs harvested from the
+  // current selection's characterSpacing mark (or zeros if absent).
+  const handleOpenCharacterSpacing = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const markType = view.state.schema.marks['characterSpacing'];
+    const initial = { scale: null, spacing: null, position: null, kerning: null } as {
+      scale: number | null;
+      spacing: number | null;
+      position: number | null;
+      kerning: number | null;
+    };
+    if (markType) {
+      const { from, to, empty } = view.state.selection;
+      let attrs: Record<string, unknown> | null = null;
+      if (empty) {
+        const stored = view.state.storedMarks ?? view.state.selection.$from.marks();
+        const m = stored.find((mk) => mk.type === markType);
+        if (m) attrs = m.attrs;
+      } else {
+        view.state.doc.nodesBetween(from, to, (node) => {
+          if (attrs) return false;
+          const m = node.marks.find((mk) => mk.type === markType);
+          if (m) attrs = m.attrs;
+          return true;
+        });
+      }
+      if (attrs) {
+        const a = attrs as Record<string, number | null | undefined>;
+        initial.scale = a.scale ?? null;
+        initial.spacing = a.spacing ?? null;
+        initial.position = a.position ?? null;
+        initial.kerning = a.kerning ?? null;
+      }
+    }
+    setCharacterSpacingInitial(initial);
+    setCharacterSpacingDialogOpen(true);
+  }, [getActiveEditorView]);
+
+  const handleSubmitCharacterSpacing = useCallback(
+    (value: CharacterAttrs) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      setCharacterAttrs(value)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
 
   // Insert an inline OOXML field node (PAGE / NUMPAGES / DATE / TIME /
   // CREATEDATE / SAVEDATE / AUTHOR / FILENAME) at the cursor. The
@@ -5639,6 +5701,7 @@ body { background: white; }
                       onInsertField={handleInsertField}
                       onInsertTOC={handleInsertTOC}
                       onOpenBookmarks={() => setBookmarksDialogOpen(true)}
+                      onOpenCharacterSpacing={handleOpenCharacterSpacing}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
@@ -6257,6 +6320,14 @@ body { background: white; }
                   onGoTo={(paraId) => {
                     pagedEditorRef.current?.scrollToParaId(paraId);
                   }}
+                />
+              )}
+              {characterSpacingDialogOpen && (
+                <CharacterSpacingDialog
+                  isOpen={characterSpacingDialogOpen}
+                  onClose={() => setCharacterSpacingDialogOpen(false)}
+                  initialValue={characterSpacingInitial}
+                  onSubmit={handleSubmitCharacterSpacing}
                 />
               )}
               {splitCellDialogState.isOpen && (

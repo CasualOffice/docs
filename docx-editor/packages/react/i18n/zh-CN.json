@@ -18,7 +18,8 @@
     "dismiss": "忽略",
     "change": "更改",
     "px": "px",
-    "closeDialog": "关闭对话框"
+    "closeDialog": "关闭对话框",
+    "ok": null
   },
   "toolbar": {
     "ariaLabel": "格式工具栏",
@@ -40,7 +41,25 @@
     "tableOfContents": "目录",
     "symbol": "符号",
     "help": "帮助",
-    "reportIssue": "反馈问题"
+    "reportIssue": "反馈问题",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +95,9 @@
     "subscriptShortcut": "下标(Ctrl+=)",
     "imageProperties": "图片属性",
     "imagePropertiesShortcut": "图片属性(替代文本、边框)...",
-    "clearFormatting": "清除格式"
+    "clearFormatting": "清除格式",
+    "allCaps": null,
+    "smallCaps": null
   },
   "alignment": {
     "alignLeft": "左对齐",
@@ -203,7 +224,8 @@
       "replaceAllTitle": "替换所有匹配项",
       "matchCase": "区分大小写",
       "wholeWords": "全字匹配",
-      "toggleReplace": "+ 替换"
+      "toggleReplace": "+ 替换",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "编辑超链接",
@@ -368,7 +390,9 @@
         "left": "左对齐",
         "center": "居中",
         "right": "右对齐"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "选择性粘贴",
@@ -509,6 +533,31 @@
       "noResults": "未找到与 \"{query}\" 匹配的快捷方式",
       "pressEscToClose": "按 {key} 关闭",
       "or": "或"
+    },
+    "bookmarks": {
+      "filterPlaceholder": null,
+      "goTo": null,
+      "noBookmarks": null,
+      "noMatches": null,
+      "title": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
     }
   },
   "comments": {
@@ -741,7 +790,9 @@
     "insertPageNumber": "插入当前页码",
     "insertTotalPages": "插入总页数",
     "remove": "删除 {label}",
-    "closeEditing": "关闭 {label} 编辑"
+    "closeEditing": "关闭 {label} 编辑",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "图片占位符",

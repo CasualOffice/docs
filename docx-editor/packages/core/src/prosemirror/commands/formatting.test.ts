@@ -18,6 +18,7 @@ import {
   toggleImprint,
   toggleTextShadow,
   toggleTextOutline,
+  setCharacterAttrs,
 } from './formatting';
 
 const schema = new Schema({
@@ -38,6 +39,15 @@ const schema = new Schema({
     imprint: { toDOM: () => ['span', 0] },
     textShadow: { toDOM: () => ['span', 0] },
     textOutline: { toDOM: () => ['span', 0] },
+    characterSpacing: {
+      attrs: {
+        spacing: { default: null },
+        position: { default: null },
+        scale: { default: null },
+        kerning: { default: null },
+      },
+      toDOM: () => ['span', 0],
+    },
   },
 });
 
@@ -192,5 +202,106 @@ describe('text effects (U3) — emboss / imprint / textShadow / textOutline', ()
     expect(toggleImprint(state, () => {})).toBe(false);
     expect(toggleTextShadow(state, () => {})).toBe(false);
     expect(toggleTextOutline(state, () => {})).toBe(false);
+  });
+});
+
+describe('setCharacterAttrs (U1 — Character spacing dialog)', () => {
+  function applyAttrs(
+    state: EditorState,
+    attrs: {
+      spacing: number | null;
+      position: number | null;
+      scale: number | null;
+      kerning: number | null;
+    }
+  ): EditorState {
+    let next = state;
+    setCharacterAttrs(attrs)(state, (tr) => {
+      next = state.apply(tr);
+    });
+    return next;
+  }
+
+  function getMarkAttrs(state: EditorState): Record<string, unknown> | null {
+    let attrs: Record<string, unknown> | null = null;
+    state.doc.descendants((node) => {
+      if (!node.isText) return;
+      for (const m of node.marks) {
+        if (m.type.name === 'characterSpacing') {
+          attrs = m.attrs;
+        }
+      }
+    });
+    return attrs;
+  }
+
+  test('writes all four attrs in a single mark', () => {
+    const next = applyAttrs(stateWithSelectedText('hello'), {
+      spacing: 40,
+      position: 4,
+      scale: 90,
+      kerning: 24,
+    });
+    expect(getMarkAttrs(next)).toEqual({
+      spacing: 40,
+      position: 4,
+      scale: 90,
+      kerning: 24,
+    });
+  });
+
+  test('removes the mark when every field is null', () => {
+    const a = applyAttrs(stateWithSelectedText('hello'), {
+      spacing: 40,
+      position: null,
+      scale: null,
+      kerning: null,
+    });
+    expect(getMarkAttrs(a)).not.toBeNull();
+    const b = applyAttrs(a, { spacing: null, position: null, scale: null, kerning: null });
+    expect(getMarkAttrs(b)).toBeNull();
+  });
+
+  test('replaces existing attrs (does not merge silently)', () => {
+    const a = applyAttrs(stateWithSelectedText('hello'), {
+      spacing: 40,
+      position: 4,
+      scale: 90,
+      kerning: 24,
+    });
+    const b = applyAttrs(a, {
+      spacing: null,
+      position: null,
+      scale: 110,
+      kerning: null,
+    });
+    expect(getMarkAttrs(b)).toEqual({
+      spacing: null,
+      position: null,
+      scale: 110,
+      kerning: null,
+    });
+  });
+
+  test('returns false when characterSpacing mark is missing from schema', () => {
+    const bareSchema = new Schema({
+      nodes: {
+        doc: { content: 'block+' },
+        paragraph: { group: 'block', content: 'inline*', toDOM: () => ['p', 0] },
+        text: { group: 'inline' },
+      },
+      marks: {},
+    });
+    const doc = bareSchema.node('doc', null, [
+      bareSchema.node('paragraph', null, [bareSchema.text('hello')]),
+    ]);
+    const state = EditorState.create({ doc });
+    const result = setCharacterAttrs({
+      spacing: 10,
+      position: null,
+      scale: null,
+      kerning: null,
+    })(state, () => {});
+    expect(result).toBe(false);
   });
 });

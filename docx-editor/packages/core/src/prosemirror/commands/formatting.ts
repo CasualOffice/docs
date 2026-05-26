@@ -154,6 +154,43 @@ export function setCharacterSpacing(spacingTwips: number): Command {
   };
 }
 
+/**
+ * Set all four character-spacing mark attrs in a single transaction
+ * (spacing/position/scale/kerning). Used by the Character Spacing dialog
+ * so toggling one field doesn't clobber the others. Pass null for any
+ * field to clear it; if every field is null the mark is removed.
+ */
+export interface CharacterAttrs {
+  /** twips, w:spacing */
+  spacing: number | null;
+  /** half-points, w:position */
+  position: number | null;
+  /** percentage, w:w */
+  scale: number | null;
+  /** half-points, w:kern */
+  kerning: number | null;
+}
+
+export function setCharacterAttrs(attrs: CharacterAttrs): Command {
+  return (state, dispatch, view) => {
+    const markType = state.schema.marks['characterSpacing'];
+    if (!markType) return false;
+    const allEmpty =
+      attrs.spacing == null &&
+      attrs.position == null &&
+      attrs.scale == null &&
+      attrs.kerning == null;
+    if (allEmpty) {
+      return createRemoveMarkCommand(markType)(state, dispatch, view);
+    }
+    return createSetMarkCommand(markType, attrs as unknown as Record<string, unknown>)(
+      state,
+      dispatch,
+      view
+    );
+  };
+}
+
 // Hyperlink commands
 export function setHyperlink(href: string, tooltip?: string): Command {
   return cmds.setHyperlink(href, tooltip);
