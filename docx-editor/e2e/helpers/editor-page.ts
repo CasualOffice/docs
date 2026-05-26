@@ -158,9 +158,7 @@ export class EditorPage {
    * Get a specific paragraph by index (0-based)
    */
   getParagraph(index: number): Locator {
-    return this.page
-      .locator(`p[data-paragraph-index="${index}"], .layout-paragraph`)
-      .nth(index);
+    return this.page.locator(`p[data-paragraph-index="${index}"], .layout-paragraph`).nth(index);
   }
 
   /**
@@ -259,8 +257,15 @@ export class EditorPage {
    */
   async collapseSelectionToEnd(): Promise<void> {
     await this.page.evaluate(() => {
-      type View = { state: { selection: { from: number; to: number; head: number } }; focus(): void };
-      type EditorAPI = { getView?: () => View | null; setSelection?: (anchor: number, head?: number) => void; focus?: () => void };
+      type View = {
+        state: { selection: { from: number; to: number; head: number } };
+        focus(): void;
+      };
+      type EditorAPI = {
+        getView?: () => View | null;
+        setSelection?: (anchor: number, head?: number) => void;
+        focus?: () => void;
+      };
       const w = window as unknown as {
         __editorRef?: { current?: { getEditorRef?: () => EditorAPI | null } };
       };
@@ -318,7 +323,10 @@ export class EditorPage {
                 state: {
                   doc: {
                     descendants: (
-                      fn: (node: { isText?: boolean; text?: string; nodeSize: number }, pos: number) => boolean | void
+                      fn: (
+                        node: { isText?: boolean; text?: string; nodeSize: number },
+                        pos: number
+                      ) => boolean | void
                     ) => void;
                   };
                 };
@@ -1140,7 +1148,11 @@ export class EditorPage {
     }
 
     if (currentIndex < 0 || currentIndex > targetIndex) {
-      const firstCell = table.locator('.layout-table-row').first().locator('.layout-table-cell').first();
+      const firstCell = table
+        .locator('.layout-table-row')
+        .first()
+        .locator('.layout-table-cell')
+        .first();
       await firstCell.scrollIntoViewIfNeeded();
       await firstCell.click({ force: true });
       await this.page.locator('.ProseMirror').focus();
@@ -1201,10 +1213,26 @@ export class EditorPage {
   }
 
   /**
-   * Click a table menu item in the More dropdown
+   * Click a table menu item in the More dropdown.
+   *
+   * Uses a direct DOM click() rather than Playwright's `.click()` because
+   * the dropdown's fixed-position container re-positions itself with a
+   * useFixedDropdown effect (setPos via getBoundingClientRect) which can
+   * fire between Playwright's actionability check and its synthesized
+   * click — Playwright sees the element as "detached and retrying" and
+   * the synthesized click never reaches `onClick`. DOM `.click()` is
+   * synchronous and bypasses that race. Behavior is identical from
+   * React's perspective: same MouseEvent reaches the same element.
    */
   async clickTableMenuItem(itemName: string): Promise<void> {
-    await this.page.getByRole('menuitem', { name: itemName }).click({ force: true });
+    const ok = await this.page.evaluate((name) => {
+      const items = Array.from(document.querySelectorAll('[role="menuitem"]'));
+      const target = items.find((el) => (el.textContent ?? '').trim().includes(name));
+      if (!(target instanceof HTMLElement)) return false;
+      target.click();
+      return true;
+    }, itemName);
+    if (!ok) throw new Error(`clickTableMenuItem: no menuitem matching ${itemName}`);
     await this.page.waitForTimeout(100);
   }
 
@@ -1368,7 +1396,11 @@ export class EditorPage {
       () => {
         const w = window as unknown as {
           __editorRef?: {
-            current?: { getEditorRef?: () => { getView?: () => { state: { doc: { textContent: string } } } | null } | null };
+            current?: {
+              getEditorRef?: () => {
+                getView?: () => { state: { doc: { textContent: string } } } | null;
+              } | null;
+            };
           };
         };
         const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();

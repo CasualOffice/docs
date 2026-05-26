@@ -38,22 +38,20 @@ export const storedMarksRestoreKey = new PluginKey('storedMarksRestore');
 function createStoredMarksRestorePlugin(): Plugin {
   return new Plugin({
     key: storedMarksRestoreKey,
-    appendTransaction(transactions, _oldState, newState) {
-      // Only fire after a doc-CHANGING transaction. A pure selection
-      // move (click into a different cell, arrow-keying around) doesn't
-      // clear PM's storedMarks — so there's no work to do, and
-      // dispatching an extra setStoredMarks tx on every cursor move
-      // produces a 2x transaction multiplier that thrashes downstream
-      // React rerenders (table-more dropdown click was racing against
-      // the rerender and losing its open-state — caught by CI 2026-05-25).
+    appendTransaction(_transactions, _oldState, newState) {
+      // Fire on EVERY transaction that lands in an empty paragraph
+      // with defaultTextFormatting + null storedMarks. The loop guard
+      // below (storedMarks already populated → return null) prevents
+      // infinite recursion: after we set storedMarks, the next
+      // round-trip's first check exits early.
       //
-      // The bug we DO need to address (P2 #19): after select-all +
-      // Backspace, storedMarks is null and the next typed character
-      // loses inherited formatting. That path always involves a
-      // doc-changing tx (the delete) — so gating on docChanged is
-      // both sufficient and necessary.
-      if (!transactions.some((t) => t.docChanged)) return null;
-
+      // We don't gate on `transactions.some(t => t.docChanged)`
+      // because PM clears storedMarks on selection-changing
+      // transactions too, not just doc-changing ones. Linux CI
+      // surfaced this — after select-all + Backspace, a follow-up
+      // selection-only tx (focus / browser sync) cleared the
+      // storedMarks our plugin set on the delete tx, and the
+      // subsequent typeText lost the bold/italic mark.
       if (newState.storedMarks && newState.storedMarks.length > 0) return null;
 
       const { selection, schema } = newState;

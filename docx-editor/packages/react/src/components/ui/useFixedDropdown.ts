@@ -79,7 +79,18 @@ export function useFixedDropdown({
     // before click" detaches the option mid-click. Listen in capture so we
     // still see scrolls on overflow ancestors, but ignore events whose
     // target is the dropdown itself.
+    //
+    // We also ignore scrolls within a brief grace window after open
+    // (the trigger's scrollIntoView, focus-driven scroll into the
+    // table cell, and any PM-driven layout scroll happen synchronously
+    // around the open click). Those scrolls would otherwise close the
+    // dropdown the moment it appears — caught by tables.spec failing
+    // with "element was detached from the DOM" mid-click on the menu
+    // item in CI.
+    const openedAt = Date.now();
+    const SCROLL_GRACE_MS = 200;
     const handleScroll = (e: Event) => {
+      if (Date.now() - openedAt < SCROLL_GRACE_MS) return;
       const target = e.target as Node | null;
       if (target && dropdownRef.current?.contains(target)) return;
       onClose();

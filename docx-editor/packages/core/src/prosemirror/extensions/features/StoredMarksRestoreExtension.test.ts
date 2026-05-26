@@ -105,14 +105,24 @@ describe('StoredMarksRestoreExtension', () => {
     expect(next.storedMarks).toBeNull();
   });
 
-  test('no-op on a pure selection-only transaction (the table-more race gate)', () => {
-    // Plugin must NOT fire when the only change is a selection move.
-    // Otherwise it doubles every cursor-move transaction and races
-    // downstream React rerenders (caught by table-more click failures
-    // in CI 2026-05-25).
+  test('also restores on a selection-only transaction (Linux CI fix)', () => {
+    // The plugin must fire on selection-only txs too — PM clears
+    // storedMarks on selection changes, so a focus / browser-sync tx
+    // that fires after the delete would otherwise wipe the marks we
+    // set on the delete tx. The empirical evidence was Linux CI's
+    // P2 #19 e2e suite failing: on Linux, a follow-up selection tx
+    // landed after the Backspace and cleared storedMarks before
+    // typeText ran. macOS didn't surface this because the tx
+    // sequencing was different.
+    //
+    // Infinite-loop safety: the storedMarks-already-populated guard
+    // at the top short-circuits the next round-trip after we set
+    // them, so this can't recurse.
     const state = createEmptyParagraphState({ bold: true });
-    const next = state.apply(state.tr); // empty tx, no docChange
-    expect(next.storedMarks).toBeNull();
+    const next = state.apply(state.tr); // selection-only no-op tx
+    expect(next.storedMarks).not.toBeNull();
+    expect(next.storedMarks!.length).toBe(1);
+    expect(next.storedMarks![0].type.name).toBe('bold');
   });
 
   test('no-op when paragraph has text content', () => {
