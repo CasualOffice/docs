@@ -80,6 +80,7 @@ import {
 } from './dialogs/FindReplaceDialog';
 import { useHyperlinkDialog, type HyperlinkData } from './dialogs/HyperlinkDialog';
 import type { ImagePositionData } from './dialogs/ImagePositionDialog';
+import type { BordersAndShadingValue } from './dialogs/BordersAndShadingDialog';
 import type { ImagePropertiesData } from './dialogs/ImagePropertiesDialog';
 import {
   InlineHeaderFooterEditor,
@@ -118,6 +119,11 @@ const CharacterSpacingDialog = lazy(() =>
 );
 const ParagraphDialog = lazy(() =>
   import('./dialogs/ParagraphDialog').then((m) => ({ default: m.ParagraphDialog }))
+);
+const BordersAndShadingDialog = lazy(() =>
+  import('./dialogs/BordersAndShadingDialog').then((m) => ({
+    default: m.BordersAndShadingDialog,
+  }))
 );
 const AboutDialog = lazy(() =>
   import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
@@ -1463,6 +1469,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   }>({ scale: null, spacing: null, position: null, kerning: null });
   // Paragraph dialog state (Phase 1.5 U5)
   const [paragraphDialogOpen, setParagraphDialogOpen] = useState(false);
+  // Borders + Shading dialog state (Phase 1.5 U6)
+  const [bordersShadingOpen, setBordersShadingOpen] = useState(false);
+  const [bordersShadingInitial, setBordersShadingInitial] = useState<BordersAndShadingValue>({
+    borders: {},
+    shading: { fillHex: '', pattern: 'clear', patternColorHex: '' },
+  });
   const [splitCellDialogState, setSplitCellDialogState] = useState({
     isOpen: false,
     initialRows: 1,
@@ -2652,6 +2664,99 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const handleOpenParagraphDialog = useCallback(() => {
     setParagraphDialogOpen(true);
   }, []);
+
+  // Open the Borders & Shading dialog. Harvest the current paragraph's
+  // borders/shading attrs from the live PM doc at open time so existing
+  // values appear in the dialog (Word's behaviour).
+  const handleOpenBordersShading = useCallback(() => {
+    const view = getActiveEditorView();
+    const initial: typeof bordersShadingInitial = {
+      borders: {},
+      shading: { fillHex: '', pattern: 'clear', patternColorHex: '' },
+    };
+    if (view) {
+      const { $from } = view.state.selection;
+      let para = $from.parent;
+      // Walk up to nearest paragraph if cursor is deeper.
+      for (let d = $from.depth; d > 0 && para.type.name !== 'paragraph'; d--) {
+        para = $from.node(d - 1);
+      }
+      if (para.type.name === 'paragraph') {
+        const attrs = para.attrs as {
+          borders?: Record<string, { style?: string; color?: { rgb?: string }; size?: number }>;
+          shading?: { fill?: { rgb?: string }; color?: { rgb?: string }; pattern?: string };
+        };
+        if (attrs.borders) {
+          const b = attrs.borders;
+          (['top', 'bottom', 'left', 'right'] as const).forEach((side) => {
+            const spec = b[side];
+            if (spec && spec.style && spec.style !== 'none' && spec.style !== 'nil') {
+              const known = ['single', 'double', 'dotted', 'dashed', 'thick', 'triple'];
+              const style = known.includes(spec.style)
+                ? (spec.style as 'single' | 'double' | 'dotted' | 'dashed' | 'thick' | 'triple')
+                : 'single';
+              (initial.borders as Record<string, unknown>)[side] = {
+                style,
+                colorHex: (spec.color?.rgb || '000000').toUpperCase(),
+                size: spec.size ?? 4,
+              };
+            }
+          });
+        }
+        if (attrs.shading) {
+          const s = attrs.shading;
+          initial.shading = {
+            fillHex: (s.fill?.rgb || '').toUpperCase(),
+            pattern: (s.pattern as typeof initial.shading.pattern) || 'clear',
+            patternColorHex: (s.color?.rgb || '').toUpperCase(),
+          };
+        }
+      }
+    }
+    setBordersShadingInitial(initial);
+    setBordersShadingOpen(true);
+  }, [getActiveEditorView]);
+
+  // Convert dialog value into OOXML-shaped paragraph attrs and dispatch.
+  const handleSubmitBordersShading = useCallback(
+    (v: BordersAndShadingValue) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const sides = ['top', 'bottom', 'left', 'right'] as const;
+      const borders: Record<string, unknown> = {};
+      let anyBorder = false;
+      for (const side of sides) {
+        const spec = (
+          v.borders as Record<string, { style: string; colorHex: string; size: number }>
+        )[side];
+        if (spec) {
+          anyBorder = true;
+          borders[side] = {
+            style: spec.style,
+            color: spec.colorHex ? { rgb: spec.colorHex } : undefined,
+            size: spec.size,
+          };
+        }
+      }
+      const shadingHasFill = !!v.shading.fillHex;
+      const shadingHasPattern = v.shading.pattern !== 'clear';
+      const shadingHasPatternColor = !!v.shading.patternColorHex;
+      const shading =
+        shadingHasFill || shadingHasPattern || shadingHasPatternColor
+          ? {
+              fill: shadingHasFill ? { rgb: v.shading.fillHex } : undefined,
+              color: shadingHasPatternColor ? { rgb: v.shading.patternColorHex } : undefined,
+              pattern: v.shading.pattern,
+            }
+          : null;
+      setParagraphAttrs({
+        borders: anyBorder ? borders : null,
+        shading,
+      })(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
 
   const handleSubmitParagraphDialog = useCallback(
     (v: {
@@ -5759,6 +5864,7 @@ body { background: white; }
                       onOpenBookmarks={() => setBookmarksDialogOpen(true)}
                       onOpenCharacterSpacing={handleOpenCharacterSpacing}
                       onOpenParagraphDialog={handleOpenParagraphDialog}
+                      onOpenBordersShading={handleOpenBordersShading}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
@@ -6385,6 +6491,14 @@ body { background: white; }
                   onClose={() => setCharacterSpacingDialogOpen(false)}
                   initialValue={characterSpacingInitial}
                   onSubmit={handleSubmitCharacterSpacing}
+                />
+              )}
+              {bordersShadingOpen && (
+                <BordersAndShadingDialog
+                  isOpen={bordersShadingOpen}
+                  onClose={() => setBordersShadingOpen(false)}
+                  initialValue={bordersShadingInitial}
+                  onSubmit={handleSubmitBordersShading}
                 />
               )}
               {paragraphDialogOpen && (

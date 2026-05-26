@@ -253,6 +253,8 @@ export interface ToolbarProps {
   onOpenCharacterSpacing?: () => void;
   /** Open the Paragraph dialog (Word: Format > Paragraph). */
   onOpenParagraphDialog?: () => void;
+  /** Open the Borders and Shading dialog (Word: Format > Borders and Shading). */
+  onOpenBordersShading?: () => void;
   /** Callback when user wants to insert a shape */
   onInsertShape?: (data: {
     shapeType: string;

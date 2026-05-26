@@ -58,6 +58,7 @@
     "bookmarks": "Bookmarks…",
     "characterSpacing": "Character spacing…",
     "paragraph": "Paragraph…",
+    "bordersAndShading": "Borders and Shading…",
     "symbol": "Symbol",
     "help": "Help",
     "reportIssue": "Report issue"
@@ -401,6 +402,39 @@
       "noBookmarks": "This document has no bookmarks.",
       "noMatches": "No bookmarks match the filter.",
       "goTo": "Go to"
+    },
+    "bordersShading": {
+      "title": "Borders and Shading",
+      "tabBorders": "Borders",
+      "tabShading": "Shading",
+      "setting": "Setting",
+      "presetNone": "None",
+      "presetBox": "Box",
+      "style": "Style",
+      "lineStyle": "Style",
+      "color": "Color",
+      "colorHex": "Color (hex)",
+      "widthPt": "Width",
+      "styleSingle": "Single",
+      "styleDouble": "Double",
+      "styleThick": "Thick",
+      "styleDotted": "Dotted",
+      "styleDashed": "Dashed",
+      "styleTriple": "Triple",
+      "sides": "Apply to",
+      "side": {
+        "top": "Top",
+        "bottom": "Bottom",
+        "left": "Left",
+        "right": "Right"
+      },
+      "fill": "Fill",
+      "fillColor": "Fill color",
+      "fillHex": "Fill color (hex)",
+      "noFill": "No fill",
+      "pattern": "Pattern",
+      "patternClear": "Clear (no pattern)",
+      "patternSolid": "Solid"
     },
     "paragraph": {
       "title": "Paragraph",

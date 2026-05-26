@@ -60,7 +60,8 @@
     "sectionBreakEvenPage": null,
     "sectionBreakNextPage": null,
     "sectionBreakOddPage": null,
-    "paragraph": null
+    "paragraph": null,
+    "bordersAndShading": null
   },
   "formattingBar": {
     "groups": {
@@ -596,6 +597,39 @@
       "tabPagination": null,
       "title": null,
       "widowControl": null
+    },
+    "bordersShading": {
+      "color": null,
+      "colorHex": null,
+      "fill": null,
+      "fillColor": null,
+      "fillHex": null,
+      "lineStyle": null,
+      "noFill": null,
+      "pattern": null,
+      "patternClear": null,
+      "patternSolid": null,
+      "presetBox": null,
+      "presetNone": null,
+      "setting": null,
+      "side": {
+        "bottom": null,
+        "left": null,
+        "right": null,
+        "top": null
+      },
+      "sides": null,
+      "style": null,
+      "styleDashed": null,
+      "styleDotted": null,
+      "styleDouble": null,
+      "styleSingle": null,
+      "styleThick": null,
+      "styleTriple": null,
+      "tabBorders": null,
+      "tabShading": null,
+      "title": null,
+      "widthPt": null
     }
   },
   "comments": {

@@ -240,6 +240,7 @@ export function MenuBar() {
     onOpenBookmarks,
     onOpenCharacterSpacing,
     onOpenParagraphDialog,
+    onOpenBordersShading,
     onRefocusEditor,
   } = ctx;
 
@@ -534,6 +535,12 @@ export function MenuBar() {
               label: t('toolbar.paragraph'),
               onClick: onOpenParagraphDialog,
               disabled: !onOpenParagraphDialog,
+            } as MenuEntry,
+            {
+              icon: 'border_outer',
+              label: t('toolbar.bordersAndShading'),
+              onClick: onOpenBordersShading,
+              disabled: !onOpenBordersShading,
             } as MenuEntry,
             { type: 'separator' as const } as MenuEntry,
             {
