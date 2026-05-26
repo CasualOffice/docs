@@ -62,6 +62,14 @@ export interface InlineHeaderFooterEditorProps {
   onSelectionChange?: (state: SelectionState | null) => void;
   /** Callback to remove the header/footer entirely */
   onRemove?: () => void;
+  /** Current OOXML `w:titlePg` flag on the section (= "Different first page"). */
+  titlePg?: boolean;
+  /** Current OOXML `w:evenAndOddHeaders` flag on settings.xml (= "Different odd & even pages"). */
+  evenAndOddHeaders?: boolean;
+  /** Toggle `w:titlePg` on the active section. */
+  onToggleTitlePg?: (value: boolean) => void;
+  /** Toggle `w:evenAndOddHeaders` on settings.xml. */
+  onToggleEvenAndOdd?: (value: boolean) => void;
 }
 
 export interface InlineHeaderFooterEditorRef {
@@ -147,6 +155,10 @@ export const InlineHeaderFooterEditor = forwardRef<
     onClose,
     onSelectionChange,
     onRemove,
+    titlePg,
+    evenAndOddHeaders,
+    onToggleTitlePg,
+    onToggleEvenAndOdd,
   },
   ref
 ) {
@@ -351,6 +363,10 @@ export const InlineHeaderFooterEditor = forwardRef<
             onRemove={onRemove}
             onClose={handleSaveAndClose}
             viewRef={viewRef}
+            titlePg={titlePg}
+            evenAndOddHeaders={evenAndOddHeaders}
+            onToggleTitlePg={onToggleTitlePg}
+            onToggleEvenAndOdd={onToggleEvenAndOdd}
           />
         </div>
       )}
@@ -378,6 +394,10 @@ export const InlineHeaderFooterEditor = forwardRef<
             onRemove={onRemove}
             onClose={handleSaveAndClose}
             viewRef={viewRef}
+            titlePg={titlePg}
+            evenAndOddHeaders={evenAndOddHeaders}
+            onToggleTitlePg={onToggleTitlePg}
+            onToggleEvenAndOdd={onToggleEvenAndOdd}
           />
         </div>
       )}
@@ -397,6 +417,10 @@ function OptionsMenu({
   onRemove,
   onClose,
   viewRef,
+  titlePg,
+  evenAndOddHeaders,
+  onToggleTitlePg,
+  onToggleEvenAndOdd,
 }: {
   label: string;
   showOptions: boolean;
@@ -405,6 +429,10 @@ function OptionsMenu({
   onRemove?: () => void;
   onClose: () => void;
   viewRef: React.RefObject<EditorView | null>;
+  titlePg?: boolean;
+  evenAndOddHeaders?: boolean;
+  onToggleTitlePg?: (value: boolean) => void;
+  onToggleEvenAndOdd?: (value: boolean) => void;
 }) {
   const { t } = useTranslation();
   const insertField = (fieldType: 'PAGE' | 'NUMPAGES') => {
@@ -472,6 +500,55 @@ function OptionsMenu({
             {t('headerFooter.insertTotalPages')}
           </button>
           <div style={{ borderTop: '1px solid #e8eaed', margin: '4px 0' }} />
+          {/* Different first page (w:titlePg). Toggling on/off updates
+              the active section's `titlePg` flag. The host renders
+              a separate first-page header/footer when on. */}
+          {onToggleTitlePg && (
+            <button
+              type="button"
+              style={dropdownItemStyle}
+              onClick={() => {
+                setShowOptions(false);
+                onToggleTitlePg(!titlePg);
+              }}
+              data-testid="hf-toggle-titlepg"
+              onMouseOver={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+              }}
+              onMouseOut={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
+              }}
+            >
+              {titlePg ? '✓ ' : ''}
+              {t('headerFooter.differentFirstPage')}
+            </button>
+          )}
+          {/* Different odd & even pages (w:evenAndOddHeaders in
+              settings.xml). When on, even pages render their own
+              header/footer separately from odd pages. */}
+          {onToggleEvenAndOdd && (
+            <button
+              type="button"
+              style={dropdownItemStyle}
+              onClick={() => {
+                setShowOptions(false);
+                onToggleEvenAndOdd(!evenAndOddHeaders);
+              }}
+              data-testid="hf-toggle-evenodd"
+              onMouseOver={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+              }}
+              onMouseOut={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
+              }}
+            >
+              {evenAndOddHeaders ? '✓ ' : ''}
+              {t('headerFooter.differentEvenOdd')}
+            </button>
+          )}
+          {(onToggleTitlePg || onToggleEvenAndOdd) && (
+            <div style={{ borderTop: '1px solid #e8eaed', margin: '4px 0' }} />
+          )}
           {onRemove && (
             <button
               type="button"

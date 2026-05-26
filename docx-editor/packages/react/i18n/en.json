@@ -764,6 +764,8 @@
     "options": "Options",
     "insertPageNumber": "Insert current page number",
     "insertTotalPages": "Insert total page count",
+    "differentFirstPage": "Different first page",
+    "differentEvenOdd": "Different odd & even pages",
     "remove": "Remove {label}",
     "closeEditing": "Close {label} editing"
   },

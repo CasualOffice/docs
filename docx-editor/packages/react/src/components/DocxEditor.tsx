@@ -5184,6 +5184,58 @@ body { background: white; }
     }
   }, [hfEditPosition, handleHeaderFooterSave]);
 
+  // Toggle the OOXML `w:titlePg` flag on the document's section
+  // properties. When on, page 1 renders its own header/footer slot;
+  // off restores the unified header/footer behaviour. The layout
+  // engine already honours the flag; this just wires the on/off
+  // mutation behind the HF options dropdown.
+  const handleToggleTitlePg = useCallback(
+    (value: boolean) => {
+      if (!history.state?.package?.document) return;
+      const pkg = history.state.package;
+      const sectionProps = pkg.document.finalSectionProperties;
+      pushDocument({
+        ...history.state,
+        package: {
+          ...pkg,
+          document: {
+            ...pkg.document,
+            finalSectionProperties: {
+              ...sectionProps,
+              titlePg: value,
+            },
+          },
+        },
+      });
+    },
+    [history, pushDocument]
+  );
+
+  // Toggle `w:evenAndOddHeaders` (lives on settings.xml in OOXML, but
+  // exposed here off the document object alongside titlePg). Painter
+  // reads this flag to render an alternate even-page H/F.
+  const handleToggleEvenAndOddHeaders = useCallback(
+    (value: boolean) => {
+      if (!history.state?.package?.document) return;
+      const pkg = history.state.package;
+      const sectionProps = pkg.document.finalSectionProperties;
+      pushDocument({
+        ...history.state,
+        package: {
+          ...pkg,
+          document: {
+            ...pkg.document,
+            finalSectionProperties: {
+              ...sectionProps,
+              evenAndOddHeaders: value,
+            },
+          },
+        },
+      });
+    },
+    [history, pushDocument]
+  );
+
   // Handle removing the header/footer entirely
   const handleRemoveHeaderFooter = useCallback(() => {
     if (!hfEditPosition || !history.state?.package) {
@@ -6009,6 +6061,15 @@ body { background: white; }
                               onClose={() => setHfEditPosition(null)}
                               onSelectionChange={handleSelectionChange}
                               onRemove={handleRemoveHeaderFooter}
+                              titlePg={
+                                history.state?.package.document?.finalSectionProperties?.titlePg
+                              }
+                              evenAndOddHeaders={
+                                history.state?.package.document?.finalSectionProperties
+                                  ?.evenAndOddHeaders
+                              }
+                              onToggleTitlePg={handleToggleTitlePg}
+                              onToggleEvenAndOdd={handleToggleEvenAndOddHeaders}
                             />
                           );
                         })()}
