@@ -54,6 +54,7 @@
     "restartListNumbering": "Restart numbering at 1",
     "continueListNumbering": "Continue previous numbering",
     "tableOfContents": "Table of contents",
+    "bookmarks": "Bookmarks…",
     "symbol": "Symbol",
     "help": "Help",
     "reportIssue": "Report issue"
@@ -390,6 +391,13 @@
       },
       "bandedRows": "Banded rows",
       "bandedColumns": "Banded columns"
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "filterPlaceholder": "Filter bookmarks…",
+      "noBookmarks": "This document has no bookmarks.",
+      "noMatches": "No bookmarks match the filter.",
+      "goTo": "Go to"
     },
     "pasteSpecial": {
       "title": "Paste Special",

@@ -237,6 +237,7 @@ export function MenuBar() {
     onInsertSectionBreak,
     onInsertField,
     onInsertTOC,
+    onOpenBookmarks,
     onRefocusEditor,
   } = ctx;
 
@@ -694,6 +695,12 @@ export function MenuBar() {
               label: t('toolbar.tableOfContents'),
               onClick: onInsertTOC,
               disabled: !onInsertTOC,
+            },
+            {
+              icon: 'bookmark',
+              label: t('toolbar.bookmarks'),
+              onClick: onOpenBookmarks,
+              disabled: !onOpenBookmarks,
             },
           ]}
         />

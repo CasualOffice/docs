@@ -110,6 +110,9 @@ const PageSetupDialog = lazy(() =>
 const FilePropertiesDialog = lazy(() =>
   import('./dialogs/FilePropertiesDialog').then((m) => ({ default: m.FilePropertiesDialog }))
 );
+const BookmarksDialog = lazy(() =>
+  import('./dialogs/BookmarksDialog').then((m) => ({ default: m.BookmarksDialog }))
+);
 const AboutDialog = lazy(() =>
   import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
 );
@@ -1439,6 +1442,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Table properties dialog state
   const [tablePropsOpen, setTablePropsOpen] = useState(false);
+  // Bookmarks dialog state (Phase 1.5 U14)
+  const [bookmarksDialogOpen, setBookmarksDialogOpen] = useState(false);
   const [splitCellDialogState, setSplitCellDialogState] = useState({
     isOpen: false,
     initialRows: 1,
@@ -5633,6 +5638,7 @@ body { background: white; }
                       onInsertSectionBreak={handleInsertSectionBreak}
                       onInsertField={handleInsertField}
                       onInsertTOC={handleInsertTOC}
+                      onOpenBookmarks={() => setBookmarksDialogOpen(true)}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
@@ -6221,6 +6227,36 @@ body { background: white; }
                   currentProps={
                     state.pmTableContext?.table?.attrs as Record<string, unknown> | undefined
                   }
+                />
+              )}
+              {bookmarksDialogOpen && (
+                <BookmarksDialog
+                  isOpen={bookmarksDialogOpen}
+                  onClose={() => setBookmarksDialogOpen(false)}
+                  bookmarks={(() => {
+                    // Walk the live PM doc and collect bookmarks. They
+                    // live on paragraph attrs (paragraph.attrs.bookmarks)
+                    // — same shape we read in toProseDoc.ts:230. The
+                    // paragraph's paraId becomes the scroll target.
+                    const list: Array<{ paraId: string; name: string }> = [];
+                    const view = pagedEditorRef.current?.getView();
+                    const doc = view?.state.doc;
+                    if (!doc) return list;
+                    doc.descendants((node) => {
+                      if (node.type.name !== 'paragraph') return;
+                      const paraId = node.attrs.paraId as string | undefined;
+                      const bms = node.attrs.bookmarks as
+                        | Array<{ id: number; name: string }>
+                        | undefined;
+                      if (!bms || !paraId) return;
+                      for (const bm of bms) list.push({ paraId, name: bm.name });
+                      return false; // paragraphs don't contain paragraphs
+                    });
+                    return list;
+                  })()}
+                  onGoTo={(paraId) => {
+                    pagedEditorRef.current?.scrollToParaId(paraId);
+                  }}
                 />
               )}
               {splitCellDialogState.isOpen && (

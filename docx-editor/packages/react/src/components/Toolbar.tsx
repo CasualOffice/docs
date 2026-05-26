@@ -247,6 +247,8 @@ export interface ToolbarProps {
   ) => void;
   /** Callback when user wants to insert a table of contents */
   onInsertTOC?: () => void;
+  /** Open the Bookmarks dialog (list of named anchors). */
+  onOpenBookmarks?: () => void;
   /** Callback when user wants to insert a shape */
   onInsertShape?: (data: {
     shapeType: string;
@@ -485,6 +487,7 @@ export function Toolbar({
   onInsertSectionBreak,
   onInsertField,
   onInsertTOC,
+  onOpenBookmarks,
   onRefocusEditor,
   currentFormatting,
   ...restProps
@@ -976,6 +979,12 @@ export function Toolbar({
             label: t('toolbar.tableOfContents'),
             onClick: onInsertTOC,
             disabled: !onInsertTOC,
+          },
+          {
+            icon: 'bookmark',
+            label: t('toolbar.bookmarks'),
+            onClick: onOpenBookmarks,
+            disabled: !onOpenBookmarks,
           },
         ]}
       />
