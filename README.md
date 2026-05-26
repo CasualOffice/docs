@@ -6,24 +6,27 @@
 
 # Casual Editor
 
-**Word-flavored web `.docx` editor with real-time collaborative editing**
+**Open-source self-hosted web `.docx` editor with real-time co-editing — an alternative to Google Docs, Microsoft Word Online, and OnlyOffice Document Server you run on your own server.**
 
 [![CI](https://github.com/schnsrw/docx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/schnsrw/docx/actions/workflows/ci.yml)
 [![Deploy](https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml/badge.svg?branch=main)](https://github.com/schnsrw/docx/actions/workflows/deploy-demo.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/schnsrw/casual-editor?logo=docker)](https://hub.docker.com/r/schnsrw/casual-editor)
 [![Image Size](https://img.shields.io/docker/image-size/schnsrw/casual-editor/latest?logo=docker&label=image)](https://hub.docker.com/r/schnsrw/casual-editor)
 [![E2E Tests](https://img.shields.io/badge/e2e-836%20tests-brightgreen?logo=playwright)](./docx-editor/e2e)
+[![Fixtures](https://img.shields.io/badge/fixtures-44%2F44%20pristine-brightgreen)](./docs/internal/03-gap-matrix.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
-[**Live Demo →**](https://doc.schnsrw.live/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/schnsrw/casual-editor) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md)
+[**Live Demo →**](https://doc.schnsrw.live/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/schnsrw/casual-editor) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md) &nbsp;·&nbsp; [Comparisons →](https://schnsrw.live/vs/)
 
 </div>
 
 ---
 
-Casual Editor is a self-hostable, browser-based `.docx` editor that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with real-time multi-user co-editing built in. Upload a `.docx`, share a link, and edit together instantly. No accounts, no database, no lock-in.
+Casual Editor is a **self-hostable, browser-based `.docx` editor** that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with **real-time multi-user co-editing** built in. Upload a `.docx`, share a link, edit together instantly. **No accounts, no Microsoft / Google login, no lock-in.** One Docker container, **stateless Go gateway** (~120 LOC of y-websocket protocol), in-memory rooms.
 
-Built on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) with a stateless Go sync server layered on top.
+**Compares to:** Google Docs · Microsoft Word Online · OnlyOffice Document Server · CryptPad. See the [comparison directory](https://schnsrw.live/vs/) for write-ups as they land.
+
+The editor under [`docx-editor/`](./docx-editor/) is a fork of [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT upstream, attribution preserved). The fork's own modifications + the Go gateway + this whole repository are **Apache-2.0**. Sister projects: [Casual Sheets](https://github.com/schnsrw/sheets) (`.xlsx`) and [Casual Slides](https://github.com/schnsrw/slides) (`.pptx`).
 
 ---
 
