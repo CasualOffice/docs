@@ -387,7 +387,9 @@
         "left": "Left",
         "center": "Center",
         "right": "Right"
-      }
+      },
+      "bandedRows": "Banded rows",
+      "bandedColumns": "Banded columns"
     },
     "pasteSpecial": {
       "title": "Paste Special",

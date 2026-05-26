@@ -2097,6 +2097,8 @@ export const TablePluginExtension = createExtension({
       width?: number | null;
       widthType?: string | null;
       justification?: 'left' | 'center' | 'right' | null;
+      bandedRows?: boolean;
+      bandedColumns?: boolean;
     }): Command {
       return (state, dispatch) => {
         const context = getTableContext(state);
@@ -2108,6 +2110,25 @@ export const TablePluginExtension = createExtension({
           if ('width' in props) newAttrs.width = props.width;
           if ('widthType' in props) newAttrs.widthType = props.widthType;
           if ('justification' in props) newAttrs.justification = props.justification;
+          // Banded rows / banded columns map to the inverse of `noHBand`
+          // / `noVBand` on the table's `look` (w:tblLook) attribute.
+          // Word's convention: `noHBand="1"` means "do NOT alternate row
+          // shading"; the user-facing checkbox is the positive form.
+          if (props.bandedRows !== undefined || props.bandedColumns !== undefined) {
+            const currentLook =
+              (newAttrs.look as {
+                firstRow?: boolean;
+                lastRow?: boolean;
+                firstColumn?: boolean;
+                lastColumn?: boolean;
+                noHBand?: boolean;
+                noVBand?: boolean;
+              } | null) ?? {};
+            const nextLook = { ...currentLook };
+            if (props.bandedRows !== undefined) nextLook.noHBand = !props.bandedRows;
+            if (props.bandedColumns !== undefined) nextLook.noVBand = !props.bandedColumns;
+            newAttrs.look = nextLook;
+          }
           tr.setNodeMarkup(context.tablePos, undefined, newAttrs);
           dispatch(tr.scrollIntoView());
         }
@@ -2405,6 +2426,8 @@ export const TablePluginExtension = createExtension({
           width?: number | null;
           widthType?: string | null;
           justification?: 'left' | 'center' | 'right' | null;
+          bandedRows?: boolean;
+          bandedColumns?: boolean;
         }) => setTableProperties(props),
         applyTableStyle: (styleData: Parameters<typeof applyTableStyle>[0]) =>
           applyTableStyle(styleData),

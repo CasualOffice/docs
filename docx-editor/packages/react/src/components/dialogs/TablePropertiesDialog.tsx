@@ -19,6 +19,10 @@ export interface TableProperties {
   width?: number | null;
   widthType?: string | null;
   justification?: 'left' | 'center' | 'right' | null;
+  /** Banded rows = inverse of OOXML `w:noHBand` on `w:tblLook`. */
+  bandedRows?: boolean;
+  /** Banded columns = inverse of OOXML `w:noVBand` on `w:tblLook`. */
+  bandedColumns?: boolean;
 }
 
 export interface TablePropertiesDialogProps {
@@ -29,6 +33,14 @@ export interface TablePropertiesDialogProps {
     width?: number;
     widthType?: string;
     justification?: string;
+    look?: {
+      firstRow?: boolean;
+      lastRow?: boolean;
+      firstColumn?: boolean;
+      lastColumn?: boolean;
+      noHBand?: boolean;
+      noVBand?: boolean;
+    } | null;
   };
 }
 
@@ -127,12 +139,19 @@ export function TablePropertiesDialog({
   const [width, setWidth] = useState<number>(currentProps?.width || 0);
   const [widthType, setWidthType] = useState<string>(currentProps?.widthType || 'auto');
   const [justification, setJustification] = useState<string>(currentProps?.justification || 'left');
+  // Banded rows / columns are stored inverted on the table look attr
+  // (noHBand=true means NO horizontal banding). Read with the inverse
+  // so the checkbox sense is positive ("yes, alternate row shading").
+  const [bandedRows, setBandedRows] = useState<boolean>(!currentProps?.look?.noHBand);
+  const [bandedColumns, setBandedColumns] = useState<boolean>(!currentProps?.look?.noVBand);
 
   useEffect(() => {
     if (isOpen) {
       setWidth(currentProps?.width || 0);
       setWidthType(currentProps?.widthType || 'auto');
       setJustification(currentProps?.justification || 'left');
+      setBandedRows(!currentProps?.look?.noHBand);
+      setBandedColumns(!currentProps?.look?.noVBand);
     }
   }, [isOpen, currentProps]);
 
@@ -146,9 +165,11 @@ export function TablePropertiesDialog({
       props.widthType = widthType;
     }
     props.justification = justification as 'left' | 'center' | 'right';
+    props.bandedRows = bandedRows;
+    props.bandedColumns = bandedColumns;
     onApply(props);
     onClose();
-  }, [width, widthType, justification, onApply, onClose]);
+  }, [width, widthType, justification, bandedRows, bandedColumns, onApply, onClose]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -228,6 +249,34 @@ export function TablePropertiesDialog({
                 <option value="center">{t('dialogs.tableProperties.alignOptions.center')}</option>
                 <option value="right">{t('dialogs.tableProperties.alignOptions.right')}</option>
               </select>
+            </div>
+
+            {/* Banded rows / columns — inverted senses of OOXML
+                noHBand / noVBand. Renders as plain checkboxes since
+                the values are independent booleans (matches Word's
+                Table Design "Banded Rows" / "Banded Columns" check
+                marks). */}
+            <div style={rowStyle}>
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  data-testid="table-props-banded-rows"
+                  checked={bandedRows}
+                  onChange={(e) => setBandedRows(e.target.checked)}
+                />
+                {t('dialogs.tableProperties.bandedRows')}
+              </label>
+            </div>
+            <div style={rowStyle}>
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  data-testid="table-props-banded-columns"
+                  checked={bandedColumns}
+                  onChange={(e) => setBandedColumns(e.target.checked)}
+                />
+                {t('dialogs.tableProperties.bandedColumns')}
+              </label>
             </div>
           </div>
 
