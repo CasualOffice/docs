@@ -15,6 +15,7 @@ import type { CSSProperties } from 'react';
 import type { SectionProperties, TabStop } from '@eigenpal/docx-core/types/document';
 import { twipsToPixels, pixelsToTwips, formatPx } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
+import { findVerticalScrollParentOrRoot } from '../../paged-editor/findVerticalScrollParent';
 
 // ============================================================================
 // TYPES
@@ -110,8 +111,18 @@ export function HorizontalRuler({
   // screen, changes the rect on the next mousemove, and the pin
   // oscillates ("shakes") — most visible when the user reverses drag
   // direction. Same pattern lives in VerticalRuler.
+  //
+  // ALSO captures the editor scroller's scrollLeft. The horizontal
+  // ruler responds to horizontal drag, so the relevant scroll axis
+  // is horizontal — when the user scrolls the editor sideways
+  // mid-drag (page is wider than the viewport at higher zoom
+  // levels), the cursor sits at a different page coordinate even
+  // though clientX hasn't changed. Folding scrollLeft delta into
+  // dxPx keeps the drag value tracking the cursor in page space.
   const dragAnchorRef = useRef<{
     startClientX: number;
+    startScrollX: number;
+    scroller: HTMLElement | null;
     startLeftMarginTwips: number;
     startRightMarginTwips: number;
     startFirstLineIndentTwips: number;
@@ -147,11 +158,15 @@ export function HorizontalRuler({
       e.preventDefault();
       e.stopPropagation();
       // Snapshot the mouse position + every margin/indent value at
-      // drag-start. The handler below derives the new value from
-      // (mouse delta + start value), never from the live ruler rect.
+      // drag-start, plus the scroller's scrollLeft so the drag tracks
+      // the cursor in page space (not viewport space) when the user
+      // scrolls horizontally mid-drag.
       // See dragAnchorRef declaration for the full why.
+      const scroller = rulerRef.current ? findVerticalScrollParentOrRoot(rulerRef.current) : null;
       dragAnchorRef.current = {
         startClientX: e.clientX,
+        startScrollX: scroller ? scroller.scrollLeft : 0,
+        scroller,
         startLeftMarginTwips: leftMarginTwips,
         startRightMarginTwips: rightMarginTwips,
         startFirstLineIndentTwips: effectiveFirstLineIndent,
@@ -168,10 +183,12 @@ export function HorizontalRuler({
       const anchor = dragAnchorRef.current;
       if (!dragging || !anchor) return;
 
-      // Screen-pixel delta from drag start. Page reflow during the
-      // drag does NOT poison this value because we don't look at the
-      // ruler's current bounding rect.
-      const dxPx = e.clientX - anchor.startClientX;
+      // Cursor delta + horizontal scroll delta. Both contribute to
+      // "how far the marker should move in page coordinates" — pure
+      // mouse delta alone breaks when the user scrolls the editor
+      // sideways mid-drag (page wider than viewport at higher zoom).
+      const scrollDelta = anchor.scroller ? anchor.scroller.scrollLeft - anchor.startScrollX : 0;
+      const dxPx = e.clientX - anchor.startClientX + scrollDelta;
       const dxTwips = pixelsToTwips(dxPx / zoom);
 
       if (dragging === 'leftMargin') {

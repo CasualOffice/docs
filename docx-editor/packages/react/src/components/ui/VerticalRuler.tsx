@@ -15,6 +15,7 @@ import type { CSSProperties } from 'react';
 import type { SectionProperties } from '@eigenpal/docx-core/types/document';
 import { twipsToPixels, pixelsToTwips, formatPx } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
+import { findVerticalScrollParentOrRoot } from '../../paged-editor/findVerticalScrollParent';
 
 // ============================================================================
 // TYPES
@@ -83,8 +84,23 @@ export function VerticalRuler({
   // changes the next mouse→twips calculation — the pin oscillates
   // ("shakes"), especially noticeable when the user reverses
   // direction mid-drag.
+  //
+  // We ALSO capture the scroll position of the editor's vertical
+  // scroller. The user complaint that exposed this: "I grab and
+  // scroll it down, when I try to scroll up the pin shakes." When
+  // the user scrolls the editor mid-drag, the page's content moves
+  // under a stationary cursor — clientY stays the same but the
+  // marker is now at a different page coordinate. Without folding
+  // the scroll delta into dyPx, the drag value snaps back to
+  // wherever the cursor is in page coords, which reads as a jump
+  // when the user resumes moving the mouse. Adding the scroll
+  // delta makes the drag value follow the cursor in *page* space,
+  // so scrolling-while-dragging produces a smooth, predictable
+  // continuous drag.
   const dragAnchorRef = useRef<{
     startClientY: number;
+    startScrollY: number;
+    scroller: HTMLElement | null;
     startTopMarginTwips: number;
     startBottomMarginTwips: number;
   } | null>(null);
@@ -105,12 +121,17 @@ export function VerticalRuler({
       if (!editable) return;
       e.preventDefault();
       // Capture the anchor on drag-start: the mouse Y at this instant
-      // + the margin values at this instant. The drag handler computes
-      // a screen-pixel delta from the start mouse Y, NOT an absolute
-      // position from the (potentially shifting) ruler rect. See the
+      // + the margin values at this instant + the scrollTop of the
+      // editor's vertical scroller. The drag handler computes a
+      // screen-pixel delta from the start mouse Y AND folds in the
+      // scroll delta so dragging-while-scrolling tracks the cursor
+      // in page space instead of viewport space. See the
       // dragAnchorRef declaration above for the full rationale.
+      const scroller = rulerRef.current ? findVerticalScrollParentOrRoot(rulerRef.current) : null;
       dragAnchorRef.current = {
         startClientY: e.clientY,
+        startScrollY: scroller ? scroller.scrollTop : 0,
+        scroller,
         startTopMarginTwips: topMarginTwips,
         startBottomMarginTwips: bottomMarginTwips,
       };
@@ -125,10 +146,11 @@ export function VerticalRuler({
       const anchor = dragAnchorRef.current;
       if (!dragging || !anchor) return;
 
-      // Screen-pixel delta from drag start. Layout shifts during the
-      // drag do NOT poison this value because we never look at the
-      // ruler's current bounding rect.
-      const dyPx = e.clientY - anchor.startClientY;
+      // Cursor delta + scroll delta. Both contribute to "how far the
+      // marker should move in page coordinates" — pure mouse delta
+      // alone breaks when the user scrolls the editor mid-drag.
+      const scrollDelta = anchor.scroller ? anchor.scroller.scrollTop - anchor.startScrollY : 0;
+      const dyPx = e.clientY - anchor.startClientY + scrollDelta;
       const dyTwips = pixelsToTwips(dyPx / zoom);
 
       if (dragging === 'topMargin') {
