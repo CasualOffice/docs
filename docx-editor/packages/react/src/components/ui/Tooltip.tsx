@@ -124,12 +124,13 @@ export function Tooltip({ content, children, side = 'bottom', delayMs = 400 }: T
         <div
           id={tooltipId}
           role="tooltip"
-          // Dark tooltip in BOTH light and dark mode, matching Google
-          // Docs. The previous "invert on theme" rule made tooltips
-          // black-on-white in light mode and white-on-black in dark
-          // mode, which read as two completely different elements
-          // and contributed to the "colors are inconsistent" feel.
-          className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-slate-700 dark:bg-slate-800 rounded-md shadow-lg"
+          // Surface-following tooltip — white card in light mode, dark
+          // card in dark mode. Dark-grey-always (the previous version)
+          // and theme-inverted (the version before that) both read as
+          // out-of-place chrome against a light theme. A subtle border
+          // + shadow keeps it readable above the editor surface in
+          // both modes.
+          className="fixed z-50 px-2 py-1 text-xs font-medium text-[color:var(--doc-text-on-surface,#1f2937)] bg-[color:var(--doc-surface,#ffffff)] border border-[color:var(--doc-border,#dadce0)] rounded-md shadow-lg"
           style={{
             left: position.x,
             top: position.y,

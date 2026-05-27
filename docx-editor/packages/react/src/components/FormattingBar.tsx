@@ -511,7 +511,24 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           title={t('formattingBar.smallCaps')}
           ariaLabel={t('formattingBar.smallCaps')}
         >
-          <MaterialSymbol name="format_letter_spacing" size={ICON_SIZE} />
+          {/* Text glyph instead of MaterialSymbol — `format_letter_spacing`
+              and `format_size` aren't in our iconMap (Icons.tsx ships
+              hand-picked SVGs only), so they were rendering as empty
+              <span>s. "Aa" / "AA" with mixed sizes matches Word's
+              small-caps and all-caps icons better than the Material
+              alternatives anyway. */}
+          <span
+            aria-hidden
+            style={{
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              fontSize: ICON_SIZE - 2,
+              lineHeight: 1,
+              letterSpacing: 0.5,
+            }}
+          >
+            A<span style={{ fontSize: ICON_SIZE - 6 }}>a</span>
+          </span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => handleFormat('toggleAllCaps')}
@@ -520,7 +537,18 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           title={t('formattingBar.allCaps')}
           ariaLabel={t('formattingBar.allCaps')}
         >
-          <MaterialSymbol name="format_size" size={ICON_SIZE} />
+          <span
+            aria-hidden
+            style={{
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              fontSize: ICON_SIZE - 2,
+              lineHeight: 1,
+              letterSpacing: 0.5,
+            }}
+          >
+            AA
+          </span>
         </ToolbarButton>
         {showTextColorPicker && (
           <ColorPicker
