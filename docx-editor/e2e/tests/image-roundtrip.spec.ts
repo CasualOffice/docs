@@ -36,7 +36,7 @@ test.describe('Image Round-Trip (Issue #45)', () => {
     // Save and capture download
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'File' }).click();
-    await page.getByRole('button', { name: /^Save\b/ }).click();
+    await page.getByRole('menuitem', { name: /^Save\b/ }).click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
     expect(downloadPath).toBeTruthy();
@@ -85,7 +85,7 @@ test.describe('Image Round-Trip (Issue #45)', () => {
     // Save
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'File' }).click();
-    await page.getByRole('button', { name: /^Save\b/ }).click();
+    await page.getByRole('menuitem', { name: /^Save\b/ }).click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
     expect(downloadPath).toBeTruthy();
@@ -136,7 +136,7 @@ test.describe('Image Round-Trip (Issue #45)', () => {
     // Save
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'File' }).click();
-    await page.getByRole('button', { name: /^Save\b/ }).click();
+    await page.getByRole('menuitem', { name: /^Save\b/ }).click();
     const download = await downloadPromise;
     const downloadPath = await download.path();
     expect(downloadPath).toBeTruthy();

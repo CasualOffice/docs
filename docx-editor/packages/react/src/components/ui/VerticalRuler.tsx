@@ -134,20 +134,14 @@ export function VerticalRuler({
       if (dragging === 'topMargin') {
         // Dragging down (positive dy) → larger top margin.
         const maxMargin = pageHeightTwips - bottomMarginTwips - 720;
-        const newMargin = Math.max(
-          0,
-          Math.min(anchor.startTopMarginTwips + dyTwips, maxMargin),
-        );
+        const newMargin = Math.max(0, Math.min(anchor.startTopMarginTwips + dyTwips, maxMargin));
         onTopMarginChange?.(Math.round(newMargin));
       } else if (dragging === 'bottomMargin') {
         // Dragging down (positive dy) → smaller bottom margin
         // (bottom edge of the content area moves down with the
         // pin, so the bottom margin shrinks).
         const maxMargin = pageHeightTwips - topMarginTwips - 720;
-        const newMargin = Math.max(
-          0,
-          Math.min(anchor.startBottomMarginTwips - dyTwips, maxMargin),
-        );
+        const newMargin = Math.max(0, Math.min(anchor.startBottomMarginTwips - dyTwips, maxMargin));
         onBottomMarginChange?.(Math.round(newMargin));
       }
     },

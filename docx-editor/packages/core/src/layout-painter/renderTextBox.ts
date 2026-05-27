@@ -84,10 +84,8 @@ export function renderTextBoxFragment(
   // no offset" — wait for the hybrid cursor-reservation work before
   // touching those.
   if (block.anchor) {
-    const isParagraphH =
-      !block.anchor.relFromH || block.anchor.relFromH === 'paragraph';
-    const isParagraphV =
-      !block.anchor.relFromV || block.anchor.relFromV === 'paragraph';
+    const isParagraphH = !block.anchor.relFromH || block.anchor.relFromH === 'paragraph';
+    const isParagraphV = !block.anchor.relFromV || block.anchor.relFromV === 'paragraph';
     const dxPx =
       isParagraphH && typeof block.anchor.offsetH === 'number'
         ? emuToPixels(block.anchor.offsetH)

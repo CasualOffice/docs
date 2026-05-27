@@ -94,9 +94,7 @@ export function Tooltip({ content, children, side = 'bottom', delayMs = 400 }: T
   };
   const childProps = children.props as ChildProps;
 
-  const mergedDescribedBy = [childProps['aria-describedby'], tooltipId]
-    .filter(Boolean)
-    .join(' ');
+  const mergedDescribedBy = [childProps['aria-describedby'], tooltipId].filter(Boolean).join(' ');
 
   const child = React.cloneElement(children as React.ReactElement<ChildProps>, {
     ref: triggerRef,

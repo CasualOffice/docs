@@ -516,6 +516,11 @@ export interface TableContextInfo {
   cellBorderColor?: ColorValue;
   /** Current cell's background/fill color (RGB hex without #), if any */
   cellBackgroundColor?: string;
+  /** Current row's isHeader attr — true when the row is pinned to
+   * repeat on page breaks (serializes to <w:tblHeader/>). Lets the
+   * toolbar show an active/checked state on the "Pin header row"
+   * menu item. */
+  currentRowIsHeader?: boolean;
 }
 
 function getTableContext(state: EditorState): TableContextInfo {
@@ -531,6 +536,7 @@ function getTableContext(state: EditorState): TableContextInfo {
   let rowIndex: number | undefined;
   let columnIndex: number | undefined;
   let cellNode: PMNode | undefined;
+  let currentRowIsHeader: boolean | undefined;
 
   for (let d = $from.depth; d > 0; d--) {
     const node = $from.node(d);
@@ -553,6 +559,7 @@ function getTableContext(state: EditorState): TableContextInfo {
         });
       }
     } else if (node.type.name === 'tableRow') {
+      currentRowIsHeader = !!node.attrs.isHeader;
       const tableNode = $from.node(d - 1);
       if (tableNode && tableNode.type.name === 'table') {
         rowIndex = $from.index(d - 1);
@@ -619,6 +626,7 @@ function getTableContext(state: EditorState): TableContextInfo {
     canSplitCell: !!canSplitCell,
     cellBorderColor,
     cellBackgroundColor,
+    currentRowIsHeader,
   };
 }
 
@@ -1852,8 +1860,7 @@ export const TablePluginExtension = createExtension({
             }
           });
           if (rowCount === 0) return false;
-          const equalHeight =
-            rowsWithHeight > 0 ? Math.floor(totalHeight / rowsWithHeight) : 360;
+          const equalHeight = rowsWithHeight > 0 ? Math.floor(totalHeight / rowsWithHeight) : 360;
 
           let rowPos = context.tablePos + 1;
           table.forEach((row) => {

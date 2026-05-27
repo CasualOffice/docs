@@ -160,14 +160,7 @@ export function HorizontalRuler({
       };
       setDragging(marker);
     },
-    [
-      editable,
-      leftMarginTwips,
-      rightMarginTwips,
-      effectiveFirstLineIndent,
-      indentLeft,
-      indentRight,
-    ]
+    [editable, leftMarginTwips, rightMarginTwips, effectiveFirstLineIndent, indentLeft, indentRight]
   );
 
   const handleDrag = useCallback(
@@ -185,7 +178,7 @@ export function HorizontalRuler({
         // Drag right = larger left margin.
         const maxMargin = pageWidthTwips - rightMarginTwips - 720;
         const rounded = Math.round(
-          Math.max(0, Math.min(anchor.startLeftMarginTwips + dxTwips, maxMargin)),
+          Math.max(0, Math.min(anchor.startLeftMarginTwips + dxTwips, maxMargin))
         );
         setDragValue(rounded);
         // dragPositionPx kept for the value-tooltip overlay — express
@@ -199,7 +192,7 @@ export function HorizontalRuler({
         // right with the pin).
         const maxMargin = pageWidthTwips - leftMarginTwips - 720;
         const rounded = Math.round(
-          Math.max(0, Math.min(anchor.startRightMarginTwips - dxTwips, maxMargin)),
+          Math.max(0, Math.min(anchor.startRightMarginTwips - dxTwips, maxMargin))
         );
         setDragValue(rounded);
         setDragPositionPx(pageWidthPx - twipsToPixels(rounded) * zoom);
@@ -207,10 +200,7 @@ export function HorizontalRuler({
       } else if (dragging === 'firstLineIndent') {
         const maxIndent = contentTwips - indentLeft - indentRight - 720;
         const rounded = Math.round(
-          Math.max(
-            -indentLeft,
-            Math.min(anchor.startFirstLineIndentTwips + dxTwips, maxIndent),
-          ),
+          Math.max(-indentLeft, Math.min(anchor.startFirstLineIndentTwips + dxTwips, maxIndent))
         );
         setDragValue(rounded);
         setDragPositionPx(leftMarginPx + indentLeftPx + twipsToPixels(rounded) * zoom);
@@ -218,7 +208,7 @@ export function HorizontalRuler({
       } else if (dragging === 'leftIndent') {
         const maxIndent = contentTwips - indentRight - 720;
         const rounded = Math.round(
-          Math.max(0, Math.min(anchor.startLeftIndentTwips + dxTwips, maxIndent)),
+          Math.max(0, Math.min(anchor.startLeftIndentTwips + dxTwips, maxIndent))
         );
         setDragValue(rounded);
         setDragPositionPx(leftMarginPx + twipsToPixels(rounded) * zoom);
@@ -227,7 +217,7 @@ export function HorizontalRuler({
         // Drag right = smaller right indent.
         const maxIndent = contentTwips - indentLeft - 720;
         const rounded = Math.round(
-          Math.max(0, Math.min(anchor.startRightIndentTwips - dxTwips, maxIndent)),
+          Math.max(0, Math.min(anchor.startRightIndentTwips - dxTwips, maxIndent))
         );
         setDragValue(rounded);
         setDragPositionPx(pageWidthPx - rightMarginPx - twipsToPixels(rounded) * zoom);
