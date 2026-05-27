@@ -280,6 +280,16 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
       <button
         ref={triggerRef}
         type="button"
+        // Popup-menu pattern (button-opens-menu): we keep the
+        // native button role here because there's no enclosing
+        // <div role="menubar"> in this React tree, and role=
+        // "menuitem" is invalid outside a menu/menubar parent.
+        // aria-haspopup="menu" signals the popup type (vs dialog /
+        // listbox); aria-expanded tracks open state so screen
+        // readers can announce "collapsed/expanded". Once a
+        // proper menubar wrapper lands we can re-add role here.
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onMouseEnter={() => {
           if (disabled || !bar) return;
@@ -360,6 +370,11 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
           />
           <div
             ref={dropdownRef}
+            // WAI-ARIA menubar pattern: the panel itself is the
+            // "menu," aria-label gives it a name screen readers can
+            // announce when focus enters.
+            role="menu"
+            aria-label={label}
             style={{
               position: 'fixed',
               top: dropdownPos.top,
@@ -377,7 +392,7 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
           >
             {items.map((entry, i) => {
               if (isSeparator(entry)) {
-                return <div key={`sep-${i}`} style={separatorStyle} />;
+                return <div key={`sep-${i}`} role="separator" style={separatorStyle} />;
               }
               const item = entry;
               if (item.customContent) {
@@ -400,6 +415,10 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
                 >
                   <button
                     type="button"
+                    role="menuitem"
+                    aria-haspopup={hasSubmenu ? 'menu' : undefined}
+                    aria-expanded={hasSubmenu ? isSubmenuOpen : undefined}
+                    aria-disabled={item.disabled || undefined}
                     style={item.disabled ? menuItemDisabledStyle : menuItemStyle}
                     onClick={() => handleItemClick(item)}
                     onMouseDown={(e) => e.preventDefault()}
@@ -424,7 +443,12 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
                     )}
                   </button>
                   {hasSubmenu && isSubmenuOpen && (
-                    <div style={submenuPanelStyle} onMouseDown={(e) => e.preventDefault()}>
+                    <div
+                      role="menu"
+                      aria-label={item.label}
+                      style={submenuPanelStyle}
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
                       {item.submenuContent!(closeMenu)}
                     </div>
                   )}

@@ -20,7 +20,7 @@ test.describe('Help menu', () => {
     });
 
     await page.getByRole('button', { name: 'Help' }).click();
-    await page.getByRole('button', { name: 'Report issue' }).click();
+    await page.getByRole('menuitem', { name: 'Report issue' }).click();
 
     // DocxEditor.handleReportBug dynamically imports report-bug.ts, so
     // window.open fires on a microtask after the click. Wait for the

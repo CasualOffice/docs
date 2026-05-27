@@ -1384,8 +1384,11 @@ export class EditorPage {
   async newDocument(): Promise<void> {
     // The menu-bar redesign (0da2a75) put "New" inside the File dropdown,
     // so open File first and then click the item by accessible name.
+    // The trigger keeps the native button role (no menubar parent);
+    // items inside the dropdown carry role="menuitem" per the
+    // popup-menu pattern — query each by its actual ARIA role.
     await this.page.getByRole('button', { name: 'File' }).click();
-    await this.page.getByRole('button', { name: /^New\b/ }).click();
+    await this.page.getByRole('menuitem', { name: /^New\b/ }).click();
     // Wait for the new (empty) ProseMirror to be attached and reporting an
     // empty doc via the e2e editor ref. The previous 500ms fixed wait raced
     // with bootstrap on cold CI runs — a subsequent typeText() then landed
