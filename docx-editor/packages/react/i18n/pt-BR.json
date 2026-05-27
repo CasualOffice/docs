@@ -102,7 +102,8 @@
     "clearFormatting": "Limpar formatação",
     "allCaps": null,
     "smallCaps": null,
-    "addComment": null
+    "addComment": null,
+    "paintFormat": null
   },
   "alignment": {
     "alignLeft": "Alinhar à esquerda",

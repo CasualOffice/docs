@@ -102,7 +102,8 @@
     "clearFormatting": "Biçimlendirmeyi temizle",
     "allCaps": null,
     "smallCaps": null,
-    "addComment": null
+    "addComment": null,
+    "paintFormat": null
   },
   "alignment": {
     "alignLeft": "Sola hizala",

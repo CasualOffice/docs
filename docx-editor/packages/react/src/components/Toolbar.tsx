@@ -269,6 +269,10 @@ export interface ToolbarProps {
   onOpenBordersShading?: () => void;
   /** Add a comment on the current selection (Docs: speech-bubble toolbar button). */
   onAddComment?: () => void;
+  /** Toggle the paint-format (format painter) armed state. */
+  onPaintFormat?: () => void;
+  /** True while paint-format is armed (button shows pressed state). */
+  paintFormatArmed?: boolean;
   /** Callback when user wants to insert a shape */
   onInsertShape?: (data: {
     shapeType: string;

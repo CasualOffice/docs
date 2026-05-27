@@ -109,6 +109,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
     onInsertImage,
     onOpenParagraphDialog,
     onAddComment,
+    onPaintFormat,
+    paintFormatArmed,
     inline = false,
   } = props as FormattingBarProps;
 
@@ -383,6 +385,17 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         >
           <MaterialSymbol name="redo" size={ICON_SIZE} />
         </ToolbarButton>
+        {onPaintFormat && !tableContext?.isInTable && (
+          <ToolbarButton
+            onClick={onPaintFormat}
+            disabled={disabled}
+            title={t('formattingBar.paintFormat')}
+            ariaLabel={t('formattingBar.paintFormat')}
+            active={!!paintFormatArmed}
+          >
+            <MaterialSymbol name="format_paint" size={ICON_SIZE} />
+          </ToolbarButton>
+        )}
       </ToolbarGroup>
 
       {/* Zoom Control */}

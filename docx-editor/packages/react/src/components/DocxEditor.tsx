@@ -56,6 +56,7 @@ import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
+import type { Mark as PMMark } from 'prosemirror-model';
 import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
@@ -1503,6 +1504,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Comments sidebar state
   const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
+  // Paint format (format painter) — when set, the next non-empty
+  // selection will receive these marks. Esc cancels. Toolbar button
+  // toggles between idle/armed.
+  const [paintFormatMarks, setPaintFormatMarks] = useState<readonly PMMark[] | null>(null);
+  const paintFormatMarksRef = useRef<readonly PMMark[] | null>(null);
+  useEffect(() => {
+    paintFormatMarksRef.current = paintFormatMarks;
+  }, [paintFormatMarks]);
   const [expandedSidebarItem, setExpandedSidebarItem] = useState<string | null>(null);
 
   // Version-history side-panel state (F1 mount). The hook owns the
@@ -2414,6 +2423,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       // Update floating comment button position
       recomputeFloatingCommentBtn();
 
+      // Paint-format armed and now there's a non-empty selection — apply.
+      if (paintFormatMarksRef.current) {
+        const view = pagedEditorRef.current?.getView();
+        if (view) {
+          const { from, to } = view.state.selection;
+          if (from !== to) {
+            applyPaintedMarks(from, to);
+          }
+        }
+      }
+
       // Notify parent
       onSelectionChange?.(selectionState);
       // Fan out to bridge subscribers.
@@ -2606,6 +2626,60 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     },
     [getActiveEditorView, focusActiveEditor]
   );
+
+  // Paint format (format painter): toggle armed state. If already armed,
+  // disarm. Otherwise capture the current cursor's mark set; the next
+  // selection-change with a non-empty selection will apply them.
+  const handleTogglePaintFormat = useCallback(() => {
+    if (paintFormatMarksRef.current) {
+      setPaintFormatMarks(null);
+      return;
+    }
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const { selection, storedMarks } = view.state;
+    let marks: readonly PMMark[];
+    if (storedMarks && storedMarks.length > 0) {
+      marks = storedMarks;
+    } else if (!selection.empty) {
+      // Take marks from the first character of the range.
+      const $pos = view.state.doc.resolve(selection.from + 1);
+      marks = $pos.marks();
+    } else {
+      marks = selection.$from.marks();
+    }
+    setPaintFormatMarks(marks);
+  }, []);
+
+  // Apply painted marks to a non-empty selection, then disarm.
+  const applyPaintedMarks = useCallback((from: number, to: number) => {
+    const marks = paintFormatMarksRef.current;
+    if (!marks) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    let tr = view.state.tr;
+    // Clear ALL existing marks on the range first, then add the captured
+    // set. This is what Docs/Word do — paint format replaces, not merges.
+    const allMarkTypes = Object.values(view.state.schema.marks);
+    for (const mt of allMarkTypes) {
+      tr = tr.removeMark(from, to, mt);
+    }
+    for (const m of marks) {
+      tr = tr.addMark(from, to, m);
+    }
+    view.dispatch(tr);
+    setPaintFormatMarks(null);
+  }, []);
+
+  // Cancel paint-format on Escape.
+  useEffect(() => {
+    if (!paintFormatMarks) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPaintFormatMarks(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [paintFormatMarks]);
 
   // Start the add-comment flow from a toolbar/menu trigger (mirrors the
   // floating "+" button + context-menu addComment paths). Selection
@@ -5853,6 +5927,8 @@ body { background: white; }
                       onOpenParagraphDialog={handleOpenParagraphDialog}
                       onOpenBordersShading={handleOpenBordersShading}
                       onAddComment={handleStartAddComment}
+                      onPaintFormat={handleTogglePaintFormat}
+                      paintFormatArmed={paintFormatMarks != null}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
