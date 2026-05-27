@@ -16,6 +16,7 @@ import {
 } from '../layout-engine/types';
 import type { RenderContext } from './renderPage';
 import { renderParagraphFragment } from './renderParagraph';
+import { emuToPixels } from '../utils/units';
 
 /**
  * CSS class names for text box elements
@@ -68,6 +69,37 @@ export function renderTextBoxFragment(
   // Internal padding
   const margins = block.margins ?? DEFAULT_TEXTBOX_MARGINS;
   containerEl.style.padding = `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`;
+
+  // Anchored position — apply DrawingML wp:positionH/V offsets as a
+  // CSS transform so the box visually moves from its cursor location
+  // to its declared offset WITHOUT changing in-flow space. This
+  // preserves pagination (the previous overlay-only attempt at
+  // d8b85d1 dropped the in-flow space and shifted body text — see
+  // TextBoxExtension.ts comment block referencing that regression).
+  //
+  // Scope: only honor paragraph-relative anchors (the default and
+  // most common case). For page / margin / column anchors, doing a
+  // translate from the in-flow origin would land the box at "wrong
+  // place + offset" which is worse than the current "wrong place,
+  // no offset" — wait for the hybrid cursor-reservation work before
+  // touching those.
+  if (block.anchor) {
+    const isParagraphH =
+      !block.anchor.relFromH || block.anchor.relFromH === 'paragraph';
+    const isParagraphV =
+      !block.anchor.relFromV || block.anchor.relFromV === 'paragraph';
+    const dxPx =
+      isParagraphH && typeof block.anchor.offsetH === 'number'
+        ? emuToPixels(block.anchor.offsetH)
+        : 0;
+    const dyPx =
+      isParagraphV && typeof block.anchor.offsetV === 'number'
+        ? emuToPixels(block.anchor.offsetV)
+        : 0;
+    if (dxPx !== 0 || dyPx !== 0) {
+      containerEl.style.transform = `translate(${dxPx}px, ${dyPx}px)`;
+    }
+  }
 
   // Store metadata
   containerEl.dataset.blockId = String(fragment.blockId);

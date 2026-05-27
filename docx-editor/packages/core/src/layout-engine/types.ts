@@ -514,6 +514,35 @@ export type TextBoxBlock = {
    * when our font metrics disagree with Word's saved ext.cy.
    */
   autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
+  /**
+   * Anchored position (DrawingML wp:positionH / wp:positionV). Captured
+   * by `convertTextBoxNode` from the PM TextBox attrs and applied at
+   * render time as a `transform: translate()` so the box visually
+   * appears at its intended position WITHOUT changing in-flow space
+   * (pagination unchanged). Pre-fix, these attrs round-tripped through
+   * PM but the renderer ignored them, so anchored shapes rendered at
+   * the cursor regardless of where Word said they belonged.
+   *
+   * Scope: today we only honor `relFromH/V === 'paragraph'` (or
+   * undefined) — those are the most common cases. Page / margin /
+   * column anchors are preserved in the attrs but not visually
+   * applied because a transform from the in-flow origin would land
+   * the box at "wrong-place + offset" instead of "page-edge + offset".
+   * Properly honoring those needs the hybrid cursor-reservation
+   * layout work; until then, conservative non-application is strictly
+   * better than mis-application.
+   *
+   * `offsetH` / `offsetV` are in EMUs (DrawingML units, 914 400 per
+   * inch) — converted to pixels at render time via `emuToPixels`.
+   */
+  anchor?: {
+    offsetH?: number;
+    offsetV?: number;
+    relFromH?: string;
+    relFromV?: string;
+    alignH?: string;
+    alignV?: string;
+  };
   pmStart?: number;
   pmEnd?: number;
 };

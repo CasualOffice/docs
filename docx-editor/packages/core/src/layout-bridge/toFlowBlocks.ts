@@ -1516,6 +1516,30 @@ function convertTextBoxNode(
     }
   });
 
+  // Anchor data — round-tripped through PM via TextBoxExtension's
+  // posOffsetH/V/posRelFromH/V/posAlignH/V attrs. Wrapping into a
+  // single `anchor` object is purely a layout-time grouping; the
+  // PM-side attrs stay flat for backwards compatibility. Only emit
+  // the anchor when at least one position attr is present, so
+  // non-anchored boxes don't pay any render-time cost.
+  const hasAnchor =
+    attrs.posOffsetH != null ||
+    attrs.posOffsetV != null ||
+    attrs.posRelFromH != null ||
+    attrs.posRelFromV != null ||
+    attrs.posAlignH != null ||
+    attrs.posAlignV != null;
+  const anchor: TextBoxBlock['anchor'] = hasAnchor
+    ? {
+        offsetH: (attrs.posOffsetH as number | undefined) ?? undefined,
+        offsetV: (attrs.posOffsetV as number | undefined) ?? undefined,
+        relFromH: (attrs.posRelFromH as string | undefined) ?? undefined,
+        relFromV: (attrs.posRelFromV as string | undefined) ?? undefined,
+        alignH: (attrs.posAlignH as string | undefined) ?? undefined,
+        alignV: (attrs.posAlignV as string | undefined) ?? undefined,
+      }
+    : undefined;
+
   return {
     kind: 'textBox',
     id: nextBlockId(),
@@ -1533,6 +1557,7 @@ function convertTextBoxNode(
     },
     content: contentBlocks,
     autoFit: (attrs.autoFit as TextBoxBlock['autoFit']) ?? undefined,
+    anchor,
     pmStart: startPos,
     pmEnd: startPos + node.nodeSize,
   };
