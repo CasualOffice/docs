@@ -89,6 +89,17 @@ import {
 } from './InlineHeaderFooterEditor';
 
 // Dialog components (lazy-loaded — only fetched when first opened)
+const trackedChangesActionBtnStyle: CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  padding: '4px 6px',
+  borderRadius: 4,
+  color: 'var(--doc-text-on-surface)',
+  display: 'inline-flex',
+  alignItems: 'center',
+};
+
 const FindReplaceDialog = lazy(() => import('./dialogs/FindReplaceDialog'));
 const HyperlinkDialog = lazy(() => import('./dialogs/HyperlinkDialog'));
 const TablePropertiesDialog = lazy(() =>
@@ -284,7 +295,14 @@ import {
   type TableContextInfo,
   type InsertableFieldType,
 } from '@eigenpal/docx-core/prosemirror';
-import { acceptChange, rejectChange } from '@eigenpal/docx-core/prosemirror/commands';
+import {
+  acceptChange,
+  rejectChange,
+  acceptAllChanges,
+  rejectAllChanges,
+  findNextChange,
+  findPreviousChange,
+} from '@eigenpal/docx-core/prosemirror/commands';
 import { collectHeadings } from '@eigenpal/docx-core/utils';
 import {
   getChangedParagraphIds,
@@ -1561,6 +1579,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (!modeProp) setEditingModeInternal(mode);
     onModeChange?.(mode);
   };
+  // Refs so the global keydown listener can read latest without re-binding.
+  const editingModeRef = useRef<EditorMode>(editingMode);
+  useEffect(() => {
+    editingModeRef.current = editingMode;
+  }, [editingMode]);
+  const setEditingModeRef = useRef(setEditingMode);
+  useEffect(() => {
+    setEditingModeRef.current = setEditingMode;
+  });
   // 'viewing' mode acts as read-only
   const readOnly = readOnlyProp || editingMode === 'viewing';
 
@@ -2605,6 +2632,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         if (view) {
           toggleBulletList(view.state, view.dispatch);
         }
+      }
+
+      // Mod+Shift+E → cycle editing mode (Docs convention: Editing →
+      // Suggesting → Viewing → Editing). The mode-toggle button tooltip
+      // already advertises this shortcut; this wires it.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        const current = editingModeRef.current;
+        const next: EditorMode =
+          current === 'editing' ? 'suggesting' : current === 'suggesting' ? 'viewing' : 'editing';
+        setEditingModeRef.current(next);
       }
     };
 
@@ -5740,6 +5778,48 @@ body { background: white; }
     },
   };
 
+  // Bulk tracked-change actions used by the suggesting-mode sidebar
+  // header bar. Each command lives in @eigenpal/docx-core; this is just
+  // a focus + scroll convenience wrapper.
+  const handleAcceptAllChanges = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    acceptAllChanges()(view.state, view.dispatch);
+  }, []);
+  const handleRejectAllChanges = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    rejectAllChanges()(view.state, view.dispatch);
+  }, []);
+  const handleNextChange = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const cursor = view.state.selection.from;
+    const next = findNextChange(view.state, cursor);
+    if (next) {
+      view.dispatch(
+        view.state.tr
+          .setSelection(TextSelection.create(view.state.doc, next.from, next.to))
+          .scrollIntoView()
+      );
+      view.focus();
+    }
+  }, []);
+  const handlePreviousChange = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const cursor = view.state.selection.from;
+    const prev = findPreviousChange(view.state, cursor);
+    if (prev) {
+      view.dispatch(
+        view.state.tr
+          .setSelection(TextSelection.create(view.state.doc, prev.from, prev.to))
+          .scrollIntoView()
+      );
+      view.focus();
+    }
+  }, []);
+
   // Stable callbacks wrapper that delegates to ref (avoids recreating items on every render)
   const stableCallbacks = useMemo<CommentCallbacks>(
     () => ({
@@ -6278,6 +6358,71 @@ body { background: white; }
                         scrollContainerRef={scrollContainerRef}
                         sidebarOverlay={
                           <>
+                            {editingMode === 'suggesting' && trackedChanges.length > 0 && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: 6,
+                                  right: 12,
+                                  display: 'flex',
+                                  gap: 4,
+                                  padding: '4px 6px',
+                                  background: 'var(--doc-surface, white)',
+                                  border: '1px solid var(--doc-border)',
+                                  borderRadius: 6,
+                                  boxShadow: 'var(--doc-shadow, 0 2px 6px rgba(0,0,0,0.1))',
+                                  zIndex: 50,
+                                  fontSize: 12,
+                                }}
+                                data-testid="tracked-changes-action-bar"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={handlePreviousChange}
+                                  style={trackedChangesActionBtnStyle}
+                                  aria-label={t('trackedChanges.previous')}
+                                  title={t('trackedChanges.previous')}
+                                >
+                                  <MaterialSymbol name="navigate_before" size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleNextChange}
+                                  style={trackedChangesActionBtnStyle}
+                                  aria-label={t('trackedChanges.next')}
+                                  title={t('trackedChanges.next')}
+                                >
+                                  <MaterialSymbol name="navigate_next" size={16} />
+                                </button>
+                                <span
+                                  style={{
+                                    width: 1,
+                                    background: 'var(--doc-border)',
+                                    margin: '0 2px',
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAcceptAllChanges}
+                                  style={trackedChangesActionBtnStyle}
+                                  aria-label={t('trackedChanges.acceptAll')}
+                                  title={t('trackedChanges.acceptAll')}
+                                  data-testid="tracked-changes-accept-all"
+                                >
+                                  <MaterialSymbol name="done_all" size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleRejectAllChanges}
+                                  style={trackedChangesActionBtnStyle}
+                                  aria-label={t('trackedChanges.rejectAll')}
+                                  title={t('trackedChanges.rejectAll')}
+                                  data-testid="tracked-changes-reject-all"
+                                >
+                                  <MaterialSymbol name="block" size={16} />
+                                </button>
+                              </div>
+                            )}
                             {allSidebarItems.length > 0 && (
                               <UnifiedSidebar
                                 items={allSidebarItems}

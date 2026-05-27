@@ -635,7 +635,11 @@
     "replaced": "Zamieniono",
     "with": "na",
     "added": "Dodano",
-    "deleted": "Usunięto"
+    "deleted": "Usunięto",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "Menu akcji AI",

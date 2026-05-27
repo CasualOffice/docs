@@ -635,7 +635,11 @@
     "replaced": "Ersetzt",
     "with": "durch",
     "added": "Hinzugefügt",
-    "deleted": "Gelöscht"
+    "deleted": "Gelöscht",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "KI-Aktionsmenü",

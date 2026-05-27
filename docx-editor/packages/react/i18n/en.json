@@ -839,6 +839,17 @@
     "linkCopied": "Link copied to clipboard",
     "failedToSave": "Failed to save document"
   },
+  "trackedChanges": {
+    "previous": "Previous change",
+    "next": "Next change",
+    "acceptAll": "Accept all changes",
+    "rejectAll": "Reject all changes",
+    "unknown": "Unknown",
+    "replaced": "Replaced",
+    "with": "with",
+    "added": "Added",
+    "deleted": "Deleted"
+  },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "Display text",
     "urlPlaceholder": "https://example.com",

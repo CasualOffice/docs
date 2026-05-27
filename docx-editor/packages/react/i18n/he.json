@@ -635,7 +635,11 @@
     "replaced": "הוחלף",
     "with": "עם",
     "added": "נוסף",
-    "deleted": "נמחק"
+    "deleted": "נמחק",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "תפריט פעולות AI",
