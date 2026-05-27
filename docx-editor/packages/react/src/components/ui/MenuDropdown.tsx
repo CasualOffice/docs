@@ -110,8 +110,7 @@ const submenuPanelStyle: CSSProperties = {
   border: '1px solid var(--doc-border, #d1d5db)',
   borderRadius: 6,
   boxShadow: 'var(--doc-shadow, 0 4px 12px rgba(0, 0, 0, 0.12))',
-  padding: '4px 0',
-  minWidth: 200,
+  padding: 8,
   zIndex: 1001,
 };
 

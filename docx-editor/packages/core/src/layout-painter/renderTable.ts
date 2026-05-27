@@ -146,8 +146,13 @@ function extractCellFloatingImages(
         }
       }
 
-      // Clamp within cell bounds
+      // Clamp within cell bounds — both axes. The y-clamp was missing
+      // pre-fix, so floating images positioned with a v.posOffset larger
+      // than the cell height rendered past the cell's bottom edge into
+      // the next row. Word treats cell-anchored floats as logically
+      // bound to the cell.
       x = Math.max(0, Math.min(x, contentWidth - imgRun.width));
+      y = Math.max(0, Math.min(y, cellMeasure.height - imgRun.height));
 
       // Derive wrapText from cssFloat (same pattern as page-level):
       // cssFloat='left' → image floats left → text on right → wrapText='right'

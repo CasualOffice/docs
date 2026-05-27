@@ -73,13 +73,26 @@ const DEFAULT_FONT = 'Calibri';
 
 /**
  * Constrain image dimensions to fit within the page content area.
- * Scales proportionally if height exceeds pageContentHeight.
+ *
+ * Scales proportionally (preserves aspect ratio) when height exceeds
+ * `pageContentHeight`. Only applied to **non-floating** images —
+ * floating images (any DrawingML wrap type: square, tight, through,
+ * topAndBottom, behind, inFront) are anchored to a position and must
+ * keep their declared size; Word lets them extend past the page
+ * boundary rather than scale them down.
+ *
+ * The save path reads the PM node's original `attrs.width` /
+ * `attrs.height` (not the constrained values), so this is a
+ * layout-only adjustment — the .docx on disk keeps the original size
+ * regardless.
  */
 function constrainImageToPage(
   width: number,
   height: number,
-  pageContentHeight: number | undefined
+  pageContentHeight: number | undefined,
+  isFloating: boolean = false
 ): { width: number; height: number } {
+  if (isFloating) return { width, height };
   if (!pageContentHeight || height <= pageContentHeight) {
     return { width, height };
   }
@@ -664,7 +677,8 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       const constrained = constrainImageToPage(
         (attrs.width as number) || 100,
         (attrs.height as number) || 100,
-        _options.pageContentHeight
+        _options.pageContentHeight,
+        !!attrs.wrapType // any wrap type = floating; don't scale to page
       );
       const run: ImageRun = {
         kind: 'image',
@@ -765,7 +779,8 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
           const sdtConstrained = constrainImageToPage(
             (attrs.width as number) || 100,
             (attrs.height as number) || 100,
-            _options.pageContentHeight
+            _options.pageContentHeight,
+            !!attrs.wrapType // any wrap type = floating; don't scale to page
           );
           const run: ImageRun = {
             kind: 'image',
@@ -1456,7 +1471,8 @@ function convertImage(node: PMNode, startPos: number, pageContentHeight?: number
   const constrained = constrainImageToPage(
     (attrs.width as number) || 100,
     (attrs.height as number) || 100,
-    pageContentHeight
+    pageContentHeight,
+    !!wrapType // any wrap type = floating; don't scale to page
   );
 
   return {

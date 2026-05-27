@@ -124,6 +124,8 @@ const footerStyle: CSSProperties = {
 };
 
 const btnStyle: CSSProperties = {
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text-on-surface)',
   padding: '6px 16px',
   fontSize: 13,
   border: '1px solid var(--doc-border)',

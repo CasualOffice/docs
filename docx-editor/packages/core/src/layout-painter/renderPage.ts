@@ -490,6 +490,38 @@ function applyHeaderFooterFloatHorizontalPosition(
     }
   }
 
+  // Margin-anchored: mirrors resolveHeaderFooterFloatTop's vertical
+  // 'margin' branch (lines 432-447). Mathematically reduces to
+  // `emuToPixels(h.posOffset)` for the current data shape because the
+  // HF construction sites all set `flowLeft = page.margins.left`, but
+  // we keep the explicit form to (a) match the vertical-axis function's
+  // structure and (b) stay correct if a future HF layout decouples
+  // flowLeft from margins.left.
+  if (h.relativeTo === 'margin') {
+    const marginLeft = layout.margins.left;
+    const marginWidth = layout.pageWidth - layout.margins.left - layout.margins.right;
+    if (h.posOffset !== undefined) {
+      img.style.left = `${marginLeft + emuToPixels(h.posOffset) - layout.flowLeft}px`;
+      return;
+    }
+    if (align === 'right') {
+      img.style.left = `${marginLeft + marginWidth - floatImg.width - layout.flowLeft}px`;
+      return;
+    }
+    if (align === 'center') {
+      img.style.left = `${marginLeft + (marginWidth - floatImg.width) / 2 - layout.flowLeft}px`;
+      return;
+    }
+    if (align === 'left') {
+      img.style.left = `${marginLeft - layout.flowLeft}px`;
+      return;
+    }
+  }
+
+  // Fallback for column / character / *Margin anchor types — uncommon
+  // in headers/footers. Treats posOffset as container-relative; an
+  // explicit branch would require knowing the column/anchor-paragraph
+  // origin which the HF context doesn't carry. Better than no output.
   if (h.posOffset !== undefined) {
     img.style.left = `${emuToPixels(h.posOffset)}px`;
     return;

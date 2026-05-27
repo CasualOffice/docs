@@ -70,7 +70,20 @@ function computeTabWidth(
         } else if (stop.val === 'end') {
           width -= followingTextWidth;
         }
-        return Math.max(1, width);
+        // When center/right alignment subtracts text wider than the
+        // gap, `width` goes <= 0 ("text is too long to fit at this
+        // stop"). The renderer (tabCalculator.ts:232-241) falls back
+        // to the next default tab interval in this case — NOT to 1px.
+        // Returning 1px here while the painter draws ~48px makes
+        // measurement under-report line width, causing the layout to
+        // accept a line that subsequently overflows when painted.
+        // Mirror the renderer's fallback to keep measurement honest.
+        if (width < 1) {
+          const remainder = currentPos % DEFAULT_TAB_WIDTH;
+          const fallback = remainder < 0.5 ? DEFAULT_TAB_WIDTH : DEFAULT_TAB_WIDTH - remainder;
+          return fallback;
+        }
+        return width;
       }
     }
   }

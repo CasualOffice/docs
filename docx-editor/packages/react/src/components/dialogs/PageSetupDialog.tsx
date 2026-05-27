@@ -13,6 +13,7 @@ import type { SectionProperties } from '@eigenpal/docx-core/types/document';
 import { TWIPS_PER_INCH } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
 import { FocusTrap } from '../ui/FocusTrap';
+import { ColorPicker } from '../ui/ColorPicker';
 
 /** Common page sizes in twips (width x height in portrait orientation) */
 const PAGE_SIZES = [
@@ -163,6 +164,8 @@ const btnStyle: CSSProperties = {
   border: '1px solid var(--doc-border)',
   borderRadius: 4,
   cursor: 'pointer',
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text-on-surface)',
 };
 
 // ============================================================================
@@ -417,23 +420,28 @@ export function PageSetupDialog({
                   <label htmlFor="page-setup-page-color" style={labelStyle}>
                     {t('dialogs.pageSetup.pageColor')}
                   </label>
-                  <input
-                    id="page-setup-page-color"
-                    type="color"
-                    style={{ ...inputStyle, padding: 2, height: 28 }}
-                    value={pageColor ?? '#ffffff'}
-                    onChange={(e) => setPageColor(e.target.value)}
-                    data-testid="page-setup-page-color"
-                  />
-                  <button
-                    type="button"
-                    style={{ ...btnStyle, padding: '4px 10px', fontSize: 12 }}
-                    onClick={() => setPageColor(undefined)}
-                    disabled={pageColor === undefined}
-                    data-testid="page-setup-page-color-reset"
-                  >
-                    {t('dialogs.pageSetup.pageColorReset')}
-                  </button>
+                  <div data-testid="page-setup-page-color" style={{ display: 'flex', gap: 8 }}>
+                    <ColorPicker
+                      mode="border"
+                      value={pageColor ? pageColor.replace(/^#/, '') : { auto: true }}
+                      onChange={(c) => {
+                        if (typeof c === 'string') setPageColor('#' + c.replace(/^#/, ''));
+                        else if (c && 'rgb' in c && c.rgb) setPageColor('#' + c.rgb);
+                        else setPageColor(undefined);
+                      }}
+                      splitButton={false}
+                      autoLabel={t('dialogs.pageSetup.pageColorReset')}
+                    />
+                    <button
+                      type="button"
+                      style={{ ...btnStyle, padding: '4px 10px', fontSize: 12 }}
+                      onClick={() => setPageColor(undefined)}
+                      disabled={pageColor === undefined}
+                      data-testid="page-setup-page-color-reset"
+                    >
+                      {t('dialogs.pageSetup.pageColorReset')}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
