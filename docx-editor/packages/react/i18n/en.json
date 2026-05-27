@@ -769,7 +769,7 @@
     },
     "rule": "Rule",
     "height": "Height",
-    "toggleHeaderRow": "Toggle header row",
+    "toggleHeaderRow": "Pin header row",
     "distributeColumns": "Distribute columns evenly",
     "distributeRows": "Distribute rows evenly",
     "autoFit": "Auto-fit to contents",

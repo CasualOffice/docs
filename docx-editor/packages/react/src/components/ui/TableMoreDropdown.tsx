@@ -25,6 +25,7 @@ export interface TableMoreDropdownProps {
     columnCount?: number;
     canSplitCell?: boolean;
     hasMultiCellSelection?: boolean;
+    currentRowIsHeader?: boolean;
     table?: { attrs?: { justification?: string } };
   } | null;
 }
@@ -292,9 +293,14 @@ export function TableMoreDropdown({
           <div style={separatorStyles} role="separator" />
 
           {/* Other options */}
-          {menuItem('headerRow', 'table_rows', t('tableAdvanced.toggleHeaderRow'), {
-            type: 'toggleHeaderRow',
-          })}
+          {menuItem(
+            'headerRow',
+            tableContext?.currentRowIsHeader ? 'push_pin' : 'table_rows',
+            tableContext?.currentRowIsHeader
+              ? `✓ ${t('tableAdvanced.toggleHeaderRow')}`
+              : t('tableAdvanced.toggleHeaderRow'),
+            { type: 'toggleHeaderRow' }
+          )}
           {menuItem('distributeRows', 'table_rows', t('tableAdvanced.distributeRows'), {
             type: 'distributeRows',
           })}

@@ -306,7 +306,8 @@ export function FontSizePicker({
               className={cn(
                 'w-full px-3 py-1.5 text-sm text-left',
                 'hover:bg-slate-100 dark:hover:bg-slate-800',
-                size === currentValue && 'bg-slate-100 dark:bg-slate-800 font-medium'
+                size === currentValue &&
+                  'bg-[color:var(--doc-primary-light,#e8f0fe)] text-[color:var(--doc-primary,#1a73e8)] font-medium'
               )}
               role="option"
               aria-selected={size === currentValue}

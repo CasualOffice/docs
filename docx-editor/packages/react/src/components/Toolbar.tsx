@@ -421,8 +421,16 @@ export function ToolbarButton({
         // flips with the theme. Hover: slight background, no color change
         // needed because the icon already matches the surface text.
         'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
+        // Active = blue-tinted background + primary blue icon, matching
+        // Google Docs and our own table dropdowns (TableMoreDropdown,
+        // TableOptionsDropdown, AlignmentButtons, IconGridDropdown,
+        // PasteSpecialDialog). Earlier this used an inverted surface
+        // (dark bg in light mode → looked "black-selected"; light bg
+        // in dark mode → looked "white-selected"), which (a) read as
+        // black not selected in light mode and (b) contradicted every
+        // other selected-state in the editor.
         active &&
-          'bg-[color:var(--doc-text-on-surface,#1f2937)] text-[color:var(--doc-surface,white)] hover:bg-[color:var(--doc-text-on-surface,#1f2937)] hover:text-[color:var(--doc-surface,white)]',
+          'bg-[color:var(--doc-primary-light,#e8f0fe)] text-[color:var(--doc-primary,#1a73e8)] hover:bg-[color:var(--doc-primary-light,#e8f0fe)] hover:text-[color:var(--doc-primary,#1a73e8)]',
         disabled && 'opacity-30 cursor-not-allowed',
         className
       )}

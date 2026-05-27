@@ -124,7 +124,12 @@ export function Tooltip({ content, children, side = 'bottom', delayMs = 400 }: T
         <div
           id={tooltipId}
           role="tooltip"
-          className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-slate-900 dark:text-slate-900 dark:bg-slate-100 rounded-md shadow-lg"
+          // Dark tooltip in BOTH light and dark mode, matching Google
+          // Docs. The previous "invert on theme" rule made tooltips
+          // black-on-white in light mode and white-on-black in dark
+          // mode, which read as two completely different elements
+          // and contributed to the "colors are inconsistent" feel.
+          className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-slate-700 dark:bg-slate-800 rounded-md shadow-lg"
           style={{
             left: position.x,
             top: position.y,
