@@ -18,6 +18,7 @@
 package room
 
 import (
+	"errors"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -166,12 +167,26 @@ func (r *Room) Broadcast(sender *Client, frame []byte) {
 // Manager is the registry of active rooms keyed by docId. The
 // gateway's WS handler calls Join on connect and Leave on
 // disconnect; Manager handles room creation + reclaim.
+//
+// MaxRooms (when > 0) caps the number of concurrent open documents.
+// The docs gateway is stateless — rooms only exist while at least
+// one client is connected — so the cap is a hard "this many docs
+// open right now" ceiling rather than the sheets-style LRU over
+// idle rooms. Joining an already-open room never counts against
+// the cap.
 type Manager struct {
-	mu      sync.Mutex
-	rooms   map[string]*Room
-	nextID  atomic.Uint64
-	onDrain DrainFunc
+	mu       sync.Mutex
+	rooms    map[string]*Room
+	nextID   atomic.Uint64
+	onDrain  DrainFunc
+	maxRooms int // 0 = unbounded
 }
+
+// ErrCapacityFull is returned by Join when MaxRooms is configured
+// and a *new* docId would push past the cap. Joining an already-
+// open docId never returns this error. The HTTP layer maps it to
+// 503 + Retry-After.
+var ErrCapacityFull = errors.New("room: capacity full")
 
 // DrainFunc is invoked once when the last client leaves a room,
 // just before the manager forgets the room. The implementation
@@ -204,11 +219,32 @@ func WithDrainFunc(fn DrainFunc) ManagerOption {
 	return func(m *Manager) { m.onDrain = fn }
 }
 
+// WithMaxRooms caps the number of concurrently open rooms (docIds).
+// Zero or negative disables the cap entirely (the default — useful
+// for tests + dev). When set and the cap is reached, Join returns
+// ErrCapacityFull for any docId that isn't already open; existing
+// rooms continue accepting joiners without limit.
+//
+// Production typical: 256 — matches the sheets equivalent.
+func WithMaxRooms(n int) ManagerOption {
+	return func(m *Manager) {
+		if n < 0 {
+			n = 0
+		}
+		m.maxRooms = n
+	}
+}
+
 // Join records a new client for docID. If the room doesn't yet
 // exist, it's created; this is the future hook point for the
 // host.Integration seed flow. Returns the Room and a fresh
 // Client handle whose `Send` channel the caller should drain
 // from a writer goroutine.
+//
+// Returns ErrCapacityFull when MaxRooms is configured (>0) and a
+// new docId would push the registry past the cap. Joining an
+// existing docId NEVER returns this error — only new rooms count.
+// The HTTP layer maps the error to 503 + Retry-After.
 //
 // `m.mu` is held through `AddClient` to close the race against
 // Leave: if Join released `m.mu` before AddClient, a concurrent
@@ -219,10 +255,14 @@ func WithDrainFunc(fn DrainFunc) ManagerOption {
 // safe: lock order is m.mu → r.mu, and Leave follows the same
 // order in its drain branch (m.mu held while it reads
 // r.Clients()).
-func (m *Manager) Join(docID string) (*Room, *Client) {
+func (m *Manager) Join(docID string) (*Room, *Client, error) {
 	m.mu.Lock()
 	r, ok := m.rooms[docID]
 	if !ok {
+		if m.maxRooms > 0 && len(m.rooms) >= m.maxRooms {
+			m.mu.Unlock()
+			return nil, nil, ErrCapacityFull
+		}
 		r = &Room{docID: docID, clients: make(map[*Client]struct{})}
 		m.rooms[docID] = r
 		// First-client seed (M2) plugs in here: load the .docx via
@@ -236,7 +276,7 @@ func (m *Manager) Join(docID string) (*Room, *Client) {
 	id := m.nextID.Add(1)
 	c := r.AddClient(id)
 	m.mu.Unlock()
-	return r, c
+	return r, c, nil
 }
 
 // Leave records a client disconnect. When the last client

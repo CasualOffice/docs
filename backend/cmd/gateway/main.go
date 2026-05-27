@@ -35,9 +35,24 @@ import (
 
 	"github.com/schnsrw/docx/backend/internal/host"
 	"github.com/schnsrw/docx/backend/internal/host/inline"
+	"github.com/schnsrw/docx/backend/internal/limit"
 	"github.com/schnsrw/docx/backend/internal/room"
 	"github.com/schnsrw/docx/backend/internal/yws"
 )
+
+// envInt returns the env var `name` parsed as int, falling back
+// to `def` when unset, empty, or unparseable.
+func envInt(name string, def int) int {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return def
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		return def
+	}
+	return n
+}
 
 // listenAddr returns the TCP address the gateway should bind to.
 // Falls back to ":8080" so the M1 local-dev story stays trivial.
@@ -390,7 +405,19 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 		// below.
 		defer conn.CloseNow()
 
-		rm, client := rooms.Join(docID)
+		rm, client, joinErr := rooms.Join(docID)
+		if joinErr != nil {
+			// Capacity cap reached. Close with PolicyViolation +
+			// "capacity_full" reason string so the client knows
+			// it should back off rather than reconnect. HTTP
+			// Retry-After semantics don't apply over WS; the reason
+			// string is the only signal the joiner gets. Matches
+			// the sheets equivalent's 503 capacity_full envelope
+			// in spirit; only the transport differs.
+			log.Printf("ws join refused doc=%s: %v", docID, joinErr)
+			_ = conn.Close(websocket.StatusPolicyViolation, "capacity_full")
+			return
+		}
 		defer rooms.Leave(rm, client)
 
 		log.Printf("ws join doc=%s client=%d total=%d", docID, client.ID(), rm.Clients())
@@ -505,32 +532,62 @@ func withCORS(next http.Handler) http.Handler {
 
 func main() {
 	store := inline.New()
-	rooms := room.NewManager(room.WithDrainFunc(func(docID string) {
-		// v0 snapshot: every joiner already has the original .docx
-		// bytes via /api/docs/{id}/download, and the gateway can't
-		// re-serialize the Y.Doc back to .docx without a worker
-		// pool (M2 / Bun headless serializer). Log the drain so
-		// operators can see room lifecycle; the original bytes
-		// remain in the inline store for re-seed on the next join.
-		log.Printf("room drain doc=%s — original snapshot retained", docID)
-	}))
+
+	// MAX_ROOMS caps concurrent open docs. Default 256 matches the
+	// sheets equivalent (Stream C2 of the production-readiness
+	// pipeline). 0 disables the cap entirely — useful for dev +
+	// load testing where the cap would mask real failures.
+	maxRooms := envInt("MAX_ROOMS", 256)
+	rooms := room.NewManager(
+		room.WithDrainFunc(func(docID string) {
+			// v0 snapshot: every joiner already has the original .docx
+			// bytes via /api/docs/{id}/download, and the gateway can't
+			// re-serialize the Y.Doc back to .docx without a worker
+			// pool (M2 / Bun headless serializer). Log the drain so
+			// operators can see room lifecycle; the original bytes
+			// remain in the inline store for re-seed on the next join.
+			log.Printf("room drain doc=%s — original snapshot retained", docID)
+		}),
+		room.WithMaxRooms(maxRooms),
+	)
+	log.Printf("room manager: max %d concurrent rooms", maxRooms)
+
+	// Per-IP token-bucket limiters (G1 of the gateway hardening pass —
+	// equivalent of sheets Stream C1). Two tiers because upload is
+	// byte-heavy and should have a tighter envelope than the control
+	// plane.
+	//
+	// Disable either by setting the env to 0 (e.g. for load tests).
+	uploadCfg := limit.DefaultUpload()
+	uploadCfg.PerMin = envInt("UPLOAD_RATE_LIMIT_PER_MIN", uploadCfg.PerMin)
+	uploadLimiter := limit.New(uploadCfg)
+	generalCfg := limit.DefaultGeneral()
+	generalCfg.PerMin = envInt("RATE_LIMIT_PER_MIN", generalCfg.PerMin)
+	generalLimiter := limit.New(generalCfg)
+	log.Printf("rate limit: upload %d/min/IP, general %d/min/IP",
+		uploadCfg.PerMin, generalCfg.PerMin)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/api/docs", uploadHandler(store))
+
+	// POST /api/docs (upload) — under the upload bucket (tighter).
+	mux.Handle("/api/docs", uploadLimiter.Middleware(uploadHandler(store)))
+
 	// `/api/docs/{id}/{action}` — dispatch on the trailing path
 	// segment so download + rename share the same prefix without
-	// needing a router lib. Adding a new action only requires a
-	// new case here + a new docIDFrom<Action>Path helper.
+	// needing a router lib. Rename is a control-plane POST; download
+	// is a read endpoint that intentionally stays unrated (returning
+	// peers re-joining a doc shouldn't get throttled).
 	docsActionHandler := downloadHandler(store)
 	docsRenameHandler := renameHandler(store)
 	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/rename"):
-			docsRenameHandler(w, r)
-		default:
-			docsActionHandler(w, r)
+		if strings.HasSuffix(r.URL.Path, "/rename") {
+			// Apply the general bucket only for the rename path;
+			// the rest of the handler tree (download) stays unrated.
+			generalLimiter.Middleware(http.HandlerFunc(docsRenameHandler)).ServeHTTP(w, r)
+			return
 		}
+		docsActionHandler(w, r)
 	})
 	mux.HandleFunc("/doc/", wsHandler(rooms, store))
 
