@@ -91,6 +91,14 @@ export interface SelectionFormatting {
   indentLeft?: number;
   /** Whether the paragraph is RTL (bidi) */
   bidi?: boolean;
+  /** Keep with next paragraph (w:keepNext). */
+  keepNext?: boolean;
+  /** Keep all lines of the paragraph together (w:keepLines). */
+  keepLines?: boolean;
+  /** Force a page break before this paragraph (w:pageBreakBefore). */
+  pageBreakBefore?: boolean;
+  /** Widow/orphan control (w:widowControl). */
+  widowControl?: boolean;
 }
 
 /**
@@ -130,7 +138,11 @@ export type FormattingAction =
   | { type: 'spaceBefore'; value: number }
   | { type: 'spaceAfter'; value: number }
   | { type: 'charSpacing'; value: number }
-  | { type: 'applyStyle'; value: string };
+  | { type: 'applyStyle'; value: string }
+  | { type: 'keepNext'; value: boolean }
+  | { type: 'keepLines'; value: boolean }
+  | { type: 'pageBreakBefore'; value: boolean }
+  | { type: 'widowControl'; value: boolean };
 
 /**
  * Props for the Toolbar component

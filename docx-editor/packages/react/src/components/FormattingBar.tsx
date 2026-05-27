@@ -107,6 +107,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
     tableContext,
     onTableAction,
     onInsertImage,
+    onOpenParagraphDialog,
     inline = false,
   } = props as FormattingBarProps;
 
@@ -607,6 +608,18 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
               spaceAfter={currentFormatting.spaceAfter}
               onSpaceBeforeChange={(twips) => onFormat?.({ type: 'spaceBefore', value: twips })}
               onSpaceAfterChange={(twips) => onFormat?.({ type: 'spaceAfter', value: twips })}
+              onOpenCustomSpacing={onOpenParagraphDialog}
+              keepNext={currentFormatting.keepNext}
+              keepLines={currentFormatting.keepLines}
+              pageBreakBefore={currentFormatting.pageBreakBefore}
+              widowControl={currentFormatting.widowControl}
+              onTogglePagination={(key) => {
+                const current = currentFormatting[key as keyof typeof currentFormatting];
+                onFormat?.({
+                  type: key,
+                  value: !current,
+                } as FormattingAction);
+              }}
             />
           )}
         </ToolbarGroup>

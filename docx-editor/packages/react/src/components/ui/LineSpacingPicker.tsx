@@ -44,6 +44,14 @@ export interface LineSpacingPickerProps {
   spaceAfter?: number;
   onSpaceBeforeChange?: (twips: number) => void;
   onSpaceAfterChange?: (twips: number) => void;
+  /** Open the Custom spacing dialog (Docs's Custom spacing… leaf). */
+  onOpenCustomSpacing?: () => void;
+  /** Current paragraph pagination attrs. */
+  keepNext?: boolean;
+  keepLines?: boolean;
+  pageBreakBefore?: boolean;
+  widowControl?: boolean;
+  onTogglePagination?: (key: 'keepNext' | 'keepLines' | 'pageBreakBefore' | 'widowControl') => void;
 }
 
 /** 8pt in twips — default paragraph spacing amount */
@@ -79,6 +87,12 @@ export function LineSpacingPicker({
   spaceAfter,
   onSpaceBeforeChange,
   onSpaceAfterChange,
+  onOpenCustomSpacing,
+  keepNext,
+  keepLines,
+  pageBreakBefore,
+  widowControl,
+  onTogglePagination,
 }: LineSpacingPickerProps) {
   const { t } = useTranslation();
   // Find current option by twips value
@@ -145,7 +159,62 @@ export function LineSpacingPicker({
               {spaceAfter ? 'Remove space after paragraph' : 'Add space after paragraph'}
             </SelectItem>
           )}
+          {onOpenCustomSpacing && (
+            <SelectItem
+              value="__customSpacing__"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onOpenCustomSpacing?.();
+              }}
+            >
+              Custom spacing…
+            </SelectItem>
+          )}
         </SelectGroup>
+        {onTogglePagination && (
+          <>
+            <SelectSeparator />
+            <SelectGroup>
+              <SelectLabel>Pagination</SelectLabel>
+              <SelectItem
+                value="__keepNext__"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onTogglePagination('keepNext');
+                }}
+              >
+                {keepNext ? '✓ ' : ''}Keep with next
+              </SelectItem>
+              <SelectItem
+                value="__keepLines__"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onTogglePagination('keepLines');
+                }}
+              >
+                {keepLines ? '✓ ' : ''}Keep lines together
+              </SelectItem>
+              <SelectItem
+                value="__pageBreakBefore__"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onTogglePagination('pageBreakBefore');
+                }}
+              >
+                {pageBreakBefore ? '✓ ' : ''}Page break before
+              </SelectItem>
+              <SelectItem
+                value="__widowControl__"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onTogglePagination('widowControl');
+                }}
+              >
+                {widowControl ? '✓ ' : ''}Prevent single lines
+              </SelectItem>
+            </SelectGroup>
+          </>
+        )}
       </SelectContent>
     </Select>
   );

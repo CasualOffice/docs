@@ -2394,6 +2394,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         styleId: selectionState.styleId ?? undefined,
         indentLeft: paragraphFormatting.indentLeft,
         bidi: !!paragraphFormatting.bidi,
+        keepNext: paragraphFormatting.keepNext,
+        keepLines: paragraphFormatting.keepLines,
+        pageBreakBefore: paragraphFormatting.pageBreakBefore,
+        widowControl: paragraphFormatting.widowControl,
       };
       setState((prev) => ({
         ...prev,
@@ -3474,6 +3478,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             break;
           case 'charSpacing':
             setCharacterSpacing(action.value)(view.state, view.dispatch);
+            break;
+          case 'keepNext':
+          case 'keepLines':
+          case 'pageBreakBefore':
+          case 'widowControl':
+            setParagraphAttrs({ [action.type]: action.value })(view.state, view.dispatch);
             break;
           case 'applyStyle': {
             // Resolve style to get its formatting properties

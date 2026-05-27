@@ -152,11 +152,18 @@ function SaveStatusIndicator() {
         title="Unsaved changes"
         aria-label="Unsaved changes"
       >
-        ●&nbsp;Unsaved
+        Unsaved changes
       </span>
     );
   }
-  return null;
+  return (
+    <span
+      className="text-xs text-[color:var(--doc-text-on-surface-muted,#5f6368)]"
+      aria-live="polite"
+    >
+      All changes saved
+    </span>
+  );
 }
 
 // ============================================================================
