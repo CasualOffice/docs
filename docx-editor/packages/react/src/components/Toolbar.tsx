@@ -273,6 +273,18 @@ export interface ToolbarProps {
   onPaintFormat?: () => void;
   /** True while paint-format is armed (button shows pressed state). */
   paintFormatArmed?: boolean;
+  /** Insert a horizontal-rule node at the cursor (Docs: Insert > Horizontal line). */
+  onInsertHorizontalRule?: () => void;
+  /** Open the Insert Special characters dialog (Docs: Insert > Special characters). */
+  onOpenInsertSymbol?: () => void;
+  /** Insert a footnote reference at the cursor (Docs: Insert > Footnote). */
+  onInsertFootnote?: () => void;
+  /** Toggle the document ruler visibility (Docs: View > Show ruler). */
+  onToggleShowRuler?: () => void;
+  /** Whether the ruler is currently visible (checkmark in View menu). */
+  rulerVisible?: boolean;
+  /** Open the Paste Special dialog (Docs: Edit > Paste special). */
+  onOpenPasteSpecial?: () => void;
   /** Callback when user wants to insert a shape */
   onInsertShape?: (data: {
     shapeType: string;

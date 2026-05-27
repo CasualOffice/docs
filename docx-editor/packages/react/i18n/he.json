@@ -63,7 +63,10 @@
     "sectionBreakOddPage": null,
     "paragraph": null,
     "bordersAndShading": null,
-    "customSpacing": null
+    "customSpacing": null,
+    "footnote": null,
+    "horizontalLine": null,
+    "specialCharacters": null
   },
   "formattingBar": {
     "groups": {

@@ -247,6 +247,11 @@ export function MenuBar() {
     onOpenBookmarks,
     onOpenParagraphDialog,
     onOpenBordersShading,
+    onInsertHorizontalRule,
+    onOpenInsertSymbol,
+    onInsertFootnote,
+    onToggleShowRuler,
+    rulerVisible,
     onRefocusEditor,
   } = ctx;
 
@@ -563,8 +568,8 @@ export function MenuBar() {
           ]}
         />
 
-        {/* View Menu — zoom + theme. Shown if either is wired. */}
-        {(onZoomChange || onSetColorTheme) && (
+        {/* View Menu — zoom + ruler + theme. Shown if any is wired. */}
+        {(onZoomChange || onSetColorTheme || onToggleShowRuler) && (
           <MenuDropdown
             label="View"
             disabled={disabled}
@@ -591,7 +596,19 @@ export function MenuBar() {
                     } as MenuEntry,
                   ]
                 : []),
-              ...(onZoomChange && onSetColorTheme
+              ...(onZoomChange && onToggleShowRuler
+                ? [{ type: 'separator' as const } as MenuEntry]
+                : []),
+              ...(onToggleShowRuler
+                ? [
+                    {
+                      icon: 'straighten',
+                      label: `${rulerVisible ? '✓ ' : ''}Show ruler`,
+                      onClick: onToggleShowRuler,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...((onZoomChange || onToggleShowRuler) && onSetColorTheme
                 ? [{ type: 'separator' as const } as MenuEntry]
                 : []),
               ...(onSetColorTheme
@@ -649,6 +666,12 @@ export function MenuBar() {
               label: t('toolbar.pageBreak'),
               onClick: onInsertPageBreak,
               disabled: !onInsertPageBreak,
+            },
+            {
+              icon: 'horizontal_rule',
+              label: t('toolbar.horizontalLine'),
+              onClick: onInsertHorizontalRule,
+              disabled: !onInsertHorizontalRule,
             },
             {
               icon: 'horizontal_rule',
@@ -723,6 +746,19 @@ export function MenuBar() {
               label: t('toolbar.bookmarks'),
               onClick: onOpenBookmarks,
               disabled: !onOpenBookmarks,
+            },
+            {
+              icon: 'note_add',
+              label: t('toolbar.footnote'),
+              onClick: onInsertFootnote,
+              disabled: !onInsertFootnote,
+            },
+            { type: 'separator' as const } as MenuEntry,
+            {
+              icon: 'emoji_symbols',
+              label: t('toolbar.specialCharacters'),
+              onClick: onOpenInsertSymbol,
+              disabled: !onOpenInsertSymbol,
             },
           ]}
         />

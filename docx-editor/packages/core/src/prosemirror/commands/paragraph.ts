@@ -96,6 +96,24 @@ export function insertSectionBreak(
 }
 export const removeSectionBreak: Command = cmds.removeSectionBreak();
 
+// Footnote / endnote refs
+export function insertFootnote(id: number): Command {
+  return cmds.insertFootnote(id);
+}
+export function insertEndnote(id: number): Command {
+  return cmds.insertEndnote(id);
+}
+
+// Horizontal rule — replaceSelectionWith a horizontalRule node.
+export const insertHorizontalRule: Command = (state, dispatch) => {
+  const nodeType = state.schema.nodes['horizontalRule'];
+  if (!nodeType) return false;
+  if (dispatch) {
+    dispatch(state.tr.replaceSelectionWith(nodeType.create()).scrollIntoView());
+  }
+  return true;
+};
+
 // Tab stops
 export function addTabStop(
   position: number,

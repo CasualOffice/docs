@@ -172,6 +172,9 @@ export {
   continueListNumbering,
   // Section break
   insertSectionBreak,
+  insertFootnote,
+  insertEndnote,
+  insertHorizontalRule,
   // Table of Contents
   generateTOC,
 } from './commands';

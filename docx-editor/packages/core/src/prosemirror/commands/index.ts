@@ -81,6 +81,9 @@ export {
   setRtl,
   setLtr,
   insertSectionBreak,
+  insertFootnote,
+  insertEndnote,
+  insertHorizontalRule,
   removeSectionBreak,
 } from './paragraph';
 export type { ResolvedStyleAttrs } from './paragraph';

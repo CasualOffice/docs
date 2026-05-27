@@ -126,6 +126,9 @@ const BordersAndShadingDialog = lazy(() =>
     default: m.BordersAndShadingDialog,
   }))
 );
+const InsertSymbolDialog = lazy(() =>
+  import('./dialogs/InsertSymbolDialog').then((m) => ({ default: m.InsertSymbolDialog }))
+);
 const AboutDialog = lazy(() =>
   import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
 );
@@ -237,6 +240,8 @@ import {
   insertPageBreak,
   // Section break command
   insertSectionBreak,
+  insertFootnote,
+  insertHorizontalRule,
   // Field insert command (PAGE / NUMPAGES / DATE / …)
   insertField,
   // List numbering control
@@ -1504,6 +1509,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Comments sidebar state
   const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
+  // Wire-up batch (Docs parity #1.5): dialogs that already existed but
+  // had no menu entry. Each is open/close + a trigger handler.
+  const [insertSymbolOpen, setInsertSymbolOpen] = useState(false);
+  // Ruler visibility override — once the user toggles it, this takes
+  // precedence over the showRuler prop. Initialised from the prop.
+  const [showRulerLocal, setShowRulerLocal] = useState<boolean | null>(null);
+  const showRulerEffective = showRulerLocal ?? showRuler;
   // Paint format (format painter) — when set, the next non-empty
   // selection will receive these marks. Esc cancels. Toolbar button
   // toggles between idle/armed.
@@ -2884,6 +2896,49 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const view = getActiveEditorView();
       if (!view) return;
       insertSectionBreak(breakType)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  const handleInsertHorizontalRule = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    insertHorizontalRule(view.state, view.dispatch);
+    focusActiveEditor();
+  }, [getActiveEditorView, focusActiveEditor]);
+
+  // Insert a footnote ref at the cursor. The id is "next free integer"
+  // computed by scanning existing footnoteRef marks in the doc.
+  const handleInsertFootnote = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    let maxId = 0;
+    view.state.doc.descendants((node) => {
+      if (!node.isText) return;
+      for (const m of node.marks) {
+        if (m.type.name === 'footnoteRef') {
+          const id = Number(m.attrs.id);
+          if (Number.isFinite(id) && id > maxId) maxId = id;
+        }
+      }
+    });
+    insertFootnote(maxId + 1)(view.state, view.dispatch);
+    focusActiveEditor();
+  }, [getActiveEditorView, focusActiveEditor]);
+
+  const handleOpenInsertSymbol = useCallback(() => setInsertSymbolOpen(true), []);
+
+  const handleToggleShowRuler = useCallback(() => {
+    setShowRulerLocal((prev) => !(prev ?? showRuler));
+  }, [showRuler]);
+
+  const handleInsertSymbol = useCallback(
+    (symbol: string) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      view.dispatch(view.state.tr.insertText(symbol));
+      setInsertSymbolOpen(false);
       focusActiveEditor();
     },
     [getActiveEditorView, focusActiveEditor]
@@ -5929,6 +5984,11 @@ body { background: white; }
                       onAddComment={handleStartAddComment}
                       onPaintFormat={handleTogglePaintFormat}
                       paintFormatArmed={paintFormatMarks != null}
+                      onInsertHorizontalRule={handleInsertHorizontalRule}
+                      onInsertFootnote={handleInsertFootnote}
+                      onOpenInsertSymbol={handleOpenInsertSymbol}
+                      onToggleShowRuler={handleToggleShowRuler}
+                      rulerVisible={showRulerEffective}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
@@ -5994,7 +6054,7 @@ body { background: white; }
                       visible during vertical scroll. min-width keeps the ruler
                       and the page area on the same horizontal axis when the
                       viewport is too narrow to fit page + outline + sidebar. */}
-                  {showRuler && (
+                  {showRulerEffective && (
                     <div
                       className="flex justify-center py-1 flex-shrink-0 bg-doc-bg"
                       style={{
@@ -6073,7 +6133,7 @@ body { background: white; }
                           edge so it scrolls horizontally with the page instead
                           of pinning to the viewport (which would lay over the
                           doc when the user scrolls right). */}
-                      {showRuler && !readOnlyProp && (
+                      {showRulerEffective && !readOnlyProp && (
                         <div
                           style={{
                             position: 'absolute',
@@ -6415,7 +6475,7 @@ body { background: white; }
                     // Aligns with the page top: toolbar + horizontal ruler row
                     // (22 ruler + 8 py-1 padding) + PagedEditor viewport
                     // padding-top (24) + pages container padding (24).
-                    topPx={toolbarHeight + (showRuler ? 30 : 0) + 48}
+                    topPx={toolbarHeight + (showRulerEffective ? 30 : 0) + 48}
                     scrollLeft={editorScrollLeft}
                   />
                 )}
@@ -6601,6 +6661,13 @@ body { background: white; }
                   onClose={() => setCharacterSpacingDialogOpen(false)}
                   initialValue={characterSpacingInitial}
                   onSubmit={handleSubmitCharacterSpacing}
+                />
+              )}
+              {insertSymbolOpen && (
+                <InsertSymbolDialog
+                  isOpen={insertSymbolOpen}
+                  onClose={() => setInsertSymbolOpen(false)}
+                  onInsert={handleInsertSymbol}
                 />
               )}
               {bordersShadingOpen && (

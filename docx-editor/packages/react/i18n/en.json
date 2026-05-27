@@ -62,6 +62,9 @@
     "customSpacing": "Custom spacing…",
     "bordersAndShading": "Borders and Shading…",
     "symbol": "Symbol",
+    "horizontalLine": "Horizontal line",
+    "footnote": "Footnote",
+    "specialCharacters": "Special characters…",
     "help": "Help",
     "reportIssue": "Report issue"
   },
