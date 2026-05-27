@@ -22,6 +22,7 @@
  */
 import { useMemo, type CSSProperties } from 'react';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
+import { Tooltip } from '../ui/Tooltip';
 import type { EditHistoryEntry, UseEditHistoryReturn } from '../../hooks/useEditHistory';
 
 export interface VersionHistoryPanelProps {
@@ -189,20 +190,25 @@ function EditHistoryEntryRow({
       <div style={ENTRY_HEAD_STYLE}>
         <span style={AUTHOR_STYLE}>{entry.author}</span>
         <span>·</span>
-        <span title={new Date(entry.time).toLocaleString()}>{relativeTime(entry.time, now)}</span>
+        <Tooltip content={new Date(entry.time).toLocaleString()}>
+          <span tabIndex={0} style={{ outline: 'none' }}>
+            {relativeTime(entry.time, now)}
+          </span>
+        </Tooltip>
         {entry.txCount > 1 && <span style={{ marginLeft: 'auto' }}>{entry.txCount} edits</span>}
       </div>
       <div style={SUMMARY_STYLE}>{entry.summary}</div>
-      <button
-        type="button"
-        onClick={onRevert}
-        disabled={!canRevert}
-        title={canRevert ? 'Revert document to this point' : 'Snapshot unavailable'}
-        aria-label={`Revert to ${entry.summary}`}
-        style={REVERT_BUTTON_STYLE}
-      >
-        Revert to here
-      </button>
+      <Tooltip content={canRevert ? 'Revert document to this point' : 'Snapshot unavailable'}>
+        <button
+          type="button"
+          onClick={onRevert}
+          disabled={!canRevert}
+          aria-label={`Revert to ${entry.summary}`}
+          style={REVERT_BUTTON_STYLE}
+        >
+          Revert to here
+        </button>
+      </Tooltip>
     </li>
   );
 }

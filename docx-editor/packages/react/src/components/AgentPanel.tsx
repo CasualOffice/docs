@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
 import { MaterialSymbol } from './ui/Icons';
+import { Tooltip } from './ui/Tooltip';
 
 const STORAGE_KEY = 'eigenpal:docx-editor:agentPanelWidth';
 
@@ -260,34 +261,35 @@ export function AgentPanel({
           {headerTitle}
         </span>
         {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={closeLabel}
-            title={closeLabel}
-            data-testid="agent-panel-close"
-            style={{
-              border: 'none',
-              background: 'transparent',
-              padding: 6,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--doc-text-muted)',
-              borderRadius: 999,
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                'var(--doc-bg-hover, #f1f3f4)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-            }}
-          >
-            <MaterialSymbol name="close" size={18} />
-          </button>
+          <Tooltip content={closeLabel}>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={closeLabel}
+              data-testid="agent-panel-close"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                padding: 6,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--doc-text-muted)',
+                borderRadius: 999,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  'var(--doc-bg-hover, #f1f3f4)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+              }}
+            >
+              <MaterialSymbol name="close" size={18} />
+            </button>
+          </Tooltip>
         )}
       </div>
 

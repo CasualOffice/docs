@@ -200,27 +200,31 @@ function VerticalAlignRow({ onAction }: { onAction: (action: TableAction) => voi
         {t('tableAdvanced.verticalAlignment')}
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
-        {VALIGN_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            title={t(opt.labelKey)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 28,
-              border: '1px solid var(--doc-border)',
-              borderRadius: 4,
-              backgroundColor: 'transparent',
-              cursor: 'pointer',
-            }}
-            onClick={() => onAction({ type: 'cellVerticalAlign', align: opt.value })}
-          >
-            <MaterialSymbol name={opt.icon} size={16} />
-          </button>
-        ))}
+        {VALIGN_OPTIONS.map((opt) => {
+          const label = t(opt.labelKey);
+          return (
+            <Tooltip key={opt.value} content={label}>
+              <button
+                type="button"
+                aria-label={label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 28,
+                  border: '1px solid var(--doc-border)',
+                  borderRadius: 4,
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                }}
+                onClick={() => onAction({ type: 'cellVerticalAlign', align: opt.value })}
+              >
+                <MaterialSymbol name={opt.icon} size={16} />
+              </button>
+            </Tooltip>
+          );
+        })}
       </div>
     </div>
   );
@@ -679,20 +683,21 @@ function TableAlignmentRow({
   const makeButton = (value: 'left' | 'center' | 'right', icon: string, label: string) => {
     const isActive = justification === value;
     return (
-      <button
-        type="button"
-        style={{
-          ...alignmentButtonStyles,
-          backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
-          borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
-          color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
-        }}
-        onClick={() => onAction({ type: 'tableProperties', props: { justification: value } })}
-        title={label}
-        aria-label={label}
-      >
-        <MaterialSymbol name={icon} size={18} />
-      </button>
+      <Tooltip content={label}>
+        <button
+          type="button"
+          style={{
+            ...alignmentButtonStyles,
+            backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
+            borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
+            color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
+          }}
+          onClick={() => onAction({ type: 'tableProperties', props: { justification: value } })}
+          aria-label={label}
+        >
+          <MaterialSymbol name={icon} size={18} />
+        </button>
+      </Tooltip>
     );
   };
 

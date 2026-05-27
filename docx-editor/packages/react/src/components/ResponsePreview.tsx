@@ -9,6 +9,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { AIAction, AgentResponse } from '@eigenpal/docx-core/types/agentApi';
 import { getActionLabel } from '@eigenpal/docx-core/types/agentApi';
 import { useTranslation } from '../i18n';
+import { Tooltip } from './ui/Tooltip';
 
 // ============================================================================
 // TYPES
@@ -453,21 +454,23 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
         <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--doc-text)' }}>
           {t('responsePreview.result', { action: getActionLabel(action) })}
         </div>
-        <button
-          type="button"
-          onClick={onReject}
-          style={{
-            display: 'flex',
-            padding: '4px',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            color: 'var(--doc-text-muted)',
-          }}
-          title={t('responsePreview.closeEsc')}
-        >
-          <XIcon />
-        </button>
+        <Tooltip content={t('responsePreview.closeEsc')}>
+          <button
+            type="button"
+            onClick={onReject}
+            aria-label={t('responsePreview.closeEsc')}
+            style={{
+              display: 'flex',
+              padding: '4px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--doc-text-muted)',
+            }}
+          >
+            <XIcon />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Content */}

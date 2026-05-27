@@ -211,34 +211,36 @@ export function TableMoreDropdown({
                 center: 'tableAdvanced.middle' as const,
                 bottom: 'tableAdvanced.bottom' as const,
               };
+              const label = t(labelKeys[align]);
               return (
-                <button
-                  key={align}
-                  type="button"
-                  title={t(labelKeys[align])}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 32,
-                    height: 28,
-                    border: '1px solid var(--doc-border)',
-                    borderRadius: 4,
-                    backgroundColor: 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                      'var(--doc-bg-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                  }}
-                  onClick={() => handleAction({ type: 'cellVerticalAlign', align })}
-                >
-                  <MaterialSymbol name={icons[align]} size={16} />
-                </button>
+                <Tooltip key={align} content={label}>
+                  <button
+                    type="button"
+                    aria-label={label}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 28,
+                      border: '1px solid var(--doc-border)',
+                      borderRadius: 4,
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                        'var(--doc-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                    }}
+                    onClick={() => handleAction({ type: 'cellVerticalAlign', align })}
+                  >
+                    <MaterialSymbol name={icons[align]} size={16} />
+                  </button>
+                </Tooltip>
               );
             })}
           </div>
@@ -255,37 +257,39 @@ export function TableMoreDropdown({
                 right: 'format_align_right',
               };
               const isActive = currentJustification === align;
+              const label = t(
+                {
+                  left: 'tableAdvanced.alignTableLeft' as const,
+                  center: 'tableAdvanced.alignTableCenter' as const,
+                  right: 'tableAdvanced.alignTableRight' as const,
+                }[align]
+              );
               return (
-                <button
-                  key={align}
-                  type="button"
-                  title={t(
-                    {
-                      left: 'tableAdvanced.alignTableLeft' as const,
-                      center: 'tableAdvanced.alignTableCenter' as const,
-                      right: 'tableAdvanced.alignTableRight' as const,
-                    }[align]
-                  )}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 32,
-                    height: 28,
-                    border: '1px solid var(--doc-border)',
-                    borderRadius: 4,
-                    backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
-                    borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
-                    color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() =>
-                    handleAction({ type: 'tableProperties', props: { justification: align } })
-                  }
-                >
-                  <MaterialSymbol name={icons[align]} size={16} />
-                </button>
+                <Tooltip key={align} content={label}>
+                  <button
+                    type="button"
+                    aria-label={label}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 28,
+                      border: '1px solid var(--doc-border)',
+                      borderRadius: 4,
+                      backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
+                      borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
+                      color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() =>
+                      handleAction({ type: 'tableProperties', props: { justification: align } })
+                    }
+                  >
+                    <MaterialSymbol name={icons[align]} size={16} />
+                  </button>
+                </Tooltip>
               );
             })}
           </div>
