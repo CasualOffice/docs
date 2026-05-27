@@ -110,9 +110,45 @@ const submenuPanelStyle: CSSProperties = {
   border: '1px solid var(--doc-border, #d1d5db)',
   borderRadius: 6,
   boxShadow: 'var(--doc-shadow, 0 4px 12px rgba(0, 0, 0, 0.12))',
-  padding: 8,
+  padding: '4px 0',
+  minWidth: 200,
   zIndex: 1001,
 };
+
+/**
+ * Submenu item — matches the parent menu's normal item styling so
+ * submenu rows don't look bigger/different. Use from inside a
+ * `submenuContent` callback.
+ */
+export function SubMenuItem({
+  label,
+  onClick,
+  closeMenu,
+}: {
+  label: string;
+  onClick: () => void;
+  closeMenu: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      style={menuItemStyle}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+        closeMenu();
+      }}
+      onMouseOver={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--doc-hover, #f3f4f6)';
+      }}
+      onMouseOut={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+      }}
+    >
+      <span>{label}</span>
+    </button>
+  );
+}
 
 export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) {
   // When inside a <MenuBarProvider>, isOpen is driven by the shared

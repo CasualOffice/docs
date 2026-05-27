@@ -91,9 +91,12 @@
   --doc-surface: #ffffff; /* panel / dialog / dropdown background */
   --doc-surface-raised: #ffffff; /* slightly elevated card on a surface */
   --doc-surface-sunken: #f5f5f5; /* input field background */
+  --doc-surface-muted: #fafafa; /* tinted preview pane / inactive tab background */
   --doc-text-on-surface: #1f2937; /* primary text on surfaces */
   --doc-text-on-surface-muted: #6b7280; /* secondary text on surfaces */
   --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* dropdown / dialog shadow */
+  --doc-accent: #2563eb; /* primary accent (buttons, focus rings) */
+  --doc-accent-soft: #eff6ff; /* soft accent fill (active tab / armed button) */
 }
 
 /* ============================================================================
@@ -162,9 +165,12 @@
   --doc-surface: #2d2f31;
   --doc-surface-raised: #3c4043;
   --doc-surface-sunken: #1f1f1f;
+  --doc-surface-muted: #262626;
   --doc-text-on-surface: #e8eaed;
   --doc-text-on-surface-muted: #9aa0a6;
   --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --doc-accent: #8ab4f8;
+  --doc-accent-soft: #1a3a5e;
 }
 
 @media (prefers-color-scheme: dark) {

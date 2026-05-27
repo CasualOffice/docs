@@ -10,7 +10,7 @@
 
 import React, { useCallback, Children, isValidElement } from 'react';
 import type { ReactNode } from 'react';
-import { MenuDropdown } from './ui/MenuDropdown';
+import { MenuDropdown, SubMenuItem } from './ui/MenuDropdown';
 import type { MenuEntry } from './ui/MenuDropdown';
 import { MenuBarProvider } from './ui/MenuBarContext';
 import { MaterialSymbol } from './ui/Icons';
@@ -678,7 +678,7 @@ export function MenuBar() {
               label: t('toolbar.sectionBreak'),
               disabled: !onInsertSectionBreak,
               submenuContent: (closeMenu: () => void) => (
-                <div className="py-1 min-w-[200px]">
+                <>
                   {(
                     [
                       { label: t('toolbar.sectionBreakNextPage'), type: 'nextPage' },
@@ -687,19 +687,14 @@ export function MenuBar() {
                       { label: t('toolbar.sectionBreakOddPage'), type: 'oddPage' },
                     ] as const
                   ).map((item) => (
-                    <button
+                    <SubMenuItem
                       key={item.type}
-                      className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onInsertSectionBreak?.(item.type);
-                        closeMenu();
-                      }}
-                    >
-                      {item.label}
-                    </button>
+                      label={item.label}
+                      onClick={() => onInsertSectionBreak?.(item.type)}
+                      closeMenu={closeMenu}
+                    />
                   ))}
-                </div>
+                </>
               ),
             },
             {
@@ -707,7 +702,7 @@ export function MenuBar() {
               label: t('toolbar.insertField'),
               disabled: !onInsertField,
               submenuContent: (closeMenu: () => void) => (
-                <div className="py-1 min-w-[200px]">
+                <>
                   {(
                     [
                       { label: t('toolbar.fieldPage'), type: 'PAGE' },
@@ -720,19 +715,14 @@ export function MenuBar() {
                       { label: t('toolbar.fieldFileName'), type: 'FILENAME' },
                     ] as const
                   ).map((item) => (
-                    <button
+                    <SubMenuItem
                       key={item.type}
-                      className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onInsertField?.(item.type);
-                        closeMenu();
-                      }}
-                    >
-                      {item.label}
-                    </button>
+                      label={item.label}
+                      onClick={() => onInsertField?.(item.type)}
+                      closeMenu={closeMenu}
+                    />
                   ))}
-                </div>
+                </>
               ),
             },
             {
