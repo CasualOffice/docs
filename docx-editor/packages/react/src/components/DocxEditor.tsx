@@ -2644,6 +2644,28 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           current === 'editing' ? 'suggesting' : current === 'suggesting' ? 'viewing' : 'editing';
         setEditingModeRef.current(next);
       }
+
+      // Mod+Shift+V → paste without formatting (Google Docs + Word
+      // convention; the same handler the Edit menu's "Paste without
+      // formatting" item runs). Reads the system clipboard as plain
+      // text and inserts via execCommand so the inserted run inherits
+      // the cursor's stored marks. Falls back silently when the
+      // browser blocks the clipboard read — the user can still
+      // ⌘V then Ctrl+\ (clear formatting) as a manual fallback.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        void (async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (!text) return;
+            pagedEditorRef.current?.focus();
+            document.execCommand('insertText', false, text);
+          } catch {
+            // Clipboard read denied — silently no-op; the Edit menu
+            // entry has the same fallback behaviour.
+          }
+        })();
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
@@ -4563,18 +4585,28 @@ body { background: white; }
 </head><body>${pagesClone.outerHTML}</body></html>`);
       printWindow.document.close();
 
-      // Wait for fonts/images then print
-      printWindow.onload = () => {
+      // Wait for fonts/images then print. The fallback timeout below
+      // covers browsers that never fire onload on a document-written
+      // window; we clear it from inside onload so the normal path
+      // doesn't double-trigger print() and surface a second print
+      // dialog the user already cancelled. Pre-fix the second print
+      // fired ~1s after the user dismissed the first.
+      let printed = false;
+      let fallback: ReturnType<typeof setTimeout> | null = null;
+      const runPrint = () => {
+        if (printed) return;
+        printed = true;
+        if (fallback !== null) {
+          clearTimeout(fallback);
+          fallback = null;
+        }
         printWindow.print();
         printWindow.close();
       };
-
-      // Fallback if onload doesn't fire (some browsers)
-      setTimeout(() => {
-        if (!printWindow.closed) {
-          printWindow.print();
-          printWindow.close();
-        }
+      printWindow.onload = runPrint;
+      fallback = setTimeout(() => {
+        fallback = null;
+        if (!printWindow.closed) runPrint();
       }, 1000);
 
       onPrint?.();

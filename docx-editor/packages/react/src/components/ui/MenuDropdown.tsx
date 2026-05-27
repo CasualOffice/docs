@@ -307,7 +307,22 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
         }}
       >
         {label}
-        <MaterialSymbol name="arrow_drop_down" size={16} />
+        {/* Chevron rotates 180° when the menu is open — Google Docs +
+            Word pattern, gives keyboard + mouse users a clear visual
+            signal that the menu is currently expanded. We rotate
+            arrow_drop_down instead of swapping to arrow_drop_up
+            because only the former is registered in Icons.tsx's
+            iconMap; unmapped names render as raw text (see editor
+            CLAUDE.md "Common Pitfalls"). */}
+        <span
+          style={{
+            display: 'inline-flex',
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 150ms ease',
+          }}
+        >
+          <MaterialSymbol name="arrow_drop_down" size={16} />
+        </span>
       </button>
 
       {isOpen && (
