@@ -93,7 +93,7 @@ const separatorBarStyle: CSSProperties = {
   justifyContent: 'space-between',
   padding: '2px 0',
   fontSize: 11,
-  color: '#4285f4',
+  color: 'var(--doc-primary)',
   userSelect: 'none',
 };
 
@@ -105,7 +105,7 @@ const labelStyle: CSSProperties = {
 const optionsButtonStyle: CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#4285f4',
+  color: 'var(--doc-primary)',
   cursor: 'pointer',
   fontSize: 11,
   padding: '2px 6px',
@@ -117,7 +117,7 @@ const dropdownStyle: CSSProperties = {
   right: 0,
   top: '100%',
   background: 'var(--doc-surface, white)',
-  border: '1px solid #dadce0',
+  border: '1px solid var(--doc-border)',
   borderRadius: 4,
   boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
   zIndex: Z_INDEX.dropdown,
@@ -134,7 +134,7 @@ const dropdownItemStyle: CSSProperties = {
   textAlign: 'left',
   cursor: 'pointer',
   fontSize: 12,
-  color: '#3c4043',
+  color: 'var(--doc-text-on-surface)',
 };
 
 // ============================================================================

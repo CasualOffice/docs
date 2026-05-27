@@ -217,19 +217,24 @@ function NotificationToast({ notification, onDismiss }: NotificationToastProps) 
       case 'error':
         return {
           bg: 'var(--doc-error-bg)',
-          border: '#f5c6cb',
+          border: 'var(--doc-error-border)',
           text: 'var(--doc-error)',
           icon: 'var(--doc-error)',
         };
       case 'warning':
         return {
           bg: 'var(--doc-warning-bg)',
-          border: '#ffeeba',
-          text: '#856404',
+          border: 'var(--doc-warning-border)',
+          text: 'var(--doc-warning-text)',
           icon: 'var(--doc-warning)',
         };
       case 'info':
-        return { bg: '#e8f4fd', border: '#b8daff', text: '#0c5460', icon: 'var(--doc-primary)' };
+        return {
+          bg: 'var(--doc-info-bg)',
+          border: 'var(--doc-info-border)',
+          text: 'var(--doc-info-text)',
+          icon: 'var(--doc-info)',
+        };
     }
   };
 
@@ -699,10 +704,10 @@ export function UnsupportedFeatureWarning({
     gap: '8px',
     padding: '8px 12px',
     background: 'var(--doc-warning-bg)',
-    border: '1px solid #ffeeba',
+    border: '1px solid var(--doc-warning-border)',
     borderRadius: '4px',
     fontSize: '12px',
-    color: '#856404',
+    color: 'var(--doc-warning-text)',
   };
 
   const iconStyle: CSSProperties = {

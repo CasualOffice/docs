@@ -92,8 +92,8 @@ export function CommentCard({
             marginBottom: 8,
             fontSize: 11,
             fontWeight: 500,
-            color: '#188038',
-            backgroundColor: '#e6f4ea',
+            color: 'var(--doc-success)',
+            backgroundColor: 'var(--doc-success-bg)',
             borderRadius: 10,
           }}
         >

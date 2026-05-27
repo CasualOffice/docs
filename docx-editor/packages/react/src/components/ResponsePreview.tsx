@@ -225,14 +225,14 @@ const DiffView: React.FC<DiffViewProps> = ({ original, modified }) => {
           case 'removed':
             style = {
               textDecoration: 'line-through',
-              color: '#d32f2f',
-              backgroundColor: '#ffebee',
+              color: 'var(--doc-error)',
+              backgroundColor: 'var(--doc-error-bg)',
             };
             break;
           case 'added':
             style = {
-              color: '#2e7d32',
-              backgroundColor: '#e8f5e9',
+              color: 'var(--doc-success)',
+              backgroundColor: 'var(--doc-success-bg)',
             };
             break;
           default:
@@ -531,9 +531,9 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
             <div
               style={{
                 padding: '8px 12px',
-                background: '#e8f5e9',
+                background: 'var(--doc-success-bg)',
                 borderRadius: '4px',
-                color: '#2e7d32',
+                color: 'var(--doc-success)',
                 fontSize: '13px',
               }}
             >

@@ -897,7 +897,7 @@ export const KeyboardShortcutsDialog: React.FC<KeyboardShortcutsDialogProps> = (
             style={{
               padding: '12px 20px',
               borderTop: '1px solid var(--doc-border)',
-              backgroundColor: 'var(--doc-bg)',
+              backgroundColor: 'var(--doc-surface-sunken)',
               fontSize: '12px',
               color: 'var(--doc-text-muted)',
               textAlign: 'center',

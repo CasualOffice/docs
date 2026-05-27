@@ -113,7 +113,7 @@ const ICON_BUTTON_STYLE: CSSProperties = {
 const SEPARATOR_STYLE: CSSProperties = {
   width: '1px',
   height: '20px',
-  background: '#dadce0',
+  background: 'var(--doc-border)',
   flexShrink: 0,
 };
 

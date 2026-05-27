@@ -503,7 +503,7 @@ export const PasteSpecialDialog: React.FC<PasteSpecialDialogProps> = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 padding: '6px 8px',
-                background: 'var(--doc-bg)',
+                background: 'var(--doc-surface-sunken)',
                 borderRadius: '4px',
               }}
             >

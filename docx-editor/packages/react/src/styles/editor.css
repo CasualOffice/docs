@@ -78,10 +78,17 @@
   /* Status colors */
   --doc-error: #c5221f; /* error states */
   --doc-error-bg: #fce8e6; /* error backgrounds */
+  --doc-error-border: #f5c6cb; /* error border on bg */
   --doc-success: #34a853; /* success states */
   --doc-success-bg: #e8f5e9; /* success backgrounds */
   --doc-warning: #f9a825; /* warning states */
   --doc-warning-bg: #fff8e1; /* warning backgrounds */
+  --doc-warning-border: #ffeeba; /* warning border on bg */
+  --doc-warning-text: #856404; /* readable text on warning bg */
+  --doc-info: #1a73e8; /* informational states */
+  --doc-info-bg: #e8f4fd; /* info backgrounds */
+  --doc-info-border: #b8daff; /* info border on bg */
+  --doc-info-text: #0c5460; /* readable text on info bg */
 
   /* Link color */
   --doc-link: #0563c1; /* hyperlinks */
@@ -158,10 +165,17 @@
   /* Status colors — light shades so red/green/yellow stay legible on dark */
   --doc-error: #f28b82;
   --doc-error-bg: #5c2b29;
+  --doc-error-border: #8a3b39;
   --doc-success: #81c995;
   --doc-success-bg: #1e3a26;
   --doc-warning: #fdd663;
   --doc-warning-bg: #4e3c1a;
+  --doc-warning-border: #6e5828;
+  --doc-warning-text: #fdd663;
+  --doc-info: #8ab4f8;
+  --doc-info-bg: #1e3142;
+  --doc-info-border: #2a4459;
+  --doc-info-text: #aac9fb;
   --doc-surface: #2d2f31;
   --doc-surface-raised: #3c4043;
   --doc-surface-sunken: #1f1f1f;
@@ -217,10 +231,17 @@
     --doc-link: #8ab4f8;
     --doc-error: #f28b82;
     --doc-error-bg: #5c2b29;
+    --doc-error-border: #8a3b39;
     --doc-success: #81c995;
     --doc-success-bg: #1e3a26;
     --doc-warning: #fdd663;
     --doc-warning-bg: #4e3c1a;
+    --doc-warning-border: #6e5828;
+    --doc-warning-text: #fdd663;
+    --doc-info: #8ab4f8;
+    --doc-info-bg: #1e3142;
+    --doc-info-border: #2a4459;
+    --doc-info-text: #aac9fb;
     --doc-surface: #2d2f31;
     --doc-surface-raised: #3c4043;
     --doc-surface-sunken: #1f1f1f;
