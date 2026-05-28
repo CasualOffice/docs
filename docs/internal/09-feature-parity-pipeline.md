@@ -419,10 +419,13 @@ toggle state (no in-editor menu surface for it yet).
 When in suggesting mode, Docs shows a thin yellow banner at the top of
 the doc. We have the Mode dropdown but no persistent banner. P2.
 
-### E4 — Accept/reject all suggestions ❌
+### E4 — Accept/reject all suggestions ✅
 
-Toolbar buttons inside the suggestion card row are per-change. Add
-"Accept all" / "Reject all" via the Tools menu or sidebar header.
+The suggesting sidebar header has a tracked-changes toolbar (prev / next
+/ **Accept all** / **Reject all**, `done_all` / `block` icons) wired to
+the `acceptAllChanges` / `rejectAllChanges` commands via
+`handleAcceptAllChanges` / `handleRejectAllChanges`. Per-change
+accept/reject stays on each card. (`data-testid` accept-all/reject-all.)
 
 ### E5 — Comment shortcuts ✅
 
