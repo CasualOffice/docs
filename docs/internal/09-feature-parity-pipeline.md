@@ -214,9 +214,11 @@ but is exported-only and **not mounted** anywhere — `TableMoreDropdown`
 cell in the cursor's column; leading header rows (`isHeader`) stay
 pinned. Numeric columns sort numerically, everything else by
 `localeCompare`. Pure reorder of `tableRow` nodes via `replaceWith` — the
-serializer is untouched (we never restructure). Surfaced as "Sort A → Z"
-/ "Sort Z → A" in `TableMoreDropdown`. Tested in `tables.spec.ts` →
-"Table Sort" (asc + desc).
+serializer is untouched (we never restructure). Surfaced in
+`TableMoreDropdown` as "Sort by column {n} (A → Z)" / "(Z → A)" — the
+label names the target column (the cursor's, 1-based) so it's clear
+*which* column drives the sort, matching the Sheets pattern. Tested in
+`tables.spec.ts` → "Table Sort" (asc + desc).
 
 ### B6 — Cell vertical alignment ✅
 

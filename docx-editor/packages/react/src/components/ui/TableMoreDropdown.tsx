@@ -23,6 +23,7 @@ export interface TableMoreDropdownProps {
     isInTable: boolean;
     rowCount?: number;
     columnCount?: number;
+    columnIndex?: number;
     canSplitCell?: boolean;
     hasMultiCellSelection?: boolean;
     currentRowIsHeader?: boolean;
@@ -314,14 +315,18 @@ export function TableMoreDropdown({
           {menuItem('autoFit', 'fit_width', t('tableAdvanced.autoFit'), {
             type: 'autoFitContents',
           })}
-          {menuItem('sortAsc', 'keyboard_arrow_up', t('tableAdvanced.sortAscending'), {
-            type: 'sortTable',
-            direction: 'asc',
-          })}
-          {menuItem('sortDesc', 'keyboard_arrow_down', t('tableAdvanced.sortDescending'), {
-            type: 'sortTable',
-            direction: 'desc',
-          })}
+          {menuItem(
+            'sortAsc',
+            'keyboard_arrow_up',
+            t('tableAdvanced.sortAscending', { column: (tableContext?.columnIndex ?? 0) + 1 }),
+            { type: 'sortTable', direction: 'asc' }
+          )}
+          {menuItem(
+            'sortDesc',
+            'keyboard_arrow_down',
+            t('tableAdvanced.sortDescending', { column: (tableContext?.columnIndex ?? 0) + 1 }),
+            { type: 'sortTable', direction: 'desc' }
+          )}
           {menuItem('noWrap', 'wrap_text', t('tableAdvanced.toggleNoWrap'), {
             type: 'toggleNoWrap',
           })}

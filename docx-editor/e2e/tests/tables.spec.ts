@@ -707,7 +707,7 @@ test.describe('Table Sort', () => {
     await page.waitForTimeout(200);
 
     await editor.openTableMore();
-    await editor.clickTableMenuItem('Sort A'); // "Sort A → Z"
+    await editor.clickTableMenuItem('A → Z'); // "Sort by column N (A → Z)"
     await page.waitForTimeout(200);
 
     expect(await editor.getTableCellContent(0, 0, 0)).toContain('Alpha');
@@ -730,7 +730,7 @@ test.describe('Table Sort', () => {
     await page.waitForTimeout(200);
 
     await editor.openTableMore();
-    await editor.clickTableMenuItem('Sort Z'); // "Sort Z → A"
+    await editor.clickTableMenuItem('Z → A'); // "Sort by column N (Z → A)"
     await page.waitForTimeout(200);
 
     expect(await editor.getTableCellContent(0, 0, 0)).toContain('Charlie');
