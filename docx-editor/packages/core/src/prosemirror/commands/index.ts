@@ -120,6 +120,7 @@ export {
   distributeColumns,
   distributeRows,
   autoFitContents,
+  sortTable,
   setTableProperties,
   applyTableStyle,
   setCellFillColor,

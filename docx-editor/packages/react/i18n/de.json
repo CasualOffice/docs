@@ -791,7 +791,9 @@
     "alignTableRight": "Tabelle rechts ausrichten",
     "tableOptionsMenu": "Tabellenoptionsmenü",
     "tableOptions": "Tabellenoptionen",
-    "distributeRows": null
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null
   },
   "imageTransform": {
     "tooltip": "Transformieren",

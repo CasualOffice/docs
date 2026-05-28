@@ -314,6 +314,14 @@ export function TableMoreDropdown({
           {menuItem('autoFit', 'fit_width', t('tableAdvanced.autoFit'), {
             type: 'autoFitContents',
           })}
+          {menuItem('sortAsc', 'keyboard_arrow_up', t('tableAdvanced.sortAscending'), {
+            type: 'sortTable',
+            direction: 'asc',
+          })}
+          {menuItem('sortDesc', 'keyboard_arrow_down', t('tableAdvanced.sortDescending'), {
+            type: 'sortTable',
+            direction: 'desc',
+          })}
           {menuItem('noWrap', 'wrap_text', t('tableAdvanced.toggleNoWrap'), {
             type: 'toggleNoWrap',
           })}

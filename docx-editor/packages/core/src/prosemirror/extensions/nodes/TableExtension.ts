@@ -1983,6 +1983,79 @@ export const TablePluginExtension = createExtension({
     }
 
     /**
+     * Sort the table's data rows by the text of the cell in the current
+     * column. Leading header rows (isHeader) stay pinned at the top.
+     * Pure reorder of tableRow nodes — cell structure and the serializer
+     * are untouched. Numeric columns sort numerically; everything else
+     * falls back to a locale string compare.
+     */
+    function sortTable(direction: 'asc' | 'desc'): Command {
+      return (state, dispatch) => {
+        const context = getTableContext(state);
+        if (!context.isInTable || context.tablePos === undefined || !context.table) return false;
+
+        const table = context.table;
+        const colIndex = context.columnIndex ?? 0;
+
+        const rows: PMNode[] = [];
+        table.forEach((row) => {
+          if (row.type.name === 'tableRow') rows.push(row);
+        });
+
+        // Pin any leading header rows; only sort what follows.
+        let headerCount = 0;
+        while (headerCount < rows.length && rows[headerCount].attrs.isHeader) headerCount += 1;
+        const pinned = rows.slice(0, headerCount);
+        const sortable = rows.slice(headerCount);
+        if (sortable.length < 2) return false;
+
+        // Text of the cell covering `colIndex` (colspan-aware).
+        const keyOf = (row: PMNode): string => {
+          let col = 0;
+          let key = '';
+          let found = false;
+          row.forEach((cell) => {
+            if (found) return;
+            const span = (cell.attrs.colspan as number) || 1;
+            if (colIndex >= col && colIndex < col + span) {
+              key = cell.textContent.trim();
+              found = true;
+            }
+            col += span;
+          });
+          return key;
+        };
+
+        const sorted = [...sortable].sort((a, b) => {
+          const ka = keyOf(a);
+          const kb = keyOf(b);
+          const na = Number(ka);
+          const nb = Number(kb);
+          const bothNumeric = ka !== '' && kb !== '' && !Number.isNaN(na) && !Number.isNaN(nb);
+          const cmp = bothNumeric ? na - nb : ka.localeCompare(kb);
+          return direction === 'asc' ? cmp : -cmp;
+        });
+
+        // Bail if the order didn't change (avoids a no-op history entry).
+        const unchanged = sorted.every((row, i) => row === sortable[i]);
+        if (unchanged) return false;
+
+        if (dispatch) {
+          const newTable = table.type.create(table.attrs, [...pinned, ...sorted], table.marks);
+          const tr = state.tr.replaceWith(
+            context.tablePos,
+            context.tablePos + table.nodeSize,
+            newTable
+          );
+          tr.setSelection(Selection.near(tr.doc.resolve(context.tablePos + 1)));
+          dispatch(tr.scrollIntoView());
+        }
+
+        return true;
+      };
+    }
+
+    /**
      * Apply a table style to the current table.
      * Accepts pre-resolved style data (borders, shading per conditional type).
      */
@@ -2479,6 +2552,7 @@ export const TablePluginExtension = createExtension({
         distributeColumns: () => distributeColumns(),
         distributeRows: () => distributeRows(),
         autoFitContents: () => autoFitContents(),
+        sortTable: (direction: 'asc' | 'desc') => sortTable(direction),
         setTableProperties: (props: {
           width?: number | null;
           widthType?: string | null;

@@ -794,7 +794,9 @@
     "alignTableRight": "Tabloyu sağa hizala",
     "tableOptionsMenu": "Tablo seçenekleri menüsü",
     "tableOptions": "Tablo seçenekleri",
-    "distributeRows": null
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null
   },
   "imageTransform": {
     "tooltip": "Dönüştür",

@@ -791,7 +791,9 @@
     "alignTableRight": "表格右对齐",
     "tableOptionsMenu": "表格选项菜单",
     "tableOptions": "表格选项",
-    "distributeRows": null
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null
   },
   "imageTransform": {
     "tooltip": "变换",

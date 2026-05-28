@@ -74,6 +74,7 @@ export type TableAction =
   | { type: 'distributeColumns' }
   | { type: 'distributeRows' }
   | { type: 'autoFitContents' }
+  | { type: 'sortTable'; direction: 'asc' | 'desc' }
   | {
       type: 'tableProperties';
       props: {

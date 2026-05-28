@@ -289,6 +289,7 @@ import {
   distributeColumns,
   distributeRows,
   autoFitContents,
+  sortTable,
   setTableProperties,
   applyTableStyle,
   removeTableBorders,
@@ -3459,6 +3460,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               distributeColumns()(view.state, view.dispatch);
             } else if (action.type === 'distributeRows') {
               distributeRows()(view.state, view.dispatch);
+            } else if (action.type === 'sortTable') {
+              sortTable(action.direction)(view.state, view.dispatch);
             } else if (action.type === 'autoFitContents') {
               autoFitContents()(view.state, view.dispatch);
             } else if (action.type === 'openTableProperties') {

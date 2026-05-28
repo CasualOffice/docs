@@ -202,11 +202,15 @@ Gotcha for future sessions: `TableOptionsDropdown` also has a Pin item
 but is exported-only and **not mounted** anywhere — `TableMoreDropdown`
 (inside `FormattingBar`) is the shipped surface.
 
-### B5 — Sort table ❌
+### B5 — Sort table ✅
 
-Sort rows by selected column, ascending/descending. Docs has it; Word
-has it (Layout → Sort). Pure JS sort over PM table-row nodes;
-serializer is unchanged because we only reorder, never restructure.
+`sortTable(asc|desc)` reorders the table's data rows by the text of the
+cell in the cursor's column; leading header rows (`isHeader`) stay
+pinned. Numeric columns sort numerically, everything else by
+`localeCompare`. Pure reorder of `tableRow` nodes via `replaceWith` — the
+serializer is untouched (we never restructure). Surfaced as "Sort A → Z"
+/ "Sort Z → A" in `TableMoreDropdown`. Tested in `tables.spec.ts` →
+"Table Sort" (asc + desc).
 
 ### B6 — Cell vertical alignment ❓ verify
 

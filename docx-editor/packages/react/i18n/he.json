@@ -791,7 +791,9 @@
     "alignTableRight": "יישר טבלה לימין",
     "tableOptionsMenu": "תפריט אפשרויות טבלה",
     "tableOptions": "אפשרויות טבלה",
-    "distributeRows": null
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null
   },
   "imageTransform": {
     "tooltip": "טרנספורמציה",

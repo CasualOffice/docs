@@ -680,3 +680,61 @@ test.describe('Table Pin Header Row', () => {
     expect(await pinItemText(page)).not.toContain('✓');
   });
 });
+
+test.describe('Table Sort', () => {
+  let editor: EditorPage;
+
+  test.beforeEach(async ({ page }) => {
+    editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await editor.newDocument();
+    await editor.focus();
+  });
+
+  test('sorts data rows ascending by the current column', async ({ page }) => {
+    await editor.insertTable(3, 1);
+    await page.waitForTimeout(200);
+
+    await editor.clickTableCell(0, 0, 0);
+    await editor.typeText('Charlie');
+    await editor.clickTableCell(0, 1, 0);
+    await editor.typeText('Alpha');
+    await editor.clickTableCell(0, 2, 0);
+    await editor.typeText('Bravo');
+
+    await editor.clickTableCell(0, 0, 0);
+    await page.waitForTimeout(200);
+
+    await editor.openTableMore();
+    await editor.clickTableMenuItem('Sort A'); // "Sort A → Z"
+    await page.waitForTimeout(200);
+
+    expect(await editor.getTableCellContent(0, 0, 0)).toContain('Alpha');
+    expect(await editor.getTableCellContent(0, 1, 0)).toContain('Bravo');
+    expect(await editor.getTableCellContent(0, 2, 0)).toContain('Charlie');
+  });
+
+  test('descending sort reverses the order', async ({ page }) => {
+    await editor.insertTable(3, 1);
+    await page.waitForTimeout(200);
+
+    await editor.clickTableCell(0, 0, 0);
+    await editor.typeText('Alpha');
+    await editor.clickTableCell(0, 1, 0);
+    await editor.typeText('Bravo');
+    await editor.clickTableCell(0, 2, 0);
+    await editor.typeText('Charlie');
+
+    await editor.clickTableCell(0, 0, 0);
+    await page.waitForTimeout(200);
+
+    await editor.openTableMore();
+    await editor.clickTableMenuItem('Sort Z'); // "Sort Z → A"
+    await page.waitForTimeout(200);
+
+    expect(await editor.getTableCellContent(0, 0, 0)).toContain('Charlie');
+    expect(await editor.getTableCellContent(0, 1, 0)).toContain('Bravo');
+    expect(await editor.getTableCellContent(0, 2, 0)).toContain('Alpha');
+  });
+});

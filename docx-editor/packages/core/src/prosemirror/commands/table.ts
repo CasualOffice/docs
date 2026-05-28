@@ -194,6 +194,13 @@ export function autoFitContents(): (
 ) => boolean {
   return cmds.autoFitContents();
 }
+// Sort the current table's data rows by the cursor column (header rows
+// stay pinned). Reorder only — serializer untouched.
+export function sortTable(
+  direction: 'asc' | 'desc'
+): (state: EditorState, dispatch?: (tr: Transaction) => void) => boolean {
+  return cmds.sortTable(direction);
+}
 
 // Table properties
 export function setTableProperties(props: {
