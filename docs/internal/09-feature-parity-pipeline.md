@@ -322,10 +322,27 @@ covered in Stream X.
 
 The cards exist; the workflow polish doesn't.
 
-### E1 — @-mention in comments ❌
+### E1 — @-mention in comments ✅
 
-Type `@`, pick from presence list. No user-graph (single-user), so the
-list is just current room peers. Cheap.
+Two surfaces:
+
+- `AddCommentCard` watches the cursor; when it's right after a `@`
+  that's at the start of a word, a small dropdown lists matching
+  authors. Arrow keys + Enter/Tab pick one; click also works.
+  Escape closes the dropdown. Email-style `user@host` doesn't
+  trigger.
+
+- `CommentCard` runs the rendered comment text through
+  `renderCommentText` which chips any `@Name` that matches a known
+  author (case-insensitive, longest-name-first so "Jane Doe" wins
+  over "Jane"). Unknown `@strings` stay plain.
+
+Author list: `currentAuthor` + distinct authors from existing
+comments + tracked changes. No live presence-graph (single-user
+mode), so historical authors are the best signal.
+
+Tests: 9 unit tests for `renderCommentText` covering boundary,
+email-guard, longest-match, case-insensitivity, empty list.
 
 ### E2 — Comment resolution → resolved view 🟡
 

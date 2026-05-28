@@ -636,7 +636,8 @@
     "unknown": "לא ידוע",
     "addComment": "הוסף תגובה...",
     "replyPlaceholder": "השב או הוסף אחרים עם @",
-    "replyCount": "{count, plural, one {תגובה אחת} other {# תגובות}}"
+    "replyCount": "{count, plural, one {תגובה אחת} other {# תגובות}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "לא ידוע",

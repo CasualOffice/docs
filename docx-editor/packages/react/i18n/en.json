@@ -636,7 +636,8 @@
     "unknown": "Unknown",
     "addComment": "Add a comment...",
     "replyPlaceholder": "Reply or add others with @",
-    "replyCount": "{count, plural, one {# reply} other {# replies}}"
+    "replyCount": "{count, plural, one {# reply} other {# replies}}",
+    "mentionSuggestions": "Mention suggestions"
   },
   "trackedChanges": {
     "unknown": "Unknown",

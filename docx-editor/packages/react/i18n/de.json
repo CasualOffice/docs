@@ -636,7 +636,8 @@
     "unknown": "Unbekannt",
     "addComment": "Kommentar hinzufügen...",
     "replyPlaceholder": "Antworten oder andere mit @ erwähnen",
-    "replyCount": "{count, plural, one {# Antwort} other {# Antworten}}"
+    "replyCount": "{count, plural, one {# Antwort} other {# Antworten}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "Unbekannt",

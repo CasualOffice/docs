@@ -13,6 +13,7 @@ import {
 import { ReplyThread } from './ReplyThread';
 import { ReplyInput } from './ReplyInput';
 import { CARD_STYLE_COLLAPSED, CARD_STYLE_EXPANDED } from './cardStyles';
+import { renderCommentText } from './mentionText';
 import { useTranslation } from '../../i18n';
 
 export interface CommentCardProps extends SidebarItemRenderProps {
@@ -22,6 +23,9 @@ export interface CommentCardProps extends SidebarItemRenderProps {
   onResolve?: (commentId: number) => void;
   onUnresolve?: (commentId: number) => void;
   onDelete?: (commentId: number) => void;
+  /** Authors that should be chipped when @-mentioned in comment text.
+   *  Random `@something` strings stay plain. */
+  knownAuthors?: readonly string[];
 }
 
 export function CommentCard({
@@ -34,6 +38,7 @@ export function CommentCard({
   onResolve,
   onUnresolve,
   onDelete,
+  knownAuthors = [],
 }: CommentCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -207,7 +212,7 @@ export function CommentCard({
           marginTop: 6,
         }}
       >
-        {getCommentText(comment.content)}
+        {renderCommentText(getCommentText(comment.content), knownAuthors)}
       </div>
 
       <ReplyThread replies={replies} isExpanded={isExpanded} />

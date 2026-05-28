@@ -5930,6 +5930,7 @@ body { background: white; }
     showResolved: showCommentsSidebar,
     isAddingComment: showCommentsSidebar ? isAddingComment : false,
     addCommentYPosition,
+    currentAuthor: author,
   });
 
   const allSidebarItems = useMemo(() => {

@@ -636,7 +636,8 @@
     "unknown": "Bilinmiyor",
     "addComment": "Yorum ekle...",
     "replyPlaceholder": "Yanıtla veya @ ile başkalarını ekle",
-    "replyCount": "{count, plural, one {# yanıt} other {# yanıt}}"
+    "replyCount": "{count, plural, one {# yanıt} other {# yanıt}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "Bilinmiyor",

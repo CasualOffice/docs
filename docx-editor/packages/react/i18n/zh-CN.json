@@ -636,7 +636,8 @@
     "unknown": "未知",
     "addComment": "添加批注",
     "replyPlaceholder": "回复或使用 @ 提及他人...",
-    "replyCount": "{count, plural, one {# 条回复} other {# 条回复}}"
+    "replyCount": "{count, plural, one {# 条回复} other {# 条回复}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "未知",
