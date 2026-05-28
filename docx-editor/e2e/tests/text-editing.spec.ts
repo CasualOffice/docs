@@ -331,12 +331,16 @@ test.describe('Navigation', () => {
 
   test('Ctrl+Left moves by word', async ({ page }) => {
     await editor.typeText('Hello World Test');
+    // Word jump: Alt+Arrow on macOS, Ctrl+Arrow elsewhere (OS convention).
     const modifier = process.platform === 'darwin' ? 'Alt' : 'Control';
     await page.keyboard.press(`${modifier}+ArrowLeft`);
     await page.keyboard.press(`${modifier}+ArrowLeft`);
-    await editor.typeText('X');
+    // Type directly rather than via editor.typeText(): the latter calls
+    // refocusEditor()/view.focus(), which restores the editor's saved
+    // selection and would clobber the caret we just moved by word.
+    await page.keyboard.type('X');
 
-    // Should insert before "World"
+    // Two word-jumps left from the end land before "World".
     await assertions.assertDocumentContainsText(page, 'Hello XWorld');
   });
 });
