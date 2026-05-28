@@ -70,6 +70,7 @@ import { StoredMarksRestoreExtension } from './features/StoredMarksRestoreExtens
 import { BidiShortcutExtension } from './features/BidiShortcutExtension';
 import { PasteStyleInlinerExtension } from './features/PasteStyleInlinerExtension';
 import { SmartQuotesExtension } from './features/SmartQuotesExtension';
+import { AutocorrectExtension } from './features/AutocorrectExtension';
 
 export interface StarterKitOptions {
   /** Extensions to disable by name */
@@ -183,6 +184,11 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // `createStarterKit({ disable: ['smartQuotes'] })` when authoring
   // technical content where straight quotes matter (e.g. code).
   add('smartQuotes', SmartQuotesExtension());
+  // Autocorrect: symbol sequences ((c)→©, -->→→) + a small common-
+  // typo dictionary (teh→the). Same input-rule mechanism as smart
+  // quotes, single-transaction so Ctrl+Z reverts. Defaults on;
+  // disable via createStarterKit({ disable: ['autocorrect'] }).
+  add('autocorrect', AutocorrectExtension());
 
   return extensions;
 }
