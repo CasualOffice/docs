@@ -42,12 +42,12 @@ What ships today, grouped the way Google Docs groups it.
 | ----------------- | ------ | ------------------------------------------------------------------------------------------------------ |
 | Toolbar           | ✅     | rich; tooltips present                                                                                 |
 | Menubar           | ✅     | File / Edit / View / Insert / Format / Tools / Help via `MenuDropdown` (now ARIA-correct popup-menu)   |
-| Floating selection toolbar | ❌ | Docs shows a mini toolbar on text-select; we have none                                                 |
+| Floating selection toolbar | ✅ | desktop selection chip (B/I/U/S) via `MobileFormatBar` `variant='desktop'`; see C1                     |
 | Right-click context menu | 🟡 | exists; needs Docs-parity coverage audit (lookup, define, link, comment, suggest)                       |
-| Table toolbar / dropdown | 🟡 | `TableOptionsDropdown` etc.; missing "distribute rows/columns evenly", "pin header", sort              |
+| Table toolbar / dropdown | 🟡 | live surface is `TableMoreDropdown` (in `FormattingBar`); distribute rows/cols (B3) + pin header (B4) shipped; sort still missing (B5) |
 | Drawing canvas    | ❌     | no inline drawing (Docs has full vector tool)                                                          |
 | Equation editor   | ❌     | —                                                                                                      |
-| Voice typing      | ❌     | —                                                                                                      |
+| Voice typing      | ✅     | `useVoiceTyping` (Web Speech API); Edit-menu entry gated on browser support; see D6                    |
 | Spell-check underlines | ❌| browser spellcheck only; no in-editor squiggles                                                        |
 
 ### Dialogs already shipped
@@ -186,10 +186,21 @@ right above the existing columns entry, plus dispatch in
 `DocxEditor.tsx`. No tests added — `distributeColumns` has no test
 either and inventing a scaffold for this one would set a new bar.
 
-### B4 — Pin table header row ❌
+### B4 — Pin table header row ✅
 
-Marks first row as `<w:tblHeader/>` so it repeats on every page in
-print. Common ask; cheap implementation.
+`toggleHeaderRow` flips the cursor row's `isHeader` attr, which
+serializes to `<w:tblHeader/>` and round-trips both ways
+(`tableParser.ts` ↔ `tableSerializer.ts`). The layout-painter repeats
+header rows on continuation fragments (`renderTable.ts`,
+`data-repeatedHeader`), so the pin is visible on multi-page tables —
+not just in the exported .docx. Surfaced in the live table bar via
+`TableMoreDropdown` ("Pin header row" → `push_pin` icon + ✓ when the
+current row is pinned, driven by `TableContextInfo.currentRowIsHeader`).
+Tested in `e2e/tests/tables.spec.ts` → "Table Pin Header Row".
+
+Gotcha for future sessions: `TableOptionsDropdown` also has a Pin item
+but is exported-only and **not mounted** anywhere — `TableMoreDropdown`
+(inside `FormattingBar`) is the shipped surface.
 
 ### B5 — Sort table ❌
 
@@ -291,11 +302,22 @@ opt out via `createStarterKit({ disable: ['smartQuotes'] })`.
 8/8 unit tests. The Tools → Preferences toggle (D7) is the
 next user-facing surface for this.
 
-### D2 — Autocorrect / autocomplete ❌
+### D2 — Autocorrect / autocomplete ✅
 
-`teh` → `the`, `(c)` → `©`, `--` → `—`. Same input-rule mechanism as
-smart quotes. Maintain a small JSON dictionary; user can disable per
-rule. Defer the full dictionary; ship the 20 highest-value rules first.
+Shipped as `AutocorrectExtension` — two substitution classes via
+`handleTextInput`, each a single transaction so one Ctrl+Z reverts:
+
+- Symbol sequences fired on the completing char: `(c)`/`(C)` → ©,
+  `(r)`/`(R)` → ®, `(tm)`/`(TM)` → ™, `-->`/`->` → →, `<--`/`<-` → ←.
+- Common-typo dictionary fired on a word-boundary char (space/tab):
+  25 highest-value misspellings (`teh`→`the`, `recieve`→`receive`,
+  `seperate`→`separate`, …), with the leading letter's case preserved
+  (`Teh` → `The`).
+
+On by default; opt out via `createStarterKit({ disable: ['autocorrect'] })`.
+Per-rule disable is *not* shipped — that lands with the Tools →
+Preferences dialog (D7). A full spell-correct engine stays out of
+scope (D3/D4). 11 unit tests in `AutocorrectExtension.test.ts`.
 
 ### D3 — Spell-check (in-editor squiggles) ❌
 

@@ -629,3 +629,51 @@ test.describe('Table Edge Cases', () => {
     expect(content).toContain('Line 2');
   });
 });
+
+test.describe('Table Pin Header Row', () => {
+  let editor: EditorPage;
+
+  test.beforeEach(async ({ page }) => {
+    editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await editor.newDocument();
+    await editor.focus();
+  });
+
+  // Reads the "Pin header row" menu item's text while the More menu is open.
+  // The label is prefixed with a checkmark when the current row is pinned.
+  const pinItemText = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('[role="menuitem"]'));
+      const el = items.find((e) => (e.textContent ?? '').includes('Pin header row'));
+      return (el?.textContent ?? '').trim();
+    });
+
+  test('toggles pinned state and reflects it in the More menu', async ({ page }) => {
+    await editor.insertTable(3, 3);
+    await page.waitForTimeout(300);
+    await editor.clickTableCell(0, 0, 0);
+    await page.waitForTimeout(300);
+
+    // Initially the first row is not pinned — no checkmark.
+    await editor.openTableMore();
+    expect(await pinItemText(page)).not.toContain('✓');
+
+    // Pin it.
+    await editor.clickTableMenuItem('Pin header row');
+    await editor.clickTableCell(0, 0, 0); // force a selection refresh
+    await page.waitForTimeout(200);
+
+    await editor.openTableMore();
+    expect(await pinItemText(page)).toContain('✓');
+
+    // Unpin it — the active state clears again.
+    await editor.clickTableMenuItem('Pin header row');
+    await editor.clickTableCell(0, 0, 0);
+    await page.waitForTimeout(200);
+
+    await editor.openTableMore();
+    expect(await pinItemText(page)).not.toContain('✓');
+  });
+});
