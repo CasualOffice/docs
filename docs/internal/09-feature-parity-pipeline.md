@@ -165,16 +165,22 @@ Tables are the user's named priority. Today: `TableOptionsDropdown`,
 
 Substantial. Gaps are mostly polish + a few real missing actions.
 
-### B1 — Hover-handle row/column insertion 🟡
+### B1 — Hover-handle row/column insertion ✅
 
-Docs shows a `+` button on the row/column boundary when you hover the
-table edge. Click inserts one before/after. Today: only via the menu /
-dropdown. Adds discoverability.
+Hovering a table row/column boundary shows a floating "+" button
+(`detectTableInsertHover` in the layout-painter →
+`handlePagesMouseMove`/`handleTableInsertClick` in `PagedEditor`), which
+inserts a row below / column to the right at that boundary. Has
+flicker-guard (delayed hide) and is suppressed during drag/resize.
 
-### B2 — Drag-to-resize columns + rows ❓ verify
+### B2 — Drag-to-resize columns + rows ✅
 
-Verify it works smoothly (no flicker, snaps to min-width, respects %
-widths). If broken or absent — P1.
+Confirmed working for both axes. The layout-painter renders resize
+handles (`layout-table-resize-handle` for columns, `-row-resize-handle`
+for rows, plus a right-edge handle) in `renderTable.ts`; drag is handled
+in `PagedEditor.tsx` (`isResizingColumnRef`/`isResizingRowRef`/
+`isResizingRightEdgeRef`), persisting widths/heights to the PM table
+node attrs.
 
 ### B3 — Distribute rows / columns evenly ✅
 
@@ -212,16 +218,21 @@ serializer is untouched (we never restructure). Surfaced as "Sort A → Z"
 / "Sort Z → A" in `TableMoreDropdown`. Tested in `tables.spec.ts` →
 "Table Sort" (asc + desc).
 
-### B6 — Cell vertical alignment ❓ verify
+### B6 — Cell vertical alignment ✅
 
-Verify `TablePropertiesDialog` covers top/middle/bottom vertical
-alignment per cell. If only at table level — add per-cell control.
+Per-cell top/middle/bottom is fully wired: `setCellVerticalAlign`
+command (`TableExtension.ts`) sets the cell node's `verticalAlign` attr,
+the three align buttons live in `TableMoreDropdown`, and it round-trips
+via `<w:vAlign>` (`tableParser` ↔ serializer) and renders in
+`renderTable.ts`.
 
-### B7 — Cell background color (quick picker) 🟡
+### B7 — Cell background color (quick picker) ✅
 
-Exists via `BordersAndShadingDialog`. Docs surfaces this as a one-click
-color swatch in the table toolbar. Add a dedicated swatch button to
-`TableOptionsDropdown`.
+`TableCellFillPicker` (one-click `format_color_fill` swatch + "none"
+option) ships in the `FormattingBar` table group, shown whenever the
+cursor is in a table. Dispatches `cellFillColor` → `setCellFillColor`,
+and reflects the current cell's `cellBackgroundColor`. The fuller
+control still lives in `BordersAndShadingDialog`.
 
 ### B8 — Convert text → table / table → text ❌
 
@@ -284,10 +295,13 @@ write into all section headers.
 Word feature; Docs equivalent is templates. We have a template gallery
 on the homepage. Building-blocks-inside-the-document is deferrable.
 
-### C7 — Page break / column break / section break menu 🟡
+### C7 — Page break / column break / section break menu ✅ (column break deferred)
 
-Verify Insert → Break covers page / column / section / next-page. If
-any missing — easy fix.
+Insert menu has **page break** (`onInsertPageBreak`, `PageBreakExtension`)
+and a **section-break** submenu with all four types — next-page,
+continuous, even-page, odd-page (`onInsertSectionBreak`). The only gap is
+a *dedicated* column break; `continuous` covers the multi-column case, so
+a standalone column-break item is deferred (low demand).
 
 ---
 
@@ -390,10 +404,13 @@ mode), so historical authors are the best signal.
 Tests: 9 unit tests for `renderCommentText` covering boundary,
 email-guard, longest-match, case-insensitivity, empty list.
 
-### E2 — Comment resolution → resolved view 🟡
+### E2 — Comment resolution → resolved view ✅
 
-Verify resolved comments are filterable / hidden by default, accessible
-via a "Resolved comments" toggle. Docs UX.
+`useCommentSidebarItems` carries a `showResolved` flag; resolved
+(`done`) comments are filtered out of the active list and collapse to a
+`ResolvedCommentMarker` unless `showResolved` is on, with
+`onCommentResolve`/`onCommentUnresolve` callbacks. The host owns the
+toggle state (no in-editor menu surface for it yet).
 
 ### E3 — Suggesting mode banner ❌
 
@@ -405,9 +422,13 @@ the doc. We have the Mode dropdown but no persistent banner. P2.
 Toolbar buttons inside the suggestion card row are per-change. Add
 "Accept all" / "Reject all" via the Tools menu or sidebar header.
 
-### E5 — Comment shortcuts ❓ verify
+### E5 — Comment shortcuts ✅
 
-`Ctrl+Alt+M` opens a new comment in Docs. Verify our binding.
+`Ctrl+Alt+M` (Cmd+Option+M on macOS) now starts a new comment on the
+current selection, matching Google Docs. Wired in DocxEditor's global
+keydown handler via `shortcutActionsRef.startComment` →
+`handleStartAddComment` (uses `e.code === 'KeyM'` since Option remaps the
+M key on macOS). Tested in `comments-sidebar.spec.ts`.
 
 ---
 
@@ -424,16 +445,20 @@ filename `Copy of X.docx`". Cheap.
 Browser security blocks the attach; ship "Download + open mail" as the
 honest version, or skip.
 
-### F3 — Page setup parity ✅ verify
+### F3 — Page setup parity ✅ (apply-to scope deferred)
 
-`PageSetupDialog` exists. Verify it covers: page size (Letter / A4 /
-custom), orientation, margins, paper color (background), apply-to
-(whole doc vs. this point forward).
+`PageSetupDialog` covers page size (Letter / A4 / Legal / A3 / A5 / B5 /
+Executive / custom), orientation (swaps W/H), per-edge margins, and
+paper color. The one missing Word control is **apply-to scope** (whole
+doc vs. this-point-forward / per-section) — deferred until multi-section
+layout work lands; today it applies document-wide.
 
 ### F4 — Print preview / Print ✅
 
-Print handler fixed earlier this batch. Verify Print preview
-specifically (Docs: `Ctrl+P` shows OS print dialog with our DOM).
+Confirmed: File → Print and `Ctrl+P` call `window.print()` (with a
+popup-blocked fallback), and `@media print` rules in `PrintPreview`
+control the printed layout. Uses the browser's native print dialog —
+no custom in-app preview modal (by design).
 
 ### F5 — View → Pageless mode ❌
 
@@ -447,14 +472,23 @@ Toggle that shows paragraph marks, tabs, spaces. Word feature; useful
 for advanced users. Add as a CSS class toggle on the layout-painter
 output.
 
-### F7 — Help → search the menus ❌
+### F7 — Help → search the menus 🟡 (works via shortcut; no Help entry)
 
-Docs has a `Ctrl+/` overlay that searches commands. We have
-`CommandPaletteDialog`. Verify Help menu has an entry that opens it.
+`CommandPaletteDialog` is mounted in `DocxEditor` and opens on
+`Ctrl/Cmd+Shift+P`. The remaining gap is purely discoverability: no Help
+**menu** entry that opens it. Adding one needs an `onOpenCommandPalette`
+prop threaded `DocxEditor → EditorToolbar → Toolbar` (the Help menu is
+gated on `onReportBug || onShowAbout`) plus an i18n label and a non-`raw`
+icon (there is no `search` glyph in `iconMap` yet).
 
-### F8 — Help → keyboard shortcuts ✅
+### F8 — Help → keyboard shortcuts 🟡 (dialog not mounted in-editor)
 
-`KeyboardShortcutsDialog` exists. Verify Help menu wires to it.
+`KeyboardShortcutsDialog` + `useKeyboardShortcutsDialog` (Ctrl+/, F1)
+exist but are **only exported from the package barrel** — `DocxEditor`
+does not render the dialog, so there's no in-editor shortcut or Help
+entry today (embedders wire their own). Real work: mount the dialog +
+open-state in `DocxEditor`, bind Ctrl+/, and add the Help-menu entry
+alongside F7.
 
 ---
 

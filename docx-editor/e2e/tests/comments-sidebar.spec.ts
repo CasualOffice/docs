@@ -627,3 +627,23 @@ test.describe('Comments sidebar — feedback-loop stability', () => {
     expect(posAfter).toEqual(posBefore);
   });
 });
+
+test.describe('Comment shortcut (Ctrl+Alt+M)', () => {
+  test('opens a new comment on the current selection', async ({ page }) => {
+    const editor = await setupEmptyDoc(page);
+    await editor.typeText(`Alpha bravo charlie ${CLEAN}.`);
+
+    const found = await editor.selectText('bravo');
+    expect(found, 'selectText should find "bravo"').toBe(true);
+    await page.waitForTimeout(200);
+
+    // Google Docs binding: Ctrl+Alt+M (Cmd+Option+M on macOS). Match the
+    // editor's own platform check (navigator.platform) rather than the host
+    // OS — Playwright's bundled Chromium does not report a Mac platform.
+    const usesMeta = await page.evaluate(() => navigator.platform.toUpperCase().includes('MAC'));
+    await page.keyboard.press(`${usesMeta ? 'Meta' : 'Control'}+Alt+m`);
+
+    // Add-comment mode shows the comment input in the sidebar.
+    await page.waitForSelector(`${SIDEBAR} textarea`, { state: 'visible', timeout: 3000 });
+  });
+});

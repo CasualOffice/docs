@@ -2690,6 +2690,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         setShowCommandPalette(true);
       }
 
+      // Mod+Alt+M → start a new comment on the selection (Google Docs
+      // binding). Uses e.code, not e.key, because Option remaps the M key
+      // on macOS. No-op when the selection is empty (handled downstream).
+      if (cmdOrCtrl && e.altKey && !e.shiftKey && e.code === 'KeyM') {
+        e.preventDefault();
+        shortcutActionsRef.current.startComment?.();
+      }
+
       // Mod+Shift+L → toggle bullet list. Word convention; also matches
       // Google Docs (Ctrl+Shift+8 there, but L is the documented Word
       // binding and the doc community expects it). Routes through the
@@ -2762,6 +2770,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     zoomIn?: () => void;
     zoomOut?: () => void;
     zoomReset?: () => void;
+    startComment?: () => void;
   }>({});
 
   // Handle table insert from toolbar
@@ -4791,6 +4800,7 @@ body { background: white; }
       zoomIn: () => handleZoomChange(Math.min(state.zoom * 1.1, 4)),
       zoomOut: () => handleZoomChange(Math.max(state.zoom / 1.1, 0.25)),
       zoomReset: () => handleZoomChange(1),
+      startComment: handleStartAddComment,
     };
   }, [
     handleDownloadDocument,
@@ -4799,6 +4809,7 @@ body { background: white; }
     handleOpenDocument,
     handleZoomChange,
     state.zoom,
+    handleStartAddComment,
   ]);
 
   const handleDocxFileChange = useCallback(
