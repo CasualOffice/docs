@@ -529,11 +529,16 @@ in the Tooltip popup is needed outside `ToolbarButton`, lift the
 `tooltipContent` builder out of `Toolbar.tsx` into a shared helper
 rather than duplicating the JSX.
 
-### X3 — Focus-ring consistency
+### X3 — Focus-ring consistency 🟡
 
-Verify every interactive element shows a visible focus ring
-(`:focus-visible`). The recent a11y batch covered tooltip focus
-behavior; this is the visual sibling.
+The shared `Button` primitive rings via Tailwind (`focus-visible:ring-2`),
+and a scoped rule in `styles/editor.css` now gives **menu items**
+(`[role="menuitem"]` etc. in the menubar / dropdowns / table menu) a
+keyboard focus ring — they're raw inline-styled `<button>`s that had none.
+Verified in `help-menu.spec.ts` (asserts `outline` on the focused item).
+Still uncovered: a handful of other raw buttons (the hover-insert "+",
+some toolbar raw buttons) — left for a browser-QA pass since blanket rules
+risk double-rings / visual quirks.
 
 ### X4 — Animation tier
 

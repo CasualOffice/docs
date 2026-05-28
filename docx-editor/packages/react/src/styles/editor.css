@@ -903,3 +903,18 @@
     transform-origin: left top;
   }
 }
+
+/* X3 — keyboard focus ring for menu items.
+   Menubar / dropdown / table-menu items are raw <button role="menuitem">
+   styled inline, so they had no visible focus indicator when navigated
+   with the arrow keys (MenuDropdown moves DOM focus between items). The
+   shared Button primitive already rings via Tailwind, and menu items are
+   never Buttons, so this can't double-ring. :focus-visible keeps the ring
+   off mouse clicks; the inset offset stays within the full-width row. */
+.ep-root [role='menuitem']:focus-visible,
+.ep-root [role='menuitemcheckbox']:focus-visible,
+.ep-root [role='menuitemradio']:focus-visible {
+  outline: 2px solid var(--doc-primary);
+  outline-offset: -2px;
+  border-radius: 4px;
+}

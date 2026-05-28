@@ -63,4 +63,24 @@ test.describe('Help menu', () => {
       timeout: 3000,
     });
   });
+
+  // X3 — menu items must show a visible focus ring under keyboard navigation
+  // (MenuDropdown moves DOM focus between items on Arrow keys).
+  test('menu items show a focus ring on keyboard navigation', async ({ page }) => {
+    await page.getByRole('button', { name: 'Help' }).click();
+    await page.keyboard.press('ArrowDown');
+    const ring = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el) return { role: null as string | null, width: '0px', style: 'none' };
+      const cs = getComputedStyle(el);
+      return {
+        role: el.getAttribute('role'),
+        width: cs.outlineWidth,
+        style: cs.outlineStyle,
+      };
+    });
+    expect(ring.role).toBe('menuitem');
+    expect(parseFloat(ring.width)).toBeGreaterThan(0);
+    expect(ring.style).toBe('solid');
+  });
 });
