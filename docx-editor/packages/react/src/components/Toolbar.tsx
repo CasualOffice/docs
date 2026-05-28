@@ -166,6 +166,12 @@ export interface ToolbarProps {
   onOpenFindReplace?: () => void;
   /** Callback to open Word Count dialog (Ctrl+Shift+C in Google Docs). */
   onOpenWordCount?: () => void;
+  /** Toggle voice typing (Web Speech API). Optional — hidden from the
+   *  menu when the host doesn't pass it (e.g. unsupported browser). */
+  onToggleVoiceTyping?: () => void;
+  /** Whether voice typing is currently active — drives the menu
+   *  entry's ✓ prefix. */
+  voiceTypingActive?: boolean;
   /** Callback to toggle browser spellcheck on the editor */
   onToggleSpellCheck?: () => void;
   /** Whether spellcheck is currently enabled */

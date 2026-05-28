@@ -917,5 +917,13 @@
   },
   "viewer": {
     "pageIndicator": "{current} מתוך {total}"
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
   }
 }

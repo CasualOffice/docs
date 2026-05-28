@@ -628,6 +628,14 @@
       "or": "or"
     }
   },
+  "voiceTyping": {
+    "menuItem": "Voice typing",
+    "listening": "Voice typing — listening",
+    "listeningHint": "Speak now…",
+    "error": "Voice typing error: {error}",
+    "stop": "Stop voice typing",
+    "unsupported": "Voice typing isn't supported in this browser"
+  },
   "comments": {
     "resolved": "Resolved",
     "resolve": "Resolve",

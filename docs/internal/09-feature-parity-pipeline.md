@@ -299,10 +299,18 @@ Way beyond scope without an LLM endpoint or paid API. Defer.
 
 See A7. Belongs under Tools → Word count too.
 
-### D6 — Voice typing ❌
+### D6 — Voice typing ✅
 
-`Ctrl+Shift+S` in Docs. Web Speech API. Cheap to add; quality is
-browser-dependent.
+`useVoiceTyping` hook wraps `webkitSpeechRecognition` /
+`SpeechRecognition` with a continuous + interimResults config that
+auto-restarts on the engine's natural `end` event so a single
+session survives mid-sentence pauses. `VoiceTypingIndicator`
+floats top-right with a pulsing red mic + "Speak now…" preview +
+Stop button. Edit menu entry is gated on `voiceTyping.supported`
+so unsupported browsers (Firefox) don't see a dead item. No
+global shortcut yet — Ctrl+Shift+S is already labeled as the AI
+summarize hint in `getActionShortcut`; can wire later if we
+demote the AI hint.
 
 ### D7 — Preferences dialog ❌
 

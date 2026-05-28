@@ -237,6 +237,8 @@ export function MenuBar() {
     onOpenFind,
     onOpenFindReplace,
     onOpenWordCount,
+    onToggleVoiceTyping,
+    voiceTypingActive,
     onToggleSpellCheck,
     spellCheckEnabled,
     currentFormatting,
@@ -499,6 +501,15 @@ export function MenuBar() {
                     label: 'Word count',
                     shortcut: '⌘⇧C',
                     onClick: onOpenWordCount,
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onToggleVoiceTyping
+              ? [
+                  {
+                    icon: 'mic',
+                    label: voiceTypingActive ? '✓ Voice typing' : 'Voice typing',
+                    onClick: onToggleVoiceTyping,
                   } as MenuEntry,
                 ]
               : []),

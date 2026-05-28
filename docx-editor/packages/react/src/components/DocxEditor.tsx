@@ -50,6 +50,8 @@ import {
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
 import { useEditHistory } from '../hooks/useEditHistory';
+import { useVoiceTyping } from '../hooks/useVoiceTyping';
+import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
@@ -2062,6 +2064,27 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Word count dialog state (Ctrl+Shift+C, also surfaced via Edit menu).
   const [showWordCount, setShowWordCount] = useState(false);
   const handleOpenWordCount = useCallback(() => setShowWordCount(true), []);
+
+  // Voice typing — inserts recognized text at the active editor's
+  // cursor. The hook owns the SpeechRecognition lifecycle; we just
+  // give it an insertion sink + render the floating indicator.
+  const voiceTyping = useVoiceTyping({
+    onFinalText: (text) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      // Append a leading space when the cursor is mid-text and the
+      // previous char isn't whitespace — Web Speech doesn't emit
+      // leading whitespace between continuous sessions, so without
+      // this two consecutive utterances would jam together.
+      const { from } = view.state.selection;
+      const prevChar = from > 0 ? view.state.doc.textBetween(from - 1, from, ' ', ' ') : '';
+      const insert = prevChar && !/\s/.test(prevChar) ? ' ' + text : text;
+      view.dispatch(view.state.tr.insertText(insert, from));
+    },
+  });
+  const handleToggleVoiceTyping = useCallback(() => {
+    voiceTyping.toggle();
+  }, [voiceTyping]);
 
   // Help → About dialog state.
   const [showAbout, setShowAbout] = useState(false);
@@ -6163,6 +6186,10 @@ body { background: white; }
                       onPageSetup={handleOpenPageSetup}
                       onFileProperties={handleOpenFileProperties}
                       onOpenWordCount={handleOpenWordCount}
+                      onToggleVoiceTyping={
+                        voiceTyping.supported ? handleToggleVoiceTyping : undefined
+                      }
+                      voiceTypingActive={voiceTyping.isListening}
                       onExportPdf={handleExportPdf}
                       onExportOdt={handleExportOdt}
                       onExportMd={handleExportMd}
@@ -7037,6 +7064,12 @@ body { background: white; }
                   }}
                 />
               )}
+              <VoiceTypingIndicator
+                isListening={voiceTyping.isListening}
+                interimText={voiceTyping.interimText}
+                error={voiceTyping.error}
+                onStop={voiceTyping.stop}
+              />
               {showAbout && <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />}
               {showCommandPalette && (
                 <CommandPaletteDialog

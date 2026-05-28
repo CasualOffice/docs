@@ -917,5 +917,13 @@
       "summary": "{count, plural, one {# adım} other {# adım}}",
       "earlier": "+ {count, plural, one {# önceki adım} other {# önceki adım}}"
     }
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
   }
 }

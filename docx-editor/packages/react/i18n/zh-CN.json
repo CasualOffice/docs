@@ -917,5 +917,13 @@
   },
   "viewer": {
     "pageIndicator": "第 {current} 页，共 {total} 页"
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
   }
 }
