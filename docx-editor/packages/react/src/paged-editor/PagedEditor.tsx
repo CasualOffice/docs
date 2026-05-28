@@ -4153,19 +4153,31 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             readOnly={readOnly}
           />
 
-          {/* Mobile floating format chip — only renders on phone
-           *  widths when a non-collapsed selection exists. The chip
-           *  reads its own viewport-fixed coordinates from the
-           *  selection-overlay rect; we just pass the overlay-local
-           *  rects + zoom. */}
+          {/* Floating format chip — appears above a non-collapsed
+           *  selection. Two variants render simultaneously; the
+           *  component's internal viewport gate picks the right one
+           *  (mobile chip on phones, smaller pill on desktop). Reads
+           *  its own viewport-fixed coordinates from the selection-
+           *  overlay rect; we just pass the overlay-local rects + zoom. */}
           {!readOnly && selectionFormatting && onFormat && (
-            <MobileFormatBar
-              rects={selectionRects}
-              formatting={selectionFormatting}
-              onFormat={onFormat}
-              visible={isFocused && selectionRects.length > 0}
-              zoom={zoom}
-            />
+            <>
+              <MobileFormatBar
+                rects={selectionRects}
+                formatting={selectionFormatting}
+                onFormat={onFormat}
+                visible={isFocused && selectionRects.length > 0}
+                zoom={zoom}
+                variant="mobile"
+              />
+              <MobileFormatBar
+                rects={selectionRects}
+                formatting={selectionFormatting}
+                onFormat={onFormat}
+                visible={isFocused && selectionRects.length > 0}
+                zoom={zoom}
+                variant="desktop"
+              />
+            </>
           )}
 
           {/* Image selection overlay */}

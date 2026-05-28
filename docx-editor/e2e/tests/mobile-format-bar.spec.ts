@@ -27,6 +27,28 @@ test.describe('Mobile floating format bar', () => {
       await page.waitForTimeout(400);
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toHaveCount(0);
     });
+
+    test('desktop floating bar appears on selection (C1)', async ({ page }) => {
+      await page.goto('/?e2e=1');
+      await page.waitForSelector('[data-testid="docx-editor"]');
+      await page.waitForTimeout(500);
+      await page.locator('.ProseMirror').focus();
+      await page.keyboard.type('Hello desktop bar');
+      // Collapsed cursor → no bar.
+      await expect(page.locator('[data-testid="desktop-format-bar"]')).toHaveCount(0);
+      // Range selection → desktop bar appears with B / I / U / S buttons.
+      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
+      await expect(page.locator('[data-testid="desktop-format-bar"]')).toBeVisible({
+        timeout: 2000,
+      });
+      await expect(page.locator('[data-testid="desktop-format-bold"]')).toBeVisible();
+      // Clicking Bold applies the mark — pressed state flips.
+      await page.locator('[data-testid="desktop-format-bold"]').click();
+      await expect(page.locator('[data-testid="desktop-format-bold"]')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+    });
   });
 
   test.describe('phone viewport — chip appears + tap formats', () => {

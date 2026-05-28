@@ -39,7 +39,21 @@ export interface MobileFormatBarProps {
   visible: boolean;
   /** Editor zoom factor (1 = no scale). */
   zoom: number;
-  /** Hide on desktop / non-touch contexts. Default: true. */
+  /**
+   * Which viewport this instance is for:
+   *  - `mobile` (default): renders only on phone-width viewports.
+   *  - `desktop`: renders only on non-phone viewports, with a smaller
+   *    button size that fits next to the typing line without
+   *    occluding it.
+   * The parent renders one instance per variant; the gating below
+   * picks the right one for the current viewport.
+   */
+  variant?: 'mobile' | 'desktop';
+  /**
+   * @deprecated Use `variant: 'desktop'` to render the desktop
+   * bar. Kept for backwards compatibility with callers that
+   * passed `mobileOnly={false}` to opt into desktop rendering.
+   */
   mobileOnly?: boolean;
 }
 
@@ -59,44 +73,49 @@ function useIsTouchPhone(): boolean {
   return match;
 }
 
-const BAR_HEIGHT = 44; // matches the chrome tap-target floor we set globally.
+const BAR_HEIGHT_MOBILE = 44; // matches the chrome tap-target floor.
+const BAR_HEIGHT_DESKTOP = 34; // tighter chip; matches FormattingBar height.
 const BAR_GAP = 8; // vertical gap between chip and the selection rect.
 
-const containerStyle: CSSProperties = {
-  position: 'fixed',
-  zIndex: 5000,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 2,
-  padding: '4px 6px',
-  height: BAR_HEIGHT,
-  background: 'var(--doc-surface, #ffffff)',
-  borderRadius: 999,
-  border: '1px solid var(--doc-border, #dadce0)',
-  boxShadow: '0 4px 14px rgba(15, 23, 42, 0.16), 0 1px 2px rgba(15, 23, 42, 0.08)',
-  pointerEvents: 'auto',
-};
+function buildContainerStyle(variant: 'mobile' | 'desktop'): CSSProperties {
+  return {
+    position: 'fixed',
+    zIndex: 5000,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    padding: variant === 'mobile' ? '4px 6px' : '3px 4px',
+    height: variant === 'mobile' ? BAR_HEIGHT_MOBILE : BAR_HEIGHT_DESKTOP,
+    background: 'var(--doc-surface, #ffffff)',
+    borderRadius: variant === 'mobile' ? 999 : 6,
+    border: '1px solid var(--doc-border, #dadce0)',
+    boxShadow: '0 4px 14px rgba(15, 23, 42, 0.16), 0 1px 2px rgba(15, 23, 42, 0.08)',
+    pointerEvents: 'auto',
+  };
+}
 
-const btnBase: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 36,
-  height: 36,
-  border: 'none',
-  background: 'transparent',
-  borderRadius: 8,
-  color: 'var(--doc-text, #1f2937)',
-  cursor: 'pointer',
-  font: 'inherit',
-  fontSize: 16,
-  fontWeight: 600,
-  padding: 0,
-};
+function buildBtnBase(variant: 'mobile' | 'desktop'): CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: variant === 'mobile' ? 36 : 28,
+    height: variant === 'mobile' ? 36 : 28,
+    border: 'none',
+    background: 'transparent',
+    borderRadius: variant === 'mobile' ? 8 : 4,
+    color: 'var(--doc-text-on-surface, #1f2937)',
+    cursor: 'pointer',
+    font: 'inherit',
+    fontSize: variant === 'mobile' ? 16 : 14,
+    fontWeight: 600,
+    padding: 0,
+  };
+}
 
 const btnActive: CSSProperties = {
-  background: 'var(--doc-bg-hover, #eff6ff)',
-  color: 'var(--doc-accent-strong, #1d4ed8)',
+  background: 'var(--doc-primary-light, #e8f0fe)',
+  color: 'var(--doc-primary, #1a73e8)',
 };
 
 interface FormatButton {
@@ -126,31 +145,50 @@ export function MobileFormatBar({
   onFormat,
   visible,
   zoom,
+  variant,
   mobileOnly = true,
 }: MobileFormatBarProps): React.JSX.Element | null {
   const isPhone = useIsTouchPhone();
-  if (mobileOnly && !isPhone) return null;
+  // Derive the effective variant: explicit `variant` prop wins; else
+  // legacy `mobileOnly` controls mobile-only gating.
+  const effectiveVariant: 'mobile' | 'desktop' =
+    variant ?? (mobileOnly ? 'mobile' : isPhone ? 'mobile' : 'desktop');
+  // Gating: mobile variant only on phones; desktop variant only off
+  // phones. Both can be rendered simultaneously by the parent — only
+  // one will pass this gate at a time.
+  if (effectiveVariant === 'mobile' && !isPhone) return null;
+  if (effectiveVariant === 'desktop' && isPhone) return null;
   if (!visible || rects.length === 0) return null;
 
   return (
-    <MobileFormatBarInner rects={rects} formatting={formatting} onFormat={onFormat} zoom={zoom} />
+    <MobileFormatBarInner
+      rects={rects}
+      formatting={formatting}
+      onFormat={onFormat}
+      zoom={zoom}
+      variant={effectiveVariant}
+    />
   );
 }
 
 // Inner component so the rect math + position style are recomputed
-// only when actually mounted (skip the work entirely on desktop).
+// only when actually mounted (skip the work entirely when gated off).
 function MobileFormatBarInner({
   rects,
   formatting,
   onFormat,
   zoom,
+  variant,
 }: {
   rects: SelectionRect[];
   formatting: SelectionFormatting;
   onFormat: (cmd: FormattingAction) => void;
   zoom: number;
+  variant: 'mobile' | 'desktop';
 }): React.JSX.Element {
-  const position = useMemo(() => computePosition(rects, zoom), [rects, zoom]);
+  const position = useMemo(() => computePosition(rects, zoom, variant), [rects, zoom, variant]);
+  const containerStyle = useMemo(() => buildContainerStyle(variant), [variant]);
+  const btnBase = useMemo(() => buildBtnBase(variant), [variant]);
 
   // Underline glyph: rendered via text-decoration so it reads as the
   // formatting it applies. Strikethrough handled the same way. Bold +
@@ -160,7 +198,8 @@ function MobileFormatBarInner({
       style={{ ...containerStyle, ...position }}
       role="toolbar"
       aria-label="Format selection"
-      data-testid="mobile-format-bar"
+      data-testid={variant === 'mobile' ? 'mobile-format-bar' : 'desktop-format-bar'}
+      data-variant={variant}
       onMouseDown={(e) => e.preventDefault()} // don't steal the editor's focus.
       onTouchStart={(e) => e.stopPropagation()}
     >
@@ -186,7 +225,7 @@ function MobileFormatBarInner({
             aria-pressed={on}
             aria-label={b.label}
             title={b.label}
-            data-testid={`mobile-format-${cmd}`}
+            data-testid={`${variant}-format-${cmd}`}
           >
             <span style={glyphStyle}>{b.glyph}</span>
           </button>
@@ -204,9 +243,13 @@ function MobileFormatBarInner({
  *  rect.x * zoom. */
 function computePosition(
   rects: SelectionRect[],
-  zoom: number
+  zoom: number,
+  variant: 'mobile' | 'desktop' = 'mobile'
 ): Pick<CSSProperties, 'left' | 'top'> {
-  const APPROX_WIDTH = 6 + BUTTONS.length * 36 + 6;
+  const btnSize = variant === 'mobile' ? 36 : 28;
+  const padding = variant === 'mobile' ? 6 : 4;
+  const APPROX_WIDTH = padding * 2 + BUTTONS.length * btnSize;
+  const barHeight = variant === 'mobile' ? BAR_HEIGHT_MOBILE : BAR_HEIGHT_DESKTOP;
   const vw = typeof window === 'undefined' ? 360 : window.innerWidth;
   const vh = typeof window === 'undefined' ? 640 : window.innerHeight;
 
@@ -236,9 +279,9 @@ function computePosition(
   let left = Math.round(screenTopMidX - APPROX_WIDTH / 2);
   left = Math.max(8, Math.min(left, vw - APPROX_WIDTH - 8));
 
-  let topPos = Math.round(screenTopY - BAR_HEIGHT - BAR_GAP);
+  let topPos = Math.round(screenTopY - barHeight - BAR_GAP);
   if (topPos < 8) topPos = Math.round(screenBottomY + BAR_GAP);
-  topPos = Math.max(8, Math.min(topPos, vh - BAR_HEIGHT - 8));
+  topPos = Math.max(8, Math.min(topPos, vh - barHeight - 8));
 
   return { left, top: topPos };
 }

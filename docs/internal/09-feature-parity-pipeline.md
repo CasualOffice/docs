@@ -206,12 +206,23 @@ Defer until a user actually asks.
 
 ## Stream C — Insert menu / objects
 
-### C1 — Floating selection toolbar ❌
+### C1 — Floating selection toolbar ✅
 
-Docs shows a small popover above selected text: B / I / U / link /
-comment / suggest. Reduces toolbar trips. Implementation: floating UI
-positioned over the selection rect from the layout-painter's selection
-overlay. Hide on selection-collapse.
+Shipped via `MobileFormatBar` extended with a `variant: 'mobile' |
+'desktop'` prop. The existing mobile chip stays unchanged; a
+smaller (28×28 button, 34px tall) desktop chip now appears above
+any non-collapsed selection on non-phone viewports, with B / I /
+U / S quick-format buttons. PagedEditor renders both variants
+simultaneously; the component's internal viewport gate decides
+which one is visible. Distinct `data-testid` per variant so the
+existing "no mobile-bar on desktop" assertion still passes;
+added a sibling "desktop-bar appears + Bold toggles" test.
+
+Word/Notion have this; Google Docs intentionally doesn't (Docs
+relies on the always-visible top toolbar instead). Shipping the
+desktop variant for users coming from Word; behind no flag, but
+the prop is opt-in so embedders can `variant="mobile"` to match
+Docs exactly if they prefer.
 
 ### C2 — Inline drawing ❌
 
