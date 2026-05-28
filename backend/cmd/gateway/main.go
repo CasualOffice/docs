@@ -7,6 +7,8 @@
 //	POST /api/docs                — upload a .docx, mint a docId,
 //	                                return { docId, shareUrl }.
 //	GET  /api/docs/{docId}/download — stream the latest snapshot.
+//	GET  /api/docs/{docId}/history — revision-metadata log (JSON
+//	                                array: version, savedAt, size).
 //	GET  /doc/{docId}             — WebSocket; client joins the
 //	                                live co-edit session.
 //	GET  /health                  — liveness probe.
@@ -346,6 +348,50 @@ func downloadHandler(store *inline.Store) http.HandlerFunc {
 	}
 }
 
+// docIDFromHistoryPath extracts `{docId}` from
+// `/api/docs/{docId}/history`. Returns the empty string for any
+// other shape.
+func docIDFromHistoryPath(path string) string {
+	const prefix = "/api/docs/"
+	const suffix = "/history"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return ""
+	}
+	return path[len(prefix) : len(path)-len(suffix)]
+}
+
+// historyHandler returns the revision-metadata log for a doc as a
+// JSON array (creation first, newest last). Read-only, unrated —
+// the version-history panel may poll it. Content-revert to a past
+// revision is NOT supported here (needs the M2 serializer worker +
+// per-revision blob storage); this endpoint is metadata only.
+func historyHandler(store *inline.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSONError(w, http.StatusMethodNotAllowed, "method", "GET required")
+			return
+		}
+		docID := docIDFromHistoryPath(r.URL.Path)
+		if docID == "" {
+			writeJSONError(w, http.StatusBadRequest, "path", "expected /api/docs/{docId}/history")
+			return
+		}
+		revisions, err := store.History(docID)
+		if err != nil {
+			if errors.Is(err, host.ErrNotFound) {
+				writeJSONError(w, http.StatusNotFound, "not_found", "no such doc")
+				return
+			}
+			writeJSONError(w, http.StatusInternalServerError, "history", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		// revisions is never nil (History returns a non-nil slice for
+		// an existing doc), so this always serializes as a JSON array.
+		_ = json.NewEncoder(w).Encode(revisions)
+	}
+}
+
 // wsHandler upgrades to a WebSocket, registers the client with
 // the room manager, and runs a reader+writer pair until the
 // connection drops. Inbound binary frames are fanned to peers
@@ -580,11 +626,17 @@ func main() {
 	// peers re-joining a doc shouldn't get throttled).
 	docsActionHandler := downloadHandler(store)
 	docsRenameHandler := renameHandler(store)
+	docsHistoryHandler := historyHandler(store)
 	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/rename") {
 			// Apply the general bucket only for the rename path;
 			// the rest of the handler tree (download) stays unrated.
 			generalLimiter.Middleware(http.HandlerFunc(docsRenameHandler)).ServeHTTP(w, r)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/history") {
+			// Read-only revision-metadata list; unrated like download.
+			docsHistoryHandler(w, r)
 			return
 		}
 		docsActionHandler(w, r)

@@ -147,6 +147,104 @@ func TestDeleteRemoves(t *testing.T) {
 	}
 }
 
+func TestHistoryRecordsCreationRevision(t *testing.T) {
+	s := New()
+	docID, _ := s.Store("h.docx", []byte("v1"))
+
+	revs, err := s.History(docID)
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	if len(revs) != 1 {
+		t.Fatalf("after Store, History len = %d; want 1", len(revs))
+	}
+	if revs[0].Version != 1 {
+		t.Fatalf("creation revision Version = %d; want 1", revs[0].Version)
+	}
+	if revs[0].SizeBytes != 2 {
+		t.Fatalf("creation revision SizeBytes = %d; want 2", revs[0].SizeBytes)
+	}
+	if revs[0].SavedAt.IsZero() {
+		t.Fatalf("creation revision SavedAt is zero")
+	}
+}
+
+func TestHistoryAppendsOnSnapshot(t *testing.T) {
+	s := New()
+	docID, _ := s.Store("h.docx", []byte("v1"))
+	_ = s.Snapshot(context.Background(), docID, "", []byte("v22"))
+	_ = s.Snapshot(context.Background(), docID, "", []byte("v333"))
+
+	revs, err := s.History(docID)
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	if len(revs) != 3 {
+		t.Fatalf("after 2 snapshots, History len = %d; want 3", len(revs))
+	}
+	// Versions are monotonic 1,2,3; sizes 2,3,4.
+	for i, want := range []struct {
+		version uint64
+		size    int
+	}{{1, 2}, {2, 3}, {3, 4}} {
+		if revs[i].Version != want.version {
+			t.Fatalf("revs[%d].Version = %d; want %d", i, revs[i].Version, want.version)
+		}
+		if revs[i].SizeBytes != want.size {
+			t.Fatalf("revs[%d].SizeBytes = %d; want %d", i, revs[i].SizeBytes, want.size)
+		}
+	}
+}
+
+func TestHistoryCapsAtMaxRevisions(t *testing.T) {
+	s := New()
+	docID, _ := s.Store("h.docx", []byte("v1"))
+	// Push well past the cap; expect the tail retained.
+	for i := 0; i < maxRevisions+50; i++ {
+		_ = s.Snapshot(context.Background(), docID, "", []byte("x"))
+	}
+	revs, err := s.History(docID)
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	if len(revs) != maxRevisions {
+		t.Fatalf("History len = %d; want cap %d", len(revs), maxRevisions)
+	}
+	// The retained tail must be the most-recent versions; the last
+	// entry's version equals the total save count (1 create + N snaps).
+	totalSaves := uint64(1 + maxRevisions + 50)
+	if revs[len(revs)-1].Version != totalSaves {
+		t.Fatalf("newest revision Version = %d; want %d", revs[len(revs)-1].Version, totalSaves)
+	}
+	// And the oldest retained is totalSaves-maxRevisions+1.
+	if revs[0].Version != totalSaves-uint64(maxRevisions)+1 {
+		t.Fatalf("oldest retained Version = %d; want %d",
+			revs[0].Version, totalSaves-uint64(maxRevisions)+1)
+	}
+}
+
+func TestHistoryUnknownDocIsErrNotFound(t *testing.T) {
+	s := New()
+	_, err := s.History("nope")
+	if !errors.Is(err, host.ErrNotFound) {
+		t.Fatalf("History of unknown doc = %v; want ErrNotFound", err)
+	}
+}
+
+func TestHistoryReturnsCopy(t *testing.T) {
+	s := New()
+	docID, _ := s.Store("h.docx", []byte("v1"))
+	revs, _ := s.History(docID)
+	// Mutating the returned slice must not affect the store's log.
+	if len(revs) > 0 {
+		revs[0].Version = 9999
+	}
+	again, _ := s.History(docID)
+	if again[0].Version != 1 {
+		t.Fatalf("History returned a mutable view: got Version %d after caller mutation", again[0].Version)
+	}
+}
+
 func TestDocIDsAreUniqueAcrossStores(t *testing.T) {
 	// 1000 stores in parallel, expect 1000 unique docIDs.
 	s := New(WithMaxDocs(2000))

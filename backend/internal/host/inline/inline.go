@@ -44,7 +44,43 @@ type entry struct {
 	fileName     string
 	lastAccessed time.Time
 	version      uint64
+	// revisions is the append-only metadata log for this doc: one
+	// entry on creation (version 1) and one per Snapshot. Capped at
+	// maxRevisions (oldest dropped) so a long-lived doc with many
+	// save cycles doesn't grow unbounded. Powers GET
+	// /api/docs/{id}/history (Stream A1 of the parity pipeline).
+	//
+	// NOTE: this is metadata only — we do NOT retain the per-revision
+	// bytes (that needs the M2 serializer worker + per-revision blob
+	// storage). So the history endpoint can show "saved at <when>,
+	// <size>" but content-revert to an arbitrary past revision is a
+	// future capability. The editor's local useEditHistory still
+	// owns in-session undo/revert.
+	revisions []RevisionMeta
 }
+
+// RevisionMeta is one entry in a doc's save history. Exported so the
+// gateway's history handler can serialize it directly.
+type RevisionMeta struct {
+	// Version is the monotonic save counter (matches entry.version
+	// at the time the revision was recorded).
+	Version uint64 `json:"version"`
+	// SavedAt is when this revision was recorded (doc creation for
+	// version 1, Snapshot time thereafter).
+	SavedAt time.Time `json:"savedAt"`
+	// SizeBytes is the .docx byte length at this revision. Lets the
+	// UI show a rough "how big was the doc then" without fetching.
+	SizeBytes int `json:"sizeBytes"`
+	// Author is the display name of whoever triggered the save, when
+	// known. The inline (anonymous) host leaves this empty; a future
+	// authenticated host populates it. JSON-omitted when empty so the
+	// client can fall back to a generic "Saved" label.
+	Author string `json:"author,omitempty"`
+}
+
+// maxRevisions caps the per-doc revision log. 100 save cycles is far
+// past any realistic share-link session; the oldest entries roll off.
+const maxRevisions = 100
 
 // New returns an empty Store with the default capacity ceiling
 // (1000 documents). Pass `WithMaxDocs(n)` to change it.
@@ -81,14 +117,18 @@ func (s *Store) Store(fileName string, contents []byte) (string, error) {
 		return "", fmt.Errorf("inline: mint docId: %w", err)
 	}
 
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.evictIfNeededLocked()
 	s.docs[docID] = &entry{
 		contents:     append([]byte(nil), contents...), // defensive copy
 		fileName:     fileName,
-		lastAccessed: time.Now(),
+		lastAccessed: now,
 		version:      1,
+		revisions: []RevisionMeta{
+			{Version: 1, SavedAt: now, SizeBytes: len(contents)},
+		},
 	}
 	return docID, nil
 }
@@ -117,6 +157,7 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	if len(contents) == 0 {
 		return errors.New("inline: empty snapshot")
 	}
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.docs[docID]
@@ -125,8 +166,35 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	}
 	e.contents = append([]byte(nil), contents...)
 	e.version++
-	e.lastAccessed = time.Now()
+	e.lastAccessed = now
+	e.revisions = append(e.revisions, RevisionMeta{
+		Version:   e.version,
+		SavedAt:   now,
+		SizeBytes: len(contents),
+	})
+	// Roll off the oldest revisions past the cap. Keep the tail
+	// (most-recent maxRevisions) so the history always shows the
+	// latest saves.
+	if len(e.revisions) > maxRevisions {
+		e.revisions = e.revisions[len(e.revisions)-maxRevisions:]
+	}
 	return nil
+}
+
+// History returns a copy of the revision-metadata log for docID,
+// newest-last (creation first). Returns host.ErrNotFound for an
+// unknown doc. The slice is a copy — callers can't mutate the
+// store's internal log.
+func (s *Store) History(docID string) ([]RevisionMeta, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e, ok := s.docs[docID]
+	if !ok {
+		return nil, host.ErrNotFound
+	}
+	out := make([]RevisionMeta, len(e.revisions))
+	copy(out, e.revisions)
+	return out, nil
 }
 
 // Rename updates the stored fileName so a subsequent /download

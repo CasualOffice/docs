@@ -71,25 +71,37 @@ Goal: every Google Docs right-rail panel exists, opens from the same
 place (right-edge icon strip), uses our existing `UnifiedSidebar` shell
 where the item-anchored model fits.
 
-### A1 — Version history → cross-peer entries 🟡
+### A1 — Version history → cross-peer entries 🟡 (foundation shipped)
 
 Today: `VersionHistoryPanel` reads `useEditHistory`, captures local
-transactions only. Reverting works.
+transactions only. Reverting works locally.
 
-Gap: collab sessions need entries for *peer* edits, attributed to the
-peer's presence name. Source of truth is the Yjs op-log on the backend;
-the editor never sees the full peer stream as discrete edits.
+**Shipped (backend foundation):**
+- `inline.Store` now keeps a per-doc revision-metadata log
+  (`RevisionMeta`: version, savedAt, sizeBytes, optional author),
+  appended on creation + every Snapshot, capped at 100 (oldest
+  rolls off). `Store.History(docID)` returns a defensive copy.
+- `GET /api/docs/{id}/history` serves the log as a JSON array.
+  Read-only, unrated. 404 on unknown doc, 405 on non-GET.
+- Tests: 5 inline-store + 4 handler; all race-clean.
 
-Plan:
-1. Backend snapshot worker writes per-revision metadata (author, ts,
-   coalesced-edit-count, summary) alongside the .docx snapshot at room
-   drain.
-2. New `GET /api/docs/{id}/history` returns the metadata list.
-3. `VersionHistoryPanel` gains a `mode: 'local' | 'collab'` prop; collab
-   mode fetches from the gateway and falls back to local in offline
-   mode.
-4. Revert in collab mode = checkout-then-apply, not Yjs-undo (which only
-   undoes your own ops).
+**Still deferred (blocked on M2 serializer worker):**
+- Per-revision *content* storage — the inline store keeps only the
+  latest bytes, so content-revert to an arbitrary past revision
+  can't work until the Y.Doc → .docx worker produces + stores
+  per-revision blobs. The history endpoint is metadata-only by
+  design.
+- Author attribution — inline is anonymous; `RevisionMeta.Author`
+  is wired but unset until an authenticated host populates it.
+- `VersionHistoryPanel` collab mode — will fetch the endpoint and
+  render a read-only server timeline once there's content behind
+  each revision worth reverting to. Local `useEditHistory` revert
+  stays the in-session path.
+
+Why staged this way: building collab revert UI on top of a
+snapshot pipeline that doesn't retain per-revision content would
+be a hollow feature. The metadata log + endpoint are the real,
+testable substrate M2 builds on.
 
 ### A2 — Headings outline → click-to-navigate ✅
 
