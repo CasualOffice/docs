@@ -34,9 +34,7 @@ describe('renderCommentText', () => {
   });
 
   test('chips a single @-mention at the start', () => {
-    expect(flatten(renderCommentText('@Alice please look', ['Alice']))).toBe(
-      '[Alice] please look'
-    );
+    expect(flatten(renderCommentText('@Alice please look', ['Alice']))).toBe('[Alice] please look');
   });
 
   test('chips a mention mid-text after whitespace', () => {

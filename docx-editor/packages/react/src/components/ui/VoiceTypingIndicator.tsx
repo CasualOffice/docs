@@ -103,9 +103,7 @@ export function VoiceTypingIndicator({
         <MaterialSymbol name="mic" size={16} />
       </span>
       <span style={interimStyle} aria-label={t('voiceTyping.listening')}>
-        {error
-          ? t('voiceTyping.error', { error })
-          : interimText || t('voiceTyping.listeningHint')}
+        {error ? t('voiceTyping.error', { error }) : interimText || t('voiceTyping.listeningHint')}
       </span>
       <button
         type="button"

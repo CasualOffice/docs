@@ -104,10 +104,7 @@ export const DocumentOutline = React.memo(function DocumentOutline({
       const nextCollapsed = new Set(collapsed);
       // Expand every ancestor of this index.
       for (let i = index - 1; i >= 0; i--) {
-        if (
-          nextCollapsed.has(i) &&
-          (descendantsByIndex[i] ?? []).includes(index)
-        ) {
+        if (nextCollapsed.has(i) && (descendantsByIndex[i] ?? []).includes(index)) {
           nextCollapsed.delete(i);
         }
       }
@@ -140,10 +137,11 @@ export const DocumentOutline = React.memo(function DocumentOutline({
     // edits should preserve the user's expanded/collapsed state.
     const prevHeadingsCount = lastResetKeyRef.current.split('|').length;
     const currHeadingsCount = headings.length;
-    const ratio = currHeadingsCount === 0
-      ? 0
-      : Math.min(prevHeadingsCount, currHeadingsCount) /
-        Math.max(prevHeadingsCount, currHeadingsCount);
+    const ratio =
+      currHeadingsCount === 0
+        ? 0
+        : Math.min(prevHeadingsCount, currHeadingsCount) /
+          Math.max(prevHeadingsCount, currHeadingsCount);
     if (ratio < 0.5) {
       setCollapsed(new Set());
       lastResetKeyRef.current = headingsKey;
@@ -256,7 +254,9 @@ export const DocumentOutline = React.memo(function DocumentOutline({
                   <button
                     type="button"
                     onClick={() => toggleCollapse(index)}
-                    aria-label={isCollapsed ? t('documentOutline.expand') : t('documentOutline.collapse')}
+                    aria-label={
+                      isCollapsed ? t('documentOutline.expand') : t('documentOutline.collapse')
+                    }
                     aria-expanded={!isCollapsed}
                     style={{
                       width: 16,
@@ -288,9 +288,7 @@ export const DocumentOutline = React.memo(function DocumentOutline({
                     textAlign: 'left',
                     background: isActive ? 'var(--doc-primary-light)' : 'none',
                     border: 'none',
-                    borderLeft: isActive
-                      ? '3px solid var(--doc-primary)'
-                      : '3px solid transparent',
+                    borderLeft: isActive ? '3px solid var(--doc-primary)' : '3px solid transparent',
                     cursor: 'pointer',
                     padding: '5px 12px 5px 9px',
                     fontSize: 13,

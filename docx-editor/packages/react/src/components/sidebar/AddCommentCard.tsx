@@ -84,15 +84,17 @@ export function AddCommentCard({
   const suggestions = useMemo(() => {
     if (!mention) return [] as string[];
     const q = mention.query;
-    return knownAuthors
-      .filter((name) => name && name.toLowerCase().includes(q))
-      // Names that start with the query rank above names that just contain it.
-      .sort((a, b) => {
-        const ap = a.toLowerCase().startsWith(q) ? 0 : 1;
-        const bp = b.toLowerCase().startsWith(q) ? 0 : 1;
-        return ap - bp;
-      })
-      .slice(0, 8);
+    return (
+      knownAuthors
+        .filter((name) => name && name.toLowerCase().includes(q))
+        // Names that start with the query rank above names that just contain it.
+        .sort((a, b) => {
+          const ap = a.toLowerCase().startsWith(q) ? 0 : 1;
+          const bp = b.toLowerCase().startsWith(q) ? 0 : 1;
+          return ap - bp;
+        })
+        .slice(0, 8)
+    );
   }, [mention, knownAuthors]);
 
   // Reset the highlighted suggestion whenever the candidate list flips.

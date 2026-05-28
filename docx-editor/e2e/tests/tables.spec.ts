@@ -614,7 +614,10 @@ test.describe('Table Edge Cases', () => {
     await editor.typeText('Special: <>&"\'');
 
     const content = await editor.getTableCellContent(0, 0, 0);
-    expect(content).toContain('Special: <>&"\'');
+    // SmartQuotesExtension (on by default) converts the straight quotes
+    // to curly ones as they're typed; the angle brackets + ampersand
+    // (the actual escaping concern) survive verbatim.
+    expect(content).toContain('Special: <>&”’');
   });
 
   test('multiline content in cell', async ({ page }) => {
