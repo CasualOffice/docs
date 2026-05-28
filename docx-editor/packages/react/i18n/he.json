@@ -684,7 +684,9 @@
     "closeAriaLabel": "סגור מתווה",
     "closeTitle": "סגור מתווה",
     "title": "מתווה",
-    "noHeadings": "לא נמצאו כותרות. הוסף כותרות למסמך כדי לראות אותן כאן."
+    "noHeadings": "לא נמצאו כותרות. הוסף כותרות למסמך כדי לראות אותן כאן.",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "סרגל הערות"

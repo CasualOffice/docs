@@ -91,15 +91,19 @@ Plan:
 4. Revert in collab mode = checkout-then-apply, not Yjs-undo (which only
    undoes your own ops).
 
-### A2 — Headings outline → click-to-navigate ✅ refine
+### A2 — Headings outline → click-to-navigate ✅
 
-`DocumentOutline` exists. Verify it:
-- Updates live as headings change.
-- Highlights the heading whose section the cursor is in.
-- Scrolls into view + selects on click.
-- Collapses sub-headings (Docs-style chevrons).
-
-If any of those four don't work, that's a P1 polish item.
+All four behaviors now present:
+- Live updates: parent re-supplies headings on every PM change.
+- Active highlight: blue-tinted background + left bar + bold weight
+  on the heading whose section the cursor is in. Computed in
+  DocxEditor from the live selection + heading positions, passed
+  as `activeIndex` prop.
+- Click → `scrollToPosition` + `setSelection` + focus (unchanged).
+- Collapsible sub-headings: chevron next to each parent, click
+  toggles. Hidden-by-collapse rows are filtered out of render.
+  Clicking a heading whose ancestor is collapsed auto-expands
+  the ancestor first so the active state stays visible.
 
 ### A3 — Explore / Research panel ❌
 

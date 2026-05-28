@@ -684,7 +684,9 @@
     "closeAriaLabel": "关闭大纲",
     "closeTitle": "关闭大纲",
     "title": "大纲",
-    "noHeadings": "未找到标题。请在文档中添加标题以在此处显示。"
+    "noHeadings": "未找到标题。请在文档中添加标题以在此处显示。",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "批注侧边栏"

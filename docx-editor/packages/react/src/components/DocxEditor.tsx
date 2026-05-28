@@ -1570,6 +1570,21 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // (the source of truth, including remote ySync updates) rather than a debounced
   // copy in React state.
   const [pmState, setPmState] = useState<PMEditorState | null>(null);
+  // Index of the heading whose section the cursor is currently in.
+  // Recomputed from the live PM selection + the heading list whenever
+  // either changes. The outline panel uses this to render the active-row
+  // highlight (A2 of the parity pipeline). Declared here (after pmState)
+  // because both inputs need to be in scope.
+  const activeOutlineIndex = useMemo(() => {
+    if (outlineHeadings.length === 0 || !pmState) return null;
+    const cursor = pmState.selection.from;
+    let active: number | null = null;
+    for (let i = 0; i < outlineHeadings.length; i++) {
+      if (outlineHeadings[i].pmPos <= cursor) active = i;
+      else break;
+    }
+    return active;
+  }, [outlineHeadings, pmState]);
   const { entries: trackedChanges, commentToRevision } = useTrackedChanges(pmState);
   const [anchorPositions, setAnchorPositions] =
     useState<Map<string, number>>(EMPTY_ANCHOR_POSITIONS);
@@ -6681,6 +6696,7 @@ body { background: white; }
                 {showOutline && (
                   <DocumentOutline
                     headings={outlineHeadings}
+                    activeIndex={activeOutlineIndex}
                     onHeadingClick={handleHeadingInfoClick}
                     onClose={() => setShowOutline(false)}
                     topOffset={toolbarHeight}

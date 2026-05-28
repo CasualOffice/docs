@@ -684,7 +684,9 @@
     "closeAriaLabel": "Zamknij konspekt",
     "closeTitle": "Zamknij konspekt",
     "title": "Konspekt",
-    "noHeadings": "Nie znaleziono nagłówków. Dodaj nagłówki do dokumentu, aby wyświetlić je tutaj."
+    "noHeadings": "Nie znaleziono nagłówków. Dodaj nagłówki do dokumentu, aby wyświetlić je tutaj.",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "Panel adnotacji"

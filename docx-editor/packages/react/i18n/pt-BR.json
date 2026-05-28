@@ -684,7 +684,9 @@
     "closeAriaLabel": "Fechar estrutura",
     "closeTitle": "Fechar estrutura",
     "title": "Estrutura",
-    "noHeadings": "Nenhum cabeçalho encontrado. Adicione cabeçalhos ao seu documento para vê-los aqui."
+    "noHeadings": "Nenhum cabeçalho encontrado. Adicione cabeçalhos ao seu documento para vê-los aqui.",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "Barra lateral de anotações"
