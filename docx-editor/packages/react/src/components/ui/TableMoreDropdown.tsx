@@ -315,6 +315,9 @@ export function TableMoreDropdown({
           {menuItem('autoFit', 'fit_width', t('tableAdvanced.autoFit'), {
             type: 'autoFitContents',
           })}
+          {menuItem('autoFitWindow', 'fit_width', t('tableAdvanced.autoFitWindow'), {
+            type: 'autoFitWindow',
+          })}
           {menuItem(
             'sortAsc',
             'keyboard_arrow_up',

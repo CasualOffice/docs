@@ -800,7 +800,8 @@
     "tableOptions": "Opcje tabeli",
     "distributeRows": null,
     "sortAscending": null,
-    "sortDescending": null
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "Przekształcanie",

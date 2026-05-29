@@ -800,7 +800,8 @@
     "tableOptions": "表格选项",
     "distributeRows": null,
     "sortAscending": null,
-    "sortDescending": null
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "变换",

@@ -307,6 +307,7 @@ import {
   distributeColumns,
   distributeRows,
   autoFitContents,
+  autoFitWindow,
   sortTable,
   setTableProperties,
   applyTableStyle,
@@ -3550,6 +3551,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               sortTable(action.direction)(view.state, view.dispatch);
             } else if (action.type === 'autoFitContents') {
               autoFitContents()(view.state, view.dispatch);
+            } else if (action.type === 'autoFitWindow') {
+              autoFitWindow()(view.state, view.dispatch);
             } else if (action.type === 'openTableProperties') {
               setTablePropsOpen(true);
             } else if (action.type === 'tableProperties') {

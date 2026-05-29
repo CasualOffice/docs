@@ -240,11 +240,22 @@ control still lives in `BordersAndShadingDialog`.
 
 Word feature; Docs partially. Useful for paste-from-CSV flows. Defer.
 
-### B9 — Auto-fit (contents / window) ❌
+### B9 — Auto-fit (contents / window) ✅
 
-Word feature. Sets column widths from cell contents or page width on
-demand. Implementation involves layout-painter measuring rendered text.
-Defer until a user actually asks.
+Both modes ship in the table More menu, alongside Distribute rows /
+columns:
+
+- **Auto-fit to contents** (`autoFitContents`): clears explicit widths
+  so the browser auto-sizes columns to their content.
+- **Auto-fit to window** (`autoFitWindow`): forces all columns to equal
+  width summing to the page content area (Word's default 9360 twips
+  for Letter + 1″ margins). Section-aware width sourcing can come
+  later.
+
+Both mirror the `distributeColumns` plumbing pattern (registered command
+→ wrapper → barrel → `TableAction` → `DocxEditor` dispatch →
+`TableMoreDropdown` item). e2e verifies columns become equal-width after
+applying Auto-fit to window.
 
 ---
 

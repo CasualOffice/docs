@@ -159,6 +159,7 @@ export {
   distributeColumns,
   distributeRows,
   autoFitContents,
+  autoFitWindow,
   sortTable,
   setTableProperties,
   applyTableStyle,

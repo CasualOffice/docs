@@ -803,7 +803,8 @@
     "tableOptions": "Tablo seçenekleri",
     "distributeRows": null,
     "sortAscending": null,
-    "sortDescending": null
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "Dönüştür",

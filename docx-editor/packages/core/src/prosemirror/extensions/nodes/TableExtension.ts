@@ -1983,6 +1983,65 @@ export const TablePluginExtension = createExtension({
     }
 
     /**
+     * Auto-fit the table to the page window (B9). Force all columns to
+     * equal width summing to the page's content width — companion to
+     * autoFitContents, which clears widths and lets the browser auto-size.
+     * For v0 we use Word's default Letter+1"-margins content area
+     * (9360 twips); section-aware width sourcing can come later.
+     */
+    function autoFitWindow(): Command {
+      return (state, dispatch) => {
+        const context = getTableContext(state);
+        if (
+          !context.isInTable ||
+          context.tablePos === undefined ||
+          !context.table ||
+          !context.columnCount
+        )
+          return false;
+
+        if (dispatch) {
+          let tr = state.tr;
+          const table = context.table;
+          const colCount = context.columnCount;
+          const CONTENT_WIDTH_TWIPS = 9360;
+          const colWidth = Math.floor(CONTENT_WIDTH_TWIPS / colCount);
+
+          let rowPos = context.tablePos + 1;
+          table.forEach((row) => {
+            if (row.type.name === 'tableRow') {
+              let cellPos = rowPos + 1;
+              row.forEach((cell) => {
+                if (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader') {
+                  tr = tr.setNodeMarkup(cellPos, undefined, {
+                    ...cell.attrs,
+                    width: colWidth,
+                    widthType: 'dxa',
+                    colwidth: null,
+                  });
+                }
+                cellPos += cell.nodeSize;
+              });
+            }
+            rowPos += row.nodeSize;
+          });
+
+          const newColumnWidths = Array(colCount).fill(colWidth);
+          tr = tr.setNodeMarkup(context.tablePos, undefined, {
+            ...table.attrs,
+            columnWidths: newColumnWidths,
+            width: CONTENT_WIDTH_TWIPS,
+            widthType: 'dxa',
+          });
+
+          dispatch(tr.scrollIntoView());
+        }
+
+        return true;
+      };
+    }
+
+    /**
      * Sort the table's data rows by the text of the cell in the current
      * column. Leading header rows (isHeader) stay pinned at the top.
      * Pure reorder of tableRow nodes — cell structure and the serializer
@@ -2552,6 +2611,7 @@ export const TablePluginExtension = createExtension({
         distributeColumns: () => distributeColumns(),
         distributeRows: () => distributeRows(),
         autoFitContents: () => autoFitContents(),
+        autoFitWindow: () => autoFitWindow(),
         sortTable: (direction: 'asc' | 'desc') => sortTable(direction),
         setTableProperties: (props: {
           width?: number | null;

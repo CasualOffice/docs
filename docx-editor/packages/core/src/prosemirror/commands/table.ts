@@ -194,6 +194,13 @@ export function autoFitContents(): (
 ) => boolean {
   return cmds.autoFitContents();
 }
+// Force columns to equal width summing to the page content area (B9).
+export function autoFitWindow(): (
+  state: EditorState,
+  dispatch?: (tr: Transaction) => void
+) => boolean {
+  return cmds.autoFitWindow();
+}
 // Sort the current table's data rows by the cursor column (header rows
 // stay pinned). Reorder only — serializer untouched.
 export function sortTable(
