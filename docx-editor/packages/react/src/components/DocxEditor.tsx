@@ -4758,6 +4758,30 @@ body { background: white; }
     }
   }, [handleSave, documentName, markDirty]);
 
+  // File → Make a copy: download the current content as "Copy of <name>.docx".
+  // The original document is unchanged, so we don't touch the dirty flag.
+  const handleMakeCopy = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const buffer = await handleSave();
+      if (!buffer) return;
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
+      const fileName = `Copy of ${base}.docx`;
+      a.download = fileName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      toast.success(`Downloaded ${fileName}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [handleSave, documentName]);
+
   const handleExportAs = useCallback(
     async (target: 'odt' | 'md' | 'txt') => {
       const label = target === 'odt' ? 'ODT' : target === 'md' ? 'Markdown' : 'Plain Text';
@@ -6186,6 +6210,7 @@ body { background: white; }
                       onPrint={handleDirectPrint}
                       onOpen={handleOpenDocument}
                       onSave={handleDownloadDocument}
+                      onMakeCopy={handleMakeCopy}
                       onNew={onNew}
                       showZoomControl={showZoomControl}
                       zoom={state.zoom}

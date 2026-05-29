@@ -31,6 +31,7 @@
     "openShortcut": "Ctrl+O",
     "save": "Save",
     "saveShortcut": "Ctrl+S",
+    "makeCopy": "Make a copy",
     "print": "Print",
     "printShortcut": "Ctrl+P",
     "pageSetup": "Page setup",

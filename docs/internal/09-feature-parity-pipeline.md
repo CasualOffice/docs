@@ -439,10 +439,14 @@ M key on macOS). Tested in `comments-sidebar.spec.ts`.
 
 ## Stream F — File / Edit / View / Help menus
 
-### F1 — Make a copy ❌
+### F1 — Make a copy ✅
 
-File → Make a copy. For us (no per-user account) = "download .docx with
-filename `Copy of X.docx`". Cheap.
+File → "Make a copy" (`content_copy` icon, between Save and Print) downloads
+the current content as `Copy of {name}.docx` via `handleMakeCopy` (reuses the
+save/serialize path; leaves the doc's dirty flag untouched since the original
+is unchanged). Wired through `onMakeCopy` on `ToolbarProps` → `MenuBar`.
+Tested in `file-make-a-copy.spec.ts` (item visible + download filename),
+visually verified.
 
 ### F2 — Email as attachment ❌
 

@@ -68,7 +68,8 @@
     "horizontalLine": null,
     "specialCharacters": null,
     "keyboardShortcuts": null,
-    "searchMenus": null
+    "searchMenus": null,
+    "makeCopy": null
   },
   "formattingBar": {
     "groups": {

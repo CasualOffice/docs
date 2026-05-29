@@ -218,6 +218,7 @@ export function MenuBar() {
     onNew,
     onOpen,
     onSave,
+    onMakeCopy,
     onPageSetup,
     onFileProperties,
     onExportPdf,
@@ -330,7 +331,17 @@ export function MenuBar() {
                     } as MenuEntry,
                   ]
                 : []),
-              ...((onOpen || onSave) && (hasPrintOrPageSetup || onFileProperties || hasExport)
+              ...(onMakeCopy
+                ? [
+                    {
+                      icon: 'content_copy',
+                      label: t('toolbar.makeCopy'),
+                      onClick: onMakeCopy,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...((onOpen || onSave || onMakeCopy) &&
+              (hasPrintOrPageSetup || onFileProperties || hasExport)
                 ? [{ type: 'separator' as const } as MenuEntry]
                 : []),
               ...(showPrintButton && onPrint
