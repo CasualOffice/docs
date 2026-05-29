@@ -164,6 +164,9 @@ const WatermarkDialog = lazy(() =>
 const AccessibilityDialog = lazy(() =>
   import('./dialogs/AccessibilityDialog').then((m) => ({ default: m.AccessibilityDialog }))
 );
+const BuildingBlocksDialog = lazy(() =>
+  import('./dialogs/BuildingBlocksDialog').then((m) => ({ default: m.BuildingBlocksDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -343,6 +346,17 @@ import { PagedEditor, type PagedEditorRef, DEFAULT_PAGE_WIDTH } from '../paged-e
 
 // Plugin API types
 import type { RenderedDomContext } from '../plugin-api/types';
+
+// Building blocks (C6) — saved reusable snippets the user inserts via the
+// Insert menu. Backed by localStorage; PM Slice JSON round-trip.
+import { Slice } from 'prosemirror-model';
+import {
+  loadBuildingBlocks,
+  addBuildingBlock,
+  removeBuildingBlock,
+  previewFromText,
+  type BuildingBlock,
+} from '../utils/buildingBlocks';
 
 // ============================================================================
 // TYPES
@@ -2128,6 +2142,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
   const [showAccessibility, setShowAccessibility] = useState(false);
   const [accessibilityIssues, setAccessibilityIssues] = useState<AccessibilityIssue[]>([]);
+  // Building blocks (C6): persisted snippet list + a snapshot of whatever
+  // the editor selection contained at the moment the dialog opened, so
+  // saving works even after focus has shifted to the dialog input.
+  const [showBuildingBlocks, setShowBuildingBlocks] = useState(false);
+  const [buildingBlocks, setBuildingBlocks] = useState<BuildingBlock[]>(() => loadBuildingBlocks());
+  const [pendingBuildingBlock, setPendingBuildingBlock] = useState<{
+    content: unknown;
+    preview: string;
+  } | null>(null);
   // Editor preferences — smart quotes / autocorrect runtime toggles.
   // Lazy-init from localStorage and hydrate the core singleton so the
   // smart-quotes/autocorrect plugins see the persisted values on the very
@@ -4532,6 +4555,66 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     view.focus();
   }, []);
 
+  // Building blocks (C6) — capture the active editor's selection content
+  // at open time so the dialog can save it later without depending on the
+  // selection still being live (focus moves to the dialog input).
+  const handleOpenBuildingBlocks = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view && !view.state.selection.empty) {
+      const { from, to } = view.state.selection;
+      const slice = view.state.selection.content();
+      const text = view.state.doc.textBetween(from, to, ' ', ' ');
+      if (slice.content.size > 0) {
+        setPendingBuildingBlock({
+          content: slice.toJSON(),
+          preview: previewFromText(text) || '(non-text content)',
+        });
+      } else {
+        setPendingBuildingBlock(null);
+      }
+    } else {
+      setPendingBuildingBlock(null);
+    }
+    setShowBuildingBlocks(true);
+  }, [getActiveEditorView]);
+
+  const handleSaveBuildingBlock = useCallback(
+    (name: string) => {
+      if (!pendingBuildingBlock) return;
+      const next = addBuildingBlock({
+        name,
+        content: pendingBuildingBlock.content,
+        preview: pendingBuildingBlock.preview,
+      });
+      setBuildingBlocks(next);
+      setPendingBuildingBlock(null);
+    },
+    [pendingBuildingBlock]
+  );
+
+  const handleInsertBuildingBlock = useCallback(
+    (id: string) => {
+      const block = buildingBlocks.find((b) => b.id === id);
+      if (!block) return;
+      const view = getActiveEditorView();
+      if (!view) return;
+      try {
+        const slice = Slice.fromJSON(view.state.schema, block.content as never);
+        view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
+        view.focus();
+      } catch {
+        // Schema drift — block was saved against a different schema or the
+        // JSON is corrupt. Silently swallow; the row remains in the list.
+      }
+      setShowBuildingBlocks(false);
+    },
+    [buildingBlocks, getActiveEditorView]
+  );
+
+  const handleDeleteBuildingBlock = useCallback((id: string) => {
+    setBuildingBlocks(removeBuildingBlock(id));
+  }, []);
+
   // Watermark apply/clear handler (C5) — writes into the doc-level
   // body.watermark slot so the painter draws the overlay on the next
   // render. `undefined` clears it. Round-trip to header XML lands in a
@@ -6365,6 +6448,7 @@ body { background: white; }
                       onOpenPreferences={() => setShowPreferences(true)}
                       onOpenWatermark={() => setShowWatermarkDialog(true)}
                       onOpenAccessibility={handleOpenAccessibility}
+                      onOpenBuildingBlocks={handleOpenBuildingBlocks}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}
@@ -7268,6 +7352,17 @@ body { background: white; }
                   onClose={() => setShowAccessibility(false)}
                   issues={accessibilityIssues}
                   onGoto={handleAccessibilityGoto}
+                />
+              )}
+              {showBuildingBlocks && (
+                <BuildingBlocksDialog
+                  isOpen={showBuildingBlocks}
+                  onClose={() => setShowBuildingBlocks(false)}
+                  blocks={buildingBlocks}
+                  pendingPreview={pendingBuildingBlock?.preview ?? null}
+                  onSaveSelection={handleSaveBuildingBlock}
+                  onInsert={handleInsertBuildingBlock}
+                  onDelete={handleDeleteBuildingBlock}
                 />
               )}
               {showCommandPalette && (

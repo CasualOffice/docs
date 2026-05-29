@@ -232,6 +232,7 @@ export function MenuBar() {
     onOpenPreferences,
     onOpenWatermark,
     onOpenAccessibility,
+    onOpenBuildingBlocks,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -791,6 +792,14 @@ export function MenuBar() {
               onClick: onOpenInsertSymbol,
               disabled: !onOpenInsertSymbol,
             },
+            ...(onOpenBuildingBlocks
+              ? [
+                  {
+                    label: t('toolbar.buildingBlocks'),
+                    onClick: onOpenBuildingBlocks,
+                  } as MenuEntry,
+                ]
+              : []),
             ...(onOpenWatermark
               ? [
                   { type: 'separator' as const } as MenuEntry,

@@ -313,10 +313,18 @@ rendered inside `renderPage`. e2e in `watermark.spec.ts`.
 has many watermark shape variants; a focused round-trip pass needs its
 own fixture set. Image watermarks are deferred entirely.
 
-### C6 — Building blocks / Quick parts ❌
+### C6 — Building blocks / Quick parts ✅
 
-Word feature; Docs equivalent is templates. We have a template gallery
-on the homepage. Building-blocks-inside-the-document is deferrable.
+Insert → Building blocks dialog (`BuildingBlocksDialog`) saves the
+current PM selection as a named snippet and re-inserts it later.
+Storage is `localStorage` (`packages/react/src/utils/buildingBlocks.ts`)
+keyed by `docx-editor-building-blocks`; content round-trips arbitrary
+schema content via `Slice.toJSON` / `Slice.fromJSON`, not just plain
+text. The dialog has two regions — a save-current-selection form
+(disabled when the editor selection is empty) and the saved-blocks list
+with per-row Insert / Delete. The homepage template gallery still
+serves whole-document templates; Building blocks complements it for
+in-document snippets.
 
 ### C7 — Page break / column break / section break menu ✅ (column break deferred)
 

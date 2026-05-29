@@ -347,6 +347,8 @@ export interface ToolbarProps {
   onOpenWatermark?: () => void;
   /** Tools → Accessibility — opens the accessibility-check dialog. */
   onOpenAccessibility?: () => void;
+  /** Insert → Building blocks — opens the saved-snippets dialog (Quick Parts). */
+  onOpenBuildingBlocks?: () => void;
   /** Theme picker — host sets colorTheme. `'auto'` follows OS preference. */
   onSetColorTheme?: (theme: 'light' | 'dark' | 'auto') => void;
   /** Current colorTheme setting; drives the title-bar toggle's icon. */
