@@ -286,11 +286,21 @@ flows.
 Docs has charts backed by Sheets. Without Sheets integration this is
 just "insert image" with extra steps. Defer.
 
-### C5 — Watermark ❌
+### C5 — Watermark 🟡 (dialog + rendering shipped; round-trip pending)
 
-Word has it; Docs doesn't surface it well but supports import.
-Schema-level work (header XML). Cheap to add: dialog → text/image →
-write into all section headers.
+Insert → "Watermark…" opens a minimal dialog (text input + Apply /
+Remove / Cancel). Apply writes into a new `DocumentBody.watermark` slot;
+the painter draws a rotated overlay (gray, opacity 0.5, rotation -45°)
+behind the page's flow content on every page. `pointer-events: none`
+and `user-select: none` so it never blocks clicks or lands in
+selections. Mirrors the page-color flow (commit `c186c4a`): doc-level
+attribute promoted by `PagedEditor` into `RenderPageOptions`, then
+rendered inside `renderPage`. e2e in `watermark.spec.ts`.
+
+**Pending:** round-trip — parse VML watermarks (`<v:shape>` /
+`<v:textpath>`) from default-header XML on load, write VML on save. Word
+has many watermark shape variants; a focused round-trip pass needs its
+own fixture set. Image watermarks are deferred entirely.
 
 ### C6 — Building blocks / Quick parts ❌
 
