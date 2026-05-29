@@ -76,7 +76,8 @@
     "accessibility": "Accessibility…",
     "buildingBlocks": "Building blocks…",
     "showFormattingMarks": "Show non-printing characters",
-    "wordCount": "Word count"
+    "wordCount": "Word count",
+    "convertToTable": "Convert selection to table"
   },
   "suggestingBanner": {
     "title": "Suggesting",

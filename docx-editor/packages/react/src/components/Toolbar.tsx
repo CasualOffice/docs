@@ -349,6 +349,8 @@ export interface ToolbarProps {
   onOpenAccessibility?: () => void;
   /** Insert → Building blocks — opens the saved-snippets dialog (Quick Parts). */
   onOpenBuildingBlocks?: () => void;
+  /** Insert → Convert selection to table — auto-detects delimiter (B8). */
+  onConvertSelectionToTable?: () => void;
   /** View → Show formatting marks — toggles ¶ / → / ↵ overlay (F6). */
   onToggleShowFormattingMarks?: () => void;
   /** Current state of the formatting-marks toggle — drives the checkmark. */

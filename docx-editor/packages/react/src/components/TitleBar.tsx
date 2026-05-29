@@ -233,6 +233,7 @@ export function MenuBar() {
     onOpenWatermark,
     onOpenAccessibility,
     onOpenBuildingBlocks,
+    onConvertSelectionToTable,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -807,6 +808,14 @@ export function MenuBar() {
                   {
                     label: t('toolbar.buildingBlocks'),
                     onClick: onOpenBuildingBlocks,
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onConvertSelectionToTable
+              ? [
+                  {
+                    label: t('toolbar.convertToTable'),
+                    onClick: onConvertSelectionToTable,
                   } as MenuEntry,
                 ]
               : []),

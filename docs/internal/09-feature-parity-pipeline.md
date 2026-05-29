@@ -236,9 +236,17 @@ cursor is in a table. Dispatches `cellFillColor` → `setCellFillColor`,
 and reflects the current cell's `cellBackgroundColor`. The fuller
 control still lives in `BordersAndShadingDialog`.
 
-### B8 — Convert text → table / table → text ❌
+### B8 — Convert text → table / table → text 🟡 (text→table shipped)
 
-Word feature; Docs partially. Useful for paste-from-CSV flows. Defer.
+Insert → "Convert selection to table" turns the currently-selected
+paragraphs into a table. Delimiter is auto-detected: tab → comma →
+"one cell per paragraph", which covers the paste-from-CSV headline
+case without forcing a dialog. Short rows are zero-padded so the
+table stays rectangular; trailing/leading blank paragraphs are
+stripped. A trailing empty paragraph is inserted after the table
+so the user can keep typing past it. Reverse direction (table → text)
+deferred — it lands cleanly on top of the same utility when needed.
+e2e in `convert-to-table.spec.ts`.
 
 ### B9 — Auto-fit (contents / window) ✅
 
