@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
 import { MaterialSymbol } from './ui/Icons';
+import { PanelState } from './ui/PanelState';
 import { Tooltip } from './ui/Tooltip';
 import { useTranslation } from '../i18n';
 
@@ -223,16 +224,7 @@ export const DocumentOutline = React.memo(function DocumentOutline({
       {/* Heading list */}
       <div style={{ overflowY: 'auto', flex: 1, paddingLeft: 8 }}>
         {headings.length === 0 ? (
-          <div
-            style={{
-              padding: '8px 16px',
-              color: 'var(--doc-text-subtle)',
-              fontSize: 13,
-              lineHeight: '20px',
-            }}
-          >
-            {t('documentOutline.noHeadings')}
-          </div>
+          <PanelState kind="empty" message={t('documentOutline.noHeadings')} />
         ) : (
           headings.map((heading, index) => {
             if (hiddenByCollapse.has(index)) return null;

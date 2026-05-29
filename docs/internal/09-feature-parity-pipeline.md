@@ -633,11 +633,11 @@ copy, opt-in icon — quiet on purpose. ARIA roles auto-pick
 (`status` for empty/loading, `alert` for error; `aria-live="polite"`
 on loading).
 
-`VersionHistoryPanel` is the first adopter — its inline `emptyHint`
-now renders through `<PanelState kind="empty" />`. Remaining side
-panels (comments sidebar, outline, agent) and any future right-rail
-panels should adopt the helper rather than re-inventing the chrome,
-which leaves this 🟡 until they migrate.
+Adopters so far: `VersionHistoryPanel` (the original `emptyHint`
+slot), `DocumentOutline` (the no-headings hint). Remaining side
+panels (comments sidebar, agent) and any future right-rail panels
+should adopt the helper rather than re-inventing the chrome, which
+leaves this 🟡 until they migrate.
 
 ### X6 — i18n
 
