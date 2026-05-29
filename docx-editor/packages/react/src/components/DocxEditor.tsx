@@ -3179,6 +3179,31 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     setShowRulerLocal((prev) => !(prev ?? showRuler));
   }, [showRuler]);
 
+  // F6 — View → Show non-printing characters. Persist across sessions so
+  // the preference survives a reload, matching how Google Docs / Word
+  // remember the formatting-marks toggle.
+  const [showFormattingMarks, setShowFormattingMarks] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('docx-editor-show-marks') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const handleToggleShowFormattingMarks = useCallback(() => {
+    setShowFormattingMarks((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('docx-editor-show-marks', next ? '1' : '0');
+        }
+      } catch {
+        // Quota / private mode — toggle still works in-memory.
+      }
+      return next;
+    });
+  }, []);
+
   const handleInsertSymbol = useCallback(
     (symbol: string) => {
       const view = getActiveEditorView();
@@ -6426,6 +6451,8 @@ body { background: white; }
                       onOpenInsertSymbol={handleOpenInsertSymbol}
                       onToggleShowRuler={handleToggleShowRuler}
                       rulerVisible={showRulerEffective}
+                      onToggleShowFormattingMarks={handleToggleShowFormattingMarks}
+                      showFormattingMarks={showFormattingMarks}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
@@ -6638,6 +6665,7 @@ body { background: white; }
                         onBodyClick={handleBodyClick}
                         zoom={state.zoom}
                         wordCompat={wordCompat}
+                        showFormattingMarks={showFormattingMarks}
                         readOnly={readOnly}
                         extensionManager={extensionManager}
                         selectionFormatting={state.selectionFormatting}

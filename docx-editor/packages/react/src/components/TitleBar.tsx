@@ -264,6 +264,8 @@ export function MenuBar() {
     onInsertFootnote,
     onToggleShowRuler,
     rulerVisible,
+    onToggleShowFormattingMarks,
+    showFormattingMarks,
     onRefocusEditor,
   } = ctx;
 
@@ -611,7 +613,7 @@ export function MenuBar() {
         />
 
         {/* View Menu — zoom + ruler + theme. Shown if any is wired. */}
-        {(onZoomChange || onSetColorTheme || onToggleShowRuler) && (
+        {(onZoomChange || onSetColorTheme || onToggleShowRuler || onToggleShowFormattingMarks) && (
           <MenuDropdown
             label="View"
             disabled={disabled}
@@ -647,6 +649,14 @@ export function MenuBar() {
                       icon: 'straighten',
                       label: `${rulerVisible ? '✓ ' : ''}Show ruler`,
                       onClick: onToggleShowRuler,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onToggleShowFormattingMarks
+                ? [
+                    {
+                      label: `${showFormattingMarks ? '✓ ' : ''}${t('toolbar.showFormattingMarks')}`,
+                      onClick: onToggleShowFormattingMarks,
                     } as MenuEntry,
                   ]
                 : []),

@@ -263,6 +263,10 @@ export interface PagedEditorProps {
    * `RenderContext.wordCompat`.
    */
   wordCompat?: boolean;
+  /** Show paragraph marks, tabs, and line breaks as visible glyphs (F6).
+   * CSS-only — adds `paged-editor--show-marks` to the pages container so
+   * `editor.css` can render `¶`, `→`, `↵` via `::before` / `::after`. */
+  showFormattingMarks?: boolean;
   /** Callback when document changes. */
   onDocumentChange?: (document: Document) => void;
   /** Callback when selection changes. */
@@ -1266,6 +1270,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       pageGap = DEFAULT_PAGE_GAP,
       zoom = 1,
       wordCompat = false,
+      showFormattingMarks = false,
       onDocumentChange,
       onSelectionChange,
       externalPlugins = EMPTY_PLUGINS,
@@ -4139,7 +4144,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           {/* Pages container */}
           <div
             ref={pagesContainerRef}
-            className={`paged-editor__pages${readOnly ? ' paged-editor--readonly' : ''}${hfEditMode ? ` paged-editor--hf-editing paged-editor--editing-${hfEditMode}` : ''}`}
+            className={`paged-editor__pages${readOnly ? ' paged-editor--readonly' : ''}${hfEditMode ? ` paged-editor--hf-editing paged-editor--editing-${hfEditMode}` : ''}${showFormattingMarks ? ' paged-editor--show-marks' : ''}`}
             style={pagesContainerStyles}
             onMouseDown={handlePagesMouseDown}
             onMouseMove={handlePagesMouseMove}

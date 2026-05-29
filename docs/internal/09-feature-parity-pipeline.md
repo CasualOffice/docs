@@ -522,11 +522,20 @@ Docs' Pageless mode = single continuous canvas. Big effort; our
 layout-painter is page-anchored by design. Defer indefinitely or punt
 to "Use desktop Word for pageless."
 
-### F6 — View → Show non-printing characters ❌
+### F6 — View → Show non-printing characters ✅
 
-Toggle that shows paragraph marks, tabs, spaces. Word feature; useful
-for advanced users. Add as a CSS class toggle on the layout-painter
-output.
+View menu has "Show non-printing characters" — checkmark indicates
+state. Implemented as a CSS-only overlay: `paged-editor--show-marks`
+class on the pages container drives `::before` / `::after`
+pseudo-elements that render `¶` after the last visual line of every
+paragraph, `→` over tab runs, and `↵` over explicit line breaks. The
+glyphs are appended via CSS so they never enter selections, the
+clipboard, or the saved `.docx`. Color is `--doc-primary` at 35%
+opacity — visible but recessive. State persists in localStorage
+(`docx-editor-show-marks`). Space dots (·) are deliberately skipped —
+addressing individual spaces in text runs needs DOM mutation, and
+Word treats space dots as a separate toggle anyway. e2e in
+`show-formatting-marks.spec.ts`.
 
 ### F7 — Help → search the menus ✅
 

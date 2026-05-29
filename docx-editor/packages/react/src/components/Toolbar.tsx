@@ -349,6 +349,10 @@ export interface ToolbarProps {
   onOpenAccessibility?: () => void;
   /** Insert → Building blocks — opens the saved-snippets dialog (Quick Parts). */
   onOpenBuildingBlocks?: () => void;
+  /** View → Show formatting marks — toggles ¶ / → / ↵ overlay (F6). */
+  onToggleShowFormattingMarks?: () => void;
+  /** Current state of the formatting-marks toggle — drives the checkmark. */
+  showFormattingMarks?: boolean;
   /** Theme picker — host sets colorTheme. `'auto'` follows OS preference. */
   onSetColorTheme?: (theme: 'light' | 'dark' | 'auto') => void;
   /** Current colorTheme setting; drives the title-bar toggle's icon. */

@@ -960,6 +960,48 @@
    Respects prefers-reduced-motion by collapsing the duration to 0.01ms —
    the dialog still appears, but instantly. (display:none would break the
    open animation's first frame; 0.01ms is the WCAG-friendly nudge.) */
+/* F6 — show non-printing characters (View → Show formatting marks).
+   The `.paged-editor--show-marks` class lands on the pages container
+   when the View toggle is on. Glyphs are appended via pseudo-elements,
+   so they never make it into selections, the clipboard, or the saved
+   .docx — they're purely visual hints.
+
+   Coverage: paragraph end (¶), tab (→), explicit line break (↵). Space
+   dots (·) are intentionally skipped — CSS can't address individual
+   spaces inside text runs without DOM mutation, and Word treats the
+   space-dots toggle as a separate option anyway.
+
+   Color: muted accent at 35% opacity, so the marks are visible but
+   recede behind the actual content. */
+.paged-editor--show-marks .layout-paragraph > .layout-line:last-child::after {
+  content: '¶';
+  display: inline;
+  margin-left: 1px;
+  color: var(--doc-primary, #1a73e8);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+.paged-editor--show-marks .layout-run-tab::before {
+  content: '→';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--doc-primary, #1a73e8);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+.paged-editor--show-marks .layout-run-linebreak::before {
+  content: '↵';
+  color: var(--doc-primary, #1a73e8);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* X5 — shared spinner for `PanelState`'s loading variant + anywhere else
    that wants a small inline spinner. 800ms full rotation feels brisk but
    not frantic; over a second reads as "stalled." */

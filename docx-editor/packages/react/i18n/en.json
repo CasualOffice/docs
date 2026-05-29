@@ -74,7 +74,8 @@
     "preferences": "Preferences…",
     "watermark": "Watermark…",
     "accessibility": "Accessibility…",
-    "buildingBlocks": "Building blocks…"
+    "buildingBlocks": "Building blocks…",
+    "showFormattingMarks": "Show non-printing characters"
   },
   "formattingBar": {
     "groups": {
