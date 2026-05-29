@@ -517,7 +517,7 @@ export function MenuBar() {
                   { type: 'separator' as const } as MenuEntry,
                   {
                     icon: 'format_list_numbered',
-                    label: 'Word count',
+                    label: t('toolbar.wordCount'),
                     shortcut: '⌘⇧C',
                     onClick: onOpenWordCount,
                   } as MenuEntry,
@@ -823,11 +823,25 @@ export function MenuBar() {
         />
 
         {/* Tools Menu — gated on having at least one Tools item. */}
-        {(onOpenPreferences || onOpenAccessibility) && (
+        {(onOpenPreferences || onOpenAccessibility || onOpenWordCount) && (
           <MenuDropdown
             label={t('toolbar.tools')}
             disabled={disabled}
             items={[
+              // Word count first — matches Google Docs' Tools → Word count
+              // placement. (Edit menu still has it too for users who learned
+              // the older location.)
+              ...(onOpenWordCount
+                ? [
+                    {
+                      icon: 'format_list_numbered',
+                      label: t('toolbar.wordCount'),
+                      shortcut: '⌘⇧C',
+                      onClick: onOpenWordCount,
+                    } as MenuEntry,
+                    { type: 'separator' as const } as MenuEntry,
+                  ]
+                : []),
               ...(onOpenPreferences
                 ? [
                     {

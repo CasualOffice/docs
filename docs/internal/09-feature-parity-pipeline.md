@@ -378,9 +378,11 @@ here. True in-editor dictionary (Hunspell wasm) is deferrable.
 
 Way beyond scope without an LLM endpoint or paid API. Defer.
 
-### D5 — Word count dialog ❌
+### D5 — Word count dialog ✅
 
-See A7. Belongs under Tools → Word count too.
+A7 ships the dialog (see above) — wired through both Edit menu and
+the Tools menu (the Google Docs location). `⌘⇧C` shortcut works
+either way. e2e in `word-count-tools.spec.ts`.
 
 ### D6 — Voice typing ✅
 

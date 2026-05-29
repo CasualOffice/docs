@@ -75,7 +75,8 @@
     "watermark": null,
     "accessibility": null,
     "buildingBlocks": null,
-    "showFormattingMarks": null
+    "showFormattingMarks": null,
+    "wordCount": null
   },
   "formattingBar": {
     "groups": {

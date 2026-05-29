@@ -75,7 +75,8 @@
     "watermark": "Watermark…",
     "accessibility": "Accessibility…",
     "buildingBlocks": "Building blocks…",
-    "showFormattingMarks": "Show non-printing characters"
+    "showFormattingMarks": "Show non-printing characters",
+    "wordCount": "Word count"
   },
   "formattingBar": {
     "groups": {
