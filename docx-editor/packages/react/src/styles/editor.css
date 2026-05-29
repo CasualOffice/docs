@@ -960,6 +960,15 @@
    Respects prefers-reduced-motion by collapsing the duration to 0.01ms —
    the dialog still appears, but instantly. (display:none would break the
    open animation's first frame; 0.01ms is the WCAG-friendly nudge.) */
+/* X5 — shared spinner for `PanelState`'s loading variant + anywhere else
+   that wants a small inline spinner. 800ms full rotation feels brisk but
+   not frantic; over a second reads as "stalled." */
+@keyframes ep-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes ep-fade-in {
   from {
     opacity: 0;

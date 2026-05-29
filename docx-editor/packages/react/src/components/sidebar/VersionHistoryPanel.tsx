@@ -22,6 +22,7 @@
  */
 import { useMemo, type CSSProperties } from 'react';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
+import { PanelState } from '../ui/PanelState';
 import { Tooltip } from '../ui/Tooltip';
 import type { EditHistoryEntry, UseEditHistoryReturn } from '../../hooks/useEditHistory';
 
@@ -109,13 +110,6 @@ const REVERT_BUTTON_STYLE: CSSProperties = {
   cursor: 'pointer',
 };
 
-const EMPTY_STYLE: CSSProperties = {
-  padding: '24px 18px',
-  color: 'var(--doc-text-muted)',
-  fontSize: 13,
-  lineHeight: 1.5,
-};
-
 function relativeTime(time: number, now: number): string {
   const diff = Math.max(0, now - time);
   const s = Math.round(diff / 1000);
@@ -158,7 +152,7 @@ export function VersionHistoryPanel({
         </span>
       </header>
       {sorted.length === 0 ? (
-        <div style={EMPTY_STYLE}>{emptyHint}</div>
+        <PanelState kind="empty" message={emptyHint} />
       ) : (
         <ol style={LIST_STYLE} role="list">
           {sorted.map((entry) => (

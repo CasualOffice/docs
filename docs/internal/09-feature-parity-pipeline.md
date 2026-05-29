@@ -607,12 +607,21 @@ Watermark / Accessibility / Building blocks) a coherent open animation
 that respects `prefers-reduced-motion`. Components that haven't migrated
 yet keep their old inline transitions — the token is opt-in.
 
-### X5 — Empty / loading / error states
+### X5 — Empty / loading / error states 🟡
 
-Each panel needs three states: empty (no content yet — friendly
-hint), loading (spinner with skeletal layout), error (retry button).
-`VersionHistoryPanel` already has `emptyHint` — generalize that
-pattern.
+Shared `PanelState` component (`components/ui/PanelState.tsx`) covers
+the three rest-states every side panel ends up needing: `empty`,
+`loading` (with an `ep-spin` keyframe-driven 800ms spinner),
+`error` (with an optional `Retry` button). Centered layout, muted
+copy, opt-in icon — quiet on purpose. ARIA roles auto-pick
+(`status` for empty/loading, `alert` for error; `aria-live="polite"`
+on loading).
+
+`VersionHistoryPanel` is the first adopter — its inline `emptyHint`
+now renders through `<PanelState kind="empty" />`. Remaining side
+panels (comments sidebar, outline, agent) and any future right-rail
+panels should adopt the helper rather than re-inventing the chrome,
+which leaves this 🟡 until they migrate.
 
 ### X6 — i18n
 
