@@ -230,6 +230,7 @@ export function MenuBar() {
     onOpenCommandPalette,
     onOpenKeyboardShortcuts,
     onOpenPreferences,
+    onOpenWatermark,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -789,6 +790,15 @@ export function MenuBar() {
               onClick: onOpenInsertSymbol,
               disabled: !onOpenInsertSymbol,
             },
+            ...(onOpenWatermark
+              ? [
+                  { type: 'separator' as const } as MenuEntry,
+                  {
+                    label: t('toolbar.watermark'),
+                    onClick: onOpenWatermark,
+                  } as MenuEntry,
+                ]
+              : []),
           ]}
         />
 

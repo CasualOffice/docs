@@ -239,6 +239,19 @@ export interface RenderPageOptions {
   resolvedCommentIds?: Set<number>;
   /** Word-compat (#395). See PainterOptions.wordCompat. */
   wordCompat?: boolean;
+  /**
+   * Document-wide text watermark — drawn as a rotated overlay behind the
+   * page's flow content. Promoted from `DocumentBody.watermark` by the host;
+   * see PagedEditor.tsx for the wiring. `pointer-events: none` so it never
+   * blocks clicks; `user-select: none` so it never lands in selections.
+   */
+  watermark?: {
+    text: string;
+    color?: string;
+    opacity?: number;
+    fontSize?: number;
+    rotation?: number;
+  };
 }
 
 export interface HeaderFooterLayoutInfo {
@@ -1294,6 +1307,44 @@ export function renderPage(
   pageEl.dataset.pageNumber = String(page.number);
 
   applyPageStyles(pageEl, page.size.w, page.size.h, options);
+
+  // Watermark — drawn behind the content. Append before the content area so
+  // it naturally sits at the lowest z-index within the page; pointer-events
+  // and user-select disabled so it can't intercept clicks or selections.
+  if (options.watermark?.text) {
+    const wm = options.watermark;
+    const wmEl = doc.createElement('div');
+    wmEl.className = 'layout-page-watermark';
+    wmEl.setAttribute('aria-hidden', 'true');
+    Object.assign(wmEl.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      userSelect: 'none',
+      overflow: 'hidden',
+      zIndex: '0',
+    });
+    const text = doc.createElement('span');
+    text.textContent = wm.text;
+    Object.assign(text.style, {
+      color: `#${wm.color ?? '808080'}`,
+      opacity: String(wm.opacity ?? 0.5),
+      fontSize: `${wm.fontSize ?? 96}px`,
+      fontWeight: '700',
+      whiteSpace: 'nowrap',
+      transform: `rotate(${wm.rotation ?? -45}deg)`,
+      transformOrigin: 'center center',
+    });
+    wmEl.appendChild(text);
+    pageEl.appendChild(wmEl);
+  }
+
   const pageBorderEl = renderPageBorderOverlay(page, options, doc);
   if (pageBorderEl && options.pageBorders?.zOrder === 'back') {
     pageEl.appendChild(pageBorderEl);

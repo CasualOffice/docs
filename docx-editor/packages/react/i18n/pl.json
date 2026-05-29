@@ -71,7 +71,8 @@
     "searchMenus": null,
     "makeCopy": null,
     "preferences": null,
-    "tools": null
+    "tools": null,
+    "watermark": null
   },
   "formattingBar": {
     "groups": {

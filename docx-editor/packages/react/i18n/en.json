@@ -71,7 +71,8 @@
     "searchMenus": "Search the menus",
     "keyboardShortcuts": "Keyboard shortcuts",
     "tools": "Tools",
-    "preferences": "Preferences…"
+    "preferences": "Preferences…",
+    "watermark": "Watermark…"
   },
   "formattingBar": {
     "groups": {

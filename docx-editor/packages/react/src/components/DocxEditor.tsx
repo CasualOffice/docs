@@ -157,6 +157,9 @@ const KeyboardShortcutsDialog = lazy(() =>
 const PreferencesDialog = lazy(() =>
   import('./dialogs/PreferencesDialog').then((m) => ({ default: m.PreferencesDialog }))
 );
+const WatermarkDialog = lazy(() =>
+  import('./dialogs/WatermarkDialog').then((m) => ({ default: m.WatermarkDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -2117,6 +2120,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
   // Editor preferences — smart quotes / autocorrect runtime toggles.
   // Lazy-init from localStorage and hydrate the core singleton so the
   // smart-quotes/autocorrect plugins see the persisted values on the very
@@ -4496,6 +4500,28 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history.state, readOnly, handleDocumentChange]
   );
 
+  // Watermark apply/clear handler (C5) — writes into the doc-level
+  // body.watermark slot so the painter draws the overlay on the next
+  // render. `undefined` clears it. Round-trip to header XML lands in a
+  // separate pass.
+  const handleWatermarkChange = useCallback(
+    (watermark: { text: string } | undefined) => {
+      if (!history.state || readOnly) return;
+      const newDoc = {
+        ...history.state,
+        package: {
+          ...history.state.package,
+          document: {
+            ...history.state.package.document,
+            watermark,
+          },
+        },
+      };
+      handleDocumentChange(newDoc);
+    },
+    [history.state, readOnly, handleDocumentChange]
+  );
+
   // Paragraph indent handlers (for ruler)
   const handleIndentLeftChange = useCallback(
     (twips: number) => {
@@ -6305,6 +6331,7 @@ body { background: white; }
                       onOpenCommandPalette={() => setShowCommandPalette(true)}
                       onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
                       onOpenPreferences={() => setShowPreferences(true)}
+                      onOpenWatermark={() => setShowWatermarkDialog(true)}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}
@@ -7192,6 +7219,14 @@ body { background: white; }
                   onClose={() => setShowPreferences(false)}
                   preferences={preferences}
                   onChange={handlePreferenceChange}
+                />
+              )}
+              {showWatermarkDialog && (
+                <WatermarkDialog
+                  isOpen={showWatermarkDialog}
+                  onClose={() => setShowWatermarkDialog(false)}
+                  current={history.state?.package.document.watermark}
+                  onApply={handleWatermarkChange}
                 />
               )}
               {showCommandPalette && (

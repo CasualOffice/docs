@@ -1643,4 +1643,24 @@ export interface DocumentBody {
     themeTint?: string;
     themeShade?: string;
   };
+  /**
+   * Document-wide text watermark, rendered behind page content. Word stores
+   * this as VML (`<v:shape>` + `<v:textpath>`) inside a default section
+   * header part; we model only the rendered properties since round-trip
+   * across Word's many watermark shapes is out of scope for v0 (round-trip
+   * lands in a follow-up). When set, the painter draws the text once per
+   * page, rotated diagonally behind the content, like Word's default
+   * "DRAFT" watermark.
+   */
+  watermark?: {
+    text: string;
+    /** Hex RGB without the leading `#`; default `808080` (Word's gray). */
+    color?: string;
+    /** 0–1; default `0.5`. */
+    opacity?: number;
+    /** Pixels, applied to the rendered overlay; default `96`. */
+    fontSize?: number;
+    /** Degrees, clockwise; default `-45` (diagonal, Word default). */
+    rotation?: number;
+  };
 }

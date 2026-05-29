@@ -1796,6 +1796,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             // `LayoutPainter`'s own `pageBackground` option happy too.
             const docBgColor = document?.package.document.background?.color?.rgb ?? undefined;
             const pageBackground = docBgColor ? `#${docBgColor}` : '#fff';
+            // Document-level text watermark (C5). Painter draws it as a
+            // rotated overlay behind the content on every page.
+            const watermark = document?.package.document.watermark;
 
             // Render pages to container
             const renderPagesKind = renderPages(newLayout.pages, pagesContainerRef.current, {
@@ -1803,6 +1806,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               showShadow: true,
               pageBackground,
               backgroundColor: pageBackground,
+              watermark,
               blockLookup,
               headerContent: headerContentForRender,
               footerContent: footerContentForRender,
