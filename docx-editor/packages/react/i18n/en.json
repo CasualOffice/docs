@@ -78,6 +78,11 @@
     "showFormattingMarks": "Show non-printing characters",
     "wordCount": "Word count"
   },
+  "suggestingBanner": {
+    "title": "Suggesting",
+    "body": "Edits are recorded as tracked suggestions. Reviewers can accept or reject them.",
+    "switchToEditing": "Switch to editing"
+  },
   "formattingBar": {
     "groups": {
       "history": "History",

@@ -463,10 +463,15 @@ email-guard, longest-match, case-insensitivity, empty list.
 `onCommentResolve`/`onCommentUnresolve` callbacks. The host owns the
 toggle state (no in-editor menu surface for it yet).
 
-### E3 — Suggesting mode banner ❌
+### E3 — Suggesting mode banner ✅
 
-When in suggesting mode, Docs shows a thin yellow banner at the top of
-the doc. We have the Mode dropdown but no persistent banner. P2.
+`SuggestingModeBanner` renders a thin Google-Docs-style yellow stripe
+(`#fef7e0` background, `#fde293` rule) between the toolbar and the
+pages whenever `editingMode === 'suggesting'`. Left side: bold
+"Suggesting" + a one-line explanation. Right side: a "Switch to
+editing" button that flips the mode back. `role="status"` +
+`aria-live="polite"` so assistive tech announces the mode change
+without interrupting. e2e in `suggesting-mode-banner.spec.ts`.
 
 ### E4 — Accept/reject all suggestions ✅
 

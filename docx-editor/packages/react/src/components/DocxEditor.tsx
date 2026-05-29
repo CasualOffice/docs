@@ -347,6 +347,11 @@ import { PagedEditor, type PagedEditorRef, DEFAULT_PAGE_WIDTH } from '../paged-e
 // Plugin API types
 import type { RenderedDomContext } from '../plugin-api/types';
 
+// E3 — suggesting-mode banner. Yellow stripe above the editor matching
+// Google Docs' visual language; visible only while editing-mode is
+// "suggesting".
+import { SuggestingModeBanner } from './SuggestingModeBanner';
+
 // Building blocks (C6) — saved reusable snippets the user inserts via the
 // Insert menu. Backed by localStorage; PM Slice JSON round-trip.
 import { Slice } from 'prosemirror-model';
@@ -6502,6 +6507,10 @@ body { background: white; }
                       <EditorToolbar.FormattingBar>{toolbarChildren}</EditorToolbar.FormattingBar>
                     </EditorToolbar>
                   </div>
+                )}
+
+                {editingMode === 'suggesting' && (
+                  <SuggestingModeBanner onSwitchToEditing={() => setEditingMode('editing')} />
                 )}
 
                 {/* Editor container - this is the scroll container (toolbar is above, not inside) */}

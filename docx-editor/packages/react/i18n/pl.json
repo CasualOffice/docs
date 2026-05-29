@@ -938,5 +938,10 @@
     "menuItem": null,
     "stop": null,
     "unsupported": null
+  },
+  "suggestingBanner": {
+    "body": null,
+    "switchToEditing": null,
+    "title": null
   }
 }
