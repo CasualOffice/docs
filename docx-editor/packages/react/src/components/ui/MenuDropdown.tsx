@@ -5,7 +5,7 @@
  * Supports submenu panels that appear to the right on hover (Google Docs style).
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { MaterialSymbol } from './MaterialSymbol';
 import { useMenuBar } from './MenuBarContext';
@@ -187,8 +187,12 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
     setHoveredSubmenu(null);
   }, [setIsOpen]);
 
-  // Calculate position when opening
-  useEffect(() => {
+  // Calculate position when opening. useLayoutEffect (not useEffect) so the
+  // position is corrected synchronously before the browser paints the open
+  // dropdown — otherwise there's a one-frame flash at the initial {0,0}
+  // (top-left of the page) before the effect runs. Visible to Playwright
+  // screenshots and occasionally to real users on slow machines.
+  useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
     setDropdownPos({ top: rect.bottom + 2, left: rect.left });
