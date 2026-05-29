@@ -62,6 +62,7 @@ import type { Mark as PMMark } from 'prosemirror-model';
 import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
+import { checkAccessibility, type AccessibilityIssue } from '@eigenpal/docx-core/utils';
 import type { Comment, BlockContent, ParagraphContent } from '@eigenpal/docx-core/types/content';
 import { ErrorBoundary, ErrorProvider } from './ErrorBoundary';
 import type { TableAction } from './ui/TableToolbar';
@@ -159,6 +160,9 @@ const PreferencesDialog = lazy(() =>
 );
 const WatermarkDialog = lazy(() =>
   import('./dialogs/WatermarkDialog').then((m) => ({ default: m.WatermarkDialog }))
+);
+const AccessibilityDialog = lazy(() =>
+  import('./dialogs/AccessibilityDialog').then((m) => ({ default: m.AccessibilityDialog }))
 );
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
@@ -2121,6 +2125,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
+  const [showAccessibility, setShowAccessibility] = useState(false);
+  const [accessibilityIssues, setAccessibilityIssues] = useState<AccessibilityIssue[]>([]);
   // Editor preferences — smart quotes / autocorrect runtime toggles.
   // Lazy-init from localStorage and hydrate the core singleton so the
   // smart-quotes/autocorrect plugins see the persisted values on the very
@@ -4500,6 +4506,29 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history.state, readOnly, handleDocumentChange]
   );
 
+  // Accessibility check (D8) — snapshots issues from the current PM doc
+  // when the user opens the dialog. Read-only; no edits to the document.
+  const handleOpenAccessibility = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (view) setAccessibilityIssues(checkAccessibility(view.state.doc));
+    setShowAccessibility(true);
+  }, []);
+  const handleAccessibilityGoto = useCallback((pmPos: number) => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const { doc } = view.state;
+    const safePos = Math.max(0, Math.min(pmPos, doc.content.size));
+    // Resolve to the nearest valid text selection so an image position
+    // doesn't fail (NodeSelection vs TextSelection).
+    const $pos = doc.resolve(safePos);
+    const near =
+      $pos.parent.isTextblock || $pos.parent.inlineContent
+        ? TextSelection.near($pos)
+        : TextSelection.create(doc, safePos);
+    view.dispatch(view.state.tr.setSelection(near).scrollIntoView());
+    view.focus();
+  }, []);
+
   // Watermark apply/clear handler (C5) — writes into the doc-level
   // body.watermark slot so the painter draws the overlay on the next
   // render. `undefined` clears it. Round-trip to header XML lands in a
@@ -6332,6 +6361,7 @@ body { background: white; }
                       onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
                       onOpenPreferences={() => setShowPreferences(true)}
                       onOpenWatermark={() => setShowWatermarkDialog(true)}
+                      onOpenAccessibility={handleOpenAccessibility}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}
@@ -7227,6 +7257,14 @@ body { background: white; }
                   onClose={() => setShowWatermarkDialog(false)}
                   current={history.state?.package.document.watermark}
                   onApply={handleWatermarkChange}
+                />
+              )}
+              {showAccessibility && (
+                <AccessibilityDialog
+                  isOpen={showAccessibility}
+                  onClose={() => setShowAccessibility(false)}
+                  issues={accessibilityIssues}
+                  onGoto={handleAccessibilityGoto}
                 />
               )}
               {showCommandPalette && (

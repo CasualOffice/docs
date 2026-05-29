@@ -389,11 +389,22 @@ singleton from `localStorage` on mount and persists on change. Tested
 in `preferences-dialog.spec.ts` (menu, dialog, *runtime effect*:
 toggling smart quotes off leaves typed `"` straight).
 
-### D8 — Accessibility checker ❌
+### D8 — Accessibility checker ✅
 
-Docs has Tools → Accessibility settings; surfaces missing alt text,
-heading order issues. Defer; cross-cutting a11y work is already
-covered in Stream X.
+Tools → "Accessibility…" opens a read-only summary of issues found in
+the current PM document, surfaced by `checkAccessibility` (a pure walk
+in `core/utils/accessibilityCheck.ts`):
+
+- **Missing alt text** on `image` nodes (null or empty/whitespace).
+- **Heading-order jumps** — flagged when a heading is more than one
+  level deeper than the previous heading in document order (e.g. H1 →
+  H3 skipping H2). Going shallower is fine — that's a normal section
+  close.
+
+Each row has a "Go to" button that moves the caret to the offending PM
+position via `TextSelection.near`. Empty state ("No accessibility issues
+found.") shipped. 10 unit tests cover the analyzer; e2e covers the menu
++ dialog + empty state.
 
 ---
 

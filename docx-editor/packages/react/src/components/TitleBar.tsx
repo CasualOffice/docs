@@ -231,6 +231,7 @@ export function MenuBar() {
     onOpenKeyboardShortcuts,
     onOpenPreferences,
     onOpenWatermark,
+    onOpenAccessibility,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -803,15 +804,27 @@ export function MenuBar() {
         />
 
         {/* Tools Menu — gated on having at least one Tools item. */}
-        {onOpenPreferences && (
+        {(onOpenPreferences || onOpenAccessibility) && (
           <MenuDropdown
             label={t('toolbar.tools')}
             disabled={disabled}
             items={[
-              {
-                label: t('toolbar.preferences'),
-                onClick: onOpenPreferences,
-              } as MenuEntry,
+              ...(onOpenPreferences
+                ? [
+                    {
+                      label: t('toolbar.preferences'),
+                      onClick: onOpenPreferences,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onOpenAccessibility
+                ? [
+                    {
+                      label: t('toolbar.accessibility'),
+                      onClick: onOpenAccessibility,
+                    } as MenuEntry,
+                  ]
+                : []),
             ]}
           />
         )}
