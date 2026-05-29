@@ -366,11 +366,18 @@ global shortcut yet — Ctrl+Shift+S is already labeled as the AI
 summarize hint in `getActionShortcut`; can wire later if we
 demote the AI hint.
 
-### D7 — Preferences dialog ❌
+### D7 — Preferences dialog ✅
 
-Tools → Preferences in Docs lets users toggle autocorrect rules and
-smart quotes. Needs a small settings store (localStorage is fine);
-toggles plumb into the input-rule plugin.
+A new Tools menu (matches Google Docs placement, between Insert and
+Help) opens "Preferences…", a centered modal with two toggles —
+**Use smart quotes** and **Autocorrect**. Backed by a module-level
+`editorPreferences` singleton (`packages/core/.../editorPreferences.ts`)
+that the SmartQuotes and Autocorrect extensions consult inside
+`handleTextInput`, so flipping a toggle takes effect on the next
+keystroke without rebuilding the editor. The React layer hydrates the
+singleton from `localStorage` on mount and persists on change. Tested
+in `preferences-dialog.spec.ts` (menu, dialog, *runtime effect*:
+toggling smart quotes off leaves typed `"` straight).
 
 ### D8 — Accessibility checker ❌
 
