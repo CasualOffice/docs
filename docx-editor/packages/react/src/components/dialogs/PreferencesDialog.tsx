@@ -118,6 +118,7 @@ export function PreferencesDialog({
 
   return (
     <div
+      className="ep-dialog-overlay"
       style={overlayStyle}
       onMouseDown={(e) => {
         // Click on the backdrop closes; clicks inside the dialog don't.
@@ -126,6 +127,7 @@ export function PreferencesDialog({
     >
       <div
         ref={dialogRef}
+        className="ep-dialog-shell"
         style={dialogStyle}
         role="dialog"
         aria-label="Preferences"

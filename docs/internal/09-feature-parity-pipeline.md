@@ -591,11 +591,19 @@ Still uncovered: a handful of other raw buttons (the hover-insert "+",
 some toolbar raw buttons) — left for a browser-QA pass since blanket rules
 risk double-rings / visual quirks.
 
-### X4 — Animation tier
+### X4 — Animation tier ✅
 
-Docs uses ~150ms ease-out for menu opens, ~100ms for tooltips. Audit
-our timings — over-long animations feel laggy; under-long feels
-jittery. Pick one easing token, apply everywhere.
+Three CSS custom properties on `.ep-root` standardize the editor's
+animation timings: `--doc-anim-fast` (100ms), `--doc-anim-base` (150ms),
+`--doc-anim-slow` (200ms) — all on the Material-standard easing curve
+`cubic-bezier(0.4, 0, 0.2, 1)`. The five `transition: … 0.15s` rules in
+`editor.css` (table resize handles, padding outline, comment edge
+opacity) now read from `--doc-anim-base`. New `@keyframes ep-fade-in`
+and `ep-scale-in` paired with the `.ep-dialog-overlay` /
+`.ep-dialog-shell` classes give every lazy dialog (About / Preferences /
+Watermark / Accessibility / Building blocks) a coherent open animation
+that respects `prefers-reduced-motion`. Components that haven't migrated
+yet keep their old inline transitions — the token is opt-in.
 
 ### X5 — Empty / loading / error states
 

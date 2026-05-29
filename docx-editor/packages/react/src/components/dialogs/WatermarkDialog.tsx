@@ -145,12 +145,14 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
 
   return (
     <div
+      className="ep-dialog-overlay"
       style={overlayStyle}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        className="ep-dialog-shell"
         style={dialogStyle}
         role="dialog"
         aria-label="Watermark"

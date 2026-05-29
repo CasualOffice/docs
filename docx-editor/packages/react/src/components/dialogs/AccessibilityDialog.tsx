@@ -160,12 +160,14 @@ export function AccessibilityDialog({ isOpen, onClose, issues, onGoto }: Accessi
 
   return (
     <div
+      className="ep-dialog-overlay"
       style={overlayStyle}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
+        className="ep-dialog-shell"
         style={dialogStyle}
         role="dialog"
         aria-label="Accessibility check"

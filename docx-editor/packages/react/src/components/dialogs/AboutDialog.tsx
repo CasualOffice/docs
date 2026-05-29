@@ -159,8 +159,13 @@ export function AboutDialog({
   if (!isOpen) return null;
   const year = new Date().getFullYear();
   return (
-    <div style={overlayStyle} onMouseDown={onClose} data-testid="about-dialog">
-      <div style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      className="ep-dialog-overlay"
+      style={overlayStyle}
+      onMouseDown={onClose}
+      data-testid="about-dialog"
+    >
+      <div className="ep-dialog-shell" style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
         <div style={headerStyle}>About {appName}</div>
         <div style={bodyStyle}>
           <div style={logoWrap}>

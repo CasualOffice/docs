@@ -104,6 +104,25 @@
   --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* dropdown / dialog shadow */
   --doc-accent: #2563eb; /* primary accent (buttons, focus rings) */
   --doc-accent-soft: #eff6ff; /* soft accent fill (active tab / armed button) */
+
+  /* Animation tier (X4). Three speeds, one easing.
+   *
+   *   --doc-anim-fast (100ms): micro-interactions — hover-color flips on
+   *     color picker swatches, grid cells, list buttons. Anything more
+   *     visible than this would feel laggy.
+   *   --doc-anim-base (150ms): the default for chrome — dropdown opens,
+   *     button hover/focus, dialog overlay fade-in. Matches what Google
+   *     Docs uses for the same surfaces.
+   *   --doc-anim-slow (200ms): larger-shift transitions (dialog hover
+   *     accordion, image-position knob). Keep rare; over-long animations
+   *     feel sluggish.
+   *
+   * Easing is the W3C Material "standard" curve (ease-out feel): subtle
+   * acceleration at the start, gentle landing.
+   */
+  --doc-anim-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+  --doc-anim-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --doc-anim-slow: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================================================
@@ -557,7 +576,7 @@
 
 .layout-table-resize-handle {
   background-color: transparent;
-  transition: background-color 0.15s;
+  transition: background-color var(--doc-anim-base);
 }
 
 .layout-table-resize-handle:hover,
@@ -569,7 +588,7 @@
 .layout-table-row-resize-handle,
 .layout-table-edge-handle-bottom {
   background-color: transparent;
-  transition: background-color 0.15s;
+  transition: background-color var(--doc-anim-base);
 }
 
 .layout-table-row-resize-handle:hover,
@@ -582,7 +601,7 @@
 /* Right edge handle */
 .layout-table-edge-handle-right {
   background-color: transparent;
-  transition: background-color 0.15s;
+  transition: background-color var(--doc-anim-base);
 }
 
 .layout-table-edge-handle-right:hover,
@@ -636,7 +655,7 @@
 .layout-page-header,
 .layout-page-footer {
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--doc-anim-base);
 }
 .layout-page-header:hover,
 .layout-page-footer:hover {
@@ -727,7 +746,7 @@
 .paged-editor--hf-editing .layout-page-content {
   opacity: 0.4;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--doc-anim-base);
 }
 
 /* Dotted border on active header area */
@@ -917,4 +936,45 @@
   outline: 2px solid var(--doc-primary);
   outline-offset: -2px;
   border-radius: 4px;
+}
+
+/* X4 — dialog open animation. Backdrop fades in; the dialog shell
+   scales up subtly from 96% to 100% over the same beat. Both consume the
+   shared --doc-anim-base token so timings stay coherent if we ever retune
+   the tier. Dialogs opt in by adding `ep-dialog-overlay` (on the backdrop)
+   and `ep-dialog-shell` (on the inner panel) — pure additive, no impact on
+   dialogs that still use plain inline styles.
+
+   Respects prefers-reduced-motion by collapsing the duration to 0.01ms —
+   the dialog still appears, but instantly. (display:none would break the
+   open animation's first frame; 0.01ms is the WCAG-friendly nudge.) */
+@keyframes ep-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ep-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.ep-dialog-overlay {
+  animation: ep-fade-in var(--doc-anim-base);
+}
+.ep-dialog-shell {
+  animation: ep-scale-in var(--doc-anim-base);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ep-dialog-overlay,
+  .ep-dialog-shell {
+    animation-duration: 0.01ms;
+  }
 }
