@@ -7,9 +7,11 @@
  * it stays visible while the document scrolls.
  */
 
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
+
+const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 export interface StatusBarProps {
   /** 1-based current page index. */
@@ -75,6 +77,42 @@ const zoomButtonStyle: CSSProperties = {
   width: 22,
 };
 
+const zoomMenuStyle: CSSProperties = {
+  position: 'absolute',
+  bottom: '100%',
+  right: 0,
+  marginBottom: 4,
+  padding: '4px 0',
+  background: 'var(--doc-surface, white)',
+  border: '1px solid var(--doc-border, #ddd)',
+  borderRadius: 6,
+  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+  minWidth: 96,
+  zIndex: 50,
+  display: 'flex',
+  flexDirection: 'column',
+};
+
+const zoomMenuItemStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  padding: '5px 12px',
+  fontSize: 12,
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--doc-text-on-surface, #1f2937)',
+  cursor: 'pointer',
+  textAlign: 'right',
+  fontVariantNumeric: 'tabular-nums',
+};
+
+const zoomMenuItemActiveStyle: CSSProperties = {
+  ...zoomMenuItemStyle,
+  background: 'var(--doc-bg-hover, #f1f3f4)',
+  fontWeight: 500,
+};
+
 const zoomReadoutStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
   minWidth: 36,
@@ -105,11 +143,30 @@ export function StatusBar({
   maxZoom = 4,
   visible = true,
 }: StatusBarProps) {
+  // Preset popover state lives next to the trigger so the parent
+  // doesn't need to know it exists. Closes on outside-click / Escape.
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const presetWrapRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!presetsOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!presetWrapRef.current?.contains(e.target as Node)) setPresetsOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPresetsOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [presetsOpen]);
+
   if (!visible) return null;
   const zoomPct = zoom !== undefined ? Math.round(zoom * 100) : 100;
   const zoomIn = () => onZoomChange?.(Math.min((zoom ?? 1) * ZOOM_STEP, maxZoom));
   const zoomOut = () => onZoomChange?.(Math.max((zoom ?? 1) / ZOOM_STEP, minZoom));
-  const zoomReset = () => onZoomChange?.(1);
 
   const hasPages = totalPages !== undefined && totalPages > 0;
 
@@ -169,17 +226,50 @@ export function StatusBar({
               <MaterialSymbol name="remove" size={14} />
             </button>
           </Tooltip>
-          <Tooltip content="Reset zoom to 100% (⌘0)">
-            <button
-              type="button"
-              style={zoomReadoutStyle}
-              onClick={zoomReset}
-              onMouseDown={(e) => e.preventDefault()}
-              aria-label={`Zoom: ${zoomPct} percent. Click to reset.`}
-            >
-              {zoomPct}%
-            </button>
-          </Tooltip>
+          <span ref={presetWrapRef} style={{ position: 'relative' }}>
+            <Tooltip content="Zoom presets (⌘0 to reset)">
+              <button
+                type="button"
+                style={zoomReadoutStyle}
+                onClick={() => setPresetsOpen((o) => !o)}
+                onMouseDown={(e) => e.preventDefault()}
+                aria-label={`Zoom: ${zoomPct} percent. Click to choose a preset.`}
+                aria-haspopup="menu"
+                aria-expanded={presetsOpen}
+                data-testid="zoom-readout"
+              >
+                {zoomPct}%
+              </button>
+            </Tooltip>
+            {presetsOpen && (
+              <div
+                role="menu"
+                aria-label="Zoom presets"
+                data-testid="zoom-presets-menu"
+                style={zoomMenuStyle}
+              >
+                {ZOOM_PRESETS.map((preset) => {
+                  const pct = Math.round(preset * 100);
+                  const isActive = Math.abs(zoomPct - pct) < 1;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      role="menuitem"
+                      style={isActive ? zoomMenuItemActiveStyle : zoomMenuItemStyle}
+                      onClick={() => {
+                        onZoomChange?.(preset);
+                        setPresetsOpen(false);
+                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      {pct}%{isActive && <span style={{ marginLeft: 8 }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </span>
           <Tooltip content="Zoom in (⌘=)">
             <button
               type="button"
