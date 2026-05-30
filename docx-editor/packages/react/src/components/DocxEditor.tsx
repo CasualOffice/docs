@@ -54,6 +54,7 @@ import { useVoiceTyping } from '../hooks/useVoiceTyping';
 import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
+import { PanelRail } from './PanelRail';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
@@ -1636,6 +1637,26 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // closes the other so the right rail doesn't double-stack panels.
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const editHistory = useEditHistory({ author: 'You' });
+
+  // Shared toggle handlers — used by both the toolbar buttons and the
+  // right-edge PanelRail so the mutual-exclusion logic between Comments
+  // and Version history lives in one place. Declared up here (before any
+  // conditional early-return) to keep React's hook order stable.
+  const handleToggleComments = useCallback(() => {
+    setShowCommentsSidebar((v) => !v);
+    setExpandedSidebarItem(null);
+    setShowVersionHistory(false);
+  }, []);
+  const handleToggleVersionHistory = useCallback(() => {
+    setShowVersionHistory((v) => {
+      const next = !v;
+      if (next) {
+        setShowCommentsSidebar(false);
+        setExpandedSidebarItem(null);
+      }
+      return next;
+    });
+  }, []);
   // Comments live in internal state by default; if the consumer passes
   // `comments` as a prop, we treat the editor as controlled — `setComments`
   // routes mutations through `onCommentsChange` instead of touching internal
@@ -6582,28 +6603,8 @@ body { background: white; }
   const toolbarChildren = (
     <>
       <ToolbarSeparator />
-      <CommentsSidebarToggle
-        active={showCommentsSidebar}
-        onClick={() => {
-          // Also reset expansion so reshowing the sidebar lands on the default
-          // collapsed state — resolved threads stay as checkmarks, not opened.
-          setShowCommentsSidebar((v) => !v);
-          setExpandedSidebarItem(null);
-          // Mutually exclusive with version-history panel.
-          setShowVersionHistory(false);
-        }}
-      />
-      <VersionHistoryToggle
-        active={showVersionHistory}
-        onClick={() => {
-          setShowVersionHistory((v) => !v);
-          // Mutually exclusive with the comments sidebar.
-          if (!showVersionHistory) {
-            setShowCommentsSidebar(false);
-            setExpandedSidebarItem(null);
-          }
-        }}
-      />
+      <CommentsSidebarToggle active={showCommentsSidebar} onClick={handleToggleComments} />
+      <VersionHistoryToggle active={showVersionHistory} onClick={handleToggleVersionHistory} />
       {/* Resolved comments use margin markers instead of toolbar toggle */}
       <ToolbarSeparator />
       <EditingModeDropdown
@@ -7295,6 +7296,19 @@ body { background: white; }
                 )}
               </div>
               {/* end wrapper for scroll container + outline */}
+
+              {/* Right-edge PanelRail (X7) — always-visible activity bar
+                  with toggles for Outline / Comments / Version history.
+                  Sits between the editor body and the agent panel; mirrors
+                  the sibling Casual Sheets PanelRail. */}
+              <PanelRail
+                outlineVisible={showOutline}
+                commentsVisible={showCommentsSidebar}
+                historyVisible={showVersionHistory}
+                onToggleOutline={handleToggleOutline}
+                onToggleComments={handleToggleComments}
+                onToggleHistory={handleToggleVersionHistory}
+              />
 
               {/* Agent panel (right-side dock) — always mounted when the
                   prop is set so chat state survives close/reopen.

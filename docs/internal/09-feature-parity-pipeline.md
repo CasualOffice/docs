@@ -707,12 +707,22 @@ Every new string goes through `t()` per `docx-editor/CLAUDE.md`. CI
 catches missing keys via `bun run i18n:validate`. Mentioning here
 because parity work will generate dozens of new strings.
 
-### X7 — Right-rail icon strip
+### X7 — Right-rail icon strip 🟡 (v0 shipped)
 
-Docs has a vertical strip of icons on the right edge: Comments,
-Tasks, Keep, Calendar, etc. that toggle their panel. We don't have a
-unified strip — panels currently open from menu items. As Streams A
-panels accumulate, the strip is the right home for them.
+`PanelRail` (`packages/react/src/components/PanelRail.tsx`) is the
+always-visible 36px activity bar on the right edge. v0 ships three
+toggles — Outline, Comments, Version history — each with a pressed
+state and a left-edge accent marker matching VSCode / Office
+activity-bar conventions. Mutual exclusion between Comments and
+Version history lives in two shared callbacks
+(`handleToggleComments` / `handleToggleVersionHistory`) used by both
+the toolbar buttons and the rail.
+
+Sheet reference: `services/sheet/apps/web/src/shell/PanelRail.tsx`
+(sheet's rail has five toggles — Tables, Charts, Outline, Comments,
+History — because sheet has those panel surfaces; doc's three v0
+buttons line up with the panels doc actually has today). Adding more
+entries lands as those surfaces ship. e2e in `panel-rail.spec.ts`.
 
 ---
 
