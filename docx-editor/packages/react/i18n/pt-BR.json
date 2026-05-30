@@ -83,7 +83,12 @@
     "dictionary": null,
     "translate": null,
     "explore": null,
-    "citations": null
+    "citations": null,
+    "shape": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null
   },
   "formattingBar": {
     "groups": {

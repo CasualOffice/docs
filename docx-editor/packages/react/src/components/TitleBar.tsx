@@ -240,6 +240,7 @@ export function MenuBar() {
     onOpenTranslate,
     onOpenExplore,
     onOpenCitations,
+    onInsertShape,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -771,6 +772,33 @@ export function MenuBar() {
                 </>
               ),
             },
+            ...(onInsertShape
+              ? [
+                  {
+                    icon: 'shapes',
+                    label: t('toolbar.shape'),
+                    submenuContent: (closeMenu: () => void) => (
+                      <>
+                        {(
+                          [
+                            { label: t('toolbar.shapeRectangle'), type: 'rectangle' },
+                            { label: t('toolbar.shapeEllipse'), type: 'ellipse' },
+                            { label: t('toolbar.shapeLine'), type: 'line' },
+                            { label: t('toolbar.shapeArrow'), type: 'arrow' },
+                          ] as const
+                        ).map((item) => (
+                          <SubMenuItem
+                            key={item.type}
+                            label={item.label}
+                            onClick={() => onInsertShape(item.type)}
+                            closeMenu={closeMenu}
+                          />
+                        ))}
+                      </>
+                    ),
+                  } as MenuEntry,
+                ]
+              : []),
             {
               icon: 'tag',
               label: t('toolbar.insertField'),

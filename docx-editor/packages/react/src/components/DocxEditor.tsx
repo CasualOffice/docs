@@ -384,6 +384,10 @@ import { convertSelectionToTable, convertTableToText } from '../utils/convertTex
 // formatted citation text and threads in a hyperlink for the URL.
 import { loadCitations, addCitation, removeCitation, type Citation } from '../utils/citations';
 
+// Basic inline shape generator (C2 v0). Returns SVG + data URL ready to
+// drop into an image node at the cursor.
+import { generateShape, type ShapeType } from '../utils/shapes';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -4718,6 +4722,34 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     setCitations(removeCitation(id));
   }, []);
 
+  // C2 v0 — drop a default-styled SVG primitive at the cursor as an
+  // inline image. The user can resize / recolor via the existing image
+  // handles + properties dialog.
+  const handleInsertShape = useCallback(
+    (type: ShapeType) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const imageType = view.state.schema.nodes.image;
+      if (!imageType) return;
+      const shape = generateShape(type);
+      const rId = `rId_shape_${Date.now()}`;
+      const node = imageType.create({
+        src: shape.dataUrl,
+        alt: shape.altText,
+        width: shape.width,
+        height: shape.height,
+        rId,
+        wrapType: 'inline',
+        displayMode: 'inline',
+      });
+      const { from } = view.state.selection;
+      const tr = view.state.tr.insert(from, node);
+      view.dispatch(tr.scrollIntoView());
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
   const handleInsertCitation = useCallback(
     (formatted: string, url?: string) => {
       const view = getActiveEditorView();
@@ -6689,6 +6721,7 @@ body { background: white; }
                       onOpenTranslate={handleOpenTranslate}
                       onOpenExplore={handleOpenExplore}
                       onOpenCitations={handleOpenCitations}
+                      onInsertShape={handleInsertShape}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}

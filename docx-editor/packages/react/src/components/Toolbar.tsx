@@ -295,16 +295,6 @@ export interface ToolbarProps {
   rulerVisible?: boolean;
   /** Open the Paste Special dialog (Docs: Edit > Paste special). */
   onOpenPasteSpecial?: () => void;
-  /** Callback when user wants to insert a shape */
-  onInsertShape?: (data: {
-    shapeType: string;
-    width: number;
-    height: number;
-    fillColor?: string;
-    fillType?: string;
-    outlineWidth?: number;
-    outlineColor?: string;
-  }) => void;
   /** Image context when an image is selected */
   imageContext?: {
     wrapType: string;
@@ -361,6 +351,8 @@ export interface ToolbarProps {
   onOpenExplore?: () => void;
   /** Tools → Citations — opens the local citations manager (A6 v0). */
   onOpenCitations?: () => void;
+  /** Insert → Shape — inserts a default SVG of the chosen primitive (C2 v0). */
+  onInsertShape?: (type: 'rectangle' | 'ellipse' | 'line' | 'arrow') => void;
   /** File → "Email as attachment" — download + open mailto (F2). */
   onEmailAsAttachment?: () => void;
   /** View → Show formatting marks — toggles ¶ / → / ↵ overlay (F6). */

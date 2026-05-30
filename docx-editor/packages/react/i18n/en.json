@@ -83,7 +83,12 @@
     "dictionary": "Dictionary",
     "translate": "Translate…",
     "explore": "Explore…",
-    "citations": "Citations…"
+    "citations": "Citations…",
+    "shape": "Shape",
+    "shapeRectangle": "Rectangle",
+    "shapeEllipse": "Ellipse",
+    "shapeLine": "Line",
+    "shapeArrow": "Arrow"
   },
   "suggestingBanner": {
     "title": "Suggesting",

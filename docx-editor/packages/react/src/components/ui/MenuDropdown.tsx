@@ -131,6 +131,7 @@ export function SubMenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       style={menuItemStyle}
       onMouseDown={(e) => {
         e.preventDefault();
