@@ -10,13 +10,16 @@
  */
 import { test, expect, Page } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
+import { modifierKey } from '../helpers/keyboard';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LARGE_DOC_PATH = path.resolve(__dirname, '../fixtures/issue-68-large.docx');
 
-const MODIFIER = process.platform === 'darwin' ? 'Meta' : 'Control';
+// Use `await modifierKey(page)` inline at each callsite — the helper
+// resolves from the page's `navigator.platform` (Playwright Chromium
+// reports "Win32" even on Mac), which matches what PM's keymap reads.
 
 /**
  * Load the large doc fixture and wait for pages to render.
@@ -117,7 +120,7 @@ test.describe('Large Document Performance (#68)', () => {
 
     // Place cursor at start using Ctrl/Cmd+Home
     await placeCursorOnPage(page, 1);
-    await page.keyboard.press(`${MODIFIER}+Home`);
+    await page.keyboard.press(`${await modifierKey(page)}+Home`);
     await page.waitForTimeout(300);
 
     // Verify cursor is active — type a char and check it appears
@@ -183,7 +186,7 @@ test.describe('Large Document Performance (#68)', () => {
     // Navigate to end of document
     const pageCount = await page.locator('[data-page-number]').count();
     await placeCursorOnPage(page, pageCount);
-    await page.keyboard.press(`${MODIFIER}+End`);
+    await page.keyboard.press(`${await modifierKey(page)}+End`);
     await page.waitForTimeout(300);
 
     // Warm up
@@ -204,7 +207,7 @@ test.describe('Large Document Performance (#68)', () => {
 
     // Place cursor and type at start
     await placeCursorOnPage(page, 1);
-    await page.keyboard.press(`${MODIFIER}+Home`);
+    await page.keyboard.press(`${await modifierKey(page)}+Home`);
     await page.waitForTimeout(300);
     await page.keyboard.type('edit ');
     await page.waitForTimeout(1000);
@@ -231,19 +234,20 @@ test.describe('Large Document Performance (#68)', () => {
 
     // Place cursor and type to create undo history
     await placeCursorOnPage(page, 1);
-    await page.keyboard.press(`${MODIFIER}+Home`);
+    await page.keyboard.press(`${await modifierKey(page)}+Home`);
     await page.waitForTimeout(300);
     await page.keyboard.type('undo test ');
     await page.waitForTimeout(1000);
 
     // Measure undo latency
-    const undoStats = await measureKeystrokes(page, 5, `${MODIFIER}+z`);
+    const mod = await modifierKey(page);
+    const undoStats = await measureKeystrokes(page, 5, `${mod}+z`);
     console.log(
       `Undo — avg: ${undoStats.avg}ms, max: ${undoStats.max}ms, all: [${undoStats.latencies.join(', ')}]`
     );
 
     // Measure redo latency
-    const redoStats = await measureKeystrokes(page, 5, `${MODIFIER}+Shift+z`);
+    const redoStats = await measureKeystrokes(page, 5, `${mod}+Shift+z`);
     console.log(
       `Redo — avg: ${redoStats.avg}ms, max: ${redoStats.max}ms, all: [${redoStats.latencies.join(', ')}]`
     );

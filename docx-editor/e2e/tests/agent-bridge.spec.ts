@@ -10,6 +10,7 @@
 
 import { test, expect } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
+import { modifierKey } from '../helpers/keyboard';
 
 /** Locate any paragraph that has a uniquely-findable 5-char substring. */
 async function pickUniqueMatch(
@@ -254,7 +255,8 @@ test.describe('Agent bridge — paraId-anchored mutations', () => {
 
     // Focus the editor before issuing the keyboard shortcut.
     await page.locator('.paged-editor__hidden-pm').focus();
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
+    const mod = await modifierKey(page);
+    await page.keyboard.press(`${mod}+z`);
 
     // cleanOrphanedComments is debounced 300ms; wait a beat then assert removal.
     await expect(page.getByText('temp-agent-comment')).toHaveCount(0, { timeout: 5000 });

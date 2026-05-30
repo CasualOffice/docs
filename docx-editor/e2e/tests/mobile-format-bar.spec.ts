@@ -7,11 +7,12 @@
  * test overrides the viewport via `test.use({ viewport })`.
  */
 import { test, expect } from '@playwright/test';
+import { modifierKey } from '../helpers/keyboard';
 
 // CI runs on Linux (Ctrl), local dev is usually macOS (Meta). Use the
-// platform modifier Playwright already detected so the same spec runs
-// on both.
-const SELECT_ALL_MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
+// page-side modifier helper — Playwright Chromium reports `Win32` in
+// `navigator.platform` even on a Mac host, so we have to match what
+// the page sees, not what the runner sees.
 
 test.describe('Mobile floating format bar', () => {
   test.describe('desktop viewport — chip hidden', () => {
@@ -23,7 +24,7 @@ test.describe('Mobile floating format bar', () => {
       await page.waitForTimeout(500);
       await page.locator('.ProseMirror').focus();
       await page.keyboard.type('Hello desktop');
-      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
+      await page.keyboard.press(`${await modifierKey(page)}+a`);
       await page.waitForTimeout(400);
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toHaveCount(0);
     });
@@ -37,7 +38,7 @@ test.describe('Mobile floating format bar', () => {
       // Collapsed cursor → no bar.
       await expect(page.locator('[data-testid="desktop-format-bar"]')).toHaveCount(0);
       // Range selection → desktop bar appears with B / I / U / S buttons.
-      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
+      await page.keyboard.press(`${await modifierKey(page)}+a`);
       await expect(page.locator('[data-testid="desktop-format-bar"]')).toBeVisible({
         timeout: 2000,
       });
@@ -72,7 +73,7 @@ test.describe('Mobile floating format bar', () => {
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toHaveCount(0);
 
       // Range selection — chip should appear.
-      await page.keyboard.press(`${SELECT_ALL_MOD}+a`);
+      await page.keyboard.press(`${await modifierKey(page)}+a`);
       await expect(page.locator('[data-testid="mobile-format-bar"]')).toBeVisible({
         timeout: 3000,
       });

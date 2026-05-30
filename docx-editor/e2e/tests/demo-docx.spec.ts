@@ -18,6 +18,7 @@
 
 import { test, expect } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
+import { modifierKey } from '../helpers/keyboard';
 import * as path from 'path';
 
 const DEMO_DOCX_PATH = 'fixtures/demo/demo.docx';
@@ -588,7 +589,7 @@ test.describe('Demo.docx - Round-trip Save', () => {
     await editor.focus();
 
     // Press Ctrl+End to go to end of document
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    const modifier = await modifierKey(page);
     await page.keyboard.press(`${modifier}+End`);
 
     // Type some text
