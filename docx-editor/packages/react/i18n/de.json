@@ -81,7 +81,8 @@
     "emailAsAttachment": null,
     "convertToText": null,
     "dictionary": null,
-    "translate": null
+    "translate": null,
+    "explore": null
   },
   "formattingBar": {
     "groups": {

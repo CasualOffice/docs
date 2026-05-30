@@ -238,6 +238,7 @@ export function MenuBar() {
     onConvertTableToText,
     onOpenDictionary,
     onOpenTranslate,
+    onOpenExplore,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -863,7 +864,8 @@ export function MenuBar() {
           onOpenAccessibility ||
           onOpenWordCount ||
           onOpenDictionary ||
-          onOpenTranslate) && (
+          onOpenTranslate ||
+          onOpenExplore) && (
           <MenuDropdown
             label={t('toolbar.tools')}
             disabled={disabled}
@@ -896,6 +898,14 @@ export function MenuBar() {
                     {
                       label: t('toolbar.translate'),
                       onClick: onOpenTranslate,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onOpenExplore
+                ? [
+                    {
+                      label: t('toolbar.explore'),
+                      onClick: onOpenExplore,
                     } as MenuEntry,
                   ]
                 : []),

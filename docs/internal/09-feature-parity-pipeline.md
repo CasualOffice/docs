@@ -117,16 +117,20 @@ All four behaviors now present:
   Clicking a heading whose ancestor is collapsed auto-expands
   the ancestor first so the active state stays visible.
 
-### A3 — Explore / Research panel ❌
+### A3 — Explore / Research panel ✅ (Wikipedia v0)
 
-Google Docs' Explore panel surfaces web + image + drive results for the
-current selection. For us, since we have no Drive/Workspace, a stripped
-version:
-- Selection text → DuckDuckGo (no API key) or Wikipedia REST.
-- Image search → optional, defer.
-- Cite-result button drops an inline footnote with the URL.
-
-Defer if user demand is unclear.
+Tools → Explore opens a dialog that hits Wikipedia's REST summary
+endpoint (`/api/rest_v1/page/summary/<title>`) for the selection or
+a typed query. Renders the page title + extract paragraph + an
+"Open in Wikipedia ↗" external link + a "Cite this" button. Cite
+inserts a hyperlink at the cursor (title as display text, page URL
+as href) via the existing `insertHyperlink` command — no need to
+touch the footnote subsystem. Loading / not-found / error states
+route through `PanelState` (its fifth adopter). Disambiguation
+responses are folded into the "not-found" branch so the user
+retries with a more specific term. Image search is deliberately
+skipped per the parity note. e2e in `explore-dialog.spec.ts` mocks
+the endpoint.
 
 ### A4 — Dictionary panel ✅
 

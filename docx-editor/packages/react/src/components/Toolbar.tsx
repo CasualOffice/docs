@@ -357,6 +357,8 @@ export interface ToolbarProps {
   onOpenDictionary?: () => void;
   /** Tools → Translate — opens the translate-selection dialog (A5). */
   onOpenTranslate?: () => void;
+  /** Tools → Explore — opens the Wikipedia lookup dialog (A3). */
+  onOpenExplore?: () => void;
   /** File → "Email as attachment" — download + open mailto (F2). */
   onEmailAsAttachment?: () => void;
   /** View → Show formatting marks — toggles ¶ / → / ↵ overlay (F6). */

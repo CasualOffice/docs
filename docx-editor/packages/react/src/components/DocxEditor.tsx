@@ -173,6 +173,9 @@ const DictionaryDialog = lazy(() =>
 const TranslateDialog = lazy(() =>
   import('./dialogs/TranslateDialog').then((m) => ({ default: m.TranslateDialog }))
 );
+const ExploreDialog = lazy(() =>
+  import('./dialogs/ExploreDialog').then((m) => ({ default: m.ExploreDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -2175,6 +2178,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // A5 — translate selection. Captures the selection text at open time.
   const [showTranslate, setShowTranslate] = useState(false);
   const [translateText, setTranslateText] = useState<string | null>(null);
+  // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
+  const [showExplore, setShowExplore] = useState(false);
+  const [exploreQuery, setExploreQuery] = useState<string | null>(null);
   // Editor preferences — smart quotes / autocorrect runtime toggles.
   // Lazy-init from localStorage and hydrate the core singleton so the
   // smart-quotes/autocorrect plugins see the persisted values on the very
@@ -4687,6 +4693,35 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     convertTableToText(view);
   }, [getActiveEditorView]);
 
+  // A3 — open the Explore dialog (Wikipedia summary lookup). Seeds the
+  // query from the current selection; "Cite this" inserts a hyperlink
+  // at the cursor via the existing hyperlink command.
+  const handleOpenExplore = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view) {
+      const { from, to } = view.state.selection;
+      if (from !== to) {
+        const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+        setExploreQuery(raw.length > 0 ? raw : null);
+      } else {
+        setExploreQuery(null);
+      }
+    } else {
+      setExploreQuery(null);
+    }
+    setShowExplore(true);
+  }, [getActiveEditorView]);
+
+  const handleExploreCite = useCallback(
+    (title: string, url: string) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      insertHyperlink(title, url, title)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
   // A5 — open the translate dialog. Seeds the original-text box with
   // the current selection; the user can edit it freely once the dialog
   // is up.
@@ -6602,6 +6637,7 @@ body { background: white; }
                       }
                       onOpenDictionary={handleOpenDictionary}
                       onOpenTranslate={handleOpenTranslate}
+                      onOpenExplore={handleOpenExplore}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}
@@ -7535,6 +7571,14 @@ body { background: white; }
                   isOpen={showTranslate}
                   onClose={() => setShowTranslate(false)}
                   initialText={translateText}
+                />
+              )}
+              {showExplore && (
+                <ExploreDialog
+                  isOpen={showExplore}
+                  onClose={() => setShowExplore(false)}
+                  initialQuery={exploreQuery}
+                  onCite={handleExploreCite}
                 />
               )}
               {showCommandPalette && (

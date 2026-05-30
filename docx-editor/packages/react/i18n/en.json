@@ -81,7 +81,8 @@
     "convertToText": "Convert table to text",
     "emailAsAttachment": "Email as attachment…",
     "dictionary": "Dictionary",
-    "translate": "Translate…"
+    "translate": "Translate…",
+    "explore": "Explore…"
   },
   "suggestingBanner": {
     "title": "Suggesting",
