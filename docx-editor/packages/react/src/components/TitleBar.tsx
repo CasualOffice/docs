@@ -754,6 +754,7 @@ export function MenuBar() {
             {
               icon: 'page_break',
               label: t('toolbar.pageBreak'),
+              shortcut: '⌘↵',
               onClick: onInsertPageBreak,
               disabled: !onInsertPageBreak,
             },
