@@ -11,6 +11,40 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { FocusTrap } from '../ui/FocusTrap';
 
+// Recently-used tracker: persists the last 5 picked item ids so repeat
+// users see their habits without typing. Lives in localStorage so the
+// list survives reloads but stays per-browser; sync across devices
+// would need a host integration we don't have yet.
+const MRU_KEY = 'docx-editor-palette-recents';
+const MRU_LIMIT = 5;
+
+function loadRecents(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(MRU_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === 'string').slice(0, MRU_LIMIT)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecent(id: string): string[] {
+  const current = loadRecents().filter((x) => x !== id);
+  const next = [id, ...current].slice(0, MRU_LIMIT);
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MRU_KEY, JSON.stringify(next));
+    }
+  } catch {
+    // Quota / private mode — silent.
+  }
+  return next;
+}
+
 export interface CommandPaletteItem {
   /** Stable key for React + tests. */
   id: string;
@@ -136,6 +170,7 @@ const hintStyle: CSSProperties = {
 export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteDialogProps) {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [recents, setRecents] = useState<string[]>(() => loadRecents());
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -153,7 +188,16 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
+    if (!q) {
+      // No query: surface recently-used items at the top (in MRU order),
+      // followed by everything else in the host's order. The recents
+      // list is small (≤5) so the linear scan is fine.
+      if (recents.length === 0) return items;
+      const byId = new Map(items.map((i) => [i.id, i]));
+      const front = recents.map((id) => byId.get(id)).filter((i): i is CommandPaletteItem => !!i);
+      const seen = new Set(front.map((i) => i.id));
+      return [...front, ...items.filter((i) => !seen.has(i.id))];
+    }
     // Fuzzy scorer: each character of the query must appear in the
     // haystack in order. Higher score means tighter match:
     //   - +5 when the match lands on a word boundary (start of string,
@@ -187,7 +231,7 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
       .filter((x): x is { item: (typeof items)[number]; score: number } => x !== null)
       .sort((a, b) => b.score - a.score);
     return scored.map((x) => x.item);
-  }, [items, query]);
+  }, [items, query, recents]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -207,6 +251,8 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
 
   const run = async (item: CommandPaletteItem | null) => {
     if (!item) return;
+    // Bump this item to the top of the MRU list before tearing down.
+    setRecents(pushRecent(item.id));
     onClose();
     // Defer the command so the dialog has unmounted before the action fires
     // — important for actions that need editor focus (Bold, Find, etc.).
