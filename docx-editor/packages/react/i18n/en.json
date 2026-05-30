@@ -666,7 +666,9 @@
         "documentOutline": "Show document outline",
         "documentOutlineDescription": "Toggle the document outline panel",
         "pageBreak": "Insert page break",
-        "pageBreakDescription": "Insert a page break at the cursor"
+        "pageBreakDescription": "Insert a page break at the cursor",
+        "hyperlink": "Insert link",
+        "hyperlinkDescription": "Insert or edit a hyperlink on the current selection"
       },
       "noResults": "No shortcuts found matching \"{query}\"",
       "pressEscToClose": "Press {key} to close",

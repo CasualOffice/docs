@@ -589,6 +589,16 @@ const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     keys: 'Ctrl+Enter',
     category: 'editing',
   },
+  {
+    id: 'hyperlink',
+    name: 'Insert link',
+    nameKey: 'dialogs.keyboardShortcuts.shortcuts.hyperlink',
+    description: 'Insert or edit a hyperlink on the current selection',
+    descriptionKey: 'dialogs.keyboardShortcuts.shortcuts.hyperlinkDescription',
+    keys: 'Ctrl+K',
+    category: 'editing',
+    common: true,
+  },
 ];
 
 // ============================================================================

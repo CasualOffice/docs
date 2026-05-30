@@ -576,7 +576,9 @@
         "documentOutline": null,
         "documentOutlineDescription": null,
         "pageBreak": null,
-        "pageBreakDescription": null
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "Keine Tastenkombinationen für \"{query}\" gefunden",
       "pressEscToClose": "{key} drücken, um zu schließen",

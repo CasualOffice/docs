@@ -576,7 +576,9 @@
         "documentOutline": null,
         "documentOutlineDescription": null,
         "pageBreak": null,
-        "pageBreakDescription": null
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "\"{query}\" eşleşen kısayol yok",
       "pressEscToClose": "Kapatmak için {key} tuşuna bas",

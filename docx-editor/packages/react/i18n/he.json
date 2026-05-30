@@ -576,7 +576,9 @@
         "documentOutline": null,
         "documentOutlineDescription": null,
         "pageBreak": null,
-        "pageBreakDescription": null
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "לא נמצאו קיצורים עבור \"{query}\"",
       "pressEscToClose": "לחץ {key} כדי לסגור",

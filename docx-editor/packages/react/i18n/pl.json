@@ -576,7 +576,9 @@
         "documentOutline": null,
         "documentOutlineDescription": null,
         "pageBreak": null,
-        "pageBreakDescription": null
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "Nie znaleziono skrótów pasujących do \"{query}\"",
       "pressEscToClose": "Naciśnij {key}, aby zamknąć",

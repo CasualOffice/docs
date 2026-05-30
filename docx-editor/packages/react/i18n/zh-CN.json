@@ -576,7 +576,9 @@
         "documentOutline": null,
         "documentOutlineDescription": null,
         "pageBreak": null,
-        "pageBreakDescription": null
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "未找到与 \"{query}\" 匹配的快捷方式",
       "pressEscToClose": "按 {key} 关闭",
