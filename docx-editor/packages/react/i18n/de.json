@@ -80,7 +80,8 @@
     "convertToTable": null,
     "emailAsAttachment": null,
     "convertToText": null,
-    "dictionary": null
+    "dictionary": null,
+    "translate": null
   },
   "formattingBar": {
     "groups": {

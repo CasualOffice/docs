@@ -237,6 +237,7 @@ export function MenuBar() {
     onConvertSelectionToTable,
     onConvertTableToText,
     onOpenDictionary,
+    onOpenTranslate,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -858,7 +859,11 @@ export function MenuBar() {
         />
 
         {/* Tools Menu — gated on having at least one Tools item. */}
-        {(onOpenPreferences || onOpenAccessibility || onOpenWordCount || onOpenDictionary) && (
+        {(onOpenPreferences ||
+          onOpenAccessibility ||
+          onOpenWordCount ||
+          onOpenDictionary ||
+          onOpenTranslate) && (
           <MenuDropdown
             label={t('toolbar.tools')}
             disabled={disabled}
@@ -883,6 +888,14 @@ export function MenuBar() {
                       label: t('toolbar.dictionary'),
                       shortcut: '⌘⇧Y',
                       onClick: onOpenDictionary,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onOpenTranslate
+                ? [
+                    {
+                      label: t('toolbar.translate'),
+                      onClick: onOpenTranslate,
                     } as MenuEntry,
                   ]
                 : []),

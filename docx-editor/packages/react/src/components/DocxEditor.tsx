@@ -170,6 +170,9 @@ const BuildingBlocksDialog = lazy(() =>
 const DictionaryDialog = lazy(() =>
   import('./dialogs/DictionaryDialog').then((m) => ({ default: m.DictionaryDialog }))
 );
+const TranslateDialog = lazy(() =>
+  import('./dialogs/TranslateDialog').then((m) => ({ default: m.TranslateDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -2169,6 +2172,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // re-fetch on every render.
   const [showDictionary, setShowDictionary] = useState(false);
   const [dictionaryWord, setDictionaryWord] = useState<string | null>(null);
+  // A5 — translate selection. Captures the selection text at open time.
+  const [showTranslate, setShowTranslate] = useState(false);
+  const [translateText, setTranslateText] = useState<string | null>(null);
   // Editor preferences — smart quotes / autocorrect runtime toggles.
   // Lazy-init from localStorage and hydrate the core singleton so the
   // smart-quotes/autocorrect plugins see the persisted values on the very
@@ -4681,6 +4687,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     convertTableToText(view);
   }, [getActiveEditorView]);
 
+  // A5 — open the translate dialog. Seeds the original-text box with
+  // the current selection; the user can edit it freely once the dialog
+  // is up.
+  const handleOpenTranslate = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view) {
+      const { from, to } = view.state.selection;
+      if (from !== to) {
+        const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+        setTranslateText(raw.length > 0 ? raw : null);
+      } else {
+        setTranslateText(null);
+      }
+    } else {
+      setTranslateText(null);
+    }
+    setShowTranslate(true);
+  }, [getActiveEditorView]);
+
   // A4 — open the dictionary dialog. Seeds the input from the selection
   // (collapsed selection → null, dialog shows the bare input).
   const handleOpenDictionary = useCallback(() => {
@@ -6576,6 +6601,7 @@ body { background: white; }
                         state.pmTableContext?.isInTable ? handleConvertTableToText : undefined
                       }
                       onOpenDictionary={handleOpenDictionary}
+                      onOpenTranslate={handleOpenTranslate}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}
@@ -7502,6 +7528,13 @@ body { background: white; }
                   isOpen={showDictionary}
                   onClose={() => setShowDictionary(false)}
                   initialWord={dictionaryWord}
+                />
+              )}
+              {showTranslate && (
+                <TranslateDialog
+                  isOpen={showTranslate}
+                  onClose={() => setShowTranslate(false)}
+                  initialText={translateText}
                 />
               )}
               {showCommandPalette && (

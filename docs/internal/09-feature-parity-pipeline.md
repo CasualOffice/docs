@@ -141,11 +141,17 @@ VersionHistoryPanel and DocumentOutline). e2e in
 `dictionary-dialog.spec.ts` mocks the endpoint so the run is
 deterministic offline.
 
-### A5 — Translate document ❌
+### A5 — Translate document 🟡 (selection translate shipped)
 
-Whole-doc translate. Hard without a backend translation provider; cheap
-v0 is "translate selection" via a free public endpoint, full-doc
-deferred until a paid path exists.
+Tools → Translate opens a two-column dialog: source and target
+language pickers at the top, original text on the left, translated
+text on the right, swap button between the pickers, Copy button
+under the translation. Seeds the original from the editor selection;
+hits `api.mymemory.translated.net` (free, no API key) and shows the
+result. Loading / error states route through `PanelState` (the
+helper's fourth adopter). Whole-document translate is the future
+follow-up that needs a paid provider — out of scope until then.
+e2e in `translate-dialog.spec.ts` mocks the endpoint.
 
 ### A6 — Citations panel ❌
 

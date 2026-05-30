@@ -80,7 +80,8 @@
     "convertToTable": "Convert selection to table",
     "convertToText": "Convert table to text",
     "emailAsAttachment": "Email as attachment…",
-    "dictionary": "Dictionary"
+    "dictionary": "Dictionary",
+    "translate": "Translate…"
   },
   "suggestingBanner": {
     "title": "Suggesting",
