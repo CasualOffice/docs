@@ -7748,6 +7748,18 @@ body { background: white; }
                       path: 'File',
                       run: handleOpenFileProperties,
                     },
+                    {
+                      id: 'file.makeCopy',
+                      label: 'Make a copy',
+                      path: 'File',
+                      run: handleMakeCopy,
+                    },
+                    {
+                      id: 'file.email',
+                      label: 'Email as attachment…',
+                      path: 'File',
+                      run: handleEmailAsAttachment,
+                    },
 
                     {
                       id: 'edit.find',
@@ -7902,6 +7914,102 @@ body { background: white; }
                       label: 'Insert image',
                       path: 'Insert',
                       run: handleInsertImageClick,
+                    },
+                    {
+                      id: 'insert.watermark',
+                      label: 'Watermark…',
+                      path: 'Insert',
+                      run: () => setShowWatermarkDialog(true),
+                    },
+                    {
+                      id: 'insert.buildingBlocks',
+                      label: 'Building blocks…',
+                      path: 'Insert',
+                      run: handleOpenBuildingBlocks,
+                    },
+                    {
+                      id: 'insert.convertToTable',
+                      label: 'Convert selection to table',
+                      path: 'Insert',
+                      run: handleConvertSelectionToTable,
+                    },
+                    {
+                      id: 'insert.shape.rectangle',
+                      label: 'Shape · Rectangle',
+                      path: 'Insert',
+                      run: () => handleInsertShape('rectangle'),
+                    },
+                    {
+                      id: 'insert.shape.ellipse',
+                      label: 'Shape · Ellipse',
+                      path: 'Insert',
+                      run: () => handleInsertShape('ellipse'),
+                    },
+                    {
+                      id: 'insert.shape.line',
+                      label: 'Shape · Line',
+                      path: 'Insert',
+                      run: () => handleInsertShape('line'),
+                    },
+                    {
+                      id: 'insert.shape.arrow',
+                      label: 'Shape · Arrow',
+                      path: 'Insert',
+                      run: () => handleInsertShape('arrow'),
+                    },
+
+                    {
+                      id: 'tools.wordCount',
+                      label: 'Word count',
+                      path: 'Tools',
+                      shortcut: '⌘⇧C',
+                      run: handleOpenWordCount,
+                    },
+                    {
+                      id: 'tools.dictionary',
+                      label: 'Dictionary',
+                      path: 'Tools',
+                      shortcut: '⌘⇧Y',
+                      run: handleOpenDictionary,
+                    },
+                    {
+                      id: 'tools.translate',
+                      label: 'Translate…',
+                      path: 'Tools',
+                      run: handleOpenTranslate,
+                    },
+                    {
+                      id: 'tools.explore',
+                      label: 'Explore…',
+                      path: 'Tools',
+                      run: handleOpenExplore,
+                    },
+                    {
+                      id: 'tools.citations',
+                      label: 'Citations…',
+                      path: 'Tools',
+                      run: handleOpenCitations,
+                    },
+                    {
+                      id: 'tools.preferences',
+                      label: 'Preferences…',
+                      path: 'Tools',
+                      run: () => setShowPreferences(true),
+                    },
+                    {
+                      id: 'tools.accessibility',
+                      label: 'Accessibility…',
+                      path: 'Tools',
+                      run: handleOpenAccessibility,
+                    },
+
+                    {
+                      id: 'view.showFormattingMarks',
+                      label: showFormattingMarks
+                        ? 'Hide non-printing characters'
+                        : 'Show non-printing characters',
+                      path: 'View',
+                      run: handleToggleShowFormattingMarks,
                     },
 
                     {
