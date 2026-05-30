@@ -346,6 +346,15 @@ selections. Mirrors the page-color flow (commit `c186c4a`): doc-level
 attribute promoted by `PagedEditor` into `RenderPageOptions`, then
 rendered inside `renderPage`. e2e in `watermark.spec.ts`.
 
+**Updated 2026-05-30:** the dialog now exposes color (HTML5 color
+picker), opacity (10–100% slider), font size (48–144px slider), and
+rotation (-90 to 90° slider) — every knob the painter already reads.
+Defaults still match Word (gray, 50%, 96px, -45°); applying a value
+that matches a default is omitted from the persisted watermark so
+future default changes don't get pinned. e2e in
+`watermark-knobs.spec.ts` asserts the dialog values land on the
+rendered overlay's inline styles.
+
 **Pending:** round-trip — parse VML watermarks (`<v:shape>` /
 `<v:textpath>`) from default-header XML on load, write VML on save. Word
 has many watermark shape variants; a focused round-trip pass needs its
