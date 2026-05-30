@@ -78,7 +78,8 @@
     "showFormattingMarks": null,
     "wordCount": null,
     "convertToTable": null,
-    "emailAsAttachment": null
+    "emailAsAttachment": null,
+    "convertToText": null
   },
   "formattingBar": {
     "groups": {

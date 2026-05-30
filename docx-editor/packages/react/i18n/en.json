@@ -78,6 +78,7 @@
     "showFormattingMarks": "Show non-printing characters",
     "wordCount": "Word count",
     "convertToTable": "Convert selection to table",
+    "convertToText": "Convert table to text",
     "emailAsAttachment": "Email as attachment…"
   },
   "suggestingBanner": {

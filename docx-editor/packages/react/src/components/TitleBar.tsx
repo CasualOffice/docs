@@ -235,6 +235,7 @@ export function MenuBar() {
     onOpenAccessibility,
     onOpenBuildingBlocks,
     onConvertSelectionToTable,
+    onConvertTableToText,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -832,6 +833,14 @@ export function MenuBar() {
                   {
                     label: t('toolbar.convertToTable'),
                     onClick: onConvertSelectionToTable,
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onConvertTableToText
+              ? [
+                  {
+                    label: t('toolbar.convertToText'),
+                    onClick: onConvertTableToText,
                   } as MenuEntry,
                 ]
               : []),

@@ -364,8 +364,9 @@ import {
 } from '../utils/buildingBlocks';
 
 // Convert selection to table (B8) — auto-detect-delimiter helper that
-// turns the selected paragraphs into a table in one click.
-import { convertSelectionToTable } from '../utils/convertTextToTable';
+// turns the selected paragraphs into a table in one click. The reverse
+// direction (table → text) lives alongside it.
+import { convertSelectionToTable, convertTableToText } from '../utils/convertTextToTable';
 
 // ============================================================================
 // TYPES
@@ -4658,6 +4659,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     convertSelectionToTable(view);
   }, [getActiveEditorView]);
 
+  const handleConvertTableToText = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    convertTableToText(view);
+  }, [getActiveEditorView]);
+
   // Watermark apply/clear handler (C5) — writes into the doc-level
   // body.watermark slot so the painter draws the overlay on the next
   // render. `undefined` clears it. Round-trip to header XML lands in a
@@ -6528,6 +6535,9 @@ body { background: white; }
                       onOpenAccessibility={handleOpenAccessibility}
                       onOpenBuildingBlocks={handleOpenBuildingBlocks}
                       onConvertSelectionToTable={handleConvertSelectionToTable}
+                      onConvertTableToText={
+                        state.pmTableContext?.isInTable ? handleConvertTableToText : undefined
+                      }
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}

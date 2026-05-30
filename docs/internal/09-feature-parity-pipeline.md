@@ -236,17 +236,22 @@ cursor is in a table. Dispatches `cellFillColor` → `setCellFillColor`,
 and reflects the current cell's `cellBackgroundColor`. The fuller
 control still lives in `BordersAndShadingDialog`.
 
-### B8 — Convert text → table / table → text 🟡 (text→table shipped)
+### B8 — Convert text → table / table → text ✅
 
 Insert → "Convert selection to table" turns the currently-selected
 paragraphs into a table. Delimiter is auto-detected: tab → comma →
 "one cell per paragraph", which covers the paste-from-CSV headline
-case without forcing a dialog. Short rows are zero-padded so the
-table stays rectangular; trailing/leading blank paragraphs are
-stripped. A trailing empty paragraph is inserted after the table
-so the user can keep typing past it. Reverse direction (table → text)
-deferred — it lands cleanly on top of the same utility when needed.
-e2e in `convert-to-table.spec.ts`.
+case without forcing a dialog. Short rows are zero-padded; trailing /
+leading blank paragraphs are stripped; a trailing empty paragraph is
+inserted after the table so the cursor has somewhere to land.
+
+The reverse direction — Insert → "Convert table to text" — appears
+only while the caret is inside a table (gated on
+`state.pmTableContext?.isInTable`). It replaces the table with one
+paragraph per row, cells joined by `\t`, giving a round-trip-friendly
+default that pairs with the forward conversion's tab delimiter.
+Both directions share `packages/react/src/utils/convertTextToTable.ts`.
+e2e in `convert-to-table.spec.ts` and `convert-table-roundtrip.spec.ts`.
 
 ### B9 — Auto-fit (contents / window) ✅
 

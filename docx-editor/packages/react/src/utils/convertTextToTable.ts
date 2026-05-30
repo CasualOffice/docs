@@ -19,6 +19,7 @@
 
 import type { EditorView } from 'prosemirror-view';
 import type { Node as PMNode } from 'prosemirror-model';
+import { getTableContext } from '@eigenpal/docx-core/prosemirror/commands';
 
 /** Page-content width in twentieths of a point, matching `createTable`. */
 const CONTENT_WIDTH_TWIPS = 9360;
@@ -141,6 +142,60 @@ export function convertSelectionToTable(view: EditorView): boolean {
   const trailing = paragraphType.create();
   const tr = view.state.tr.replaceRangeWith(range.from, range.to, table);
   tr.insert(range.from + table.nodeSize, trailing);
+  view.dispatch(tr.scrollIntoView());
+  view.focus();
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Reverse direction — table → text (B8 closeout).
+// ---------------------------------------------------------------------------
+
+export function canConvertTableToText(view: EditorView): boolean {
+  return getTableContext(view.state).isInTable;
+}
+
+/**
+ * Replaces the table at the cursor with one paragraph per row, cells
+ * joined by `\t`. Inverse of `convertSelectionToTable` with tab
+ * delimiter — round-trip-friendly so the user can flip back and forth
+ * without lossy reformatting.
+ *
+ * The cursor's table position is resolved via the same `getTableContext`
+ * helper the rest of the table toolbar uses, so it works whether the
+ * caret is in a cell or a multi-cell selection.
+ */
+export function convertTableToText(view: EditorView): boolean {
+  const { state } = view;
+  const ctx = getTableContext(state);
+  if (!ctx.isInTable || !ctx.table || ctx.tablePos === undefined) return false;
+  const table = ctx.table;
+  const tablePos = ctx.tablePos;
+  const { schema } = state;
+  const paragraphType = schema.nodes.paragraph;
+  if (!paragraphType) return false;
+
+  // Walk rows → cells, collect text. `textBetween` falls back to a
+  // space at block boundaries; we strip those because they show up as
+  // leading/trailing whitespace inside cells that span multiple
+  // paragraphs (rare in our flow, but the strip is defensive).
+  const paragraphs: PMNode[] = [];
+  table.forEach((row) => {
+    if (row.type.name !== 'tableRow') return;
+    const cellTexts: string[] = [];
+    row.forEach((cell) => {
+      if (cell.type.name !== 'tableCell' && cell.type.name !== 'tableHeader') return;
+      cellTexts.push(cell.textContent.trim());
+    });
+    const joined = cellTexts.join('\t');
+    paragraphs.push(
+      joined.length > 0 ? paragraphType.create({}, schema.text(joined)) : paragraphType.create()
+    );
+  });
+
+  if (paragraphs.length === 0) return false;
+
+  const tr = state.tr.replaceWith(tablePos, tablePos + table.nodeSize, paragraphs);
   view.dispatch(tr.scrollIntoView());
   view.focus();
   return true;
