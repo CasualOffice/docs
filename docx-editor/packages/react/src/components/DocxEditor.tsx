@@ -7793,6 +7793,13 @@ body { background: white; }
                       run: () => findReplace.openReplace(''),
                     },
                     {
+                      id: 'edit.hyperlink',
+                      label: 'Insert link',
+                      path: 'Edit',
+                      shortcut: '⌘K',
+                      run: () => handleFormat('insertLink'),
+                    },
+                    {
                       id: 'edit.selectAll',
                       label: 'Select All',
                       path: 'Edit',
@@ -7918,6 +7925,7 @@ body { background: white; }
                       id: 'insert.pageBreak',
                       label: 'Insert page break',
                       path: 'Insert',
+                      shortcut: '⌘↵',
                       run: () => handleInsertPageBreak(),
                     },
                     {
