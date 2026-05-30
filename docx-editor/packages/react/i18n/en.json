@@ -555,7 +555,8 @@
       "words": "Words",
       "characters": "Characters",
       "charactersNoSpaces": "Characters excluding spaces",
-      "paragraphs": "Paragraphs"
+      "paragraphs": "Paragraphs",
+      "readingTime": "Reading time"
     },
     "keyboardShortcuts": {
       "ariaLabel": "Keyboard Shortcuts",

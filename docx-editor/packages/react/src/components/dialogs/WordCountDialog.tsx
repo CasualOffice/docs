@@ -161,6 +161,15 @@ export function WordCountDialog({
               value={stats.charactersNoSpaces}
             />
             <Row label={t('dialogs.wordCount.paragraphs')} value={stats.paragraphs} />
+            {stats.words > 0 &&
+              (() => {
+                // 200 wpm baseline — same convention as the status-bar
+                // estimate. Rounded up so users over-budget rather than
+                // under, and shown as a `~N min` string (the dialog cell
+                // expects a value, so we render via a number-as-label trick).
+                const minutes = Math.max(1, Math.ceil(stats.words / 200));
+                return <Row label={t('dialogs.wordCount.readingTime')} value={`~${minutes} min`} />;
+              })()}
           </div>
           <div style={footerStyle}>
             <button
@@ -178,11 +187,11 @@ export function WordCountDialog({
   );
 }
 
-function Row({ label, value }: { label: string; value: number }): React.ReactElement {
+function Row({ label, value }: { label: string; value: number | string }): React.ReactElement {
   return (
     <div style={rowStyle}>
       <span style={labelStyle}>{label}</span>
-      <span style={valueStyle}>{value.toLocaleString()}</span>
+      <span style={valueStyle}>{typeof value === 'number' ? value.toLocaleString() : value}</span>
     </div>
   );
 }
