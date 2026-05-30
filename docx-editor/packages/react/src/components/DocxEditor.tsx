@@ -8028,6 +8028,13 @@ body { background: white; }
                       path: 'View',
                       run: handleToggleShowFormattingMarks,
                     },
+                    {
+                      id: 'view.showOutline',
+                      label: showOutline ? 'Hide document outline' : 'Show document outline',
+                      path: 'View',
+                      shortcut: '⌘⇧H',
+                      run: handleToggleOutline,
+                    },
 
                     {
                       id: 'help.report',
