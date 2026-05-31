@@ -347,6 +347,8 @@ export interface ToolbarProps {
   onOpenDictionary?: () => void;
   /** Tools → Translate — opens the translate-selection dialog (A5). */
   onOpenTranslate?: () => void;
+  /** Tools → Translate document — translate-and-download whole doc as .docx. */
+  onTranslateDocument?: () => void;
   /** Tools → Spell check — toggles inline spell-check decorations. */
   onToggleSpellcheck?: () => void;
   /** Current spell-check enabled state — drives the menu checkmark. */

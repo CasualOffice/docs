@@ -176,6 +176,11 @@ const DictionaryDialog = lazy(() =>
 const TranslateDialog = lazy(() =>
   import('./dialogs/TranslateDialog').then((m) => ({ default: m.TranslateDialog }))
 );
+const TranslateDocumentDialog = lazy(() =>
+  import('./dialogs/TranslateDocumentDialog').then((m) => ({
+    default: m.TranslateDocumentDialog,
+  }))
+);
 const ExploreDialog = lazy(() =>
   import('./dialogs/ExploreDialog').then((m) => ({ default: m.ExploreDialog }))
 );
@@ -2172,6 +2177,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [translateRange, setTranslateRange] = useState<{ from: number; to: number } | null>(
     null
   );
+  // Whole-document translate-and-export dialog. Separate from the
+  // selection dialog above because its action (download a translated
+  // copy) is distinct from "replace selection in-place".
+  const [showTranslateDocument, setShowTranslateDocument] = useState(false);
   // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
   const [showExplore, setShowExplore] = useState(false);
   const [exploreQuery, setExploreQuery] = useState<string | null>(null);
@@ -6926,6 +6935,7 @@ body { background: white; }
                       }
                       onOpenDictionary={handleOpenDictionary}
                       onOpenTranslate={handleOpenTranslate}
+                      onTranslateDocument={() => setShowTranslateDocument(true)}
                       onToggleSpellcheck={handleToggleSpellcheck}
                       spellcheckEnabled={spellOn}
                       onOpenExplore={handleOpenExplore}
@@ -7915,6 +7925,15 @@ body { background: white; }
                   onClose={() => setShowTranslate(false)}
                   initialText={translateText}
                   onReplace={translateRange ? handleTranslateReplace : undefined}
+                />
+              )}
+              {showTranslateDocument && (
+                <TranslateDocumentDialog
+                  isOpen={showTranslateDocument}
+                  onClose={() => setShowTranslateDocument(false)}
+                  documentName={documentName ?? 'Untitled'}
+                  getView={() => getActiveEditorView() ?? null}
+                  onSave={() => handleSave({ selective: false })}
                 />
               )}
               {showExplore && (

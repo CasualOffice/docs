@@ -238,6 +238,7 @@ export function MenuBar() {
     onConvertTableToText,
     onOpenDictionary,
     onOpenTranslate,
+    onTranslateDocument,
     onToggleSpellcheck,
     spellcheckEnabled,
     onOpenExplore,
@@ -912,6 +913,7 @@ export function MenuBar() {
           onOpenWordCount ||
           onOpenDictionary ||
           onOpenTranslate ||
+          onTranslateDocument ||
           onToggleSpellcheck ||
           onOpenExplore ||
           onOpenCitations) && (
@@ -947,6 +949,14 @@ export function MenuBar() {
                     {
                       label: t('toolbar.translate'),
                       onClick: onOpenTranslate,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onTranslateDocument
+                ? [
+                    {
+                      label: 'Translate document…',
+                      onClick: onTranslateDocument,
                     } as MenuEntry,
                   ]
                 : []),
