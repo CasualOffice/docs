@@ -77,7 +77,11 @@ const selectStyle: CSSProperties = {
   fontSize: 13,
   border: '1px solid var(--doc-border)',
   borderRadius: 4,
-  background: 'var(--doc-surface)',
+  background: 'var(--doc-surface, white)',
+  // Explicit colour — without this, dark-mode renders the language
+  // label in the browser's default near-black, which sits invisibly
+  // on the themed dark background.
+  color: 'var(--doc-text-on-surface, #1f2937)',
 };
 
 const arrowStyle: CSSProperties = {
@@ -109,14 +113,33 @@ const paneLabelStyle: CSSProperties = {
   background: 'var(--doc-surface-sunken, #fafafa)',
 };
 
+// Outer scrollable pane — grey gutter behind a doc-paper sheet so the
+// preview reads like a Google-Docs / Word page-view rather than a flat
+// HTML render.
 const paneContentStyle: CSSProperties = {
   flex: 1,
   overflow: 'auto',
-  padding: '16px 20px',
-  lineHeight: 1.55,
-  fontSize: 14,
-  color: 'var(--doc-text-on-surface)',
-  background: 'var(--doc-surface)',
+  padding: '20px 24px',
+  background: 'var(--doc-bg, #f1f3f4)',
+  display: 'flex',
+  justifyContent: 'center',
+};
+
+// Inner "page" — white sheet with a Word-page aspect ratio + drop
+// shadow + 1-inch margins. Width tracks the pane so the preview always
+// fills the available horizontal space; the page can grow vertically
+// as the content does.
+const paperStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: 520,
+  background: '#ffffff',
+  color: '#1f2937',
+  fontFamily: 'Arial, Helvetica, sans-serif',
+  fontSize: 11,
+  lineHeight: 1.45,
+  padding: '36px 48px',
+  borderRadius: 2,
+  boxShadow: '0 1px 3px rgba(60,64,67,0.15), 0 4px 12px rgba(60,64,67,0.12)',
 };
 
 const paneDividerStyle: CSSProperties = {
@@ -161,17 +184,37 @@ const primaryBtnStyle: CSSProperties = {
   color: 'white',
 };
 
+// Approximate Word's default body font (Calibri 11pt → Arial 11px in
+// browsers without Calibri) and heading scale (Heading 1/2/3 mapped to
+// ~16/14/13pt). Margins, spacing and link colour mirror what users
+// see inside the editor so the preview reads like a real page.
 const previewClassName = 'docx-translate-preview';
 const previewCss = `
-.${previewClassName} h1, .${previewClassName} h2, .${previewClassName} h3 { line-height: 1.3; margin: 0.6em 0 0.3em; }
-.${previewClassName} h1 { font-size: 1.4em; }
-.${previewClassName} h2 { font-size: 1.25em; }
-.${previewClassName} h3 { font-size: 1.1em; }
-.${previewClassName} p { margin: 0 0 0.6em; }
-.${previewClassName} ul, .${previewClassName} ol { margin: 0 0 0.6em 1.4em; }
-.${previewClassName} table { border-collapse: collapse; margin: 0 0 0.8em; width: 100%; }
-.${previewClassName} td, .${previewClassName} th { border: 1px solid var(--doc-border, #ddd); padding: 4px 8px; }
-.${previewClassName} blockquote { border-left: 3px solid var(--doc-border); padding-left: 12px; color: var(--doc-text-muted); margin: 0 0 0.6em; }
+.${previewClassName} { font-family: Arial, Helvetica, sans-serif; }
+.${previewClassName} h1, .${previewClassName} h2, .${previewClassName} h3,
+.${previewClassName} h4, .${previewClassName} h5, .${previewClassName} h6 {
+  font-weight: 600; color: #1a1a1a; line-height: 1.25;
+  margin: 14pt 0 4pt; font-family: 'Calibri Light', 'Helvetica Neue', Arial, sans-serif;
+}
+.${previewClassName} h1 { font-size: 20pt; color: #2f5496; }
+.${previewClassName} h2 { font-size: 16pt; color: #2f5496; }
+.${previewClassName} h3 { font-size: 13pt; color: #1f3864; }
+.${previewClassName} h4 { font-size: 11pt; font-style: italic; color: #2f5496; }
+.${previewClassName} h5 { font-size: 11pt; color: #2f5496; }
+.${previewClassName} h6 { font-size: 11pt; font-style: italic; color: #1f3864; }
+.${previewClassName} p { margin: 0 0 8pt; }
+.${previewClassName} ul, .${previewClassName} ol { margin: 0 0 8pt 0; padding-left: 24pt; }
+.${previewClassName} li { margin: 2pt 0; }
+.${previewClassName} a { color: #0563c1; text-decoration: underline; }
+.${previewClassName} strong { font-weight: 700; }
+.${previewClassName} em { font-style: italic; }
+.${previewClassName} u { text-decoration: underline; }
+.${previewClassName} s { text-decoration: line-through; }
+.${previewClassName} code { font-family: Consolas, 'Courier New', monospace; font-size: 10pt; background: #f6f8fa; padding: 1pt 4pt; border-radius: 3px; }
+.${previewClassName} table { border-collapse: collapse; margin: 6pt 0 10pt; width: 100%; }
+.${previewClassName} td, .${previewClassName} th { border: 1px solid #999; padding: 4pt 8pt; vertical-align: top; }
+.${previewClassName} blockquote { border-left: 3px solid #ccc; padding-left: 12pt; color: #555; margin: 0 0 8pt; }
+.${previewClassName} img { max-width: 100%; height: auto; }
 `;
 
 function downloadBuffer(buffer: ArrayBuffer, filename: string): void {
@@ -405,12 +448,13 @@ export function TranslateDocumentDialog({
             <div style={paneLabelStyle}>
               Original <span style={arrowStyle}>·</span> {sourceLangLabel}
             </div>
-            <div
-              className={previewClassName}
-              style={paneContentStyle}
-              data-testid="translate-doc-preview-source"
-              dangerouslySetInnerHTML={{ __html: originalHtml }}
-            />
+            <div style={paneContentStyle} data-testid="translate-doc-preview-source">
+              <div
+                className={previewClassName}
+                style={paperStyle}
+                dangerouslySetInnerHTML={{ __html: originalHtml }}
+              />
+            </div>
           </div>
 
           <div style={paneDividerStyle} />
@@ -419,34 +463,32 @@ export function TranslateDocumentDialog({
             <div style={paneLabelStyle}>
               Translation <span style={arrowStyle}>·</span> {targetLangLabel}
             </div>
-            <div
-              className={previewClassName}
-              style={paneContentStyle}
-              data-testid="translate-doc-preview-target"
-            >
-              {previewStatus === 'loading' && (
-                <PanelState
-                  kind="loading"
-                  message="Translating your document…"
-                  hint="Each formatting run is translated separately so bold / italic / link boundaries land in the right places."
-                />
-              )}
-              {previewStatus === 'error' && previewError && (
-                <PanelState
-                  kind="error"
-                  message={previewError}
-                  hint="Check your connection and try again."
-                  onRetry={() => {
-                    setPreviewStatus('idle');
-                    setPreviewError(null);
-                    // Trigger the effect by nudging source.
-                    setSource((s) => s);
-                  }}
-                />
-              )}
-              {previewStatus === 'ready' && (
-                <div dangerouslySetInnerHTML={{ __html: translatedHtml }} />
-              )}
+            <div style={paneContentStyle} data-testid="translate-doc-preview-target">
+              <div className={previewClassName} style={paperStyle}>
+                {previewStatus === 'loading' && (
+                  <PanelState
+                    kind="loading"
+                    message="Translating your document…"
+                    hint="Each formatting run is translated separately so bold / italic / link boundaries land in the right places."
+                  />
+                )}
+                {previewStatus === 'error' && previewError && (
+                  <PanelState
+                    kind="error"
+                    message={previewError}
+                    hint="Check your connection and try again."
+                    onRetry={() => {
+                      setPreviewStatus('idle');
+                      setPreviewError(null);
+                      // Trigger the effect by nudging source.
+                      setSource((s) => s);
+                    }}
+                  />
+                )}
+                {previewStatus === 'ready' && (
+                  <div dangerouslySetInnerHTML={{ __html: translatedHtml }} />
+                )}
+              </div>
             </div>
           </div>
         </div>

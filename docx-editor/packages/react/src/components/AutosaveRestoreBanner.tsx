@@ -38,9 +38,13 @@ const ROOT_STYLE: CSSProperties = {
   alignItems: 'center',
   gap: 12,
   padding: '6px 16px',
-  background: '#e8f0fe',
-  color: '#1f2937',
-  borderBottom: '1px solid #aac6f7',
+  // Themed via the info-state CSS variables so the banner reads as a
+  // soft blue notification in light mode and a muted blue surface in
+  // dark mode, instead of the previous hardcoded light-blue that sat
+  // jarringly on a dark editor background.
+  background: 'var(--doc-info-bg, #e8f0fe)',
+  color: 'var(--doc-info-text, #1f2937)',
+  borderBottom: '1px solid var(--doc-info-border, #aac6f7)',
   fontSize: 13,
   lineHeight: 1.4,
 };

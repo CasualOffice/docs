@@ -78,7 +78,12 @@ const selectStyle: CSSProperties = {
   fontSize: 13,
   border: '1px solid var(--doc-border, #d1d5db)',
   borderRadius: 4,
-  background: 'var(--doc-surface)',
+  background: 'var(--doc-surface, white)',
+  // Explicit colour — without this, dark-mode renders the text in the
+  // browser's default near-black on the themed dark background, which
+  // makes the language label invisible. The `option` rule in
+  // editor.css carries the same colour through to the dropdown popup.
+  color: 'var(--doc-text-on-surface, #1f2937)',
 };
 
 const arrowStyle: CSSProperties = {
