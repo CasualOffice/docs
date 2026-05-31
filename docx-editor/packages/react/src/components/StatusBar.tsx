@@ -190,12 +190,10 @@ export function StatusBar({
     };
   }, [presetsOpen]);
 
-  if (!visible) return null;
-  const zoomPct = zoom !== undefined ? Math.round(zoom * 100) : 100;
-  const zoomIn = () => onZoomChange?.(Math.min((zoom ?? 1) * ZOOM_STEP, maxZoom));
-  const zoomOut = () => onZoomChange?.(Math.max((zoom ?? 1) / ZOOM_STEP, minZoom));
-
-  const hasPages = totalPages !== undefined && totalPages > 0;
+  // Status-bar customisation checklist (Excel-style right-click).
+  // Both popover state and the dirty-flag prefs use hooks — they must
+  // run BEFORE the `!visible` early return below, or React will see a
+  // different hook order between visible and hidden renders.
   const { prefs, toggle } = useStatPrefs();
   const [checklistOpen, setChecklistOpen] = useState(false);
   const checklistWrapRef = useRef<HTMLDivElement>(null);
@@ -219,6 +217,15 @@ export function StatusBar({
     e.preventDefault();
     setChecklistOpen(true);
   };
+
+  // Early-return AFTER all hooks have run so React sees a stable hook
+  // order. The derived zoom values are non-hook helpers so they sit
+  // below the early-return guard.
+  if (!visible) return null;
+  const zoomPct = zoom !== undefined ? Math.round(zoom * 100) : 100;
+  const zoomIn = () => onZoomChange?.(Math.min((zoom ?? 1) * ZOOM_STEP, maxZoom));
+  const zoomOut = () => onZoomChange?.(Math.max((zoom ?? 1) / ZOOM_STEP, minZoom));
+  const hasPages = totalPages !== undefined && totalPages > 0;
 
   return (
     <div
