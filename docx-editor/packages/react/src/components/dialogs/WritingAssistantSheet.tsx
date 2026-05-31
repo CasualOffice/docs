@@ -119,9 +119,54 @@ const rowDisabledStyle: CSSProperties = {
   opacity: 0.55,
 };
 
-const checkboxStyle: CSSProperties = {
-  marginTop: 2,
+// Toggle switch geometry — matches Google Material's small switch
+// (36 × 20 track, 16 px handle). Lives inline rather than a separate
+// component for P1 so we keep the diff focused; promoted to
+// `components/ui/Toggle.tsx` once a second consumer appears.
+const toggleTrackStyle: CSSProperties = {
+  position: 'relative',
+  width: 36,
+  height: 20,
+  borderRadius: 999,
+  background: 'var(--doc-border, #d1d5db)',
   flexShrink: 0,
+  marginTop: 2,
+  transition: 'background-color 0.18s ease',
+  cursor: 'pointer',
+};
+
+const toggleTrackOnStyle: CSSProperties = {
+  ...toggleTrackStyle,
+  background: 'var(--doc-primary, #1a73e8)',
+};
+
+const toggleHandleStyle: CSSProperties = {
+  position: 'absolute',
+  top: 2,
+  left: 2,
+  width: 16,
+  height: 16,
+  borderRadius: '50%',
+  background: 'white',
+  boxShadow: '0 1px 2px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.08)',
+  transition: 'transform 0.18s ease',
+};
+
+const toggleHandleOnStyle: CSSProperties = {
+  ...toggleHandleStyle,
+  transform: 'translateX(16px)',
+};
+
+const visuallyHiddenStyle: CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
 };
 
 const featureLabelStyle: CSSProperties = {
@@ -265,7 +310,10 @@ export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheet
   if (!isOpen) return null;
 
   const toggleFeature = async (feature: FeatureSpec, checked: boolean) => {
-    if (busyId) return;
+    // `busyId` is a per-row guard so the same row's checkbox doesn't
+    // double-fire mid-load. We deliberately let a different row toggle
+    // through — they get queued by the controller's state machine.
+    if (busyId === feature.id) return;
     setBusyId(feature.id);
     try {
       if (checked) {
@@ -464,13 +512,17 @@ function FeatureRow({
       style={disabled ? rowDisabledStyle : rowStyle}
       title={!support.supported ? reason : undefined}
     >
+      <span style={checked ? toggleTrackOnStyle : toggleTrackStyle} aria-hidden="true">
+        <span style={checked ? toggleHandleOnStyle : toggleHandleStyle} />
+      </span>
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={(e) => onToggle(e.target.checked)}
-        style={checkboxStyle}
+        style={visuallyHiddenStyle}
         data-testid={`writer-feature-${feature.id}`}
+        aria-label={feature.label}
       />
       <span style={featureLabelStyle}>
         <span style={featureNameStyle}>{feature.label}</span>
@@ -480,6 +532,12 @@ function FeatureRow({
           {feature.modelIds.length === 1 ? '' : 's'}
           {!support.supported && ` · ${reason}`}
         </span>
+        {checked && state.phase === 'downloading' && (
+          <span style={subtleStyle} data-testid={`writer-progress-${feature.id}`}>
+            Downloading… {Math.round(state.progress * 100)}%
+          </span>
+        )}
+        {checked && state.phase === 'loading' && <span style={subtleStyle}>Loading model…</span>}
       </span>
     </label>
   );

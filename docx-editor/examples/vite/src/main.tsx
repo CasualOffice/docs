@@ -12,12 +12,14 @@ import dicUrl from '../../../packages/react/src/assets/spellcheck/en.dic?url';
 
 setSpellAssetUrls(affUrl, dicUrl);
 
-// Writing-assistant worker — Vite produces a hashed JS asset for the
-// worker module. Same shape as the spell-asset URL injection above.
-const writerWorkerUrl = new URL(
-  '../../../packages/react/src/lib/writer/writer.worker.ts',
-  import.meta.url
-).toString();
+// Writing-assistant worker. `?worker&url` tells Vite to bundle the
+// `.ts` worker entry into a proper module-worker chunk and return its
+// hashed URL — the plain `new URL(...)` form Vite-can't-see across
+// files served the raw `.ts` source back with MIME `video/mp2t`,
+// which the browser refused to execute as a module script.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — Vite-specific import suffix; declared in the demo's vite-env.d.ts.
+import writerWorkerUrl from '../../../packages/react/src/lib/writer/writer.worker.ts?worker&url';
 setWriterWorkerUrl(writerWorkerUrl);
 
 const container = document.getElementById('app');

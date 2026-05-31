@@ -7507,6 +7507,8 @@ body { background: white; }
                     onToggleOutline={handleToggleOutline}
                     onToggleComments={handleToggleComments}
                     onToggleHistory={handleToggleVersionHistory}
+                    writerVisible={showWritingAssistant}
+                    onToggleWriter={() => setShowWritingAssistant((v) => !v)}
                   />
                 </div>
                 {/* end below-toolbar flex row */}

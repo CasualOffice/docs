@@ -63,7 +63,10 @@ test.describe('Writing Assistant (P1)', () => {
     // `.click()` (not `.check()`) — the checkbox stays unchecked until
     // consent is granted, so `.check()` would wait for a state that
     // never arrives. The click is enough to fire the toggle handler.
-    await page.getByTestId('writer-feature-grammar').click();
+    // The checkbox is visually hidden behind a styled toggle track;
+    // `force: true` clicks it directly via the testid instead of the
+    // visible affordance.
+    await page.getByTestId('writer-feature-grammar').click({ force: true });
 
     const consent = page.getByTestId('writer-consent-dialog');
     await expect(consent).toBeVisible();

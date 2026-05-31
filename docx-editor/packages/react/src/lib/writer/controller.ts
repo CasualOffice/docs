@@ -282,6 +282,12 @@ export async function enableFeature(id: FeatureId, opts: EnableOpts = {}): Promi
     setState({ phase: 'confirming' });
     return;
   }
+  // Recover from the error phase — a previous worker crash leaves the
+  // controller stuck; user-initiated retry clears it before we try to
+  // re-spawn the worker.
+  if (state.phase === 'error') {
+    setState({ phase: 'idle', errorCode: null, errorMessage: null });
+  }
   const next = unique([...state.enabledFeatures, id]);
   setState({ enabledFeatures: next });
   saveEnabledFeatures(next);
