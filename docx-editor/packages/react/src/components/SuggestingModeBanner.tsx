@@ -9,6 +9,7 @@
 
 import type { CSSProperties } from 'react';
 import { useTranslation } from '../i18n';
+import { formatShortcut } from '../lib/platform';
 
 export interface SuggestingModeBannerProps {
   /** Click handler for the right-side "Switch to editing" affordance. */
@@ -38,6 +39,9 @@ const STRONG_STYLE: CSSProperties = {
 };
 
 const ACTION_STYLE: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
   padding: '4px 10px',
   fontSize: 12,
   border: '1px solid #c9a227',
@@ -49,8 +53,20 @@ const ACTION_STYLE: CSSProperties = {
   flexShrink: 0,
 };
 
+const CHIP_STYLE: CSSProperties = {
+  fontSize: 11,
+  color: '#8d6a00',
+  fontWeight: 400,
+  fontVariantNumeric: 'tabular-nums',
+  letterSpacing: '0.02em',
+};
+
 export function SuggestingModeBanner({ onSwitchToEditing }: SuggestingModeBannerProps) {
   const { t } = useTranslation();
+  // The mode-cycle shortcut walks Editing → Suggesting → Viewing →
+  // Editing, so the same key flips us back. Surface the chip on the
+  // button so users learn the shortcut.
+  const shortcut = formatShortcut('Ctrl+Shift+E');
   return (
     <div role="status" aria-live="polite" data-testid="suggesting-mode-banner" style={ROOT_STYLE}>
       <div style={MESSAGE_STYLE}>
@@ -62,8 +78,12 @@ export function SuggestingModeBanner({ onSwitchToEditing }: SuggestingModeBanner
         style={ACTION_STYLE}
         data-testid="suggesting-banner-switch"
         onClick={onSwitchToEditing}
+        title={`${t('suggestingBanner.switchToEditing')} (${shortcut})`}
       >
         {t('suggestingBanner.switchToEditing')}
+        <span style={CHIP_STYLE} aria-hidden="true">
+          {shortcut}
+        </span>
       </button>
     </div>
   );
