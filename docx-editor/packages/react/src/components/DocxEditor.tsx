@@ -55,6 +55,8 @@ import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
 import { PanelRail } from './PanelRail';
+import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
+import { writeAutosave } from '../utils/autosave';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
@@ -5214,6 +5216,31 @@ body { background: white; }
     }
   }, [handleSave, documentName, markDirty]);
 
+  // Autosave to IndexedDB (sheet parity). Debounced 30s after the last
+  // edit so we don't churn the serializer mid-typing — `handleSave`
+  // re-walks the whole PM doc and re-packs the .docx, which is fine on
+  // idle but noticeable when chained.
+  useEffect(() => {
+    if (!isDirty) return;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const buffer = await handleSave();
+          if (!buffer) return;
+          await writeAutosave({
+            name: documentName?.trim() || 'Untitled',
+            buffer,
+            savedAt: Date.now(),
+          });
+        } catch {
+          // Silent — autosave is best-effort and shouldn't surface
+          // errors to the user. The next save attempt will try again.
+        }
+      })();
+    }, 30_000);
+    return () => window.clearTimeout(timer);
+  }, [isDirty, handleSave, documentName]);
+
   // File → Make a copy: download the current content as "Copy of <name>.docx".
   // The original document is unchanged, so we don't touch the dirty flag.
   // F2 — Email as attachment. Browsers can't auto-attach the downloaded
@@ -6771,6 +6798,17 @@ body { background: white; }
                 {editingMode === 'suggesting' && (
                   <SuggestingModeBanner onSwitchToEditing={() => setEditingMode('editing')} />
                 )}
+
+                {/* Autosave restore prompt — shown at mount when an autosave
+                    record exists from the last session. The Restore handler
+                    routes the saved buffer through the same `loadBuffer` path
+                    File → Open uses, so PM + UI state reset cleanly. */}
+                <AutosaveRestoreBanner
+                  onRestore={(buf, name) => {
+                    void loadBuffer(buf);
+                    onDocumentNameChange?.(name);
+                  }}
+                />
 
                 {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
                 <div
