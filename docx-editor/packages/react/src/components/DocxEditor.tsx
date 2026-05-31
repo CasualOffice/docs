@@ -6701,7 +6701,14 @@ body { background: white; }
     return map;
   }, [trackedChanges]);
 
-  const sidebarOpen = allSidebarItems.length > 0;
+  // "Sidebar open" drives PagedEditor's left-translate so the centered
+  // page makes horizontal room for whatever right-edge panel the user
+  // surfaced from the rail — Comments (even when empty: still a
+  // visible affordance), Version history, or plugin-contributed items.
+  // Industry-standard pattern: opening the panel reflows the page;
+  // closing it returns to the original centered layout.
+  const sidebarOpen =
+    showCommentsSidebar || showVersionHistory || allSidebarItems.length > 0;
   // Reserve 2× the left-edge allowance so the centered page clears whatever
   // outline UI is showing, without forcing a shift on wide viewports.
   const outlineLeftAllowance = showOutline
@@ -7327,9 +7334,11 @@ body { background: white; }
                                 // independently of the per-anchor sidebar
                                 // pipeline because version-history entries
                                 // aren't paragraph-anchored — they're a
-                                // single document-level timeline. The panel
-                                // owns its own `data-testid` and aria —
-                                // wrapper is purely positional.
+                                // single document-level timeline. The
+                                // sidebarOverlay parent is a sibling of
+                                // PagedEditor's translated viewport, so
+                                // `right: 0` here is already the editor
+                                // body's true right edge.
                                 <div
                                   style={{
                                     position: 'absolute',
