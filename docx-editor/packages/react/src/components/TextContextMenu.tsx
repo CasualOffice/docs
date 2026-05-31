@@ -35,7 +35,9 @@ export type TextContextAction =
   | 'mergeCells'
   | 'splitCell'
   | 'addComment'
-  | 'translateSelection';
+  | 'translateSelection'
+  | 'aiRewrite'
+  | 'aiSummarize';
 
 /**
  * Menu item configuration
@@ -291,6 +293,21 @@ const SplitCellIcon = () => (
   </svg>
 );
 
+const SparkleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M8 1.5L9 5.5L13 7L9 8.5L8 12.5L7 8.5L3 7L7 5.5L8 1.5Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M13 11.5L13.5 13L15 13.5L13.5 14L13 15.5L12.5 14L11 13.5L12.5 13L13 11.5Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
 const TranslateIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
@@ -356,6 +373,9 @@ function getActionIcon(action: TextContextAction): React.ReactNode {
       return <CommentIcon />;
     case 'translateSelection':
       return <TranslateIcon />;
+    case 'aiRewrite':
+    case 'aiSummarize':
+      return <SparkleIcon />;
     default:
       return null;
   }
@@ -815,6 +835,8 @@ export function getTextActionLabel(action: TextContextAction): string {
     splitCell: defaultLocale.table.splitCell,
     addComment: 'Comment',
     translateSelection: 'Translate selection…',
+    aiRewrite: 'Rewrite with AI',
+    aiSummarize: 'Summarize with AI',
   };
   return labels[action];
 }
@@ -841,6 +863,8 @@ export function getTextActionShortcut(action: TextContextAction): string {
     splitCell: '',
     addComment: '',
     translateSelection: '',
+    aiRewrite: '',
+    aiSummarize: '',
   };
   return shortcuts[action];
 }
@@ -876,6 +900,8 @@ export function isTextActionAvailable(
     case 'addComment':
       return hasSelection;
     case 'translateSelection':
+    case 'aiRewrite':
+    case 'aiSummarize':
       return hasSelection;
     case 'selectAll':
       return true;

@@ -217,7 +217,11 @@ import {
   ignoreWord,
 } from '../lib/spellcheck/service';
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
-import { bootWriterController } from '../lib/writer/controller';
+import {
+  bootWriterController,
+  runTask as runWriterTask,
+  useWriterState,
+} from '../lib/writer/controller';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
 // integrations so the chip appears next to the save indicator only
@@ -4447,6 +4451,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     });
   }, []);
 
+  // Writing-Assistant state. The right-click "Rewrite with AI" and
+  // "Summarize with AI" menu entries only appear when the matching
+  // feature is enabled AND a model is currently loaded — anything
+  // else and the user would tap a menu item that errors immediately.
+  const writerState = useWriterState();
+  const aiRewriteReady =
+    writerState.enabledFeatures.includes('tone') &&
+    writerState.phase === 'ready' &&
+    writerState.loadedModelId !== null;
+  const aiSummarizeReady =
+    writerState.enabledFeatures.includes('summarize-basic') &&
+    writerState.phase === 'ready' &&
+    writerState.loadedModelId !== null;
+
   const contextMenuItems = useMemo((): TextContextMenuItem[] => {
     const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
     const mod = isMac ? '⌘' : 'Ctrl';
@@ -4475,8 +4493,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       items.push({
         action: 'translateSelection',
         label: 'Translate selection…',
-        dividerAfter: !contextMenu.cursorInTable,
       });
+      if (aiRewriteReady) {
+        items.push({ action: 'aiRewrite', label: 'Rewrite with AI' });
+      }
+      if (aiSummarizeReady) {
+        items.push({ action: 'aiSummarize', label: 'Summarize with AI' });
+      }
+      // Add the divider on the last selection-only entry, before the
+      // table block / Select All trailer.
+      if (items.length > 0) {
+        const last = items[items.length - 1];
+        if (last) last.dividerAfter = !contextMenu.cursorInTable;
+      }
     }
     if (contextMenu.cursorInTable) {
       items.push(
@@ -4501,7 +4530,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
     items.push({ action: 'selectAll', label: 'Select All', shortcut: `${mod}+A` });
     return items;
-  }, [contextMenu.hasSelection, contextMenu.cursorInTable, contextMenu.tableContext]);
+  }, [
+    contextMenu.hasSelection,
+    contextMenu.cursorInTable,
+    contextMenu.tableContext,
+    aiRewriteReady,
+    aiSummarizeReady,
+  ]);
 
   const handleContextMenuAction = useCallback(
     async (action: TextContextAction) => {
@@ -4607,6 +4642,72 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           setTranslateRange({ from, to });
           setTranslateText(raw.length > 0 ? raw : null);
           setShowTranslate(true);
+          break;
+        }
+        // AI rewrite — replace selection with model output, preserving
+        // the marks on the first character so case/format survive.
+        case 'aiRewrite': {
+          const { from, to } = view.state.selection;
+          if (from === to) break;
+          const input = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+          if (!input) break;
+          const toastId = toast.loading('Rewriting with AI…');
+          try {
+            const out = await runWriterTask('rewrite', input);
+            const cleaned = out.trim();
+            if (!cleaned) {
+              toast.error('No rewrite produced.', { id: toastId });
+              break;
+            }
+            const liveView = getActiveEditorView();
+            if (!liveView) break;
+            const nodeAtFrom = liveView.state.doc.nodeAt(from);
+            const marks = nodeAtFrom?.marks ?? [];
+            const replacementNode = liveView.state.schema.text(cleaned, marks);
+            const tr = liveView.state.tr.replaceWith(from, to, replacementNode);
+            liveView.dispatch(tr);
+            toast.success('Rewritten.', { id: toastId });
+          } catch (err) {
+            toast.error(
+              (err as Error).message?.includes('No model is loaded')
+                ? 'Enable Tone & style rewrite in the Writing Assistant first.'
+                : 'Rewrite failed — see the Writing Assistant status.',
+              { id: toastId }
+            );
+          }
+          break;
+        }
+        // AI summarize — show the model's output as a toast with a
+        // "Copy" action; insertion is a v2 affordance.
+        case 'aiSummarize': {
+          const { from, to } = view.state.selection;
+          if (from === to) break;
+          const input = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+          if (!input) break;
+          const toastId = toast.loading('Summarizing with AI…');
+          try {
+            const out = await runWriterTask('summarize', input);
+            const summary = out.trim();
+            if (!summary) {
+              toast.error('No summary produced.', { id: toastId });
+              break;
+            }
+            toast.success(summary, {
+              id: toastId,
+              duration: 12_000,
+              action: {
+                label: 'Copy',
+                onClick: () => void navigator.clipboard.writeText(summary).catch(() => {}),
+              },
+            });
+          } catch (err) {
+            toast.error(
+              (err as Error).message?.includes('No model is loaded')
+                ? 'Enable Summarize selection in the Writing Assistant first.'
+                : 'Summarize failed — see the Writing Assistant status.',
+              { id: toastId }
+            );
+          }
           break;
         }
         // Comment — same flow as floating comment button
