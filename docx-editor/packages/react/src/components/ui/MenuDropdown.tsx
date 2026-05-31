@@ -10,6 +10,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { MaterialSymbol } from './MaterialSymbol';
 import { useMenuBar } from './MenuBarContext';
 import { Z_INDEX } from '../../styles/zIndex';
+import { formatShortcut } from '../../lib/platform';
 
 export interface MenuItem {
   icon?: string;
@@ -440,7 +441,9 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
                   >
                     {item.icon && <MaterialSymbol name={item.icon} size={18} />}
                     <span>{item.label}</span>
-                    {item.shortcut && <span style={shortcutStyle}>{item.shortcut}</span>}
+                    {item.shortcut && (
+                      <span style={shortcutStyle}>{formatShortcut(item.shortcut)}</span>
+                    )}
                     {hasSubmenu && (
                       <span style={{ marginLeft: 'auto' }}>
                         <MaterialSymbol name="keyboard_arrow_right" size={16} />

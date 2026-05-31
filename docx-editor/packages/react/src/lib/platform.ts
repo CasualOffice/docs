@@ -24,11 +24,17 @@ export function isMac(): boolean {
 export function formatShortcut(keys: string): string {
   if (!keys) return keys;
   if (isMac()) {
-    return keys
-      .replace(/CmdOrCtrl\+/g, '⌘')
-      .replace(/Ctrl\+/g, '⌘')
-      .replace(/Alt\+/g, '⌥')
-      .replace(/Shift\+/g, '⇧');
+    return (
+      keys
+        .replace(/CmdOrCtrl\+/g, '⌘')
+        .replace(/Ctrl\+/g, '⌘')
+        .replace(/Alt\+/g, '⌥')
+        .replace(/Shift\+/g, '⇧')
+        // Special-key suffixes — only after a modifier (`⌘Enter` →
+        // `⌘↵`), never standalone words inside a label.
+        .replace(/(⌘|⌥|⇧)Enter\b/g, '$1↵')
+        .replace(/(⌘|⌥|⇧)Space\b/g, '$1␣')
+    );
   }
   // Windows / Linux: prefer the literal modifier name. Strip the
   // CmdOrCtrl marker some shortcuts use for cross-platform definitions.

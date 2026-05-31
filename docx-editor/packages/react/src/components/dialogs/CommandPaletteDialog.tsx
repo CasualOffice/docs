@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { FocusTrap } from '../ui/FocusTrap';
+import { formatShortcut } from '../../lib/platform';
 
 // Recently-used tracker: persists the last 5 picked item ids so repeat
 // users see their habits without typing. Lives in localStorage so the
@@ -323,7 +324,9 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
                     <span>{item.label}</span>
                     <span style={pathStyle}>{item.path}</span>
                   </span>
-                  {item.shortcut && <span style={shortcutStyle}>{item.shortcut}</span>}
+                  {item.shortcut && (
+                    <span style={shortcutStyle}>{formatShortcut(item.shortcut)}</span>
+                  )}
                 </button>
               ))
             )}
