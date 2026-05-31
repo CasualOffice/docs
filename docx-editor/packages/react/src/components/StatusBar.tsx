@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
+import { STAT_LABELS, useStatPrefs, type StatKey } from './statbar-prefs';
 
 const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -37,6 +38,7 @@ export interface StatusBarProps {
 const ZOOM_STEP = 1.1;
 
 const barStyle: CSSProperties = {
+  position: 'relative',
   display: 'flex',
   alignItems: 'center',
   gap: 16,
@@ -75,6 +77,31 @@ const zoomButtonStyle: CSSProperties = {
   justifyContent: 'center',
   height: 22,
   width: 22,
+};
+
+const checklistStyle: CSSProperties = {
+  position: 'absolute',
+  bottom: '100%',
+  left: 12,
+  marginBottom: 4,
+  padding: '4px 0',
+  background: 'var(--doc-surface, white)',
+  border: '1px solid var(--doc-border, #ddd)',
+  borderRadius: 6,
+  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+  minWidth: 180,
+  zIndex: 50,
+  display: 'flex',
+  flexDirection: 'column',
+};
+const checklistItemStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 14px',
+  fontSize: 13,
+  color: 'var(--doc-text-on-surface, #1f2937)',
+  cursor: 'pointer',
 };
 
 const zoomMenuStyle: CSSProperties = {
@@ -169,32 +196,60 @@ export function StatusBar({
   const zoomOut = () => onZoomChange?.(Math.max((zoom ?? 1) / ZOOM_STEP, minZoom));
 
   const hasPages = totalPages !== undefined && totalPages > 0;
+  const { prefs, toggle } = useStatPrefs();
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const checklistWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!checklistOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!checklistWrapRef.current?.contains(e.target as Node)) setChecklistOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setChecklistOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [checklistOpen]);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setChecklistOpen(true);
+  };
 
   return (
-    <div role="status" aria-label="Document status" style={barStyle} data-testid="status-bar">
-      {hasPages && (
+    <div
+      role="status"
+      aria-label="Document status"
+      style={barStyle}
+      data-testid="status-bar"
+      onContextMenu={handleContextMenu}
+    >
+      {hasPages && prefs.page && (
         <>
           <span style={cellStyle} aria-label={`Page ${currentPage ?? 1} of ${totalPages}`}>
             Page {currentPage ?? 1} of {totalPages}
           </span>
-          {(wordCount !== undefined || charCount !== undefined) && <span style={dividerStyle} />}
+          {((wordCount !== undefined && prefs.words) ||
+            (charCount !== undefined && prefs.chars)) && <span style={dividerStyle} />}
         </>
       )}
-      {wordCount !== undefined && (
+      {wordCount !== undefined && prefs.words && (
         <span style={cellStyle} aria-label={`${wordCount} words`}>
           {formatCount(wordCount, 'word')}
         </span>
       )}
-      {charCount !== undefined && (
+      {charCount !== undefined && prefs.chars && (
         <span style={cellStyle} aria-label={`${charCount} characters`}>
           {formatCount(charCount, 'character')}
         </span>
       )}
       {wordCount !== undefined &&
         wordCount > 0 &&
-        // Reading-time estimate at the prose-average 200 wpm — the same
-        // assumption Medium and several Docs add-ons make. Rounded up so
-        // the user is more likely to over-budget than under-budget.
+        prefs.readingTime &&
         (() => {
           const minutes = Math.max(1, Math.ceil(wordCount / 200));
           return (
@@ -207,6 +262,31 @@ export function StatusBar({
             </span>
           );
         })()}
+
+      {/* Right-click customisation popover — Excel-style checklist for
+          which counter cells to show. Mirrors the sibling Casual Sheets
+          `use-statbar-prefs.ts`. */}
+      {checklistOpen && (
+        <div
+          ref={checklistWrapRef}
+          role="menu"
+          aria-label="Status bar customisation"
+          data-testid="statbar-checklist"
+          style={checklistStyle}
+        >
+          {(Object.keys(STAT_LABELS) as StatKey[]).map((k) => (
+            <label key={k} style={checklistItemStyle}>
+              <input
+                type="checkbox"
+                checked={prefs[k]}
+                onChange={() => toggle(k)}
+                data-testid={`statbar-toggle-${k}`}
+              />
+              <span>{STAT_LABELS[k]}</span>
+            </label>
+          ))}
+        </div>
+      )}
 
       {/* Spacer pushes zoom to the right. */}
       <span style={{ flex: 1 }} />
