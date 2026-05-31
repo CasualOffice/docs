@@ -43,7 +43,6 @@ import { StatusBar } from './StatusBar';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
 import {
   DocumentOutline,
-  OUTLINE_BUTTON_LEFT_OFFSET,
   OUTLINE_BUTTON_RESERVED_SPACE,
   OUTLINE_RESERVED_SPACE,
 } from './DocumentOutline';
@@ -393,7 +392,8 @@ import { loadCitations, addCitation, removeCitation, type Citation } from '../ut
 import { generateShape, type ShapeType } from '../utils/shapes';
 
 // Platform-aware shortcut formatter (⌘ on Mac, Ctrl elsewhere).
-import { formatShortcut } from '../lib/platform';
+// formatShortcut was used by the now-deleted floating outline button —
+// the PanelRail computes its own shortcut chip via the same helper.
 
 // ============================================================================
 // TYPES
@@ -821,37 +821,6 @@ const EDITING_MODES: readonly EditingModeDef[] = [
 ];
 
 /**
- * Wrapper for the comments-sidebar toggle so the button title runs through
- * `t()` — `useTranslation()` only works for components rendered *inside*
- * `<LocaleProvider>`, which `DocxEditor`'s own body is not.
- */
-function CommentsSidebarToggle({ active, onClick }: { active: boolean; onClick: () => void }) {
-  const { t } = useTranslation();
-  const title = t('editor.toggleCommentsSidebar');
-  return (
-    <ToolbarButton onClick={onClick} active={active} title={title} ariaLabel={title}>
-      <MaterialSymbol name="comment" size={20} />
-    </ToolbarButton>
-  );
-}
-
-// Version-history side-panel toggle. Same shape as CommentsSidebarToggle —
-// wrapped so the button title runs through `t()` which only works inside
-// the LocaleProvider that DocxEditor's body lives in.
-function VersionHistoryToggle({ active, onClick }: { active: boolean; onClick: () => void }) {
-  // Fall back to the english label if the translation key isn't defined
-  // — keeps the button labelled even on locales that haven't added it
-  // yet. Material Symbol "history" matches Word's File → Info → Version
-  // History affordance.
-  const title = 'Version history';
-  return (
-    <ToolbarButton onClick={onClick} active={active} title={title} ariaLabel={title}>
-      <MaterialSymbol name="history" size={20} />
-    </ToolbarButton>
-  );
-}
-
-/**
  * Floating page indicator shown next to the scrollbar while the user
  * scrolls a multi-page document. Wrapped so the `{current} of {total}`
  * template runs through `t()`; `useTranslation()` only works inside
@@ -937,56 +906,6 @@ function AgentPanelToggle({
         )}
       </span>
     </ToolbarButton>
-  );
-}
-
-/**
- * Outline toggle — same reason as `CommentsSidebarToggle`: needs to render
- * inside `<LocaleProvider>` to see the user's `i18n` prop.
- */
-function OutlineToggleButton({
-  onClick,
-  topPx,
-  scrollLeft = 0,
-}: {
-  onClick: () => void;
-  topPx: number;
-  /** Horizontal scroll offset of the editor — button slides with the doc. */
-  scrollLeft?: number;
-}) {
-  const { t } = useTranslation();
-  const shortcut = formatShortcut('Ctrl+Shift+H');
-  const tooltip = `${t('editor.showDocumentOutline')} (${shortcut})`;
-  return (
-    <Tooltip content={tooltip}>
-      <button
-        className="docx-outline-nav"
-        onClick={onClick}
-        onMouseDown={(e) => e.stopPropagation()}
-        aria-label={tooltip}
-        style={{
-          position: 'absolute',
-          // Anchor at the page's top-left and track horizontal scroll so the
-          // button doesn't pin to the viewport and overlay the doc.
-          left: OUTLINE_BUTTON_LEFT_OFFSET - scrollLeft,
-          top: topPx,
-          zIndex: 50,
-          background: 'transparent',
-          border: 'none',
-          borderRadius: '50%',
-          padding: 6,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        <MaterialSymbol
-          name="format_list_bulleted"
-          size={20}
-          style={{ color: 'var(--doc-text-muted)' }}
-        />
-      </button>
-    </Tooltip>
   );
 }
 
@@ -6640,10 +6559,9 @@ body { background: white; }
 
   const toolbarChildren = (
     <>
-      <ToolbarSeparator />
-      <CommentsSidebarToggle active={showCommentsSidebar} onClick={handleToggleComments} />
-      <VersionHistoryToggle active={showVersionHistory} onClick={handleToggleVersionHistory} />
-      {/* Resolved comments use margin markers instead of toolbar toggle */}
+      {/* Comments + Version-history toggles moved into the right-edge
+          PanelRail (sheet parity). The formatting toolbar keeps only
+          the mode-dropdown affordance on this trailing edge. */}
       <ToolbarSeparator />
       <EditingModeDropdown
         mode={editingMode}
@@ -7332,17 +7250,12 @@ body { background: white; }
 
                 {/* Unified sidebar (comments + plugin items) rendered inside PagedEditor via sidebarOverlay prop */}
 
-                {/* Outline toggle button — absolutely positioned below toolbar */}
-                {showOutlineButton && !showOutline && (
-                  <OutlineToggleButton
-                    onClick={handleToggleOutline}
-                    // Aligns with the page top: toolbar + horizontal ruler row
-                    // (22 ruler + 8 py-1 padding) + PagedEditor viewport
-                    // padding-top (24) + pages container padding (24).
-                    topPx={toolbarHeight + (showRulerEffective ? 30 : 0) + 48}
-                    scrollLeft={editorScrollLeft}
-                  />
-                )}
+                {/* Outline now lives in the right-edge PanelRail —
+                    the floating button shipped before the rail existed
+                    and is redundant. `showOutlineButton` is retained as
+                    a prop for hosts that explicitly turn the entire
+                    panel system off; the rail respects it via the
+                    onToggleOutline plumbing in the host. */}
               </div>
               {/* end wrapper for scroll container + outline */}
 
