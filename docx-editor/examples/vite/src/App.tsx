@@ -425,9 +425,11 @@ export function App() {
     setView('home');
   }, []);
 
-  // Clickable variant of the default doc-icon — same SVG shape and
-  // palette as DefaultDocIcon in TitleBar.tsx, wrapped in a button
-  // with a tooltip + hover affordance.
+  // Clickable variant of the title-bar logo. Sources the branded
+  // `/logo.svg` from the demo's `public/` so the title-bar mark, the
+  // Home page mark, the favicon, and the README badge all render the
+  // exact same SVG — no more drift between hand-coded inline icons
+  // and the branded asset.
   const renderLogo = useCallback(
     () => (
       <button
@@ -460,16 +462,14 @@ export function App() {
         }}
         data-testid="title-bar-home"
       >
-        <svg width="32" height="40" viewBox="0 0 32 40" fill="none" aria-hidden="true">
-          <path
-            d="M2 0C0.9 0 0 0.9 0 2V38C0 39.1 0.9 40 2 40H30C31.1 40 32 39.1 32 38V10L22 0H2Z"
-            fill="#1a73e8"
-          />
-          <path d="M22 0L32 10H24C22.9 10 22 9.1 22 8V0Z" fill="#1557b0" />
-          <rect x="7" y="18" width="18" height="2" rx="1" fill="#fff" />
-          <rect x="7" y="23" width="18" height="2" rx="1" fill="#fff" />
-          <rect x="7" y="28" width="12" height="2" rx="1" fill="#fff" />
-        </svg>
+        <img
+          src="/logo.svg"
+          alt=""
+          width={32}
+          height={32}
+          style={{ display: 'block' }}
+          aria-hidden="true"
+        />
       </button>
     ),
     [handleGoHome]
