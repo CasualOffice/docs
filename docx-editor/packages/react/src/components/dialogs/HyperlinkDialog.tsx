@@ -22,19 +22,13 @@ import { FocusTrap } from '../ui/FocusTrap';
 // TYPES
 // ============================================================================
 
-/**
- * Hyperlink data structure for dialog
- */
-export interface HyperlinkData {
-  /** URL for external link */
-  url?: string;
-  /** Display text for the link */
-  displayText?: string;
-  /** Internal bookmark name */
-  bookmark?: string;
-  /** Tooltip text */
-  tooltip?: string;
-}
+// Hyperlink data type + hook moved to `./useHyperlinkDialog.ts` so
+// consumers (DocxEditor) can import them without forcing this
+// dialog's chunk back into the main bundle. Re-exported from here for
+// back-compat with any external consumer that imported them through
+// the dialog file directly.
+import type { HyperlinkData } from './useHyperlinkDialog';
+export type { HyperlinkData };
 
 /**
  * Bookmark option for internal link selection
@@ -770,81 +764,12 @@ export function extractBookmarksForDialog(
 }
 
 // ============================================================================
-// HOOK
+// HOOK — moved to `./useHyperlinkDialog.ts`. Re-exported below.
 // ============================================================================
-
-/**
- * Hook state for the Hyperlink dialog
- */
-export interface UseHyperlinkDialogState {
-  /** Whether the dialog is open */
-  isOpen: boolean;
-  /** Initial data for the dialog (for editing) */
-  initialData?: HyperlinkData;
-  /** Currently selected text */
-  selectedText?: string;
-  /** Whether we're editing an existing hyperlink */
-  isEditing: boolean;
-}
-
-/**
- * Hook return type for the Hyperlink dialog
- */
-export interface UseHyperlinkDialogReturn {
-  /** Current state */
-  state: UseHyperlinkDialogState;
-  /** Open dialog for inserting new hyperlink */
-  openInsert: (selectedText?: string) => void;
-  /** Open dialog for editing existing hyperlink */
-  openEdit: (data: HyperlinkData) => void;
-  /** Close the dialog */
-  close: () => void;
-  /** Toggle dialog open/closed */
-  toggle: () => void;
-}
-
-/**
- * Hook for managing Hyperlink dialog state
- */
-export function useHyperlinkDialog(): UseHyperlinkDialogReturn {
-  const [state, setState] = useState<UseHyperlinkDialogState>({
-    isOpen: false,
-    isEditing: false,
-  });
-
-  const openInsert = useCallback((selectedText?: string) => {
-    setState({
-      isOpen: true,
-      selectedText,
-      initialData: undefined,
-      isEditing: false,
-    });
-  }, []);
-
-  const openEdit = useCallback((data: HyperlinkData) => {
-    setState({
-      isOpen: true,
-      initialData: data,
-      selectedText: data.displayText,
-      isEditing: true,
-    });
-  }, []);
-
-  const close = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      isOpen: false,
-    }));
-  }, []);
-
-  const toggle = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      isOpen: !prev.isOpen,
-    }));
-  }, []);
-
-  return { state, openInsert, openEdit, close, toggle };
-}
+export {
+  useHyperlinkDialog,
+  type UseHyperlinkDialogState,
+  type UseHyperlinkDialogReturn,
+} from './useHyperlinkDialog';
 
 export default HyperlinkDialog;

@@ -16,15 +16,11 @@
  * never touched.
  */
 
-import { useEffect, useRef, useState, lazy, Suspense, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Slice, Fragment as PMFragment } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
 import { PanelState } from '../ui/PanelState';
 import { translateFragment, TRANSLATE_LANGUAGES as LANGUAGES } from '../../lib/translate';
-
-// Lazy-import the editor so the dialog's preview cost is only paid
-// when the user actually opens it.
-const DocxEditor = lazy(() => import('../DocxEditor').then((m) => ({ default: m.DocxEditor })));
 
 export interface TranslateDocumentDialogProps {
   isOpen: boolean;
@@ -32,6 +28,15 @@ export interface TranslateDocumentDialogProps {
   documentName: string;
   getView: () => EditorView | null;
   onSave: () => Promise<ArrayBuffer | null>;
+  /**
+   * Host-supplied preview renderer — typically a read-only
+   * `<DocxEditor documentBuffer={…} />`. Passing the renderer in via
+   * prop (instead of importing the editor here) breaks the circular
+   * dependency that otherwise wires DocxEditor → TranslateDocument →
+   * DocxEditor and crashed the production bundle with "TypeError: n
+   * is not a function" at boot.
+   */
+  renderPreview: (buffer: ArrayBuffer) => ReactNode;
 }
 
 const overlayStyle: CSSProperties = {
@@ -223,6 +228,7 @@ export function TranslateDocumentDialog({
   documentName,
   getView,
   onSave,
+  renderPreview,
 }: TranslateDocumentDialogProps) {
   const [source, setSource] = useState('en');
   const [target, setTarget] = useState('es');
@@ -410,25 +416,7 @@ export function TranslateDocumentDialog({
             <div style={paneLabelStyle}>Original · {sourceLangLabel}</div>
             <div style={paneEditorWrapStyle} data-testid="translate-doc-preview-source">
               {originalBuffer ? (
-                <Suspense
-                  fallback={
-                    <div style={stateOverlayStyle}>
-                      <PanelState kind="loading" message="Loading preview…" />
-                    </div>
-                  }
-                >
-                  <DocxEditor
-                    key="orig"
-                    documentBuffer={originalBuffer}
-                    readOnly
-                    showToolbar={false}
-                    showStatusBar={false}
-                    showZoomControl={false}
-                    showRuler={false}
-                    showOutlineButton={false}
-                    showPanelRail={false}
-                  />
-                </Suspense>
+                renderPreview(originalBuffer)
               ) : (
                 <div style={stateOverlayStyle}>
                   <PanelState kind="loading" message="Snapshotting original…" />
@@ -465,27 +453,7 @@ export function TranslateDocumentDialog({
                   />
                 </div>
               )}
-              {previewStatus === 'ready' && translatedBuffer && (
-                <Suspense
-                  fallback={
-                    <div style={stateOverlayStyle}>
-                      <PanelState kind="loading" message="Loading preview…" />
-                    </div>
-                  }
-                >
-                  <DocxEditor
-                    key={`trans-${target}`}
-                    documentBuffer={translatedBuffer}
-                    readOnly
-                    showToolbar={false}
-                    showStatusBar={false}
-                    showZoomControl={false}
-                    showRuler={false}
-                    showOutlineButton={false}
-                    showPanelRail={false}
-                  />
-                </Suspense>
-              )}
+              {previewStatus === 'ready' && translatedBuffer && renderPreview(translatedBuffer)}
             </div>
           </div>
         </div>

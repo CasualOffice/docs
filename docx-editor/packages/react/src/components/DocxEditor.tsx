@@ -76,16 +76,22 @@ import { HorizontalRuler } from './ui/HorizontalRuler';
 import { VerticalRuler } from './ui/VerticalRuler';
 import { Z_INDEX } from '../styles/zIndex';
 import { type PrintOptions } from './ui/PrintPreview';
-// Dialog hooks and utilities (static imports — lightweight, no UI)
+// Dialog hooks + utilities — pulled from their own modules so a
+// consumer that needs the runtime helpers doesn't drag a lazy()-
+// loaded dialog component's chunk back into the main bundle. That
+// double-import (eager + lazy on the same file) was the root cause
+// of the production-only "TypeError: n is not a function" at boot
+// — Vite couldn't form a stable chunk graph and the minified output
+// reached for a value that had become undefined.
+import { useFindReplace } from './dialogs/useFindReplace';
 import {
-  useFindReplace,
   findInDocument,
   scrollToMatch,
   type FindMatch,
   type FindOptions,
   type FindResult,
-} from './dialogs/FindReplaceDialog';
-import { useHyperlinkDialog, type HyperlinkData } from './dialogs/HyperlinkDialog';
+} from './dialogs/findReplaceUtils';
+import { useHyperlinkDialog, type HyperlinkData } from './dialogs/useHyperlinkDialog';
 import type { ImagePositionData } from './dialogs/ImagePositionDialog';
 import type { BordersAndShadingValue } from './dialogs/BordersAndShadingDialog';
 import type { ImagePropertiesData } from './dialogs/ImagePropertiesDialog';
@@ -8063,6 +8069,18 @@ body { background: white; }
                   documentName={documentName ?? 'Untitled'}
                   getView={() => getActiveEditorView() ?? null}
                   onSave={() => handleSave({ selective: false })}
+                  renderPreview={(buffer) => (
+                    <DocxEditorAsPreview
+                      documentBuffer={buffer}
+                      readOnly
+                      showToolbar={false}
+                      showStatusBar={false}
+                      showZoomControl={false}
+                      showRuler={false}
+                      showOutlineButton={false}
+                      showPanelRail={false}
+                    />
+                  )}
                 />
               )}
               {showWritingAssistant && (
@@ -8498,3 +8516,9 @@ body { background: white; }
 // ============================================================================
 
 export default DocxEditor;
+
+// Type-only re-cast for the same DocxEditor component, suitable for
+// JSX use in places (like the Translate-document preview pane) where
+// forwardRef's stricter signature trips TypeScript. Renders the exact
+// same component — no ref forwarding is needed at the call site.
+const DocxEditorAsPreview = DocxEditor as unknown as React.FC<DocxEditorProps>;
