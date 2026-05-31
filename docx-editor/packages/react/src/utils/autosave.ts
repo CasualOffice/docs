@@ -15,9 +15,8 @@
  * the sheet repo.
  */
 
-const DB_NAME = 'casual-docs';
-const STORE = 'autosave';
-const VERSION = 1;
+import { openDocsDb, STORE_AUTOSAVE as STORE } from './idb';
+
 const KEY = 'current';
 
 export interface AutosaveRecord {
@@ -29,17 +28,7 @@ export interface AutosaveRecord {
   savedAt: number;
 }
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error('open db failed'));
-  });
-}
+const openDb = openDocsDb;
 
 export async function readAutosave(): Promise<AutosaveRecord | null> {
   if (typeof window === 'undefined' || typeof indexedDB === 'undefined') return null;

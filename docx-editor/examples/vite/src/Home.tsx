@@ -5,6 +5,12 @@ import {
   type TemplateCategory,
   type TemplateEntry,
 } from './templates/manifest';
+import {
+  deleteRecentFile,
+  formatSize,
+  listRecentFiles,
+  type RecentFile,
+} from '@eigenpal/docx-js-editor';
 
 /** Track viewport breakpoint. <720 = phone (single-col controls,
  *  2-col card grid, reduced padding, smaller hero). */
@@ -391,6 +397,63 @@ function TemplateCard({
   );
 }
 
+function relativeAgo(ms: number): string {
+  if (ms < 60_000) return 'just now';
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function RecentCard({
+  entry,
+  onOpen,
+}: {
+  entry: RecentFile;
+  onOpen: (r: RecentFile) => void;
+}): React.JSX.Element {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      type="button"
+      style={{ ...styles.card, ...(hovered ? styles.cardHover : null) }}
+      onClick={() => onOpen(entry)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      data-testid={`recent-card-${entry.id}`}
+      aria-label={`Reopen ${entry.name}`}
+    >
+      <div
+        style={{
+          ...styles.cardThumbWrap,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: COLORS.brandSoft,
+        }}
+      >
+        <span
+          className="material-symbols-outlined"
+          aria-hidden="true"
+          style={{ fontSize: 40, color: COLORS.brand }}
+        >
+          description
+        </span>
+      </div>
+      <div style={styles.cardBody}>
+        <div style={styles.cardTitle}>{entry.name}</div>
+        <div style={styles.cardCategory}>
+          {formatSize(entry.size)} · {relativeAgo(Date.now() - entry.openedAt)}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -402,6 +465,31 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
     if (file) onOpenFile(file);
     e.target.value = '';
   };
+
+  // Recent files (sheet parity) — IDB-backed; cards re-open via a
+  // synthesized File so the existing onOpenFile path doesn't need to
+  // care that the buffer didn't come from `<input type="file">`.
+  const [recents, setRecents] = useState<RecentFile[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void listRecentFiles().then((rows) => {
+      if (!cancelled) setRecents(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const openRecent = (r: RecentFile) => {
+    const fileName = /\.docx$/i.test(r.name) ? r.name : `${r.name}.docx`;
+    const file = new File([r.buffer], fileName, {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    onOpenFile(file);
+  };
+  // `deleteRecentFile` stays exported from the package for future
+  // wiring (per-card remove, "Clear all" affordance), but v0 just lets
+  // the 10-entry cap + 60-day stale window manage the list.
+  void deleteRecentFile;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -516,6 +604,23 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           })}
         </div>
       </section>
+
+      {!isFiltered && recents.length > 0 && (
+        <section
+          style={{ ...styles.section, ...(isMobile && mobile.section) }}
+          data-testid="home-recent"
+        >
+          <div style={{ ...styles.sectionHead, ...(isMobile && mobile.sectionHead) }}>
+            <h2 style={styles.sectionTitle}>Recent</h2>
+            <span style={styles.sectionHint}>Pick up where you left off.</span>
+          </div>
+          <div style={{ ...styles.featuredRow, ...(isMobile && mobile.featuredRow) }}>
+            {recents.slice(0, 6).map((r) => (
+              <RecentCard key={r.id} entry={r} onOpen={openRecent} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {!isFiltered && (
         <section style={{ ...styles.section, ...(isMobile && mobile.section) }}>

@@ -39,6 +39,16 @@ export {
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils';
 export { AgentPanel, type AgentPanelProps } from './components/AgentPanel';
+
+// Recent files (host-facing — call `recordRecentFile` on doc open,
+// surface `listRecentFiles` on a "Home" / "Open" screen).
+export {
+  recordRecentFile,
+  listRecentFiles,
+  deleteRecentFile,
+  formatSize,
+  type RecentFile,
+} from './utils/recent-files';
 // AgentChat exports removed: the source file (./components/AgentChat) imported
 // from the AGPL @eigenpal/docx-editor-agents package and was dropped in this
 // fork's AGPL purge. See docs/agpl-removal.md.

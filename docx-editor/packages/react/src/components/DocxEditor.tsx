@@ -57,6 +57,7 @@ import { AgentPanel } from './AgentPanel';
 import { PanelRail } from './PanelRail';
 import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
 import { writeAutosave } from '../utils/autosave';
+import { recordRecentFile } from '../utils/recent-files';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
@@ -5392,7 +5393,17 @@ body { background: white; }
           ) as ArrayBuffer;
         }
         await loadBuffer(docxBuffer);
-        onDocumentNameChange?.(file.name.replace(/\.(docx|odt|md|markdown|txt)$/i, ''));
+        const cleanName = file.name.replace(/\.(docx|odt|md|markdown|txt)$/i, '');
+        onDocumentNameChange?.(cleanName);
+        // Record in the recent-files list so the Home screen can show
+        // a one-click reopen tile. Best-effort — failures are logged
+        // inside the helper and don't surface to the user.
+        void recordRecentFile({
+          name: cleanName || file.name,
+          buffer: docxBuffer,
+          size: docxBuffer.byteLength,
+          openedAt: Date.now(),
+        });
       } catch (error) {
         onError?.(error instanceof Error ? error : new Error('Failed to open document'));
       }
