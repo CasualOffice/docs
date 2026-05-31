@@ -55,7 +55,10 @@ interface MisspelledRange {
   to: number;
 }
 
-function collectMisspellings(doc: ProseMirrorNode, isMisspelled: (w: string) => boolean): MisspelledRange[] {
+function collectMisspellings(
+  doc: ProseMirrorNode,
+  isMisspelled: (w: string) => boolean
+): MisspelledRange[] {
   const ranges: MisspelledRange[] = [];
   doc.descendants((node, pos) => {
     if (!node.isText || !node.text) return;

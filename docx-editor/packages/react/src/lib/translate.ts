@@ -64,13 +64,7 @@ export async function translateFragment(
       // Atoms (images, hard breaks, etc.) pass through unchanged.
       children.push(node);
     } else {
-      const newContent = await translateFragment(
-        node.content,
-        schema,
-        source,
-        target,
-        signal
-      );
+      const newContent = await translateFragment(node.content, schema, source, target, signal);
       children.push(node.copy(newContent));
     }
   }

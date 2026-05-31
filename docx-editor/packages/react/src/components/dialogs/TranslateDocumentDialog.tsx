@@ -15,13 +15,7 @@
  * the downloaded file (Google Translate Docs–style copy pattern).
  */
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Slice, Fragment as PMFragment } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
 import { PanelState } from '../ui/PanelState';
@@ -342,10 +336,8 @@ export function TranslateDocumentDialog({
     }
   };
 
-  const sourceLangLabel =
-    LANGUAGES.find((l) => l.code === source)?.label ?? source.toUpperCase();
-  const targetLangLabel =
-    LANGUAGES.find((l) => l.code === target)?.label ?? target.toUpperCase();
+  const sourceLangLabel = LANGUAGES.find((l) => l.code === source)?.label ?? source.toUpperCase();
+  const targetLangLabel = LANGUAGES.find((l) => l.code === target)?.label ?? target.toUpperCase();
 
   return (
     <div
@@ -463,12 +455,7 @@ export function TranslateDocumentDialog({
           <span style={hintStyle}>
             Your open document is unchanged — only the downloaded copy is translated.
           </span>
-          <button
-            type="button"
-            style={secondaryBtnStyle}
-            onClick={onClose}
-            disabled={exporting}
-          >
+          <button type="button" style={secondaryBtnStyle} onClick={onClose} disabled={exporting}>
             Close
           </button>
           <button
@@ -476,8 +463,7 @@ export function TranslateDocumentDialog({
             style={{
               ...primaryBtnStyle,
               opacity: previewStatus === 'ready' && !exporting ? 1 : 0.6,
-              cursor:
-                previewStatus === 'ready' && !exporting ? 'pointer' : 'not-allowed',
+              cursor: previewStatus === 'ready' && !exporting ? 'pointer' : 'not-allowed',
             }}
             disabled={previewStatus !== 'ready' || exporting}
             onClick={() => void handleDownload()}

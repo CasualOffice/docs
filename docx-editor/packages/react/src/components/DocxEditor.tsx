@@ -2174,9 +2174,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // dialog is up.
   const [showTranslate, setShowTranslate] = useState(false);
   const [translateText, setTranslateText] = useState<string | null>(null);
-  const [translateRange, setTranslateRange] = useState<{ from: number; to: number } | null>(
-    null
-  );
+  const [translateRange, setTranslateRange] = useState<{ from: number; to: number } | null>(null);
   // Whole-document translate-and-export dialog. Separate from the
   // selection dialog above because its action (download a translated
   // copy) is distinct from "replace selection in-place".
@@ -6711,13 +6709,12 @@ body { background: white; }
   }, [trackedChanges]);
 
   // "Sidebar open" drives PagedEditor's left-translate so the centered
-  // page makes horizontal room for whatever right-edge panel the user
-  // surfaced from the rail — Comments (even when empty: still a
-  // visible affordance), Version history, or plugin-contributed items.
-  // Industry-standard pattern: opening the panel reflows the page;
-  // closing it returns to the original centered layout.
-  const sidebarOpen =
-    showCommentsSidebar || showVersionHistory || allSidebarItems.length > 0;
+  // page makes horizontal room for Comments and per-anchor plugin
+  // items, which both live inside PagedEditor's sidebarOverlay. Version
+  // history is a flex sibling of the scroll container (see below) so
+  // it reserves real horizontal space via the flex layout and doesn't
+  // need the translate hack.
+  const sidebarOpen = showCommentsSidebar || allSidebarItems.length > 0;
   // Reserve 2× the left-edge allowance so the centered page clears whatever
   // outline UI is showing, without forcing a shift on wide viewports.
   const outlineLeftAllowance = showOutline
@@ -7339,30 +7336,11 @@ body { background: white; }
                                   setShowCommentsSidebar(true);
                                 }}
                               />
-                              {showVersionHistory && (
-                                // Fixed-width right-rail overlay. Renders
-                                // independently of the per-anchor sidebar
-                                // pipeline because version-history entries
-                                // aren't paragraph-anchored — they're a
-                                // single document-level timeline. The
-                                // sidebarOverlay parent is a sibling of
-                                // PagedEditor's translated viewport, so
-                                // `right: 0` here is already the editor
-                                // body's true right edge.
-                                <div
-                                  style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                    width: 300,
-                                    zIndex: 5,
-                                    pointerEvents: 'auto',
-                                  }}
-                                >
-                                  <VersionHistoryPanel history={editHistory} />
-                                </div>
-                              )}
+                              {/* Version history is mounted as a flex sibling
+                                  of the scroll container (below this block),
+                                  not here — keeping it outside the scrolling
+                                  area means it stays pinned to the viewport
+                                  instead of riding along with document scroll. */}
                             </>
                           }
                         />
@@ -7475,6 +7453,29 @@ body { background: white; }
                     {/* end editor flex wrapper */}
                   </div>
                   {/* end scroll container */}
+
+                  {/* Version history panel — flex sibling of the scroll
+                      container so it stays pinned to the viewport
+                      instead of riding along with document scroll. The
+                      page area auto-shrinks because the scroll
+                      container is `flex: 1` and this column has a
+                      fixed width. */}
+                  {showVersionHistory && (
+                    <div
+                      style={{
+                        width: 300,
+                        flexShrink: 0,
+                        borderLeft: '1px solid var(--doc-border, #e0e0e0)',
+                        background: 'var(--doc-surface, white)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                      data-testid="version-history-panel-wrapper"
+                    >
+                      <VersionHistoryPanel history={editHistory} />
+                    </div>
+                  )}
 
                   {/* Right-edge PanelRail (X7) — always-visible activity bar
                     with toggles for Outline / Comments / Version history.

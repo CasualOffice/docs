@@ -1,6 +1,16 @@
 import './styles.css';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { setSpellAssetUrls } from '@eigenpal/docx-js-editor';
+// Vite asset imports — Hunspell dictionary files served as static
+// assets with hashed URLs. The lib doesn't pre-bundle these (its tsup
+// build has no loader for .aff / .dic); the demo provides them at
+// runtime via `setSpellAssetUrls`. Relative path resolves through the
+// workspace into `packages/react/src/assets/spellcheck/`.
+import affUrl from '../../../packages/react/src/assets/spellcheck/en.aff?url';
+import dicUrl from '../../../packages/react/src/assets/spellcheck/en.dic?url';
+
+setSpellAssetUrls(affUrl, dicUrl);
 
 const container = document.getElementById('app');
 if (container) {

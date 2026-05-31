@@ -81,10 +81,13 @@ export function SpellSuggestionsMenu({
 
   // `items` is the list of focusable rows in render order — suggestions
   // first, then "Ignore". Used by keyboard navigation.
-  const items = [...suggestions.map((s) => ({ kind: 'suggest' as const, value: s })), {
-    kind: 'ignore' as const,
-    value: word,
-  }];
+  const items = [
+    ...suggestions.map((s) => ({ kind: 'suggest' as const, value: s })),
+    {
+      kind: 'ignore' as const,
+      value: word,
+    },
+  ];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -164,9 +167,7 @@ export function SpellSuggestionsMenu({
     >
       <div style={headerStyle}>“{word}”</div>
       {suggestions.length === 0 && (
-        <div style={{ ...itemStyle, color: 'var(--doc-text-subtle, #6b7280)' }}>
-          No suggestions
-        </div>
+        <div style={{ ...itemStyle, color: 'var(--doc-text-subtle, #6b7280)' }}>No suggestions</div>
       )}
       {suggestions.map((s, idx) => (
         <button

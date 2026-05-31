@@ -963,9 +963,7 @@ export function MenuBar() {
               ...(onToggleSpellcheck
                 ? [
                     {
-                      label: spellcheckEnabled
-                        ? '✓ Spell check'
-                        : 'Spell check',
+                      label: spellcheckEnabled ? '✓ Spell check' : 'Spell check',
                       onClick: onToggleSpellcheck,
                     } as MenuEntry,
                   ]

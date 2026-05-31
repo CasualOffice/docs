@@ -26,7 +26,9 @@ test.describe('Tools > Translate (A5)', () => {
 
     await page.getByRole('button', { name: 'Tools', exact: true }).click();
     await page.waitForSelector('[role="menu"]', { state: 'visible', timeout: 4000 });
-    await page.getByRole('menuitem', { name: /Translate/ }).click();
+    // Exact match — there's also a "Translate document…" item below
+    // (whole-doc export flow) that loosely matches the same regex.
+    await page.getByRole('menuitem', { name: 'Translate…', exact: true }).click();
 
     const dlg = page.getByTestId('translate-dialog');
     await expect(dlg).toBeVisible();
@@ -49,7 +51,9 @@ test.describe('Tools > Translate (A5)', () => {
     await editor.selectAll();
 
     await page.getByRole('button', { name: 'Tools', exact: true }).click();
-    await page.getByRole('menuitem', { name: /Translate/ }).click();
+    // Exact match — there's also a "Translate document…" item below
+    // (whole-doc export flow) that loosely matches the same regex.
+    await page.getByRole('menuitem', { name: 'Translate…', exact: true }).click();
 
     await expect(page.getByTestId('panel-state-error')).toBeVisible();
     await expect(page.getByTestId('panel-state-retry')).toBeVisible();

@@ -16,12 +16,26 @@
  */
 
 import NSpell from 'nspell';
-// We vendor `dictionary-en`'s .aff / .dic into `src/assets/` instead of
-// importing them directly — the upstream `exports` field doesn't list
-// the asset paths, so `dictionary-en/index.aff?url` fails to resolve
-// under Vite's "browser" condition. See `assets/spellcheck/README.md`.
-import affUrl from '../../assets/spellcheck/en.aff?url';
-import dicUrl from '../../assets/spellcheck/en.dic?url';
+
+// Asset URLs are injected at runtime by the consumer (see
+// `setSpellAssetUrls`). The library can't pre-bundle them via `?url`
+// because tsup — which builds the published package — has no loader
+// for `.aff` / `.dic`, so any inline import here breaks `bun run
+// build`. Vite-built apps (including our `examples/vite` demo)
+// resolve `?url` natively and call `setSpellAssetUrls` on mount.
+let affUrl: string | null = null;
+let dicUrl: string | null = null;
+
+/**
+ * Tell the spell-check loader where to fetch the Hunspell dictionary.
+ * Call this once at editor mount before the first `loadSpellChecker()`.
+ * URLs can be absolute (CDN) or relative; the loader just `fetch()`es
+ * them and treats the bodies as text.
+ */
+export function setSpellAssetUrls(aff: string, dic: string): void {
+  affUrl = aff;
+  dicUrl = dic;
+}
 
 let spell: NSpell | null = null;
 let loadPromise: Promise<NSpell> | null = null;
@@ -69,11 +83,20 @@ export function getSpellVersion(): number {
 export function loadSpellChecker(): Promise<NSpell> {
   if (spell) return Promise.resolve(spell);
   if (loadPromise) return loadPromise;
+  if (!affUrl || !dicUrl) {
+    return Promise.reject(
+      new Error(
+        'spellcheck assets not configured — call setSpellAssetUrls(aff, dic) at editor mount'
+      )
+    );
+  }
+  const aff = affUrl;
+  const dic = dicUrl;
   loadPromise = (async () => {
-    const [affRes, dicRes] = await Promise.all([fetch(affUrl), fetch(dicUrl)]);
+    const [affRes, dicRes] = await Promise.all([fetch(aff), fetch(dic)]);
     if (!affRes.ok || !dicRes.ok) throw new Error('dict-fetch-failed');
-    const [aff, dic] = await Promise.all([affRes.text(), dicRes.text()]);
-    const engine = NSpell(aff, dic);
+    const [affText, dicText] = await Promise.all([affRes.text(), dicRes.text()]);
+    const engine = NSpell(affText, dicText);
     spell = engine;
     stateVersion++;
     return engine;

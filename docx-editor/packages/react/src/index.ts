@@ -49,6 +49,13 @@ export {
   formatSize,
   type RecentFile,
 } from './utils/recent-files';
+
+// Spell-check asset config — host must call this with URLs for the
+// Hunspell .aff / .dic files before the Tools → Spell check toggle
+// runs (lazy-loaded). The dictionary asset files aren't bundled into
+// this lib so the consumer's bundler (Vite, webpack, etc.) handles
+// asset hashing.
+export { setSpellAssetUrls } from './lib/spellcheck/service';
 // AgentChat exports removed: the source file (./components/AgentChat) imported
 // from the AGPL @eigenpal/docx-editor-agents package and was dropped in this
 // fork's AGPL purge. See docs/agpl-removal.md.
