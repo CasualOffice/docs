@@ -482,6 +482,10 @@ export interface DocxEditorProps {
   theme?: Theme | null;
   /** Whether to show toolbar (default: true) */
   showToolbar?: boolean;
+  /** Whether to show the right-edge PanelRail (default: true). Set to
+   *  `false` when embedding the editor as a read-only preview so the
+   *  Outline / Comments / History toggles don't render. */
+  showPanelRail?: boolean;
   /** Whether to show the bottom status bar (default: true) */
   showStatusBar?: boolean;
   /** Whether to show zoom control (default: true) */
@@ -1449,6 +1453,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onFontsLoaded: onFontsLoadedCallback,
     theme,
     showToolbar = true,
+    showPanelRail = true,
     showStatusBar = true,
     showZoomControl = true,
     showMarginGuides: _showMarginGuides = false,
@@ -2190,9 +2195,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // copy) is distinct from "replace selection in-place".
   const [showTranslateDocument, setShowTranslateDocument] = useState(false);
 
-  // Writing Assistant — right-docked sheet (P1: capability detection
-  // + per-feature toggles + stub worker). Visible only when the user
-  // opens it; the controller boots once at editor mount.
+  // Writing Assistant — sheet + rail entry. Boots the controller on
+  // mount so capability checks + auto-load run before the sheet opens.
   const [showWritingAssistant, setShowWritingAssistant] = useState(false);
   useEffect(() => {
     void bootWriterController();
@@ -7500,16 +7504,18 @@ body { background: white; }
                     with toggles for Outline / Comments / Version history.
                     Lives inside the below-toolbar flex row so it spans only
                     the editor body's height, not the toolbar's. */}
-                  <PanelRail
-                    outlineVisible={showOutline}
-                    commentsVisible={showCommentsSidebar}
-                    historyVisible={showVersionHistory}
-                    onToggleOutline={handleToggleOutline}
-                    onToggleComments={handleToggleComments}
-                    onToggleHistory={handleToggleVersionHistory}
-                    writerVisible={showWritingAssistant}
-                    onToggleWriter={() => setShowWritingAssistant((v) => !v)}
-                  />
+                  {showPanelRail && (
+                    <PanelRail
+                      outlineVisible={showOutline}
+                      commentsVisible={showCommentsSidebar}
+                      historyVisible={showVersionHistory}
+                      onToggleOutline={handleToggleOutline}
+                      onToggleComments={handleToggleComments}
+                      onToggleHistory={handleToggleVersionHistory}
+                      writerVisible={showWritingAssistant}
+                      onToggleWriter={() => setShowWritingAssistant((v) => !v)}
+                    />
+                  )}
                 </div>
                 {/* end below-toolbar flex row */}
 
