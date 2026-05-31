@@ -23,10 +23,15 @@ test.describe('Autosave restore banner', () => {
     // Stuff a tiny record into IDB directly. The buffer content doesn't
     // matter for the banner's display logic — only the name + savedAt.
     await page.evaluate(async () => {
-      const open = indexedDB.open('casual-docs', 1);
+      const open = indexedDB.open('casual-docs', 2);
       open.onupgradeneeded = () => {
         const db = open.result;
         if (!db.objectStoreNames.contains('autosave')) db.createObjectStore('autosave');
+        if (!db.objectStoreNames.contains('recent-files')) {
+          const os = db.createObjectStore('recent-files', { keyPath: 'id', autoIncrement: true });
+          os.createIndex('openedAt', 'openedAt', { unique: false });
+          os.createIndex('name', 'name', { unique: false });
+        }
       };
       await new Promise<void>((resolve, reject) => {
         open.onsuccess = () => resolve();
@@ -66,10 +71,15 @@ test.describe('Autosave restore banner', () => {
     await editor.newDocument();
 
     await page.evaluate(async () => {
-      const open = indexedDB.open('casual-docs', 1);
+      const open = indexedDB.open('casual-docs', 2);
       open.onupgradeneeded = () => {
         const db = open.result;
         if (!db.objectStoreNames.contains('autosave')) db.createObjectStore('autosave');
+        if (!db.objectStoreNames.contains('recent-files')) {
+          const os = db.createObjectStore('recent-files', { keyPath: 'id', autoIncrement: true });
+          os.createIndex('openedAt', 'openedAt', { unique: false });
+          os.createIndex('name', 'name', { unique: false });
+        }
       };
       await new Promise<void>((resolve, reject) => {
         open.onsuccess = () => resolve();

@@ -5152,13 +5152,18 @@ body { background: white; }
     }
   }, [handleSave, documentName, markDirty]);
 
-  // Autosave to IndexedDB (sheet parity). Debounced 30s after the last
-  // edit so we don't churn the serializer mid-typing — `handleSave`
-  // re-walks the whole PM doc and re-packs the .docx, which is fine on
-  // idle but noticeable when chained.
+  // Autosave to IndexedDB (sheet parity). A periodic interval polls the
+  // dirty flag every 30s; if dirty, it serializes and writes the buffer.
+  // The previous one-shot `setTimeout` only fired on the rising edge of
+  // `isDirty`, so continuous typing past 30s without an explicit save
+  // would never snapshot again. An interval gates on the ref so the
+  // serializer (`handleSave` re-walks the PM doc + re-packs the .docx)
+  // only runs when there's actually work to do.
+  const isDirtyRefAuto = useRef(false);
+  isDirtyRefAuto.current = isDirty;
   useEffect(() => {
-    if (!isDirty) return;
-    const timer = window.setTimeout(() => {
+    const tick = () => {
+      if (!isDirtyRefAuto.current) return;
       void (async () => {
         try {
           const buffer = await handleSave();
@@ -5170,12 +5175,13 @@ body { background: white; }
           });
         } catch {
           // Silent — autosave is best-effort and shouldn't surface
-          // errors to the user. The next save attempt will try again.
+          // errors to the user. The next tick will try again.
         }
       })();
-    }, 30_000);
-    return () => window.clearTimeout(timer);
-  }, [isDirty, handleSave, documentName]);
+    };
+    const interval = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(interval);
+  }, [handleSave, documentName]);
 
   // File → Make a copy: download the current content as "Copy of <name>.docx".
   // The original document is unchanged, so we don't touch the dirty flag.
