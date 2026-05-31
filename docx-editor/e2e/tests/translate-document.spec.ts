@@ -21,5 +21,9 @@ test('Tools menu carries a Translate document entry', async ({ page }) => {
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId('translate-doc-source')).toBeVisible();
   await expect(page.getByTestId('translate-doc-target')).toBeVisible();
+  // Side-by-side preview panes are both mounted (the right pane shows a
+  // loading state until the snapshot translation lands).
+  await expect(page.getByTestId('translate-doc-preview-source')).toBeVisible();
+  await expect(page.getByTestId('translate-doc-preview-target')).toBeVisible();
   await expect(page.getByTestId('translate-doc-export')).toBeVisible();
 });
