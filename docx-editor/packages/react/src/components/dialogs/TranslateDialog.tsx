@@ -13,32 +13,21 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { PanelState } from '../ui/PanelState';
+import { translateText, TRANSLATE_LANGUAGES as LANGUAGES } from '../../lib/translate';
 
 export interface TranslateDialogProps {
   isOpen: boolean;
   onClose: () => void;
   /** Selection text captured at open time. `null` when no selection. */
   initialText: string | null;
+  /**
+   * Optional in-document replace. Provided when the dialog was opened
+   * from the editor's right-click "Translate selection" — pulls the
+   * Replace button into the footer and runs the format-preserving
+   * per-mark-run replacement against the original selection range.
+   */
+  onReplace?: (source: string, target: string) => Promise<void>;
 }
-
-// Top-ten globally-spoken languages + a few keep the dropdown short
-// without being euro-centric. ISO 639-1 codes match MyMemory's params.
-const LANGUAGES: { code: string; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'fr', label: 'French' },
-  { code: 'de', label: 'German' },
-  { code: 'it', label: 'Italian' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'nl', label: 'Dutch' },
-  { code: 'pl', label: 'Polish' },
-  { code: 'tr', label: 'Turkish' },
-  { code: 'ar', label: 'Arabic' },
-  { code: 'hi', label: 'Hindi' },
-  { code: 'ja', label: 'Japanese' },
-  { code: 'ko', label: 'Korean' },
-  { code: 'zh', label: 'Chinese (Simplified)' },
-];
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
@@ -174,28 +163,7 @@ const footerStyle: CSSProperties = {
   gap: 8,
 };
 
-interface ApiResponse {
-  responseData?: { translatedText?: string };
-  responseStatus?: number | string;
-  responseDetails?: string;
-}
-
-async function translate(
-  text: string,
-  source: string,
-  target: string,
-  signal: AbortSignal
-): Promise<string> {
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}`;
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error('http-error');
-  const data = (await res.json()) as ApiResponse;
-  const out = data.responseData?.translatedText;
-  if (!out || typeof out !== 'string') throw new Error('empty');
-  return out;
-}
-
-export function TranslateDialog({ isOpen, onClose, initialText }: TranslateDialogProps) {
+export function TranslateDialog({ isOpen, onClose, initialText, onReplace }: TranslateDialogProps) {
   const [source, setSource] = useState('en');
   const [target, setTarget] = useState('es');
   const [text, setText] = useState(initialText ?? '');
@@ -204,6 +172,7 @@ export function TranslateDialog({ isOpen, onClose, initialText }: TranslateDialo
   );
   const [result, setResult] = useState<string>('');
   const [copyHint, setCopyHint] = useState(false);
+  const [replaceStatus, setReplaceStatus] = useState<'idle' | 'running'>('idle');
 
   useEffect(() => {
     if (isOpen) {
@@ -230,7 +199,7 @@ export function TranslateDialog({ isOpen, onClose, initialText }: TranslateDialo
     const controller = new AbortController();
     setStatus('loading');
     setResult('');
-    translate(trimmed, source, target, controller.signal)
+    translateText(trimmed, source, target, controller.signal)
       .then((out) => {
         setResult(out);
         setStatus('success');
@@ -375,6 +344,36 @@ export function TranslateDialog({ isOpen, onClose, initialText }: TranslateDialo
           <button type="button" style={secondaryBtnStyle} onClick={onClose}>
             Close
           </button>
+          {onReplace && (
+            <button
+              type="button"
+              data-testid="translate-replace"
+              style={{
+                ...btnBase,
+                border: '1px solid var(--doc-primary, #1a73e8)',
+                background: 'var(--doc-primary, #1a73e8)',
+                color: 'white',
+                opacity: status === 'success' && replaceStatus === 'idle' ? 1 : 0.6,
+                cursor:
+                  status === 'success' && replaceStatus === 'idle' ? 'pointer' : 'not-allowed',
+              }}
+              disabled={status !== 'success' || replaceStatus !== 'idle'}
+              onClick={async () => {
+                setReplaceStatus('running');
+                try {
+                  await onReplace(source, target);
+                  onClose();
+                } catch {
+                  // Failure is surfaced as a toast by the caller; just
+                  // re-enable the button so the user can retry.
+                } finally {
+                  setReplaceStatus('idle');
+                }
+              }}
+            >
+              {replaceStatus === 'running' ? 'Replacing…' : 'Replace in document'}
+            </button>
+          )}
         </div>
       </div>
     </div>

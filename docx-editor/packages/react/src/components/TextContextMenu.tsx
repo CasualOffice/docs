@@ -34,7 +34,8 @@ export type TextContextAction =
   | 'deleteColumn'
   | 'mergeCells'
   | 'splitCell'
-  | 'addComment';
+  | 'addComment'
+  | 'translateSelection';
 
 /**
  * Menu item configuration
@@ -290,6 +291,24 @@ const SplitCellIcon = () => (
   </svg>
 );
 
+const TranslateIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M2 4h6M5 2v2M3 4c0 3 2 5 4 5M7 4c0 3-2 5-4 5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <path
+      d="M8 14l2.5-6 2.5 6M9 12h3"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const CommentIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
@@ -335,6 +354,8 @@ function getActionIcon(action: TextContextAction): React.ReactNode {
       return <SplitCellIcon />;
     case 'addComment':
       return <CommentIcon />;
+    case 'translateSelection':
+      return <TranslateIcon />;
     default:
       return null;
   }
@@ -793,6 +814,7 @@ export function getTextActionLabel(action: TextContextAction): string {
     mergeCells: defaultLocale.table.mergeCells,
     splitCell: defaultLocale.table.splitCell,
     addComment: 'Comment',
+    translateSelection: 'Translate selection…',
   };
   return labels[action];
 }
@@ -818,6 +840,7 @@ export function getTextActionShortcut(action: TextContextAction): string {
     mergeCells: '',
     splitCell: '',
     addComment: '',
+    translateSelection: '',
   };
   return shortcuts[action];
 }
@@ -851,6 +874,8 @@ export function isTextActionAvailable(
     case 'pasteAsPlainText':
       return isEditable;
     case 'addComment':
+      return hasSelection;
+    case 'translateSelection':
       return hasSelection;
     case 'selectAll':
       return true;

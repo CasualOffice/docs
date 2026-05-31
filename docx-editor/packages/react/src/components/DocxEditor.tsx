@@ -370,6 +370,7 @@ import { SuggestingModeBanner } from './SuggestingModeBanner';
 // Building blocks (C6) — saved reusable snippets the user inserts via the
 // Insert menu. Backed by localStorage; PM Slice JSON round-trip.
 import { Slice } from 'prosemirror-model';
+import { translateFragment } from '../lib/translate';
 import {
   loadBuildingBlocks,
   addBuildingBlock,
@@ -2151,8 +2152,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showDictionary, setShowDictionary] = useState(false);
   const [dictionaryWord, setDictionaryWord] = useState<string | null>(null);
   // A5 — translate selection. Captures the selection text at open time.
+  // `translateRange` is also captured when the dialog is opened from
+  // the editor's right-click menu so the Replace button can target the
+  // exact span the user selected, even if the cursor moves while the
+  // dialog is up.
   const [showTranslate, setShowTranslate] = useState(false);
   const [translateText, setTranslateText] = useState<string | null>(null);
+  const [translateRange, setTranslateRange] = useState<{ from: number; to: number } | null>(
+    null
+  );
   // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
   const [showExplore, setShowExplore] = useState(false);
   const [exploreQuery, setExploreQuery] = useState<string | null>(null);
@@ -4343,6 +4351,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       items.push({
         action: 'addComment',
         label: 'Comment',
+      });
+      items.push({
+        action: 'translateSelection',
+        label: 'Translate selection…',
         dividerAfter: !contextMenu.cursorInTable,
       });
     }
@@ -4466,6 +4478,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         case 'splitCell':
           openSplitCellDialog();
           break;
+        // Translate — capture the selection range so the dialog's
+        // Replace button can write back to exactly this span.
+        case 'translateSelection': {
+          const { from, to } = view.state.selection;
+          if (from === to) break;
+          const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+          setTranslateRange({ from, to });
+          setTranslateText(raw.length > 0 ? raw : null);
+          setShowTranslate(true);
+          break;
+        }
         // Comment — same flow as floating comment button
         case 'addComment': {
           const { from, to } = view.state.selection;
@@ -4778,6 +4801,47 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [getActiveEditorView, focusActiveEditor]
   );
 
+  // A5 — Replace the selection (captured in `translateRange`) with a
+  // per-mark-run translation. Each text node inside the range is
+  // translated individually so bold/italic/link/etc boundaries land
+  // exactly where the user drew them. Returns void; toasts on failure.
+  const handleTranslateReplace = useCallback(
+    async (source: string, target: string): Promise<void> => {
+      const view = getActiveEditorView();
+      if (!view) throw new Error('no-view');
+      const range = translateRange;
+      if (!range) throw new Error('no-range');
+      const { from, to } = range;
+      if (from === to) throw new Error('empty-range');
+      // Re-resolve against current doc — autosave / other tx may have
+      // shifted positions while the dialog was up. Clamp to doc size.
+      const docSize = view.state.doc.content.size;
+      const clampedFrom = Math.min(Math.max(from, 0), docSize);
+      const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+      const slice = view.state.doc.slice(clampedFrom, clampedTo);
+      try {
+        const translatedContent = await translateFragment(
+          slice.content,
+          view.state.schema,
+          source,
+          target
+        );
+        const translatedSlice = new Slice(translatedContent, slice.openStart, slice.openEnd);
+        // Re-read the live view at dispatch time: the user may have typed
+        // or scrolled during the await; another tr may have shifted us.
+        const live = getActiveEditorView();
+        if (!live) return;
+        const tr = live.state.tr.replace(clampedFrom, clampedTo, translatedSlice);
+        live.dispatch(tr);
+        toast.success(`Replaced with ${target.toUpperCase()} translation.`);
+      } catch (err) {
+        toast.error("Couldn't translate — check your connection and try again.");
+        throw err;
+      }
+    },
+    [getActiveEditorView, translateRange]
+  );
+
   // A5 — open the translate dialog. Seeds the original-text box with
   // the current selection; the user can edit it freely once the dialog
   // is up.
@@ -4788,11 +4852,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (from !== to) {
         const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
         setTranslateText(raw.length > 0 ? raw : null);
+        setTranslateRange({ from, to });
       } else {
         setTranslateText(null);
+        setTranslateRange(null);
       }
     } else {
       setTranslateText(null);
+      setTranslateRange(null);
     }
     setShowTranslate(true);
   }, [getActiveEditorView]);
@@ -7685,6 +7752,7 @@ body { background: white; }
                   isOpen={showTranslate}
                   onClose={() => setShowTranslate(false)}
                   initialText={translateText}
+                  onReplace={translateRange ? handleTranslateReplace : undefined}
                 />
               )}
               {showExplore && (
