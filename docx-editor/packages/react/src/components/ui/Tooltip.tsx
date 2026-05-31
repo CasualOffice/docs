@@ -23,17 +23,29 @@ export function Tooltip({ content, children, side = 'bottom', delayMs = 400 }: T
   );
   const tooltipId = generatedId ?? idRef.current;
 
+  const computeAnchor = React.useCallback((): { x: number; y: number } | null => {
+    if (!triggerRef.current) return null;
+    const rect = triggerRef.current.getBoundingClientRect();
+    switch (side) {
+      case 'top':
+        return { x: rect.left + rect.width / 2, y: rect.top - 8 };
+      case 'left':
+        return { x: rect.left - 8, y: rect.top + rect.height / 2 };
+      case 'right':
+        return { x: rect.right + 8, y: rect.top + rect.height / 2 };
+      case 'bottom':
+      default:
+        return { x: rect.left + rect.width / 2, y: rect.bottom + 8 };
+    }
+  }, [side]);
+
   const show = React.useCallback(() => {
     timeoutRef.current = setTimeout(() => {
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        const x = rect.left + rect.width / 2;
-        const y = side === 'top' ? rect.top - 8 : rect.bottom + 8;
-        setPosition({ x, y });
-      }
+      const a = computeAnchor();
+      if (a) setPosition(a);
       setIsOpen(true);
     }, delayMs);
-  }, [delayMs, side]);
+  }, [delayMs, computeAnchor]);
 
   const hide = React.useCallback(() => {
     if (timeoutRef.current) {
@@ -52,14 +64,10 @@ export function Tooltip({ content, children, side = 'bottom', delayMs = 400 }: T
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = side === 'top' ? rect.top - 8 : rect.bottom + 8;
-      setPosition({ x, y });
-    }
+    const a = computeAnchor();
+    if (a) setPosition(a);
     setIsOpen(true);
-  }, [side]);
+  }, [computeAnchor]);
 
   // Dismiss on Escape — WAI-ARIA tooltip pattern. Keeps the
   // keyboard user in control when a tooltip obscures something
@@ -137,9 +145,11 @@ export function Tooltip({ content, children, side = 'bottom', delayMs = 400 }: T
             transform:
               side === 'top'
                 ? 'translate(-50%, -100%)'
-                : side === 'bottom'
-                  ? 'translate(-50%, 0)'
-                  : undefined,
+                : side === 'left'
+                  ? 'translate(-100%, -50%)'
+                  : side === 'right'
+                    ? 'translate(0, -50%)'
+                    : 'translate(-50%, 0)',
             // Prevent the tooltip from intercepting the very mouse
             // event the trigger needs to keep its hover state.
             pointerEvents: 'none',
