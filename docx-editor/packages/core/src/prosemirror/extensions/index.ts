@@ -38,6 +38,16 @@ export type { StarterKitOptions } from './StarterKit';
 export { editorPreferences, setEditorPreference } from './features/editorPreferences';
 export type { EditorPreferences } from './features/editorPreferences';
 
+// Spell-check — the extension is registered by `createStarterKit`; the
+// React layer plugs in the actual dictionary engine via `setSpellChecker`.
+export {
+  SpellcheckExtension,
+  setSpellChecker,
+  refreshSpellcheckDecorations,
+  spellcheckPluginKey,
+} from './features/SpellcheckExtension';
+export type { SpellChecker } from './features/SpellcheckExtension';
+
 // Re-export specific extensions consumers commonly customize
 export {
   ParagraphChangeTrackerExtension,

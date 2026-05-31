@@ -195,7 +195,18 @@ import {
   editorPreferences,
   setEditorPreference,
   type EditorPreferences,
+  setSpellChecker,
+  refreshSpellcheckDecorations,
 } from '@eigenpal/docx-core/prosemirror/extensions';
+import {
+  getSpellCheckerImpl,
+  isSpellEnabled,
+  setSpellEnabled,
+  loadSpellChecker,
+  suggestionsFor,
+  ignoreWord,
+} from '../lib/spellcheck/service';
+import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
 import type { WrapType } from '@eigenpal/docx-core/docx/wrapTypes';
 import {
   captureInlinePositionEmu,
@@ -2190,6 +2201,40 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
     return { ...editorPreferences };
   });
+
+  // Spell-suggestions popover — shown when the user right-clicks on a
+  // misspelled word. Captures the underlying PM range so the picked
+  // replacement can be dispatched directly.
+  const [spellMenu, setSpellMenu] = useState<{
+    x: number;
+    y: number;
+    from: number;
+    to: number;
+    word: string;
+    suggestions: string[];
+  } | null>(null);
+
+  // Spell-check runtime toggle. Off by default — the ~500 KB Hunspell
+  // dictionary downloads lazily the first time the user flips this on.
+  // Persisted to localStorage so the choice survives reloads.
+  const SPELLCHECK_KEY = 'docx-editor-spellcheck-enabled';
+  const [spellOn, setSpellOn] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(SPELLCHECK_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    // Register the React-side checker with the core extension exactly
+    // once. The injection is module-level so HMR-safe — every reload
+    // overwrites the same singleton.
+    setSpellChecker(getSpellCheckerImpl());
+    return () => {
+      setSpellChecker(null);
+    };
+  }, []);
   const handlePreferenceChange = useCallback(
     <K extends keyof EditorPreferences>(key: K, value: EditorPreferences[K]) => {
       setEditorPreference(key, value);
@@ -4247,7 +4292,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         cssFloat?: 'left' | 'right' | 'none' | null;
         inlinePositionEmu?: { horizontalEmu: number; verticalEmu: number };
       } | null;
+      spellcheck?: { from: number; to: number; word: string } | null;
     }) => {
+      // Spell-check hit takes priority over both image and text menus —
+      // matches Word's behaviour where a misspelled word's right-click
+      // menu pre-empts the standard one.
+      if (data.spellcheck) {
+        setSpellMenu({
+          x: data.x,
+          y: data.y,
+          from: data.spellcheck.from,
+          to: data.spellcheck.to,
+          word: data.spellcheck.word,
+          suggestions: suggestionsFor(data.spellcheck.word, 5),
+        });
+        return;
+      }
       // Image right-click takes priority over the text context menu.
       if (data.image) {
         imageContextMenu.openForImage({
@@ -4272,6 +4332,37 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     },
     [getActiveEditorView, imageContextMenu]
   );
+
+  // Apply a spell-check suggestion: replace the misspelled span with
+  // the picked word, preserving the marks on the first character of the
+  // range so case/format don't disappear.
+  const handlePickSpellSuggestion = useCallback(
+    (suggestion: string) => {
+      const view = getActiveEditorView();
+      if (!view || !spellMenu) return;
+      const { from, to } = spellMenu;
+      const docSize = view.state.doc.content.size;
+      const clampedFrom = Math.min(Math.max(from, 0), docSize);
+      const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+      // Read the marks at the start of the misspelled word so the
+      // replacement carries the same bold/italic/etc styling.
+      const nodeAtFrom = view.state.doc.nodeAt(clampedFrom);
+      const marks = nodeAtFrom?.marks ?? [];
+      const replacementNode = view.state.schema.text(suggestion, marks);
+      const tr = view.state.tr.replaceWith(clampedFrom, clampedTo, replacementNode);
+      view.dispatch(tr);
+      setSpellMenu(null);
+    },
+    [getActiveEditorView, spellMenu]
+  );
+
+  const handleIgnoreSpell = useCallback(() => {
+    if (!spellMenu) return;
+    ignoreWord(spellMenu.word);
+    const view = getActiveEditorView();
+    if (view) refreshSpellcheckDecorations(view);
+    setSpellMenu(null);
+  }, [getActiveEditorView, spellMenu]);
 
   const handleImageWrapApply = useCallback(
     (target: ImageLayoutTarget) => {
@@ -4800,6 +4891,52 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     },
     [getActiveEditorView, focusActiveEditor]
   );
+
+  // Spell-check: flip enabled state, lazy-load dictionary on first
+  // enable, and tell the open editor view to repaint. Toast surfaces
+  // load / failure since dict download can be 100–1500 ms.
+  const handleToggleSpellcheck = useCallback(async () => {
+    const next = !isSpellEnabled();
+    if (next) {
+      try {
+        // Pre-warm — block the visible "enabled" flip on the dict so
+        // the very first transaction-tick already sees a usable engine.
+        const loadingToast = toast.loading('Loading spell-check dictionary…');
+        await loadSpellChecker();
+        toast.dismiss(loadingToast);
+      } catch {
+        toast.error("Couldn't load the spell-check dictionary.");
+        return;
+      }
+    }
+    setSpellEnabled(next);
+    setSpellOn(next);
+    try {
+      window.localStorage.setItem(SPELLCHECK_KEY, next ? '1' : '0');
+    } catch {
+      // Storage denied — toggle still takes effect for the session.
+    }
+    const view = getActiveEditorView();
+    if (view) refreshSpellcheckDecorations(view);
+  }, [getActiveEditorView]);
+
+  // Restore from localStorage on mount: if persisted "on", quietly load
+  // the dictionary in the background and turn the engine on without a
+  // visible toast — the user already opted in last session.
+  useEffect(() => {
+    if (!spellOn) return;
+    if (isSpellEnabled()) return;
+    void (async () => {
+      try {
+        await loadSpellChecker();
+        setSpellEnabled(true);
+        const view = getActiveEditorView();
+        if (view) refreshSpellcheckDecorations(view);
+      } catch {
+        // Silent — the user can re-toggle from the menu.
+      }
+    })();
+  }, [spellOn, getActiveEditorView]);
 
   // A5 — Replace the selection (captured in `translateRange`) with a
   // per-mark-run translation. Each text node inside the range is
@@ -6782,6 +6919,8 @@ body { background: white; }
                       }
                       onOpenDictionary={handleOpenDictionary}
                       onOpenTranslate={handleOpenTranslate}
+                      onToggleSpellcheck={handleToggleSpellcheck}
+                      spellcheckEnabled={spellOn}
                       onOpenExplore={handleOpenExplore}
                       onOpenCitations={handleOpenCitations}
                       onInsertShape={handleInsertShape}
@@ -7415,6 +7554,20 @@ body { background: white; }
               onAction={handleContextMenuAction}
               onClose={handleContextMenuClose}
             />
+
+            {/* Spell-check suggestions menu — shown only when the right-
+                click landed on a misspelled-word decoration. */}
+            {spellMenu && (
+              <SpellSuggestionsMenu
+                isOpen={true}
+                position={{ x: spellMenu.x, y: spellMenu.y }}
+                word={spellMenu.word}
+                suggestions={spellMenu.suggestions}
+                onPick={handlePickSpellSuggestion}
+                onIgnore={handleIgnoreSpell}
+                onClose={() => setSpellMenu(null)}
+              />
+            )}
 
             {/* Image-specific right-click menu — layout options + text actions */}
             <ImageContextMenu

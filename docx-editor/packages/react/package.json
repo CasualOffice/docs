@@ -104,6 +104,8 @@
     "@radix-ui/react-select": "^2.2.6",
     "@schnsrw/core": "^0.1.1",
     "clsx": "^2.1.0",
+    "dictionary-en": "^4.0.0",
+    "nspell": "^2.1.5",
     "sonner": "^2.0.7"
   },
   "devDependencies": {

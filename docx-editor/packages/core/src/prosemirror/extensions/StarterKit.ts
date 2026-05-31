@@ -71,6 +71,7 @@ import { BidiShortcutExtension } from './features/BidiShortcutExtension';
 import { PasteStyleInlinerExtension } from './features/PasteStyleInlinerExtension';
 import { SmartQuotesExtension } from './features/SmartQuotesExtension';
 import { AutocorrectExtension } from './features/AutocorrectExtension';
+import { SpellcheckExtension } from './features/SpellcheckExtension';
 import { WordNavigationExtension } from './features/WordNavigationExtension';
 
 export interface StarterKitOptions {
@@ -190,6 +191,11 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // quotes, single-transaction so Ctrl+Z reverts. Defaults on;
   // disable via createStarterKit({ disable: ['autocorrect'] }).
   add('autocorrect', AutocorrectExtension());
+  // Spell-check decorations — inert until the React side calls
+  // `setSpellChecker(...)` with an nspell-backed engine + the user
+  // toggles it on. Off by default so the ~500 KB dictionary download
+  // doesn't fire on every page load.
+  add('spellcheck', SpellcheckExtension());
   // Word-wise cursor motion (Alt+Arrow on macOS, Ctrl+Arrow elsewhere) +
   // Shift variants to extend. Operates on PM state — the dialog-advertised
   // "move by word" had no working binding before this.

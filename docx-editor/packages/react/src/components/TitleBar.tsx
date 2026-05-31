@@ -238,6 +238,8 @@ export function MenuBar() {
     onConvertTableToText,
     onOpenDictionary,
     onOpenTranslate,
+    onToggleSpellcheck,
+    spellcheckEnabled,
     onOpenExplore,
     onOpenCitations,
     onInsertShape,
@@ -910,6 +912,7 @@ export function MenuBar() {
           onOpenWordCount ||
           onOpenDictionary ||
           onOpenTranslate ||
+          onToggleSpellcheck ||
           onOpenExplore ||
           onOpenCitations) && (
           <MenuDropdown
@@ -944,6 +947,16 @@ export function MenuBar() {
                     {
                       label: t('toolbar.translate'),
                       onClick: onOpenTranslate,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onToggleSpellcheck
+                ? [
+                    {
+                      label: spellcheckEnabled
+                        ? '✓ Spell check'
+                        : 'Spell check',
+                      onClick: onToggleSpellcheck,
                     } as MenuEntry,
                   ]
                 : []),

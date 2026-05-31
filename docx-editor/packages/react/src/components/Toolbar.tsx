@@ -347,6 +347,10 @@ export interface ToolbarProps {
   onOpenDictionary?: () => void;
   /** Tools → Translate — opens the translate-selection dialog (A5). */
   onOpenTranslate?: () => void;
+  /** Tools → Spell check — toggles inline spell-check decorations. */
+  onToggleSpellcheck?: () => void;
+  /** Current spell-check enabled state — drives the menu checkmark. */
+  spellcheckEnabled?: boolean;
   /** Tools → Explore — opens the Wikipedia lookup dialog (A3). */
   onOpenExplore?: () => void;
   /** Tools → Citations — opens the local citations manager (A6 v0). */

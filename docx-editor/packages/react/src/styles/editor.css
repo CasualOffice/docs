@@ -451,6 +451,29 @@
  * FIND & REPLACE HIGHLIGHTING
  * ============================================================================ */
 
+/* ============================================================================
+ * SPELL CHECK
+ * ============================================================================ */
+
+/* Red wavy underline under misspelled words. The decoration is rendered
+ * by `DecorationLayer` as a positioned div on top of the visible page;
+ * the SVG-encoded squiggle is tiled along the bottom edge so it scales
+ * cleanly at every zoom. `pointer-events: auto` lets the underline
+ * receive context-menu clicks (the layer's overlay is itself
+ * `pointer-events: none`) — `oncontextmenu` on the visible-pages
+ * container then maps the click to the misspelled word's range. */
+.spellcheck-error {
+  background-repeat: repeat-x;
+  background-position: bottom left;
+  background-size: 6px 3px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 3' fill='none' stroke='%23d93025' stroke-width='1' stroke-linecap='round'><path d='M0 1.5 Q1.5 0 3 1.5 T6 1.5'/></svg>");
+  /* Keep the overlay non-interactive so it never steals text-selection
+   * mousedowns from the pages below. Right-click discovery uses
+   * `document.elementsFromPoint(x, y)`, which sees this div regardless
+   * of `pointer-events`. */
+  pointer-events: none;
+}
+
 /* Find/replace match highlighting */
 .docx-find-highlight {
   background-color: rgba(255, 235, 59, 0.5) !important;

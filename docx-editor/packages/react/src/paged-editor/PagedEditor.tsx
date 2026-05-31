@@ -38,6 +38,7 @@ import { MobileFormatBar } from '../components/ui/MobileFormatBar';
 import { usePinchZoom } from '../components/hooks/usePinchZoom';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { DecorationLayer } from './DecorationLayer';
+import { spellcheckPluginKey } from '@eigenpal/docx-core/prosemirror/extensions';
 
 // Layout engine
 import {
@@ -330,6 +331,13 @@ export interface PagedEditorProps {
       cssFloat?: 'left' | 'right' | 'none' | null;
       inlinePositionEmu?: { horizontalEmu: number; verticalEmu: number };
     } | null;
+    /**
+     * Populated when the right-click landed on a `.spellcheck-error`
+     * decoration overlay. `word` is the text the spell-check plugin
+     * flagged; the host opens a suggestion menu and uses the range to
+     * dispatch the replacement transaction.
+     */
+    spellcheck?: { from: number; to: number; word: string } | null;
   }) => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
   onAnchorPositionsChange?: (positions: Map<string, number>) => void;
@@ -3632,11 +3640,32 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           ? updatedState.selection.from !== updatedState.selection.to
           : false;
 
+        // Spell-check hit: ask PM directly. `pmPos` is the document
+        // position at the click coords; if the spellcheck plugin has a
+        // decoration covering that position, the user right-clicked a
+        // misspelled word and we surface it to the host so the spell
+        // suggestions menu can open instead of the standard text menu.
+        let spellcheckInfo: { from: number; to: number; word: string } | null = null;
+        if (pmPos !== null) {
+          const sst = spellcheckPluginKey.getState(view.state);
+          if (sst) {
+            const hits = sst.decos.find(pmPos, pmPos);
+            if (hits.length > 0) {
+              const d = hits[0];
+              const word = view.state.doc.textBetween(d.from, d.to, '', '');
+              if (word) {
+                spellcheckInfo = { from: d.from, to: d.to, word };
+              }
+            }
+          }
+        }
+
         onContextMenu({
           x: e.clientX,
           y: e.clientY,
           hasSelection,
           image: imageInfo,
+          spellcheck: spellcheckInfo,
         });
       },
       // `zoom` is read inside `captureInlinePositionEmu` to convert post-
@@ -4122,6 +4151,18 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         {/* Viewport for visible pages */}
         <div
           ref={viewportLayoutRef}
+          onContextMenu={(e) => {
+            // Catch right-clicks on overlays that sit OUTSIDE
+            // `.paged-editor__pages` (DecorationLayer, decoration spans
+            // like `.spellcheck-error`). The inner pages-container
+            // handler already preventDefaulted these for clicks on the
+            // pages themselves — that branch returns early via the
+            // `defaultPrevented` guard so we don't double-fire.
+            if (e.defaultPrevented) return;
+            const target = e.target as HTMLElement | null;
+            if (target?.closest('.paged-editor__pages')) return;
+            handlePagesContextMenu(e);
+          }}
           style={{
             ...viewportStyles,
             minHeight: totalHeight,
