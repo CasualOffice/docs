@@ -181,6 +181,11 @@ const TranslateDocumentDialog = lazy(() =>
     default: m.TranslateDocumentDialog,
   }))
 );
+const WritingAssistantSheet = lazy(() =>
+  import('./dialogs/WritingAssistantSheet').then((m) => ({
+    default: m.WritingAssistantSheet,
+  }))
+);
 const ExploreDialog = lazy(() =>
   import('./dialogs/ExploreDialog').then((m) => ({ default: m.ExploreDialog }))
 );
@@ -212,6 +217,11 @@ import {
   ignoreWord,
 } from '../lib/spellcheck/service';
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
+import { bootWriterController } from '../lib/writer/controller';
+// WriterStatusPill is built and exported; rendering it inside
+// `TitleBarRight` is queued for P2 along with the active-feature
+// integrations so the chip appears next to the save indicator only
+// once the engine actually does something interesting.
 import type { WrapType } from '@eigenpal/docx-core/docx/wrapTypes';
 import {
   captureInlinePositionEmu,
@@ -2179,6 +2189,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // selection dialog above because its action (download a translated
   // copy) is distinct from "replace selection in-place".
   const [showTranslateDocument, setShowTranslateDocument] = useState(false);
+
+  // Writing Assistant — right-docked sheet (P1: capability detection
+  // + per-feature toggles + stub worker). Visible only when the user
+  // opens it; the controller boots once at editor mount.
+  const [showWritingAssistant, setShowWritingAssistant] = useState(false);
+  useEffect(() => {
+    void bootWriterController();
+  }, []);
   // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
   const [showExplore, setShowExplore] = useState(false);
   const [exploreQuery, setExploreQuery] = useState<string | null>(null);
@@ -6935,6 +6953,7 @@ body { background: white; }
                       onTranslateDocument={() => setShowTranslateDocument(true)}
                       onToggleSpellcheck={handleToggleSpellcheck}
                       spellcheckEnabled={spellOn}
+                      onOpenWritingAssistant={() => setShowWritingAssistant(true)}
                       onOpenExplore={handleOpenExplore}
                       onOpenCitations={handleOpenCitations}
                       onInsertShape={handleInsertShape}
@@ -7935,6 +7954,12 @@ body { background: white; }
                   documentName={documentName ?? 'Untitled'}
                   getView={() => getActiveEditorView() ?? null}
                   onSave={() => handleSave({ selective: false })}
+                />
+              )}
+              {showWritingAssistant && (
+                <WritingAssistantSheet
+                  isOpen={showWritingAssistant}
+                  onClose={() => setShowWritingAssistant(false)}
                 />
               )}
               {showExplore && (

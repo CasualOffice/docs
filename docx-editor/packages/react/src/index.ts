@@ -56,6 +56,12 @@ export {
 // this lib so the consumer's bundler (Vite, webpack, etc.) handles
 // asset hashing.
 export { setSpellAssetUrls } from './lib/spellcheck/service';
+
+// Writing-assistant worker URL — same pattern as `setSpellAssetUrls`:
+// the consumer's bundler produces the worker asset URL and hands it
+// to the library, which can't bake the path in (tsup can't resolve
+// `new URL('./writer.worker.ts', import.meta.url)`).
+export { setWriterWorkerUrl } from './lib/writer/controller';
 // AgentChat exports removed: the source file (./components/AgentChat) imported
 // from the AGPL @eigenpal/docx-editor-agents package and was dropped in this
 // fork's AGPL purge. See docs/agpl-removal.md.

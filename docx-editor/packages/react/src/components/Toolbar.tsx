@@ -353,6 +353,8 @@ export interface ToolbarProps {
   onToggleSpellcheck?: () => void;
   /** Current spell-check enabled state — drives the menu checkmark. */
   spellcheckEnabled?: boolean;
+  /** Tools → Writing Assistant — opens the on-device assistant sheet. */
+  onOpenWritingAssistant?: () => void;
   /** Tools → Explore — opens the Wikipedia lookup dialog (A3). */
   onOpenExplore?: () => void;
   /** Tools → Citations — opens the local citations manager (A6 v0). */

@@ -241,6 +241,7 @@ export function MenuBar() {
     onTranslateDocument,
     onToggleSpellcheck,
     spellcheckEnabled,
+    onOpenWritingAssistant,
     onOpenExplore,
     onOpenCitations,
     onInsertShape,
@@ -915,6 +916,7 @@ export function MenuBar() {
           onOpenTranslate ||
           onTranslateDocument ||
           onToggleSpellcheck ||
+          onOpenWritingAssistant ||
           onOpenExplore ||
           onOpenCitations) && (
           <MenuDropdown
@@ -965,6 +967,14 @@ export function MenuBar() {
                     {
                       label: spellcheckEnabled ? '✓ Spell check' : 'Spell check',
                       onClick: onToggleSpellcheck,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onOpenWritingAssistant
+                ? [
+                    {
+                      label: 'Writing Assistant…',
+                      onClick: onOpenWritingAssistant,
                     } as MenuEntry,
                   ]
                 : []),
