@@ -1564,8 +1564,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // right-edge PanelRail so the mutual-exclusion logic between Comments
   // and Version history lives in one place. Declared up here (before any
   // conditional early-return) to keep React's hook order stable.
+  // Tracks `comments.length` so the rail toggle can read it without
+  // depending on the (still-undeclared at this hook order) `comments`
+  // variable. Updated every render in an effect below.
+  const commentsCountRef = useRef(0);
   const handleToggleComments = useCallback(() => {
-    setShowCommentsSidebar((v) => !v);
+    setShowCommentsSidebar((v) => {
+      const next = !v;
+      // Opening with zero comments looks broken — there's nothing to
+      // show. Surface a hint instead of silently flipping the rail.
+      if (next && commentsCountRef.current === 0) {
+        toast('No comments yet — select text and click "Add comment".');
+      }
+      return next;
+    });
     setExpandedSidebarItem(null);
     setShowVersionHistory(false);
   }, []);
@@ -1586,6 +1598,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [internalComments, setInternalComments] = useState<Comment[]>([]);
   const isControlledComments = commentsProp !== undefined;
   const comments = isControlledComments ? commentsProp : internalComments;
+  // Mirror to the ref the rail toggle reads — kept in render, not in
+  // an effect, so the very first click after a comment-state update
+  // sees the right count.
+  commentsCountRef.current = comments.length;
   // Latest PM state — mirrored from the view on every doc-changing transaction.
   // Drives `useTrackedChanges` so the sidebar derives its list directly from PM
   // (the source of truth, including remote ySync updates) rather than a debounced
