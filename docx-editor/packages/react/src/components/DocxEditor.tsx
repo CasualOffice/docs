@@ -223,11 +223,9 @@ import {
   ignoreWord,
 } from '../lib/spellcheck/service';
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
-import {
-  bootWriterController,
-  runTask as runWriterTask,
-  useWriterState,
-} from '../lib/writer/controller';
+import { bootWriterController, useWriterState } from '../lib/writer/controller';
+import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
+import { AISuggestionPopover } from './AISuggestionPopover';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
 // integrations so the chip appears next to the save indicator only
@@ -2211,6 +2209,26 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   useEffect(() => {
     void bootWriterController();
   }, []);
+
+  // AI suggestion popover wiring. See definitions below the state
+  // for `openAiSuggestion`, `runAiSuggestion`, and the accept/reject
+  // handlers — they sit lower because they depend on
+  // `getActiveEditorView` which is declared further down the file.
+  type AIToneId = 'polish' | 'concise' | 'formal' | 'casual' | 'shorter' | 'longer';
+  const aiAbortRef = useRef<AbortController | null>(null);
+  const aiFragmentRef = useRef<import('prosemirror-model').Fragment | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    mode: 'rewrite' | 'summarize';
+    from: number;
+    to: number;
+    original: string;
+    suggestion: string | null;
+    inferenceMs: number | null;
+    anchor: { x: number; y: number; width: number; height: number };
+    tone: AIToneId;
+    busy: boolean;
+    error: string | null;
+  } | null>(null);
   // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
   const [showExplore, setShowExplore] = useState(false);
   const [exploreQuery, setExploreQuery] = useState<string | null>(null);
@@ -4544,6 +4562,161 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     aiSummarizeReady,
   ]);
 
+  // ---------------------------------------------------------------
+  // AI suggestion (rewrite / summarize) — popover-based flow.
+  // ---------------------------------------------------------------
+
+  const runAiSuggestion = useCallback(
+    async (mode: 'rewrite' | 'summarize', tone: AIToneId, range: { from: number; to: number }) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      aiAbortRef.current?.abort();
+      const controller = new AbortController();
+      aiAbortRef.current = controller;
+      setAiSuggestion((prev) =>
+        prev ? { ...prev, busy: true, suggestion: null, error: null, inferenceMs: null } : prev
+      );
+      try {
+        const slice = view.state.doc.slice(range.from, range.to);
+        const ctx = sampleContext(view.state.doc, range.from, range.to);
+        const startedAt = Date.now();
+        const transformed = await rewriteFragment(
+          slice.content,
+          view.state.schema,
+          mode === 'rewrite' ? 'rewrite' : 'summarize',
+          {
+            tone,
+            contextBefore: ctx.before,
+            contextAfter: ctx.after,
+          },
+          controller.signal
+        );
+        const text = (() => {
+          let out = '';
+          for (let i = 0; i < transformed.childCount; i++) out += transformed.child(i).textContent;
+          return out.trim();
+        })();
+        if (controller.signal.aborted) return;
+        setAiSuggestion((prev) =>
+          prev
+            ? {
+                ...prev,
+                suggestion: text || prev.original,
+                inferenceMs: Date.now() - startedAt,
+                busy: false,
+              }
+            : prev
+        );
+        // Stash the transformed fragment so Accept can replay it
+        // without re-running inference.
+        aiFragmentRef.current = transformed;
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const e = err as Error;
+        const msg = e.message?.includes('No model is loaded')
+          ? mode === 'rewrite'
+            ? 'Enable Tone & style rewrite in the Writing Assistant first.'
+            : 'Enable Summarize selection in the Writing Assistant first.'
+          : (e.message ?? 'Inference failed.');
+        setAiSuggestion((prev) => (prev ? { ...prev, busy: false, error: msg } : prev));
+      }
+    },
+    [getActiveEditorView]
+  );
+
+  const openAiSuggestion = useCallback(
+    (mode: 'rewrite' | 'summarize') => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const { from, to } = view.state.selection;
+      if (from === to) return;
+      const original = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+      if (!original) return;
+      // Anchor the popover to the selection's viewport bbox.
+      const fromCoords = view.coordsAtPos(from);
+      const toCoords = view.coordsAtPos(to);
+      const anchor = {
+        x: Math.min(fromCoords.left, toCoords.left),
+        y: Math.min(fromCoords.top, toCoords.top),
+        width:
+          Math.max(fromCoords.right, toCoords.right) - Math.min(fromCoords.left, toCoords.left),
+        height:
+          Math.max(fromCoords.bottom, toCoords.bottom) - Math.min(fromCoords.top, toCoords.top),
+      };
+      setAiSuggestion({
+        mode,
+        from,
+        to,
+        original,
+        suggestion: null,
+        inferenceMs: null,
+        anchor,
+        tone: 'polish',
+        busy: true,
+        error: null,
+      });
+      void runAiSuggestion(mode, 'polish', { from, to });
+    },
+    [getActiveEditorView, runAiSuggestion]
+  );
+
+  const handleAiAccept = useCallback(() => {
+    const view = getActiveEditorView();
+    const state = aiSuggestion;
+    if (!view || !state) return;
+    if (state.mode === 'rewrite' && aiFragmentRef.current) {
+      // Replay the cached fragment back into the selection range —
+      // per-mark-run formatting is already baked in by the recursive
+      // rewriteFragment walk.
+      const slice = new Slice(aiFragmentRef.current, 0, 0);
+      const docSize = view.state.doc.content.size;
+      const from = Math.min(Math.max(state.from, 0), docSize);
+      const to = Math.min(Math.max(state.to, from), docSize);
+      const tr = view.state.tr.replace(from, to, slice);
+      view.dispatch(tr);
+    } else if (state.mode === 'summarize' && state.suggestion) {
+      // Insert the summary at the END of the selection so the user
+      // keeps both the source paragraph and the recap.
+      const docSize = view.state.doc.content.size;
+      const to = Math.min(Math.max(state.to, 0), docSize);
+      const insertText = `\n\nSummary: ${state.suggestion}\n`;
+      const tr = view.state.tr.insertText(insertText, to);
+      view.dispatch(tr);
+    }
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    aiFragmentRef.current = null;
+    setAiSuggestion(null);
+  }, [aiSuggestion, getActiveEditorView]);
+
+  const handleAiReject = useCallback(() => {
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    aiFragmentRef.current = null;
+    setAiSuggestion(null);
+  }, []);
+
+  const handleAiRetry = useCallback(() => {
+    if (!aiSuggestion) return;
+    void runAiSuggestion(aiSuggestion.mode, aiSuggestion.tone, {
+      from: aiSuggestion.from,
+      to: aiSuggestion.to,
+    });
+  }, [aiSuggestion, runAiSuggestion]);
+
+  const handleAiTone = useCallback(
+    (id: string) => {
+      if (!aiSuggestion) return;
+      const next = id as AIToneId;
+      setAiSuggestion((prev) => (prev ? { ...prev, tone: next, busy: true } : prev));
+      void runAiSuggestion(aiSuggestion.mode, next, {
+        from: aiSuggestion.from,
+        to: aiSuggestion.to,
+      });
+    },
+    [aiSuggestion, runAiSuggestion]
+  );
+
   const handleContextMenuAction = useCallback(
     async (action: TextContextAction) => {
       const view = getActiveEditorView();
@@ -4650,70 +4823,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           setShowTranslate(true);
           break;
         }
-        // AI rewrite — replace selection with model output, preserving
-        // the marks on the first character so case/format survive.
+        // AI rewrite — opens the inline suggestion popover anchored
+        // to the selection. The popover is what runs the model + lets
+        // the user Accept / Reject; nothing changes in the doc until
+        // they explicitly click Replace.
         case 'aiRewrite': {
-          const { from, to } = view.state.selection;
-          if (from === to) break;
-          const input = view.state.doc.textBetween(from, to, ' ', ' ').trim();
-          if (!input) break;
-          const toastId = toast.loading('Rewriting with AI…');
-          try {
-            const out = await runWriterTask('rewrite', input);
-            const cleaned = out.trim();
-            if (!cleaned) {
-              toast.error('No rewrite produced.', { id: toastId });
-              break;
-            }
-            const liveView = getActiveEditorView();
-            if (!liveView) break;
-            const nodeAtFrom = liveView.state.doc.nodeAt(from);
-            const marks = nodeAtFrom?.marks ?? [];
-            const replacementNode = liveView.state.schema.text(cleaned, marks);
-            const tr = liveView.state.tr.replaceWith(from, to, replacementNode);
-            liveView.dispatch(tr);
-            toast.success('Rewritten.', { id: toastId });
-          } catch (err) {
-            toast.error(
-              (err as Error).message?.includes('No model is loaded')
-                ? 'Enable Tone & style rewrite in the Writing Assistant first.'
-                : 'Rewrite failed — see the Writing Assistant status.',
-              { id: toastId }
-            );
-          }
+          openAiSuggestion('rewrite');
           break;
         }
-        // AI summarize — show the model's output as a toast with a
-        // "Copy" action; insertion is a v2 affordance.
         case 'aiSummarize': {
-          const { from, to } = view.state.selection;
-          if (from === to) break;
-          const input = view.state.doc.textBetween(from, to, ' ', ' ').trim();
-          if (!input) break;
-          const toastId = toast.loading('Summarizing with AI…');
-          try {
-            const out = await runWriterTask('summarize', input);
-            const summary = out.trim();
-            if (!summary) {
-              toast.error('No summary produced.', { id: toastId });
-              break;
-            }
-            toast.success(summary, {
-              id: toastId,
-              duration: 12_000,
-              action: {
-                label: 'Copy',
-                onClick: () => void navigator.clipboard.writeText(summary).catch(() => {}),
-              },
-            });
-          } catch (err) {
-            toast.error(
-              (err as Error).message?.includes('No model is loaded')
-                ? 'Enable Summarize selection in the Writing Assistant first.'
-                : 'Summarize failed — see the Writing Assistant status.',
-              { id: toastId }
-            );
-          }
+          openAiSuggestion('summarize');
           break;
         }
         // Comment — same flow as floating comment button
@@ -7720,6 +7839,46 @@ body { background: white; }
                 onPick={handlePickSpellSuggestion}
                 onIgnore={handleIgnoreSpell}
                 onClose={() => setSpellMenu(null)}
+              />
+            )}
+
+            {/* AI rewrite / summarize suggestion popover — anchored to
+                the original selection's bounding rect. Inline UX so
+                the user sees the model's output next to the source
+                before anything mutates the doc. */}
+            {aiSuggestion && (
+              <AISuggestionPopover
+                mode={aiSuggestion.mode}
+                original={aiSuggestion.original}
+                suggestion={aiSuggestion.suggestion}
+                inferenceMs={aiSuggestion.inferenceMs}
+                anchor={aiSuggestion.anchor}
+                busy={aiSuggestion.busy}
+                error={aiSuggestion.error}
+                tones={
+                  aiSuggestion.mode === 'rewrite'
+                    ? [
+                        { id: 'polish', label: 'Polish', active: aiSuggestion.tone === 'polish' },
+                        {
+                          id: 'concise',
+                          label: 'Concise',
+                          active: aiSuggestion.tone === 'concise',
+                        },
+                        { id: 'formal', label: 'Formal', active: aiSuggestion.tone === 'formal' },
+                        { id: 'casual', label: 'Casual', active: aiSuggestion.tone === 'casual' },
+                        {
+                          id: 'shorter',
+                          label: 'Shorter',
+                          active: aiSuggestion.tone === 'shorter',
+                        },
+                        { id: 'longer', label: 'Longer', active: aiSuggestion.tone === 'longer' },
+                      ]
+                    : undefined
+                }
+                onTone={handleAiTone}
+                onAccept={handleAiAccept}
+                onReject={handleAiReject}
+                onRetry={handleAiRetry}
               />
             )}
 
