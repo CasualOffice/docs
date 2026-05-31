@@ -8035,6 +8035,18 @@ body { background: white; }
                       shortcut: '⌘⇧H',
                       run: handleToggleOutline,
                     },
+                    {
+                      id: 'view.showComments',
+                      label: showCommentsSidebar ? 'Hide comments' : 'Show comments',
+                      path: 'View',
+                      run: handleToggleComments,
+                    },
+                    {
+                      id: 'view.showVersionHistory',
+                      label: showVersionHistory ? 'Hide version history' : 'Show version history',
+                      path: 'View',
+                      run: handleToggleVersionHistory,
+                    },
 
                     {
                       id: 'help.report',
