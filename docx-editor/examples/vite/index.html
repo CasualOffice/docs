@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Force the browser to revalidate index.html on every load so a new
+       deploy's hashed chunk URLs are picked up the next visit. GitHub
+       Pages doesn't let us set HTTP cache headers directly; the meta
+       equivalents are the workaround that keeps users off stale
+       chunk references after a fresh build. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Casual Editor — Word-flavored web document editor · Open source</title>
   <meta name="description" content="Open-source web .docx editor with real-time co-editing via a stateless Go gateway. ProseMirror with an OOXML-preserving model. Open a Word document, edit it in the browser, save it back as .docx. Apache-2.0 + MIT." />
   <meta name="author" content="Sachin Sarwa" />
@@ -187,6 +195,40 @@
         document.documentElement.classList.add('fonts-loaded');
       }, 500);
     }
+
+    // Stale-deploy recovery — after a fresh build, the previous
+    // index.html still points at chunks with old hashes; the first
+    // navigation that lazy-loads one of those chunks gets a 404 and
+    // crashes the editor. We catch the typed Vite preloadError event
+    // (and the generic "Failed to fetch dynamically imported module"
+    // unhandledrejection from non-Vite chunks) and force-reload the
+    // page, which re-fetches index.html and the current hash refs.
+    // The session-storage guard stops us from looping if the reload
+    // itself fails for an unrelated reason.
+    (function () {
+      var KEY = 'casual:chunk-reload-at';
+      function shouldReload() {
+        try {
+          var last = parseInt(sessionStorage.getItem(KEY) || '0', 10);
+          return Date.now() - last > 20000;
+        } catch (_) { return true; }
+      }
+      function reloadOnce() {
+        try { sessionStorage.setItem(KEY, String(Date.now())); } catch (_) {}
+        window.location.reload();
+      }
+      window.addEventListener('vite:preloadError', function (e) {
+        if (!shouldReload()) return;
+        e.preventDefault();
+        reloadOnce();
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var msg = e && e.reason && (e.reason.message || String(e.reason));
+        if (msg && /Failed to fetch dynamically imported module/i.test(msg) && shouldReload()) {
+          reloadOnce();
+        }
+      });
+    })();
   </script>
 </head>
 <body>
