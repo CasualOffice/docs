@@ -46,6 +46,28 @@ The editor under [`docx-editor/`](./docx-editor/) is a fork of [eigenpal/docx-ed
 - **Print** with page setup (orientation + margins) and Export-as-PDF
 - **File → Properties** dialog, **Help → Report a Bug** (GitHub issue prefill), **Help → About**
 
+### Writing Aids
+
+- **Spell check** — red wavy underlines on misspelled words, right-click suggestions popover with replace + ignore, lazy-loaded en_US Hunspell dictionary, persisted toggle
+- **Autocorrect** — Word-style symbol substitution (`(c)` → ©, `-->` → →) plus a common-typo dictionary (`teh` → the); off in a single click via Tools → Preferences
+- **Smart quotes** — straight quotes typed `"` `'` are flipped to typographic equivalents in context; same preference dial
+- **Translate selection** — right-click any selection → "Translate selection…" → format-preserving in-place replace. Walks the slice per text-mark-run so bold / italic / link boundaries land exactly where you drew them
+- **Dictionary** + **Explore** — selection-driven inline lookup via free public APIs (no key)
+- **Citations** — local citation manager seeded from the selection
+- **Voice typing** — Web Speech API dictation with one-click toggle
+- **Document outline** — left-rail heading tree with active-heading highlight and collapsible chevrons
+- **Word count / character count / reading-time** — live in the status bar, Excel-style right-click checklist to pick which to show
+- **Autosave + restore banner** — IndexedDB autosave every 30 s while dirty; reload offers to restore drafts younger than 24 h
+- **Recent files** — IndexedDB-backed list of recently opened docs on the home page
+
+### Shell & UX
+
+- **Right-edge panel rail** — Outline / Comments / Version-history toggles spanning only the editor body height; opening a panel reflows the page sideways instead of overlaying it (Google Docs pattern)
+- **Title-bar + ribbon-style toolbar** — File / Edit / Format / View / Insert / Tools / Help menus, all with platform-aware shortcut chips (`⌘` on Mac, `Ctrl` on Windows / Linux via the shared `formatShortcut`)
+- **Command palette** — Ctrl+Shift+P fuzzy search across every menu action
+- **i18n** — Toolbar / dialog strings translatable; auto-derived `LocaleStrings` type with CI-enforced sync between locale files
+- **Material-Symbols icons** — bundled as SVGs (no font fetch), matching Google Docs glyphs
+
 ### File I/O
 
 | Format  | Open | Save / Export | Path |
