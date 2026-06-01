@@ -824,6 +824,20 @@
   }
 }
 
+/* Right-edge panel slide-in (chat panel, AI suggestion panel, writing
+   assistant sheet — anywhere we mount a side panel that should ease
+   into view rather than pop). */
+@keyframes docx-slide-in {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* =============================================================================
  * ProseMirror decoration forwarding overlay
  *

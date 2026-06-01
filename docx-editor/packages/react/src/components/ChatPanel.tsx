@@ -22,6 +22,7 @@ import {
 } from 'react';
 import { runChat, useWriterState } from '../lib/writer/controller';
 import type { ChatMessage } from '../lib/writer/messages';
+import { Markdown } from '../lib/markdown';
 
 export interface ChatPanelProps {
   isOpen: boolean;
@@ -62,6 +63,9 @@ const panelStyle: CSSProperties = {
   flexDirection: 'column',
   pointerEvents: 'auto',
   zIndex: 9001,
+  // Slide-in: when the panel mounts it animates from `translateX(8px)
+  // + opacity:0` to its resting position via the transition below.
+  animation: 'docx-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
 };
 
 const headerStyle: CSSProperties = {
@@ -206,6 +210,32 @@ function buildSystemPrompt(useDocContext: boolean, docText: string): string {
   const trimmed = docText.length > 6000 ? `${docText.slice(0, 6000)}\n[…truncated]` : docText;
   return `${SYSTEM_PROMPT}\n\nThe user is currently editing this document:\n\n"""\n${trimmed}\n"""`;
 }
+
+const quickRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 6,
+  justifyContent: 'center',
+  marginTop: 12,
+};
+
+const quickChipStyle: CSSProperties = {
+  fontSize: 12,
+  padding: '4px 10px',
+  borderRadius: 99,
+  border: '1px solid var(--doc-border, #d1d5db)',
+  background: 'transparent',
+  color: 'var(--doc-text-on-surface, #1f2937)',
+  cursor: 'pointer',
+};
+
+const QUICK_PROMPTS = [
+  'Summarize this document',
+  'Make my writing more concise',
+  'Brainstorm 5 ideas about…',
+  'Outline a memo',
+  'Find typos and weak phrasing',
+];
 
 const msgActionsStyle: CSSProperties = {
   display: 'flex',
@@ -365,6 +395,19 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
                 Ask anything about the open document, request rewrites, or brainstorm. Toggle "Use
                 document context" above to send the doc text along with your question.
               </span>
+              <div style={quickRowStyle}>
+                {QUICK_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    style={quickChipStyle}
+                    onClick={() => setInput(p)}
+                    data-testid={`chat-quick-${p.slice(0, 12).replace(/\s/g, '-')}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {history.map((m, i) => {
@@ -383,7 +426,7 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
                   style={isUser ? userBubbleStyle : assistantBubbleStyle}
                   data-testid={`chat-msg-${m.role}`}
                 >
-                  {m.content}
+                  {isUser ? m.content : <Markdown text={m.content} />}
                 </div>
                 {!isUser && m.content.trim() && (
                   <div style={msgActionsStyle}>
@@ -411,7 +454,7 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
           })}
           {streaming && (
             <div style={assistantBubbleStyle} data-testid="chat-msg-streaming">
-              {streaming}
+              <Markdown text={streaming} />
               <span style={{ opacity: 0.4 }}>▍</span>
             </div>
           )}

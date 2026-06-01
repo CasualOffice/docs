@@ -20,6 +20,7 @@
 
 import type { EditorView } from 'prosemirror-view';
 import { Fragment, type Node as ProseMirrorNode } from 'prosemirror-model';
+import { markdownToFragment } from './markdownToFragment';
 
 const REVISION_BASE = Date.now();
 let nextRevisionId = REVISION_BASE;
@@ -135,5 +136,40 @@ export function applyInsertAsSuggestion(opts: ApplyInsertOpts): void {
   const insertionMark = insertionType.create(makeAttrs(author));
   const node = schema.text(text, [insertionMark]);
   const tr = view.state.tr.insert(at, node);
+  view.dispatch(tr);
+}
+
+export interface ApplyMarkdownOpts {
+  view: EditorView;
+  at: number;
+  /** Markdown-formatted text the model produced. */
+  markdown: string;
+  /** Author label that lands on the tracked-change marks. */
+  author?: string;
+}
+
+/**
+ * Insert AI markdown as a tracked-change suggestion. The markdown
+ * is parsed and converted to real PM nodes (paragraphs, headings,
+ * inline marks) via `markdownToFragment` so the OOXML round-trip
+ * keeps the bold / italic / link / code styling — no more raw
+ * asterisks landing in the doc. Every text leaf carries the
+ * `insertion` mark so the existing tracked-change UI owns the final
+ * accept / reject.
+ */
+export function applyMarkdownAsSuggestion(opts: ApplyMarkdownOpts): void {
+  const { view, at, markdown, author = 'AI' } = opts;
+  if (!markdown.trim()) return;
+  const schema = view.state.schema;
+  const insertionType = schema.marks.insertion;
+  if (!insertionType) {
+    const tr = view.state.tr.insertText(markdown, at);
+    view.dispatch(tr);
+    return;
+  }
+  const insertionMark = insertionType.create(makeAttrs(author));
+  const fragment = markdownToFragment(markdown, schema, [insertionMark]);
+  if (fragment.childCount === 0) return;
+  const tr = view.state.tr.insert(at, fragment);
   view.dispatch(tr);
 }

@@ -225,7 +225,11 @@ import {
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
 import { bootWriterController, useWriterState } from '../lib/writer/controller';
 import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
-import { applyInsertAsSuggestion, applyRewriteAsSuggestion } from '../lib/writer/applyAsSuggestion';
+import {
+  applyInsertAsSuggestion,
+  applyMarkdownAsSuggestion,
+  applyRewriteAsSuggestion,
+} from '../lib/writer/applyAsSuggestion';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { ChatPanel } from './ChatPanel';
 // WriterStatusPill is built and exported; rendering it inside
@@ -8385,12 +8389,14 @@ body { background: white; }
                   onInsertAtCursor={(text) => {
                     const view = getActiveEditorView();
                     if (!view) return;
-                    // Insert at the cursor (selection head). If a range
-                    // is selected, the head sits at its right edge, so
-                    // the suggestion lands cleanly after the selection
-                    // rather than overwriting it.
+                    // Insert at the cursor (selection head). The
+                    // markdown-aware variant converts **bold** /
+                    // *italic* / [link](url) / lists / headings into
+                    // real PM nodes so the OOXML round-trip carries
+                    // the structure — no raw asterisks landing in the
+                    // doc body.
                     const at = view.state.selection.head;
-                    applyInsertAsSuggestion({ view, at, text });
+                    applyMarkdownAsSuggestion({ view, at, markdown: text });
                   }}
                 />
               )}

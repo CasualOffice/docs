@@ -62,6 +62,7 @@ const panelStyle: CSSProperties = {
   flexDirection: 'column',
   pointerEvents: 'auto',
   zIndex: 9001,
+  animation: 'docx-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
 };
 
 const headerStyle: CSSProperties = {
