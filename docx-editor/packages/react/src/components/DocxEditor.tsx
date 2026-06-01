@@ -8337,6 +8337,16 @@ body { background: white; }
                     if (!view) return '';
                     return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
                   }}
+                  onInsertAtCursor={(text) => {
+                    const view = getActiveEditorView();
+                    if (!view) return;
+                    // Insert at the cursor (selection head). If a range
+                    // is selected, the head sits at its right edge, so
+                    // the suggestion lands cleanly after the selection
+                    // rather than overwriting it.
+                    const at = view.state.selection.head;
+                    applyInsertAsSuggestion({ view, at, text });
+                  }}
                 />
               )}
               {showExplore && (

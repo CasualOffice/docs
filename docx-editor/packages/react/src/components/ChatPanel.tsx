@@ -28,6 +28,14 @@ export interface ChatPanelProps {
   onClose: () => void;
   /** Snapshot of the active doc, used when "Use doc context" is on. */
   getDocText: () => string;
+  /**
+   * Drop the assistant's reply into the doc at the user's current
+   * cursor position as a tracked-change suggestion. The host wires
+   * this through `applyInsertAsSuggestion` so the inserted text
+   * lands underlined-green and survives the same Accept / Reject
+   * review every other AI change does.
+   */
+  onInsertAtCursor: (text: string) => void;
 }
 
 const panelWidth = 380;
@@ -199,7 +207,24 @@ function buildSystemPrompt(useDocContext: boolean, docText: string): string {
   return `${SYSTEM_PROMPT}\n\nThe user is currently editing this document:\n\n"""\n${trimmed}\n"""`;
 }
 
-export function ChatPanel({ isOpen, onClose, getDocText }: ChatPanelProps) {
+const msgActionsStyle: CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  marginTop: 4,
+  alignSelf: 'flex-start',
+};
+
+const msgActionBtnStyle: CSSProperties = {
+  fontSize: 11,
+  padding: '2px 8px',
+  borderRadius: 4,
+  border: '1px solid var(--doc-border, #d1d5db)',
+  background: 'transparent',
+  color: 'var(--doc-text-on-surface-muted, #5f6368)',
+  cursor: 'pointer',
+};
+
+export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: ChatPanelProps) {
   const writer = useWriterState();
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -342,15 +367,48 @@ export function ChatPanel({ isOpen, onClose, getDocText }: ChatPanelProps) {
               </span>
             </div>
           )}
-          {history.map((m, i) => (
-            <div
-              key={i}
-              style={m.role === 'user' ? userBubbleStyle : assistantBubbleStyle}
-              data-testid={`chat-msg-${m.role}`}
-            >
-              {m.content}
-            </div>
-          ))}
+          {history.map((m, i) => {
+            const isUser = m.role === 'user';
+            return (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignSelf: isUser ? 'flex-end' : 'flex-start',
+                  maxWidth: '92%',
+                }}
+              >
+                <div
+                  style={isUser ? userBubbleStyle : assistantBubbleStyle}
+                  data-testid={`chat-msg-${m.role}`}
+                >
+                  {m.content}
+                </div>
+                {!isUser && m.content.trim() && (
+                  <div style={msgActionsStyle}>
+                    <button
+                      type="button"
+                      style={msgActionBtnStyle}
+                      onClick={() => onInsertAtCursor(m.content)}
+                      title="Insert this reply at the cursor as a tracked suggestion"
+                      data-testid={`chat-msg-insert-${i}`}
+                    >
+                      ↩ Insert
+                    </button>
+                    <button
+                      type="button"
+                      style={msgActionBtnStyle}
+                      onClick={() => void navigator.clipboard?.writeText(m.content).catch(() => {})}
+                      data-testid={`chat-msg-copy-${i}`}
+                    >
+                      ⧉ Copy
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {streaming && (
             <div style={assistantBubbleStyle} data-testid="chat-msg-streaming">
               {streaming}
