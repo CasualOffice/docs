@@ -8386,6 +8386,13 @@ body { background: white; }
                     if (!view) return '';
                     return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
                   }}
+                  getSelectionText={() => {
+                    const view = getActiveEditorView();
+                    if (!view) return '';
+                    const { from, to } = view.state.selection;
+                    if (from === to) return '';
+                    return view.state.doc.textBetween(from, to, '\n', ' ');
+                  }}
                   onInsertAtCursor={(text) => {
                     const view = getActiveEditorView();
                     if (!view) return;

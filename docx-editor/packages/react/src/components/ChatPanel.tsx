@@ -30,6 +30,12 @@ export interface ChatPanelProps {
   /** Snapshot of the active doc, used when "Use doc context" is on. */
   getDocText: () => string;
   /**
+   * Snapshot of the current selection text. Drives the "Selection
+   * (N words)" chip + lets the user toggle whether the active
+   * selection is sent as context with their next message.
+   */
+  getSelectionText: () => string;
+  /**
    * Drop the assistant's reply into the doc at the user's current
    * cursor position as a tracked-change suggestion. The host wires
    * this through `applyInsertAsSuggestion` so the inserted text
@@ -92,6 +98,36 @@ const closeBtnStyle: CSSProperties = {
   lineHeight: 1,
   padding: 4,
 };
+
+const clearBtnStyle: CSSProperties = {
+  fontSize: 11,
+  padding: '3px 9px',
+  borderRadius: 4,
+  border: '1px solid var(--doc-border, #d1d5db)',
+  background: 'transparent',
+  color: 'var(--doc-text-on-surface-muted, #5f6368)',
+  cursor: 'pointer',
+};
+
+const selChipRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '6px 12px',
+  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+};
+
+function selChipStyle(active: boolean): CSSProperties {
+  return {
+    fontSize: 11,
+    padding: '3px 10px',
+    borderRadius: 99,
+    border: `1px solid ${active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-border, #d1d5db)'}`,
+    background: active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
+    color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text-on-surface-muted, #5f6368)',
+    cursor: 'pointer',
+  };
+}
 
 const bodyStyle: CSSProperties = {
   flex: 1,
@@ -203,12 +239,62 @@ const SYSTEM_PROMPT =
   "cite the user's document when relevant, and answer in plain prose. " +
   'Do not add meta-commentary about being an AI.';
 
-function buildSystemPrompt(useDocContext: boolean, docText: string): string {
-  if (!useDocContext) return SYSTEM_PROMPT;
-  // Cap context to ~6 KB so the prompt fits Llama-3.2-1B's 128 K
-  // context window comfortably and inference stays fast.
-  const trimmed = docText.length > 6000 ? `${docText.slice(0, 6000)}\n[…truncated]` : docText;
-  return `${SYSTEM_PROMPT}\n\nThe user is currently editing this document:\n\n"""\n${trimmed}\n"""`;
+function buildSystemPrompt(useDocContext: boolean, docText: string, selectionText: string): string {
+  const parts: string[] = [SYSTEM_PROMPT];
+  if (selectionText.trim().length > 0) {
+    const sel =
+      selectionText.length > 2000 ? `${selectionText.slice(0, 2000)}\n[…truncated]` : selectionText;
+    parts.push(
+      `The user has this passage selected and wants you to focus on it:\n\n"""\n${sel}\n"""`
+    );
+  }
+  if (useDocContext) {
+    const trimmed = docText.length > 6000 ? `${docText.slice(0, 6000)}\n[…truncated]` : docText;
+    parts.push(`The user is currently editing this document:\n\n"""\n${trimmed}\n"""`);
+  }
+  return parts.join('\n\n');
+}
+
+const HISTORY_KEY = 'writer:chat-history';
+const HISTORY_MAX = 40;
+
+function loadHistory(): ChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (m): m is ChatMessage =>
+          !!m &&
+          typeof m === 'object' &&
+          'role' in m &&
+          'content' in m &&
+          typeof (m as ChatMessage).content === 'string'
+      )
+      .slice(-HISTORY_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(messages: ChatMessage[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const trimmed = messages.slice(-HISTORY_MAX);
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Storage denied or quota exceeded — drop silently; the chat still
+    // functions for the session.
+  }
+}
+
+function wordCount(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  return t.split(/\s+/).length;
 }
 
 const quickRowStyle: CSSProperties = {
@@ -254,13 +340,30 @@ const msgActionBtnStyle: CSSProperties = {
   cursor: 'pointer',
 };
 
-export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: ChatPanelProps) {
+export function ChatPanel({
+  isOpen,
+  onClose,
+  getDocText,
+  getSelectionText,
+  onInsertAtCursor,
+}: ChatPanelProps) {
   const writer = useWriterState();
-  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const [history, setHistory] = useState<ChatMessage[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [useDocContext, setUseDocContext] = useState(false);
   const [streaming, setStreaming] = useState('');
+  // Sample the selection when the panel mounts so the chip in the
+  // header reflects what the user had selected at the moment they
+  // opened chat. They can still flip the include-selection toggle on
+  // or off; the actual text is re-read at send time.
+  const [includeSelection, setIncludeSelection] = useState<boolean>(
+    () => isOpen && getSelectionText().trim().length > 0
+  );
+  const selectionWords = useMemo(
+    () => (isOpen ? wordCount(getSelectionText()) : 0),
+    [isOpen, getSelectionText]
+  );
   const abortRef = useRef<AbortController | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const llmReady = useMemo(
@@ -275,6 +378,13 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
   }, [history, streaming]);
+
+  // Persist chat history to localStorage so the conversation survives
+  // a reload. Capped to the last 40 messages so a long session
+  // doesn't push other Casual-Editor data out of the quota.
+  useEffect(() => {
+    saveHistory(history);
+  }, [history]);
 
   useEffect(() => {
     if (isOpen) return;
@@ -307,7 +417,11 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
     abortRef.current = controller;
     const system: ChatMessage = {
       role: 'system',
-      content: buildSystemPrompt(useDocContext, getDocText()),
+      content: buildSystemPrompt(
+        useDocContext,
+        getDocText(),
+        includeSelection ? getSelectionText() : ''
+      ),
     };
     try {
       const full = await runChat([system, ...nextHistory], {
@@ -356,6 +470,20 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
         <div style={headerStyle}>
           <span aria-hidden="true">💬</span>
           <span style={titleStyle}>Ask AI</span>
+          {history.length > 0 && (
+            <button
+              type="button"
+              style={clearBtnStyle}
+              onClick={() => {
+                setHistory([]);
+                setStreaming('');
+              }}
+              title="Clear conversation"
+              data-testid="chat-clear"
+            >
+              Clear
+            </button>
+          )}
           <button
             type="button"
             style={closeBtnStyle}
@@ -366,6 +494,20 @@ export function ChatPanel({ isOpen, onClose, getDocText, onInsertAtCursor }: Cha
             ✕
           </button>
         </div>
+
+        {selectionWords > 0 && (
+          <div style={selChipRowStyle} data-testid="chat-selection-chip-row">
+            <button
+              type="button"
+              style={selChipStyle(includeSelection)}
+              onClick={() => setIncludeSelection((v) => !v)}
+              data-testid="chat-selection-chip"
+            >
+              📎 Selection · {selectionWords} {selectionWords === 1 ? 'word' : 'words'}{' '}
+              {includeSelection ? '(included)' : '(excluded)'}
+            </button>
+          </div>
+        )}
 
         <label style={ctxRowStyle}>
           <input
