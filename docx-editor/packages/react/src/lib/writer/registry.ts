@@ -7,7 +7,10 @@
 
 import type { DeviceCapabilities, WriterBackend } from './capabilities';
 
-export type FeatureId = 'grammar' | 'tone' | 'summarize-basic' | 'summarize-pro' | 'doc-context';
+export type FeatureId = 'grammar' | 'tone' | 'summarize-basic' | 'advanced-llm';
+
+/** Which inference engine a model needs. */
+export type ModelEngine = 'transformers-js' | 'web-llm';
 
 export interface ModelSpec {
   id: string;
@@ -18,6 +21,8 @@ export interface ModelSpec {
   /** Preferred backend ranked highest first; controller falls back. */
   preferredBackend: WriterBackend;
   fallbackBackends: WriterBackend[];
+  /** Which inference engine the worker dispatches to for this model. */
+  engine: ModelEngine;
 }
 
 export interface FeatureSpec {
@@ -42,20 +47,18 @@ export const MODELS: Record<string, ModelSpec> = {
     sizeMb: 95,
     preferredBackend: 'webgpu',
     fallbackBackends: ['wasm-simd', 'wasm'],
+    engine: 'transformers-js',
   },
-  'distilbart-cnn-6-6': {
-    id: 'Xenova/distilbart-cnn-6-6',
-    label: 'distilbart-cnn-6-6',
-    sizeMb: 155,
+  // Advanced LLM tier — WebLLM + Llama-3.2-1B-Instruct, q4f16
+  // quantization. Closest fit to the user's ~700 MB target with
+  // genuinely instruction-following output quality. WebGPU-only.
+  'llama-3.2-1b': {
+    id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+    label: 'Llama-3.2-1B-Instruct (q4f16)',
+    sizeMb: 880,
     preferredBackend: 'webgpu',
-    fallbackBackends: ['wasm-simd'],
-  },
-  'minilm-l6-v2': {
-    id: 'Xenova/all-MiniLM-L6-v2',
-    label: 'all-MiniLM-L6-v2',
-    sizeMb: 23,
-    preferredBackend: 'webgpu',
-    fallbackBackends: ['wasm-simd', 'wasm'],
+    fallbackBackends: [],
+    engine: 'web-llm',
   },
 };
 
@@ -91,25 +94,15 @@ export const FEATURES: FeatureSpec[] = [
     comingSoon: false,
   },
   {
-    id: 'summarize-pro',
-    label: 'High-quality summarize',
-    description: 'Better summaries for long selections (loads an extra ~155 MB model).',
-    modelIds: ['flan-t5-small', 'distilbart-cnn-6-6'],
-    minMemoryGb: 2,
-    sizeMb: 250,
-    advanced: true,
-    comingSoon: true,
-  },
-  {
-    id: 'doc-context',
-    label: 'Doc-wide tone signal',
+    id: 'advanced-llm',
+    label: 'Advanced (Llama-3.2-1B)',
     description:
-      'Keep rewrites consistent with the rest of the document by feeding tone signals from every paragraph.',
-    modelIds: ['flan-t5-small', 'minilm-l6-v2'],
-    minMemoryGb: 1.6,
-    sizeMb: 118,
+      'Higher-quality rewrites and summaries from an on-device LLM. Replaces the basic model when active. Needs WebGPU and ~4 GB device memory.',
+    modelIds: ['llama-3.2-1b'],
+    minMemoryGb: 4,
+    sizeMb: 880,
     advanced: true,
-    comingSoon: true,
+    comingSoon: false,
   },
 ];
 

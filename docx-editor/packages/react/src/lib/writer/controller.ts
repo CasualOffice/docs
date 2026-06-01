@@ -387,7 +387,18 @@ export function resetWriterControllerForTests(): void {
 // Model lifecycle
 // ---------------------------------------------------------------------------
 
+/**
+ * Decide which models should be resident given the current feature
+ * set. If the advanced LLM is enabled, it WINS — the smaller flan-t5
+ * model gets evicted and the LLM handles rewrite / tone /
+ * summarize. Otherwise we resolve the union of every enabled
+ * feature's `modelIds` (currently just flan-t5-small).
+ */
 function residentModelsFor(features: FeatureId[]): string[] {
+  if (features.includes('advanced-llm')) {
+    const advanced = FEATURES.find((f) => f.id === 'advanced-llm');
+    return advanced ? [...advanced.modelIds] : [];
+  }
   const ids = new Set<string>();
   for (const fid of features) {
     const f = FEATURES.find((x) => x.id === fid);

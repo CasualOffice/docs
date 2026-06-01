@@ -28,7 +28,7 @@ test.describe('Writing Assistant (P1)', () => {
     await expect(sheet.getByText('Summarize selection')).toBeVisible();
   });
 
-  test('Advanced disclosure reveals the coming-soon upgrades', async ({ page }) => {
+  test('Advanced disclosure reveals the Llama tier', async ({ page }) => {
     const editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
@@ -39,11 +39,12 @@ test.describe('Writing Assistant (P1)', () => {
     const advanced = page.getByTestId('writer-advanced-toggle');
     await expect(advanced).toBeVisible();
     await advanced.click();
-    await expect(page.getByText('High-quality summarize')).toBeVisible();
-    await expect(page.getByText('Doc-wide tone signal')).toBeVisible();
-    // Both upgrades are gated on P3 and rendered as disabled checkboxes.
-    await expect(page.getByTestId('writer-feature-summarize-pro')).toBeDisabled();
-    await expect(page.getByTestId('writer-feature-doc-context')).toBeDisabled();
+    // Advanced section now houses the WebLLM tier (Llama-3.2-1B).
+    // Playwright Chromium ships without WebGPU, so the row renders
+    // disabled with a capability reason — but the row itself is
+    // mounted and the user can read what they would unlock.
+    await expect(page.getByText(/Advanced \(Llama/)).toBeVisible();
+    await expect(page.getByTestId('writer-feature-advanced-llm')).toBeVisible();
   });
 
   test('first feature toggle surfaces the consent dialog', async ({ page }) => {
@@ -73,10 +74,13 @@ test.describe('Writing Assistant (P1)', () => {
     await page.getByTestId('writer-consent-accept').click();
     await expect(consent).toHaveCount(0);
 
-    // The stub worker streams 10 progress chunks @ ~300 ms; allow 6 s
-    // for the badge to land on Ready.
-    await expect(page.getByTestId('writer-status-badge')).toContainText(/Ready/i, {
-      timeout: 8000,
-    });
+    // The real flan-t5-small worker now streams from the HF CDN —
+    // we don't wait for the full download in this spec (CI test runs
+    // shouldn't hit the network for ~95 MB). Just confirm the status
+    // badge moved into the download / load lifecycle.
+    await expect(page.getByTestId('writer-status-badge')).toContainText(
+      /Downloading|Loading|Ready|Paused|Checking/i,
+      { timeout: 8000 }
+    );
   });
 });

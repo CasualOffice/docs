@@ -1,28 +1,31 @@
 /// <reference lib="webworker" />
 /**
- * Writer worker — real implementation.
+ * Writer worker — dual-engine.
  *
- * Wires `@huggingface/transformers` (the Xenova lineage continued
- * under the official HF org). On `load` we instantiate a pipeline
- * for the requested model id and stream the HF CDN's progress
- * callbacks back to the controller. On `run` we dispatch to the
- * right pipeline per task — text-to-text generation for grammar /
- * tone / summarize, all driven through flan-t5-small's instruction
- * prefix.
+ * Routes the controller's load / run / abort / unload calls to the
+ * right inference engine based on the requested model:
  *
- * Backend ranking: WebGPU > WASM-SIMD > WASM. The controller picks
- * the recommended backend at boot and the worker passes it through
- * to `pipeline(..., { device })`. If the requested device fails
- * during init we fall back to WASM-SIMD.
+ * - `@huggingface/transformers` (Xenova lineage) for the small WASM-
+ *   capable tier (flan-t5-small) so users without WebGPU still get
+ *   grammar / tone / summarize.
+ * - `@mlc-ai/web-llm` for the advanced Llama-3.2-1B-Instruct tier.
+ *   WebGPU-only, ~880 MB, but the output quality is what most users
+ *   actually expect from "AI rewrite".
+ *
+ * Only one model is resident at a time — the controller serialises
+ * load/unload around feature toggles, and the worker discards the
+ * previous engine before initialising the next.
  */
 
 import { pipeline, env } from '@huggingface/transformers';
+import type { CreateMLCEngine as CreateMLCEngineType } from '@mlc-ai/web-llm';
 import type { WriterReq, WriterRes } from './messages';
 
-// `@huggingface/transformers` doesn't export `Pipeline` / `ProgressInfo`
-// as named types — pipelines are inferred from the task literal via
-// `AllTasks[T]`. Define the shapes we touch locally so the worker
-// stays self-contained and survives upstream rename churn.
+const ctx = self as unknown as DedicatedWorkerGlobalScope;
+
+env.useBrowserCache = true;
+env.allowLocalModels = false;
+
 type ProgressInfo = {
   status?: string;
   file?: string;
@@ -34,22 +37,17 @@ type Text2TextPipeline = (
   opts: Record<string, unknown>
 ) => Promise<Array<{ generated_text: string }>>;
 
-const ctx = self as unknown as DedicatedWorkerGlobalScope;
+type LlmEngine = Awaited<ReturnType<typeof CreateMLCEngineType>>;
 
-// Cache model weights in the browser's Cache API so re-enabling is a
-// cache hit. The library does this by default; we just make the
-// behaviour explicit here so a future review tells the reader at a
-// glance.
-env.useBrowserCache = true;
-env.allowLocalModels = false;
-
-interface LoadedPipeline {
+interface LoadedModel {
   modelId: string;
   backend: string;
-  pipe: Text2TextPipeline;
+  engine: 'transformers-js' | 'web-llm';
+  pipe?: Text2TextPipeline;
+  llm?: LlmEngine;
 }
 
-let loaded: LoadedPipeline | null = null;
+let loaded: LoadedModel | null = null;
 const aborted = new Set<string>();
 
 function post(msg: WriterRes): void {
@@ -77,12 +75,11 @@ async function handle(req: WriterReq): Promise<void> {
   }
 }
 
-/**
- * Map our `WriterBackend` to the transformers.js device key. The
- * library accepts `'webgpu' | 'wasm' | 'cpu' | 'auto' | ...`; the
- * SIMD distinction is handled internally based on browser caps, so
- * we route both `wasm` and `wasm-simd` to `'wasm'`.
- */
+function isLlmModel(modelId: string): boolean {
+  // Llama-3.2-1B-Instruct-q4f16_1-MLC, Qwen2.5-…, SmolLM2-…, etc.
+  return /-MLC$/i.test(modelId) || /^(Llama|Qwen|SmolLM|Phi)/i.test(modelId);
+}
+
 function deviceForBackend(backend: string): 'webgpu' | 'wasm' {
   return backend === 'webgpu' ? 'webgpu' : 'wasm';
 }
@@ -98,31 +95,33 @@ async function handleLoad(id: string, modelId: string, backend: string): Promise
     });
     return;
   }
-  const t0 = Date.now();
-  // Streamed download progress from HF — `progress_callback` fires
-  // once per file (config, tokeniser, encoder, decoder, ...) with
-  // `{loaded, total}` byte counts. We bucket them into a single
-  // monotonic 0..1 bar by summing the totals.
-  let totalBytes = 0;
-  let loadedBytes = 0;
-  const fileTotals = new Map<string, number>();
+  // Evict the previous engine before loading the next so we never
+  // double-occupy GPU / RAM during a model swap.
+  if (loaded) {
+    await evict(loaded).catch(() => {});
+    loaded = null;
+  }
+  if (isLlmModel(modelId)) {
+    await loadLlm(id, modelId);
+  } else {
+    await loadTransformers(id, modelId, backend);
+  }
+}
 
+// ---------------------------------------------------------------------------
+// transformers.js (flan-t5-small)
+// ---------------------------------------------------------------------------
+
+async function loadTransformers(id: string, modelId: string, backend: string): Promise<void> {
+  const t0 = Date.now();
+  const fileTotals = new Map<string, number>();
   const onProgress = (p: ProgressInfo): void => {
     if (aborted.has(id)) return;
     if (p.status === 'progress' && typeof p.file === 'string') {
-      const prev = fileTotals.get(p.file);
-      if (prev === undefined && typeof p.total === 'number') {
+      if (!fileTotals.has(p.file) && typeof p.total === 'number') {
         fileTotals.set(p.file, p.total);
-        totalBytes += p.total;
       }
       if (typeof p.loaded === 'number') {
-        // Per-file delta; rebuild loadedBytes from the running totals.
-        loadedBytes = 0;
-        for (const [, t] of fileTotals) loadedBytes += t;
-        // ^ rough — we don't have per-file `loaded` accumulated, so
-        // post the partial loaded for the current file added to
-        // previous-file totals. For the UI's purposes (0..1 bar) the
-        // bucketed approximation is enough.
         post({ id, kind: 'progress', loaded: p.loaded, total: p.total ?? p.loaded });
       }
     }
@@ -139,7 +138,7 @@ async function handleLoad(id: string, modelId: string, backend: string): Promise
       post({ id, kind: 'error', code: 'aborted', message: 'Aborted' });
       return;
     }
-    loaded = { modelId, backend, pipe };
+    loaded = { modelId, backend, engine: 'transformers-js', pipe };
     post({
       id,
       kind: 'loaded',
@@ -149,17 +148,13 @@ async function handleLoad(id: string, modelId: string, backend: string): Promise
     });
   } catch (err) {
     const msg = (err as Error).message || 'load-failed';
-    // WebGPU init can throw if the device handle disappears; the
-    // controller already passes the resolved backend, so a single
-    // fallback to WASM here keeps the user moving without another
-    // round-trip through the UI.
     if (backend === 'webgpu' && !aborted.has(id)) {
       try {
         const pipe = (await pipeline('text2text-generation', modelId, {
           device: 'wasm',
           progress_callback: onProgress,
         })) as unknown as Text2TextPipeline;
-        loaded = { modelId, backend: 'wasm', pipe };
+        loaded = { modelId, backend: 'wasm', engine: 'transformers-js', pipe };
         post({
           id,
           kind: 'loaded',
@@ -178,18 +173,56 @@ async function handleLoad(id: string, modelId: string, backend: string): Promise
         return;
       }
     }
-    post({
-      id,
-      kind: 'error',
-      code: classifyError(msg),
-      message: msg,
-    });
+    post({ id, kind: 'error', code: classifyError(msg), message: msg });
   } finally {
     aborted.delete(id);
-    void loadedBytes;
-    void totalBytes;
   }
 }
+
+// ---------------------------------------------------------------------------
+// WebLLM (Llama-3.2-1B)
+// ---------------------------------------------------------------------------
+
+async function loadLlm(id: string, modelId: string): Promise<void> {
+  const t0 = Date.now();
+  try {
+    // Dynamic import keeps the WebLLM bundle out of the cold path for
+    // users who never enable the advanced tier.
+    const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+    const llm = await CreateMLCEngine(modelId, {
+      initProgressCallback: (info) => {
+        if (aborted.has(id)) return;
+        // WebLLM reports `progress` in 0..1; pretend total = 100,
+        // loaded = pct so the controller's monotonic bar lines up
+        // with the transformers.js progress shape.
+        const pct = Math.max(0, Math.min(1, info.progress));
+        post({ id, kind: 'progress', loaded: Math.round(pct * 100), total: 100 });
+      },
+    });
+    if (aborted.has(id)) {
+      aborted.delete(id);
+      post({ id, kind: 'error', code: 'aborted', message: 'Aborted' });
+      return;
+    }
+    loaded = { modelId, backend: 'webgpu', engine: 'web-llm', llm };
+    post({
+      id,
+      kind: 'loaded',
+      modelId,
+      backend: 'webgpu' as never,
+      warmupMs: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = (err as Error).message || 'load-failed';
+    post({ id, kind: 'error', code: classifyError(msg), message: msg });
+  } finally {
+    aborted.delete(id);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Run
+// ---------------------------------------------------------------------------
 
 async function handleRun(id: string, modelId: string, task: string, input: string): Promise<void> {
   if (!loaded || loaded.modelId !== modelId) {
@@ -202,21 +235,33 @@ async function handleRun(id: string, modelId: string, task: string, input: strin
     return;
   }
   const t0 = Date.now();
-  const prompt = buildPrompt(task, input);
   try {
-    // The pipeline's call signature is `(text, options) => result`.
-    // For text2text-generation, the result is `{ generated_text }[]`.
-    const result = await loaded.pipe(prompt, {
-      max_new_tokens: 256,
-      do_sample: false,
-    });
+    let output = '';
+    if (loaded.engine === 'web-llm' && loaded.llm) {
+      const { system, user } = chatPrompt(task, input);
+      const reply = await loaded.llm.chat.completions.create({
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        temperature: 0.4,
+        max_tokens: 384,
+        stream: false,
+      });
+      output = reply.choices[0]?.message?.content ?? '';
+    } else if (loaded.engine === 'transformers-js' && loaded.pipe) {
+      const result = await loaded.pipe(buildT5Prompt(task, input), {
+        max_new_tokens: 256,
+        do_sample: false,
+      });
+      output = result?.[0]?.generated_text ?? '';
+    }
     if (aborted.has(id)) {
       aborted.delete(id);
       post({ id, kind: 'error', code: 'aborted', message: 'Aborted' });
       return;
     }
-    const output = result?.[0]?.generated_text ?? '';
-    post({ id, kind: 'output', output, inferenceMs: Date.now() - t0 });
+    post({ id, kind: 'output', output: output.trim(), inferenceMs: Date.now() - t0 });
   } catch (err) {
     const msg = (err as Error).message || 'run-failed';
     post({ id, kind: 'error', code: classifyError(msg), message: msg });
@@ -225,35 +270,65 @@ async function handleRun(id: string, modelId: string, task: string, input: strin
 
 async function handleUnload(id: string, modelId: string): Promise<void> {
   if (loaded?.modelId === modelId) {
-    // Best-effort: transformers.js doesn't expose a `dispose()` on the
-    // pipeline directly in every version, so we just drop the ref and
-    // let GC reclaim the tensors. The Cache API entry stays.
+    await evict(loaded).catch(() => {});
     loaded = null;
   }
   post({ id, kind: 'unloaded', modelId });
 }
 
-/**
- * Map the model+task combo to the prompt prefix that flan-t5-small
- * was instruction-tuned for. Empty input goes back as-is so the
- * caller doesn't run inference on whitespace.
- */
-function buildPrompt(task: string, input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed) return trimmed;
+async function evict(m: LoadedModel): Promise<void> {
+  if (m.engine === 'web-llm' && m.llm) {
+    // WebLLM exposes `unload()` to release the GPU buffers.
+    if (typeof (m.llm as unknown as { unload?: () => Promise<void> }).unload === 'function') {
+      await (m.llm as unknown as { unload: () => Promise<void> }).unload();
+    }
+  }
+  // transformers.js doesn't surface a dispose API; dropping the ref is
+  // best-effort and GC reclaims the tensors.
+}
+
+// ---------------------------------------------------------------------------
+// Prompts
+// ---------------------------------------------------------------------------
+
+function buildT5Prompt(task: string, input: string): string {
+  if (!input.trim()) return input;
   switch (task) {
     case 'gec':
-      return `fix grammar: ${trimmed}`;
+      return `fix grammar: ${input}`;
     case 'rewrite':
-      // The controller can pass extras via `opts` once the right-click
-      // menu is wired with tone presets (formal / casual / concise).
-      // For P2 we default to "polish the wording" which flan-t5-small
-      // interprets as a light rewrite.
-      return `Rewrite to improve clarity and tone: ${trimmed}`;
+      return `Rewrite to improve clarity and tone: ${input}`;
     case 'summarize':
-      return `summarize: ${trimmed}`;
+      return `summarize: ${input}`;
     default:
-      return trimmed;
+      return input;
+  }
+}
+
+function chatPrompt(task: string, input: string): { system: string; user: string } {
+  // Llama-style instruction prompts. Kept short so the model has room
+  // for output within the 384-token budget.
+  switch (task) {
+    case 'gec':
+      return {
+        system:
+          'You are a careful copy editor. Return ONLY the corrected text, no commentary, no quotation marks.',
+        user: `Fix grammar, agreement, and punctuation in:\n\n${input}`,
+      };
+    case 'rewrite':
+      return {
+        system:
+          "You are a professional editor. Return ONLY the rewritten passage. Match the original's language and length unless the user asks otherwise. No commentary, no quotation marks.",
+        user: `Rewrite the following passage to improve clarity and flow while keeping the meaning intact:\n\n${input}`,
+      };
+    case 'summarize':
+      return {
+        system:
+          'You are a precise summariser. Return ONLY the summary as a single short paragraph. No commentary, no quotation marks.',
+        user: `Summarise:\n\n${input}`,
+      };
+    default:
+      return { system: 'You are a helpful assistant.', user: input };
   }
 }
 
