@@ -36,6 +36,7 @@ export type TextContextAction =
   | 'splitCell'
   | 'addComment'
   | 'translateSelection'
+  | 'translateQuickReplace'
   | 'aiRewrite'
   | 'aiSummarize';
 
@@ -372,6 +373,7 @@ function getActionIcon(action: TextContextAction): React.ReactNode {
     case 'addComment':
       return <CommentIcon />;
     case 'translateSelection':
+    case 'translateQuickReplace':
       return <TranslateIcon />;
     case 'aiRewrite':
     case 'aiSummarize':
@@ -835,6 +837,7 @@ export function getTextActionLabel(action: TextContextAction): string {
     splitCell: defaultLocale.table.splitCell,
     addComment: 'Comment',
     translateSelection: 'Translate selection…',
+    translateQuickReplace: 'Translate selection',
     aiRewrite: 'Rewrite with AI',
     aiSummarize: 'Summarize with AI',
   };
@@ -863,6 +866,7 @@ export function getTextActionShortcut(action: TextContextAction): string {
     splitCell: '',
     addComment: '',
     translateSelection: '',
+    translateQuickReplace: '',
     aiRewrite: '',
     aiSummarize: '',
   };
@@ -900,6 +904,7 @@ export function isTextActionAvailable(
     case 'addComment':
       return hasSelection;
     case 'translateSelection':
+    case 'translateQuickReplace':
     case 'aiRewrite':
     case 'aiSummarize':
       return hasSelection;

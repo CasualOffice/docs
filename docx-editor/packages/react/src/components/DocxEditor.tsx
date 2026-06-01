@@ -404,7 +404,7 @@ import { SuggestingModeBanner } from './SuggestingModeBanner';
 // Building blocks (C6) — saved reusable snippets the user inserts via the
 // Insert menu. Backed by localStorage; PM Slice JSON round-trip.
 import { Slice } from 'prosemirror-model';
-import { translateFragment } from '../lib/translate';
+import { translateFragment, TRANSLATE_LANGUAGES } from '../lib/translate';
 import {
   loadBuildingBlocks,
   addBuildingBlock,
@@ -4513,6 +4513,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         action: 'addComment',
         label: 'Comment',
       });
+      // Quick-translate: instant replace with the last target the
+      // user picked. The dialog entry sticks around for picking a
+      // different language or seeing the preview.
+      const lastTranslateTarget = (() => {
+        try {
+          return window.localStorage.getItem('translate:last-target');
+        } catch {
+          return null;
+        }
+      })();
+      const targetLabel =
+        lastTranslateTarget &&
+        TRANSLATE_LANGUAGES.find((l) => l.code === lastTranslateTarget)?.label;
+      if (targetLabel) {
+        items.push({
+          action: 'translateQuickReplace',
+          label: `Translate to ${targetLabel}`,
+        });
+      }
       items.push({
         action: 'translateSelection',
         label: 'Translate selection…',
@@ -4812,6 +4831,60 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           setTranslateRange({ from, to });
           setTranslateText(raw.length > 0 ? raw : null);
           setShowTranslate(true);
+          break;
+        }
+        // Quick translate — instant format-preserving replace into
+        // the user's last-chosen target language. No dialog, no
+        // preview, just the same translateFragment path the dialog
+        // would have run on Accept.
+        case 'translateQuickReplace': {
+          const { from, to } = view.state.selection;
+          if (from === to) break;
+          let target: string | null = null;
+          try {
+            target = window.localStorage.getItem('translate:last-target');
+          } catch {
+            // Storage denied — fall back to dialog.
+          }
+          if (!target) {
+            // No remembered language yet; route through the dialog so
+            // the user picks one.
+            const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+            setTranslateRange({ from, to });
+            setTranslateText(raw.length > 0 ? raw : null);
+            setShowTranslate(true);
+            break;
+          }
+          const targetLang = target;
+          const docSize = view.state.doc.content.size;
+          const clampedFrom = Math.min(Math.max(from, 0), docSize);
+          const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+          const slice = view.state.doc.slice(clampedFrom, clampedTo);
+          const targetLabel =
+            TRANSLATE_LANGUAGES.find((l) => l.code === targetLang)?.label ??
+            targetLang.toUpperCase();
+          const toastId = toast.loading(`Translating to ${targetLabel}…`);
+          try {
+            const translatedContent = await translateFragment(
+              slice.content,
+              view.state.schema,
+              'en',
+              targetLang
+            );
+            const translatedSlice = new Slice(translatedContent, slice.openStart, slice.openEnd);
+            const live = getActiveEditorView();
+            if (!live) {
+              toast.dismiss(toastId);
+              break;
+            }
+            const tr = live.state.tr.replace(clampedFrom, clampedTo, translatedSlice);
+            live.dispatch(tr);
+            toast.success(`Replaced with ${targetLabel} translation.`, { id: toastId });
+          } catch {
+            toast.error("Couldn't translate — check your connection or pick another language.", {
+              id: toastId,
+            });
+          }
           break;
         }
         // AI rewrite — opens the inline suggestion popover anchored
@@ -5216,6 +5289,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         if (!live) return;
         const tr = live.state.tr.replace(clampedFrom, clampedTo, translatedSlice);
         live.dispatch(tr);
+        try {
+          window.localStorage.setItem('translate:last-target', target);
+        } catch {
+          // Storage denied — the right-click quick-translate just won't
+          // remember across sessions; nothing else breaks.
+        }
         toast.success(`Replaced with ${target.toUpperCase()} translation.`);
       } catch (err) {
         toast.error("Couldn't translate — check your connection and try again.");
