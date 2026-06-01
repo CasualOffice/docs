@@ -225,7 +225,7 @@ import {
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
 import { bootWriterController, useWriterState } from '../lib/writer/controller';
 import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
-import { AISuggestionPopover } from './AISuggestionPopover';
+import { AISuggestionPanel } from './AISuggestionPanel';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
 // integrations so the chip appears next to the save indicator only
@@ -2224,7 +2224,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     original: string;
     suggestion: string | null;
     inferenceMs: number | null;
-    anchor: { x: number; y: number; width: number; height: number };
     tone: AIToneId;
     busy: boolean;
     error: string | null;
@@ -4632,17 +4631,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (from === to) return;
       const original = view.state.doc.textBetween(from, to, ' ', ' ').trim();
       if (!original) return;
-      // Anchor the popover to the selection's viewport bbox.
-      const fromCoords = view.coordsAtPos(from);
-      const toCoords = view.coordsAtPos(to);
-      const anchor = {
-        x: Math.min(fromCoords.left, toCoords.left),
-        y: Math.min(fromCoords.top, toCoords.top),
-        width:
-          Math.max(fromCoords.right, toCoords.right) - Math.min(fromCoords.left, toCoords.left),
-        height:
-          Math.max(fromCoords.bottom, toCoords.bottom) - Math.min(fromCoords.top, toCoords.top),
-      };
+      // Right-docked panel doesn't need a per-selection bbox — the
+      // dock position is fixed. We still snapshot the PM range so
+      // Accept replays exactly the span the user picked, even if the
+      // cursor moves while the panel is open.
       setAiSuggestion({
         mode,
         from,
@@ -4650,7 +4642,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         original,
         suggestion: null,
         inferenceMs: null,
-        anchor,
         tone: 'polish',
         busy: true,
         error: null,
@@ -7847,12 +7838,11 @@ body { background: white; }
                 the user sees the model's output next to the source
                 before anything mutates the doc. */}
             {aiSuggestion && (
-              <AISuggestionPopover
+              <AISuggestionPanel
                 mode={aiSuggestion.mode}
                 original={aiSuggestion.original}
                 suggestion={aiSuggestion.suggestion}
                 inferenceMs={aiSuggestion.inferenceMs}
-                anchor={aiSuggestion.anchor}
                 busy={aiSuggestion.busy}
                 error={aiSuggestion.error}
                 tones={
