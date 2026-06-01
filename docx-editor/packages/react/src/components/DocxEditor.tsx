@@ -419,6 +419,7 @@ import {
 // turns the selected paragraphs into a table in one click. The reverse
 // direction (table → text) lives alongside it.
 import { convertSelectionToTable, convertTableToText } from '../utils/convertTextToTable';
+import { detectTabular } from '../utils/smartPaste';
 
 // Citations manager (A6 v0) — localStorage CRUD; the host renders the
 // formatted citation text and threads in a hyperlink for the URL.
@@ -2212,6 +2213,50 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   useEffect(() => {
     void bootWriterController();
   }, []);
+
+  // Smart paste — after the user pastes tabular content (TSV / CSV)
+  // the editor surfaces a sonner toast offering one-click conversion
+  // to a real table. Detection is strict (see `detectTabular`) so
+  // ordinary prose paste doesn't trigger the prompt.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const target = e.target as Node | null;
+      if (!target || !view.dom.contains(target)) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      const shape = detectTabular(text);
+      if (!shape) return;
+      const sizeBefore = view.state.doc.content.size;
+      // Wait one tick for PM to apply its paste transaction, then
+      // grab the inserted range from the doc-size delta. The
+      // selection collapses to the right edge of the inserted slice
+      // after PM applies the paste.
+      requestAnimationFrame(() => {
+        const live = getActiveEditorView();
+        if (!live) return;
+        const sizeAfter = live.state.doc.content.size;
+        const inserted = sizeAfter - sizeBefore;
+        if (inserted <= 0) return;
+        const to = live.state.selection.head;
+        const from = Math.max(0, to - inserted);
+        toast.message(`Pasted data looks like a ${shape.rows} × ${shape.columns} table.`, {
+          duration: 8000,
+          action: {
+            label: 'Convert to table',
+            onClick: () => {
+              const v = getActiveEditorView();
+              if (!v) return;
+              v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, from, to)));
+              convertSelectionToTable(v);
+            },
+          },
+        });
+      });
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [getActiveEditorView]);
 
   // AI suggestion popover wiring. See definitions below the state
   // for `openAiSuggestion`, `runAiSuggestion`, and the accept/reject
