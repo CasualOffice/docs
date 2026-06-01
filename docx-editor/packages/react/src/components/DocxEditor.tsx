@@ -225,6 +225,7 @@ import {
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
 import { bootWriterController, useWriterState } from '../lib/writer/controller';
 import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
+import { applyInsertAsSuggestion, applyRewriteAsSuggestion } from '../lib/writer/applyAsSuggestion';
 import { AISuggestionPanel } from './AISuggestionPanel';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
@@ -4674,24 +4675,30 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     const view = getActiveEditorView();
     const state = aiSuggestion;
     if (!view || !state) return;
+    const docSize = view.state.doc.content.size;
     if (state.mode === 'rewrite' && aiFragmentRef.current) {
-      // Replay the cached fragment back into the selection range —
-      // per-mark-run formatting is already baked in by the recursive
-      // rewriteFragment walk.
-      const slice = new Slice(aiFragmentRef.current, 0, 0);
-      const docSize = view.state.doc.content.size;
+      // Land the rewrite as a tracked change instead of clobbering the
+      // selection — the original stays in place struck-through (red),
+      // the AI's version arrives underlined (green) so the user
+      // accepts or rejects through the existing tracked-change UI.
       const from = Math.min(Math.max(state.from, 0), docSize);
       const to = Math.min(Math.max(state.to, from), docSize);
-      const tr = view.state.tr.replace(from, to, slice);
-      view.dispatch(tr);
+      applyRewriteAsSuggestion({
+        view,
+        from,
+        to,
+        replacement: aiFragmentRef.current,
+      });
     } else if (state.mode === 'summarize' && state.suggestion) {
-      // Insert the summary at the END of the selection so the user
-      // keeps both the source paragraph and the recap.
-      const docSize = view.state.doc.content.size;
+      // Insert the summary at the END of the selection as a tracked
+      // change. Nothing gets deleted; the user just gets a marked
+      // insertion they can accept or reject.
       const to = Math.min(Math.max(state.to, 0), docSize);
-      const insertText = `\n\nSummary: ${state.suggestion}\n`;
-      const tr = view.state.tr.insertText(insertText, to);
-      view.dispatch(tr);
+      applyInsertAsSuggestion({
+        view,
+        at: to,
+        text: `\n\nSummary: ${state.suggestion}\n`,
+      });
     }
     aiAbortRef.current?.abort();
     aiAbortRef.current = null;

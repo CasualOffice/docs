@@ -242,7 +242,11 @@ export function AISuggestionPanel({
   }, [onAccept, onReject, suggestion, busy]);
 
   const title = mode === 'rewrite' ? 'Rewrite with AI' : 'Summary with AI';
-  const acceptLabel = mode === 'rewrite' ? 'Replace selection' : 'Insert after';
+  // Accept stages the change as a tracked suggestion (deletion +
+  // insertion marks) — the doc body shows it with the standard
+  // red-strike / green-underline UI so the user can Accept / Reject
+  // it permanently through the existing tracked-change controls.
+  const acceptLabel = mode === 'rewrite' ? 'Suggest replacement' : 'Suggest insert';
 
   return (
     <>
