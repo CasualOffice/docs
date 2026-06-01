@@ -227,6 +227,7 @@ import { bootWriterController, useWriterState } from '../lib/writer/controller';
 import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
 import { applyInsertAsSuggestion, applyRewriteAsSuggestion } from '../lib/writer/applyAsSuggestion';
 import { AISuggestionPanel } from './AISuggestionPanel';
+import { ChatPanel } from './ChatPanel';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
 // integrations so the chip appears next to the save indicator only
@@ -2207,6 +2208,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Writing Assistant — sheet + rail entry. Boots the controller on
   // mount so capability checks + auto-load run before the sheet opens.
   const [showWritingAssistant, setShowWritingAssistant] = useState(false);
+  const [showChatPanel, setShowChatPanel] = useState(false);
   useEffect(() => {
     void bootWriterController();
   }, []);
@@ -7817,6 +7819,8 @@ body { background: white; }
                       onToggleHistory={handleToggleVersionHistory}
                       writerVisible={showWritingAssistant}
                       onToggleWriter={() => setShowWritingAssistant((v) => !v)}
+                      chatVisible={showChatPanel}
+                      onToggleChat={() => setShowChatPanel((v) => !v)}
                     />
                   )}
                 </div>
@@ -8322,6 +8326,17 @@ body { background: white; }
                 <WritingAssistantSheet
                   isOpen={showWritingAssistant}
                   onClose={() => setShowWritingAssistant(false)}
+                />
+              )}
+              {showChatPanel && (
+                <ChatPanel
+                  isOpen={showChatPanel}
+                  onClose={() => setShowChatPanel(false)}
+                  getDocText={() => {
+                    const view = getActiveEditorView();
+                    if (!view) return '';
+                    return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
+                  }}
                 />
               )}
               {showExplore && (

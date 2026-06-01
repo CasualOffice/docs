@@ -66,6 +66,15 @@ async function handle(req: WriterReq): Promise<void> {
     case 'run':
       await handleRun(req.id, req.modelId, req.task, req.input);
       return;
+    case 'chat':
+      await handleChat(
+        req.id,
+        req.modelId,
+        req.messages,
+        req.maxTokens ?? 512,
+        req.temperature ?? 0.6
+      );
+      return;
     case 'abort':
       aborted.add(req.targetId);
       return;
@@ -264,6 +273,64 @@ async function handleRun(id: string, modelId: string, task: string, input: strin
     post({ id, kind: 'output', output: output.trim(), inferenceMs: Date.now() - t0 });
   } catch (err) {
     const msg = (err as Error).message || 'run-failed';
+    post({ id, kind: 'error', code: classifyError(msg), message: msg });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chat (streaming)
+// ---------------------------------------------------------------------------
+
+async function handleChat(
+  id: string,
+  modelId: string,
+  messages: { role: string; content: string }[],
+  maxTokens: number,
+  temperature: number
+): Promise<void> {
+  if (!loaded || loaded.modelId !== modelId) {
+    post({
+      id,
+      kind: 'error',
+      code: 'unsupported',
+      message: 'Model not loaded — enable the Advanced LLM tier first.',
+    });
+    return;
+  }
+  // Chat only flows through the WebLLM tier. flan-t5-small isn't a
+  // conversational model; routing chat to it produces nonsense, so we
+  // surface a clean error instead.
+  if (loaded.engine !== 'web-llm' || !loaded.llm) {
+    post({
+      id,
+      kind: 'error',
+      code: 'unsupported',
+      message: 'Chat needs the Advanced LLM tier (Llama-3.2-1B).',
+    });
+    return;
+  }
+  const t0 = Date.now();
+  try {
+    const stream = await loaded.llm.chat.completions.create({
+      messages: messages as Parameters<typeof loaded.llm.chat.completions.create>[0]['messages'],
+      temperature,
+      max_tokens: maxTokens,
+      stream: true,
+    });
+    for await (const chunk of stream as AsyncIterable<{
+      choices?: { delta?: { content?: string } }[];
+    }>) {
+      if (aborted.has(id)) {
+        aborted.delete(id);
+        post({ id, kind: 'error', code: 'aborted', message: 'Aborted' });
+        return;
+      }
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) post({ id, kind: 'chat-delta', text: delta });
+    }
+    post({ id, kind: 'chat-done', inferenceMs: Date.now() - t0 });
+  } catch (err) {
+    const msg = (err as Error).message || 'chat-failed';
     post({ id, kind: 'error', code: classifyError(msg), message: msg });
   }
 }

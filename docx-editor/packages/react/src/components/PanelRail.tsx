@@ -40,6 +40,10 @@ export interface PanelRailProps {
   writerVisible?: boolean;
   /** Toggle the Writing Assistant sheet. */
   onToggleWriter?: () => void;
+  /** Whether the chat panel is open. */
+  chatVisible?: boolean;
+  /** Toggle the chat panel. */
+  onToggleChat?: () => void;
 }
 
 const railStyle: CSSProperties = {
@@ -123,11 +127,14 @@ export function PanelRail({
   onToggleHistory,
   writerVisible,
   onToggleWriter,
+  chatVisible,
+  onToggleChat,
 }: PanelRailProps) {
   const { t } = useTranslation();
   // No-op if nothing to toggle (host wired no panels) — render nothing
   // rather than an empty bar.
-  if (!onToggleOutline && !onToggleComments && !onToggleHistory && !onToggleWriter) return null;
+  if (!onToggleOutline && !onToggleComments && !onToggleHistory && !onToggleWriter && !onToggleChat)
+    return null;
 
   const outlineShortcut = formatShortcut('Ctrl+Shift+H');
 
@@ -167,6 +174,15 @@ export function PanelRail({
           icon="auto_awesome"
           active={!!writerVisible}
           onClick={onToggleWriter}
+        />
+      )}
+      {onToggleChat && (
+        <RailButton
+          testId="rail-chat"
+          label={chatVisible ? 'Hide chat' : 'Ask AI'}
+          icon="chat_bubble_outline"
+          active={!!chatVisible}
+          onClick={onToggleChat}
         />
       )}
     </aside>

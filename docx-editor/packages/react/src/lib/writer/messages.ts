@@ -11,6 +11,11 @@ import type { WriterBackend } from './capabilities';
 
 export type WriterTask = 'gec' | 'rewrite' | 'summarize';
 
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 export type WriterReq =
   | { id: string; kind: 'load'; modelId: string; backend: WriterBackend }
   | {
@@ -20,6 +25,14 @@ export type WriterReq =
       task: WriterTask;
       input: string;
       opts?: Record<string, unknown>;
+    }
+  | {
+      id: string;
+      kind: 'chat';
+      modelId: string;
+      messages: ChatMessage[];
+      maxTokens?: number;
+      temperature?: number;
     }
   | { id: string; kind: 'abort'; targetId: string }
   | { id: string; kind: 'unload'; modelId: string };
@@ -36,6 +49,8 @@ export type WriterRes =
   | { id: string; kind: 'progress'; loaded: number; total: number }
   | { id: string; kind: 'loaded'; modelId: string; backend: WriterBackend; warmupMs: number }
   | { id: string; kind: 'output'; output: string; inferenceMs: number }
+  | { id: string; kind: 'chat-delta'; text: string }
+  | { id: string; kind: 'chat-done'; inferenceMs: number }
   | { id: string; kind: 'error'; code: WriterErrorCode; message: string }
   | { id: string; kind: 'unloaded'; modelId: string };
 

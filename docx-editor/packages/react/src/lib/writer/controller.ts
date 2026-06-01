@@ -120,6 +120,8 @@ const pending = new Map<
     resolve: (out: string) => void;
     reject: (err: Error) => void;
     onProgress?: (loaded: number, total: number) => void;
+    onDelta?: (text: string) => void;
+    accumulated?: string;
   }
 >();
 
@@ -176,6 +178,22 @@ function handleWorkerMessage(msg: WriterRes): void {
       if (p) {
         pending.delete(msg.id);
         p.resolve(msg.output);
+      }
+      return;
+    }
+    case 'chat-delta': {
+      const p = pending.get(msg.id);
+      if (!p) return;
+      p.accumulated = (p.accumulated ?? '') + msg.text;
+      p.onDelta?.(msg.text);
+      return;
+    }
+    case 'chat-done': {
+      setState({ phase: 'ready', lastInferenceMs: msg.inferenceMs });
+      const p = pending.get(msg.id);
+      if (p) {
+        pending.delete(msg.id);
+        p.resolve(p.accumulated ?? '');
       }
       return;
     }
@@ -353,6 +371,65 @@ export async function runTask(
         );
       }
       postWorker({ id, kind: 'run', modelId, task, input });
+    });
+  } finally {
+    if (state.phase === 'busy') setState({ phase: 'ready' });
+  }
+}
+
+/**
+ * Stream a chat completion against the resident LLM. Resolves with
+ * the full reply once the stream ends; calls `opts.onDelta` for each
+ * incoming chunk so the UI can paint as the model generates.
+ *
+ * Chat only flows through the WebLLM tier (Llama-3.2-1B) — the
+ * flan-t5-small tier isn't a conversational model. The worker
+ * rejects with a clean error if the user only has the basic tier
+ * loaded.
+ */
+export async function runChat(
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  opts: {
+    onDelta?: (text: string) => void;
+    signal?: AbortSignal;
+    maxTokens?: number;
+    temperature?: number;
+  } = {}
+): Promise<string> {
+  const modelId = state.loadedModelId;
+  if (!modelId) throw new Error('No model is loaded — enable the Advanced LLM tier first.');
+  setState({ phase: 'busy' });
+  const id = newRequestId();
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      pending.set(id, {
+        resolve,
+        reject,
+        onDelta: opts.onDelta,
+        accumulated: '',
+      });
+      if (opts.signal) {
+        opts.signal.addEventListener(
+          'abort',
+          () => {
+            postWorker({ id: newRequestId(), kind: 'abort', targetId: id });
+            const p = pending.get(id);
+            if (p) {
+              pending.delete(id);
+              p.reject(new DOMException('Aborted', 'AbortError'));
+            }
+          },
+          { once: true }
+        );
+      }
+      postWorker({
+        id,
+        kind: 'chat',
+        modelId,
+        messages,
+        maxTokens: opts.maxTokens,
+        temperature: opts.temperature,
+      });
     });
   } finally {
     if (state.phase === 'busy') setState({ phase: 'ready' });
