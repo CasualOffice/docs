@@ -55,7 +55,10 @@ test.describe('Tools > Translate (A5)', () => {
     // (whole-doc export flow) that loosely matches the same regex.
     await page.getByRole('menuitem', { name: 'Translate…', exact: true }).click();
 
-    await expect(page.getByTestId('panel-state-error')).toBeVisible();
+    // `translateText` now retries with 800/1800/4000 ms backoff before
+    // surfacing the error, so allow ~10 s for the final failure to
+    // bubble up to the PanelState.
+    await expect(page.getByTestId('panel-state-error')).toBeVisible({ timeout: 12_000 });
     await expect(page.getByTestId('panel-state-retry')).toBeVisible();
   });
 });

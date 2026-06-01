@@ -238,6 +238,7 @@ export function TranslateDocumentDialog({
     'idle'
   );
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
   const [exporting, setExporting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -282,6 +283,7 @@ export function TranslateDocumentDialog({
     setPreviewError(null);
     setTranslatedBuffer(null);
 
+    setProgress({ completed: 0, total: 0 });
     void (async () => {
       try {
         const translatedContent = await translateFragment(
@@ -289,7 +291,12 @@ export function TranslateDocumentDialog({
           view.state.schema,
           source,
           target,
-          controller.signal
+          controller.signal,
+          {
+            onProgress: (p) => {
+              if (!controller.signal.aborted) setProgress(p);
+            },
+          }
         );
         if (controller.signal.aborted) return;
         const buf = await captureTranslatedBuffer(getView, onSave, translatedContent);
@@ -300,7 +307,9 @@ export function TranslateDocumentDialog({
       } catch (err) {
         if (controller.signal.aborted) return;
         if ((err as Error).name === 'AbortError') return;
-        setPreviewError("Couldn't reach the translation service.");
+        setPreviewError(
+          'Translation service is rate-limiting or unreachable. Try again in a moment or pick a smaller selection.'
+        );
         setPreviewStatus('error');
       }
     })();
@@ -317,6 +326,7 @@ export function TranslateDocumentDialog({
     setTranslatedBuffer(null);
     setPreviewStatus('idle');
     setPreviewError(null);
+    setProgress(null);
     setExporting(false);
     abortRef.current?.abort();
   }, [isOpen]);
@@ -434,7 +444,11 @@ export function TranslateDocumentDialog({
                 <div style={stateOverlayStyle}>
                   <PanelState
                     kind="loading"
-                    message="Translating your document…"
+                    message={
+                      progress && progress.total > 0
+                        ? `Translating… ${progress.completed} of ${progress.total} text runs`
+                        : 'Translating your document…'
+                    }
                     hint="Each formatting run translates separately so bold / italic / link boundaries stay aligned."
                   />
                 </div>
