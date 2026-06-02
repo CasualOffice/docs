@@ -4767,6 +4767,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     aiAbortRef.current = null;
     aiFragmentRef.current = null;
     setAiSuggestion(null);
+    // Hint the user where the suggestion just landed. The doc body
+    // now carries the deletion + insertion marks, and the action bar
+    // (now always visible when there are tracked changes) gives them
+    // Accept All / Reject All / Prev / Next at the top-right.
+    toast.success('AI suggestion ready for review — accept or reject in the doc.', {
+      duration: 5000,
+    });
   }, [aiSuggestion, getActiveEditorView]);
 
   const handleAiReject = useCallback(() => {
@@ -7640,7 +7647,16 @@ body { background: white; }
                           scrollContainerRef={scrollContainerRef}
                           sidebarOverlay={
                             <>
-                              {editingMode === 'suggesting' && trackedChanges.length > 0 && (
+                              {/* Tracked-change navigation + accept/reject
+                                  controls. Surfaced whenever ANY tracked
+                                  change exists in the doc — gating on
+                                  `editingMode === 'suggesting'` hid the bar
+                                  for AI-inserted suggestions (which land in
+                                  Edit mode), leaving users with no obvious
+                                  way to act on them. The bar now shows for
+                                  the union of user-typed suggestions and
+                                  AI-staged ones. */}
+                              {trackedChanges.length > 0 && (
                                 <div
                                   style={{
                                     position: 'absolute',
