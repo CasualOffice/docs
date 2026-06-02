@@ -15,6 +15,7 @@ import { getDeviceCapabilities, type DeviceCapabilities } from './capabilities';
 import { FEATURES, MODELS, type FeatureId, type FeatureSpec, isFeatureSupported } from './registry';
 import {
   newRequestId,
+  type JsonResponseFormat,
   type WriterErrorCode,
   type WriterReq,
   type WriterRes,
@@ -394,6 +395,8 @@ export async function runChat(
     signal?: AbortSignal;
     maxTokens?: number;
     temperature?: number;
+    /** When set, WebLLM constrains output to this format (JSON-mode). */
+    responseFormat?: JsonResponseFormat;
   } = {}
 ): Promise<string> {
   const modelId = state.loadedModelId;
@@ -429,6 +432,7 @@ export async function runChat(
         messages,
         maxTokens: opts.maxTokens,
         temperature: opts.temperature,
+        responseFormat: opts.responseFormat,
       });
     });
   } finally {

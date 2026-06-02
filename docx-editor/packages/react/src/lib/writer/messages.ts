@@ -16,6 +16,18 @@ export interface ChatMessage {
   content: string;
 }
 
+/**
+ * Subset of WebLLM's ResponseFormat that the pipeline uses. JSON-mode
+ * forces Llama-1B to emit a structurally-valid object — the only way
+ * a 1B model can reliably feed downstream tools like `insertTable` or
+ * the intent classifier.
+ */
+export interface JsonResponseFormat {
+  type: 'json_object';
+  /** Stringified JSON Schema (WebLLM's `schema` field). */
+  schema?: string;
+}
+
 export type WriterReq =
   | { id: string; kind: 'load'; modelId: string; backend: WriterBackend }
   | {
@@ -33,6 +45,8 @@ export type WriterReq =
       messages: ChatMessage[];
       maxTokens?: number;
       temperature?: number;
+      /** When set, WebLLM constrains output to this format. */
+      responseFormat?: JsonResponseFormat;
     }
   | { id: string; kind: 'abort'; targetId: string }
   | { id: string; kind: 'unload'; modelId: string };

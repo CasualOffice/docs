@@ -8428,6 +8428,7 @@ body { background: white; }
                     if (from === to) return '';
                     return view.state.doc.textBetween(from, to, '\n', ' ');
                   }}
+                  getView={() => getActiveEditorView() ?? null}
                   onInsertAtCursor={(text) => {
                     const view = getActiveEditorView();
                     if (!view) return;

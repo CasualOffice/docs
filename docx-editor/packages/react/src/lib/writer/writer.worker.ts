@@ -19,7 +19,7 @@
 
 import { pipeline, env } from '@huggingface/transformers';
 import type { CreateMLCEngine as CreateMLCEngineType } from '@mlc-ai/web-llm';
-import type { WriterReq, WriterRes } from './messages';
+import type { JsonResponseFormat, WriterReq, WriterRes } from './messages';
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
@@ -72,7 +72,8 @@ async function handle(req: WriterReq): Promise<void> {
         req.modelId,
         req.messages,
         req.maxTokens ?? 512,
-        req.temperature ?? 0.6
+        req.temperature ?? 0.6,
+        req.responseFormat
       );
       return;
     case 'abort':
@@ -286,7 +287,8 @@ async function handleChat(
   modelId: string,
   messages: { role: string; content: string }[],
   maxTokens: number,
-  temperature: number
+  temperature: number,
+  responseFormat?: JsonResponseFormat
 ): Promise<void> {
   if (!loaded || loaded.modelId !== modelId) {
     post({
@@ -311,6 +313,30 @@ async function handleChat(
   }
   const t0 = Date.now();
   try {
+    // JSON-mode tool calls don't need streaming — they're consumed by
+    // the pipeline as a whole object, not painted token-by-token in a
+    // chat bubble. Non-streaming also lets WebLLM apply schema-grammar
+    // constraints across the full generation in one go.
+    if (responseFormat) {
+      const reply = await loaded.llm.chat.completions.create({
+        messages: messages as Parameters<typeof loaded.llm.chat.completions.create>[0]['messages'],
+        temperature,
+        max_tokens: maxTokens,
+        stream: false,
+        response_format: responseFormat,
+      });
+      if (aborted.has(id)) {
+        aborted.delete(id);
+        post({ id, kind: 'error', code: 'aborted', message: 'Aborted' });
+        return;
+      }
+      const content = reply.choices?.[0]?.message?.content ?? '';
+      // Emit once as a single delta so the controller's accumulator
+      // produces the full object for the caller.
+      if (content) post({ id, kind: 'chat-delta', text: content });
+      post({ id, kind: 'chat-done', inferenceMs: Date.now() - t0 });
+      return;
+    }
     const stream = await loaded.llm.chat.completions.create({
       messages: messages as Parameters<typeof loaded.llm.chat.completions.create>[0]['messages'],
       temperature,

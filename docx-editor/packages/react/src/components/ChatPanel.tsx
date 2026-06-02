@@ -20,8 +20,10 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from 'react';
-import { runChat, useWriterState } from '../lib/writer/controller';
+import type { EditorView } from 'prosemirror-view';
+import { useWriterState } from '../lib/writer/controller';
 import type { ChatMessage } from '../lib/writer/messages';
+import { runPipeline, type PipelineResult } from '../lib/writer/pipeline';
 import { Markdown } from '../lib/markdown';
 
 export interface ChatPanelProps {
@@ -43,6 +45,12 @@ export interface ChatPanelProps {
    * review every other AI change does.
    */
   onInsertAtCursor: (text: string) => void;
+  /**
+   * Live editor view used by document-modifying tools (insertTable,
+   * outline, rewrite). Returns `null` if the editor isn't focused or
+   * isn't mounted yet — tools surface a clean error in that case.
+   */
+  getView: () => EditorView | null;
 }
 
 const panelWidth = 380;
@@ -271,29 +279,34 @@ const subtleStyle: CSSProperties = {
   alignSelf: 'flex-start',
 };
 
-const SYSTEM_PROMPT =
-  'You are a helpful writing assistant inside a .docx editor. Be concise, ' +
-  "cite the user's document when relevant, and answer in plain prose. " +
-  'Do not add meta-commentary about being an AI.';
-
-function buildSystemPrompt(useDocContext: boolean, docText: string, selectionText: string): string {
-  const parts: string[] = [SYSTEM_PROMPT];
-  if (selectionText.trim().length > 0) {
-    const sel =
-      selectionText.length > 2000 ? `${selectionText.slice(0, 2000)}\n[…truncated]` : selectionText;
-    parts.push(
-      `The user has this passage selected and wants you to focus on it:\n\n"""\n${sel}\n"""`
-    );
-  }
-  if (useDocContext) {
-    const trimmed = docText.length > 6000 ? `${docText.slice(0, 6000)}\n[…truncated]` : docText;
-    parts.push(`The user is currently editing this document:\n\n"""\n${trimmed}\n"""`);
-  }
-  return parts.join('\n\n');
-}
+// System prompt + per-call context budgeting moved into the writer
+// pipeline (`lib/writer/pipeline.ts` + the per-tool agents). The panel
+// no longer composes a raw prompt — it just hands the user message +
+// context callbacks to the pipeline.
 
 const HISTORY_KEY = 'writer:chat-history';
 const HISTORY_MAX = 40;
+const DOC_CONTEXT_KEY = 'writer:chat-use-doc-context';
+
+function loadDocContextPref(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const raw = window.localStorage.getItem(DOC_CONTEXT_KEY);
+    if (raw === null) return true; // default ON — chat lives inside a doc editor
+    return raw === '1';
+  } catch {
+    return true;
+  }
+}
+
+function saveDocContextPref(v: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DOC_CONTEXT_KEY, v ? '1' : '0');
+  } catch {
+    // ignored
+  }
+}
 
 function loadHistory(): ChatMessage[] {
   if (typeof window === 'undefined') return [];
@@ -455,12 +468,21 @@ export function ChatPanel({
   getDocText,
   getSelectionText,
   onInsertAtCursor,
+  getView,
 }: ChatPanelProps) {
   const writer = useWriterState();
   const [history, setHistory] = useState<ChatMessage[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [useDocContext, setUseDocContext] = useState(false);
+  // Default to ON — chat lives inside a document editor, the doc is
+  // almost always the implicit subject ("summarise this document",
+  // "find typos in this"). Persist the user's choice so opting out
+  // sticks across sessions.
+  const [useDocContext, setUseDocContextState] = useState(() => loadDocContextPref());
+  const setUseDocContext = (v: boolean): void => {
+    setUseDocContextState(v);
+    saveDocContextPref(v);
+  };
   const [streaming, setStreaming] = useState('');
   // Sample the selection when the panel mounts so the chip in the
   // header reflects what the user had selected at the moment they
@@ -528,12 +550,9 @@ export function ChatPanel({
     if (!raw || busy || !llmReady) return;
     // Expand `/cmd args` → real instruction. The user bubble keeps the
     // raw `/cmd args` so the history reads naturally; the actual
-    // prompt sent to the model is the expanded form.
+    // prompt sent to the pipeline is the expanded form.
     const slash = matchSlash(raw);
     const expanded = slash ? slash.command.build(slash.rest) : raw;
-    // Slash commands always pull the selection in — they're scoped to
-    // a passage by design.
-    const effectiveSelection = slash || includeSelection ? getSelectionText() : '';
     const userMsg: ChatMessage = { role: 'user', content: raw };
     const nextHistory = [...history, userMsg];
     setHistory(nextHistory);
@@ -542,24 +561,64 @@ export function ChatPanel({
     setStreaming('');
     const controller = new AbortController();
     abortRef.current = controller;
-    const system: ChatMessage = {
-      role: 'system',
-      content: buildSystemPrompt(useDocContext, getDocText(), effectiveSelection),
-    };
-    // Send the EXPANDED message to the model. The history bubble keeps
-    // the raw `/cmd args` so the conversation reads cleanly; only the
-    // wire-level prompt carries the expansion.
-    const wireMsgs: ChatMessage[] = [
-      system,
-      ...nextHistory.slice(0, -1),
-      { role: 'user', content: expanded },
-    ];
+
+    const view = getView();
+    const schema = view?.state.schema;
+    if (!schema) {
+      setHistory([
+        ...nextHistory,
+        {
+          role: 'assistant',
+          content: 'Editor is not ready yet — give it a second and try again.',
+        },
+      ]);
+      setBusy(false);
+      return;
+    }
+
     try {
-      const full = await runChat(wireMsgs, {
-        signal: controller.signal,
-        onDelta: (chunk) => setStreaming((prev) => prev + chunk),
-      });
-      setHistory([...nextHistory, { role: 'assistant', content: full }]);
+      const result: PipelineResult = await runPipeline(
+        {
+          message: expanded,
+          history: nextHistory
+            .slice(0, -1)
+            .filter((m): m is ChatMessage & { role: 'user' | 'assistant' } =>
+              m.role === 'user' || m.role === 'assistant'
+            )
+            .map((m) => ({ role: m.role, content: m.content })),
+          includeDocContext: useDocContext,
+          // Slash commands always pull the selection in — they're scoped
+          // to a passage by design.
+          includeSelection: slash ? true : includeSelection,
+          onDelta: (chunk) => setStreaming((prev) => prev + chunk),
+        },
+        {
+          getDocText,
+          getSelectionText,
+          getView,
+          schema,
+        },
+        controller.signal
+      );
+      // Render the pipeline result by kind. Tool actions get a
+      // pseudo-assistant bubble describing what happened so the
+      // conversation stays linear; chat replies render as before.
+      if (result.kind === 'chat') {
+        setHistory([...nextHistory, { role: 'assistant', content: result.text }]);
+      } else if (result.kind === 'inserted') {
+        setHistory([
+          ...nextHistory,
+          {
+            role: 'assistant',
+            content: `✅ ${result.summary}`,
+          },
+        ]);
+      } else {
+        setHistory([
+          ...nextHistory,
+          { role: 'assistant', content: `Sorry — ${result.message}` },
+        ]);
+      }
       setStreaming('');
     } catch (err) {
       const e = err as Error;
