@@ -1047,6 +1047,11 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   format_textdirection_r_to_l: IconTextDirectionRtl,
   // Agent
   'agent-sparkle': IconAgentSparkle,
+  // Material Symbols name — same SVG as `agent-sparkle`. The Writing
+  // Assistant rail button + AI menu entries pass the canonical
+  // `auto_awesome` name; without this alias `MaterialSymbol` falls
+  // through to its raw-text fallback and the button renders empty.
+  auto_awesome: IconAgentSparkle,
   // File menu — `tune` and `settings` already registered above
   note_add: IconNoteAdd,
   // Edit menu — clipboard ops

@@ -407,6 +407,71 @@ function relativeAgo(ms: number): string {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
+// Compact horizontal card used in the Recent strip. The big-thumbnail
+// template-card look would push the actual templates below the fold
+// (the user has nothing to render as a preview — Recent files are
+// not pre-painted to PNG the way bundled templates are). Microsoft
+// Word's Home uses this same shape for its Recent / Pinned list.
+const recentCardStyle: CSSProperties = {
+  background: COLORS.paper,
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: '10px',
+  padding: '10px 12px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  transition:
+    'border-color 0.18s, box-shadow 0.18s, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)',
+  textAlign: 'left',
+  font: 'inherit',
+  color: 'inherit',
+  minWidth: 0, // allow text truncation
+};
+
+const recentCardHoverStyle: CSSProperties = {
+  borderColor: '#cbd5e1',
+  boxShadow:
+    '0 8px 18px -12px rgba(15, 23, 42, 0.16), 0 2px 4px -1px rgba(15, 23, 42, 0.05)',
+  transform: 'translateY(-1px)',
+};
+
+const recentIconBoxStyle: CSSProperties = {
+  width: '40px',
+  height: '40px',
+  flexShrink: 0,
+  borderRadius: '8px',
+  background: COLORS.brandSoft,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: COLORS.brand,
+};
+
+const recentMetaStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+  minWidth: 0,
+  flex: 1,
+};
+
+const recentNameStyle: CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 600,
+  color: COLORS.ink,
+  letterSpacing: '-0.005em',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+
+const recentSubStyle: CSSProperties = {
+  fontSize: '11.5px',
+  color: COLORS.inkSubtle,
+  fontWeight: 500,
+};
+
 function RecentCard({
   entry,
   onOpen,
@@ -418,7 +483,7 @@ function RecentCard({
   return (
     <button
       type="button"
-      style={{ ...styles.card, ...(hovered ? styles.cardHover : null) }}
+      style={{ ...recentCardStyle, ...(hovered ? recentCardHoverStyle : null) }}
       onClick={() => onOpen(entry)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -427,26 +492,20 @@ function RecentCard({
       data-testid={`recent-card-${entry.id}`}
       aria-label={`Reopen ${entry.name}`}
     >
-      <div
-        style={{
-          ...styles.cardThumbWrap,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: COLORS.brandSoft,
-        }}
-      >
+      <div style={recentIconBoxStyle}>
         <span
           className="material-symbols-outlined"
           aria-hidden="true"
-          style={{ fontSize: 40, color: COLORS.brand }}
+          style={{ fontSize: 22 }}
         >
           description
         </span>
       </div>
-      <div style={styles.cardBody}>
-        <div style={styles.cardTitle}>{entry.name}</div>
-        <div style={styles.cardCategory}>
+      <div style={recentMetaStyle}>
+        <div style={recentNameStyle} title={entry.name}>
+          {entry.name}
+        </div>
+        <div style={recentSubStyle}>
           {formatSize(entry.size)} · {relativeAgo(Date.now() - entry.openedAt)}
         </div>
       </div>
@@ -614,8 +673,16 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
             <h2 style={styles.sectionTitle}>Recent</h2>
             <span style={styles.sectionHint}>Pick up where you left off.</span>
           </div>
-          <div style={{ ...styles.featuredRow, ...(isMobile && mobile.featuredRow) }}>
-            {recents.slice(0, 6).map((r) => (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile
+                ? 'repeat(1, minmax(0, 1fr))'
+                : 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: '10px',
+            }}
+          >
+            {recents.slice(0, 4).map((r) => (
               <RecentCard key={r.id} entry={r} onOpen={openRecent} />
             ))}
           </div>

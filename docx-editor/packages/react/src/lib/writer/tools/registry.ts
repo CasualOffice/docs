@@ -5,9 +5,11 @@
 
 import { applyRewriteTool } from './applyRewrite';
 import { chatReplyTool } from './chatReply';
+import { findIssuesTool } from './findIssues';
 import { insertOutlineTool } from './insertOutline';
 import { insertTableTool } from './insertTable';
 import { summarizeDocTool } from './summarizeDoc';
+import { translateRangeTool } from './translateRange';
 import type { Tool } from './types';
 
 const TOOLS = {
@@ -15,6 +17,8 @@ const TOOLS = {
   summarize: summarizeDocTool,
   rewrite: applyRewriteTool,
   outline: insertOutlineTool,
+  translate: translateRangeTool,
+  findIssues: findIssuesTool,
   chat: chatReplyTool,
 } as const;
 
