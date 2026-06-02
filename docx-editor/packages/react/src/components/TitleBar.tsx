@@ -16,6 +16,7 @@ import { MenuBarProvider } from './ui/MenuBarContext';
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import { TableGridInline } from './ui/TableGridInline';
+import { WriterStatusPill } from './WriterStatusPill';
 import { useEditorToolbar } from './EditorToolbarContext';
 import type { FormattingAction } from './Toolbar';
 import { useTranslation } from '../i18n';
@@ -107,11 +108,27 @@ export interface TitleBarRightProps {
 export function TitleBarRight({ children }: TitleBarRightProps) {
   return (
     <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+      <WriterStatusPillSlot />
       <SaveStatusIndicator />
       <ThemeToggleButton />
       {children}
     </div>
   );
+}
+
+// ============================================================================
+// WriterStatusPillSlot — bridges the Writing Assistant controller into
+// the title bar. Renders nothing when the assistant has no enabled
+// features (avoids visual clutter for users who haven't opted in);
+// otherwise shows a click-to-open pill that surfaces the current
+// load / busy / ready state across every screen, not just inside the
+// Writing Assistant sheet.
+// ============================================================================
+function WriterStatusPillSlot() {
+  const ctx = useEditorToolbar();
+  const { onOpenWritingAssistant } = ctx;
+  if (!onOpenWritingAssistant) return null;
+  return <WriterStatusPill onClick={onOpenWritingAssistant} />;
 }
 
 // ============================================================================
