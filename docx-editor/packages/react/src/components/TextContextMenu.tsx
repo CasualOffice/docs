@@ -38,7 +38,8 @@ export type TextContextAction =
   | 'translateSelection'
   | 'translateQuickReplace'
   | 'aiRewrite'
-  | 'aiSummarize';
+  | 'aiSummarize'
+  | 'aiAsk';
 
 /**
  * Menu item configuration
@@ -377,6 +378,7 @@ function getActionIcon(action: TextContextAction): React.ReactNode {
       return <TranslateIcon />;
     case 'aiRewrite':
     case 'aiSummarize':
+    case 'aiAsk':
       return <SparkleIcon />;
     default:
       return null;
@@ -840,6 +842,7 @@ export function getTextActionLabel(action: TextContextAction): string {
     translateQuickReplace: 'Translate selection',
     aiRewrite: 'Rewrite with AI',
     aiSummarize: 'Summarize with AI',
+    aiAsk: 'Ask AI about this',
   };
   return labels[action];
 }
@@ -869,6 +872,7 @@ export function getTextActionShortcut(action: TextContextAction): string {
     translateQuickReplace: '',
     aiRewrite: '',
     aiSummarize: '',
+    aiAsk: '',
   };
   return shortcuts[action];
 }
@@ -907,6 +911,7 @@ export function isTextActionAvailable(
     case 'translateQuickReplace':
     case 'aiRewrite':
     case 'aiSummarize':
+    case 'aiAsk':
       return hasSelection;
     case 'selectAll':
       return true;

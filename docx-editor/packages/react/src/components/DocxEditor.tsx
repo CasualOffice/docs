@@ -4539,6 +4539,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     writerState.enabledFeatures.includes('summarize-basic') &&
     writerState.phase === 'ready' &&
     writerState.loadedModelId !== null;
+  // "Ask AI about this" routes through the chat panel + the advanced
+  // Llama tier (the only resident model that actually does open-ended
+  // conversation). Hide the entry on the basic flan-t5 tier so users
+  // don't ask the encoder-decoder a free-form question.
+  const aiAskReady =
+    writerState.enabledFeatures.includes('advanced-llm') &&
+    writerState.phase === 'ready' &&
+    writerState.loadedModelId !== null;
 
   const contextMenuItems = useMemo((): TextContextMenuItem[] => {
     const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
@@ -4594,6 +4602,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (aiSummarizeReady) {
         items.push({ action: 'aiSummarize', label: 'Summarize with AI' });
       }
+      if (aiAskReady) {
+        items.push({ action: 'aiAsk', label: 'Ask AI about this' });
+      }
       // Add the divider on the last selection-only entry, before the
       // table block / Select All trailer.
       if (items.length > 0) {
@@ -4630,6 +4641,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     contextMenu.tableContext,
     aiRewriteReady,
     aiSummarizeReady,
+    aiAskReady,
   ]);
 
   // ---------------------------------------------------------------
@@ -4955,6 +4967,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
         case 'aiSummarize': {
           openAiSuggestion('summarize');
+          break;
+        }
+        // AI Ask — opens the chat panel; the selection chip will
+        // auto-include the current selection because the panel reads
+        // it on mount.
+        case 'aiAsk': {
+          setShowChatPanel(true);
           break;
         }
         // Comment — same flow as floating comment button

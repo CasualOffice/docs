@@ -186,6 +186,43 @@ const ctxRowStyle: CSSProperties = {
   borderBottom: '1px solid var(--doc-border, #e0e0e0)',
 };
 
+const slashPopoverStyle: CSSProperties = {
+  borderTop: '1px solid var(--doc-border, #e0e0e0)',
+  background: 'var(--doc-surface, white)',
+  maxHeight: 220,
+  overflow: 'auto',
+  padding: '4px 0',
+};
+
+const slashItemStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '70px 1fr auto',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '6px 14px',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  textAlign: 'left',
+  fontSize: 12,
+};
+
+const slashCmdStyle: CSSProperties = {
+  fontFamily: 'Consolas, "SF Mono", Menlo, monospace',
+  color: 'var(--doc-primary, #1a73e8)',
+  fontSize: 12,
+};
+
+const slashLabelStyle: CSSProperties = {
+  color: 'var(--doc-text-on-surface, #1f2937)',
+};
+
+const slashHintStyle: CSSProperties = {
+  color: 'var(--doc-text-muted, #6b7280)',
+  fontSize: 11,
+};
+
 const inputRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'flex-end',
@@ -323,6 +360,78 @@ const QUICK_PROMPTS = [
   'Find typos and weak phrasing',
 ];
 
+// Slash commands expand the user's `/foo bar baz` into a focused
+// prompt. They auto-include the selection when present so the user
+// doesn't have to remember to flip the chip.
+interface SlashCommand {
+  cmd: string;
+  label: string;
+  hint: string;
+  build: (rest: string) => string;
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    cmd: '/rewrite',
+    label: 'Rewrite selection',
+    hint: 'Rewrite the selection (tone optional)',
+    build: (rest) =>
+      rest.trim()
+        ? `Rewrite the selected passage to be ${rest.trim()}. Keep the meaning and format.`
+        : 'Rewrite the selected passage to improve clarity and flow. Keep the meaning and format.',
+  },
+  {
+    cmd: '/summarize',
+    label: 'Summarize selection',
+    hint: 'One-paragraph summary',
+    build: () => 'Summarise the selected passage in a single concise paragraph.',
+  },
+  {
+    cmd: '/grammar',
+    label: 'Grammar fix',
+    hint: 'Correct typos and grammar only',
+    build: () =>
+      'Fix grammar, agreement, and punctuation in the selected passage. Return ONLY the corrected text.',
+  },
+  {
+    cmd: '/translate',
+    label: 'Translate selection',
+    hint: 'Translate to a language',
+    build: (rest) =>
+      `Translate the selected passage to ${rest.trim() || 'Spanish'}. Return only the translation.`,
+  },
+  {
+    cmd: '/explain',
+    label: 'Explain selection',
+    hint: 'Plain-English explanation',
+    build: () =>
+      'Explain the selected passage in simple, plain English suitable for a non-expert reader.',
+  },
+  {
+    cmd: '/expand',
+    label: 'Expand selection',
+    hint: 'Add detail and depth',
+    build: () =>
+      'Expand the selected passage with more detail and concrete examples while keeping the original meaning.',
+  },
+  {
+    cmd: '/shorten',
+    label: 'Shorten selection',
+    hint: 'Tighten without losing meaning',
+    build: () =>
+      'Shorten the selected passage while keeping the meaning intact. Return only the shortened text.',
+  },
+];
+
+function matchSlash(value: string): { command: SlashCommand; rest: string } | null {
+  if (!value.startsWith('/')) return null;
+  const space = value.indexOf(' ');
+  const head = space === -1 ? value : value.slice(0, space);
+  const rest = space === -1 ? '' : value.slice(space + 1);
+  const command = SLASH_COMMANDS.find((c) => c.cmd === head);
+  return command ? { command, rest } : null;
+}
+
 const msgActionsStyle: CSSProperties = {
   display: 'flex',
   gap: 6,
@@ -364,6 +473,16 @@ export function ChatPanel({
     () => (isOpen ? wordCount(getSelectionText()) : 0),
     [isOpen, getSelectionText]
   );
+  // Slash-command suggestions for the autocomplete popover above the
+  // input. Only render when the textarea starts with `/` and we're
+  // not yet typing arguments (no space after the command head).
+  const slashSuggestions = useMemo<SlashCommand[]>(() => {
+    if (!input.startsWith('/')) return [];
+    const space = input.indexOf(' ');
+    if (space !== -1) return [];
+    const head = input.toLowerCase();
+    return SLASH_COMMANDS.filter((c) => c.cmd.startsWith(head));
+  }, [input]);
   const abortRef = useRef<AbortController | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const llmReady = useMemo(
@@ -405,9 +524,17 @@ export function ChatPanel({
   if (!isOpen) return null;
 
   const onSend = async () => {
-    const text = input.trim();
-    if (!text || busy || !llmReady) return;
-    const userMsg: ChatMessage = { role: 'user', content: text };
+    const raw = input.trim();
+    if (!raw || busy || !llmReady) return;
+    // Expand `/cmd args` → real instruction. The user bubble keeps the
+    // raw `/cmd args` so the history reads naturally; the actual
+    // prompt sent to the model is the expanded form.
+    const slash = matchSlash(raw);
+    const expanded = slash ? slash.command.build(slash.rest) : raw;
+    // Slash commands always pull the selection in — they're scoped to
+    // a passage by design.
+    const effectiveSelection = slash || includeSelection ? getSelectionText() : '';
+    const userMsg: ChatMessage = { role: 'user', content: raw };
     const nextHistory = [...history, userMsg];
     setHistory(nextHistory);
     setInput('');
@@ -417,14 +544,18 @@ export function ChatPanel({
     abortRef.current = controller;
     const system: ChatMessage = {
       role: 'system',
-      content: buildSystemPrompt(
-        useDocContext,
-        getDocText(),
-        includeSelection ? getSelectionText() : ''
-      ),
+      content: buildSystemPrompt(useDocContext, getDocText(), effectiveSelection),
     };
+    // Send the EXPANDED message to the model. The history bubble keeps
+    // the raw `/cmd args` so the conversation reads cleanly; only the
+    // wire-level prompt carries the expansion.
+    const wireMsgs: ChatMessage[] = [
+      system,
+      ...nextHistory.slice(0, -1),
+      { role: 'user', content: expanded },
+    ];
     try {
-      const full = await runChat([system, ...nextHistory], {
+      const full = await runChat(wireMsgs, {
         signal: controller.signal,
         onDelta: (chunk) => setStreaming((prev) => prev + chunk),
       });
@@ -602,6 +733,24 @@ export function ChatPanel({
           )}
           {busy && !streaming && <div style={subtleStyle}>Thinking…</div>}
         </div>
+
+        {slashSuggestions.length > 0 && (
+          <div style={slashPopoverStyle} data-testid="chat-slash-popover">
+            {slashSuggestions.map((c) => (
+              <button
+                key={c.cmd}
+                type="button"
+                style={slashItemStyle}
+                onClick={() => setInput(`${c.cmd} `)}
+                data-testid={`chat-slash-${c.cmd.slice(1)}`}
+              >
+                <span style={slashCmdStyle}>{c.cmd}</span>
+                <span style={slashLabelStyle}>{c.label}</span>
+                <span style={slashHintStyle}>{c.hint}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <div style={inputRowStyle}>
           <textarea
