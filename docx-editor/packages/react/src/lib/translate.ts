@@ -20,6 +20,8 @@
  */
 
 import { Fragment, type Node as ProseMirrorNode, type Schema } from 'prosemirror-model';
+import { isLlmReady } from './writer/controller';
+import { runJsonChat, tryParseJson } from './writer/jsonMode';
 
 interface ApiResponse {
   responseData?: { translatedText?: string };
@@ -43,6 +45,11 @@ function shouldSkip(text: string): boolean {
  * Translate a single text run. Cached, retried, and skipped where
  * appropriate. Returns the original text on skip (so the caller can
  * paste it back into the Fragment unchanged).
+ *
+ * When the Advanced LLM tier is resident, routes through the on-device
+ * Llama with a JSON-schema-constrained prompt — no rate limit, no
+ * MyMemory quota. Otherwise falls back to the MyMemory HTTP API with
+ * the existing retry budget.
  */
 export async function translateText(
   text: string,
@@ -56,6 +63,19 @@ export async function translateText(
   const key = `${source}|${target}|${text}`;
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
+
+  if (isLlmReady()) {
+    try {
+      const out = await translateTextLlm(text, source, target, signal);
+      cache.set(key, out);
+      return out;
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === 'AbortError') throw e;
+      // Fall through to MyMemory on LLM failure — better that the user
+      // gets a (possibly rate-limited) network reply than a hard error.
+    }
+  }
 
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
@@ -181,6 +201,78 @@ async function walk(
   }
   return Fragment.fromArray(children);
 }
+
+/**
+ * Translate a single text run via the on-device Llama. JSON-schema
+ * constrained output keeps the model from drifting into commentary or
+ * quoting the translation. Returns the translation string.
+ */
+async function translateTextLlm(
+  text: string,
+  source: string,
+  target: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const sourceName = LANG_NAME_BY_CODE[source] ?? source;
+  const targetName = LANG_NAME_BY_CODE[target] ?? target;
+  const system =
+    `You are a professional translator. ` +
+    `Translate the user's text from ${sourceName} into ${targetName}. ` +
+    `Preserve proper nouns, technical terms, numbers, and punctuation style. ` +
+    `Return ONLY a JSON object: {"translation": "<the translation>"}. ` +
+    `No commentary.`;
+  const raw = await runJsonChat<{ translation: string }>(
+    [
+      { role: 'system', content: system },
+      { role: 'user', content: text },
+    ],
+    {
+      schema: TRANSLATE_SCHEMA,
+      // Translations are usually within ~1.5x the input length for
+      // common targets; cap by characters so short runs aren't billed
+      // a 512-token budget for nothing.
+      maxTokens: Math.min(768, Math.max(64, Math.ceil(text.length * 1.6) + 32)),
+      temperature: 0.15,
+      signal,
+    }
+  );
+  const out = (raw?.translation ?? '').trim();
+  if (!out) {
+    // Defensive — runJsonChat already throws on unparseable JSON, but
+    // an empty translation slipping through the schema constraint is
+    // possible if the model emits {"translation": ""}.
+    throw new Error('translate-llm-empty');
+  }
+  return out;
+}
+
+// Avoid an unused-import warning when the user is on the MyMemory-only
+// path — tryParseJson is consumed transitively via runJsonChat. Marking
+// the symbol here makes the dependency explicit if we ever inline-parse.
+void tryParseJson;
+
+const TRANSLATE_SCHEMA = {
+  type: 'object',
+  properties: { translation: { type: 'string', minLength: 1 } },
+  required: ['translation'],
+} as const;
+
+const LANG_NAME_BY_CODE: Record<string, string> = {
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  pt: 'Portuguese',
+  nl: 'Dutch',
+  pl: 'Polish',
+  tr: 'Turkish',
+  ar: 'Arabic',
+  hi: 'Hindi',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+};
 
 /**
  * For tests / dev tools — wipe the in-memory translation cache.

@@ -565,3 +565,16 @@ export function featureSupport(feature: FeatureSpec): { supported: boolean; reas
   if (!state.capabilities) return { supported: false, reason: 'Detecting your device…' };
   return isFeatureSupported(feature, state.capabilities);
 }
+
+/**
+ * True when an LLM-capable model is resident in the worker. Used by
+ * surfaces outside the writer pipeline (translate dialog, quick-
+ * replace) to decide whether to route work through the on-device LLM
+ * (no rate limit) or fall back to the network API.
+ */
+export function isLlmReady(): boolean {
+  if (state.phase !== 'ready' || !state.loadedModelId) return false;
+  // LLM model ids end in `-MLC` or start with the Llama / Qwen / SmolLM /
+  // Phi family prefixes (matches `isLlmModel` in the worker).
+  return /-MLC$/i.test(state.loadedModelId) || /^(Llama|Qwen|SmolLM|Phi)/i.test(state.loadedModelId);
+}

@@ -21,6 +21,7 @@ import { Slice, Fragment as PMFragment } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
 import { PanelState } from '../ui/PanelState';
 import { translateFragment, TRANSLATE_LANGUAGES as LANGUAGES } from '../../lib/translate';
+import { isLlmReady } from '../../lib/writer/controller';
 
 export interface TranslateDocumentDialogProps {
   isOpen: boolean;
@@ -308,7 +309,9 @@ export function TranslateDocumentDialog({
         if (controller.signal.aborted) return;
         if ((err as Error).name === 'AbortError') return;
         setPreviewError(
-          'Translation service is rate-limiting or unreachable. Try again in a moment or pick a smaller selection.'
+          isLlmReady()
+            ? 'On-device translation failed mid-document. Try again or pick a smaller selection.'
+            : 'Translation service is rate-limiting or unreachable. Try again in a moment, pick a smaller selection, or enable the Advanced LLM tier for on-device translation.'
         );
         setPreviewStatus('error');
       }
@@ -449,7 +452,11 @@ export function TranslateDocumentDialog({
                         ? `Translating… ${progress.completed} of ${progress.total} text runs`
                         : 'Translating your document…'
                     }
-                    hint="Each formatting run translates separately so bold / italic / link boundaries stay aligned."
+                    hint={
+                      isLlmReady()
+                        ? 'Translating on-device via the Advanced LLM — no rate limit, but the model needs a moment per run.'
+                        : 'Each formatting run translates separately so bold / italic / link boundaries stay aligned.'
+                    }
                   />
                 </div>
               )}
@@ -458,7 +465,11 @@ export function TranslateDocumentDialog({
                   <PanelState
                     kind="error"
                     message={previewError}
-                    hint="Check your connection and try again."
+                    hint={
+                      isLlmReady()
+                        ? 'Both the on-device model and the network API failed. Try again, or pick a shorter selection.'
+                        : 'Check your connection — or enable the Advanced LLM tier to translate on-device.'
+                    }
                     onRetry={() => {
                       setPreviewStatus('idle');
                       setPreviewError(null);
