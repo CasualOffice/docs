@@ -235,6 +235,8 @@ import { stripModelPreamble } from '../lib/writer/stripPreamble';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { ChatPanel } from './ChatPanel';
 import { InlinePreviewPopover } from './InlinePreviewPopover';
+import { SelectionAskAi } from './SelectionAskAi';
+import { runPipeline } from '../lib/writer/pipeline';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
 // integrations so the chip appears next to the save indicator only
@@ -2317,6 +2319,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [activeProposal, setActiveProposal] = useState<
     import('../lib/writer/pipeline').PipelineProposal | null
   >(null);
+  // Tracks whether the active editor view currently has a non-empty
+  // selection. Drives `<SelectionAskAi>`'s visibility — the Notion-style
+  // floating "Ask AI" pill anchored above the selection.
+  const [hasTextSelection, setHasTextSelection] = useState(false);
+  // Busy gate while a selection-prompt request is in flight, so the
+  // user can't queue a second request while the first runs.
+  const [askAiBusy, setAskAiBusy] = useState(false);
+  useEffect(() => {
+    const listener = (sel: SelectionState | null): void => {
+      setHasTextSelection(!!sel?.hasSelection);
+    };
+    selectionChangeSubscribersRef.current.add(listener);
+    return () => {
+      selectionChangeSubscribersRef.current.delete(listener);
+    };
+  }, []);
   // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
   const [showExplore, setShowExplore] = useState(false);
   const [exploreQuery, setExploreQuery] = useState<string | null>(null);
@@ -8214,6 +8232,61 @@ body { background: white; }
                 onDiscard={() => setActiveProposal(null)}
               />
             )}
+
+            {/* Selection-anchored Ask AI — Notion / Word Rewrite
+                pattern from research §1, §2b, §3. Shows the "Ask AI"
+                pill above the selection start when there's text
+                selected AND an LLM is loaded. Submit runs the pipeline
+                with the user's free-form prompt; the resulting
+                proposal goes into the inline preview popover (same
+                surface as chat-driven proposals). */}
+            <SelectionAskAi
+              isOpen={hasTextSelection && writerState.phase === 'ready'}
+              getView={() => getActiveEditorView() ?? null}
+              busy={askAiBusy}
+              onDismiss={() => setHasTextSelection(false)}
+              onSubmit={(promptText) => {
+                const view = getActiveEditorView();
+                if (!view) return;
+                const schema = view.state.schema;
+                setAskAiBusy(true);
+                void runPipeline(
+                  {
+                    message: promptText,
+                    includeDocContext: false,
+                    includeSelection: true,
+                  },
+                  {
+                    getDocText: () =>
+                      view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n'),
+                    getSelectionText: () => {
+                      const { from, to } = view.state.selection;
+                      if (from === to) return '';
+                      return view.state.doc.textBetween(from, to, '\n', ' ');
+                    },
+                    getView: () => view,
+                    schema,
+                  }
+                )
+                  .then((result) => {
+                    if (result.kind === 'proposal') {
+                      setActiveProposal(result);
+                    } else if (result.kind === 'chat') {
+                      // Surface short chat replies as a toast — the
+                      // user invoked from selection, not from chat, so
+                      // routing back into the chat history would be
+                      // jarring.
+                      toast.message(result.text);
+                    } else {
+                      toast.error(result.message);
+                    }
+                  })
+                  .catch((err) => {
+                    toast.error(`AI request failed: ${(err as Error).message}`);
+                  })
+                  .finally(() => setAskAiBusy(false));
+              }}
+            />
 
             {/* Toast notifications */}
             <Toaster position="bottom-right" />
