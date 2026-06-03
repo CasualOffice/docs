@@ -7923,6 +7923,12 @@ body { background: white; }
                       onRetry={handleAiRetry}
                     />
                   )}
+                  {showWritingAssistant && (
+                    <WritingAssistantSheet
+                      isOpen={showWritingAssistant}
+                      onClose={() => setShowWritingAssistant(false)}
+                    />
+                  )}
                   {showChatPanel && (
                     <ChatPanel
                       isOpen={showChatPanel}
@@ -8427,14 +8433,9 @@ body { background: white; }
                   )}
                 />
               )}
-              {showWritingAssistant && (
-                <WritingAssistantSheet
-                  isOpen={showWritingAssistant}
-                  onClose={() => setShowWritingAssistant(false)}
-                />
-              )}
-              {/* ChatPanel moved into the below-toolbar flex row so it
-                  shares geometry with VersionHistoryPanel — see ~L7927. */}
+              {/* WritingAssistantSheet + ChatPanel moved into the
+                  below-toolbar flex row so they share geometry with
+                  VersionHistoryPanel — see ~L7927. */}
               {showExplore && (
                 <ExploreDialog
                   isOpen={showExplore}

@@ -22,66 +22,21 @@ import {
 } from '../../lib/writer/controller';
 import { FEATURES, type FeatureId, type FeatureSpec } from '../../lib/writer/registry';
 import { clearCachedModels } from '../../lib/writer/storage';
+import { RightDockPanel } from '../RightDockPanel';
+import { MaterialSymbol } from '../ui/Icons';
 
 export interface WritingAssistantSheetProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const sheetWidth = 360;
-
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'transparent',
-  zIndex: 9000,
-  pointerEvents: 'none',
-};
-
-const sheetStyle: CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  right: 0,
-  bottom: 0,
-  width: sheetWidth,
-  background: 'var(--doc-surface, white)',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  borderLeft: '1px solid var(--doc-border, #e0e0e0)',
-  boxShadow: '-2px 0 12px rgba(60,64,67,0.12)',
-  display: 'flex',
-  flexDirection: 'column',
-  pointerEvents: 'auto',
-  transition: 'transform 0.18s ease',
-  zIndex: 9001,
-};
-
-const headerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '14px 16px',
-  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
-};
-
-const titleStyle: CSSProperties = {
-  flex: 1,
-  fontSize: 14,
-  fontWeight: 600,
-};
-
-const closeBtnStyle: CSSProperties = {
-  border: 'none',
-  background: 'transparent',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  cursor: 'pointer',
-  fontSize: 18,
-  lineHeight: 1,
-  padding: 4,
-};
+// Layout (root + header + close) moved to RightDockPanel — the sheet
+// now docks with the same geometry as every other right-side panel
+// (chat, AI suggestion, version history). Width is the canonical
+// RIGHT_PANEL_WIDTH (340) from sidebar/constants.ts; the previous
+// bespoke 360 was just one more drift point.
 
 const bodyStyle: CSSProperties = {
-  flex: 1,
-  overflow: 'auto',
   padding: '12px 16px',
   display: 'flex',
   flexDirection: 'column',
@@ -346,28 +301,38 @@ export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheet
     setPendingFeature(null);
   };
 
+  const footer = (
+    <div style={footerStyle}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+        <input
+          type="checkbox"
+          checked={state.autoLoad}
+          onChange={(e) => setAutoLoad(e.target.checked)}
+          data-testid="writer-autoload"
+        />
+        Re-enable automatically next time
+      </label>
+      <button
+        type="button"
+        style={secondaryBtnStyle}
+        data-testid="writer-clear-cache"
+        onClick={() => void clearCachedModels()}
+      >
+        Clear cached models
+      </button>
+    </div>
+  );
+
   return (
     <>
-      <div style={overlayStyle} aria-hidden="true" />
-      <aside
-        role="complementary"
-        aria-label="Writing Assistant"
-        data-testid="writing-assistant-sheet"
-        style={sheetStyle}
+      <RightDockPanel
+        title="Writing Assistant"
+        icon={<MaterialSymbol name="auto_awesome" size={16} />}
+        onClose={onClose}
+        testId="writing-assistant-sheet"
+        ariaLabel="Writing Assistant"
+        footer={footer}
       >
-        <div style={headerStyle}>
-          <span style={titleStyle}>Writing Assistant</span>
-          <button
-            type="button"
-            style={closeBtnStyle}
-            onClick={onClose}
-            aria-label="Close Writing Assistant"
-            data-testid="writer-sheet-close"
-          >
-            ✕
-          </button>
-        </div>
-
         <div style={bodyStyle}>
           <p style={introStyle}>
             Runs entirely in your browser. Your document is never sent to a server.
@@ -392,27 +357,7 @@ export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheet
 
           <StatusSection state={state} />
         </div>
-
-        <div style={footerStyle}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <input
-              type="checkbox"
-              checked={state.autoLoad}
-              onChange={(e) => setAutoLoad(e.target.checked)}
-              data-testid="writer-autoload"
-            />
-            Re-enable automatically next time
-          </label>
-          <button
-            type="button"
-            style={secondaryBtnStyle}
-            data-testid="writer-clear-cache"
-            onClick={() => void clearCachedModels()}
-          >
-            Clear cached models
-          </button>
-        </div>
-      </aside>
+      </RightDockPanel>
 
       {state.phase === 'confirming' && pendingFeature && (
         <ConsentDialog onAccept={onConsentAccept} onCancel={onConsentCancel} />
