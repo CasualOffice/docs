@@ -201,34 +201,26 @@ export const insertTableTool: Tool<InsertTableArgs> = {
       return { kind: 'error', message: 'Editor schema is missing table nodes.' };
     }
 
-    // Find the right insertion point — after the current paragraph,
-    // never inside an inline.
-    const state = view.state;
-    const { $from } = state.selection;
-    let insertPos = $from.pos;
-    for (let d = $from.depth; d > 0; d--) {
-      const node = $from.node(d);
-      if (node.type.name === 'paragraph' || node.type.name === 'table') {
-        insertPos = $from.after(d);
-        break;
-      }
-    }
-
-    const fragment = Fragment.from(tableNode);
-    // Word always wants a trailing paragraph after the table so the
-    // cursor has somewhere to land outside it.
+    // Word wants a trailing paragraph after the table so the cursor
+    // can land outside the cell grid when committed.
     const trailingPara = ctx.schema.nodes.paragraph?.create();
-    const withTrail = trailingPara ? Fragment.from([tableNode, trailingPara]) : fragment;
+    const fragment = trailingPara
+      ? Fragment.from([tableNode, trailingPara])
+      : Fragment.from(tableNode);
 
-    const tr = state.tr.insert(insertPos, withTrail);
-    view.dispatch(tr);
-    view.focus();
-
+    // No mutation — return the draft as a proposal. The inline preview
+    // popover renders it and owns the Replace / Insert below / Try
+    // again / Discard commit.
     return {
-      kind: 'inserted',
+      kind: 'proposal',
       what: 'table',
-      summary: `Inserted ${rowsClean.length}×${headers.length} table${table.title ? ` — “${table.title}”` : ''}.`,
-      tracked: false,
+      summary: `${rowsClean.length}×${headers.length} table${table.title ? ` — “${table.title}”` : ''}`,
+      fragment,
+      // Tables are always *new content* — never overwrite the user's
+      // selection. Replace and Insert both land below the cursor.
+      replaceRange: null,
+      intent: 'insertTable',
+      asTrackedChange: false,
     };
   },
 };

@@ -23,7 +23,11 @@ import {
 import type { EditorView } from 'prosemirror-view';
 import { useWriterState } from '../lib/writer/controller';
 import type { ChatMessage } from '../lib/writer/messages';
-import { runPipeline, type PipelineResult } from '../lib/writer/pipeline';
+import {
+  runPipeline,
+  type PipelineProposal,
+  type PipelineResult,
+} from '../lib/writer/pipeline';
 import { Markdown } from '../lib/markdown';
 import { RightDockPanel } from './RightDockPanel';
 import { MaterialSymbol } from './ui/Icons';
@@ -53,6 +57,15 @@ export interface ChatPanelProps {
    * isn't mounted yet — tools surface a clean error in that case.
    */
   getView: () => EditorView | null;
+  /**
+   * Forward a doc-modifying proposal to the host. The host opens the
+   * inline preview popover with Replace / Insert below / Try again /
+   * Discard. ChatPanel itself never mutates the doc — per the AI
+   * editor research (`docs/internal/11-ai-editor-research.md`),
+   * AI output should land in an explicit preview affordance, never
+   * straight into the doc body.
+   */
+  onProposal?: (proposal: PipelineProposal) => void;
 }
 
 // Layout (root container + header + close button) now lives in
@@ -420,6 +433,7 @@ export function ChatPanel({
   getSelectionText,
   onInsertAtCursor,
   getView,
+  onProposal,
 }: ChatPanelProps) {
   const writer = useWriterState();
   const [history, setHistory] = useState<ChatMessage[]>(() => loadHistory());
@@ -551,19 +565,19 @@ export function ChatPanel({
         },
         controller.signal
       );
-      // Render the pipeline result by kind. Tool actions get a
-      // pseudo-assistant bubble describing what happened so the
-      // conversation stays linear; chat replies render as before.
+      // Render by kind. Per the AI editor research, chat renders text
+      // only — doc-modifying proposals get a one-line reply describing
+      // where to find the preview, and the actual content goes to the
+      // inline preview popover via `onProposal`.
       if (result.kind === 'chat') {
         setHistory([...nextHistory, { role: 'assistant', content: result.text }]);
-      } else if (result.kind === 'inserted') {
-        setHistory([
-          ...nextHistory,
-          {
-            role: 'assistant',
-            content: result.summary,
-          },
-        ]);
+      } else if (result.kind === 'proposal') {
+        const where = result.replaceRange ? 'over your selection' : 'below your cursor';
+        const tip = onProposal
+          ? `Drafted ${result.summary} — preview is ${where}. Use Replace / Insert below / Try again / Discard in the popover.`
+          : `Drafted ${result.summary}, but the preview surface isn't wired up yet.`;
+        setHistory([...nextHistory, { role: 'assistant', content: tip }]);
+        if (onProposal) onProposal(result);
       } else {
         setHistory([
           ...nextHistory,

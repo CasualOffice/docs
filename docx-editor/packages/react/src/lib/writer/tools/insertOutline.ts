@@ -118,11 +118,11 @@ export const insertOutlineTool: Tool<OutlineArgs> = {
       markdown: md,
     });
 
+    // Phase 1 holdover — still commits as a tracked-change suggestion
+    // until Phase 2 routes outline through the inline preview popover.
     return {
-      kind: 'inserted',
-      what: 'outline',
-      summary: `Outline drafted — “${outline.title}” with ${sections.length} sections. Accept or reject in the document.`,
-      tracked: true,
+      kind: 'chat',
+      text: `Outline drafted — “${outline.title}” with ${sections.length} sections. Accept or reject in the document.`,
     };
   },
 };

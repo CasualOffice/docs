@@ -233,6 +233,7 @@ import {
 import { stripModelPreamble } from '../lib/writer/stripPreamble';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { ChatPanel } from './ChatPanel';
+import { InlinePreviewPopover } from './InlinePreviewPopover';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
 // integrations so the chip appears next to the save indicator only
@@ -2306,6 +2307,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     busy: boolean;
     error: string | null;
   } | null>(null);
+  // Inline preview popover proposal — the structured draft produced by
+  // a chat-driven tool (insertTable, future rewrite/outline/translate).
+  // Per the AI-editor research (`docs/internal/11-ai-editor-research.md`)
+  // chat panels NEVER mutate the doc; mutations land here as a preview
+  // the user must explicitly Replace / Insert below / Try again /
+  // Discard.
+  const [activeProposal, setActiveProposal] = useState<
+    import('../lib/writer/pipeline').PipelineProposal | null
+  >(null);
   // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
   const [showExplore, setShowExplore] = useState(false);
   const [exploreQuery, setExploreQuery] = useState<string | null>(null);
@@ -7976,6 +7986,7 @@ body { background: white; }
                         return view.state.doc.textBetween(from, to, '\n', ' ');
                       }}
                       getView={() => getActiveEditorView() ?? null}
+                      onProposal={(p) => setActiveProposal(p)}
                       onInsertAtCursor={(text) => {
                         const view = getActiveEditorView();
                         if (!view) return;
@@ -8125,6 +8136,60 @@ body { background: white; }
               onTextAction={handleContextMenuAction}
               onClose={imageContextMenu.closeMenu}
             />
+
+            {/* Inline AI preview popover — staged proposal from a chat
+                tool (insertTable, future rewrite/outline/translate)
+                with Replace / Insert below / Try again / Discard. Per
+                research §3 + §1, AI output never enters the doc body
+                without explicit accept. */}
+            {activeProposal && (
+              <InlinePreviewPopover
+                proposal={activeProposal}
+                getView={() => getActiveEditorView() ?? null}
+                onReplace={() => {
+                  const view = getActiveEditorView();
+                  if (!view || !activeProposal.replaceRange) {
+                    setActiveProposal(null);
+                    return;
+                  }
+                  const { from, to } = activeProposal.replaceRange;
+                  const tr = view.state.tr.replaceWith(from, to, activeProposal.fragment);
+                  view.dispatch(tr);
+                  view.focus();
+                  setActiveProposal(null);
+                }}
+                onInsertBelow={() => {
+                  const view = getActiveEditorView();
+                  if (!view) {
+                    setActiveProposal(null);
+                    return;
+                  }
+                  // Walk up to the nearest block boundary so the
+                  // fragment lands as a sibling, not inside an inline.
+                  const { $from } = view.state.selection;
+                  let insertPos = $from.pos;
+                  for (let d = $from.depth; d > 0; d--) {
+                    const node = $from.node(d);
+                    if (node.type.name === 'paragraph' || node.type.name === 'table') {
+                      insertPos = $from.after(d);
+                      break;
+                    }
+                  }
+                  const tr = view.state.tr.insert(insertPos, activeProposal.fragment);
+                  view.dispatch(tr);
+                  view.focus();
+                  setActiveProposal(null);
+                }}
+                onTryAgain={() => {
+                  // For phase 1: discard + open chat so the user
+                  // resends the prompt manually. Phase 2 will route
+                  // through the pipeline's `intent` directly.
+                  setActiveProposal(null);
+                  openRightPanel('chat');
+                }}
+                onDiscard={() => setActiveProposal(null)}
+              />
+            )}
 
             {/* Toast notifications */}
             <Toaster position="bottom-right" />

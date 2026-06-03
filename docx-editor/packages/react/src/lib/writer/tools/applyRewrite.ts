@@ -94,11 +94,14 @@ Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no mar
       replacement: replacementFragment,
     });
 
+    // Phase 1 of the AI-editor research migration: rewrite still
+    // commits its tracked-change suggestion directly (Google-Docs
+    // pattern, principle 5 in `docs/internal/11-ai-editor-research.md`).
+    // Phase 2 will route through the inline preview popover too —
+    // for now we report a text confirmation in the chat bubble.
     return {
-      kind: 'inserted',
-      what: 'rewrite',
-      summary: `Rewrite suggested (${replacement.length} chars). Accept or reject in the document.`,
-      tracked: true,
+      kind: 'chat',
+      text: `Rewrite suggested in the document. Accept or reject it in the doc body's tracked-change review bar.`,
     };
   },
 };

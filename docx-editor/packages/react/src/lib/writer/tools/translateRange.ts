@@ -139,11 +139,11 @@ export const translateRangeTool: Tool<TranslateArgs> = {
     const { from, to } = view.state.selection;
     applyRewriteAsSuggestion({ view, from, to, replacement: fragment });
 
+    // Phase 1 holdover — commits as tracked-change suggestion. Phase 2
+    // converts to the inline preview popover path.
     return {
-      kind: 'inserted',
-      what: 'translation',
-      summary: `Translated to ${target}. Accept or reject in the document.`,
-      tracked: true,
+      kind: 'chat',
+      text: `Translated to ${target}. Accept or reject in the document's tracked-change review bar.`,
     };
   },
 };

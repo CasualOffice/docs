@@ -34,6 +34,9 @@ export interface PipelineRequest {
 
 export type PipelineResult = ToolResult & { intent: string };
 
+/** Narrowed result type — the proposal branch of `PipelineResult`. */
+export type PipelineProposal = Extract<PipelineResult, { kind: 'proposal' }>;
+
 export async function runPipeline(
   req: PipelineRequest,
   ctxBase: Omit<ToolContext, 'signal'>,
