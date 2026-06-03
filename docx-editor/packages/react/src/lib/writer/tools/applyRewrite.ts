@@ -12,6 +12,7 @@
 import { Fragment } from 'prosemirror-model';
 import { applyRewriteAsSuggestion } from '../applyAsSuggestion';
 import { runJsonChat } from '../jsonMode';
+import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
 
 export interface RewriteArgs {
@@ -73,7 +74,7 @@ Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no mar
       return { kind: 'error', message: `Rewrite failed — ${(err as Error).message}` };
     }
 
-    const replacement = out.rewrite.trim();
+    const replacement = stripModelPreamble(out.rewrite);
     if (!replacement) return { kind: 'error', message: 'Model returned an empty rewrite.' };
 
     const { from, to } = view.state.selection;

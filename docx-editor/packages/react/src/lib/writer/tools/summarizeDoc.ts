@@ -20,6 +20,7 @@
  */
 
 import { runChat } from '../controller';
+import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
 
 const ONE_PASS_LIMIT_CHARS = 5500;
@@ -71,7 +72,7 @@ export const summarizeDocTool: Tool<SummarizeArgs> = {
     }
     return {
       kind: 'chat',
-      text: text.trim(),
+      text: stripModelPreamble(text),
       meta: { tool: 'summarize', elapsedMs: Date.now() - t0 },
     };
   },

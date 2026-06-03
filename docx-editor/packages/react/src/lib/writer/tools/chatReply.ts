@@ -16,6 +16,7 @@
  */
 
 import { runChat } from '../controller';
+import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
 
 export interface ChatReplyArgs {
@@ -75,7 +76,7 @@ export const chatReplyTool: Tool<ChatReplyArgs> = {
       });
       return {
         kind: 'chat',
-        text: text.trim(),
+        text: stripModelPreamble(text),
         meta: { tool: 'chat', elapsedMs: Date.now() - t0 },
       };
     } catch (err) {

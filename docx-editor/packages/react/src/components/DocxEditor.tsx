@@ -230,6 +230,7 @@ import {
   applyMarkdownAsSuggestion,
   applyRewriteAsSuggestion,
 } from '../lib/writer/applyAsSuggestion';
+import { stripModelPreamble } from '../lib/writer/stripPreamble';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { ChatPanel } from './ChatPanel';
 // WriterStatusPill is built and exported; rendering it inside
@@ -7979,7 +7980,14 @@ body { background: white; }
                         const view = getActiveEditorView();
                         if (!view) return;
                         const at = view.state.selection.head;
-                        applyMarkdownAsSuggestion({ view, at, markdown: text });
+                        // Strip "Here is the rewritten passage:" /
+                        // "Sure, here's…" preambles Llama-1B keeps
+                        // emitting so they don't land in the doc body.
+                        applyMarkdownAsSuggestion({
+                          view,
+                          at,
+                          markdown: stripModelPreamble(text),
+                        });
                       }}
                     />
                   )}

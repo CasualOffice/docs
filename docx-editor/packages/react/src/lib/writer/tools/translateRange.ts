@@ -24,6 +24,7 @@
 import { Fragment } from 'prosemirror-model';
 import { applyRewriteAsSuggestion } from '../applyAsSuggestion';
 import { runJsonChat } from '../jsonMode';
+import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
 
 export interface TranslateArgs {
@@ -118,7 +119,7 @@ export const translateRangeTool: Tool<TranslateArgs> = {
       };
     }
 
-    const translation = out.translation.trim();
+    const translation = stripModelPreamble(out.translation);
     if (!translation) {
       return { kind: 'error', message: 'Model returned an empty translation.' };
     }
