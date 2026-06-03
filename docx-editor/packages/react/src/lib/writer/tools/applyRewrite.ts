@@ -10,7 +10,6 @@
  */
 
 import { Fragment } from 'prosemirror-model';
-import { applyRewriteAsSuggestion } from '../applyAsSuggestion';
 import { runJsonChat } from '../jsonMode';
 import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
@@ -87,21 +86,21 @@ Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no mar
     const replacementFragment = Fragment.fromArray(
       paragraphs.map((p) => paraType.create(null, ctx.schema.text(p)))
     );
-    applyRewriteAsSuggestion({
-      view,
-      from,
-      to,
-      replacement: replacementFragment,
-    });
 
-    // Phase 1 of the AI-editor research migration: rewrite still
-    // commits its tracked-change suggestion directly (Google-Docs
-    // pattern, principle 5 in `docs/internal/11-ai-editor-research.md`).
-    // Phase 2 will route through the inline preview popover too —
-    // for now we report a text confirmation in the chat bubble.
+    // Phase 2: stage the rewrite as a proposal — no doc mutation
+    // here. The inline preview popover lets the user diff against the
+    // original (Source pane) and pick Replace / Insert below / Try
+    // again / Discard. On Replace with `asTrackedChange: true`, the
+    // popover routes through `applyRewriteAsSuggestion` so the final
+    // edit still lands as Google-Docs-style tracked changes.
     return {
-      kind: 'chat',
-      text: `Rewrite suggested in the document. Accept or reject it in the doc body's tracked-change review bar.`,
+      kind: 'proposal',
+      what: 'rewrite',
+      summary: `Rewrite — ${replacement.length} chars`,
+      fragment: replacementFragment,
+      replaceRange: { from, to },
+      intent: 'rewrite',
+      asTrackedChange: true,
     };
   },
 };

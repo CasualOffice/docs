@@ -18,7 +18,7 @@
  * already knows how to render.
  */
 
-import { applyMarkdownAsSuggestion } from '../applyAsSuggestion';
+import { markdownToFragment } from '../markdownToFragment';
 import { runJsonChat } from '../jsonMode';
 import type { Tool, ToolResult } from './types';
 
@@ -112,17 +112,24 @@ export const insertOutlineTool: Tool<OutlineArgs> = {
     }
     const md = lines.join('\n');
 
-    applyMarkdownAsSuggestion({
-      view,
-      at: view.state.selection.to,
-      markdown: md,
-    });
-
-    // Phase 1 holdover — still commits as a tracked-change suggestion
-    // until Phase 2 routes outline through the inline preview popover.
+    // Phase 2: stage as a proposal. Markdown → PM fragment up front so
+    // the popover can render a meaningful preview AND the host can
+    // commit without reparsing.
+    const fragment = markdownToFragment(md, ctx.schema);
+    if (fragment.childCount === 0) {
+      return { kind: 'error', message: 'Model returned an outline that produced no PM nodes.' };
+    }
     return {
-      kind: 'chat',
-      text: `Outline drafted — “${outline.title}” with ${sections.length} sections. Accept or reject in the document.`,
+      kind: 'proposal',
+      what: 'outline',
+      summary: `Outline — “${outline.title}” · ${sections.length} sections`,
+      fragment,
+      // Outline is fresh content inserted at cursor — no selection to
+      // overwrite. Replace falls back to Insert at cursor in the
+      // popover's commit row.
+      replaceRange: null,
+      intent: 'outline',
+      asTrackedChange: true,
     };
   },
 };

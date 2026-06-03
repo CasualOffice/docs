@@ -139,6 +139,39 @@ export function applyInsertAsSuggestion(opts: ApplyInsertOpts): void {
   view.dispatch(tr);
 }
 
+export interface ApplyFragmentOpts {
+  view: EditorView;
+  at: number;
+  /** PM fragment the AI produced — paragraphs, headings, tables. */
+  fragment: Fragment;
+  /** Author label that lands on the tracked-change marks. */
+  author?: string;
+}
+
+/**
+ * Insert a pre-built PM fragment as a tracked-change suggestion.
+ * Mirrors `applyInsertAsSuggestion` but takes a Fragment instead of
+ * raw text — used by the inline preview popover's Insert below
+ * commit when the proposal carries `asTrackedChange: true`. Every
+ * text leaf in the fragment gets the insertion mark via the same
+ * `stampWithInsertion` walker the rewrite path uses.
+ */
+export function applyFragmentAsSuggestion(opts: ApplyFragmentOpts): void {
+  const { view, at, fragment, author = 'AI' } = opts;
+  if (fragment.childCount === 0) return;
+  const schema = view.state.schema;
+  const insertionType = schema.marks.insertion;
+  if (!insertionType) {
+    const tr = view.state.tr.insert(at, fragment);
+    view.dispatch(tr);
+    return;
+  }
+  const insertionMark = insertionType.create(makeAttrs(author));
+  const stamped = stampWithInsertion(fragment, insertionMark);
+  const tr = view.state.tr.insert(at, stamped);
+  view.dispatch(tr);
+}
+
 export interface ApplyMarkdownOpts {
   view: EditorView;
   at: number;

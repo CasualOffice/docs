@@ -22,7 +22,6 @@
  */
 
 import { Fragment } from 'prosemirror-model';
-import { applyRewriteAsSuggestion } from '../applyAsSuggestion';
 import { runJsonChat } from '../jsonMode';
 import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
@@ -137,13 +136,18 @@ export const translateRangeTool: Tool<TranslateArgs> = {
     );
 
     const { from, to } = view.state.selection;
-    applyRewriteAsSuggestion({ view, from, to, replacement: fragment });
-
-    // Phase 1 holdover — commits as tracked-change suggestion. Phase 2
-    // converts to the inline preview popover path.
+    // Phase 2: stage as a proposal. The popover lets the user see the
+    // translation alongside the original before any text in the doc
+    // changes — and Replace lands the change as a tracked-change
+    // suggestion so the existing review bar owns the final accept.
     return {
-      kind: 'chat',
-      text: `Translated to ${target}. Accept or reject in the document's tracked-change review bar.`,
+      kind: 'proposal',
+      what: 'translation',
+      summary: `Translation — ${target}`,
+      fragment,
+      replaceRange: { from, to },
+      intent: 'translate',
+      asTrackedChange: true,
     };
   },
 };

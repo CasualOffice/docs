@@ -226,6 +226,7 @@ import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
 import { bootWriterController, useWriterState } from '../lib/writer/controller';
 import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
 import {
+  applyFragmentAsSuggestion,
   applyInsertAsSuggestion,
   applyMarkdownAsSuggestion,
   applyRewriteAsSuggestion,
@@ -8153,8 +8154,23 @@ body { background: white; }
                     return;
                   }
                   const { from, to } = activeProposal.replaceRange;
-                  const tr = view.state.tr.replaceWith(from, to, activeProposal.fragment);
-                  view.dispatch(tr);
+                  if (activeProposal.asTrackedChange) {
+                    // Same tracked-change path the AISuggestionPanel
+                    // uses — original range becomes a `deletion` mark
+                    // (red strikethrough) and the new fragment lands
+                    // after `to` with `insertion` marks (green
+                    // underline). User accepts/rejects via the doc-
+                    // body review bar.
+                    applyRewriteAsSuggestion({
+                      view,
+                      from,
+                      to,
+                      replacement: activeProposal.fragment,
+                    });
+                  } else {
+                    const tr = view.state.tr.replaceWith(from, to, activeProposal.fragment);
+                    view.dispatch(tr);
+                  }
                   view.focus();
                   setActiveProposal(null);
                 }}
@@ -8175,15 +8191,23 @@ body { background: white; }
                       break;
                     }
                   }
-                  const tr = view.state.tr.insert(insertPos, activeProposal.fragment);
-                  view.dispatch(tr);
+                  if (activeProposal.asTrackedChange) {
+                    applyFragmentAsSuggestion({
+                      view,
+                      at: insertPos,
+                      fragment: activeProposal.fragment,
+                    });
+                  } else {
+                    const tr = view.state.tr.insert(insertPos, activeProposal.fragment);
+                    view.dispatch(tr);
+                  }
                   view.focus();
                   setActiveProposal(null);
                 }}
                 onTryAgain={() => {
-                  // For phase 1: discard + open chat so the user
-                  // resends the prompt manually. Phase 2 will route
-                  // through the pipeline's `intent` directly.
+                  // Phase 2: still discard + open chat for now —
+                  // requires storing the original pipeline request to
+                  // re-run cleanly. Phase 3 wires the full replay.
                   setActiveProposal(null);
                   openRightPanel('chat');
                 }}
