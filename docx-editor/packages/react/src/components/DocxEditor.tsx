@@ -2218,6 +2218,31 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     void bootWriterController();
   }, []);
 
+  // Right-side panel mutex. Google Docs / Microsoft Word only ever
+  // expose ONE right-edge panel at a time (Comments XOR Outline,
+  // Activity XOR Editor) — letting our four AI panels + version
+  // history all stack at 340 px each would squeeze the doc to nothing.
+  // Each opener closes the other three; an AI rewrite trigger also
+  // wins exclusivity so the suggestion panel doesn't compete for the
+  // same slot the user just opened chat in.
+  //
+  // Version history additionally closes the comments sidebar (mirrors
+  // `handleToggleVersionHistory`'s historical behaviour — those two
+  // share the right-margin slot).
+  const openRightPanel = useCallback(
+    (which: 'writer' | 'chat' | 'history' | 'aiSuggestion' | 'none') => {
+      setShowWritingAssistant(which === 'writer');
+      setShowChatPanel(which === 'chat');
+      setShowVersionHistory(which === 'history');
+      if (which === 'history') {
+        setShowCommentsSidebar(false);
+        setExpandedSidebarItem(null);
+      }
+      if (which !== 'aiSuggestion') setAiSuggestion(null);
+    },
+    []
+  );
+
   // Smart paste — after the user pastes tabular content (TSV / CSV)
   // the editor surfaces a sonner toast offering one-click conversion
   // to a real table. Detection is strict (see `detectTabular`) so
@@ -4718,6 +4743,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       // dock position is fixed. We still snapshot the PM range so
       // Accept replays exactly the span the user picked, even if the
       // cursor moves while the panel is open.
+      // Close any other right panel so the suggestion gets the slot.
+      setShowWritingAssistant(false);
+      setShowChatPanel(false);
+      setShowVersionHistory(false);
       setAiSuggestion({
         mode,
         from,
@@ -4980,7 +5009,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         // auto-include the current selection because the panel reads
         // it on mount.
         case 'aiAsk': {
-          setShowChatPanel(true);
+          openRightPanel('chat');
           break;
         }
         // Comment — same flow as floating comment button
@@ -7337,7 +7366,7 @@ body { background: white; }
                       onTranslateDocument={() => setShowTranslateDocument(true)}
                       onToggleSpellcheck={handleToggleSpellcheck}
                       spellcheckEnabled={spellOn}
-                      onOpenWritingAssistant={() => setShowWritingAssistant(true)}
+                      onOpenWritingAssistant={() => openRightPanel('writer')}
                       onOpenExplore={handleOpenExplore}
                       onOpenCitations={handleOpenCitations}
                       onInsertShape={handleInsertShape}
@@ -7966,11 +7995,15 @@ body { background: white; }
                       historyVisible={showVersionHistory}
                       onToggleOutline={handleToggleOutline}
                       onToggleComments={handleToggleComments}
-                      onToggleHistory={handleToggleVersionHistory}
+                      onToggleHistory={() =>
+                        openRightPanel(showVersionHistory ? 'none' : 'history')
+                      }
                       writerVisible={showWritingAssistant}
-                      onToggleWriter={() => setShowWritingAssistant((v) => !v)}
+                      onToggleWriter={() =>
+                        openRightPanel(showWritingAssistant ? 'none' : 'writer')
+                      }
                       chatVisible={showChatPanel}
-                      onToggleChat={() => setShowChatPanel((v) => !v)}
+                      onToggleChat={() => openRightPanel(showChatPanel ? 'none' : 'chat')}
                     />
                   )}
                 </div>
