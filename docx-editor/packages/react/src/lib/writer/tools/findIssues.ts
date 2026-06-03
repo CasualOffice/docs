@@ -72,11 +72,11 @@ Rules:
 // even when summed with the system prompt and JSON output budget.
 const SCAN_CAP = 3500;
 
-const KIND_EMOJI: Record<IssueJson['issues'][number]['kind'], string> = {
-  typo: '🔤',
-  grammar: '📐',
-  awkward: '✏️',
-  redundant: '✂️',
+const KIND_LABEL: Record<IssueJson['issues'][number]['kind'], string> = {
+  typo: 'Typo',
+  grammar: 'Grammar',
+  awkward: 'Awkward',
+  redundant: 'Redundant',
 };
 
 export const findIssuesTool: Tool<FindIssuesArgs> = {
@@ -118,9 +118,9 @@ export const findIssuesTool: Tool<FindIssuesArgs> = {
     // Render as a markdown bullet list the Markdown component already
     // knows how to paint in chat bubbles.
     const lines = issues.map((i) => {
-      const emoji = KIND_EMOJI[i.kind] ?? '•';
+      const label = KIND_LABEL[i.kind] ?? 'Issue';
       const reason = i.reason ? ` — ${i.reason}` : '';
-      return `- ${emoji} **${i.kind}**: \`${i.original}\` → \`${i.suggestion}\`${reason}`;
+      return `- **${label}**: \`${i.original}\` → \`${i.suggestion}\`${reason}`;
     });
     const header = `Found **${issues.length}** issue${issues.length === 1 ? '' : 's'}${
       truncated ? ' (scanned first 3.5 KB):' : ':'

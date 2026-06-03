@@ -9,6 +9,7 @@
 
 import type { CSSProperties } from 'react';
 import { useWriterState } from '../lib/writer/controller';
+import { MaterialSymbol } from './ui/Icons';
 
 export interface WriterStatusPillProps {
   onClick: () => void;
@@ -35,32 +36,32 @@ export function WriterStatusPill({ onClick }: WriterStatusPillProps) {
   let label = '';
   switch (state.phase) {
     case 'idle':
-      label = '✨ Ready to load';
+      label = 'Ready to load';
       break;
     case 'checking-caps':
-      label = '✨ Checking…';
+      label = 'Checking…';
       break;
     case 'confirming':
-      label = '✨ Confirm download';
+      label = 'Confirm download';
       break;
     case 'downloading':
-      label = `✨ Loading ${Math.round(state.progress * 100)}%`;
+      label = `Loading ${Math.round(state.progress * 100)}%`;
       break;
     case 'loading':
-      label = '✨ Loading…';
+      label = 'Loading…';
       break;
     case 'ready':
       label =
-        state.lastInferenceMs !== null ? `✨ Ready · ${state.lastInferenceMs} ms` : '✨ Ready';
+        state.lastInferenceMs !== null ? `Ready · ${state.lastInferenceMs} ms` : 'Ready';
       break;
     case 'busy':
-      label = '✨ Running…';
+      label = 'Running…';
       break;
     case 'evicting':
-      label = '✨ Unloading…';
+      label = 'Unloading…';
       break;
     case 'error':
-      label = '⚠ Paused';
+      label = 'Paused';
       break;
   }
 
@@ -73,7 +74,11 @@ export function WriterStatusPill({ onClick }: WriterStatusPillProps) {
       aria-label="Writing Assistant status — click to open settings"
       title={state.errorMessage ?? label}
     >
-      {label}
+      <MaterialSymbol
+        name={state.phase === 'error' ? 'warning' : 'auto_awesome'}
+        size={14}
+      />
+      <span>{label}</span>
     </button>
   );
 }

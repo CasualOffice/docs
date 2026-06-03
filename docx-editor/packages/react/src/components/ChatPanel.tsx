@@ -25,6 +25,8 @@ import { useWriterState } from '../lib/writer/controller';
 import type { ChatMessage } from '../lib/writer/messages';
 import { runPipeline, type PipelineResult } from '../lib/writer/pipeline';
 import { Markdown } from '../lib/markdown';
+import { RightDockPanel } from './RightDockPanel';
+import { MaterialSymbol } from './ui/Icons';
 
 export interface ChatPanelProps {
   isOpen: boolean;
@@ -53,59 +55,8 @@ export interface ChatPanelProps {
   getView: () => EditorView | null;
 }
 
-const panelWidth = 380;
-
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'transparent',
-  zIndex: 9000,
-  pointerEvents: 'none',
-};
-
-const panelStyle: CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  right: 0,
-  bottom: 0,
-  width: panelWidth,
-  background: 'var(--doc-surface, white)',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  borderLeft: '1px solid var(--doc-border, #e0e0e0)',
-  boxShadow: '-2px 0 12px rgba(60,64,67,0.12)',
-  display: 'flex',
-  flexDirection: 'column',
-  pointerEvents: 'auto',
-  zIndex: 9001,
-  // Slide-in: when the panel mounts it animates from `translateX(8px)
-  // + opacity:0` to its resting position via the transition below.
-  animation: 'docx-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-};
-
-const headerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '12px 16px',
-  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
-  flexShrink: 0,
-};
-
-const titleStyle: CSSProperties = {
-  flex: 1,
-  fontSize: 14,
-  fontWeight: 600,
-};
-
-const closeBtnStyle: CSSProperties = {
-  border: 'none',
-  background: 'transparent',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  cursor: 'pointer',
-  fontSize: 18,
-  lineHeight: 1,
-  padding: 4,
-};
+// Layout (root container + header + close button) now lives in
+// `RightDockPanel`. Only the panel-specific surfaces below stay local.
 
 const clearBtnStyle: CSSProperties = {
   fontSize: 11,
@@ -610,7 +561,7 @@ export function ChatPanel({
           ...nextHistory,
           {
             role: 'assistant',
-            content: `✅ ${result.summary}`,
+            content: result.summary,
           },
         ]);
       } else {
@@ -653,38 +604,85 @@ export function ChatPanel({
     }
   };
 
-  return (
+  const headerActions = history.length > 0 && (
+    <button
+      type="button"
+      style={clearBtnStyle}
+      onClick={() => {
+        setHistory([]);
+        setStreaming('');
+      }}
+      title="Clear conversation"
+      data-testid="chat-clear"
+    >
+      Clear
+    </button>
+  );
+
+  const footer = (
     <>
-      <div style={overlayStyle} aria-hidden="true" />
-      <aside role="complementary" aria-label="Ask AI" data-testid="chat-panel" style={panelStyle}>
-        <div style={headerStyle}>
-          <span aria-hidden="true">💬</span>
-          <span style={titleStyle}>Ask AI</span>
-          {history.length > 0 && (
+      {slashSuggestions.length > 0 && (
+        <div style={slashPopoverStyle} data-testid="chat-slash-popover">
+          {slashSuggestions.map((c) => (
             <button
+              key={c.cmd}
               type="button"
-              style={clearBtnStyle}
-              onClick={() => {
-                setHistory([]);
-                setStreaming('');
-              }}
-              title="Clear conversation"
-              data-testid="chat-clear"
+              style={slashItemStyle}
+              onClick={() => setInput(`${c.cmd} `)}
+              data-testid={`chat-slash-${c.cmd.slice(1)}`}
             >
-              Clear
+              <span style={slashCmdStyle}>{c.cmd}</span>
+              <span style={slashLabelStyle}>{c.label}</span>
+              <span style={slashHintStyle}>{c.hint}</span>
             </button>
-          )}
+          ))}
+        </div>
+      )}
+      <div style={inputRowStyle}>
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={
+            llmReady
+              ? 'Ask anything… (Enter to send, Shift+Enter for newline)'
+              : 'LLM not loaded.'
+          }
+          disabled={!llmReady || busy}
+          style={textareaStyle}
+          rows={1}
+          data-testid="chat-input"
+        />
+        {busy ? (
+          <button type="button" style={stopBtnStyle} onClick={onStop} data-testid="chat-stop">
+            Stop
+          </button>
+        ) : (
           <button
             type="button"
-            style={closeBtnStyle}
-            onClick={onClose}
-            aria-label="Close"
-            data-testid="chat-close"
+            style={sendBtnStyle}
+            onClick={() => void onSend()}
+            disabled={!llmReady || !input.trim()}
+            data-testid="chat-send"
           >
-            ✕
+            Send
           </button>
-        </div>
+        )}
+      </div>
+    </>
+  );
 
+  return (
+    <RightDockPanel
+      title="Ask AI"
+      icon={<MaterialSymbol name="chat_bubble_outline" size={16} />}
+      onClose={onClose}
+      headerActions={headerActions}
+      testId="chat-panel"
+      ariaLabel="Ask AI"
+      footer={footer}
+    >
+      <>
         {selectionWords > 0 && (
           <div style={selChipRowStyle} data-testid="chat-selection-chip-row">
             <button
@@ -693,7 +691,7 @@ export function ChatPanel({
               onClick={() => setIncludeSelection((v) => !v)}
               data-testid="chat-selection-chip"
             >
-              📎 Selection · {selectionWords} {selectionWords === 1 ? 'word' : 'words'}{' '}
+              Selection · {selectionWords} {selectionWords === 1 ? 'word' : 'words'}{' '}
               {includeSelection ? '(included)' : '(excluded)'}
             </button>
           </div>
@@ -769,7 +767,7 @@ export function ChatPanel({
                       title="Insert this reply at the cursor as a tracked suggestion"
                       data-testid={`chat-msg-insert-${i}`}
                     >
-                      ↩ Insert
+                      Insert at cursor
                     </button>
                     <button
                       type="button"
@@ -777,7 +775,7 @@ export function ChatPanel({
                       onClick={() => void navigator.clipboard?.writeText(m.content).catch(() => {})}
                       data-testid={`chat-msg-copy-${i}`}
                     >
-                      ⧉ Copy
+                      Copy
                     </button>
                   </div>
                 )}
@@ -793,57 +791,8 @@ export function ChatPanel({
           {busy && !streaming && <div style={subtleStyle}>Thinking…</div>}
         </div>
 
-        {slashSuggestions.length > 0 && (
-          <div style={slashPopoverStyle} data-testid="chat-slash-popover">
-            {slashSuggestions.map((c) => (
-              <button
-                key={c.cmd}
-                type="button"
-                style={slashItemStyle}
-                onClick={() => setInput(`${c.cmd} `)}
-                data-testid={`chat-slash-${c.cmd.slice(1)}`}
-              >
-                <span style={slashCmdStyle}>{c.cmd}</span>
-                <span style={slashLabelStyle}>{c.label}</span>
-                <span style={slashHintStyle}>{c.hint}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div style={inputRowStyle}>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={
-              llmReady
-                ? 'Ask anything… (Enter to send, Shift+Enter for newline)'
-                : 'LLM not loaded.'
-            }
-            disabled={!llmReady || busy}
-            style={textareaStyle}
-            rows={1}
-            data-testid="chat-input"
-          />
-          {busy ? (
-            <button type="button" style={stopBtnStyle} onClick={onStop} data-testid="chat-stop">
-              Stop
-            </button>
-          ) : (
-            <button
-              type="button"
-              style={sendBtnStyle}
-              onClick={() => void onSend()}
-              disabled={!llmReady || !input.trim()}
-              data-testid="chat-send"
-            >
-              Send
-            </button>
-          )}
-        </div>
-      </aside>
-    </>
+      </>
+    </RightDockPanel>
   );
 }
 

@@ -7889,6 +7889,66 @@ body { background: white; }
                     </div>
                   )}
 
+                  {/* AI right-side panels — laid out as flex siblings of
+                      the scroll container so they share the exact same
+                      geometry as Version history (start below the
+                      toolbar, end above the status bar, sit left of the
+                      rail). Each panel's root is `RightDockPanel`
+                      which sets the canonical RIGHT_PANEL_WIDTH so the
+                      doc area shifts by a uniform amount regardless of
+                      which panel the user opens. */}
+                  {aiSuggestion && (
+                    <AISuggestionPanel
+                      mode={aiSuggestion.mode}
+                      original={aiSuggestion.original}
+                      suggestion={aiSuggestion.suggestion}
+                      inferenceMs={aiSuggestion.inferenceMs}
+                      busy={aiSuggestion.busy}
+                      error={aiSuggestion.error}
+                      tones={
+                        aiSuggestion.mode === 'rewrite'
+                          ? [
+                              { id: 'polish', label: 'Polish', active: aiSuggestion.tone === 'polish' },
+                              { id: 'concise', label: 'Concise', active: aiSuggestion.tone === 'concise' },
+                              { id: 'formal', label: 'Formal', active: aiSuggestion.tone === 'formal' },
+                              { id: 'casual', label: 'Casual', active: aiSuggestion.tone === 'casual' },
+                              { id: 'shorter', label: 'Shorter', active: aiSuggestion.tone === 'shorter' },
+                              { id: 'longer', label: 'Longer', active: aiSuggestion.tone === 'longer' },
+                            ]
+                          : undefined
+                      }
+                      onTone={handleAiTone}
+                      onAccept={handleAiAccept}
+                      onReject={handleAiReject}
+                      onRetry={handleAiRetry}
+                    />
+                  )}
+                  {showChatPanel && (
+                    <ChatPanel
+                      isOpen={showChatPanel}
+                      onClose={() => setShowChatPanel(false)}
+                      getDocText={() => {
+                        const view = getActiveEditorView();
+                        if (!view) return '';
+                        return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
+                      }}
+                      getSelectionText={() => {
+                        const view = getActiveEditorView();
+                        if (!view) return '';
+                        const { from, to } = view.state.selection;
+                        if (from === to) return '';
+                        return view.state.doc.textBetween(from, to, '\n', ' ');
+                      }}
+                      getView={() => getActiveEditorView() ?? null}
+                      onInsertAtCursor={(text) => {
+                        const view = getActiveEditorView();
+                        if (!view) return;
+                        const at = view.state.selection.head;
+                        applyMarkdownAsSuggestion({ view, at, markdown: text });
+                      }}
+                    />
+                  )}
+
                   {/* Right-edge PanelRail (X7) — always-visible activity bar
                     with toggles for Outline / Comments / Version history.
                     Lives inside the below-toolbar flex row so it spans only
@@ -8004,45 +8064,6 @@ body { background: white; }
                 onPick={handlePickSpellSuggestion}
                 onIgnore={handleIgnoreSpell}
                 onClose={() => setSpellMenu(null)}
-              />
-            )}
-
-            {/* AI rewrite / summarize suggestion popover — anchored to
-                the original selection's bounding rect. Inline UX so
-                the user sees the model's output next to the source
-                before anything mutates the doc. */}
-            {aiSuggestion && (
-              <AISuggestionPanel
-                mode={aiSuggestion.mode}
-                original={aiSuggestion.original}
-                suggestion={aiSuggestion.suggestion}
-                inferenceMs={aiSuggestion.inferenceMs}
-                busy={aiSuggestion.busy}
-                error={aiSuggestion.error}
-                tones={
-                  aiSuggestion.mode === 'rewrite'
-                    ? [
-                        { id: 'polish', label: 'Polish', active: aiSuggestion.tone === 'polish' },
-                        {
-                          id: 'concise',
-                          label: 'Concise',
-                          active: aiSuggestion.tone === 'concise',
-                        },
-                        { id: 'formal', label: 'Formal', active: aiSuggestion.tone === 'formal' },
-                        { id: 'casual', label: 'Casual', active: aiSuggestion.tone === 'casual' },
-                        {
-                          id: 'shorter',
-                          label: 'Shorter',
-                          active: aiSuggestion.tone === 'shorter',
-                        },
-                        { id: 'longer', label: 'Longer', active: aiSuggestion.tone === 'longer' },
-                      ]
-                    : undefined
-                }
-                onTone={handleAiTone}
-                onAccept={handleAiAccept}
-                onReject={handleAiReject}
-                onRetry={handleAiRetry}
               />
             )}
 
@@ -8412,37 +8433,8 @@ body { background: white; }
                   onClose={() => setShowWritingAssistant(false)}
                 />
               )}
-              {showChatPanel && (
-                <ChatPanel
-                  isOpen={showChatPanel}
-                  onClose={() => setShowChatPanel(false)}
-                  getDocText={() => {
-                    const view = getActiveEditorView();
-                    if (!view) return '';
-                    return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
-                  }}
-                  getSelectionText={() => {
-                    const view = getActiveEditorView();
-                    if (!view) return '';
-                    const { from, to } = view.state.selection;
-                    if (from === to) return '';
-                    return view.state.doc.textBetween(from, to, '\n', ' ');
-                  }}
-                  getView={() => getActiveEditorView() ?? null}
-                  onInsertAtCursor={(text) => {
-                    const view = getActiveEditorView();
-                    if (!view) return;
-                    // Insert at the cursor (selection head). The
-                    // markdown-aware variant converts **bold** /
-                    // *italic* / [link](url) / lists / headings into
-                    // real PM nodes so the OOXML round-trip carries
-                    // the structure — no raw asterisks landing in the
-                    // doc body.
-                    const at = view.state.selection.head;
-                    applyMarkdownAsSuggestion({ view, at, markdown: text });
-                  }}
-                />
-              )}
+              {/* ChatPanel moved into the below-toolbar flex row so it
+                  shares geometry with VersionHistoryPanel — see ~L7927. */}
               {showExplore && (
                 <ExploreDialog
                   isOpen={showExplore}

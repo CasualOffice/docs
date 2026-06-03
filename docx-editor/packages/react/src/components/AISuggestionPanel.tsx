@@ -12,6 +12,8 @@
  */
 
 import { useEffect, type CSSProperties } from 'react';
+import { MaterialSymbol } from './ui/Icons';
+import { RightDockPanel } from './RightDockPanel';
 
 export type AISuggestionMode = 'rewrite' | 'summarize';
 
@@ -38,61 +40,10 @@ export interface AISuggestionPanelProps {
   error?: string | null;
 }
 
-const panelWidth = 360;
-
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'transparent',
-  zIndex: 9000,
-  pointerEvents: 'none',
-};
-
-const panelStyle: CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  right: 0,
-  bottom: 0,
-  width: panelWidth,
-  background: 'var(--doc-surface, white)',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  borderLeft: '1px solid var(--doc-border, #e0e0e0)',
-  boxShadow: '-2px 0 12px rgba(60,64,67,0.12)',
-  display: 'flex',
-  flexDirection: 'column',
-  pointerEvents: 'auto',
-  zIndex: 9001,
-  animation: 'docx-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-};
-
-const headerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '14px 16px',
-  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
-  flexShrink: 0,
-};
-
-const titleStyle: CSSProperties = {
-  flex: 1,
-  fontSize: 14,
-  fontWeight: 600,
-};
-
-const closeBtnStyle: CSSProperties = {
-  border: 'none',
-  background: 'transparent',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  cursor: 'pointer',
-  fontSize: 18,
-  lineHeight: 1,
-  padding: 4,
-};
+// Layout (root container + header + close button) lives in
+// `RightDockPanel`. Only the surfaces below are panel-specific.
 
 const bodyStyle: CSSProperties = {
-  flex: 1,
-  overflow: 'auto',
   padding: '12px 16px',
   display: 'flex',
   flexDirection: 'column',
@@ -249,111 +200,101 @@ export function AISuggestionPanel({
   // it permanently through the existing tracked-change controls.
   const acceptLabel = mode === 'rewrite' ? 'Suggest replacement' : 'Suggest insert';
 
-  return (
-    <>
-      <div style={overlayStyle} aria-hidden="true" />
-      <aside
-        role="complementary"
-        aria-label={title}
-        data-testid="ai-suggestion-panel"
-        style={panelStyle}
+  const footer = (
+    <div style={footerStyle}>
+      <button
+        type="button"
+        style={hintBtnStyle}
+        onClick={onRetry}
+        disabled={busy}
+        data-testid="ai-suggestion-retry"
       >
-        <div style={headerStyle}>
-          <span aria-hidden="true">✨</span>
-          <span style={titleStyle}>{title}</span>
-          <button
-            type="button"
-            style={closeBtnStyle}
-            onClick={onReject}
-            aria-label="Close"
-            data-testid="ai-suggestion-close"
-          >
-            ✕
-          </button>
-        </div>
+        Retry
+      </button>
+      <button
+        type="button"
+        style={secondaryBtnStyle}
+        onClick={onReject}
+        data-testid="ai-suggestion-reject"
+      >
+        Reject
+      </button>
+      <button
+        type="button"
+        style={primaryBtnStyle}
+        onClick={onAccept}
+        disabled={!suggestion || busy}
+        data-testid="ai-suggestion-accept"
+      >
+        {acceptLabel}
+      </button>
+    </div>
+  );
 
-        <div style={bodyStyle}>
+  return (
+    <RightDockPanel
+      title={title}
+      icon={<MaterialSymbol name="auto_awesome" size={16} />}
+      onClose={onReject}
+      testId="ai-suggestion-panel"
+      ariaLabel={title}
+      footer={footer}
+    >
+      <div style={bodyStyle}>
+        <section>
+          <p style={sectionHeadingStyle}>Source</p>
+          <div style={sourceCardStyle} data-testid="ai-original-pane">
+            {original || <em>(empty selection)</em>}
+          </div>
+        </section>
+
+        {mode === 'rewrite' && tones && tones.length > 0 && (
           <section>
-            <p style={sectionHeadingStyle}>Source</p>
-            <div style={sourceCardStyle} data-testid="ai-original-pane">
-              {original || <em>(empty selection)</em>}
+            <p style={sectionHeadingStyle}>Tone</p>
+            <div style={toneRowStyle}>
+              {tones.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  style={toneChipStyle(!!t.active, busy)}
+                  onClick={() => !busy && onTone?.(t.id)}
+                  disabled={busy}
+                  data-testid={`ai-tone-${t.id}`}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
           </section>
+        )}
 
-          {mode === 'rewrite' && tones && tones.length > 0 && (
-            <section>
-              <p style={sectionHeadingStyle}>Tone</p>
-              <div style={toneRowStyle}>
-                {tones.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    style={toneChipStyle(!!t.active, busy)}
-                    onClick={() => !busy && onTone?.(t.id)}
-                    disabled={busy}
-                    data-testid={`ai-tone-${t.id}`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </section>
+        <section>
+          <p style={sectionHeadingStyle}>{mode === 'rewrite' ? 'Suggested' : 'Summary'}</p>
+          {error ? (
+            <div style={errorCardStyle} data-testid="ai-suggestion-pane">
+              {error}
+            </div>
+          ) : (
+            <div style={suggestionCardStyle} data-testid="ai-suggestion-pane">
+              {suggestion ?? (busy ? '' : 'Waiting…')}
+            </div>
           )}
-
-          <section>
-            <p style={sectionHeadingStyle}>{mode === 'rewrite' ? 'Suggested' : 'Summary'}</p>
-            {error ? (
-              <div style={errorCardStyle} data-testid="ai-suggestion-pane">
-                {error}
-              </div>
-            ) : (
-              <div style={suggestionCardStyle} data-testid="ai-suggestion-pane">
-                {suggestion ?? (busy ? '' : 'Waiting…')}
-              </div>
-            )}
-            <div style={{ ...statusRowStyle, marginTop: 6 }}>
-              {busy && <span style={spinnerStyle} aria-hidden="true" />}
-              <span>
-                {busy
-                  ? 'Running on-device…'
-                  : inferenceMs !== null
-                    ? `${inferenceMs} ms · on-device`
-                    : 'On-device'}
-              </span>
-            </div>
-          </section>
-        </div>
-
-        <div style={footerStyle}>
-          <button
-            type="button"
-            style={hintBtnStyle}
-            onClick={onRetry}
-            disabled={busy}
-            data-testid="ai-suggestion-retry"
-          >
-            Retry
-          </button>
-          <button
-            type="button"
-            style={secondaryBtnStyle}
-            onClick={onReject}
-            data-testid="ai-suggestion-reject"
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            style={primaryBtnStyle}
-            onClick={onAccept}
-            disabled={!suggestion || busy}
-            data-testid="ai-suggestion-accept"
-          >
-            {acceptLabel}
-          </button>
-        </div>
-      </aside>
-    </>
+          <div style={{ ...statusRowStyle, marginTop: 6 }}>
+            {busy && <span style={spinnerStyle} aria-hidden="true" />}
+            <span>
+              {busy
+                ? 'Running on-device…'
+                : inferenceMs !== null
+                  ? `${inferenceMs} ms · on-device`
+                  : 'On-device'}
+            </span>
+          </div>
+        </section>
+      </div>
+      {/* Removed legacy footer markup below — moved into <RightDockPanel footer=…>.
+          Keeping the no-op fragment marker so the remainder of the JSX (orphan
+          Reject/Retry/Accept blocks) doesn't sit at top-level. */}
+    </RightDockPanel>
   );
 }
 
