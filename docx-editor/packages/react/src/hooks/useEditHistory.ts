@@ -172,53 +172,58 @@ export function useEditHistory(options: UseEditHistoryOptions = {}): UseEditHist
     });
   }, []);
 
-  const attach = useCallback(
-    (view: EditorView) => {
-      viewRef.current = view;
-      const plugin = new Plugin({
-        key: PLUGIN_KEY,
-        view() {
-          return {
-            update(_v, _prevState) {
-              // No-op — work happens via dispatch interceptor below.
-            },
-          };
+  // Hold `recordTx` in a ref so the plugin's apply closure (captured
+  // at `attach` time) always calls the latest version. Without this,
+  // a stale `recordTx` closure would silently keep firing against an
+  // old `setEntries` after re-renders.
+  const recordTxRef = useRef(recordTx);
+  recordTxRef.current = recordTx;
+
+  const attach = useCallback((view: EditorView) => {
+    viewRef.current = view;
+
+    // Observe every committed transaction by hooking the plugin's
+    // `state.apply` — that's the canonical PM API for observation and
+    // doesn't depend on `view.props.dispatchTransaction` being honored
+    // post-construction (which was the previous bug: the wrap survived
+    // but PM's internal `someProp` lookup didn't always pick it up,
+    // so user typing produced no history entries).
+    const plugin = new Plugin({
+      key: PLUGIN_KEY,
+      state: {
+        init() {
+          return null;
         },
-      });
-
-      // Insert the plugin reactively by reconfiguring the state.
-      // (Most apps register plugins at EditorState construction; here
-      // we hook after the fact so the panel can be turned on without
-      // editor restart.)
-      const state = view.state.reconfigure({
-        plugins: [...view.state.plugins, plugin],
-      });
-      view.updateState(state);
-
-      // Wrap dispatchTransaction so every committed transaction flows
-      // through `recordTx`. Preserve any prior wrapping.
-      const prevDispatch = view.props.dispatchTransaction?.bind(view) ?? null;
-      view.setProps({
-        dispatchTransaction: (tr: Transaction) => {
-          if (prevDispatch) {
-            prevDispatch(tr);
-          } else {
-            view.updateState(view.state.apply(tr));
+        apply(tr) {
+          if (tr.docChanged && tr.getMeta(PLUGIN_KEY) !== 'revert') {
+            recordTxRef.current(tr);
           }
-          recordTx(tr);
+          return null;
         },
-      });
+      },
+    });
 
-      return () => {
-        viewRef.current = null;
-        // Best-effort restore of the prior dispatch.
-        view.setProps({ dispatchTransaction: prevDispatch ?? undefined });
-        // Don't bother removing the plugin instance — it's a no-op
-        // observer and the EditorView is on its way out.
-      };
-    },
-    [recordTx]
-  );
+    // Reconfigure the live state to include our plugin. Existing
+    // plugins are preserved.
+    const state = view.state.reconfigure({
+      plugins: [...view.state.plugins, plugin],
+    });
+    view.updateState(state);
+
+    return () => {
+      viewRef.current = null;
+      // Detach by reconfiguring without the plugin — best-effort, the
+      // view may already be on its way out.
+      try {
+        const next = view.state.reconfigure({
+          plugins: view.state.plugins.filter((p) => p !== plugin),
+        });
+        view.updateState(next);
+      } catch {
+        // View may have been destroyed mid-cleanup; ignore.
+      }
+    };
+  }, []);
 
   const revert = useCallback((entryId: string) => {
     const view = viewRef.current;
