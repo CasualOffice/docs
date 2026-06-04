@@ -23,6 +23,7 @@
 import { Fragment, type Node as PMNode } from 'prosemirror-model';
 import { summariseDocStructure } from '../docContext';
 import { runJsonChat } from '../jsonMode';
+import { researchTool } from './researchTool';
 import type { Tool, ToolResult, ToolContext } from './types';
 
 export interface TransformDocArgs {
@@ -235,11 +236,42 @@ export const transformDocTool: Tool<TransformDocArgs> = {
       selectionText: ctx.getSelectionText(),
     });
 
+    // Tool composition: when the user asks for an ATS-friendly resume
+    // we look up the Wikipedia summary for "Applicant tracking system"
+    // first and inject the canonical facts into the system prompt.
+    // This is the cheapest way to ground Llama-1B on domain rules it
+    // would otherwise approximate poorly. Failures here are silent —
+    // the resume still generates, just without the augmentation.
+    let atsContext = '';
+    if (args.instruction && /\bATS\b|ats[\s-]?(?:friendly|optimi[sz]ed)/i.test(args.instruction)) {
+      try {
+        const r = await researchTool.execute(
+          { query: 'Applicant tracking system' },
+          ctx
+        );
+        if (r.kind === 'chat') {
+          // Trim the Markdown chrome (`**Title** — `, `[Wikipedia](…)`)
+          // so the system prompt stays clean prose.
+          const cleaned = r.text
+            .replace(/^\*\*[^*]+\*\*\s*—\s*/, '')
+            .replace(/\n*\[Wikipedia\]\([^)]+\)\s*$/, '')
+            .trim();
+          if (cleaned) {
+            atsContext =
+              `\n\nFor reference — what ATS systems actually do (from Wikipedia):\n${cleaned}\n\n` +
+              `Use these facts to keep the resume parseable: machine-readable section headings, plain text bullets, no graphics or columns, standard date formats, keyword density mirroring the source content.`;
+          }
+        }
+      } catch {
+        // Best effort — silent fallback.
+      }
+    }
+
     let extracted: ResumeJson;
     try {
       extracted = await runJsonChat<ResumeJson>(
         [
-          { role: 'system', content: RESUME_SYSTEM },
+          { role: 'system', content: RESUME_SYSTEM + atsContext },
           {
             role: 'user',
             content: `Document structure: ${structure}\n\nDocument content (the source to draw facts from):\n\n${docText.slice(0, 5500)}\n\nInstruction (optional): ${args.instruction ?? '(none)'}`,
