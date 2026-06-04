@@ -32,6 +32,7 @@ export type TextContextAction =
   | 'addColumnLeft'
   | 'addColumnRight'
   | 'deleteColumn'
+  | 'deleteTable'
   | 'mergeCells'
   | 'splitCell'
   | 'addComment'
@@ -367,6 +368,10 @@ function getActionIcon(action: TextContextAction): React.ReactNode {
       return <AddColumnRightIcon />;
     case 'deleteColumn':
       return <DeleteColumnIcon />;
+    case 'deleteTable':
+      // Re-use the generic delete glyph — Word, Notion, and Google
+      // Docs all use a trash/delete icon for whole-table removal.
+      return <DeleteIcon />;
     case 'mergeCells':
       return <MergeCellsIcon />;
     case 'splitCell':
@@ -835,6 +840,7 @@ export function getTextActionLabel(action: TextContextAction): string {
     addColumnLeft: 'Insert column left',
     addColumnRight: 'Insert column right',
     deleteColumn: 'Delete column',
+    deleteTable: 'Delete table',
     mergeCells: defaultLocale.table.mergeCells,
     splitCell: defaultLocale.table.splitCell,
     addComment: 'Comment',
@@ -865,6 +871,7 @@ export function getTextActionShortcut(action: TextContextAction): string {
     addColumnLeft: '',
     addColumnRight: '',
     deleteColumn: '',
+    deleteTable: '',
     mergeCells: '',
     splitCell: '',
     addComment: '',

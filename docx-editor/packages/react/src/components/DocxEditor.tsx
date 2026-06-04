@@ -4674,7 +4674,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         { action: 'deleteRow', label: 'Delete row', dividerAfter: true },
         { action: 'addColumnLeft', label: 'Insert column left' },
         { action: 'addColumnRight', label: 'Insert column right' },
-        { action: 'deleteColumn', label: 'Delete column' },
+        { action: 'deleteColumn', label: 'Delete column', dividerAfter: true },
         {
           action: 'mergeCells',
           label: i18n?.table?.mergeCells ?? defaultLocale.table.mergeCells,
@@ -4685,7 +4685,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           label: i18n?.table?.splitCell ?? defaultLocale.table.splitCell,
           disabled: !contextMenu.tableContext?.canSplitCell,
           dividerAfter: true,
-        }
+        },
+        // Whole-table delete — was buried in the TableMoreDropdown
+        // before, so users couldn't find it. Surfaced here so the
+        // right-click in a cell exposes the same affordance Notion /
+        // Word both surface inline.
+        { action: 'deleteTable', label: 'Delete table', dividerAfter: true }
       );
     }
     items.push({ action: 'selectAll', label: 'Select All', shortcut: `${mod}+A` });

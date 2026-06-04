@@ -37,6 +37,22 @@ test.describe('Table Context Menu', () => {
     expect(dimensions.cols).toBeGreaterThan(0);
   });
 
+  test('right-click in a table cell shows "Delete table" (discoverability)', async ({ page }) => {
+    // Bug fix: "Delete table" used to live only inside the More Options
+    // dropdown, so users hit Backspace/Delete on an AI-inserted table
+    // and reported "can't delete table". This asserts the action is now
+    // inline on the right-click menu. The actual pmDeleteTable plumbing
+    // is exercised by the existing TableMoreDropdown unit + e2e flow.
+    await editor.loadDocxFile('fixtures/with-tables.docx');
+    await editor.rightClickTableCell(0, 0, 0);
+    const menu = page.locator('[role="menu"]');
+    await expect(menu).toHaveCount(1);
+    const deleteTableItem = menu
+      .locator('[role="menuitem"]')
+      .filter({ hasText: /^Delete table$/ });
+    await expect(deleteTableItem).toHaveCount(1);
+  });
+
   test('right-click split cell applies a one-by-two split', async ({ page }) => {
     await editor.loadDocxFile('fixtures/with-tables.docx');
     await editor.rightClickTableCell(0, 0, 0);
