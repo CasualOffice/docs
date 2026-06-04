@@ -400,6 +400,48 @@ const SLASH_COMMANDS: SlashCommand[] = [
     build: () =>
       'Shorten the selected passage while keeping the meaning intact. Return only the shortened text.',
   },
+  {
+    // Selection → real PM table via the inline preview popover.
+    // Classifier matches "transform … into a table" → insertTable
+    // intent → table proposal. The user reviews + accepts in the
+    // popover instead of the chat bubble.
+    cmd: '/table',
+    label: 'Convert selection to table',
+    hint: 'Build a real table from the selected text',
+    build: (rest) =>
+      rest.trim()
+        ? `Transform the selected passage into a table. ${rest.trim()}.`
+        : 'Transform the selected passage into a table.',
+  },
+  {
+    // Routes through the Wikipedia research tool — chat reply with a
+    // summary + deep link. Distinct from /explain, which paraphrases
+    // the selection; /research is an external lookup.
+    cmd: '/research',
+    label: 'Look up on Wikipedia',
+    hint: 'Fact lookup (Wikipedia REST)',
+    build: (rest) =>
+      rest.trim()
+        ? `What is ${rest.trim()}?`
+        : 'What is the topic of the selected passage?',
+  },
+  {
+    // Run the resume target through transformDoc on the live doc. The
+    // classifier handles the routing; the popover shows the proposal.
+    cmd: '/resume',
+    label: 'Create a resume from this doc',
+    hint: 'Restructure into ATS-friendly resume',
+    build: (rest) =>
+      rest.trim()
+        ? `Create a ${rest.trim()} resume from this document.`
+        : 'Create an ATS-friendly resume from this document.',
+  },
+  {
+    cmd: '/memo',
+    label: 'Create a memo from this doc',
+    hint: 'Restructure into a memorandum',
+    build: () => 'Draft a memo from this document.',
+  },
 ];
 
 function matchSlash(value: string): { command: SlashCommand; rest: string } | null {
