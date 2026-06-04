@@ -89,7 +89,16 @@ function wordCount(text: string): number {
   return m ? m.length : 0;
 }
 
-function inferDocKind(text: string, headings: string[]): string | null {
+export type DocKind =
+  | 'resume'
+  | 'cover-letter'
+  | 'memo'
+  | 'academic'
+  | 'meeting-notes'
+  | 'markdown-doc'
+  | null;
+
+export function inferDocKind(text: string, headings: string[]): DocKind {
   const lc = text.toLowerCase();
   const hl = headings.map((h) => h.toLowerCase());
   const has = (re: RegExp) => hl.some((h) => re.test(h)) || re.test(lc.slice(0, 800));

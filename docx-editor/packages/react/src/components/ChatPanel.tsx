@@ -28,6 +28,7 @@ import {
   type PipelineProposal,
   type PipelineResult,
 } from '../lib/writer/pipeline';
+import { getQuickPromptsForDoc } from '../lib/writer/suggestActions';
 import { Markdown } from '../lib/markdown';
 import { RightDockPanel } from './RightDockPanel';
 import { MaterialSymbol } from './ui/Icons';
@@ -333,13 +334,10 @@ const quickChipStyle: CSSProperties = {
   cursor: 'pointer',
 };
 
-const QUICK_PROMPTS = [
-  'Summarize this document',
-  'Make my writing more concise',
-  'Brainstorm 5 ideas about…',
-  'Outline a memo',
-  'Find typos and weak phrasing',
-];
+// Static prompts were a one-size-fits-all set. The empty-state now
+// pulls from `getQuickPromptsForDoc(...)` so resume docs see ATS /
+// cover-letter prompts, memos see "Next Steps", etc. Computed once
+// per panel open from the live doc snapshot — no LLM call.
 
 // Slash commands expand the user's `/foo bar baz` into a focused
 // prompt. They auto-include the selection when present so the user
@@ -737,26 +735,11 @@ export function ChatPanel({
             </div>
           )}
           {llmReady && history.length === 0 && !streaming && (
-            <div style={emptyStyle}>
-              <strong>Ready when you are.</strong>
-              <span>
-                Ask anything about the open document, request rewrites, or brainstorm. Toggle "Use
-                document context" above to send the doc text along with your question.
-              </span>
-              <div style={quickRowStyle}>
-                {QUICK_PROMPTS.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    style={quickChipStyle}
-                    onClick={() => setInput(p)}
-                    data-testid={`chat-quick-${p.slice(0, 12).replace(/\s/g, '-')}`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <ChatEmptyState
+              docTextSnapshot={isOpen ? getDocText() : ''}
+              hasSelection={selectionWords > 0}
+              onPick={(p) => setInput(p)}
+            />
           )}
           {history.map((m, i) => {
             const isUser = m.role === 'user';
@@ -811,6 +794,54 @@ export function ChatPanel({
 
       </>
     </RightDockPanel>
+  );
+}
+
+/**
+ * ChatEmptyState — the "Ready when you are" intro shown when chat
+ * history is empty. Computes doc-type-aware quick prompts on mount
+ * (and when the chat re-opens) so the user sees suggestions tailored
+ * to what they're working on: resume → ATS / cover-letter; memo →
+ * Next Steps; selection present → rewrite / translate.
+ */
+function ChatEmptyState({
+  docTextSnapshot,
+  hasSelection,
+  onPick,
+}: {
+  docTextSnapshot: string;
+  hasSelection: boolean;
+  onPick: (prompt: string) => void;
+}) {
+  const prompts = useMemo(
+    () =>
+      getQuickPromptsForDoc({
+        docText: docTextSnapshot,
+        hasSelection,
+      }),
+    [docTextSnapshot, hasSelection]
+  );
+  return (
+    <div style={emptyStyle}>
+      <strong>Ready when you are.</strong>
+      <span>
+        Ask anything about the open document, request rewrites, or brainstorm. Toggle "Use
+        document context" above to send the doc text along with your question.
+      </span>
+      <div style={quickRowStyle}>
+        {prompts.map((p) => (
+          <button
+            key={p}
+            type="button"
+            style={quickChipStyle}
+            onClick={() => onPick(p)}
+            data-testid={`chat-quick-${p.slice(0, 12).replace(/\s/g, '-')}`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
