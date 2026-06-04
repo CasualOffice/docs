@@ -2319,6 +2319,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [activeProposal, setActiveProposal] = useState<
     import('../lib/writer/pipeline').PipelineProposal | null
   >(null);
+  // Captures the prompt that produced the active proposal — used by
+  // the popover's "Try again" refine flow to re-run the pipeline with
+  // the original intent + a follow-up instruction ("make it
+  // chronological"). Mirrors Notion's "Tell AI what to do next".
+  const [lastProposalPrompt, setLastProposalPrompt] = useState<string>('');
+  const [proposalBusy, setProposalBusy] = useState(false);
   // Tracks whether the active editor view currently has a non-empty
   // selection. Drives `<SelectionAskAi>`'s visibility — the Notion-style
   // floating "Ask AI" pill anchored above the selection.
@@ -8010,7 +8016,10 @@ body { background: white; }
                         return view.state.doc.textBetween(from, to, '\n', ' ');
                       }}
                       getView={() => getActiveEditorView() ?? null}
-                      onProposal={(p) => setActiveProposal(p)}
+                      onProposal={(p, prompt) => {
+                        setActiveProposal(p);
+                        setLastProposalPrompt(prompt);
+                      }}
                       onInsertAtCursor={(text) => {
                         const view = getActiveEditorView();
                         if (!view) return;
@@ -8227,12 +8236,51 @@ body { background: white; }
                   view.focus();
                   setActiveProposal(null);
                 }}
-                onTryAgain={() => {
-                  // Phase 2: still discard + open chat for now —
-                  // requires storing the original pipeline request to
-                  // re-run cleanly. Phase 3 wires the full replay.
-                  setActiveProposal(null);
-                  openRightPanel('chat');
+                busy={proposalBusy}
+                onTryAgain={(refinePrompt) => {
+                  const view = getActiveEditorView();
+                  if (!view) return;
+                  const schema = view.state.schema;
+                  // Combine the original prompt with the refine
+                  // instruction. The classifier re-routes to the same
+                  // intent because the original intent verb is still
+                  // first; the refine line tunes the result.
+                  const combined = lastProposalPrompt
+                    ? `${lastProposalPrompt}\n\nRefine: ${refinePrompt}`
+                    : refinePrompt;
+                  setProposalBusy(true);
+                  void runPipeline(
+                    {
+                      message: combined,
+                      includeDocContext: true,
+                      includeSelection: !!activeProposal.replaceRange,
+                    },
+                    {
+                      getDocText: () =>
+                        view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n'),
+                      getSelectionText: () => {
+                        const { from, to } = view.state.selection;
+                        if (from === to) return '';
+                        return view.state.doc.textBetween(from, to, '\n', ' ');
+                      },
+                      getView: () => view,
+                      schema,
+                    }
+                  )
+                    .then((result) => {
+                      if (result.kind === 'proposal') {
+                        setActiveProposal(result);
+                        setLastProposalPrompt(combined);
+                      } else if (result.kind === 'chat') {
+                        toast.message(result.text);
+                      } else {
+                        toast.error(result.message);
+                      }
+                    })
+                    .catch((err) => {
+                      toast.error(`Refine failed: ${(err as Error).message}`);
+                    })
+                    .finally(() => setProposalBusy(false));
                 }}
                 onDiscard={() => setActiveProposal(null)}
               />
@@ -8276,6 +8324,7 @@ body { background: white; }
                   .then((result) => {
                     if (result.kind === 'proposal') {
                       setActiveProposal(result);
+                      setLastProposalPrompt(promptText);
                     } else if (result.kind === 'chat') {
                       // Surface short chat replies as a toast — the
                       // user invoked from selection, not from chat, so

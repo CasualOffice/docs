@@ -47,9 +47,15 @@ export interface InlinePreviewPopoverProps {
   onReplace: () => void;
   /** Called when the user clicks Insert below. */
   onInsertBelow: () => void;
-  /** Called when the user clicks Try again — caller should re-run
-   *  the pipeline for the same intent. */
-  onTryAgain: () => void;
+  /**
+   * Called when the user submits a refine instruction in the Try-again
+   * input. Receives the new free-form prompt (e.g. "make it
+   * chronological", "more concise"). The host re-runs the pipeline
+   * with the original message + this addendum and updates `proposal`
+   * with the new result. While this call is in flight, pass `busy:
+   * true` so the popover disables its buttons.
+   */
+  onTryAgain: (refinePrompt: string) => void;
   /** Called when the user clicks Discard or presses Escape. */
   onDiscard: () => void;
   /** True while a commit / regenerate request is in flight; disables
@@ -327,6 +333,27 @@ export function InlinePreviewPopover({
 
   const preview = useMemo(() => renderPreview(proposal), [proposal]);
 
+  // Refine state — when the user clicks Try again, an input replaces
+  // the footer button row so they can type a follow-up ("make it
+  // chronological", "more concise"). Submit calls onTryAgain(prompt);
+  // the host re-runs the pipeline and updates `proposal`.
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [refineText, setRefineText] = useState('');
+  const refineRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (refineOpen) {
+      const id = setTimeout(() => refineRef.current?.focus(), 0);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [refineOpen]);
+  // Collapse the refine input whenever the proposal itself changes —
+  // a fresh draft means the previous refine completed.
+  useEffect(() => {
+    setRefineOpen(false);
+    setRefineText('');
+  }, [proposal]);
+
   if (!anchor) return null;
 
   const canReplace = !!proposal.replaceRange;
@@ -358,11 +385,72 @@ export function InlinePreviewPopover({
         </button>
       </div>
       <div style={previewStyle}>{preview}</div>
+      {refineOpen ? (
+        <div style={footerStyle}>
+          <input
+            ref={refineRef}
+            type="text"
+            placeholder="Refine — e.g. make it chronological, more concise"
+            value={refineText}
+            onChange={(e) => setRefineText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setRefineOpen(false);
+                setRefineText('');
+                return;
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const v = refineText.trim();
+                if (!v || busy) return;
+                onTryAgain(v);
+              }
+            }}
+            disabled={busy}
+            data-testid="preview-refine-input"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '7px 10px',
+              border: '1px solid var(--doc-border, #d1d5db)',
+              borderRadius: 6,
+              fontSize: 12,
+              outline: 'none',
+            }}
+          />
+          <button
+            type="button"
+            style={primaryBtnStyle}
+            onClick={() => {
+              const v = refineText.trim();
+              if (!v || busy) return;
+              onTryAgain(v);
+            }}
+            disabled={busy || !refineText.trim()}
+            data-testid="preview-refine-send"
+          >
+            Send
+          </button>
+          <button
+            type="button"
+            style={subtleBtnStyle}
+            onClick={() => {
+              setRefineOpen(false);
+              setRefineText('');
+            }}
+            aria-label="Cancel refine"
+            disabled={busy}
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
       <div style={footerStyle}>
         <button
           type="button"
           style={secondaryBtnStyle}
-          onClick={onTryAgain}
+          onClick={() => setRefineOpen(true)}
           disabled={busy}
           data-testid="preview-try-again"
         >
@@ -389,6 +477,7 @@ export function InlinePreviewPopover({
           {canReplace ? 'Replace' : 'Insert at cursor'}
         </button>
       </div>
+      )}
     </div>
   );
 }

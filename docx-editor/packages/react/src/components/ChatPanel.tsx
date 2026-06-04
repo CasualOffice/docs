@@ -64,8 +64,12 @@ export interface ChatPanelProps {
    * editor research (`docs/internal/11-ai-editor-research.md`),
    * AI output should land in an explicit preview affordance, never
    * straight into the doc body.
+   *
+   * The original user prompt is passed alongside so the host's
+   * "Try again" refine flow can re-run the pipeline with the original
+   * intent + a follow-up addendum.
    */
-  onProposal?: (proposal: PipelineProposal) => void;
+  onProposal?: (proposal: PipelineProposal, originalPrompt: string) => void;
 }
 
 // Layout (root container + header + close button) now lives in
@@ -577,7 +581,7 @@ export function ChatPanel({
           ? `Drafted ${result.summary} — preview is ${where}. Use Replace / Insert below / Try again / Discard in the popover.`
           : `Drafted ${result.summary}, but the preview surface isn't wired up yet.`;
         setHistory([...nextHistory, { role: 'assistant', content: tip }]);
-        if (onProposal) onProposal(result);
+        if (onProposal) onProposal(result, expanded);
       } else {
         setHistory([
           ...nextHistory,
