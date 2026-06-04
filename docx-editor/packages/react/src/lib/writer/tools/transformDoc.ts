@@ -512,6 +512,147 @@ function buildBlogFragment(schema: ToolContext['schema'], b: BlogJson): Fragment
 }
 
 // ---------------------------------------------------------------------------
+// Target: academic
+// ---------------------------------------------------------------------------
+
+interface AcademicJson {
+  title?: string;
+  authors?: string[];
+  abstract?: string;
+  introduction?: string;
+  sections?: { heading: string; body: string }[];
+  conclusion?: string;
+  references?: { author?: string; title?: string; year?: string; source?: string }[];
+}
+
+const ACADEMIC_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string', minLength: 4, maxLength: 200 },
+    authors: { type: 'array', items: { type: 'string' }, maxItems: 8 },
+    abstract: { type: 'string', minLength: 80, maxLength: 1500 },
+    introduction: { type: 'string', minLength: 80 },
+    sections: {
+      type: 'array',
+      minItems: 2,
+      maxItems: 8,
+      items: {
+        type: 'object',
+        properties: {
+          heading: { type: 'string', minLength: 1, maxLength: 100 },
+          body: { type: 'string', minLength: 120 },
+        },
+        required: ['heading', 'body'],
+      },
+    },
+    conclusion: { type: 'string', minLength: 60 },
+    references: {
+      type: 'array',
+      maxItems: 12,
+      items: {
+        type: 'object',
+        properties: {
+          author: { type: 'string' },
+          title: { type: 'string' },
+          year: { type: 'string' },
+          source: { type: 'string' },
+        },
+      },
+    },
+  },
+  required: ['title', 'abstract', 'introduction', 'sections', 'conclusion'],
+} as const;
+
+const ACADEMIC_SYSTEM = `You are restructuring the user's document into an academic paper.
+
+Read the source (provided below) and extract real claims, methods, evidence, and findings. Do NOT invent citations or fake data; if the source doesn't supply something, leave it out rather than fabricate. References should only cite sources the user clearly named in the document.
+
+Output ONLY a JSON object:
+{
+  "title": "Specific noun-phrase title — not a question",
+  "authors": ["Real names from the source, or empty array"],
+  "abstract": "150-250 word structured abstract — problem, approach, findings, implications",
+  "introduction": "2-4 paragraphs framing the problem and prior work",
+  "sections": [
+    {"heading": "Methods", "body": "..."},
+    {"heading": "Results", "body": "..."},
+    {"heading": "Discussion", "body": "..."}
+  ],
+  "conclusion": "1-2 paragraphs synthesising the contribution",
+  "references": [{"author": "Last, F.", "title": "...", "year": "2024", "source": "Journal / Publisher"}]
+}
+
+Style rules:
+- Formal academic register — no contractions, no first-person plural unless the source uses it.
+- Specific quantitative claims should keep their numbers verbatim from the source.
+- Use in-text citation placeholders sparingly (e.g., "[Smith 2024]") only when the source clearly names a referenced work.
+
+Return the JSON object only.`;
+
+function buildAcademicFragment(
+  schema: ToolContext['schema'],
+  a: AcademicJson
+): Fragment | null {
+  const children: PMNode[] = [];
+  const push = (n: PMNode | null): void => {
+    if (n) children.push(n);
+  };
+
+  if (a.title) push(headingPara(schema, a.title, 36));
+  if (a.authors && a.authors.length > 0) {
+    push(paraNode(schema, a.authors.join(', ')));
+  }
+  push(paraNode(schema, ''));
+
+  if (a.abstract) {
+    push(headingPara(schema, 'Abstract', 26));
+    push(paraNode(schema, a.abstract));
+    push(paraNode(schema, ''));
+  }
+
+  if (a.introduction) {
+    push(headingPara(schema, 'Introduction', 26));
+    const paras = a.introduction.split(/\n{2,}/);
+    for (const p of paras) {
+      push(paraNode(schema, p.trim()));
+      push(paraNode(schema, ''));
+    }
+  }
+
+  if (a.sections) {
+    for (const s of a.sections) {
+      push(headingPara(schema, s.heading, 26));
+      const paras = s.body.split(/\n{2,}/);
+      for (const p of paras) {
+        push(paraNode(schema, p.trim()));
+        push(paraNode(schema, ''));
+      }
+    }
+  }
+
+  if (a.conclusion) {
+    push(headingPara(schema, 'Conclusion', 26));
+    const paras = a.conclusion.split(/\n{2,}/);
+    for (const p of paras) {
+      push(paraNode(schema, p.trim()));
+      push(paraNode(schema, ''));
+    }
+  }
+
+  if (a.references && a.references.length > 0) {
+    push(headingPara(schema, 'References', 26));
+    for (const r of a.references) {
+      const parts = [r.author, r.year ? `(${r.year})` : '', r.title, r.source]
+        .filter(Boolean)
+        .join('. ');
+      push(paraNode(schema, parts, { indentLeft: 360 }));
+    }
+  }
+
+  return children.length > 0 ? Fragment.fromArray(children) : null;
+}
+
+// ---------------------------------------------------------------------------
 // Target registry + dispatcher
 // ---------------------------------------------------------------------------
 
@@ -571,10 +712,105 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     summarise: (b: BlogJson) =>
       b.title ? `Blog post — ${b.title}` : `Blog post — ${b.sections?.length ?? 0} sections`,
   },
+  academic: {
+    label: 'Academic paper',
+    schema: ACADEMIC_SCHEMA,
+    system: ACADEMIC_SYSTEM,
+    build: buildAcademicFragment,
+    maxTokens: 1400,
+    summarise: (a: AcademicJson) =>
+      a.title ? `Academic paper — ${a.title}` : `Academic paper — ${a.sections?.length ?? 0} sections`,
+  },
 };
 
 export function listTransformTargets(): string[] {
   return Object.keys(TARGETS);
+}
+
+/**
+ * Tool composition — each target opts into a Wikipedia lookup when
+ * the user's instruction names a domain concept we can ground on.
+ * Best-effort: any failure returns '' so the un-augmented system
+ * prompt still drives the call.
+ */
+async function maybeAugmentSystemPrompt(
+  target: string,
+  instruction: string | undefined,
+  ctx: ToolContext
+): Promise<string> {
+  const trim = (text: string): string =>
+    text
+      .replace(/^\*\*[^*]+\*\*\s*—\s*/, '')
+      .replace(/\n*\[Wikipedia\]\([^)]+\)\s*$/, '')
+      .trim();
+
+  const lookup = async (query: string, intro: string, rules: string): Promise<string> => {
+    try {
+      const r = await researchTool.execute({ query }, ctx);
+      if (r.kind === 'chat') {
+        const cleaned = trim(r.text);
+        if (cleaned) return `\n\n${intro}\n${cleaned}\n\n${rules}`;
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  };
+
+  if (!instruction) return '';
+
+  if (target === 'resume' && /\bATS\b|ats[\s-]?(?:friendly|optimi[sz]ed)/i.test(instruction)) {
+    return lookup(
+      'Applicant tracking system',
+      'For reference — what ATS systems actually do (from Wikipedia):',
+      'Use these facts to keep the resume parseable: machine-readable section headings, plain text bullets, no graphics or columns, standard date formats, keyword density mirroring the source content.'
+    );
+  }
+
+  if (target === 'academic') {
+    // Citation-style composition: MLA / Chicago / APA. Each style has
+    // a different references-section format; grounding the model on
+    // the canonical description avoids close-but-wrong attempts.
+    const mla = /\bMLA\b/i.test(instruction);
+    const chicago = /\bChicago\b/i.test(instruction);
+    const apa = /\bAPA\b/i.test(instruction);
+    if (mla)
+      return lookup(
+        'MLA Style Manual',
+        'For reference — MLA citation conventions (from Wikipedia):',
+        'Use the standard MLA Works Cited form for the references field: Author, "Title." Publisher, Year. In-text citations are (Author Page).'
+      );
+    if (chicago)
+      return lookup(
+        'The Chicago Manual of Style',
+        'For reference — Chicago Manual of Style conventions (from Wikipedia):',
+        'Use the Chicago notes-bibliography form for references: Author, Title (Place: Publisher, Year). In-text citations are footnote-style.'
+      );
+    if (apa)
+      return lookup(
+        'APA style',
+        'For reference — APA citation conventions (from Wikipedia):',
+        'Use the APA 7th-edition reference form: Author, A. A. (Year). Title. Source. In-text citations are (Author, Year).'
+      );
+  }
+
+  if (target === 'memo' && /\b(BLUF|bottom\s*line\s*up\s*front|executive\s*summary)\b/i.test(instruction)) {
+    return lookup(
+      'BLUF (communication)',
+      'For reference — Bottom-Line-Up-Front convention (from Wikipedia):',
+      'Open with the recommendation or conclusion in the Summary; supporting context follows in later sections.'
+    );
+  }
+
+  if (target === 'blog' && /\bSEO\b|search\s*engine\s*optim/i.test(instruction)) {
+    return lookup(
+      'Search engine optimization',
+      'For reference — SEO best practices (from Wikipedia):',
+      'Surface the primary keyword in title + first paragraph, use semantic H2/H3 headings, keep meta-description-length intro, and reference concrete examples and figures.'
+    );
+  }
+
+  return '';
 }
 
 export const transformDocTool: Tool<TransformDocArgs> = {
@@ -605,33 +841,12 @@ export const transformDocTool: Tool<TransformDocArgs> = {
       selectionText: ctx.getSelectionText(),
     });
 
-    // Tool composition: ATS-friendly augmentation for the resume
-    // target. Other targets could opt into their own research lookups
-    // here too — keeping the hook localised to resume for now to limit
-    // network calls.
-    let augment = '';
-    if (
-      target === 'resume' &&
-      args.instruction &&
-      /\bATS\b|ats[\s-]?(?:friendly|optimi[sz]ed)/i.test(args.instruction)
-    ) {
-      try {
-        const r = await researchTool.execute({ query: 'Applicant tracking system' }, ctx);
-        if (r.kind === 'chat') {
-          const cleaned = r.text
-            .replace(/^\*\*[^*]+\*\*\s*—\s*/, '')
-            .replace(/\n*\[Wikipedia\]\([^)]+\)\s*$/, '')
-            .trim();
-          if (cleaned) {
-            augment =
-              `\n\nFor reference — what ATS systems actually do (from Wikipedia):\n${cleaned}\n\n` +
-              `Use these facts to keep the resume parseable: machine-readable section headings, plain text bullets, no graphics or columns, standard date formats, keyword density mirroring the source content.`;
-          }
-        }
-      } catch {
-        // Silent fallback.
-      }
-    }
+    // Tool composition — each target opts into the relevant lookup
+    // when the user's instruction names a domain term we can ground
+    // on. All lookups are best-effort and silently fall back to the
+    // un-augmented system prompt so a Wikipedia outage never breaks
+    // the transform.
+    const augment = await maybeAugmentSystemPrompt(target, args.instruction, ctx);
 
     let extracted: unknown;
     try {

@@ -159,4 +159,28 @@ describe('intent quickClassify', () => {
     const out = await classifyIntent('outline a memo about Q3 goals', { hasSelection: false });
     expect(out.intent).toBe('outline');
   });
+
+  it('routes "format this as an academic paper" → transformDoc/academic', async () => {
+    const out = await classifyIntent('format this as an academic paper', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('academic');
+  });
+
+  it('routes "rewrite as a research paper in MLA style" → academic + MLA instruction', async () => {
+    const out = await classifyIntent('rewrite this as a research paper in MLA style', {
+      hasSelection: false,
+    });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('academic');
+    expect(out.instruction).toBe('MLA');
+  });
+
+  it('routes "make this into a Chicago-style academic paper" → academic + Chicago', async () => {
+    const out = await classifyIntent('make this into a Chicago-style academic paper', {
+      hasSelection: false,
+    });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('academic');
+    expect(out.instruction).toBe('Chicago');
+  });
 });
