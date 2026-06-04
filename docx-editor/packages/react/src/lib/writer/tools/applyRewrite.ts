@@ -10,6 +10,7 @@
  */
 
 import { Fragment } from 'prosemirror-model';
+import { summariseDocStructure } from '../docContext';
 import { runJsonChat } from '../jsonMode';
 import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
@@ -53,11 +54,24 @@ export const applyRewriteTool: Tool<RewriteArgs> = {
       (args.tone && TONE_HINTS[args.tone.toLowerCase()]) ||
       TONE_HINTS.polish;
     const extra = args.instruction?.trim();
+    // Pass the structural context so the model knows whether this is
+    // a resume bullet, an academic paragraph, a memo body, etc. —
+    // significantly improves rewrite quality for docs whose tone the
+    // selection itself doesn't fully telegraph.
+    const docContext = summariseDocStructure({
+      docText: ctx.getDocText(),
+      view: ctx.getView(),
+      selectionText: selection,
+    });
 
-    const system = `You are an expert editor.
+    const system = `You are an expert editor working inside the user's document.
 ${toneHint}
 ${extra ? `Additional instruction: ${extra}` : ''}
-Preserve the original language and proper nouns.
+
+About the document (for tone awareness — do not mention this in the output):
+${docContext}
+
+Preserve the original language, proper nouns, and any inline structure (bullets stay bullets).
 Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no markdown>"}.`;
 
     let out: { rewrite: string };

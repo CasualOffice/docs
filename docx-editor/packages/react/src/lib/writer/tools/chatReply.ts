@@ -16,6 +16,7 @@
  */
 
 import { runChat } from '../controller';
+import { summariseDocStructure } from '../docContext';
 import { stripModelPreamble } from '../stripPreamble';
 import type { Tool, ToolResult } from './types';
 
@@ -30,23 +31,36 @@ export interface ChatReplyArgs {
 }
 
 const SYSTEM_PROMPT =
-  'You are an editing assistant living inside a Word-like document editor. ' +
-  'Answer the user briefly and helpfully. ' +
-  'When the user asks about "this document" or "the selection", use the context provided. ' +
-  'Prefer plain prose over markdown. Never invent template placeholders like [Your Name] or [Date].';
+  "You are the user's writing assistant for THIS document. " +
+  "Help them improve, restructure, and edit it — you understand what they're working on " +
+  "from the context block below. " +
+  "Be concise, specific, and treat their selection (when present) as the focus of any edit. " +
+  "When the user asks for a transformation ('make a table', 'rewrite as a resume', 'format this'), " +
+  "answer briefly in chat and tell them the proposal preview is in the document; the editor will " +
+  "stage the actual content for Replace / Insert below / Discard. " +
+  "Prefer plain prose over markdown. Never invent template placeholders like [Your Name] or [Date]. " +
+  "If you don't know about recent events, prices, or external facts, say so honestly — you don't have " +
+  "internet access. Ask one clarifying question when the user's request is ambiguous, instead of guessing.";
 
 const SELECTION_CAP = 800;
 const DOC_CAP = 2400;
 const HISTORY_TURNS = 4;
 
-function buildSystem(docText: string, selection: string): string {
+interface BuildSystemOpts {
+  docText: string;
+  selection: string;
+  context: string;
+}
+
+function buildSystem({ docText, selection, context }: BuildSystemOpts): string {
   const parts: string[] = [SYSTEM_PROMPT];
+  if (context) parts.push(`About this document:\n${context}`);
   if (selection) {
     parts.push(`User's selected text:\n"""\n${selection.slice(0, SELECTION_CAP)}\n"""`);
   }
   if (docText) {
     parts.push(
-      `Document context (may be truncated):\n"""\n${docText.slice(0, DOC_CAP)}\n"""`
+      `Document text (may be truncated):\n"""\n${docText.slice(0, DOC_CAP)}\n"""`
     );
   }
   return parts.join('\n\n');
@@ -58,8 +72,21 @@ export const chatReplyTool: Tool<ChatReplyArgs> = {
   async execute(args, ctx): Promise<ToolResult> {
     const docText = args.includeDocContext ? ctx.getDocText() : '';
     const selection = args.includeSelection ? ctx.getSelectionText() : '';
+    // Always-on structured summary of the document. Even when the user
+    // hasn't toggled "Use doc context", we surface a one-paragraph
+    // picture so the model knows what it's living inside (resume vs
+    // memo, length, headings, selection state). This is what flips
+    // chat from "generic LLM" to "assistant for this doc".
+    const context = summariseDocStructure({
+      docText: ctx.getDocText(),
+      view: ctx.getView(),
+      selectionText: ctx.getSelectionText(),
+    });
     const messages = [
-      { role: 'system' as const, content: buildSystem(docText, selection) },
+      {
+        role: 'system' as const,
+        content: buildSystem({ docText, selection, context }),
+      },
       ...(args.history ?? []).slice(-HISTORY_TURNS).map((m) => ({
         role: m.role,
         content: m.content.slice(0, 600),
