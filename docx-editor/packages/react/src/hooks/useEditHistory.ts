@@ -81,6 +81,13 @@ export interface UseEditHistoryReturn {
    *   useEffect(() => attach(view), [view]);
    */
   attach: (view: EditorView) => () => void;
+  /**
+   * Snapshot the live document as plain text — used by the diff view
+   * to compute "after" for the latest entry (next-newer entry's
+   * `before` provides "after" for older entries). Returns an empty
+   * string when no view is attached.
+   */
+  getCurrentText: () => string;
 }
 
 const PLUGIN_KEY = new PluginKey('eigenpal-doc-history');
@@ -247,5 +254,14 @@ export function useEditHistory(options: UseEditHistoryOptions = {}): UseEditHist
 
   const clear = useCallback(() => setEntries([]), []);
 
-  return useMemo(() => ({ entries, revert, clear, attach }), [entries, revert, clear, attach]);
+  const getCurrentText = useCallback((): string => {
+    const view = viewRef.current;
+    if (!view) return '';
+    return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
+  }, []);
+
+  return useMemo(
+    () => ({ entries, revert, clear, attach, getCurrentText }),
+    [entries, revert, clear, attach, getCurrentText]
+  );
 }

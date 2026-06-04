@@ -44,6 +44,28 @@ test.describe('Version history panel', () => {
     expect(entryCount).toBeGreaterThan(0);
   });
 
+  test('Show changes reveals an inline word diff for the latest entry', async ({ page }) => {
+    const toggle = page.getByRole('button', { name: 'Version history' });
+    await toggle.click();
+    await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
+
+    // Type so an entry lands. The diff is computed against the live
+    // doc, so "hello world" landing as the latest entry produces a +2
+    // word stats pill on the row.
+    await editor.typeText('hello world');
+    await page.waitForTimeout(200);
+
+    const panel = page.locator('[data-testid="version-history-panel"]');
+    const showBtn = panel.getByTestId('version-history-toggle-diff').first();
+    await expect(showBtn).toBeVisible();
+    await showBtn.click();
+    const diffBox = panel.getByTestId('version-history-diff').first();
+    await expect(diffBox).toBeVisible();
+    // The diff should contain green INS marks for the new text.
+    const insCount = await diffBox.locator('ins').count();
+    expect(insCount).toBeGreaterThan(0);
+  });
+
   test('toggling the panel off hides it', async ({ page }) => {
     const toggle = page.getByRole('button', { name: 'Version history' });
     await toggle.click();
