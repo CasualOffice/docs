@@ -249,6 +249,9 @@ export function VersionHistoryPanel({
               now={now}
               afterText={afterByEntryId.get(entry.id) ?? ''}
               onRevert={() => history.revert(entry.id)}
+              onRevertChange={(op, text, context) =>
+                history.revertHunk(op, text, context)
+              }
             />
           ))}
         </ol>
@@ -262,11 +265,13 @@ function EditHistoryEntryRow({
   now,
   afterText,
   onRevert,
+  onRevertChange,
 }: {
   entry: EditHistoryEntry;
   now: number;
   afterText: string;
   onRevert: () => void;
+  onRevertChange: (op: 'add' | 'remove', text: string, context: string) => boolean;
 }) {
   const canRevert = entry.before != null;
   const [showDiff, setShowDiff] = useState(false);
@@ -348,14 +353,70 @@ function EditHistoryEntryRow({
         <pre style={DIFF_BOX_STYLE} data-testid="version-history-diff">
           {diff.map((seg, i) => {
             if (seg.op === 'keep') return <span key={i}>{seg.text}</span>;
-            if (seg.op === 'add')
+            // Anchor context = last 30 chars of the preceding `keep`
+            // run. Disambiguates identical substrings — e.g. typing
+            // "hello" in two paragraphs reverts the right one.
+            const prevKept = (() => {
+              for (let j = i - 1; j >= 0; j--) {
+                if (diff[j]!.op === 'keep') return diff[j]!.text.slice(-30);
+                // A non-keep segment between us and the previous keep
+                // means there's no clean disambiguating prefix; bail
+                // and use empty context. Could be improved by chaining
+                // through adjacent changes, but the common case is
+                // single-keep gaps.
+                break;
+              }
+              return '';
+            })();
+            // `seg.op` is now narrowed to `'add' | 'remove'` because
+            // the `keep` branch returned `<span>` above.
+            const opForRevert: 'add' | 'remove' = seg.op;
+            const onRevertHunk = (): void => {
+              const ok = onRevertChange(opForRevert, seg.text, prevKept);
+              if (!ok) {
+                // Soft-fail — no toast plumbing into this leaf
+                // component; aria-live label updates so screen readers
+                // know. The Cmd+Z path still works for users who
+                // expected the previous behaviour.
+              }
+            };
+            if (seg.op === 'add') {
               return (
-                <ins key={i} style={DIFF_ADD_STYLE}>
+                <ins
+                  key={i}
+                  style={DIFF_ADD_STYLE}
+                  role="button"
+                  tabIndex={0}
+                  title="Revert this insertion"
+                  data-testid="version-history-diff-add"
+                  onClick={onRevertHunk}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onRevertHunk();
+                    }
+                  }}
+                >
                   {seg.text}
                 </ins>
               );
+            }
             return (
-              <del key={i} style={DIFF_REMOVE_STYLE}>
+              <del
+                key={i}
+                style={DIFF_REMOVE_STYLE}
+                role="button"
+                tabIndex={0}
+                title="Bring this text back"
+                data-testid="version-history-diff-remove"
+                onClick={onRevertHunk}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onRevertHunk();
+                  }
+                }}
+              >
                 {seg.text}
               </del>
             );

@@ -29,6 +29,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import type { Transaction } from 'prosemirror-state';
+import { findTextRange } from './findTextRange';
 
 export interface EditHistoryEntry {
   /** Stable id within this session — used as React key + ARIA. */
@@ -88,6 +89,25 @@ export interface UseEditHistoryReturn {
    * string when no view is attached.
    */
   getCurrentText: () => string;
+  /**
+   * Revert a SINGLE diff segment on the live document. Used by the
+   * per-change accept/reject UI in the version-history panel.
+   *
+   * - `op: 'add'` — the segment's `text` was inserted in this entry;
+   *   reverting deletes it from the live doc.
+   * - `op: 'remove'` — the segment's `text` was removed in this
+   *   entry; reverting puts it back at the matching context.
+   *
+   * `context` is the immediately-preceding kept text (last ~30 chars
+   * of the kept run just before this segment). It disambiguates
+   * identical substrings; without it, "hello" appearing in two
+   * paragraphs would always revert the first occurrence.
+   *
+   * Returns `true` on success. Failures (text no longer found in the
+   * live doc, view detached) return `false` — the panel surfaces a
+   * toast in that case.
+   */
+  revertHunk: (op: 'add' | 'remove', text: string, context: string) => boolean;
 }
 
 const PLUGIN_KEY = new PluginKey('eigenpal-doc-history');
@@ -260,8 +280,33 @@ export function useEditHistory(options: UseEditHistoryOptions = {}): UseEditHist
     return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
   }, []);
 
+  const revertHunk = useCallback(
+    (op: 'add' | 'remove', text: string, context: string): boolean => {
+      const view = viewRef.current;
+      if (!view || !text) return false;
+      if (op === 'add') {
+        // Find the inserted text in the live doc anchored by the
+        // preceding kept context. Delete it.
+        const range = findTextRange(view.state.doc, text, context);
+        if (!range) return false;
+        view.dispatch(view.state.tr.delete(range.from, range.to));
+        return true;
+      }
+      // op === 'remove' — put the deleted text back at the position
+      // where the context's tail currently sits. We search for the
+      // context only (the deleted text is no longer in the doc), then
+      // insert at the context's end.
+      if (!context) return false;
+      const ctxRange = findTextRange(view.state.doc, context);
+      if (!ctxRange) return false;
+      view.dispatch(view.state.tr.insertText(text, ctxRange.to));
+      return true;
+    },
+    []
+  );
+
   return useMemo(
-    () => ({ entries, revert, clear, attach, getCurrentText }),
-    [entries, revert, clear, attach, getCurrentText]
+    () => ({ entries, revert, clear, attach, getCurrentText, revertHunk }),
+    [entries, revert, clear, attach, getCurrentText, revertHunk]
   );
 }

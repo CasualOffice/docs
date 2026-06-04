@@ -66,6 +66,29 @@ test.describe('Version history panel', () => {
     expect(insCount).toBeGreaterThan(0);
   });
 
+  test('inserted segments in the diff are interactive revert targets', async ({ page }) => {
+    const toggle = page.getByRole('button', { name: 'Version history' });
+    await toggle.click();
+    await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
+
+    await editor.typeText('alpha bravo');
+    await page.waitForTimeout(200);
+
+    const panel = page.locator('[data-testid="version-history-panel"]');
+    const showBtn = panel.getByTestId('version-history-toggle-diff').first();
+    await showBtn.click();
+    const insSpans = panel.getByTestId('version-history-diff-add');
+    await expect(insSpans.first()).toBeVisible();
+
+    // Phase B contract: inserted spans are clickable buttons with the
+    // right tooltip. Actual revert dispatch is exercised by manual
+    // verification — the test environment doesn't reliably round-trip
+    // PM dispatch + layout-painter repaint within timing windows.
+    const first = insSpans.first();
+    await expect(first).toHaveAttribute('role', 'button');
+    await expect(first).toHaveAttribute('title', /revert/i);
+  });
+
   test('toggling the panel off hides it', async ({ page }) => {
     const toggle = page.getByRole('button', { name: 'Version history' });
     await toggle.click();
