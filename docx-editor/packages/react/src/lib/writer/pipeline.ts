@@ -83,6 +83,15 @@ export async function runPipeline(
         ctx
       );
       break;
+    case 'transformDoc':
+      result = await getTool('transformDoc').execute(
+        {
+          target: intent.transformTarget ?? 'resume',
+          instruction: intent.instruction,
+        },
+        ctx
+      );
+      break;
     case 'translate':
     case 'findIssues':
       // Not yet implemented as a tool — fall through to chat with a

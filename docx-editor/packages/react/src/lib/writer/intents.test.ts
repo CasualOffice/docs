@@ -82,4 +82,24 @@ describe('intent quickClassify', () => {
     const out = await classifyIntent('Hey, what time is it?', { hasSelection: false });
     expect(out.intent).toBe('chat');
   });
+
+  it('routes "create a resume from this" → transformDoc', async () => {
+    const out = await classifyIntent('create a resume from this', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('resume');
+  });
+
+  it('routes "turn this into an ATS-optimised resume" → transformDoc + instruction', async () => {
+    const out = await classifyIntent('turn this into an ATS-optimised resume', {
+      hasSelection: false,
+    });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('resume');
+    expect(out.instruction).toBeDefined();
+  });
+
+  it('routes plain "make a resume" → transformDoc, not outline', async () => {
+    const out = await classifyIntent('make me a resume', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+  });
 });

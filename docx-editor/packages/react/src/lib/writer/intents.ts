@@ -23,6 +23,7 @@ export type IntentKind =
   | 'outline'
   | 'translate'
   | 'findIssues'
+  | 'transformDoc'
   | 'chat';
 
 export interface ClassifiedIntent {
@@ -36,6 +37,10 @@ export interface ClassifiedIntent {
   tone?: string;
   /** ISO language code or name for `translate`. */
   targetLanguage?: string;
+  /** Target shape for `transformDoc` — currently only "resume". */
+  transformTarget?: string;
+  /** Free-form instruction for `transformDoc` ("ATS-optimised", "one page"). */
+  instruction?: string;
 }
 
 const SYSTEM_PROMPT = `You are an intent classifier for a document-editor chat assistant.
@@ -49,6 +54,7 @@ Intents:
 - "outline": user wants an OUTLINE / STRUCTURED DOCUMENT (memo, essay, report) inserted. Trigger words: "outline", "draft a memo", "write an essay", "structure", "sections".
 - "translate": user wants text translated. Trigger words: "translate", "in Spanish", "to French", "in <language>".
 - "findIssues": user wants typos / grammar issues found. Trigger words: "typos", "grammar", "proofread", "errors", "issues".
+- "transformDoc": user wants the CURRENT document restructured into a different format using its existing content as the data source. Trigger words: "create a resume from this", "turn this into a resume", "format this as a resume", "ATS-optimised". Set \`transformTarget\` to "resume". Optionally extract \`instruction\` ("ATS-friendly", "one-page", "concise").
 - "chat": general question, casual conversation, or anything that does NOT modify the document.
 
 Rules:
@@ -65,7 +71,16 @@ const SCHEMA = {
   properties: {
     intent: {
       type: 'string',
-      enum: ['insertTable', 'summarize', 'rewrite', 'outline', 'translate', 'findIssues', 'chat'],
+      enum: [
+        'insertTable',
+        'summarize',
+        'rewrite',
+        'outline',
+        'translate',
+        'findIssues',
+        'transformDoc',
+        'chat',
+      ],
     },
     topic: { type: 'string' },
     rows: { type: 'integer', minimum: 1, maximum: 20 },
@@ -75,6 +90,8 @@ const SCHEMA = {
       enum: ['polish', 'concise', 'formal', 'casual', 'shorter', 'longer'],
     },
     targetLanguage: { type: 'string' },
+    transformTarget: { type: 'string', enum: ['resume'] },
+    instruction: { type: 'string' },
   },
   required: ['intent'],
 } as const;
@@ -151,6 +168,21 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
       topic: topic || undefined,
       ...(rows ? { rows } : {}),
       ...(cols ? { cols } : {}),
+    };
+  }
+  // Transform-doc — restructure THIS doc into a different shape.
+  // "create a resume from this", "turn this into a resume", "make me a
+  // resume". Has to win over `outline` (which also matches "create
+  // resume").
+  // Allow up to 4 modifier words between the verb-phrase and "resume"
+  // so "turn this into an ATS-optimised resume" still matches.
+  const transformResume = /\b(create|make|build|turn\s+this\s+into|format|restructure|re-?write\s+this\s+as)\s+(?:[a-z][\w-]*\s+){0,4}?resume\b/;
+  if (transformResume.test(m) || /\bATS[\s-]?(?:friendly|optimi[sz]ed)\b/.test(m)) {
+    const instruction = m.match(/\b(ATS[\s-]?(?:friendly|optimi[sz]ed)|one[\s-]?page|short|concise)\b/i)?.[0];
+    return {
+      intent: 'transformDoc',
+      transformTarget: 'resume',
+      ...(instruction ? { instruction } : {}),
     };
   }
   if (/(outline|draft|write)\s+(an?\s+)?(memo|essay|report|article|letter)/.test(m)) {

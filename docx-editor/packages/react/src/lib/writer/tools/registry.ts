@@ -9,6 +9,7 @@ import { findIssuesTool } from './findIssues';
 import { insertOutlineTool } from './insertOutline';
 import { insertTableTool } from './insertTable';
 import { summarizeDocTool } from './summarizeDoc';
+import { transformDocTool } from './transformDoc';
 import { translateRangeTool } from './translateRange';
 import type { Tool } from './types';
 
@@ -19,6 +20,7 @@ const TOOLS = {
   outline: insertOutlineTool,
   translate: translateRangeTool,
   findIssues: findIssuesTool,
+  transformDoc: transformDocTool,
   chat: chatReplyTool,
 } as const;
 
