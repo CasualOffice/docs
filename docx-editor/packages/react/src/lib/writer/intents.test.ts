@@ -127,4 +127,36 @@ describe('intent quickClassify', () => {
     const out = await classifyIntent('what is an ATS?', { hasSelection: true });
     expect(out.intent).toBe('research');
   });
+
+  it('routes "create a cover letter from this" → transformDoc/cover-letter', async () => {
+    const out = await classifyIntent('create a cover letter from this', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('cover-letter');
+  });
+
+  it('routes "draft a memo from this" → transformDoc/memo', async () => {
+    const out = await classifyIntent('draft a memo from this', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('memo');
+  });
+
+  it('routes "rewrite this as a blog post" → transformDoc/blog', async () => {
+    const out = await classifyIntent('rewrite this as a blog post', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('blog');
+  });
+
+  it('routes "turn this into a memorandum" → transformDoc/memo', async () => {
+    const out = await classifyIntent('turn this into a memorandum', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('memo');
+  });
+
+  it('still routes "outline a memo about Q3 goals" → outline, not transformDoc', async () => {
+    // The verb-and-target distinction: "outline a memo" wants a FRESH
+    // outline; "draft a memo from this" wants the existing doc
+    // restructured.
+    const out = await classifyIntent('outline a memo about Q3 goals', { hasSelection: false });
+    expect(out.intent).toBe('outline');
+  });
 });

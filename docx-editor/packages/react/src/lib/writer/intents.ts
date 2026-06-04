@@ -57,7 +57,7 @@ Intents:
 - "outline": user wants an OUTLINE / STRUCTURED DOCUMENT (memo, essay, report) inserted. Trigger words: "outline", "draft a memo", "write an essay", "structure", "sections".
 - "translate": user wants text translated. Trigger words: "translate", "in Spanish", "to French", "in <language>".
 - "findIssues": user wants typos / grammar issues found. Trigger words: "typos", "grammar", "proofread", "errors", "issues".
-- "transformDoc": user wants the CURRENT document restructured into a different format using its existing content as the data source. Trigger words: "create a resume from this", "turn this into a resume", "format this as a resume", "ATS-optimised". Set \`transformTarget\` to "resume". Optionally extract \`instruction\` ("ATS-friendly", "one-page", "concise").
+- "transformDoc": user wants the CURRENT document restructured into a different format using its existing content as the data source. Trigger words for each target: "resume", "cover letter", "memo", "blog post" / "blog". Examples: "create a resume from this" → transformTarget "resume"; "turn this into a cover letter" → "cover-letter"; "draft a memo from this" → "memo"; "rewrite as a blog post" → "blog". Set \`transformTarget\` to the matched target. Optionally extract \`instruction\` ("ATS-friendly", "one-page", "concise", "formal", "casual", "detailed").
 - "research": user wants a factual lookup (Wikipedia). Trigger words: "what is", "who is", "look up", "search for", "find info on", "define", "tell me about". Set \`query\` to the topic the user wants looked up (strip the question words; e.g. "what is ATS?" → query "ATS").
 - "chat": general question, casual conversation, or anything that does NOT modify the document.
 
@@ -95,7 +95,7 @@ const SCHEMA = {
       enum: ['polish', 'concise', 'formal', 'casual', 'shorter', 'longer'],
     },
     targetLanguage: { type: 'string' },
-    transformTarget: { type: 'string', enum: ['resume'] },
+    transformTarget: { type: 'string', enum: ['resume', 'cover-letter', 'memo', 'blog'] },
     instruction: { type: 'string' },
     query: { type: 'string' },
   },
@@ -180,18 +180,42 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
   // "create a resume from this", "turn this into a resume", "make me a
   // resume". Has to win over `outline` (which also matches "create
   // resume").
-  // Allow up to 4 modifier words between the verb-phrase and "resume"
-  // so "turn this into an ATS-optimised resume" still matches.
-  const transformResume = /\b(create|make|build|turn\s+this\s+into|format|restructure|re-?write\s+this\s+as)\s+(?:[a-z][\w-]*\s+){0,4}?resume\b/;
-  if (transformResume.test(m) || /\bATS[\s-]?(?:friendly|optimi[sz]ed)\b/.test(m)) {
-    const instruction = m.match(/\b(ATS[\s-]?(?:friendly|optimi[sz]ed)|one[\s-]?page|short|concise)\b/i)?.[0];
-    return {
-      intent: 'transformDoc',
-      transformTarget: 'resume',
-      ...(instruction ? { instruction } : {}),
-    };
+  // Outline (fresh structure) wins when the verb is explicitly
+  // "outline". "outline a memo about Q3 goals" is a request for a
+  // fresh memo skeleton, not a restructure of the live doc — the
+  // user's intent rides on the verb. Other verbs ("draft a memo from
+  // this", "create a memo") route to transformDoc below.
+  if (/^outline\s+(an?\s+)?(memo|essay|report|article|letter|blog\s+post|blog|resume|cover\s+letter)\b/.test(m)) {
+    return { intent: 'outline', topic: m };
   }
-  if (/(outline|draft|write)\s+(an?\s+)?(memo|essay|report|article|letter)/.test(m)) {
+
+  // Allow up to 4 modifier words between the verb-phrase and the
+  // target so "turn this into an ATS-optimised resume" still matches.
+  const transformVerb =
+    /\b(create|make|build|turn\s+this\s+into|format|restructure|re-?write\s+this\s+as|draft)\b/;
+  if (transformVerb.test(m)) {
+    let transformTarget: string | null = null;
+    if (/\b(?:[a-z][\w-]*\s+){0,4}?resume\b/.test(m)) transformTarget = 'resume';
+    else if (/\bcover[\s-]?letter\b/.test(m)) transformTarget = 'cover-letter';
+    else if (/\b(?:[a-z][\w-]*\s+){0,4}?memo(?:randum)?\b/.test(m)) transformTarget = 'memo';
+    else if (/\b(?:[a-z][\w-]*\s+){0,4}?(?:blog\s+post|blog)\b/.test(m)) transformTarget = 'blog';
+    if (transformTarget) {
+      const instruction = m.match(
+        /\b(ATS[\s-]?(?:friendly|optimi[sz]ed)|one[\s-]?page|short|concise|long|detailed|formal|casual)\b/i
+      )?.[0];
+      return {
+        intent: 'transformDoc',
+        transformTarget,
+        ...(instruction ? { instruction } : {}),
+      };
+    }
+  }
+  // Standalone ATS instruction still routes to resume even without
+  // a transform verb ("ATS-optimise this").
+  if (/\bATS[\s-]?(?:friendly|optimi[sz]ed)\b/.test(m)) {
+    return { intent: 'transformDoc', transformTarget: 'resume', instruction: 'ATS-friendly' };
+  }
+  if (/(outline|draft|write)\s+(an?\s+)?(essay|report|article|letter)/.test(m)) {
     return { intent: 'outline', topic: m };
   }
   // Research / lookup intent — pattern matches knowledge questions
