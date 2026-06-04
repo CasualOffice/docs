@@ -57,7 +57,7 @@ Intents:
 - "outline": user wants an OUTLINE / STRUCTURED DOCUMENT (memo, essay, report) inserted. Trigger words: "outline", "draft a memo", "write an essay", "structure", "sections".
 - "translate": user wants text translated. Trigger words: "translate", "in Spanish", "to French", "in <language>".
 - "findIssues": user wants typos / grammar issues found. Trigger words: "typos", "grammar", "proofread", "errors", "issues".
-- "transformDoc": user wants the CURRENT document restructured into a different format using its existing content as the data source. Trigger words for each target: "resume", "cover letter", "memo", "blog post" / "blog", "academic paper" / "research paper" / "in MLA style". Examples: "create a resume from this" → transformTarget "resume"; "turn this into a cover letter" → "cover-letter"; "draft a memo from this" → "memo"; "rewrite as a blog post" → "blog"; "format as an academic paper in MLA" → "academic". Set \`transformTarget\` to the matched target. Optionally extract \`instruction\` ("ATS-friendly", "one-page", "concise", "formal", "casual", "detailed", "MLA", "APA", "Chicago", "SEO", "BLUF", "executive summary").
+- "transformDoc": user wants the CURRENT document restructured into a different format using its existing content as the data source. Trigger words for each target: "resume", "cover letter", "memo", "blog post" / "blog", "academic paper" / "research paper" / "in MLA style", "slide deck" / "presentation" / "10-slide deck". Examples: "create a resume from this" → transformTarget "resume"; "turn this into a cover letter" → "cover-letter"; "draft a memo from this" → "memo"; "rewrite as a blog post" → "blog"; "format as an academic paper in MLA" → "academic"; "create a 10-slide deck from this" → "slide-deck". Set \`transformTarget\` to the matched target. Optionally extract \`instruction\` ("ATS-friendly", "one-page", "concise", "formal", "casual", "detailed", "MLA", "APA", "Chicago", "SEO", "BLUF", "executive summary", "10/20/30", "Pecha Kucha").
 - "research": user wants a factual lookup (Wikipedia). Trigger words: "what is", "who is", "look up", "search for", "find info on", "define", "tell me about". Set \`query\` to the topic the user wants looked up (strip the question words; e.g. "what is ATS?" → query "ATS").
 - "chat": general question, casual conversation, or anything that does NOT modify the document.
 
@@ -97,7 +97,7 @@ const SCHEMA = {
     targetLanguage: { type: 'string' },
     transformTarget: {
       type: 'string',
-      enum: ['resume', 'cover-letter', 'memo', 'blog', 'academic'],
+      enum: ['resume', 'cover-letter', 'memo', 'blog', 'academic', 'slide-deck'],
     },
     instruction: { type: 'string' },
     query: { type: 'string' },
@@ -208,11 +208,16 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
       /\bin\s+(?:MLA|Chicago|APA)\s+(?:style|format)\b/i.test(m)
     )
       transformTarget = 'academic';
+    else if (
+      /\b(?:slide\s+deck|presentation\s+outline|presentation|deck|slides?\s+outline)\b/.test(m) ||
+      /\b\d+[\s-]*slide\b/.test(m)
+    )
+      transformTarget = 'slide-deck';
     if (transformTarget) {
       // Capture the instruction in ORIGINAL casing so "MLA", "APA",
       // "Chicago" pass through correctly to the composition path.
       const instruction = message.match(
-        /\b(ATS[\s-]?(?:friendly|optimi[sz]ed)|one[\s-]?page|short|concise|long|detailed|formal|casual|MLA|APA|Chicago|SEO|BLUF|executive[\s-]?summary)\b/i
+        /\b(ATS[\s-]?(?:friendly|optimi[sz]ed)|one[\s-]?page|short|concise|long|detailed|formal|casual|MLA|APA|Chicago|SEO|BLUF|executive[\s-]?summary|10[\s\/-]?20[\s\/-]?30|Pecha\s*Kucha|Kawasaki)\b/i
       )?.[0];
       return {
         intent: 'transformDoc',

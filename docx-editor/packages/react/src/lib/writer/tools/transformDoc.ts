@@ -653,6 +653,128 @@ function buildAcademicFragment(
 }
 
 // ---------------------------------------------------------------------------
+// Target: slide-deck
+// ---------------------------------------------------------------------------
+
+interface SlideDeckJson {
+  title?: string;
+  presenter?: string;
+  date?: string;
+  slides?: {
+    title: string;
+    bullets?: string[];
+    notes?: string;
+  }[];
+}
+
+const SLIDE_DECK_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string', minLength: 2, maxLength: 100 },
+    presenter: { type: 'string' },
+    date: { type: 'string' },
+    slides: {
+      type: 'array',
+      minItems: 3,
+      maxItems: 25,
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', minLength: 1, maxLength: 80 },
+          bullets: {
+            type: 'array',
+            items: { type: 'string', minLength: 1, maxLength: 160 },
+            maxItems: 6,
+          },
+          notes: { type: 'string', maxLength: 600 },
+        },
+        required: ['title'],
+      },
+    },
+  },
+  required: ['title', 'slides'],
+} as const;
+
+const SLIDE_DECK_SYSTEM = `You are restructuring the user's document into a presentation outline.
+
+Read the source (provided below) and break it into slides. Each slide carries ONE idea. Do NOT cram. Bullets are punchy headlines or fragments — not full sentences. Speaker notes are 1-3 sentences expanding on the slide.
+
+Output ONLY a JSON object:
+{
+  "title": "Deck title — short noun phrase",
+  "presenter": "Real presenter name from the source, or blank",
+  "date": "Mar 14, 2026",
+  "slides": [
+    {
+      "title": "Slide heading",
+      "bullets": ["Punchy headline or fragment", "..."],
+      "notes": "Speaker notes — 1-3 sentences expanding on the slide"
+    }
+  ]
+}
+
+Slide structure:
+- Slide 1 is the title slide — its bullets array can be empty.
+- Slide 2 is usually "Agenda" or "Overview".
+- The last slide is "Questions?" / "Thank You" / a clear close.
+- 5-15 slides is the right range unless the user asks for a specific number.
+
+Style rules:
+- No filler bullets ("This slide will discuss…").
+- Quantify when the source has numbers.
+- Notes should be in first-person presentation voice.
+
+Return the JSON object only.`;
+
+function buildSlideDeckFragment(
+  schema: ToolContext['schema'],
+  d: SlideDeckJson
+): Fragment | null {
+  const children: PMNode[] = [];
+  const push = (n: PMNode | null): void => {
+    if (n) children.push(n);
+  };
+
+  // Title page block at the top of the doc — heading + presenter +
+  // date stacked, separated from the slides.
+  if (d.title) push(headingPara(schema, d.title, 36));
+  if (d.presenter) push(paraNode(schema, d.presenter));
+  if (d.date) push(paraNode(schema, d.date));
+  push(paraNode(schema, ''));
+
+  if (d.slides) {
+    d.slides.forEach((s, idx) => {
+      // Slide N: Title (bold) → bullets → "Notes:" italics line if
+      // there are speaker notes. Same paragraph-only shape the other
+      // targets use so OOXML round-trip is identical.
+      push(headingPara(schema, `Slide ${idx + 1} — ${s.title}`, 28));
+      if (s.bullets && s.bullets.length > 0) {
+        for (const b of s.bullets) {
+          push(paraNode(schema, `•  ${b}`, { indentLeft: 360 }));
+        }
+      }
+      if (s.notes && s.notes.trim()) {
+        // Italic "Notes:" prefix + the notes text on the same
+        // paragraph so the speaker can scan the deck linearly.
+        const para = schema.nodes.paragraph;
+        if (para) {
+          const italic = schema.marks.italic ? [schema.marks.italic.create()] : [];
+          const bold = schema.marks.bold ? [schema.marks.bold.create()] : [];
+          const labelMarks = [...italic, ...bold];
+          const noteParts: PMNode[] = [];
+          noteParts.push(schema.text('Notes: ', labelMarks));
+          noteParts.push(schema.text(s.notes.trim(), italic));
+          children.push(para.create(null, noteParts));
+        }
+      }
+      push(paraNode(schema, ''));
+    });
+  }
+
+  return children.length > 0 ? Fragment.fromArray(children) : null;
+}
+
+// ---------------------------------------------------------------------------
 // Target registry + dispatcher
 // ---------------------------------------------------------------------------
 
@@ -720,6 +842,19 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     maxTokens: 1400,
     summarise: (a: AcademicJson) =>
       a.title ? `Academic paper — ${a.title}` : `Academic paper — ${a.sections?.length ?? 0} sections`,
+  },
+  'slide-deck': {
+    label: 'Slide deck',
+    schema: SLIDE_DECK_SCHEMA,
+    system: SLIDE_DECK_SYSTEM,
+    build: buildSlideDeckFragment,
+    maxTokens: 1400,
+    summarise: (d: SlideDeckJson) => {
+      const count = d.slides?.length ?? 0;
+      return d.title
+        ? `Slide deck — ${d.title} · ${count} slides`
+        : `Slide deck — ${count} slides`;
+    },
   },
 };
 
@@ -808,6 +943,23 @@ async function maybeAugmentSystemPrompt(
       'For reference — SEO best practices (from Wikipedia):',
       'Surface the primary keyword in title + first paragraph, use semantic H2/H3 headings, keep meta-description-length intro, and reference concrete examples and figures.'
     );
+  }
+
+  if (target === 'slide-deck') {
+    if (/\b10\s*[-\/]\s*20\s*[-\/]\s*30\b|kawasaki/i.test(instruction)) {
+      return lookup(
+        'Guy Kawasaki',
+        'For reference — Guy Kawasaki\'s 10/20/30 rule:',
+        'Constrain the deck to ~10 slides, ~20-minute walk-through, ~30-point minimum font size. Use the bullets array to keep slide content terse so a 30pt readable target is realistic.'
+      );
+    }
+    if (/\bpecha\s*kucha\b/i.test(instruction)) {
+      return lookup(
+        'PechaKucha',
+        'For reference — PechaKucha format (from Wikipedia):',
+        'Exactly 20 slides, 20 seconds each (6:40 total). One concise visual idea per slide; notes should be brief enough to deliver in 20 seconds.'
+      );
+    }
   }
 
   return '';

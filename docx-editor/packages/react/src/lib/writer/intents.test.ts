@@ -183,4 +183,34 @@ describe('intent quickClassify', () => {
     expect(out.transformTarget).toBe('academic');
     expect(out.instruction).toBe('Chicago');
   });
+
+  it('routes "create a slide deck from this" → transformDoc/slide-deck', async () => {
+    const out = await classifyIntent('create a slide deck from this', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('slide-deck');
+  });
+
+  it('routes "make a 10-slide presentation from this" → slide-deck', async () => {
+    const out = await classifyIntent('make a 10-slide presentation from this', {
+      hasSelection: false,
+    });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('slide-deck');
+  });
+
+  it('routes "create a 10/20/30 slide deck from this" → slide-deck + 10/20/30 instruction', async () => {
+    const out = await classifyIntent('create a 10/20/30 slide deck from this', {
+      hasSelection: false,
+    });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('slide-deck');
+    expect(out.instruction?.toLowerCase()).toMatch(/10[\s\/-]?20[\s\/-]?30/);
+  });
+
+  it('routes "turn this into a Pecha Kucha deck" → slide-deck + Pecha Kucha instruction', async () => {
+    const out = await classifyIntent('turn this into a Pecha Kucha deck', { hasSelection: false });
+    expect(out.intent).toBe('transformDoc');
+    expect(out.transformTarget).toBe('slide-deck');
+    expect(out.instruction?.toLowerCase()).toMatch(/pecha\s*kucha/);
+  });
 });
