@@ -24,6 +24,7 @@ export type IntentKind =
   | 'translate'
   | 'findIssues'
   | 'transformDoc'
+  | 'research'
   | 'chat';
 
 export interface ClassifiedIntent {
@@ -41,6 +42,8 @@ export interface ClassifiedIntent {
   transformTarget?: string;
   /** Free-form instruction for `transformDoc` ("ATS-optimised", "one page"). */
   instruction?: string;
+  /** Lookup query for `research` ("ATS", "Hemingway editor", "MLA format"). */
+  query?: string;
 }
 
 const SYSTEM_PROMPT = `You are an intent classifier for a document-editor chat assistant.
@@ -55,6 +58,7 @@ Intents:
 - "translate": user wants text translated. Trigger words: "translate", "in Spanish", "to French", "in <language>".
 - "findIssues": user wants typos / grammar issues found. Trigger words: "typos", "grammar", "proofread", "errors", "issues".
 - "transformDoc": user wants the CURRENT document restructured into a different format using its existing content as the data source. Trigger words: "create a resume from this", "turn this into a resume", "format this as a resume", "ATS-optimised". Set \`transformTarget\` to "resume". Optionally extract \`instruction\` ("ATS-friendly", "one-page", "concise").
+- "research": user wants a factual lookup (Wikipedia). Trigger words: "what is", "who is", "look up", "search for", "find info on", "define", "tell me about". Set \`query\` to the topic the user wants looked up (strip the question words; e.g. "what is ATS?" → query "ATS").
 - "chat": general question, casual conversation, or anything that does NOT modify the document.
 
 Rules:
@@ -79,6 +83,7 @@ const SCHEMA = {
         'translate',
         'findIssues',
         'transformDoc',
+        'research',
         'chat',
       ],
     },
@@ -92,6 +97,7 @@ const SCHEMA = {
     targetLanguage: { type: 'string' },
     transformTarget: { type: 'string', enum: ['resume'] },
     instruction: { type: 'string' },
+    query: { type: 'string' },
   },
   required: ['intent'],
 } as const;
@@ -188,6 +194,20 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
   if (/(outline|draft|write)\s+(an?\s+)?(memo|essay|report|article|letter)/.test(m)) {
     return { intent: 'outline', topic: m };
   }
+  // Research / lookup intent — pattern matches knowledge questions
+  // ("what is X", "look up X", "define X") and pulls the topic out.
+  // Must come BEFORE the rewrite branch so "what is X?" doesn't get
+  // mis-routed when the user has a selection. Matched against the
+  // ORIGINAL message (not the lowercased `m`) so the extracted query
+  // preserves casing for proper nouns / acronyms.
+  const researchVerb = message.trim().match(
+    /^(?:what(?:'s| is)|who(?:'s| is)|tell me about|look up|search for|find info(?:rmation)? on|define)\s+(.+?)[?!.]*$/i
+  );
+  if (researchVerb) {
+    const query = researchVerb[1]?.trim();
+    if (query) return { intent: 'research', query };
+  }
+
   if (ctx.hasSelection && /^(rewrite|rephrase|polish|improve)\b/.test(m)) {
     // Match the tone stem with optional adverbial -ly so "concisely",
     // "formally", "casually" all map to the canonical tone keyword.

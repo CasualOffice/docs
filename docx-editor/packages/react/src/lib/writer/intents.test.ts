@@ -102,4 +102,29 @@ describe('intent quickClassify', () => {
     const out = await classifyIntent('make me a resume', { hasSelection: false });
     expect(out.intent).toBe('transformDoc');
   });
+
+  it('routes "what is ATS?" → research with query "ATS"', async () => {
+    const out = await classifyIntent('what is ATS?', { hasSelection: false });
+    expect(out.intent).toBe('research');
+    expect(out.query).toBe('ATS');
+  });
+
+  it('routes "look up Hemingway editor" → research', async () => {
+    const out = await classifyIntent('look up Hemingway editor', { hasSelection: false });
+    expect(out.intent).toBe('research');
+    expect(out.query).toMatch(/Hemingway/i);
+  });
+
+  it('routes "define MLA format" → research', async () => {
+    const out = await classifyIntent('define MLA format', { hasSelection: false });
+    expect(out.intent).toBe('research');
+    expect(out.query).toBe('MLA format');
+  });
+
+  it('routes "what is X?" over selection rewrite intent', async () => {
+    // With a selection AND a leading "what is", research must win so
+    // the user can ask knowledge questions without losing their text.
+    const out = await classifyIntent('what is an ATS?', { hasSelection: true });
+    expect(out.intent).toBe('research');
+  });
 });

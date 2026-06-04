@@ -92,6 +92,12 @@ export async function runPipeline(
         ctx
       );
       break;
+    case 'research':
+      result = await getTool('research').execute(
+        { query: intent.query ?? req.message },
+        ctx
+      );
+      break;
     case 'translate':
     case 'findIssues':
       // Not yet implemented as a tool — fall through to chat with a
