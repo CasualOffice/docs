@@ -21,6 +21,8 @@ import { Slice, Fragment as PMFragment } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
 import { PanelState } from '../ui/PanelState';
 import { translateFragment, TRANSLATE_LANGUAGES as LANGUAGES } from '../../lib/translate';
+import { translateDocViaMarkdown } from '../../lib/translateMarkdown';
+import { isLlmReady } from '../../lib/writer/controller';
 
 export interface TranslateDocumentDialogProps {
   isOpen: boolean;
@@ -239,6 +241,15 @@ export function TranslateDocumentDialog({
   );
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ completed: number; total: number } | null>(null);
+  // When the markdown round-trip path is active, the dialog has
+  // chunk-level progress information (chunk index / total + a 60-char
+  // preview of the source). Surfaces as a second line below the run
+  // counter so the user can see what's being translated right now.
+  const [chunkInfo, setChunkInfo] = useState<{
+    chunk: number;
+    totalChunks: number;
+    preview: string;
+  } | null>(null);
   const [exporting, setExporting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -284,20 +295,35 @@ export function TranslateDocumentDialog({
     setTranslatedBuffer(null);
 
     setProgress({ completed: 0, total: 0 });
+    setChunkInfo(null);
     void (async () => {
       try {
-        const translatedContent = await translateFragment(
-          view.state.doc.content,
-          view.state.schema,
-          source,
-          target,
-          controller.signal,
-          {
-            onProgress: (p) => {
-              if (!controller.signal.aborted) setProgress(p);
-            },
-          }
-        );
+        const usingLlm = isLlmReady();
+        const translatedContent = usingLlm
+          ? await translateDocViaMarkdown(view.state.doc, view.state.schema, source, target, {
+              signal: controller.signal,
+              onProgress: (p) => {
+                if (controller.signal.aborted) return;
+                // The run-count UI copy is reused — total = chunks,
+                // completed = current. Chunk preview goes into the
+                // secondary line so the user can see what text is
+                // being translated right now.
+                setProgress({ completed: p.chunk, total: p.totalChunks });
+                setChunkInfo(p);
+              },
+            })
+          : await translateFragment(
+              view.state.doc.content,
+              view.state.schema,
+              source,
+              target,
+              controller.signal,
+              {
+                onProgress: (p) => {
+                  if (!controller.signal.aborted) setProgress(p);
+                },
+              }
+            );
         if (controller.signal.aborted) return;
         const buf = await captureTranslatedBuffer(getView, onSave, translatedContent);
         if (controller.signal.aborted) return;
@@ -308,7 +334,9 @@ export function TranslateDocumentDialog({
         if (controller.signal.aborted) return;
         if ((err as Error).name === 'AbortError') return;
         setPreviewError(
-          'Translation service is rate-limiting or unreachable. Try again in a moment or pick a smaller selection.'
+          isLlmReady()
+            ? 'On-device translation failed mid-document. Try again or pick a shorter section.'
+            : 'Translation service is rate-limiting or unreachable. Try again in a moment, pick a smaller selection, or enable the Advanced LLM tier to translate on-device.'
         );
         setPreviewStatus('error');
       }
@@ -444,12 +472,24 @@ export function TranslateDocumentDialog({
                 <div style={stateOverlayStyle}>
                   <PanelState
                     kind="loading"
-                    message={
-                      progress && progress.total > 0
-                        ? `Translating… ${progress.completed} of ${progress.total} text runs`
-                        : 'Translating your document…'
-                    }
-                    hint="Each formatting run translates separately so bold / italic / link boundaries stay aligned."
+                    message={(() => {
+                      // Two label shapes depending on backend:
+                      //   LLM markdown round-trip: "Translating chunk 3 of 12"
+                      //   Network per-run:        "Translating 17 of 280 text runs"
+                      if (chunkInfo) {
+                        return `Translating chunk ${chunkInfo.chunk} of ${chunkInfo.totalChunks}`;
+                      }
+                      if (progress && progress.total > 0) {
+                        return `Translating… ${progress.completed} of ${progress.total} text runs`;
+                      }
+                      return 'Translating your document…';
+                    })()}
+                    hint={(() => {
+                      if (chunkInfo) {
+                        return `“${chunkInfo.preview}${chunkInfo.preview.length >= 60 ? '…' : ''}”`;
+                      }
+                      return 'Each formatting run translates separately so bold / italic / link boundaries stay aligned.';
+                    })()}
                   />
                 </div>
               )}
