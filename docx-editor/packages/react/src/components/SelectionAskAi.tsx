@@ -30,6 +30,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import type { EditorView } from 'prosemirror-view';
+import { usableRightEdge } from '../lib/anchorViewport';
 import { MaterialSymbol } from './ui/Icons';
 
 export interface SelectionAskAiProps {
@@ -230,8 +231,12 @@ export function SelectionAskAi({
         return;
       }
       const widthFor = expanded ? PANEL_WIDTH : PILL_WIDTH;
-      const vw = window.innerWidth;
       const vh = window.innerHeight;
+      // Right edge accounting for chat panel / writer sheet / version
+      // history / AI suggestion / panel rail so the pill can never
+      // anchor behind a docked surface. Shared with the inline
+      // preview popover.
+      const rightEdge = usableRightEdge(VIEWPORT_PAD);
       // Try BELOW the selection first — Notion's pattern. This always
       // has room until the user is on the very last line. Pill +
       // expanded panel both fit.
@@ -241,7 +246,7 @@ export function SelectionAskAi({
       const fitsBelow = belowTop + requiredHeight <= vh - VIEWPORT_PAD;
       const fitsAbove = aboveTop >= TOOLBAR_BOTTOM_PX;
       const top = fitsBelow ? belowTop : fitsAbove ? aboveTop : TOOLBAR_BOTTOM_PX + VIEWPORT_PAD;
-      const left = clamp(startRect.left, VIEWPORT_PAD, vw - widthFor - VIEWPORT_PAD);
+      const left = clamp(startRect.left, VIEWPORT_PAD, rightEdge - widthFor);
       setAnchor({ top, left });
     };
     place();

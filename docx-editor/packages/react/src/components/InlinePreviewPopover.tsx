@@ -29,6 +29,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import type { EditorView } from 'prosemirror-view';
 import type { PipelineProposal } from '../lib/writer/pipeline';
+import { usableRightEdge } from '../lib/anchorViewport';
 import { MaterialSymbol } from './ui/Icons';
 
 export interface InlinePreviewPopoverProps {
@@ -296,9 +297,13 @@ export function InlinePreviewPopover({
       }
       const desiredTop = rect.bottom + ANCHOR_OFFSET_Y;
       const desiredLeft = rect.left;
-      const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const clampedLeft = clamp(desiredLeft, VIEWPORT_PAD, vw - POPOVER_WIDTH - VIEWPORT_PAD);
+      // `usableRightEdge` subtracts every visible right-dock surface
+      // (chat panel, writing assistant, version history, AI
+      // suggestion, panel rail) so the popover never lands behind a
+      // panel that's visually narrowing the doc area.
+      const rightEdge = usableRightEdge(VIEWPORT_PAD);
+      const clampedLeft = clamp(desiredLeft, VIEWPORT_PAD, rightEdge - POPOVER_WIDTH);
       const clampedTop = clamp(desiredTop, VIEWPORT_PAD, vh - POPOVER_MAX_HEIGHT - VIEWPORT_PAD);
       setAnchor({ top: clampedTop, left: clampedLeft });
     };
