@@ -8375,7 +8375,7 @@ body { background: white; }
               getView={() => getActiveEditorView() ?? null}
               busy={askAiBusy}
               onDismiss={() => setHasTextSelection(false)}
-              onSubmit={(promptText) => {
+              onSubmit={(promptText, capturedSelectionText) => {
                 const view = getActiveEditorView();
                 if (!view) return;
                 const schema = view.state.schema;
@@ -8389,7 +8389,13 @@ body { background: white; }
                   {
                     getDocText: () =>
                       view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n'),
+                    // Prefer the snapshot taken when the pill opened —
+                    // by submit time the textarea has focus and the
+                    // editor's selection may be collapsed (or look
+                    // like it is). Falls back to a live read for any
+                    // code path that didn't capture.
                     getSelectionText: () => {
+                      if (capturedSelectionText) return capturedSelectionText;
                       const { from, to } = view.state.selection;
                       if (from === to) return '';
                       return view.state.doc.textBetween(from, to, '\n', ' ');

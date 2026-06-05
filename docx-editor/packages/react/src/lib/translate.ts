@@ -20,6 +20,8 @@
  */
 
 import { Fragment, type Node as ProseMirrorNode, type Schema } from 'prosemirror-model';
+import { isLlmReady, runChat } from './writer/controller';
+import { tryParseJson } from './writer/jsonMode';
 
 interface ApiResponse {
   responseData?: { translatedText?: string };
@@ -34,6 +36,16 @@ const cache = new Map<string, string>();
 // doc that's 2 minutes of stuck progress when MyMemory throttles.
 // One quick retry then fail fast lets the dialog show a real error.
 const RETRY_DELAYS_MS = [400] as const;
+
+// MyMemory's free tier has a daily char quota. When we hit it the
+// dialog used to dead-end. Lingva.ml is a CORS-friendly Google
+// Translate proxy (Apache-2.0) — slightly different lang-code shape
+// but covers the same major languages. We fall back to it
+// per-request when MyMemory returns 429 / quota-exceeded, and
+// remember the failure so subsequent requests skip MyMemory entirely
+// until the user reloads.
+let myMemoryDown = false;
+const LINGVA_BASE = 'https://lingva.ml/api/v1';
 
 // How many BATCHES to translate in parallel inside
 // `translateFragment`. Each batch can carry multiple text runs joined
@@ -68,16 +80,20 @@ function shouldSkip(text: string): boolean {
 }
 
 /**
- * Translate a single text run. Cached, retried, and skipped where
- * appropriate. Returns the original text on skip (so the caller can
- * paste it back into the Fragment unchanged).
+ * Translate a string. With the new paragraph-level batching in
+ * `translateFragment`, this function receives ONE joined batch at a
+ * time (not one text-run), so each call here is amortised across
+ * many runs. That makes the on-device LLM path viable again: even at
+ * 3-5 sec per call, a 50-paragraph doc completes in ~2-4 minutes
+ * which is comparable to a rate-limited MyMemory sweep.
  *
- * Always uses MyMemory — per-run on-device LLM calls are 3-5 sec each
- * and `translateFragment` runs them sequentially. A 50-run doc would
- * take 3+ minutes wall-clock with no incremental render, locking the
- * tab. The chat `translateRange` tool still uses Llama for SHORT
- * single-passage translation; this lower-level per-run helper does
- * not.
+ * Routing:
+ *   1. LLM (Llama-3.2-1B) when the Advanced tier is loaded. No rate
+ *      limit, no quota, deterministic privacy.
+ *   2. MyMemory when no LLM is available (or when LLM declined).
+ *      Cheap and fast, but quota-limited.
+ *   3. Lingva.ml as MyMemory's CORS-friendly fallback when MyMemory
+ *      throws (rate-limit, quota, network).
  */
 export async function translateText(
   text: string,
@@ -91,6 +107,34 @@ export async function translateText(
   const key = `${source}|${target}|${text}`;
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
+
+  // 1. On-device LLM when available. Fails-soft to network backends.
+  if (isLlmReady()) {
+    try {
+      const out = await translateViaLlm(text, source, target, signal);
+      cache.set(key, out);
+      return out;
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === 'AbortError') throw e;
+      // Fall through to network — better a slightly-different
+      // translation than a hard error.
+    }
+  }
+
+  // 2/3. Network path. If MyMemory has already failed this session,
+  // skip straight to Lingva.
+  if (myMemoryDown) {
+    try {
+      const out = await translateViaLingva(text, source, target, signal);
+      cache.set(key, out);
+      return out;
+    } catch (err) {
+      const e = err as Error;
+      if (e.name === 'AbortError') throw e;
+      throw e;
+    }
+  }
 
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
@@ -122,8 +166,99 @@ export async function translateText(
       await sleep(delay, signal);
     }
   }
-  throw lastErr ?? new Error('translate-failed');
+  // MyMemory fully exhausted retries — remember that for the rest of
+  // this session and try Lingva as the last resort.
+  myMemoryDown = true;
+  try {
+    const out = await translateViaLingva(text, source, target, signal);
+    cache.set(key, out);
+    return out;
+  } catch (err) {
+    const e = err as Error;
+    if (e.name === 'AbortError') throw e;
+    // Surface whichever error is more informative — usually the
+    // original MyMemory failure (Lingva 404s on an unsupported lang
+    // are less useful than "rate limited").
+    throw lastErr ?? e;
+  }
 }
+
+/**
+ * Translate via Lingva.ml — a CORS-friendly Apache-2.0 Google
+ * Translate proxy. No key needed. Used as MyMemory's network fallback
+ * and as the primary network path once `myMemoryDown` is set.
+ */
+async function translateViaLingva(
+  text: string,
+  source: string,
+  target: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const sourceCode = source === 'auto' ? 'auto' : source;
+  const url = `${LINGVA_BASE}/${encodeURIComponent(sourceCode)}/${encodeURIComponent(target)}/${encodeURIComponent(text)}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  if (!res.ok) throw new Error(`lingva-http-${res.status}`);
+  const data = (await res.json()) as { translation?: string };
+  if (!data.translation) throw new Error('lingva-empty');
+  return data.translation;
+}
+
+/**
+ * Translate via the on-device Llama-3.2-1B with JSON-mode response
+ * to keep output structurally clean. Same shape as
+ * `translateRangeTool` so the rules are familiar.
+ */
+async function translateViaLlm(
+  text: string,
+  source: string,
+  target: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const sourceName = LANG_NAME_BY_CODE[source] ?? source;
+  const targetName = LANG_NAME_BY_CODE[target] ?? target;
+  const system =
+    `You are a professional translator. ` +
+    `Translate the user's text from ${sourceName} into ${targetName}. ` +
+    `Preserve proper nouns, technical terms, numbers, punctuation, and any " |!| " separators verbatim. ` +
+    `Return ONLY a JSON object: {"translation": "<the translation>"}. ` +
+    `No commentary, no quotation marks around the whole reply.`;
+  const raw = await runChat(
+    [
+      { role: 'system', content: system },
+      { role: 'user', content: text },
+    ],
+    {
+      responseFormat: { type: 'json_object' },
+      maxTokens: Math.min(1024, Math.ceil(text.length * 1.6) + 64),
+      temperature: 0.15,
+      signal,
+    }
+  );
+  const parsed = tryParseJson<{ translation?: string }>(raw);
+  const out = (parsed?.translation ?? '').trim();
+  if (!out) throw new Error('translate-llm-empty');
+  return out;
+}
+
+const LANG_NAME_BY_CODE: Record<string, string> = {
+  en: 'English',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  pt: 'Portuguese',
+  nl: 'Dutch',
+  pl: 'Polish',
+  tr: 'Turkish',
+  ar: 'Arabic',
+  hi: 'Hindi',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+};
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {

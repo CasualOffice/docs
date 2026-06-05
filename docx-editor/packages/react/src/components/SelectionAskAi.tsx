@@ -40,15 +40,29 @@ export interface SelectionAskAiProps {
   /** Active editor view — used to map PM positions to viewport coords
    *  via `coordsAtPos`. */
   getView: () => EditorView | null;
-  /** Called when the user submits a transform prompt. */
-  onSubmit: (prompt: string) => void;
+  /**
+   * Called when the user submits a transform prompt.
+   *
+   * `capturedSelectionText` is the selection snapshot taken when the
+   * pill opened. Pass-through to the pipeline so the prompt has the
+   * intended context even when the editor's live PM selection has
+   * since collapsed (focus shifts to the input textarea).
+   */
+  onSubmit: (prompt: string, capturedSelectionText: string) => void;
   /** Called when the user dismisses the surface (Esc / outside click). */
   onDismiss: () => void;
   /** Disables the input + Send while a previous request is in flight. */
   busy?: boolean;
 }
 
-const FLOATER_OFFSET_Y = -36; // sits above the selection
+// Vertical gap above OR below the selection. The pill prefers
+// above-selection; falls through to below when above would overlap
+// the toolbar / above the viewport.
+const PILL_GAP_PX = 6;
+const PILL_HEIGHT_PX = 28;
+// Toolbar / titlebar takes the top ~110 px on the demo + most
+// integrations. Below this row the pill always has a clear anchor.
+const TOOLBAR_BOTTOM_PX = 110;
 const VIEWPORT_PAD = 12;
 const PILL_WIDTH = 96;
 const PANEL_WIDTH = 360;
@@ -145,6 +159,16 @@ const closeBtnStyle: CSSProperties = {
   marginLeft: 'auto',
 };
 
+const spinnerStyle: CSSProperties = {
+  display: 'inline-block',
+  width: 12,
+  height: 12,
+  border: '2px solid var(--doc-primary, #1a73e8)',
+  borderTopColor: 'transparent',
+  borderRadius: '50%',
+  animation: 'docx-spin 0.8s linear infinite',
+};
+
 const QUICK_PROMPTS = [
   'Transform this into a table',
   'Rewrite this concisely',
@@ -167,6 +191,12 @@ export function SelectionAskAi({
   const [expanded, setExpanded] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
+  // Snapshot of the selected text taken when the pill opens. Without
+  // this, the textarea steals focus, the PM selection visually
+  // collapses, and `getSelectionText()` later returns "" — the user
+  // gets a context-free reply. Captured selection text is sent to the
+  // host along with the prompt.
+  const capturedSelectionRef = useRef<string>('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Recompute anchor when selection / window changes.
@@ -181,14 +211,20 @@ export function SelectionAskAi({
         setAnchor(null);
         return;
       }
-      const { from, empty } = view.state.selection;
+      const { from, to, empty } = view.state.selection;
       if (empty) {
         setAnchor(null);
         return;
       }
-      let rect: { top: number; left: number };
+      // Anchor at the SELECTION'S BOTTOM by default (`coordsAtPos(to)`
+      // returns the end-of-last-line rect). Above-selection placement
+      // is a fallback only when there's enough room above the
+      // selection AND we're below the toolbar.
+      let startRect: { top: number; bottom: number; left: number };
+      let endRect: { top: number; bottom: number; left: number };
       try {
-        rect = view.coordsAtPos(from);
+        startRect = view.coordsAtPos(from);
+        endRect = view.coordsAtPos(to);
       } catch {
         setAnchor(null);
         return;
@@ -196,8 +232,16 @@ export function SelectionAskAi({
       const widthFor = expanded ? PANEL_WIDTH : PILL_WIDTH;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const top = clamp(rect.top + FLOATER_OFFSET_Y, VIEWPORT_PAD, vh - 80 - VIEWPORT_PAD);
-      const left = clamp(rect.left, VIEWPORT_PAD, vw - widthFor - VIEWPORT_PAD);
+      // Try BELOW the selection first — Notion's pattern. This always
+      // has room until the user is on the very last line. Pill +
+      // expanded panel both fit.
+      const requiredHeight = expanded ? 140 : PILL_HEIGHT_PX;
+      const belowTop = endRect.bottom + PILL_GAP_PX;
+      const aboveTop = startRect.top - PILL_GAP_PX - requiredHeight;
+      const fitsBelow = belowTop + requiredHeight <= vh - VIEWPORT_PAD;
+      const fitsAbove = aboveTop >= TOOLBAR_BOTTOM_PX;
+      const top = fitsBelow ? belowTop : fitsAbove ? aboveTop : TOOLBAR_BOTTOM_PX + VIEWPORT_PAD;
+      const left = clamp(startRect.left, VIEWPORT_PAD, vw - widthFor - VIEWPORT_PAD);
       setAnchor({ top, left });
     };
     place();
@@ -242,9 +286,10 @@ export function SelectionAskAi({
       e.preventDefault();
       const v = prompt.trim();
       if (!v || busy) return;
-      onSubmit(v);
+      onSubmit(v, capturedSelectionRef.current);
       setExpanded(false);
       setPrompt('');
+      capturedSelectionRef.current = '';
     }
   };
 
@@ -252,13 +297,41 @@ export function SelectionAskAi({
     return (
       <button
         type="button"
-        style={{ ...pillStyle, top: anchor.top, left: anchor.left }}
-        onClick={() => setExpanded(true)}
+        style={{
+          ...pillStyle,
+          top: anchor.top,
+          left: anchor.left,
+          // While busy, the pill stays put as the user's loading
+          // affordance — anchored to the same selection they were
+          // working with, so they don't have to look at the chat
+          // panel to know something's happening.
+          cursor: busy ? 'progress' : 'pointer',
+          opacity: busy ? 0.8 : 1,
+        }}
+        disabled={busy}
+        onClick={() => {
+          if (busy) return;
+          // Snapshot the current selection text BEFORE focus moves
+          // to the textarea. Stays valid through the entire prompt
+          // flow even after the editor's selection visually fades.
+          const view = getView();
+          if (view) {
+            const { from, to } = view.state.selection;
+            if (from !== to) {
+              capturedSelectionRef.current = view.state.doc.textBetween(from, to, '\n', ' ');
+            }
+          }
+          setExpanded(true);
+        }}
         data-testid="selection-ask-ai-pill"
-        aria-label="Ask AI about the selection"
+        aria-label={busy ? 'AI is processing your request' : 'Ask AI about the selection'}
       >
-        <MaterialSymbol name="auto_awesome" size={14} />
-        <span>Ask AI</span>
+        {busy ? (
+          <span style={spinnerStyle} aria-hidden="true" />
+        ) : (
+          <MaterialSymbol name="auto_awesome" size={14} />
+        )}
+        <span>{busy ? 'Thinking…' : 'Ask AI'}</span>
       </button>
     );
   }
@@ -288,9 +361,10 @@ export function SelectionAskAi({
           onClick={() => {
             const v = prompt.trim();
             if (!v || busy) return;
-            onSubmit(v);
+            onSubmit(v, capturedSelectionRef.current);
             setExpanded(false);
             setPrompt('');
+            capturedSelectionRef.current = '';
           }}
           disabled={busy || !prompt.trim()}
           data-testid="selection-ask-ai-send"

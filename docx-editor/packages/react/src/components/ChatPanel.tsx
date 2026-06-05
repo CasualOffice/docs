@@ -823,7 +823,11 @@ export function ChatPanel({
                     <button
                       type="button"
                       style={msgActionBtnStyle}
-                      onClick={() => void navigator.clipboard?.writeText(m.content).catch(() => {})}
+                      onClick={() =>
+                        void navigator.clipboard
+                          ?.writeText(stripMarkdownForCopy(m.content))
+                          .catch(() => {})
+                      }
                       data-testid={`chat-msg-copy-${i}`}
                     >
                       Copy
@@ -892,6 +896,38 @@ function ChatEmptyState({
       </div>
     </div>
   );
+}
+
+/**
+ * Strip markdown formatting from a chat-bubble's text content so the
+ * Copy button hands the user plain prose instead of `**bold**`,
+ * `[link](url)` syntax, and `# heading` chrome. Insert-at-cursor
+ * already converts markdown to PM nodes via applyMarkdownAsSuggestion;
+ * this matches that path for copy-out.
+ */
+function stripMarkdownForCopy(text: string): string {
+  let out = text;
+  // Fenced code blocks → keep the contents, drop the fences.
+  out = out.replace(/```(?:\w+)?\n?([\s\S]*?)```/g, '$1');
+  // Headings — drop the leading hashes + space.
+  out = out.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+  // Bold + italic + strike — strip the surrounding markers.
+  out = out.replace(/(\*\*|__)(.+?)\1/g, '$2');
+  out = out.replace(/(\*|_)(.+?)\1/g, '$2');
+  out = out.replace(/~~(.+?)~~/g, '$1');
+  // Inline code — drop the backticks but keep the content.
+  out = out.replace(/`([^`]+)`/g, '$1');
+  // Links — `[label](url)` → `label (url)`. The URL is retained on
+  // the same line so the user still has the reference.
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+  // Bullets and numbered prefixes — normalise to "- " then a clean
+  // newline-separated list so spreadsheets / Slack don't choke on
+  // the asterisks.
+  out = out.replace(/^\s*[*+-]\s+/gm, '- ');
+  out = out.replace(/^\s*\d+\.\s+/gm, (m) => m); // keep numbered as-is
+  // Collapse 3+ blank lines to 2 — keeps paragraph breaks readable.
+  out = out.replace(/\n{3,}/g, '\n\n');
+  return out.trim();
 }
 
 export default ChatPanel;
