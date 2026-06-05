@@ -20,7 +20,7 @@
  * the right name when capturing locally-applied transactions; the
  * cross-peer log is the Yjs op-log (out of scope for v1).
  */
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { PanelState } from '../ui/PanelState';
 import { Tooltip } from '../ui/Tooltip';
@@ -284,20 +284,23 @@ function EditHistoryEntryRow({
     return diffWords(before, after);
   }, [showDiff, entry.before, afterText]);
 
-  // Stats (added/removed words) shown on the row at all times — they
-  // come from the same diff, but we compute them lazily too because
-  // the panel can hold up to 500 entries.
+  // Stats (added/removed words) shown on the row at all times.
+  //
+  // PREVIOUSLY: setState was called inside `useMemo`, which is a
+  // React anti-pattern — under some renders it produced
+  // "Too many re-renders" (error #185) and crashed the whole editor
+  // (user-reported as "page becomes unresponsive"). useEffect is the
+  // correct hook for the side-effect of writing computed state.
   const [stats, setStats] = useState<{ added: number; removed: number } | null>(null);
-  useMemo(() => {
-    if (stats != null || (!afterText && entry.before == null)) return;
-    // Defer the stats computation to a microtask so the row paints
-    // first and the stats appear after.
+  useEffect(() => {
+    if (!afterText && entry.before == null) {
+      setStats(null);
+      return;
+    }
     const before = extractText(entry.before).slice(0, DIFF_TRUNCATE_LIMIT);
     const after = afterText.slice(0, DIFF_TRUNCATE_LIMIT);
     const segments = diffWords(before, after);
     setStats(diffStats(segments));
-    return;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry.before, afterText]);
 
   return (
