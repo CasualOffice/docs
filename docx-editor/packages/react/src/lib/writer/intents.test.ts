@@ -67,6 +67,18 @@ describe('intent quickClassify', () => {
     expect(out.tone).toBe('concise');
   });
 
+  it('routes "polish this for readability" with selection → rewrite + readable', async () => {
+    const out = await classifyIntent('polish this to be more readable', { hasSelection: true });
+    expect(out.intent).toBe('rewrite');
+    expect(out.tone).toBe('readable');
+  });
+
+  it('routes "rewrite this in plain English" with selection → rewrite + plain', async () => {
+    const out = await classifyIntent('rewrite this in plain English', { hasSelection: true });
+    expect(out.intent).toBe('rewrite');
+    expect(out.tone).toBe('plain');
+  });
+
   it('routes "/translate Spanish" → translate', async () => {
     const out = await classifyIntent('/translate Spanish', { hasSelection: true });
     expect(out.intent).toBe('translate');

@@ -65,7 +65,7 @@ Rules:
 - Output ONLY the JSON object — no commentary, no markdown fences.
 - For "insertTable": extract \`topic\` (what the table is about) and OPTIONAL \`rows\`/\`cols\` if explicit (default 3 rows, 3 cols).
 - For "outline": extract \`topic\` (memo subject / essay topic).
-- For "rewrite": extract \`tone\` if mentioned (one of: polish, concise, formal, casual, shorter, longer).
+- For "rewrite": extract \`tone\` if mentioned (one of: polish, concise, formal, casual, shorter, longer, readable, plain). "readable" / "more readable" / "easier to read" → tone "readable". "plain English" / "for a general audience" → tone "plain".
 - For "translate": extract \`targetLanguage\` (e.g., "Spanish", "fr", "Japanese").
 - For "chat": leave args empty; \`topic\` may carry the question.
 - When uncertain, default to "chat".`;
@@ -92,7 +92,7 @@ const SCHEMA = {
     cols: { type: 'integer', minimum: 1, maximum: 10 },
     tone: {
       type: 'string',
-      enum: ['polish', 'concise', 'formal', 'casual', 'shorter', 'longer'],
+      enum: ['polish', 'concise', 'formal', 'casual', 'shorter', 'longer', 'readable', 'plain'],
     },
     targetLanguage: { type: 'string' },
     transformTarget: {
@@ -257,8 +257,20 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
   if (ctx.hasSelection && /^(rewrite|rephrase|polish|improve)\b/.test(m)) {
     // Match the tone stem with optional adverbial -ly so "concisely",
     // "formally", "casually" all map to the canonical tone keyword.
-    const tone = m.match(/\b(concise|formal|casual|shorter|longer|polish)(?:ly)?\b/);
-    return { intent: 'rewrite', tone: tone?.[1] };
+    // Tone keyword set mirrors `TONE_HINTS` in tools/applyRewrite.ts.
+    //
+    // Strip the leading verb phrase before searching so "polish this
+    // to be more readable" picks `readable` (the target) instead of
+    // `polish` (the verb that's also a tone alias). `polish` falls
+    // back to being the tone only when no other tone keyword follows.
+    const afterVerb = m.replace(/^(?:rewrite|rephrase|polish|improve)\s+/, '');
+    const tone = afterVerb.match(
+      /\b(concise|formal|casual|shorter|longer|readable|plain)(?:ly)?\b/
+    );
+    if (tone) return { intent: 'rewrite', tone: tone[1] };
+    // No specific tone after the verb — default to polish when the
+    // verb itself implies a polish operation.
+    return { intent: 'rewrite', tone: 'polish' };
   }
   return null;
 }

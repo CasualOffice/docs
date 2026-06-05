@@ -397,6 +397,24 @@ const SLASH_COMMANDS: SlashCommand[] = [
       'Shorten the selected passage while keeping the meaning intact. Return only the shortened text.',
   },
   {
+    // Pairs with the inline long-sentence highlighter — fixes what
+    // the yellow / amber tints flag. Routes through applyRewrite
+    // with the new "readable" tone so the rewrite lands as a
+    // tracked-change suggestion in the inline preview popover.
+    cmd: '/polish',
+    label: 'Polish for readability',
+    hint: 'Shorter sentences, plain English, active voice',
+    build: () =>
+      'Rewrite the selected passage to be more readable: break sentences longer than 25 words, use plain English, prefer active voice. Keep the meaning unchanged.',
+  },
+  {
+    cmd: '/plain',
+    label: 'Plain English',
+    hint: 'Short sentences, simple words, no jargon',
+    build: () =>
+      'Rewrite the selected passage in plain English suitable for a general audience: short sentences under 20 words, simple words, active voice, no jargon. Keep the meaning intact.',
+  },
+  {
     // Selection → real PM table via the inline preview popover.
     // Classifier matches "transform … into a table" → insertTable
     // intent → table proposal. The user reviews + accepts in the

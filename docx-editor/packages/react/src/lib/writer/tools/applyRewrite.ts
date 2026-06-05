@@ -37,6 +37,13 @@ const TONE_HINTS: Record<string, string> = {
   casual: 'Make it sound conversational and friendly.',
   shorter: 'Shorten by roughly 30%. Keep all key facts.',
   longer: 'Expand with more detail and supporting context.',
+  // Hemingway-style readability pass. Pairs with the inline long-
+  // sentence highlighter so the user can ask the model to fix what
+  // the highlighter flagged in one pass.
+  readable:
+    'Improve readability: break sentences longer than 25 words into two; replace abstract or jargon-heavy phrases with concrete plain English; prefer active voice; aim for a Flesch-Kincaid grade level around 8. Keep the meaning unchanged.',
+  plain:
+    'Rewrite in plain English suitable for a general audience: short sentences (under 20 words), simple words, active voice, no jargon. Keep the meaning intact.',
 };
 
 export const applyRewriteTool: Tool<RewriteArgs> = {
