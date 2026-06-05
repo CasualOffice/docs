@@ -20,6 +20,8 @@
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
     "test:visual": "npx playwright test visual.spec.ts",
+    "smoke": "npx playwright test e2e/tests/smoke.spec.ts --reporter=line",
+    "verify": "bunx tsc -p packages/react --noEmit && bun test packages/react/src && bun run format:check && bun run smoke",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "eslint packages/*/src/",
     "lint:fix": "eslint packages/*/src/ --fix",
