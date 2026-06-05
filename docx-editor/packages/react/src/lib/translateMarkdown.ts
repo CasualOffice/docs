@@ -269,9 +269,28 @@ async function translateMarkdownChunkViaLlm(
 // Public API
 // ---------------------------------------------------------------------------
 
+/**
+ * Snapshot of the live translation state emitted after each chunk
+ * completes. The dialog renders this as a live preview so the user
+ * watches the doc transform paragraph-by-paragraph instead of staring
+ * at a counter.
+ */
+export interface ChunkTranslationState {
+  /** Markdown chunks translated so far, in order. */
+  translated: string[];
+  /** Source markdown of the chunk currently being translated, or
+   *  null if no chunk is in flight (start / finished). */
+  inProgress: string | null;
+  /** Source markdown of chunks not yet started, in order. */
+  remaining: string[];
+}
+
 export interface TranslateViaMarkdownOptions {
   signal?: AbortSignal;
   onProgress?: (p: MarkdownTranslateProgress) => void;
+  /** Emitted after each chunk's translation lands so the dialog can
+   *  paint a "live transforming" preview. */
+  onChunkStateChange?: (state: ChunkTranslationState) => void;
 }
 
 /**
@@ -292,13 +311,19 @@ export async function translateDocViaMarkdown(
   target: string,
   opts: TranslateViaMarkdownOptions = {}
 ): Promise<Fragment> {
-  const { signal, onProgress } = opts;
+  const { signal, onProgress, onChunkStateChange } = opts;
   if (source === target) return doc.content;
   const md = docToMarkdown(doc);
   if (!md.trim()) return doc.content;
 
   const chunks = chunkMarkdown(md);
   const translatedChunks: string[] = [];
+  // Initial state — nothing translated yet, everything is remaining.
+  onChunkStateChange?.({
+    translated: [],
+    inProgress: null,
+    remaining: chunks.slice(),
+  });
   for (let i = 0; i < chunks.length; i++) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const chunk = chunks[i]!;
@@ -307,8 +332,23 @@ export async function translateDocViaMarkdown(
       totalChunks: chunks.length,
       preview: chunk.replace(/\s+/g, ' ').slice(0, 60),
     });
+    // Emit "in flight" state BEFORE the LLM call so the dialog shows
+    // the spinner-tinted chunk during the wait.
+    onChunkStateChange?.({
+      translated: translatedChunks.slice(),
+      inProgress: chunk,
+      remaining: chunks.slice(i + 1),
+    });
     const translated = await translateMarkdownChunkViaLlm(chunk, source, target, signal);
     translatedChunks.push(translated);
+    // Emit landed state — the just-finished chunk moves from
+    // `inProgress` to `translated`. The dialog re-renders the live
+    // preview with one more chunk in the target language.
+    onChunkStateChange?.({
+      translated: translatedChunks.slice(),
+      inProgress: null,
+      remaining: chunks.slice(i + 1),
+    });
   }
   const joined = translatedChunks.join('\n\n');
   return markdownToFragment(joined, schema);

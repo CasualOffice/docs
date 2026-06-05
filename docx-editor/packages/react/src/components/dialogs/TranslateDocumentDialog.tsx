@@ -21,8 +21,9 @@ import { Slice, Fragment as PMFragment } from 'prosemirror-model';
 import type { EditorView } from 'prosemirror-view';
 import { PanelState } from '../ui/PanelState';
 import { translateFragment, TRANSLATE_LANGUAGES as LANGUAGES } from '../../lib/translate';
-import { translateDocViaMarkdown } from '../../lib/translateMarkdown';
+import { translateDocViaMarkdown, type ChunkTranslationState } from '../../lib/translateMarkdown';
 import { isLlmReady } from '../../lib/writer/controller';
+import { Markdown } from '../../lib/markdown';
 
 export interface TranslateDocumentDialogProps {
   isOpen: boolean;
@@ -250,6 +251,11 @@ export function TranslateDocumentDialog({
     totalChunks: number;
     preview: string;
   } | null>(null);
+  // Live preview state — translated + in-flight + remaining chunks.
+  // When non-null AND previewStatus === 'loading', the pane renders
+  // the markdown chunks directly so the user watches the doc
+  // transform chunk-by-chunk instead of staring at a counter.
+  const [liveChunkState, setLiveChunkState] = useState<ChunkTranslationState | null>(null);
   const [exporting, setExporting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -296,6 +302,7 @@ export function TranslateDocumentDialog({
 
     setProgress({ completed: 0, total: 0 });
     setChunkInfo(null);
+    setLiveChunkState(null);
     void (async () => {
       try {
         const usingLlm = isLlmReady();
@@ -310,6 +317,10 @@ export function TranslateDocumentDialog({
                 // being translated right now.
                 setProgress({ completed: p.chunk, total: p.totalChunks });
                 setChunkInfo(p);
+              },
+              onChunkStateChange: (s) => {
+                if (controller.signal.aborted) return;
+                setLiveChunkState(s);
               },
             })
           : await translateFragment(
@@ -468,7 +479,7 @@ export function TranslateDocumentDialog({
           <div style={paneStyle}>
             <div style={paneLabelStyle}>Translation · {targetLangLabel}</div>
             <div style={paneEditorWrapStyle} data-testid="translate-doc-preview-target">
-              {previewStatus === 'loading' && (
+              {previewStatus === 'loading' && !liveChunkState && (
                 <div style={stateOverlayStyle}>
                   <PanelState
                     kind="loading"
@@ -492,6 +503,16 @@ export function TranslateDocumentDialog({
                     })()}
                   />
                 </div>
+              )}
+              {previewStatus === 'loading' && liveChunkState && (
+                <LiveTranslationPreview
+                  state={liveChunkState}
+                  chunkLabel={
+                    chunkInfo
+                      ? `Translating chunk ${chunkInfo.chunk} of ${chunkInfo.totalChunks}`
+                      : null
+                  }
+                />
               )}
               {previewStatus === 'error' && previewError && (
                 <div style={stateOverlayStyle}>
@@ -534,6 +555,127 @@ export function TranslateDocumentDialog({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Live "watching the doc translate" preview rendered inside the
+ * target pane while the markdown round-trip pipeline is running.
+ *
+ * Three regions stack vertically:
+ *   1. Translated chunks — rendered as crisp prose via the existing
+ *      Markdown component. The user sees more of these as time goes
+ *      on.
+ *   2. In-progress chunk — shown dimmed with a spinning indicator
+ *      next to a 60-char preview of the source. Replaced by its
+ *      translation when the LLM call lands.
+ *   3. Remaining chunks — source-language preview at low opacity so
+ *      the user gets a sense of how much is left.
+ *
+ * No buffer regeneration per chunk (the previous Phase 2 candidate
+ * was rejected because `captureTranslatedBuffer` mutates the live
+ * editor visibly). This pane is markdown-only; the final `.docx`
+ * preview replaces it once `previewStatus === 'ready'`.
+ */
+const liveWrapStyle: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  overflow: 'auto',
+  padding: '16px 20px',
+  background: 'var(--doc-surface, #ffffff)',
+  fontSize: 13,
+  lineHeight: 1.55,
+  color: 'var(--doc-text-on-surface, #1f2937)',
+};
+
+const liveStatusBarStyle: CSSProperties = {
+  position: 'sticky',
+  top: -16,
+  zIndex: 2,
+  marginInline: -20,
+  marginBlockEnd: 12,
+  padding: '8px 20px',
+  background: 'var(--doc-surface, #ffffff)',
+  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--doc-text-on-surface-muted, #5f6368)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+const liveSpinnerStyle: CSSProperties = {
+  display: 'inline-block',
+  width: 12,
+  height: 12,
+  border: '2px solid var(--doc-primary, #1a73e8)',
+  borderTopColor: 'transparent',
+  borderRadius: '50%',
+  animation: 'docx-spin 0.8s linear infinite',
+  flexShrink: 0,
+};
+
+const liveTranslatedBlockStyle: CSSProperties = {
+  marginBlockEnd: 12,
+};
+
+const liveInProgressBlockStyle: CSSProperties = {
+  marginBlockEnd: 12,
+  padding: '8px 12px',
+  borderInlineStart: '3px solid var(--doc-primary, #1a73e8)',
+  background: 'var(--doc-primary-subtle, rgba(26, 115, 232, 0.06))',
+  fontStyle: 'italic',
+  display: 'flex',
+  gap: 10,
+  alignItems: 'flex-start',
+};
+
+const liveRemainingBlockStyle: CSSProperties = {
+  marginBlockEnd: 12,
+  opacity: 0.45,
+};
+
+function LiveTranslationPreview({
+  state,
+  chunkLabel,
+}: {
+  state: ChunkTranslationState;
+  chunkLabel: string | null;
+}) {
+  return (
+    <div style={liveWrapStyle} data-testid="translate-doc-live-preview">
+      <div style={liveStatusBarStyle}>
+        <span style={liveSpinnerStyle} aria-hidden="true" />
+        <span>{chunkLabel ?? 'Translating…'}</span>
+      </div>
+      {state.translated.map((md, i) => (
+        <div
+          key={`done-${i}`}
+          style={liveTranslatedBlockStyle}
+          data-testid="translate-doc-live-translated"
+        >
+          <Markdown text={md} />
+        </div>
+      ))}
+      {state.inProgress && (
+        <div style={liveInProgressBlockStyle} data-testid="translate-doc-live-inprogress">
+          <span style={liveSpinnerStyle} aria-hidden="true" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Markdown text={state.inProgress} />
+          </div>
+        </div>
+      )}
+      {state.remaining.map((md, i) => (
+        <div
+          key={`pending-${i}`}
+          style={liveRemainingBlockStyle}
+          data-testid="translate-doc-live-remaining"
+        >
+          <Markdown text={md} />
+        </div>
+      ))}
     </div>
   );
 }
