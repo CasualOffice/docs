@@ -11,7 +11,7 @@
 
 import { useSyncExternalStore } from 'react';
 
-export type StatKey = 'page' | 'words' | 'chars' | 'readingTime';
+export type StatKey = 'page' | 'words' | 'chars' | 'readingTime' | 'readability';
 
 export type StatPrefs = Record<StatKey, boolean>;
 
@@ -22,6 +22,7 @@ const DEFAULTS: StatPrefs = {
   words: true,
   chars: true,
   readingTime: true,
+  readability: true,
 };
 
 function read(): StatPrefs {
@@ -84,4 +85,5 @@ export const STAT_LABELS: Record<StatKey, string> = {
   words: 'Word count',
   chars: 'Character count',
   readingTime: 'Reading time',
+  readability: 'Readability score',
 };

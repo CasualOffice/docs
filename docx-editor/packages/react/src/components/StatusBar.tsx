@@ -7,10 +7,15 @@
  * it stays visible while the document scrolls.
  */
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import { STAT_LABELS, useStatPrefs, type StatKey } from './statbar-prefs';
+import {
+  computeReadability,
+  formatReadingTime,
+  gradeLabel,
+} from '../lib/quality/readability';
 
 const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -23,6 +28,10 @@ export interface StatusBarProps {
   wordCount?: number;
   /** Character count for the document (no spaces). */
   charCount?: number;
+  /** Live plain-text snapshot of the doc — feeds the readability
+   *  cell. Optional: when omitted, the status bar falls back to the
+   *  word-count derived approximations. */
+  docText?: string;
   /** Current zoom level (1.0 = 100%). */
   zoom?: number;
   /** Called when the user changes zoom via the slider / buttons. */
@@ -164,6 +173,7 @@ export function StatusBar({
   totalPages,
   wordCount,
   charCount,
+  docText,
   zoom,
   onZoomChange,
   minZoom = 0.25,
@@ -269,6 +279,9 @@ export function StatusBar({
             </span>
           );
         })()}
+      {prefs.readability && docText && docText.length > 0 && (
+        <ReadabilityCell docText={docText} />
+      )}
 
       {/* Right-click customisation popover — Excel-style checklist for
           which counter cells to show. Mirrors the sibling Casual Sheets
@@ -373,5 +386,46 @@ export function StatusBar({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Compact readability cell — short label in the status bar plus a
+ * tooltip with the full breakdown. Stats are memoised on the doc text
+ * so large docs don't re-compute on every keystroke (the parent only
+ * passes a fresh snapshot when the doc actually changes).
+ */
+function ReadabilityCell({ docText }: { docText: string }) {
+  const stats = useMemo(() => computeReadability(docText), [docText]);
+  const compact = (() => {
+    if (stats.gradeLevel == null) return 'Readability: —';
+    return `${gradeLabel(stats.gradeLevel)}`;
+  })();
+  const detailLines: string[] = [
+    `${stats.sentences} sentence${stats.sentences === 1 ? '' : 's'}`,
+    `${stats.avgSentenceLength} words/sentence`,
+  ];
+  if (stats.longSentences > 0) {
+    detailLines.push(
+      `${stats.longSentences} long sentence${stats.longSentences === 1 ? '' : 's'} (> 25 words)`
+    );
+  }
+  detailLines.push(`Reading time: ${formatReadingTime(stats.readingTimeMs)}`);
+  if (stats.gradeLevel != null) {
+    detailLines.push(`Flesch-Kincaid: ${stats.gradeLevel}`);
+  }
+  const detail = detailLines.join('\n');
+
+  return (
+    <Tooltip content={detail}>
+      <span
+        style={cellStyle}
+        data-testid="status-readability"
+        aria-label={`Readability: ${compact}. ${detail.replace(/\n/g, ', ')}`}
+        tabIndex={0}
+      >
+        {compact}
+      </span>
+    </Tooltip>
   );
 }

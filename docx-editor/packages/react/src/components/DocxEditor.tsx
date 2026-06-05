@@ -1977,13 +1977,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // `descendants` and stitches text fragments. Recomputes whenever
   // `pmState` flips, which `onSelectionChange` and the post-load effect
   // already drive on every transaction.
-  const { wordCount, charCount, charCountWithSpaces, paragraphCount } = useMemo(() => {
+  const { wordCount, charCount, charCountWithSpaces, paragraphCount, docPlainText } = useMemo(() => {
     if (!pmState) {
       return {
         wordCount: undefined,
         charCount: undefined,
         charCountWithSpaces: undefined,
         paragraphCount: undefined,
+        docPlainText: '',
       };
     }
     const paraTexts: string[] = [];
@@ -2008,6 +2009,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       charCount: chars,
       charCountWithSpaces: charsWith,
       paragraphCount: paragraphs,
+      // Status bar's readability cell wants the joined plain text so
+      // it can run sentence + Flesch-Kincaid heuristics. Reusing the
+      // same walk avoids a second descendants() pass per render.
+      docPlainText: text,
     };
   }, [pmState]);
   // Track current border color/width for border presets (like Google Docs)
@@ -8067,6 +8072,7 @@ body { background: white; }
                     totalPages={scrollPageInfo.totalPages}
                     wordCount={wordCount}
                     charCount={charCount}
+                    docText={docPlainText}
                     zoom={state.zoom}
                     onZoomChange={handleZoomChange}
                   />
