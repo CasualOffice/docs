@@ -11,11 +11,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import { STAT_LABELS, useStatPrefs, type StatKey } from './statbar-prefs';
-import {
-  computeReadability,
-  formatReadingTime,
-  gradeLabel,
-} from '../lib/quality/readability';
+import { computeReadability, formatReadingTime, gradeLabel } from '../lib/quality/readability';
 
 const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -279,9 +275,7 @@ export function StatusBar({
             </span>
           );
         })()}
-      {prefs.readability && docText && docText.length > 0 && (
-        <ReadabilityCell docText={docText} />
-      )}
+      {prefs.readability && docText && docText.length > 0 && <ReadabilityCell docText={docText} />}
 
       {/* Right-click customisation popover — Excel-style checklist for
           which counter cells to show. Mirrors the sibling Casual Sheets

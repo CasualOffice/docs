@@ -50,9 +50,7 @@ export const applyRewriteTool: Tool<RewriteArgs> = {
     const view = ctx.getView();
     if (!view) return { kind: 'error', message: 'Editor is not focused.' };
 
-    const toneHint =
-      (args.tone && TONE_HINTS[args.tone.toLowerCase()]) ||
-      TONE_HINTS.polish;
+    const toneHint = (args.tone && TONE_HINTS[args.tone.toLowerCase()]) || TONE_HINTS.polish;
     const extra = args.instruction?.trim();
     // Pass the structural context so the model knows whether this is
     // a resume bullet, an academic paragraph, a memo body, etc. —
@@ -81,7 +79,12 @@ Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no mar
           { role: 'system', content: system.trim() },
           { role: 'user', content: `Original:\n\n${selection}` },
         ],
-        { schema: SCHEMA, maxTokens: Math.min(512, Math.ceil(selection.length * 1.4) + 64), temperature: 0.4, signal: ctx.signal }
+        {
+          schema: SCHEMA,
+          maxTokens: Math.min(512, Math.ceil(selection.length * 1.4) + 64),
+          temperature: 0.4,
+          signal: ctx.signal,
+        }
       );
     } catch (err) {
       return { kind: 'error', message: `Rewrite failed — ${(err as Error).message}` };
@@ -96,7 +99,10 @@ Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no mar
     // paragraph just becomes one paragraph.
     const paraType = ctx.schema.nodes.paragraph;
     if (!paraType) return { kind: 'error', message: 'Editor schema is missing paragraph.' };
-    const paragraphs = replacement.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    const paragraphs = replacement
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean);
     const replacementFragment = Fragment.fromArray(
       paragraphs.map((p) => paraType.create(null, ctx.schema.text(p)))
     );

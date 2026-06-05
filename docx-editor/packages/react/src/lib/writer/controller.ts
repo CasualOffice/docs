@@ -576,5 +576,7 @@ export function isLlmReady(): boolean {
   if (state.phase !== 'ready' || !state.loadedModelId) return false;
   // LLM model ids end in `-MLC` or start with the Llama / Qwen / SmolLM /
   // Phi family prefixes (matches `isLlmModel` in the worker).
-  return /-MLC$/i.test(state.loadedModelId) || /^(Llama|Qwen|SmolLM|Phi)/i.test(state.loadedModelId);
+  return (
+    /-MLC$/i.test(state.loadedModelId) || /^(Llama|Qwen|SmolLM|Phi)/i.test(state.loadedModelId)
+  );
 }

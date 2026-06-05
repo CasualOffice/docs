@@ -85,7 +85,11 @@ async function fetchSummary(title: string, signal?: AbortSignal): Promise<WikiSu
 }
 
 function stripQuestionPunctuation(q: string): string {
-  return q.replace(/^\s*(?:what(?:'s| is)?|who(?:'s| is)?|tell me about|look up|search for|find info on|define)\s+/i, '')
+  return q
+    .replace(
+      /^\s*(?:what(?:'s| is)?|who(?:'s| is)?|tell me about|look up|search for|find info on|define)\s+/i,
+      ''
+    )
     .replace(/[?!.]+\s*$/g, '')
     .trim();
 }
@@ -96,7 +100,10 @@ export const researchTool: Tool<ResearchArgs> = {
   async execute(args, ctx): Promise<ToolResult> {
     const raw = (args.query ?? '').trim();
     if (!raw) {
-      return { kind: 'error', message: "Tell me what to look up — e.g. 'what is an ATS-friendly resume?'." };
+      return {
+        kind: 'error',
+        message: "Tell me what to look up — e.g. 'what is an ATS-friendly resume?'.",
+      };
     }
     const cleaned = stripQuestionPunctuation(raw) || raw;
     const t0 = Date.now();

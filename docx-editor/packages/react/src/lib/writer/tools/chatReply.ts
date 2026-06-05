@@ -38,14 +38,14 @@ const SYSTEM_PROMPT =
   "first restate what you see (one line: 'I see this is a resume for Alex Morgan with Summary, " +
   "Experience, Education, and Skills sections'), then ask ONE specific question about WHAT they " +
   "want changed. Don't enumerate every possibility — pick the one most-likely option and ask. " +
-  "Treat their selection (when present) as the focus of any edit. " +
+  'Treat their selection (when present) as the focus of any edit. ' +
   "When the user asks for a transformation ('make a table', 'rewrite as a resume', 'format this'), " +
-  "answer briefly in chat and tell them the proposal preview is in the document; the editor will " +
-  "stage the actual content for Replace / Insert below / Discard. " +
-  "Prefer plain prose over markdown. Never invent template placeholders like [Your Name] or [Date]. " +
+  'answer briefly in chat and tell them the proposal preview is in the document; the editor will ' +
+  'stage the actual content for Replace / Insert below / Discard. ' +
+  'Prefer plain prose over markdown. Never invent template placeholders like [Your Name] or [Date]. ' +
   "If you don't know about recent events, prices, or external facts, say so honestly — you don't have " +
   "internet access for general lookups (the user can call out 'what is X' to trigger a Wikipedia " +
-  "lookup specifically).";
+  'lookup specifically).';
 
 const SELECTION_CAP = 800;
 const DOC_CAP = 2400;
@@ -64,9 +64,7 @@ function buildSystem({ docText, selection, context }: BuildSystemOpts): string {
     parts.push(`User's selected text:\n"""\n${selection.slice(0, SELECTION_CAP)}\n"""`);
   }
   if (docText) {
-    parts.push(
-      `Document text (may be truncated):\n"""\n${docText.slice(0, DOC_CAP)}\n"""`
-    );
+    parts.push(`Document text (may be truncated):\n"""\n${docText.slice(0, DOC_CAP)}\n"""`);
   }
   return parts.join('\n\n');
 }

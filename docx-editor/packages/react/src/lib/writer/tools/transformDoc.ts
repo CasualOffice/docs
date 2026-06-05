@@ -589,10 +589,7 @@ Style rules:
 
 Return the JSON object only.`;
 
-function buildAcademicFragment(
-  schema: ToolContext['schema'],
-  a: AcademicJson
-): Fragment | null {
+function buildAcademicFragment(schema: ToolContext['schema'], a: AcademicJson): Fragment | null {
   const children: PMNode[] = [];
   const push = (n: PMNode | null): void => {
     if (n) children.push(n);
@@ -726,10 +723,7 @@ Style rules:
 
 Return the JSON object only.`;
 
-function buildSlideDeckFragment(
-  schema: ToolContext['schema'],
-  d: SlideDeckJson
-): Fragment | null {
+function buildSlideDeckFragment(schema: ToolContext['schema'], d: SlideDeckJson): Fragment | null {
   const children: PMNode[] = [];
   const push = (n: PMNode | null): void => {
     if (n) children.push(n);
@@ -841,7 +835,9 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     build: buildAcademicFragment,
     maxTokens: 1400,
     summarise: (a: AcademicJson) =>
-      a.title ? `Academic paper — ${a.title}` : `Academic paper — ${a.sections?.length ?? 0} sections`,
+      a.title
+        ? `Academic paper — ${a.title}`
+        : `Academic paper — ${a.sections?.length ?? 0} sections`,
   },
   'slide-deck': {
     label: 'Slide deck',
@@ -851,9 +847,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     maxTokens: 1400,
     summarise: (d: SlideDeckJson) => {
       const count = d.slides?.length ?? 0;
-      return d.title
-        ? `Slide deck — ${d.title} · ${count} slides`
-        : `Slide deck — ${count} slides`;
+      return d.title ? `Slide deck — ${d.title} · ${count} slides` : `Slide deck — ${count} slides`;
     },
   },
 };
@@ -929,7 +923,10 @@ async function maybeAugmentSystemPrompt(
       );
   }
 
-  if (target === 'memo' && /\b(BLUF|bottom\s*line\s*up\s*front|executive\s*summary)\b/i.test(instruction)) {
+  if (
+    target === 'memo' &&
+    /\b(BLUF|bottom\s*line\s*up\s*front|executive\s*summary)\b/i.test(instruction)
+  ) {
     return lookup(
       'BLUF (communication)',
       'For reference — Bottom-Line-Up-Front convention (from Wikipedia):',
@@ -949,7 +946,7 @@ async function maybeAugmentSystemPrompt(
     if (/\b10\s*[-\/]\s*20\s*[-\/]\s*30\b|kawasaki/i.test(instruction)) {
       return lookup(
         'Guy Kawasaki',
-        'For reference — Guy Kawasaki\'s 10/20/30 rule:',
+        "For reference — Guy Kawasaki's 10/20/30 rule:",
         'Constrain the deck to ~10 slides, ~20-minute walk-through, ~30-point minimum font size. Use the bullets array to keep slide content terse so a 30pt readable target is realistic.'
       );
     }
@@ -967,7 +964,8 @@ async function maybeAugmentSystemPrompt(
 
 export const transformDocTool: Tool<TransformDocArgs> = {
   name: 'transformDoc',
-  description: 'Restructure the document into a different format (resume, cover-letter, memo, blog).',
+  description:
+    'Restructure the document into a different format (resume, cover-letter, memo, blog).',
   async execute(args, ctx): Promise<ToolResult> {
     const target = (args.target || '').toLowerCase();
     const spec = TARGETS[target];
@@ -1018,7 +1016,10 @@ export const transformDocTool: Tool<TransformDocArgs> = {
 
     const fragment = spec.build(ctx.schema, extracted);
     if (!fragment) {
-      return { kind: 'error', message: `Model returned a ${spec.label.toLowerCase()} with no content.` };
+      return {
+        kind: 'error',
+        message: `Model returned a ${spec.label.toLowerCase()} with no content.`,
+      };
     }
 
     return {

@@ -45,9 +45,7 @@ export const summarizeDocTool: Tool<SummarizeArgs> = {
   name: 'summarize',
   description: 'Summarise the document (or selection) into a few bullets.',
   async execute(args, ctx): Promise<ToolResult> {
-    const source = args.selectionOnly
-      ? ctx.getSelectionText().trim()
-      : ctx.getDocText().trim();
+    const source = args.selectionOnly ? ctx.getSelectionText().trim() : ctx.getDocText().trim();
     if (!source) {
       return {
         kind: 'error',

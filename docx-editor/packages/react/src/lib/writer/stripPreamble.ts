@@ -40,13 +40,13 @@ const LEADING_PREAMBLE = new RegExp(
 
 const TRAILING_FLOURISH = new RegExp(
   '\\n*\\s*(?:' +
-    "Let me know if[^\\n]*" +
+    'Let me know if[^\\n]*' +
     '|' +
-    "Feel free to[^\\n]*" +
+    'Feel free to[^\\n]*' +
     '|' +
-    "Hope (?:that|this) (?:helps?|works?)[^\\n]*" +
+    'Hope (?:that|this) (?:helps?|works?)[^\\n]*' +
     '|' +
-    "Is there anything[^\\n]*" +
+    'Is there anything[^\\n]*' +
     ')\\s*$',
   'i'
 );

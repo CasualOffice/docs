@@ -143,8 +143,7 @@ const DIFF_BOX_STYLE: CSSProperties = {
   background: 'var(--doc-surface-sunken, #f6f8fa)',
   border: '1px solid var(--doc-border-light, #e7eaee)',
   borderRadius: 6,
-  fontFamily:
-    'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+  fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
   fontSize: 12,
   lineHeight: 1.5,
   whiteSpace: 'pre-wrap',
@@ -249,9 +248,7 @@ export function VersionHistoryPanel({
               now={now}
               afterText={afterByEntryId.get(entry.id) ?? ''}
               onRevert={() => history.revert(entry.id)}
-              onRevertChange={(op, text, context) =>
-                history.revertHunk(op, text, context)
-              }
+              onRevertChange={(op, text, context) => history.revertHunk(op, text, context)}
             />
           ))}
         </ol>
@@ -292,7 +289,7 @@ function EditHistoryEntryRow({
   // the panel can hold up to 500 entries.
   const [stats, setStats] = useState<{ added: number; removed: number } | null>(null);
   useMemo(() => {
-    if (stats != null || !afterText && entry.before == null) return;
+    if (stats != null || (!afterText && entry.before == null)) return;
     // Defer the stats computation to a microtask so the row paints
     // first and the stats appear after.
     const before = extractText(entry.before).slice(0, DIFF_TRUNCATE_LIMIT);

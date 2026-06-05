@@ -188,7 +188,11 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
   // fresh memo skeleton, not a restructure of the live doc — the
   // user's intent rides on the verb. Other verbs ("draft a memo from
   // this", "create a memo") route to transformDoc below.
-  if (/^outline\s+(an?\s+)?(memo|essay|report|article|letter|blog\s+post|blog|resume|cover\s+letter)\b/.test(m)) {
+  if (
+    /^outline\s+(an?\s+)?(memo|essay|report|article|letter|blog\s+post|blog|resume|cover\s+letter)\b/.test(
+      m
+    )
+  ) {
     return { intent: 'outline', topic: m };
   }
 
@@ -240,9 +244,11 @@ function quickClassify(message: string, ctx: ClassifierContext): ClassifiedInten
   // mis-routed when the user has a selection. Matched against the
   // ORIGINAL message (not the lowercased `m`) so the extracted query
   // preserves casing for proper nouns / acronyms.
-  const researchVerb = message.trim().match(
-    /^(?:what(?:'s| is)|who(?:'s| is)|tell me about|look up|search for|find info(?:rmation)? on|define)\s+(.+?)[?!.]*$/i
-  );
+  const researchVerb = message
+    .trim()
+    .match(
+      /^(?:what(?:'s| is)|who(?:'s| is)|tell me about|look up|search for|find info(?:rmation)? on|define)\s+(.+?)[?!.]*$/i
+    );
   if (researchVerb) {
     const query = researchVerb[1]?.trim();
     if (query) return { intent: 'research', query };

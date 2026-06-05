@@ -3,9 +3,7 @@ import { stripModelPreamble } from './stripPreamble';
 
 describe('stripModelPreamble', () => {
   it('removes "Here is the rewritten passage:" prefix', () => {
-    const out = stripModelPreamble(
-      'Here is the rewritten passage:\n\nThe quick brown fox jumps.'
-    );
+    const out = stripModelPreamble('Here is the rewritten passage:\n\nThe quick brown fox jumps.');
     expect(out).toBe('The quick brown fox jumps.');
   });
 
@@ -32,9 +30,9 @@ describe('stripModelPreamble', () => {
   });
 
   it('removes trailing "Let me know if" flourish', () => {
-    expect(
-      stripModelPreamble('Real content here.\n\nLet me know if you want changes.')
-    ).toBe('Real content here.');
+    expect(stripModelPreamble('Real content here.\n\nLet me know if you want changes.')).toBe(
+      'Real content here.'
+    );
   });
 
   it('removes trailing "Hope this helps" flourish', () => {
@@ -61,8 +59,8 @@ describe('stripModelPreamble', () => {
   it('preserves middle-of-text "Here is" phrasing', () => {
     // Only LEADING preamble is stripped — model-emitted preamble at
     // start; legitimate prose mid-text stays put.
-    expect(
-      stripModelPreamble("The CEO said: Here is the new plan. It's solid.")
-    ).toBe("The CEO said: Here is the new plan. It's solid.");
+    expect(stripModelPreamble("The CEO said: Here is the new plan. It's solid.")).toBe(
+      "The CEO said: Here is the new plan. It's solid."
+    );
   });
 });

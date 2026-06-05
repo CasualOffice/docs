@@ -93,10 +93,7 @@ export async function runPipeline(
       );
       break;
     case 'research':
-      result = await getTool('research').execute(
-        { query: intent.query ?? req.message },
-        ctx
-      );
+      result = await getTool('research').execute({ query: intent.query ?? req.message }, ctx);
       break;
     case 'translate':
     case 'findIssues':

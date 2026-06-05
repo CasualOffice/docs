@@ -105,9 +105,7 @@ export const findIssuesTool: Tool<FindIssuesArgs> = {
       return { kind: 'error', message: `Proofread failed — ${(err as Error).message}` };
     }
 
-    const issues = (out.issues ?? []).filter(
-      (i) => i.original?.trim() && i.suggestion?.trim()
-    );
+    const issues = (out.issues ?? []).filter((i) => i.original?.trim() && i.suggestion?.trim());
     if (issues.length === 0) {
       return {
         kind: 'chat',

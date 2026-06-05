@@ -63,8 +63,7 @@ function walkPm(view: EditorView): Counts {
         );
       if (looksHeading) {
         const level = styleId?.match(/(\d)/)?.[1];
-        const text =
-          node.textContent?.slice(0, 80) ?? '';
+        const text = node.textContent?.slice(0, 80) ?? '';
         c.headings.push({
           level: level ? Number(level) : 2,
           text,
@@ -133,7 +132,9 @@ export function summariseDocStructure(opts: DocContextOptions): string {
     parts.push(lead);
     parts.push(
       `~${words} word${words === 1 ? '' : 's'}` +
-        (counts.paragraphs ? `, ${counts.paragraphs} paragraph${counts.paragraphs === 1 ? '' : 's'}` : '')
+        (counts.paragraphs
+          ? `, ${counts.paragraphs} paragraph${counts.paragraphs === 1 ? '' : 's'}`
+          : '')
     );
     if (headingNames.length > 0) {
       const sample = headingNames.slice(0, 6).join(', ');
@@ -142,10 +143,14 @@ export function summariseDocStructure(opts: DocContextOptions): string {
       );
     }
     const decorationParts: string[] = [];
-    if (counts.bullets > 0) decorationParts.push(`${counts.bullets} bullet point${counts.bullets === 1 ? '' : 's'}`);
-    if (counts.numbered > 0) decorationParts.push(`${counts.numbered} numbered item${counts.numbered === 1 ? '' : 's'}`);
-    if (counts.tables > 0) decorationParts.push(`${counts.tables} table${counts.tables === 1 ? '' : 's'}`);
-    if (counts.images > 0) decorationParts.push(`${counts.images} image${counts.images === 1 ? '' : 's'}`);
+    if (counts.bullets > 0)
+      decorationParts.push(`${counts.bullets} bullet point${counts.bullets === 1 ? '' : 's'}`);
+    if (counts.numbered > 0)
+      decorationParts.push(`${counts.numbered} numbered item${counts.numbered === 1 ? '' : 's'}`);
+    if (counts.tables > 0)
+      decorationParts.push(`${counts.tables} table${counts.tables === 1 ? '' : 's'}`);
+    if (counts.images > 0)
+      decorationParts.push(`${counts.images} image${counts.images === 1 ? '' : 's'}`);
     if (decorationParts.length > 0) parts.push(decorationParts.join(' · '));
   }
 

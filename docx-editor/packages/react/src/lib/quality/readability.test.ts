@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import {
-  computeReadability,
-  formatReadingTime,
-  gradeLabel,
-  syllableCount,
-} from './readability';
+import { computeReadability, formatReadingTime, gradeLabel, syllableCount } from './readability';
 
 describe('computeReadability', () => {
   it('reports zero for empty input', () => {

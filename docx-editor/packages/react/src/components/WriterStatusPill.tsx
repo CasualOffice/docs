@@ -51,8 +51,7 @@ export function WriterStatusPill({ onClick }: WriterStatusPillProps) {
       label = 'Loading…';
       break;
     case 'ready':
-      label =
-        state.lastInferenceMs !== null ? `Ready · ${state.lastInferenceMs} ms` : 'Ready';
+      label = state.lastInferenceMs !== null ? `Ready · ${state.lastInferenceMs} ms` : 'Ready';
       break;
     case 'busy':
       label = 'Running…';
@@ -74,10 +73,7 @@ export function WriterStatusPill({ onClick }: WriterStatusPillProps) {
       aria-label="Writing Assistant status — click to open settings"
       title={state.errorMessage ?? label}
     >
-      <MaterialSymbol
-        name={state.phase === 'error' ? 'warning' : 'auto_awesome'}
-        size={14}
-      />
+      <MaterialSymbol name={state.phase === 'error' ? 'warning' : 'auto_awesome'} size={14} />
       <span>{label}</span>
     </button>
   );

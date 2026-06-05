@@ -82,16 +82,17 @@ export const insertOutlineTool: Tool<OutlineArgs> = {
       outline = await runJsonChat<OutlineJson>(
         [
           { role: 'system', content: systemPromptFor(kind) },
-          { role: 'user', content: `${kind.charAt(0).toUpperCase() + kind.slice(1)} topic: ${topic}` },
+          {
+            role: 'user',
+            content: `${kind.charAt(0).toUpperCase() + kind.slice(1)} topic: ${topic}`,
+          },
         ],
         { schema: SCHEMA, maxTokens: 900, temperature: 0.5, signal: ctx.signal }
       );
     } catch (err) {
       return { kind: 'error', message: `Couldn't draft the outline — ${(err as Error).message}` };
     }
-    const sections = (outline.sections ?? []).filter(
-      (s) => s.heading?.trim() && s.content?.trim()
-    );
+    const sections = (outline.sections ?? []).filter((s) => s.heading?.trim() && s.content?.trim());
     if (sections.length === 0) {
       return { kind: 'error', message: 'Model returned no sections.' };
     }
@@ -143,4 +144,3 @@ function guessKind(topic: string): string | null {
   if (/\barticle\b/.test(t)) return 'article';
   return null;
 }
-

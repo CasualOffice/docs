@@ -123,7 +123,10 @@ function buildTableNode(
     )
   );
   const tableRows: PMNode[] = [
-    rowType.create({ height: DEFAULT_ROW_HEIGHT_TWIPS, heightRule: 'atLeast', isHeader: true }, headerCells),
+    rowType.create(
+      { height: DEFAULT_ROW_HEIGHT_TWIPS, heightRule: 'atLeast', isHeader: true },
+      headerCells
+    ),
   ];
 
   for (const row of rows) {
@@ -143,7 +146,9 @@ function buildTableNode(
         )
       );
     }
-    tableRows.push(rowType.create({ height: DEFAULT_ROW_HEIGHT_TWIPS, heightRule: 'atLeast' }, cells));
+    tableRows.push(
+      rowType.create({ height: DEFAULT_ROW_HEIGHT_TWIPS, heightRule: 'atLeast' }, cells)
+    );
   }
 
   return tableType.create(
@@ -227,7 +232,13 @@ export const insertTableTool: Tool<InsertTableArgs> = {
 
 function sanitiseRow(row: unknown): string[] {
   if (!Array.isArray(row)) return [];
-  return row.map((v) => String(v ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  return row
+    .map((v) =>
+      String(v ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
+    .filter(Boolean);
 }
 
 function padRow(row: string[], cols: number): string[] {

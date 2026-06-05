@@ -23,11 +23,7 @@ import {
 import type { EditorView } from 'prosemirror-view';
 import { useWriterState } from '../lib/writer/controller';
 import type { ChatMessage } from '../lib/writer/messages';
-import {
-  runPipeline,
-  type PipelineProposal,
-  type PipelineResult,
-} from '../lib/writer/pipeline';
+import { runPipeline, type PipelineProposal, type PipelineResult } from '../lib/writer/pipeline';
 import { getQuickPromptsForDoc } from '../lib/writer/suggestActions';
 import { Markdown } from '../lib/markdown';
 import { RightDockPanel } from './RightDockPanel';
@@ -421,9 +417,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
     label: 'Look up on Wikipedia',
     hint: 'Fact lookup (Wikipedia REST)',
     build: (rest) =>
-      rest.trim()
-        ? `What is ${rest.trim()}?`
-        : 'What is the topic of the selected passage?',
+      rest.trim() ? `What is ${rest.trim()}?` : 'What is the topic of the selected passage?',
   },
   {
     // Run the resume target through transformDoc on the live doc. The
@@ -591,8 +585,9 @@ export function ChatPanel({
           message: expanded,
           history: nextHistory
             .slice(0, -1)
-            .filter((m): m is ChatMessage & { role: 'user' | 'assistant' } =>
-              m.role === 'user' || m.role === 'assistant'
+            .filter(
+              (m): m is ChatMessage & { role: 'user' | 'assistant' } =>
+                m.role === 'user' || m.role === 'assistant'
             )
             .map((m) => ({ role: m.role, content: m.content })),
           includeDocContext: useDocContext,
@@ -623,10 +618,7 @@ export function ChatPanel({
         setHistory([...nextHistory, { role: 'assistant', content: tip }]);
         if (onProposal) onProposal(result, expanded);
       } else {
-        setHistory([
-          ...nextHistory,
-          { role: 'assistant', content: `Sorry — ${result.message}` },
-        ]);
+        setHistory([...nextHistory, { role: 'assistant', content: `Sorry — ${result.message}` }]);
       }
       setStreaming('');
     } catch (err) {
@@ -702,9 +694,7 @@ export function ChatPanel({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={
-            llmReady
-              ? 'Ask anything… (Enter to send, Shift+Enter for newline)'
-              : 'LLM not loaded.'
+            llmReady ? 'Ask anything… (Enter to send, Shift+Enter for newline)' : 'LLM not loaded.'
           }
           disabled={!llmReady || busy}
           style={textareaStyle}
@@ -833,7 +823,6 @@ export function ChatPanel({
           )}
           {busy && !streaming && <div style={subtleStyle}>Thinking…</div>}
         </div>
-
       </>
     </RightDockPanel>
   );
@@ -867,8 +856,8 @@ function ChatEmptyState({
     <div style={emptyStyle}>
       <strong>Ready when you are.</strong>
       <span>
-        Ask anything about the open document, request rewrites, or brainstorm. Toggle "Use
-        document context" above to send the doc text along with your question.
+        Ask anything about the open document, request rewrites, or brainstorm. Toggle "Use document
+        context" above to send the doc text along with your question.
       </span>
       <div style={quickRowStyle}>
         {prompts.map((p) => (

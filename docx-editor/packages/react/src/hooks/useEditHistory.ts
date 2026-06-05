@@ -280,30 +280,27 @@ export function useEditHistory(options: UseEditHistoryOptions = {}): UseEditHist
     return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
   }, []);
 
-  const revertHunk = useCallback(
-    (op: 'add' | 'remove', text: string, context: string): boolean => {
-      const view = viewRef.current;
-      if (!view || !text) return false;
-      if (op === 'add') {
-        // Find the inserted text in the live doc anchored by the
-        // preceding kept context. Delete it.
-        const range = findTextRange(view.state.doc, text, context);
-        if (!range) return false;
-        view.dispatch(view.state.tr.delete(range.from, range.to));
-        return true;
-      }
-      // op === 'remove' — put the deleted text back at the position
-      // where the context's tail currently sits. We search for the
-      // context only (the deleted text is no longer in the doc), then
-      // insert at the context's end.
-      if (!context) return false;
-      const ctxRange = findTextRange(view.state.doc, context);
-      if (!ctxRange) return false;
-      view.dispatch(view.state.tr.insertText(text, ctxRange.to));
+  const revertHunk = useCallback((op: 'add' | 'remove', text: string, context: string): boolean => {
+    const view = viewRef.current;
+    if (!view || !text) return false;
+    if (op === 'add') {
+      // Find the inserted text in the live doc anchored by the
+      // preceding kept context. Delete it.
+      const range = findTextRange(view.state.doc, text, context);
+      if (!range) return false;
+      view.dispatch(view.state.tr.delete(range.from, range.to));
       return true;
-    },
-    []
-  );
+    }
+    // op === 'remove' — put the deleted text back at the position
+    // where the context's tail currently sits. We search for the
+    // context only (the deleted text is no longer in the doc), then
+    // insert at the context's end.
+    if (!context) return false;
+    const ctxRange = findTextRange(view.state.doc, context);
+    if (!ctxRange) return false;
+    view.dispatch(view.state.tr.insertText(text, ctxRange.to));
+    return true;
+  }, []);
 
   return useMemo(
     () => ({ entries, revert, clear, attach, getCurrentText, revertHunk }),

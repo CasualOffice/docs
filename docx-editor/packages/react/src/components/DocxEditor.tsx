@@ -40,6 +40,8 @@ import {
 import type { FontOption } from './ui/FontPicker';
 import { EditorToolbar } from './EditorToolbar';
 import { StatusBar } from './StatusBar';
+import { useStatPrefs } from './statbar-prefs';
+import { READABILITY_PLUGIN_KEY, readabilityPlugin } from '../lib/quality/readabilityPlugin';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
 import {
   DocumentOutline,
@@ -1970,6 +1972,45 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     return editHistoryAttach(view);
   }, [isBodyPmReady, editHistoryAttach]);
 
+  // Long-sentence highlighter — Hemingway-style amber + yellow inline
+  // decorations for sentences > 25/35 words. Attached once on view
+  // ready; the meta-tagged toggle effect below flips its `enabled`
+  // flag when the user changes the status-bar pref.
+  const statPrefsForReadability = useStatPrefs();
+  useEffect(() => {
+    if (!isBodyPmReady) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const plugin = readabilityPlugin(statPrefsForReadability.prefs.readability);
+    const next = view.state.reconfigure({
+      plugins: [...view.state.plugins, plugin],
+    });
+    view.updateState(next);
+    return () => {
+      try {
+        const without = view.state.reconfigure({
+          plugins: view.state.plugins.filter((p) => p !== plugin),
+        });
+        view.updateState(without);
+      } catch {
+        // View may be on its way out — ignore.
+      }
+    };
+    // Intentionally exclude `statPrefsForReadability.prefs.readability`
+    // from the deps. The toggle effect below uses a meta-tagged
+    // transaction to flip enabled without tearing down the plugin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBodyPmReady]);
+  useEffect(() => {
+    if (!isBodyPmReady) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const tr = view.state.tr.setMeta(READABILITY_PLUGIN_KEY, {
+      enabled: statPrefsForReadability.prefs.readability,
+    });
+    view.dispatch(tr);
+  }, [statPrefsForReadability.prefs.readability, isBodyPmReady]);
+
   // Word + character counts for the status bar. Derived from the live
   // ProseMirror doc (not `history.state` — that only refreshes on major
   // lifecycle events like open / save / autosave, so the count stayed
@@ -1977,44 +2018,45 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // `descendants` and stitches text fragments. Recomputes whenever
   // `pmState` flips, which `onSelectionChange` and the post-load effect
   // already drive on every transaction.
-  const { wordCount, charCount, charCountWithSpaces, paragraphCount, docPlainText } = useMemo(() => {
-    if (!pmState) {
-      return {
-        wordCount: undefined,
-        charCount: undefined,
-        charCountWithSpaces: undefined,
-        paragraphCount: undefined,
-        docPlainText: '',
-      };
-    }
-    const paraTexts: string[] = [];
-    pmState.doc.descendants((node) => {
-      if (node.type.name === 'paragraph') {
-        paraTexts.push(node.textContent);
-        return false;
+  const { wordCount, charCount, charCountWithSpaces, paragraphCount, docPlainText } =
+    useMemo(() => {
+      if (!pmState) {
+        return {
+          wordCount: undefined,
+          charCount: undefined,
+          charCountWithSpaces: undefined,
+          paragraphCount: undefined,
+          docPlainText: '',
+        };
       }
-      return true;
-    });
-    const text = paraTexts.join('\n');
-    const words = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
-    // Word's "characters (with spaces)" includes the joined newlines
-    // implicit between paragraphs. Mirror Word: count whitespace
-    // collapsed into a single space per paragraph break.
-    const charsWith = text.length;
-    // "characters (no spaces)" matches Word's convention.
-    const chars = text.replace(/\s/g, '').length;
-    const paragraphs = paraTexts.filter((p) => p.trim().length > 0).length;
-    return {
-      wordCount: words,
-      charCount: chars,
-      charCountWithSpaces: charsWith,
-      paragraphCount: paragraphs,
-      // Status bar's readability cell wants the joined plain text so
-      // it can run sentence + Flesch-Kincaid heuristics. Reusing the
-      // same walk avoids a second descendants() pass per render.
-      docPlainText: text,
-    };
-  }, [pmState]);
+      const paraTexts: string[] = [];
+      pmState.doc.descendants((node) => {
+        if (node.type.name === 'paragraph') {
+          paraTexts.push(node.textContent);
+          return false;
+        }
+        return true;
+      });
+      const text = paraTexts.join('\n');
+      const words = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
+      // Word's "characters (with spaces)" includes the joined newlines
+      // implicit between paragraphs. Mirror Word: count whitespace
+      // collapsed into a single space per paragraph break.
+      const charsWith = text.length;
+      // "characters (no spaces)" matches Word's convention.
+      const chars = text.replace(/\s/g, '').length;
+      const paragraphs = paraTexts.filter((p) => p.trim().length > 0).length;
+      return {
+        wordCount: words,
+        charCount: chars,
+        charCountWithSpaces: charsWith,
+        paragraphCount: paragraphs,
+        // Status bar's readability cell wants the joined plain text so
+        // it can run sentence + Flesch-Kincaid heuristics. Reusing the
+        // same walk avoids a second descendants() pass per render.
+        docPlainText: text,
+      };
+    }, [pmState]);
   // Track current border color/width for border presets (like Google Docs)
   const borderSpecRef = useRef({ style: 'single', size: 4, color: { rgb: '000000' } });
   // Cache style resolver to avoid recreating on every selection change
@@ -7983,12 +8025,36 @@ body { background: white; }
                       tones={
                         aiSuggestion.mode === 'rewrite'
                           ? [
-                              { id: 'polish', label: 'Polish', active: aiSuggestion.tone === 'polish' },
-                              { id: 'concise', label: 'Concise', active: aiSuggestion.tone === 'concise' },
-                              { id: 'formal', label: 'Formal', active: aiSuggestion.tone === 'formal' },
-                              { id: 'casual', label: 'Casual', active: aiSuggestion.tone === 'casual' },
-                              { id: 'shorter', label: 'Shorter', active: aiSuggestion.tone === 'shorter' },
-                              { id: 'longer', label: 'Longer', active: aiSuggestion.tone === 'longer' },
+                              {
+                                id: 'polish',
+                                label: 'Polish',
+                                active: aiSuggestion.tone === 'polish',
+                              },
+                              {
+                                id: 'concise',
+                                label: 'Concise',
+                                active: aiSuggestion.tone === 'concise',
+                              },
+                              {
+                                id: 'formal',
+                                label: 'Formal',
+                                active: aiSuggestion.tone === 'formal',
+                              },
+                              {
+                                id: 'casual',
+                                label: 'Casual',
+                                active: aiSuggestion.tone === 'casual',
+                              },
+                              {
+                                id: 'shorter',
+                                label: 'Shorter',
+                                active: aiSuggestion.tone === 'shorter',
+                              },
+                              {
+                                id: 'longer',
+                                label: 'Longer',
+                                active: aiSuggestion.tone === 'longer',
+                              },
                             ]
                           : undefined
                       }
@@ -8011,7 +8077,12 @@ body { background: white; }
                       getDocText={() => {
                         const view = getActiveEditorView();
                         if (!view) return '';
-                        return view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n');
+                        return view.state.doc.textBetween(
+                          0,
+                          view.state.doc.content.size,
+                          '\n',
+                          '\n'
+                        );
                       }}
                       getSelectionText={() => {
                         const view = getActiveEditorView();

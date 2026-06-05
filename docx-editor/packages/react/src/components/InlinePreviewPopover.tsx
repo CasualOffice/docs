@@ -26,14 +26,7 @@
  * as the primary commit action in that case.
  */
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactElement,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import type { EditorView } from 'prosemirror-view';
 import type { PipelineProposal } from '../lib/writer/pipeline';
 import { MaterialSymbol } from './ui/Icons';
@@ -291,9 +284,7 @@ export function InlinePreviewPopover({
   useEffect(() => {
     const view = getView();
     if (!view) return;
-    const pos = proposal.replaceRange
-      ? proposal.replaceRange.to
-      : view.state.selection.head;
+    const pos = proposal.replaceRange ? proposal.replaceRange.to : view.state.selection.head;
     const place = () => {
       const v = getView();
       if (!v) return;
@@ -446,37 +437,37 @@ export function InlinePreviewPopover({
           </button>
         </div>
       ) : (
-      <div style={footerStyle}>
-        <button
-          type="button"
-          style={secondaryBtnStyle}
-          onClick={() => setRefineOpen(true)}
-          disabled={busy}
-          data-testid="preview-try-again"
-        >
-          Try again
-        </button>
-        {canReplace && (
+        <div style={footerStyle}>
           <button
             type="button"
             style={secondaryBtnStyle}
-            onClick={onInsertBelow}
+            onClick={() => setRefineOpen(true)}
             disabled={busy}
-            data-testid="preview-insert-below"
+            data-testid="preview-try-again"
           >
-            Insert below
+            Try again
           </button>
-        )}
-        <button
-          type="button"
-          style={primaryBtnStyle}
-          onClick={canReplace ? onReplace : onInsertBelow}
-          disabled={busy}
-          data-testid="preview-replace"
-        >
-          {canReplace ? 'Replace' : 'Insert at cursor'}
-        </button>
-      </div>
+          {canReplace && (
+            <button
+              type="button"
+              style={secondaryBtnStyle}
+              onClick={onInsertBelow}
+              disabled={busy}
+              data-testid="preview-insert-below"
+            >
+              Insert below
+            </button>
+          )}
+          <button
+            type="button"
+            style={primaryBtnStyle}
+            onClick={canReplace ? onReplace : onInsertBelow}
+            disabled={busy}
+            data-testid="preview-replace"
+          >
+            {canReplace ? 'Replace' : 'Insert at cursor'}
+          </button>
+        </div>
       )}
     </div>
   );

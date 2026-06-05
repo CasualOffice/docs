@@ -28,13 +28,7 @@
  * `isOpen`.
  */
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-} from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import type { EditorView } from 'prosemirror-view';
 import { MaterialSymbol } from './ui/Icons';
 

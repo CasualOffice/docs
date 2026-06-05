@@ -130,7 +130,10 @@ export const translateRangeTool: Tool<TranslateArgs> = {
     // Translation can be multi-paragraph if the source was. Split on
     // blank lines and rebuild as paragraph nodes so the OOXML round-
     // trip preserves the structure.
-    const paragraphs = translation.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    const paragraphs = translation
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean);
     const fragment = Fragment.fromArray(
       paragraphs.map((p) => paraType.create(null, ctx.schema.text(p)))
     );
