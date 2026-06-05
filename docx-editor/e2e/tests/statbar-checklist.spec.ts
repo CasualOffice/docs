@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
 
-// Status-bar right-click → small popover with 4 checkboxes (page,
-// words, chars, reading time). Unchecking a box hides the cell and
-// the preference persists in localStorage.
+// Status-bar right-click → small popover with 5 checkboxes (page,
+// words, chars, reading time, readability). Unchecking a box hides
+// the cell and the preference persists in localStorage.
 test.describe('Status bar checklist (sheet parity)', () => {
-  test('right-click opens the customisation popover with 4 toggles', async ({ page }) => {
+  test('right-click opens the customisation popover with 5 toggles', async ({ page }) => {
     const editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
@@ -22,7 +22,7 @@ test.describe('Status bar checklist (sheet parity)', () => {
     await bar.click({ button: 'right' });
     const checklist = page.getByTestId('statbar-checklist');
     await expect(checklist).toBeVisible();
-    await expect(checklist.locator('input[type=checkbox]')).toHaveCount(4);
+    await expect(checklist.locator('input[type=checkbox]')).toHaveCount(5);
   });
 
   test('unchecking Reading time hides the cell and persists across reload', async ({ page }) => {

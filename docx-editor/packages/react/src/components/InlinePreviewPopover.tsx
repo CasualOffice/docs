@@ -180,7 +180,8 @@ function TablePreview({ fragment }: { fragment: PipelineProposal['fragment'] }) 
   // to what will land.
   type Cell = { text: string; isHeader: boolean };
   const rows: Cell[][] = [];
-  let title = '';
+  // Title extraction was never wired (the proposal carries the title
+  // on its summary line) — render only the table grid here.
   fragment.descendants((node) => {
     if (node.type.name === 'table' && rows.length === 0) {
       node.descendants((rowNode) => {
@@ -215,7 +216,6 @@ function TablePreview({ fragment }: { fragment: PipelineProposal['fragment'] }) 
   }
   return (
     <div>
-      {title && <div style={{ fontWeight: 600, marginBottom: 8 }}>{title}</div>}
       <table
         style={{
           borderCollapse: 'collapse',
