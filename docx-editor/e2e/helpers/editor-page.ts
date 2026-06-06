@@ -1293,21 +1293,30 @@ export class EditorPage {
   }
 
   /**
-   * Set all borders on current cell
+   * Set all borders on current cell. The borders flyout renders in a
+   * portal that can land outside the viewport on CI runner sizes;
+   * Playwright refuses to click off-screen elements even with
+   * `force: true`. dispatchEvent fires a synthetic click on the
+   * resolved DOM node so the click lands regardless of geometry —
+   * appropriate here because the test exercises the COMMAND, not the
+   * cursor's ability to reach the button.
    */
   async setAllBorders(): Promise<void> {
     await this.page.locator('[data-testid="toolbar-table-borders"]').click();
-    await this.page.waitForTimeout(100);
-    await this.page.locator('button[title="All borders"]').click();
+    const target = this.page.locator('button[title="All borders"]');
+    await target.waitFor({ state: 'visible', timeout: 5_000 });
+    await target.dispatchEvent('click');
   }
 
   /**
-   * Remove borders from current cell
+   * Remove borders from current cell. See setAllBorders for the
+   * dispatchEvent rationale.
    */
   async removeBorders(): Promise<void> {
     await this.page.locator('[data-testid="toolbar-table-borders"]').click();
-    await this.page.waitForTimeout(100);
-    await this.page.locator('button[title="No borders"]').click();
+    const target = this.page.locator('button[title="No borders"]');
+    await target.waitFor({ state: 'visible', timeout: 5_000 });
+    await target.dispatchEvent('click');
   }
 
   /**
