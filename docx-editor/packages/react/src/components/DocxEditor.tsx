@@ -51,6 +51,7 @@ import {
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
 import { useEditHistory } from '../hooks/useEditHistory';
+import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
 import { useVoiceTyping } from '../hooks/useVoiceTyping';
 import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
@@ -1965,12 +1966,47 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // detaches the plugin on unmount.
   const isBodyPmReady = pmState != null;
   const editHistoryAttach = editHistory.attach;
+  // Hold the EditorView in state so child components (notably the
+  // version-history capture hook) can depend on it via a stable
+  // identity. Set once the body PM is ready.
+  const [bodyView, setBodyView] = useState<import('prosemirror-view').EditorView | null>(null);
   useEffect(() => {
-    if (!isBodyPmReady) return;
-    const view = pagedEditorRef.current?.getView();
+    if (!isBodyPmReady) {
+      setBodyView(null);
+      return;
+    }
+    const view = pagedEditorRef.current?.getView() ?? null;
+    setBodyView(view);
     if (!view) return;
     return editHistoryAttach(view);
   }, [isBodyPmReady, editHistoryAttach]);
+
+  // Coarse-grained, IDB-persisted snapshot capture (Versions tab feed).
+  // Scoped by document name — matches recent-files identity. Manual
+  // entries via the panel's "Save version…" button; auto entries every
+  // 10 min while dirty.
+  const versionCapture = useVersionHistoryCapture({
+    docId: documentName?.trim() || 'Untitled',
+    view: bodyView,
+  });
+
+  // Restore a snapshot's PM doc JSON into the live editor. Mirrors
+  // useEditHistory.revert's transaction shape so Ctrl+Z can undo a
+  // restore.
+  const handleRestoreSnapshot = useCallback(
+    (data: unknown) => {
+      const view = bodyView;
+      if (!view) return;
+      try {
+        const node = view.state.schema.nodeFromJSON(data);
+        const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, node.content);
+        view.dispatch(tr);
+      } catch (err) {
+        console.warn('[version-history] restore failed', err);
+      }
+    },
+    [bodyView]
+  );
 
   // Long-sentence highlighter — Hemingway-style amber + yellow inline
   // decorations for sentences > 25/35 words. Attached once on view
@@ -8002,7 +8038,12 @@ body { background: white; }
                       }}
                       data-testid="version-history-panel-wrapper"
                     >
-                      <VersionHistoryPanel history={editHistory} />
+                      <VersionHistoryPanel
+                        history={editHistory}
+                        docId={documentName?.trim() || 'Untitled'}
+                        saveNamedVersion={versionCapture.saveNamedVersion}
+                        onRestoreSnapshot={handleRestoreSnapshot}
+                      />
                     </div>
                   )}
 

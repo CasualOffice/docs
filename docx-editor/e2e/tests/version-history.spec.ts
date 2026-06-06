@@ -30,6 +30,11 @@ test.describe('Version history panel', () => {
     await toggle.click();
     await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
 
+    // The panel is a two-tab container — Versions (persisted IDB
+    // snapshots, default) + Activity (live edit feed). The per-edit
+    // entries this spec checks live in the Activity tab.
+    await page.getByTestId('version-history-tab-activity').click();
+
     // Type so the capture plugin records at least one entry. The hook
     // coalesces rapid typing into one entry within a 2s idle window, so
     // a single character is sufficient to produce one visible row.
@@ -48,6 +53,7 @@ test.describe('Version history panel', () => {
     const toggle = page.getByRole('button', { name: 'Version history' });
     await toggle.click();
     await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
+    await page.getByTestId('version-history-tab-activity').click();
 
     // Type so an entry lands. The diff is computed against the live
     // doc, so "hello world" landing as the latest entry produces a +2
@@ -70,6 +76,7 @@ test.describe('Version history panel', () => {
     const toggle = page.getByRole('button', { name: 'Version history' });
     await toggle.click();
     await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
+    await page.getByTestId('version-history-tab-activity').click();
 
     await editor.typeText('alpha bravo');
     await page.waitForTimeout(200);

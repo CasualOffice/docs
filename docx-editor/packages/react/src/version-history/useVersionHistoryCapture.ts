@@ -81,10 +81,15 @@ export function useVersionHistoryCapture(
   // Ensure the live feed exists before any subscriber mounts.
   getLiveVersionFeed();
 
-  // Hold latest options in a ref so the dirty-tracking plugin doesn't
-  // need to re-mount on every render.
-  const optsRef = useRef({ docId, sourceFormat });
-  optsRef.current = { docId, sourceFormat };
+  // Hold latest options + view in a ref so the capture closure reads
+  // the current values on every call, not whatever was in scope when
+  // `useRef` first ran (which would leave `view` stale at null).
+  const optsRef = useRef<{
+    docId: string | null;
+    sourceFormat: string | null;
+    view: EditorView | null;
+  }>({ docId, sourceFormat, view });
+  optsRef.current = { docId, sourceFormat, view };
 
   // Module-scope dirty flag — set by the observe plugin, read by the
   // interval. A ref so re-renders don't reset it.
@@ -92,15 +97,16 @@ export function useVersionHistoryCapture(
 
   const doCapture = useRef(
     async (kind: 'auto' | 'manual', name: string): Promise<number | null> => {
-      if (!view || !optsRef.current.docId) return null;
+      const { view: liveView, docId: liveDocId, sourceFormat: liveFmt } = optsRef.current;
+      if (!liveView || !liveDocId) return null;
       try {
-        const data = view.state.doc.toJSON();
+        const data = liveView.state.doc.toJSON();
         const id = await writeVersion({
-          docId: optsRef.current.docId,
+          docId: liveDocId,
           kind,
           name,
           savedAt: Date.now(),
-          sourceFormat: optsRef.current.sourceFormat,
+          sourceFormat: liveFmt,
           data,
         });
         return id;

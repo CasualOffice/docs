@@ -20,15 +20,33 @@
  * the right name when capturing locally-applied transactions; the
  * cross-peer log is the Yjs op-log (out of scope for v1).
  */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { PanelState } from '../ui/PanelState';
 import { Tooltip } from '../ui/Tooltip';
 import type { EditHistoryEntry, UseEditHistoryReturn } from '../../hooks/useEditHistory';
 import { diffStats, diffWords, extractText } from '../../hooks/wordDiff';
+import { useLiveVersionList } from '../../version-history/useLiveVersionList';
+import {
+  deleteVersion,
+  readVersion,
+  renameVersion,
+  type VersionSnapshot,
+} from '../../version-history/store';
 
 export interface VersionHistoryPanelProps {
   history: UseEditHistoryReturn;
+  /** Active document id — drives the per-doc Versions tab. When null,
+   *  the Versions tab shows a "no document" state and the Activity tab
+   *  is the default. */
+  docId?: string | null;
+  /** Imperative API exposed by `useVersionHistoryCapture`. The "Save
+   *  version…" button calls this; if absent, the button is hidden. */
+  saveNamedVersion?: (name: string) => Promise<number | null>;
+  /** Callback the panel invokes to restore a snapshot's `data` into
+   *  the live editor. The host (DocxEditor) implements this against
+   *  its EditorView — keeps the panel UI-only. */
+  onRestoreSnapshot?: (data: unknown) => void;
   /** Display title for the panel. Default "Version history". */
   title?: string;
   /** Empty-state message when no entries exist yet. */
@@ -36,6 +54,8 @@ export interface VersionHistoryPanelProps {
   /** Optional extra style applied to the panel root. */
   style?: CSSProperties;
 }
+
+type Tab = 'versions' | 'activity';
 
 const ROOT_STYLE: CSSProperties = {
   display: 'flex',
@@ -56,6 +76,60 @@ const HEADER_STYLE: CSSProperties = {
   borderBottom: '1px solid var(--doc-border, #e0e0e0)',
   fontWeight: 600,
   fontSize: 14,
+};
+
+const TABS_STYLE: CSSProperties = {
+  display: 'flex',
+  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+};
+
+const SUBHEADER_STYLE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '10px 16px',
+  fontSize: 12,
+  color: 'var(--doc-text-muted)',
+  fontWeight: 600,
+};
+
+const GROUP_STYLE: CSSProperties = {
+  listStyle: 'none',
+};
+
+const GROUP_HEADER_STYLE: CSSProperties = {
+  padding: '8px 16px 4px',
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  color: 'var(--doc-text-muted)',
+  fontWeight: 600,
+};
+
+const KIND_BADGE_STYLE: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  color: '#eab308', // amber-500 — manual-named star
+  outline: 'none',
+};
+
+const SIZE_STYLE: CSSProperties = {
+  fontSize: 11,
+  color: 'var(--doc-text-muted)',
+};
+
+const SAVE_VERSION_BTN_STYLE: CSSProperties = {
+  marginLeft: 'auto',
+  padding: '4px 10px',
+  border: '1px solid var(--doc-border-strong, var(--doc-border))',
+  borderRadius: 4,
+  background: 'transparent',
+  color: 'var(--doc-primary, #1a73e8)',
+  fontSize: 11,
+  fontWeight: 600,
+  cursor: 'pointer',
+  textTransform: 'none',
+  letterSpacing: 0,
 };
 
 const COUNT_STYLE: CSSProperties = {
@@ -194,10 +268,70 @@ function relativeTime(time: number, now: number): string {
 
 export function VersionHistoryPanel({
   history,
+  docId = null,
+  saveNamedVersion,
+  onRestoreSnapshot,
   title = 'Version history',
   emptyHint = 'No edits yet. Type into the document to start recording.',
   style,
 }: VersionHistoryPanelProps) {
+  // Default to Versions when we have a docId (the persisted timeline
+  // is what users come here for); Activity is the secondary "what
+  // just changed" feed. With no docId only Activity makes sense.
+  const [tab, setTab] = useState<Tab>(docId ? 'versions' : 'activity');
+
+  return (
+    <aside
+      data-testid="version-history-panel"
+      aria-label={title}
+      style={{ ...ROOT_STYLE, ...style }}
+    >
+      <header style={HEADER_STYLE}>
+        <MaterialSymbol name="history" size={18} />
+        <span>{title}</span>
+      </header>
+      <div style={TABS_STYLE} role="tablist" aria-label="Version history tabs">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'versions'}
+          data-testid="version-history-tab-versions"
+          onClick={() => setTab('versions')}
+          style={tabButtonStyle(tab === 'versions')}
+        >
+          Versions
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'activity'}
+          data-testid="version-history-tab-activity"
+          onClick={() => setTab('activity')}
+          style={tabButtonStyle(tab === 'activity')}
+        >
+          Activity
+        </button>
+      </div>
+      {tab === 'versions' ? (
+        <VersionsTab
+          docId={docId}
+          saveNamedVersion={saveNamedVersion}
+          onRestoreSnapshot={onRestoreSnapshot}
+        />
+      ) : (
+        <ActivityTab history={history} emptyHint={emptyHint} />
+      )}
+    </aside>
+  );
+}
+
+/* ============================================================
+   Activity tab — the existing edit-feed UI (unchanged behavior,
+   just hoisted into a sub-component so the tab container can
+   render either side).
+   ============================================================ */
+
+function ActivityTab({ history, emptyHint }: { history: UseEditHistoryReturn; emptyHint: string }) {
   // Newest-first display so the latest edit is at the top — humans
   // scan downward. The hook returns oldest-first so the ring trim
   // semantics stay obvious.
@@ -211,10 +345,6 @@ export function VersionHistoryPanel({
   const afterByEntryId = useMemo(() => {
     const map = new Map<string, string>();
     const liveText = history.getCurrentText();
-    // Iterate sorted (newest-first). The newest entry's "after" is
-    // the live doc; every subsequent entry's "after" is the entry
-    // immediately above it in chronological time (i.e. the PREVIOUS
-    // item in `sorted`).
     let nextAfter = liveText;
     for (const e of sorted) {
       map.set(e.id, nextAfter);
@@ -225,18 +355,13 @@ export function VersionHistoryPanel({
   const now = Date.now();
 
   return (
-    <aside
-      data-testid="version-history-panel"
-      aria-label={title}
-      style={{ ...ROOT_STYLE, ...style }}
-    >
-      <header style={HEADER_STYLE}>
-        <MaterialSymbol name="history" size={18} />
-        <span>{title}</span>
+    <>
+      <div style={SUBHEADER_STYLE}>
+        <span>Activity</span>
         <span style={COUNT_STYLE} data-testid="version-history-count">
           {history.entries.length}
         </span>
-      </header>
+      </div>
       {sorted.length === 0 ? (
         <PanelState kind="empty" message={emptyHint} />
       ) : (
@@ -253,8 +378,237 @@ export function VersionHistoryPanel({
           ))}
         </ol>
       )}
-    </aside>
+    </>
   );
+}
+
+/* ============================================================
+   Versions tab — IDB-backed persisted snapshots. Mirrors sheets'
+   `apps/web/src/shell/VersionHistoryPanel.tsx` VersionsTab.
+   ============================================================ */
+
+function VersionsTab({
+  docId,
+  saveNamedVersion,
+  onRestoreSnapshot,
+}: {
+  docId: string | null;
+  saveNamedVersion?: (name: string) => Promise<number | null>;
+  onRestoreSnapshot?: (data: unknown) => void;
+}) {
+  const list = useLiveVersionList(docId);
+  const groups = useMemo(() => groupByDay(list), [list]);
+  const now = Date.now();
+
+  const handleSaveVersion = useCallback(async () => {
+    if (!saveNamedVersion) return;
+    // Native prompt — small, deterministic, works in Playwright.
+    // A future iteration can replace it with the styled
+    // InlineRenameDialog used elsewhere in the editor.
+    // eslint-disable-next-line no-alert
+    const raw = window.prompt('Name this version', '');
+    if (raw == null) return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    await saveNamedVersion(trimmed);
+  }, [saveNamedVersion]);
+
+  const handleRestore = useCallback(
+    async (snap: VersionSnapshot) => {
+      if (!onRestoreSnapshot || snap.id == null) return;
+      const full = await readVersion(snap.id);
+      if (!full) return;
+      onRestoreSnapshot(full.data);
+    },
+    [onRestoreSnapshot]
+  );
+
+  const handleRename = useCallback(async (snap: VersionSnapshot) => {
+    if (snap.id == null) return;
+    // eslint-disable-next-line no-alert
+    const next = window.prompt('Rename version', snap.name);
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === snap.name) return;
+    await renameVersion(snap.id, trimmed);
+  }, []);
+
+  const handleDelete = useCallback(async (snap: VersionSnapshot) => {
+    if (snap.id == null) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Delete "${snap.name}"? This cannot be undone.`)) return;
+    await deleteVersion(snap.id);
+  }, []);
+
+  if (!docId) {
+    return <PanelState kind="empty" message="Open a document to see its version history." />;
+  }
+
+  return (
+    <>
+      <div style={SUBHEADER_STYLE}>
+        <span>Versions</span>
+        <span style={COUNT_STYLE} data-testid="version-history-versions-count">
+          {list.length}
+        </span>
+        {saveNamedVersion && (
+          <button
+            type="button"
+            onClick={handleSaveVersion}
+            style={SAVE_VERSION_BTN_STYLE}
+            data-testid="version-history-save-version"
+          >
+            Save version…
+          </button>
+        )}
+      </div>
+      {list.length === 0 ? (
+        <PanelState
+          kind="empty"
+          message='No saved versions yet. "Save version…" bookmarks the current doc, or wait ~10 minutes for the first auto snapshot.'
+        />
+      ) : (
+        <ol style={LIST_STYLE} role="list">
+          {groups.map(({ label, items }) => (
+            <li key={label} style={GROUP_STYLE}>
+              <div style={GROUP_HEADER_STYLE}>{label}</div>
+              <ol style={LIST_STYLE} role="list">
+                {items.map((snap) => (
+                  <VersionRow
+                    key={snap.id}
+                    snap={snap}
+                    now={now}
+                    onRestore={() => handleRestore(snap)}
+                    onRename={() => handleRename(snap)}
+                    onDelete={() => handleDelete(snap)}
+                  />
+                ))}
+              </ol>
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  );
+}
+
+function VersionRow({
+  snap,
+  now,
+  onRestore,
+  onRename,
+  onDelete,
+}: {
+  snap: VersionSnapshot;
+  now: number;
+  onRestore: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li style={ENTRY_STYLE} data-testid="version-history-version-row">
+      <div style={ENTRY_HEAD_STYLE}>
+        <span style={AUTHOR_STYLE}>{snap.name}</span>
+        {snap.kind === 'manual' && (
+          <Tooltip content="Named version — kept until deleted">
+            <span style={KIND_BADGE_STYLE} tabIndex={0}>
+              <MaterialSymbol name="star" size={12} />
+            </span>
+          </Tooltip>
+        )}
+        <span style={{ marginLeft: 'auto' }}>
+          <Tooltip content={new Date(snap.savedAt).toLocaleString()}>
+            <span tabIndex={0} style={{ outline: 'none' }}>
+              {relativeTime(snap.savedAt, now)}
+            </span>
+          </Tooltip>
+        </span>
+      </div>
+      {typeof snap.size === 'number' && snap.size > 0 && (
+        <div style={SIZE_STYLE}>{formatSize(snap.size)}</div>
+      )}
+      <div style={ENTRY_ACTIONS_STYLE}>
+        <button
+          type="button"
+          onClick={onRestore}
+          style={REVERT_BUTTON_STYLE}
+          data-testid="version-history-restore"
+        >
+          Restore
+        </button>
+        <button type="button" onClick={onRename} style={SHOW_DIFF_BTN_STYLE}>
+          Rename
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          style={{ ...SHOW_DIFF_BTN_STYLE, color: '#b91c1c' }}
+        >
+          Delete
+        </button>
+      </div>
+    </li>
+  );
+}
+
+/* ============================================================
+   Helpers: day grouping + byte formatting + tab style helper.
+   ============================================================ */
+
+interface DayGroup {
+  label: string;
+  items: VersionSnapshot[];
+}
+
+function groupByDay(list: VersionSnapshot[]): DayGroup[] {
+  if (list.length === 0) return [];
+  // Sheets uses the same labels (Today / Yesterday / explicit date).
+  // Ordering follows the list itself (assumed newest-first by store).
+  const now = new Date();
+  const todayKey = dayKey(now);
+  const yesterdayKey = dayKey(new Date(now.getTime() - 86400_000));
+  const map = new Map<string, DayGroup>();
+  for (const snap of list) {
+    const d = new Date(snap.savedAt);
+    const key = dayKey(d);
+    const label =
+      key === todayKey
+        ? 'Today'
+        : key === yesterdayKey
+          ? 'Yesterday'
+          : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    let group = map.get(key);
+    if (!group) {
+      group = { label, items: [] };
+      map.set(key, group);
+    }
+    group.items.push(snap);
+  }
+  return Array.from(map.values());
+}
+
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function tabButtonStyle(active: boolean): CSSProperties {
+  return {
+    flex: 1,
+    padding: '8px 12px',
+    border: 'none',
+    background: 'transparent',
+    color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text-muted)',
+    fontSize: 13,
+    fontWeight: active ? 600 : 400,
+    borderBottom: active ? '2px solid var(--doc-primary, #1a73e8)' : '2px solid transparent',
+    cursor: 'pointer',
+  };
 }
 
 function EditHistoryEntryRow({
