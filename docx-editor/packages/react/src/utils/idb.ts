@@ -16,10 +16,12 @@ export const DOCS_DB_NAME = 'casual-docs';
 
 // v1: autosave store
 // v2: recent-files store added
-export const DOCS_DB_VERSION = 2;
+// v3: versions store added (per-doc version-history snapshots)
+export const DOCS_DB_VERSION = 3;
 
 export const STORE_AUTOSAVE = 'autosave';
 export const STORE_RECENT_FILES = 'recent-files';
+export const STORE_VERSIONS = 'versions';
 
 export function openDocsDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -37,6 +39,15 @@ export function openDocsDb(): Promise<IDBDatabase> {
         });
         os.createIndex('openedAt', 'openedAt', { unique: false });
         os.createIndex('name', 'name', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_VERSIONS)) {
+        const os = db.createObjectStore(STORE_VERSIONS, {
+          keyPath: 'id',
+          autoIncrement: true,
+        });
+        os.createIndex('savedAt', 'savedAt', { unique: false });
+        os.createIndex('kind', 'kind', { unique: false });
+        os.createIndex('docId', 'docId', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
