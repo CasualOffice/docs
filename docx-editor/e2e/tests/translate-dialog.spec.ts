@@ -38,7 +38,12 @@ test.describe('Tools > Translate (A5)', () => {
   });
 
   test('error response surfaces the PanelState retry', async ({ page }) => {
+    // Both network backends must fail for the error state to surface —
+    // the translate flow falls MyMemory → Lingva before giving up.
     await page.route('https://api.mymemory.translated.net/get**', (route) => {
+      route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+    });
+    await page.route('https://lingva.ml/api/v1/**', (route) => {
       route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
     });
 
@@ -55,9 +60,8 @@ test.describe('Tools > Translate (A5)', () => {
     // (whole-doc export flow) that loosely matches the same regex.
     await page.getByRole('menuitem', { name: 'Translate…', exact: true }).click();
 
-    // `translateText` now retries with 800/1800/4000 ms backoff before
-    // surfacing the error, so allow ~10 s for the final failure to
-    // bubble up to the PanelState.
+    // Single 400 ms retry between MyMemory attempts, then one Lingva
+    // attempt — total well under 5 s; keep a generous ceiling.
     await expect(page.getByTestId('panel-state-error')).toBeVisible({ timeout: 12_000 });
     await expect(page.getByTestId('panel-state-retry')).toBeVisible();
   });
