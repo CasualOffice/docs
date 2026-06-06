@@ -22,7 +22,7 @@
  * and supporting them properly belongs in a real markdown engine.
  */
 
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, memo, type ReactNode } from 'react';
 
 interface InlineToken {
   kind: 'text' | 'bold' | 'italic' | 'code' | 'link';
@@ -219,7 +219,14 @@ const headingStyles: Record<number, React.CSSProperties> = {
   6: { fontSize: 13, fontWeight: 600, margin: '6px 0 4px' },
 };
 
-export function Markdown({ text }: { text: string }) {
+function MarkdownImpl({ text }: { text: string }) {
+  // parseBlocks + renderInline are pure CPU work. For chat / live
+  // previews / version-history activity rows the same text gets
+  // rendered many times as siblings update. Without memoising we
+  // re-parse every block on every parent render — quadratic on the
+  // translate live-preview pane (N chunks × N renders per chunk
+  // landing), which is the freeze the user reported. Memo wrapper
+  // below collapses to one parse per unique `text`.
   const blocks = parseBlocks(text);
   return (
     <>
@@ -313,3 +320,8 @@ export function Markdown({ text }: { text: string }) {
     </>
   );
 }
+
+// Memoise on the `text` prop. Same-string siblings collapse to one
+// parse pass + reused VDOM. Equality is reference-then-string so React
+// can shortcut identical refs without an N-char compare.
+export const Markdown = memo(MarkdownImpl, (a, b) => a.text === b.text);
