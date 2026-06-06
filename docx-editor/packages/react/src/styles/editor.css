@@ -64,9 +64,9 @@
   --doc-text-subtle: #9aa0a6; /* tertiary/disabled text */
   --doc-text-placeholder: #999; /* placeholder text */
 
-  /* Border colors */
+  /* Border colors — values stratified by contrast: light < base < dark */
   --doc-border: #e0e0e0; /* standard borders */
-  --doc-border-light: #dadce0; /* lighter borders */
+  --doc-border-light: #ebedee; /* softer separators (was #dadce0 — actually darker than base; corrected so the name matches reality) */
   --doc-border-dark: #d0d0d0; /* darker borders (tables) */
   --doc-border-input: #ccc; /* input borders */
 
@@ -88,7 +88,7 @@
   --doc-info: #1a73e8; /* informational states */
   --doc-info-bg: #e8f4fd; /* info backgrounds */
   --doc-info-border: #b8daff; /* info border on bg */
-  --doc-info-text: #0c5460; /* readable text on info bg */
+  --doc-info-text: #174ea6; /* readable text on info bg — Google blue-800, matches palette (was #0c5460, Bootstrap teal that didn't belong) */
 
   /* Link color */
   --doc-link: #0563c1; /* hyperlinks */
@@ -99,11 +99,17 @@
   --doc-surface-raised: #ffffff; /* slightly elevated card on a surface */
   --doc-surface-sunken: #f5f5f5; /* input field background */
   --doc-surface-muted: #fafafa; /* tinted preview pane / inactive tab background */
-  --doc-text-on-surface: #1f2937; /* primary text on surfaces */
-  --doc-text-on-surface-muted: #6b7280; /* secondary text on surfaces */
+  /* Surface text + accent — aliased to the canonical text / primary tokens
+     so we have ONE blue and ONE primary text color. Keeping the alias
+     names lets every consumer that already imports them continue to work
+     without a codemod, while the rendered colors collapse to a single
+     value. (Was: #1f2937 / #6b7280 / #2563eb / #eff6ff — four
+     near-duplicates of the canonicals below.) */
+  --doc-text-on-surface: var(--doc-text);
+  --doc-text-on-surface-muted: var(--doc-text-muted);
   --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* dropdown / dialog shadow */
-  --doc-accent: #2563eb; /* primary accent (buttons, focus rings) */
-  --doc-accent-soft: #eff6ff; /* soft accent fill (active tab / armed button) */
+  --doc-accent: var(--doc-primary);
+  --doc-accent-soft: var(--doc-primary-light);
 
   /* Animation tier (X4). Three speeds, one easing.
    *
@@ -170,7 +176,7 @@
   --doc-text-subtle: #6e7378;
   --doc-text-placeholder: #6e7378;
   --doc-border: #3c4043;
-  --doc-border-light: #2d2f31;
+  --doc-border-light: #2d2f31; /* lighter = closer to dark bg = lower contrast (correct for dark mode) */
   --doc-border-dark: #5f6368;
   --doc-border-input: #3c4043;
   --doc-bg-subtle: #2d2f31;
@@ -199,11 +205,12 @@
   --doc-surface-raised: #3c4043;
   --doc-surface-sunken: #1f1f1f;
   --doc-surface-muted: #262626;
-  --doc-text-on-surface: #e8eaed;
-  --doc-text-on-surface-muted: #9aa0a6;
+  /* Aliases: same canonicalization as the light theme. */
+  --doc-text-on-surface: var(--doc-text);
+  --doc-text-on-surface-muted: var(--doc-text-muted);
   --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --doc-accent: #8ab4f8;
-  --doc-accent-soft: #1a3a5e;
+  --doc-accent: var(--doc-primary);
+  --doc-accent-soft: var(--doc-primary-light);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -264,8 +271,8 @@
     --doc-surface: #2d2f31;
     --doc-surface-raised: #3c4043;
     --doc-surface-sunken: #1f1f1f;
-    --doc-text-on-surface: #e8eaed;
-    --doc-text-on-surface-muted: #9aa0a6;
+    --doc-text-on-surface: var(--doc-text);
+    --doc-text-on-surface-muted: var(--doc-text-muted);
     --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   }
 }
