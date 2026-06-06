@@ -354,7 +354,11 @@ export function HyperlinkDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? t('dialogs.hyperlink.titleEdit') : t('dialogs.hyperlink.titleInsert')}
+      title={
+        <span id="hyperlink-dialog-title">
+          {isEditing ? t('dialogs.hyperlink.titleEdit') : t('dialogs.hyperlink.titleInsert')}
+        </span>
+      }
       width={520}
       testId="hyperlink-dialog"
       footer={
@@ -390,7 +394,12 @@ export function HyperlinkDialog({
       }
     >
       <form
-        className="docx-hyperlink-dialog-body"
+        // Legacy classes kept for backwards-compat with the
+        // hyperlinks.spec.ts e2e selectors that pre-date the Phase 7
+        // <Dialog> migration. `docx-hyperlink-dialog` is the wrapper
+        // they look for; `docx-hyperlink-dialog-body` was the form's
+        // original class.
+        className="docx-hyperlink-dialog docx-hyperlink-dialog-body"
         onSubmit={handleSubmit}
         // Submit-on-Enter falls back to the form. preventDefault inside
         // handleSubmit keeps the dialog from closing on validation
