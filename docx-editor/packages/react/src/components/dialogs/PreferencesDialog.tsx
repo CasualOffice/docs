@@ -73,12 +73,17 @@ const switchWrapStyle: CSSProperties = {
   height: 18,
 };
 
-const hiddenCheckStyle: CSSProperties = {
+// Native checkbox sits OVER the switch pill, transparent, but
+// clickable. That way the visual is our switch, but Playwright /
+// keyboard / assistive tech can still target the real input.
+const overlayCheckStyle: CSSProperties = {
   position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
   opacity: 0,
-  pointerEvents: 'none',
-  width: 0,
-  height: 0,
+  cursor: 'pointer',
+  margin: 0,
 };
 
 const switchPillStyle = (on: boolean): CSSProperties => ({
@@ -148,16 +153,16 @@ function ToggleRow({
       }}
     >
       <span style={switchWrapStyle}>
+        <span style={switchPillStyle(checked)} aria-hidden="true">
+          <span style={switchKnobStyle(checked)} />
+        </span>
         <input
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
           data-testid={testId}
-          style={hiddenCheckStyle}
+          style={overlayCheckStyle}
         />
-        <span style={switchPillStyle(checked)} aria-hidden="true">
-          <span style={switchKnobStyle(checked)} />
-        </span>
       </span>
       <span style={{ flex: 1 }}>
         <div style={labelTextStyle}>{title}</div>

@@ -17,6 +17,10 @@ test.describe('PanelState (X5)', () => {
 
     const panel = page.locator('[data-testid="version-history-panel"]');
     await expect(panel).toBeVisible();
+    // Phase 7 split the panel into Versions (persisted, default) +
+    // Activity (live edit feed). 'No edits yet' lives on the Activity
+    // tab; switch there before asserting.
+    await page.getByTestId('version-history-tab-activity').click();
     const empty = panel.locator('[data-testid="panel-state-empty"]');
     await expect(empty).toBeVisible();
     await expect(empty).toContainText(/No edits yet/);

@@ -8,6 +8,12 @@ import { test } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
 
 test.describe('Version history visual audit', () => {
+  // The walk through 4-5 panel states with 2.2s coalesce-window waits
+  // between typeText calls easily exceeds the default 30s per-test
+  // timeout under CI runner load. Bumping to 60s gives headroom
+  // without papering over a real hang — the spec finishes locally in
+  // ~14s.
+  test.setTimeout(60_000);
   test('captures the four primary panel states', async ({ page }) => {
     const editor = new EditorPage(page);
     await editor.goto();
