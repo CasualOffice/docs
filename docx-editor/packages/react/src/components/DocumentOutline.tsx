@@ -182,43 +182,82 @@ export const DocumentOutline = React.memo(function DocumentOutline({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Header — back arrow + title */}
+      {/* Header — matches the unified right-dock pattern: title left,
+          close X right, hairline below. Outline is positioned on the
+          LEFT side of the doc so it can't share RightDockPanel
+          directly, but the visual rhythm is identical to keep every
+          panel header in the editor recognizable as the same family. */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '16px 16px 12px',
+          gap: 10,
+          padding: '14px 16px',
+          borderBottom: '1px solid var(--doc-border-light)',
+          fontWeight: 600,
+          fontSize: 14.5,
+          letterSpacing: '-0.005em',
+          flexShrink: 0,
         }}
       >
+        <MaterialSymbol name="format_list_bulleted" size={18} />
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            color: 'var(--doc-text)',
+          }}
+        >
+          {t('documentOutline.title')}
+        </span>
         <Tooltip content={t('documentOutline.closeTitle')}>
           <button
             onClick={onClose}
             aria-label={t('documentOutline.closeAriaLabel')}
             style={{
-              background: 'none',
               border: 'none',
-              cursor: 'pointer',
-              padding: 4,
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
+              background: 'transparent',
               color: 'var(--doc-text-muted)',
+              cursor: 'pointer',
+              lineHeight: 1,
+              padding: 6,
+              marginRight: -6,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 6,
+              flexShrink: 0,
+              transition:
+                'background 80ms cubic-bezier(0.4, 0, 0.2, 1), color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--doc-bg-hover)';
+              e.currentTarget.style.color = 'var(--doc-text)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--doc-text-muted)';
             }}
           >
-            <MaterialSymbol name="arrow_back" size={20} />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6L6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
           </button>
         </Tooltip>
-        <span
-          style={{
-            fontWeight: 400,
-            fontSize: 14,
-            color: 'var(--doc-text)',
-            letterSpacing: '0.01em',
-          }}
-        >
-          {t('documentOutline.title')}
-        </span>
       </div>
 
       {/* Heading list */}
