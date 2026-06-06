@@ -7,7 +7,8 @@ test('Home shows a Recent section seeded from IndexedDB', async ({ page }) => {
   await page.waitForLoadState('domcontentloaded');
 
   await page.evaluate(async () => {
-    const open = indexedDB.open('casual-docs', 2);
+    // Keep in sync with packages/react/src/utils/idb.ts DOCS_DB_VERSION.
+    const open = indexedDB.open('casual-docs', 3);
     open.onupgradeneeded = () => {
       const db = open.result;
       if (!db.objectStoreNames.contains('autosave')) db.createObjectStore('autosave');
@@ -15,6 +16,12 @@ test('Home shows a Recent section seeded from IndexedDB', async ({ page }) => {
         const os = db.createObjectStore('recent-files', { keyPath: 'id', autoIncrement: true });
         os.createIndex('openedAt', 'openedAt', { unique: false });
         os.createIndex('name', 'name', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('versions')) {
+        const os = db.createObjectStore('versions', { keyPath: 'id', autoIncrement: true });
+        os.createIndex('savedAt', 'savedAt', { unique: false });
+        os.createIndex('kind', 'kind', { unique: false });
+        os.createIndex('docId', 'docId', { unique: false });
       }
     };
     await new Promise<void>((resolve, reject) => {

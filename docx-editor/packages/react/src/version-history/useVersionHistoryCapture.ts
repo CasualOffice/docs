@@ -130,10 +130,18 @@ export function useVersionHistoryCapture(
   });
 
   // Attach the dirty-tracking plugin + spin up the idle interval.
+  // Effect deps INTENTIONALLY ONLY `[view]` — re-reconfiguring the view
+  // when docId / idleIntervalMs change while the same view is mounted
+  // tears the plugin set mid-update, which surfaces as PM's
+  // `updateOuterDeco` crash when a doc fixture is loading and
+  // NodeViews are being reconciled. docId + sourceFormat are read
+  // from optsRef at capture time so they stay live without re-running
+  // the effect. enabled-flip-to-false is handled by the early return
+  // (no plugin attached, no interval) — same for view going null.
   useEffect(() => {
-    if (!enabled || !view || !docId) return;
+    if (!enabled || !view) return;
 
-    // Reset dirty on (re)attach so a fresh doc doesn't inherit the
+    // Reset dirty on (re)attach so a fresh view doesn't inherit the
     // previous one's pending state.
     dirtyRef.current = false;
 
@@ -157,7 +165,9 @@ export function useVersionHistoryCapture(
 
     const tick = setInterval(() => {
       if (!dirtyRef.current) return;
-      void doCapture.current('auto', deriveAutoLabel(docId)).then((id) => {
+      const liveDocId = optsRef.current.docId;
+      if (!liveDocId) return;
+      void doCapture.current('auto', deriveAutoLabel(liveDocId)).then((id) => {
         if (id != null) dirtyRef.current = false;
       });
     }, idleIntervalMs);
@@ -173,7 +183,8 @@ export function useVersionHistoryCapture(
         // View may have been destroyed mid-cleanup; ignore.
       }
     };
-  }, [enabled, view, docId, idleIntervalMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, view]);
 
   return {
     saveNamedVersion: (name: string) =>
