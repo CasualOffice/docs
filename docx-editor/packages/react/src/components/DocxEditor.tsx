@@ -8026,25 +8026,13 @@ body { background: white; }
                       container is `flex: 1` and this column has a
                       fixed width. */}
                   {showVersionHistory && (
-                    <div
-                      style={{
-                        width: 300,
-                        flexShrink: 0,
-                        borderLeft: '1px solid var(--doc-border, #e0e0e0)',
-                        background: 'var(--doc-surface, white)',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                      data-testid="version-history-panel-wrapper"
-                    >
-                      <VersionHistoryPanel
-                        history={editHistory}
-                        docId={documentName?.trim() || 'Untitled'}
-                        saveNamedVersion={versionCapture.saveNamedVersion}
-                        onRestoreSnapshot={handleRestoreSnapshot}
-                      />
-                    </div>
+                    <VersionHistoryPanel
+                      history={editHistory}
+                      docId={documentName?.trim() || 'Untitled'}
+                      saveNamedVersion={versionCapture.saveNamedVersion}
+                      onRestoreSnapshot={handleRestoreSnapshot}
+                      onClose={() => setShowVersionHistory(false)}
+                    />
                   )}
 
                   {/* AI right-side panels — laid out as flex siblings of

@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { PanelState } from '../ui/PanelState';
 import { Tooltip } from '../ui/Tooltip';
+import { RightDockPanel } from '../RightDockPanel';
 import type { EditHistoryEntry, UseEditHistoryReturn } from '../../hooks/useEditHistory';
 import { diffStats, diffWords, extractText } from '../../hooks/wordDiff';
 import { useLiveVersionList } from '../../version-history/useLiveVersionList';
@@ -47,6 +48,9 @@ export interface VersionHistoryPanelProps {
    *  the live editor. The host (DocxEditor) implements this against
    *  its EditorView — keeps the panel UI-only. */
   onRestoreSnapshot?: (data: unknown) => void;
+  /** Called when the user clicks the close (X) button in the panel
+   *  header. The host (DocxEditor) flips the panel-open flag. */
+  onClose?: () => void;
   /** Display title for the panel. Default "Version history". */
   title?: string;
   /** Empty-state message when no entries exist yet. */
@@ -57,26 +61,9 @@ export interface VersionHistoryPanelProps {
 
 type Tab = 'versions' | 'activity';
 
-const ROOT_STYLE: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  width: 300,
-  height: '100%',
-  background: 'var(--doc-surface, #ffffff)',
-  borderLeft: '1px solid var(--doc-border, #e0e0e0)',
-  fontSize: 13,
-  color: 'var(--doc-text-on-surface, #1f2937)',
-};
-
-const HEADER_STYLE: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '14px 16px',
-  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
-  fontWeight: 600,
-  fontSize: 14,
-};
+// Width / outer chrome / header come from RightDockPanel — the old
+// ROOT_STYLE and HEADER_STYLE were removed in Phase 3 (panel chrome
+// unification).
 
 const TABS_STYLE: CSSProperties = {
   display: 'flex',
@@ -271,25 +258,27 @@ export function VersionHistoryPanel({
   docId = null,
   saveNamedVersion,
   onRestoreSnapshot,
+  onClose,
   title = 'Version history',
   emptyHint = 'No edits yet. Type into the document to start recording.',
-  style,
 }: VersionHistoryPanelProps) {
   // Default to Versions when we have a docId (the persisted timeline
   // is what users come here for); Activity is the secondary "what
   // just changed" feed. With no docId only Activity makes sense.
   const [tab, setTab] = useState<Tab>(docId ? 'versions' : 'activity');
 
+  // Render via the shared RightDockPanel shell so every right-edge
+  // panel inherits the same width, header chrome, slide-in motion,
+  // and close-X affordance. The tab strip + tab body live in
+  // children so they sit below the standard header.
   return (
-    <aside
-      data-testid="version-history-panel"
-      aria-label={title}
-      style={{ ...ROOT_STYLE, ...style }}
+    <RightDockPanel
+      title={title}
+      icon={<MaterialSymbol name="history" size={18} />}
+      testId="version-history-panel"
+      ariaLabel={title}
+      onClose={onClose ?? (() => {})}
     >
-      <header style={HEADER_STYLE}>
-        <MaterialSymbol name="history" size={18} />
-        <span>{title}</span>
-      </header>
       <div style={TABS_STYLE} role="tablist" aria-label="Version history tabs">
         <button
           type="button"
@@ -321,7 +310,7 @@ export function VersionHistoryPanel({
       ) : (
         <ActivityTab history={history} emptyHint={emptyHint} />
       )}
-    </aside>
+    </RightDockPanel>
   );
 }
 
