@@ -20,7 +20,7 @@ test('Command palette can toggle the document outline', async ({ page, context }
   const mod = await modifierKey(page);
   await page.keyboard.press(`${mod}+Shift+p`);
 
-  const input = page.getByPlaceholder('Type a command…');
+  const input = page.getByTestId('command-palette-input');
   await input.fill('outline');
   await expect(page.locator('[data-cp-index="0"]')).toContainText('Show document outline');
   await page.keyboard.press('Enter');
@@ -29,6 +29,6 @@ test('Command palette can toggle the document outline', async ({ page, context }
 
   // Reopen → label flipped to Hide.
   await page.keyboard.press(`${mod}+Shift+p`);
-  await page.getByPlaceholder('Type a command…').fill('outline');
+  await page.getByTestId('command-palette-input').fill('outline');
   await expect(page.locator('[data-cp-index="0"]')).toContainText('Hide document outline');
 });

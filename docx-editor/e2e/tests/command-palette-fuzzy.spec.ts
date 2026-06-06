@@ -17,7 +17,7 @@ test.describe('Command palette fuzzy match', () => {
     await editor.focus();
     const mod = await modifierKey(page);
     await page.keyboard.press(`${mod}+Shift+p`);
-    return page.getByPlaceholder('Type a command…');
+    return page.getByTestId('command-palette-input');
   }
 
   test('subsequence "expdf" finds Export as PDF', async ({ page }) => {

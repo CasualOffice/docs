@@ -1,17 +1,25 @@
 /**
  * Tools → Preferences.
  *
- * Visual language mirrors AboutDialog (overlay + dialog shell with
- * header/body/footer split + primary button) for consistency.
+ * Migrated onto the shared <Dialog> shell in Phase 7. Drops the
+ * custom overlay / header / footer chrome and gains the unified
+ * premium aesthetic (backdrop blur, scale-in motion, refined chrome).
  *
  * Owns no state — the host (DocxEditor) keeps the canonical
  * EditorPreferences in React state, mutates `editorPreferences` (the
  * core singleton the extensions read), and persists to localStorage.
  * The dialog is a dumb view that renders toggles and reports changes.
+ *
+ * Premium pass on the toggles themselves: each preference is a
+ * fully-tappable row card with a soft hover background. The native
+ * checkbox sits inside a custom switch surface (CSS-only, no extra
+ * libs) that reads as a Mac-style toggle rather than a default
+ * browser checkbox.
  */
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import type { EditorPreferences } from '@eigenpal/docx-core/prosemirror/extensions';
+import { Dialog } from '../ui/Dialog';
 
 export interface PreferencesDialogProps {
   isOpen: boolean;
@@ -20,81 +28,144 @@ export interface PreferencesDialogProps {
   onChange: <K extends keyof EditorPreferences>(key: K, value: EditorPreferences[K]) => void;
 }
 
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 10000,
-};
-
-const dialogStyle: CSSProperties = {
-  backgroundColor: 'var(--doc-surface, white)',
-  borderRadius: 8,
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 440,
-  maxWidth: 520,
-  width: '100%',
-  margin: 20,
-};
-
-const headerStyle: CSSProperties = {
-  padding: '16px 20px 12px',
-  borderBottom: '1px solid var(--doc-border, #ddd)',
-  fontSize: 16,
-  fontWeight: 600,
-  color: 'var(--doc-text-on-surface, #1f2937)',
-};
+/* Body content styles only — the shell owns the rest. */
 
 const bodyStyle: CSSProperties = {
-  padding: '16px 20px',
   display: 'flex',
   flexDirection: 'column',
-  gap: 14,
+  gap: 6,
 };
 
 const rowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
-  gap: 12,
-  padding: '6px 0',
+  gap: 14,
+  padding: '12px 12px',
+  borderRadius: 10,
+  cursor: 'pointer',
+  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const labelTextStyle: CSSProperties = {
   fontSize: 14,
-  color: 'var(--doc-text-on-surface, #1f2937)',
+  color: 'var(--doc-text)',
   fontWeight: 500,
-  cursor: 'pointer',
+  letterSpacing: '-0.003em',
 };
 
 const hintStyle: CSSProperties = {
-  fontSize: 12,
-  color: 'var(--doc-text-muted, #6b7280)',
-  marginTop: 2,
+  fontSize: 12.5,
+  color: 'var(--doc-text-muted)',
+  marginTop: 3,
+  lineHeight: 1.45,
 };
 
-const footerStyle: CSSProperties = {
-  padding: '12px 20px 16px',
-  borderTop: '1px solid var(--doc-border, #ddd)',
-  display: 'flex',
-  justifyContent: 'flex-end',
+/* Custom switch — Mac-style toggle pill. The native checkbox is
+   hidden but stays keyboard-focusable via its label so the row
+   click + Space key still toggle correctly. */
+
+const switchWrapStyle: CSSProperties = {
+  position: 'relative',
+  flexShrink: 0,
+  marginTop: 2,
+  display: 'inline-block',
+  width: 32,
+  height: 18,
+};
+
+const hiddenCheckStyle: CSSProperties = {
+  position: 'absolute',
+  opacity: 0,
+  pointerEvents: 'none',
+  width: 0,
+  height: 0,
+};
+
+const switchPillStyle = (on: boolean): CSSProperties => ({
+  width: 32,
+  height: 18,
+  borderRadius: 999,
+  background: on ? 'var(--doc-primary)' : 'var(--doc-border)',
+  position: 'relative',
+  transition:
+    'background 140ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 140ms cubic-bezier(0.4, 0, 0.2, 1)',
+  boxShadow: 'inset 0 0 0 1px rgba(15, 23, 42, 0.06)',
+});
+
+const switchKnobStyle = (on: boolean): CSSProperties => ({
+  position: 'absolute',
+  top: 2,
+  left: on ? 16 : 2,
+  width: 14,
+  height: 14,
+  borderRadius: 999,
+  background: '#fff',
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.08)',
+  transition: 'left 160ms cubic-bezier(0.4, 0, 0.2, 1)',
+});
+
+const codeStyle: CSSProperties = {
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+  fontSize: 11.5,
+  padding: '1px 5px',
+  borderRadius: 4,
+  background: 'var(--doc-surface-sunken)',
+  border: '1px solid var(--doc-border-light)',
 };
 
 const primaryBtnStyle: CSSProperties = {
-  padding: '6px 16px',
+  padding: '7px 16px',
   fontSize: 13,
-  border: '1px solid var(--doc-primary, #1a73e8)',
-  background: 'var(--doc-primary, #1a73e8)',
-  color: 'white',
-  borderRadius: 4,
-  cursor: 'pointer',
   fontWeight: 500,
+  border: '1px solid var(--doc-primary)',
+  background: 'var(--doc-primary)',
+  color: 'white',
+  borderRadius: 6,
+  cursor: 'pointer',
 };
+
+function ToggleRow({
+  checked,
+  onChange,
+  testId,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  testId: string;
+  title: string;
+  description: React.ReactNode;
+}) {
+  return (
+    <label
+      style={rowStyle}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--doc-bg-hover)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      <span style={switchWrapStyle}>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          data-testid={testId}
+          style={hiddenCheckStyle}
+        />
+        <span style={switchPillStyle(checked)} aria-hidden="true">
+          <span style={switchKnobStyle(checked)} />
+        </span>
+      </span>
+      <span style={{ flex: 1 }}>
+        <div style={labelTextStyle}>{title}</div>
+        <div style={hintStyle}>{description}</div>
+      </span>
+    </label>
+  );
+}
 
 export function PreferencesDialog({
   isOpen,
@@ -102,80 +173,47 @@ export function PreferencesDialog({
   preferences,
   onChange,
 }: PreferencesDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape so the dialog behaves like every other modal here.
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="ep-dialog-overlay"
-      style={overlayStyle}
-      onMouseDown={(e) => {
-        // Click on the backdrop closes; clicks inside the dialog don't.
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Preferences"
+      width={520}
+      testId="preferences-dialog"
+      footer={
+        <button type="button" style={primaryBtnStyle} onClick={onClose}>
+          Done
+        </button>
+      }
     >
-      <div
-        ref={dialogRef}
-        className="ep-dialog-shell"
-        style={dialogStyle}
-        role="dialog"
-        aria-label="Preferences"
-        data-testid="preferences-dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div style={headerStyle}>Preferences</div>
-        <div style={bodyStyle}>
-          <label style={rowStyle}>
-            <input
-              type="checkbox"
-              checked={preferences.smartQuotes}
-              onChange={(e) => onChange('smartQuotes', e.target.checked)}
-              data-testid="pref-smartquotes"
-              style={{ marginTop: 3, width: 16, height: 16, cursor: 'pointer' }}
-            />
-            <span>
-              <div style={labelTextStyle}>Use smart quotes</div>
-              <div style={hintStyle}>
-                Replace straight quotes, dashes, and ellipses as you type (<code>" → "</code>,{' '}
-                <code>-- → —</code>, <code>... → …</code>).
-              </div>
-            </span>
-          </label>
-          <label style={rowStyle}>
-            <input
-              type="checkbox"
-              checked={preferences.autocorrect}
-              onChange={(e) => onChange('autocorrect', e.target.checked)}
-              data-testid="pref-autocorrect"
-              style={{ marginTop: 3, width: 16, height: 16, cursor: 'pointer' }}
-            />
-            <span>
-              <div style={labelTextStyle}>Autocorrect</div>
-              <div style={hintStyle}>
-                Symbol sequences (<code>(c) → ©</code>) and common-typo fixes (
-                <code>teh → the</code>).
-              </div>
-            </span>
-          </label>
-        </div>
-        <div style={footerStyle}>
-          <button type="button" style={primaryBtnStyle} onClick={onClose}>
-            Done
-          </button>
-        </div>
+      <div style={bodyStyle}>
+        <ToggleRow
+          checked={preferences.smartQuotes}
+          onChange={(v) => onChange('smartQuotes', v)}
+          testId="pref-smartquotes"
+          title="Use smart quotes"
+          description={
+            <>
+              Replace straight quotes, dashes, and ellipses as you type (
+              <code style={codeStyle}>" → “</code>, <code style={codeStyle}>-- → —</code>,{' '}
+              <code style={codeStyle}>... → …</code>).
+            </>
+          }
+        />
+        <ToggleRow
+          checked={preferences.autocorrect}
+          onChange={(v) => onChange('autocorrect', v)}
+          testId="pref-autocorrect"
+          title="Autocorrect"
+          description={
+            <>
+              Symbol sequences (<code style={codeStyle}>(c) → ©</code>) and common-typo fixes (
+              <code style={codeStyle}>teh → the</code>).
+            </>
+          }
+        />
       </div>
-    </div>
+    </Dialog>
   );
 }
 

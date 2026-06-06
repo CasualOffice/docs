@@ -15,7 +15,7 @@ test('Command palette surfaces the new Tools and Insert entries', async ({ page 
   const mod = await modifierKey(page);
   await page.keyboard.press(`${mod}+Shift+p`);
 
-  const input = page.getByPlaceholder('Type a command…');
+  const input = page.getByTestId('command-palette-input');
 
   const expectFirstResult = async (query: string, label: RegExp) => {
     await input.fill(query);

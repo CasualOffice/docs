@@ -26,7 +26,7 @@ test.describe('Command palette — rail toggles', () => {
 
     const mod = await modifierKey(page);
     await page.keyboard.press(`${mod}+Shift+p`);
-    await page.getByPlaceholder('Type a command…').fill('Show comments');
+    await page.getByTestId('command-palette-input').fill('Show comments');
     await expect(page.locator('[data-cp-index="0"]')).toContainText('Show comments');
     await page.keyboard.press('Enter');
 
@@ -42,7 +42,7 @@ test.describe('Command palette — rail toggles', () => {
 
     const mod = await modifierKey(page);
     await page.keyboard.press(`${mod}+Shift+p`);
-    await page.getByPlaceholder('Type a command…').fill('version history');
+    await page.getByTestId('command-palette-input').fill('version history');
     await expect(page.locator('[data-cp-index="0"]')).toContainText('Show version history');
     await page.keyboard.press('Enter');
 

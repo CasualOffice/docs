@@ -7400,6 +7400,27 @@ body { background: white; }
     </>
   );
 
+  // Suppress TS6133 for identifiers preserved while the LLM-stack UI
+  // is hidden. None of these are unused conceptually — they're the
+  // anchor points the restoration will reach for. This single void
+  // reference keeps the declarations in scope without polluting the
+  // render with `false &&` gates that would also break TS narrowing.
+  void [
+    AISuggestionPanel,
+    ChatPanel,
+    WritingAssistantSheet,
+    applyMarkdownAsSuggestion,
+    stripModelPreamble,
+    handleToggleVoiceTyping,
+    showWritingAssistant,
+    showChatPanel,
+    hasTextSelection,
+    handleAiAccept,
+    handleAiReject,
+    handleAiRetry,
+    handleAiTone,
+  ];
+
   return (
     <LocaleProvider i18n={i18n}>
       <ErrorProvider>
@@ -7488,10 +7509,9 @@ body { background: white; }
                       onPageSetup={handleOpenPageSetup}
                       onFileProperties={handleOpenFileProperties}
                       onOpenWordCount={handleOpenWordCount}
-                      onToggleVoiceTyping={
-                        voiceTyping.supported ? handleToggleVoiceTyping : undefined
-                      }
-                      voiceTypingActive={voiceTyping.isListening}
+                      // Voice typing hidden — Web Speech API is
+                      // inconsistent across browsers. Re-enable when
+                      // we standardize on a backend.
                       onExportPdf={handleExportPdf}
                       onExportOdt={handleExportOdt}
                       onExportMd={handleExportMd}
@@ -7509,12 +7529,14 @@ body { background: white; }
                         state.pmTableContext?.isInTable ? handleConvertTableToText : undefined
                       }
                       onOpenDictionary={handleOpenDictionary}
-                      onOpenTranslate={handleOpenTranslate}
-                      onTranslateDocument={() => setShowTranslateDocument(true)}
+                      // LLM-stack entry points hidden: onOpenTranslate,
+                      // onTranslateDocument, onOpenWritingAssistant,
+                      // onOpenExplore. WebLLM inference blocks the main
+                      // thread on long docs; until that lands a yielding
+                      // path, these surfaces stay off. Re-wire with the
+                      // existing handlers when ready.
                       onToggleSpellcheck={handleToggleSpellcheck}
                       spellcheckEnabled={spellOn}
-                      onOpenWritingAssistant={() => openRightPanel('writer')}
-                      onOpenExplore={handleOpenExplore}
                       onOpenCitations={handleOpenCitations}
                       onInsertShape={handleInsertShape}
                       onSetColorTheme={handleSetColorTheme}
@@ -8066,103 +8088,13 @@ body { background: white; }
                       which sets the canonical RIGHT_PANEL_WIDTH so the
                       doc area shifts by a uniform amount regardless of
                       which panel the user opens. */}
-                  {aiSuggestion && (
-                    <AISuggestionPanel
-                      mode={aiSuggestion.mode}
-                      original={aiSuggestion.original}
-                      suggestion={aiSuggestion.suggestion}
-                      inferenceMs={aiSuggestion.inferenceMs}
-                      busy={aiSuggestion.busy}
-                      error={aiSuggestion.error}
-                      tones={
-                        aiSuggestion.mode === 'rewrite'
-                          ? [
-                              {
-                                id: 'polish',
-                                label: 'Polish',
-                                active: aiSuggestion.tone === 'polish',
-                              },
-                              {
-                                id: 'concise',
-                                label: 'Concise',
-                                active: aiSuggestion.tone === 'concise',
-                              },
-                              {
-                                id: 'formal',
-                                label: 'Formal',
-                                active: aiSuggestion.tone === 'formal',
-                              },
-                              {
-                                id: 'casual',
-                                label: 'Casual',
-                                active: aiSuggestion.tone === 'casual',
-                              },
-                              {
-                                id: 'shorter',
-                                label: 'Shorter',
-                                active: aiSuggestion.tone === 'shorter',
-                              },
-                              {
-                                id: 'longer',
-                                label: 'Longer',
-                                active: aiSuggestion.tone === 'longer',
-                              },
-                            ]
-                          : undefined
-                      }
-                      onTone={handleAiTone}
-                      onAccept={handleAiAccept}
-                      onReject={handleAiReject}
-                      onRetry={handleAiRetry}
-                    />
-                  )}
-                  {showWritingAssistant && (
-                    <WritingAssistantSheet
-                      isOpen={showWritingAssistant}
-                      onClose={() => setShowWritingAssistant(false)}
-                    />
-                  )}
-                  {showChatPanel && (
-                    <ChatPanel
-                      isOpen={showChatPanel}
-                      onClose={() => setShowChatPanel(false)}
-                      getDocText={() => {
-                        const view = getActiveEditorView();
-                        if (!view) return '';
-                        return view.state.doc.textBetween(
-                          0,
-                          view.state.doc.content.size,
-                          '\n',
-                          '\n'
-                        );
-                      }}
-                      getSelectionText={() => {
-                        const view = getActiveEditorView();
-                        if (!view) return '';
-                        const { from, to } = view.state.selection;
-                        if (from === to) return '';
-                        return view.state.doc.textBetween(from, to, '\n', ' ');
-                      }}
-                      getView={() => getActiveEditorView() ?? null}
-                      onProposal={(p, prompt) => {
-                        setActiveProposal(p);
-                        setLastProposalPrompt(prompt);
-                      }}
-                      onInsertAtCursor={(text) => {
-                        const view = getActiveEditorView();
-                        if (!view) return;
-                        const at = view.state.selection.head;
-                        // Strip "Here is the rewritten passage:" /
-                        // "Sure, here's…" preambles Llama-1B keeps
-                        // emitting so they don't land in the doc body.
-                        applyMarkdownAsSuggestion({
-                          view,
-                          at,
-                          markdown: stripModelPreamble(text),
-                        });
-                      }}
-                    />
-                  )}
+                  {/* AI surfaces gated off until WebLLM has a yielding
+                      inference path. <AISuggestionPanel>, <WritingAssistantSheet>,
+                      <ChatPanel> render blocks intentionally removed
+                      to prevent the long-doc freeze the user kept
+                      hitting. Hooks / state / handlers preserved so
+                      restoring is a copy-paste of the JSX back in
+                      from git history. */}
 
                   {/* Right-edge PanelRail (X7) — always-visible activity bar
                     with toggles for Outline / Comments / Version history.
@@ -8178,12 +8110,11 @@ body { background: white; }
                       onToggleHistory={() =>
                         openRightPanel(showVersionHistory ? 'none' : 'history')
                       }
-                      writerVisible={showWritingAssistant}
-                      onToggleWriter={() =>
-                        openRightPanel(showWritingAssistant ? 'none' : 'writer')
-                      }
-                      chatVisible={showChatPanel}
-                      onToggleChat={() => openRightPanel(showChatPanel ? 'none' : 'chat')}
+                      // Writer + chat rail toggles unwired — LLM
+                      // gating. Restore: writerVisible={showWritingAssistant}
+                      //   onToggleWriter={() => openRightPanel(showWritingAssistant ? 'none' : 'writer')}
+                      //   chatVisible={showChatPanel}
+                      //   onToggleChat={() => openRightPanel(showChatPanel ? 'none' : 'chat')}
                     />
                   )}
                 </div>
@@ -8427,8 +8358,9 @@ body { background: white; }
                 with the user's free-form prompt; the resulting
                 proposal goes into the inline preview popover (same
                 surface as chat-driven proposals). */}
+            {/* SelectionAskAi forced off — LLM gating. */}
             <SelectionAskAi
-              isOpen={hasTextSelection && writerState.phase === 'ready'}
+              isOpen={false}
               getView={() => getActiveEditorView() ?? null}
               busy={askAiBusy}
               onDismiss={() => setHasTextSelection(false)}
