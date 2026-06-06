@@ -75,7 +75,7 @@ function boldLineNode(schema: ToolContext['schema'], text: string): PMNode | nul
 // Target: resume
 // ---------------------------------------------------------------------------
 
-interface ResumeJson {
+export interface ResumeJson {
   name?: string;
   headline?: string;
   contact?: { label: string; value: string }[];
@@ -228,7 +228,7 @@ function buildResumeFragment(schema: ToolContext['schema'], r: ResumeJson): Frag
 // Target: cover-letter
 // ---------------------------------------------------------------------------
 
-interface CoverLetterJson {
+export interface CoverLetterJson {
   date?: string;
   recipient?: { name?: string; title?: string; company?: string };
   greeting?: string;
@@ -335,7 +335,7 @@ function buildCoverLetterFragment(
 // Target: memo
 // ---------------------------------------------------------------------------
 
-interface MemoJson {
+export interface MemoJson {
   to?: string;
   from?: string;
   date?: string;
@@ -432,7 +432,7 @@ function buildMemoFragment(schema: ToolContext['schema'], m: MemoJson): Fragment
 // Target: blog
 // ---------------------------------------------------------------------------
 
-interface BlogJson {
+export interface BlogJson {
   title?: string;
   subtitle?: string;
   intro?: string;
@@ -521,7 +521,7 @@ function buildBlogFragment(schema: ToolContext['schema'], b: BlogJson): Fragment
 // Target: academic
 // ---------------------------------------------------------------------------
 
-interface AcademicJson {
+export interface AcademicJson {
   title?: string;
   authors?: string[];
   abstract?: string;
@@ -659,7 +659,7 @@ function buildAcademicFragment(schema: ToolContext['schema'], a: AcademicJson): 
 // Target: slide-deck
 // ---------------------------------------------------------------------------
 
-interface SlideDeckJson {
+export interface SlideDeckJson {
   title?: string;
   presenter?: string;
   date?: string;
@@ -807,7 +807,7 @@ const ACTION_VERB_RE =
 const CLICHE_RE =
   /\b(?:dynamic team player|results[-\s]oriented|synerg[iy]z?e|think outside the box|go-getter|self[-\s]starter|hard[-\s]working|detail[-\s]oriented(?: individual)?|passionate about|hit the ground running|ninja|guru|rockstar)\b/i;
 
-const resumeSemanticValidator: Validator<ResumeJson> = (o) => {
+export const resumeSemanticValidator: Validator<ResumeJson> = (o) => {
   const issues: ValidationIssue[] = [];
   const exp = o.experience ?? [];
   if (exp.length === 0) {
@@ -851,7 +851,7 @@ const resumeSemanticValidator: Validator<ResumeJson> = (o) => {
   return issues;
 };
 
-const coverLetterSemanticValidator: Validator<CoverLetterJson> = (o) => {
+export const coverLetterSemanticValidator: Validator<CoverLetterJson> = (o) => {
   const issues: ValidationIssue[] = [];
   const body = o.body ?? [];
   if (body.length < 1) {
@@ -896,7 +896,7 @@ const coverLetterSemanticValidator: Validator<CoverLetterJson> = (o) => {
   return issues;
 };
 
-const memoSemanticValidator: Validator<MemoJson> = (o) => {
+export const memoSemanticValidator: Validator<MemoJson> = (o) => {
   const issues: ValidationIssue[] = [];
   if (o.subject && /[.!?]\s*$/.test(o.subject.trim())) {
     issues.push({
@@ -932,7 +932,7 @@ const memoSemanticValidator: Validator<MemoJson> = (o) => {
   return issues;
 };
 
-const blogSemanticValidator: Validator<BlogJson> = (o) => {
+export const blogSemanticValidator: Validator<BlogJson> = (o) => {
   const issues: ValidationIssue[] = [];
   if (!o.title?.trim()) {
     issues.push({ field: 'title', text: '', reason: 'is empty' });
@@ -964,7 +964,7 @@ const blogSemanticValidator: Validator<BlogJson> = (o) => {
   return issues;
 };
 
-const academicSemanticValidator: Validator<AcademicJson> = (o) => {
+export const academicSemanticValidator: Validator<AcademicJson> = (o) => {
   const issues: ValidationIssue[] = [];
   if (!o.abstract || o.abstract.length < 80) {
     issues.push({
@@ -993,7 +993,7 @@ const academicSemanticValidator: Validator<AcademicJson> = (o) => {
   return issues;
 };
 
-const slideDeckSemanticValidator: Validator<SlideDeckJson> = (o) => {
+export const slideDeckSemanticValidator: Validator<SlideDeckJson> = (o) => {
   const issues: ValidationIssue[] = [];
   const slides = o.slides ?? [];
   if (slides.length < 3) {
