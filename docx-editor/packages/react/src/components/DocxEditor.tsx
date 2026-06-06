@@ -40,6 +40,7 @@ import {
 import type { FontOption } from './ui/FontPicker';
 import { EditorToolbar } from './EditorToolbar';
 import { StatusBar } from './StatusBar';
+import { FocusModeBar } from './FocusModeBar';
 import { useStatPrefs } from './statbar-prefs';
 import { READABILITY_PLUGIN_KEY, readabilityPlugin } from '../lib/quality/readabilityPlugin';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
@@ -1597,7 +1598,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Ruler visibility override — once the user toggles it, this takes
   // precedence over the showRuler prop. Initialised from the prop.
   const [showRulerLocal, setShowRulerLocal] = useState<boolean | null>(null);
-  const showRulerEffective = showRulerLocal ?? showRuler;
+  // Focus mode (Phase 5) — declared early so it can gate the ruler
+  // (and any other chrome) without TDZ errors. The keydown handler +
+  // chrome conditionals further below consume the same state.
+  const [focusMode, setFocusMode] = useState(false);
+  const showRulerEffective = (showRulerLocal ?? showRuler) && !focusMode;
   // Paint format (format painter) — when set, the next non-empty
   // selection will receive these marks. Esc cancels. Toolbar button
   // toggles between idle/armed.
@@ -3098,6 +3103,23 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         setShowCommandPalette(true);
       }
 
+      // Mod+Shift+\ → toggle focus mode. iA Writer / Bear / Notion all
+      // use a variant of this; backslash is chosen because it sits
+      // alone on every layout (no conflict with format shortcuts) and
+      // visually echoes the strikethrough of chrome.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.code === 'Backslash') {
+        e.preventDefault();
+        setFocusMode((v) => !v);
+      }
+
+      // Esc exits focus mode (regardless of whether the focus mode
+      // bar itself has focus). Only fires while focus mode is on so
+      // ESC inside a dialog still closes the dialog.
+      if (e.key === 'Escape' && focusMode) {
+        e.preventDefault();
+        setFocusMode(false);
+      }
+
       // Mod+Alt+M → start a new comment on the selection (Google Docs
       // binding). Uses e.code, not e.key, because Option remaps the M key
       // on macOS. No-op when the selection is empty (handled downstream).
@@ -3188,7 +3210,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [disableFindReplaceShortcuts, findReplace, hyperlinkDialog, tableSelection]);
+  }, [disableFindReplaceShortcuts, findReplace, hyperlinkDialog, tableSelection, focusMode]);
 
   // Ref holds the latest file-op handlers so the global keydown listener
   // (registered once above) can call them without depending on their
@@ -7403,7 +7425,8 @@ body { background: white; }
               >
                 {/* Toolbar - above the scroll container so scrollbar doesn't extend behind it */}
                 {/* Hide toolbar only when readOnly prop is explicitly set (not from viewing mode) */}
-                {showToolbar && !readOnlyProp && (
+                {/* Focus mode (Phase 5) also hides toolbar for distraction-free writing. */}
+                {showToolbar && !readOnlyProp && !focusMode && (
                   <div ref={toolbarRefCallback} className="z-50 flex flex-col gap-0 flex-shrink-0">
                     <EditorToolbar
                       // When the agent panel is open, round the toolbar's
@@ -8145,7 +8168,7 @@ body { background: white; }
                     with toggles for Outline / Comments / Version history.
                     Lives inside the below-toolbar flex row so it spans only
                     the editor body's height, not the toolbar's. */}
-                  {showPanelRail && (
+                  {showPanelRail && !focusMode && (
                     <PanelRail
                       outlineVisible={showOutline}
                       commentsVisible={showCommentsSidebar}
@@ -8166,7 +8189,7 @@ body { background: white; }
                 </div>
                 {/* end below-toolbar flex row */}
 
-                {showStatusBar && !readOnlyProp && (
+                {showStatusBar && !readOnlyProp && !focusMode && (
                   <StatusBar
                     currentPage={scrollPageInfo.currentPage}
                     totalPages={scrollPageInfo.totalPages}
@@ -8177,6 +8200,11 @@ body { background: white; }
                     onZoomChange={handleZoomChange}
                   />
                 )}
+
+                {/* Focus mode signature bar — pinned to the viewport
+                    bottom-center, fades on idle, replaces the entire
+                    chrome stack while focusMode is on. */}
+                <FocusModeBar wordCount={wordCount ?? 0} isActive={focusMode} />
 
                 {/* Floating page indicator next to the scrollbar */}
                 {scrollPageInfo.totalPages > 1 && (
@@ -9012,6 +9040,13 @@ body { background: white; }
                       run: () => handleFormat('setRtl'),
                     },
 
+                    {
+                      id: 'view.focusMode',
+                      label: focusMode ? 'Exit focus mode' : 'Enter focus mode',
+                      path: 'View',
+                      shortcut: 'Ctrl+Shift+\\',
+                      run: () => setFocusMode((v) => !v),
+                    },
                     {
                       id: 'view.zoomIn',
                       label: 'Zoom in',
