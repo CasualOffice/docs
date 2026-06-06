@@ -461,18 +461,15 @@ export function ToolbarButton({
       variant="ghost"
       size="icon-sm"
       className={cn(
-        // Use the editor-on-surface text color so the SVG's currentColor
-        // flips with the theme. Hover: slight background, no color change
-        // needed because the icon already matches the surface text.
-        'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
+        // Base colors follow the token system. transition-colors gives a
+        // smooth 80ms ease on hover so the bg flip reads as polished
+        // motion instead of a hard snap.
+        'text-[color:var(--doc-text-muted,#5f6368)] hover:text-[color:var(--doc-text,#202124)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
+        'rounded-md transition-colors duration-100 ease-out',
         // Active = blue-tinted background + primary blue icon, matching
-        // Google Docs and our own table dropdowns (TableMoreDropdown,
-        // TableOptionsDropdown, AlignmentButtons, IconGridDropdown,
-        // PasteSpecialDialog). Earlier this used an inverted surface
-        // (dark bg in light mode → looked "black-selected"; light bg
-        // in dark mode → looked "white-selected"), which (a) read as
-        // black not selected in light mode and (b) contradicted every
-        // other selected-state in the editor.
+        // Google Docs and our own dropdowns. Bumped corner radius via
+        // rounded-md so the active pill reads as a refined chip rather
+        // than the prior 2px square.
         active &&
           'bg-[color:var(--doc-primary-light,#e8f0fe)] text-[color:var(--doc-primary,#1a73e8)] hover:bg-[color:var(--doc-primary-light,#e8f0fe)] hover:text-[color:var(--doc-primary,#1a73e8)]',
         disabled && 'opacity-30 cursor-not-allowed',
@@ -516,7 +513,14 @@ export function ToolbarGroup({ label, children, className }: ToolbarGroupProps) 
   return (
     <div
       className={cn(
-        'flex items-center gap-px px-1.5 border-r border-[color:var(--doc-border,#e0e0e0)]/50 last:border-r-0 first:pl-0',
+        // Visual rhythm: gap-0.5 between buttons (2 px) gives quiet
+        // breathing room without spreading the bar; px-2 around the
+        // group + a soft --doc-border-light divider on the right makes
+        // each group read as its own unit. The first group has no
+        // left padding so it sits flush with the bar's leading edge,
+        // and the last group drops its divider so the bar doesn't end
+        // with a phantom line.
+        'flex items-center gap-0.5 px-2 border-r border-[color:var(--doc-border-light)] last:border-r-0 first:pl-0',
         className
       )}
       role="group"
