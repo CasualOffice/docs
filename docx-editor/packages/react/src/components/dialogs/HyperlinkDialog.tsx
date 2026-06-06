@@ -4,6 +4,11 @@
  * Modal dialog for inserting and editing hyperlinks in the document.
  * Supports both external URLs and internal bookmark links.
  *
+ * Migrated onto the shared <Dialog> shell in Phase 7 — the shell
+ * handles backdrop / blur / scale-in motion / close X / focus trap /
+ * Esc dismissal. This file only describes the body form (URL/bookmark
+ * tabs, display text, tooltip) + footer action row.
+ *
  * Features:
  * - Input for URL (http, https, mailto, tel, etc.)
  * - Input for display text
@@ -14,25 +19,17 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { CSSProperties, FormEvent, KeyboardEvent } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { useTranslation } from '../../i18n';
-import { FocusTrap } from '../ui/FocusTrap';
+import { Dialog } from '../ui/Dialog';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-// Hyperlink data type + hook moved to `./useHyperlinkDialog.ts` so
-// consumers (DocxEditor) can import them without forcing this
-// dialog's chunk back into the main bundle. Re-exported from here for
-// back-compat with any external consumer that imported them through
-// the dialog file directly.
 import type { HyperlinkData } from './useHyperlinkDialog';
 export type { HyperlinkData };
 
-/**
- * Bookmark option for internal link selection
- */
 export interface BookmarkOption {
   /** Bookmark name/ID */
   name: string;
@@ -40,9 +37,6 @@ export interface BookmarkOption {
   label?: string;
 }
 
-/**
- * Props for the HyperlinkDialog component
- */
 export interface HyperlinkDialogProps {
   /** Whether the dialog is open */
   isOpen: boolean;
@@ -60,67 +54,16 @@ export interface HyperlinkDialogProps {
   isEditing?: boolean;
   /** Available bookmarks for internal links */
   bookmarks?: BookmarkOption[];
-  /** Additional CSS class */
+  /** Additional CSS class (kept for backwards compat, currently unused
+   *  by the new shell). */
   className?: string;
-  /** Additional inline styles */
+  /** Additional inline styles (kept for backwards compat). */
   style?: CSSProperties;
 }
 
 // ============================================================================
-// STYLES
+// STYLES — body / form only. Shell chrome lives in <Dialog>.
 // ============================================================================
-
-const DIALOG_OVERLAY_STYLE: CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 10000,
-};
-
-const DIALOG_CONTENT_STYLE: CSSProperties = {
-  backgroundColor: 'var(--doc-surface, white)',
-  borderRadius: '8px',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 'min(400px, calc(100vw - 32px))',
-  maxWidth: '500px',
-  width: '100%',
-  margin: 'clamp(8px, 2.5vw, 20px)',
-};
-
-const DIALOG_HEADER_STYLE: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '16px 20px',
-  borderBottom: '1px solid var(--doc-border)',
-};
-
-const DIALOG_TITLE_STYLE: CSSProperties = {
-  margin: 0,
-  fontSize: '18px',
-  fontWeight: 600,
-  color: 'var(--doc-text)',
-};
-
-const CLOSE_BUTTON_STYLE: CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: '20px',
-  cursor: 'pointer',
-  color: 'var(--doc-text-muted)',
-  padding: '4px 8px',
-  lineHeight: 1,
-};
-
-const DIALOG_BODY_STYLE: CSSProperties = {
-  padding: '20px',
-};
 
 const FORM_GROUP_STYLE: CSSProperties = {
   marginBottom: '16px',
@@ -129,19 +72,24 @@ const FORM_GROUP_STYLE: CSSProperties = {
 const LABEL_STYLE: CSSProperties = {
   display: 'block',
   marginBottom: '6px',
-  fontSize: '14px',
+  fontSize: '13px',
   fontWeight: 500,
   color: 'var(--doc-text)',
+  letterSpacing: '-0.003em',
 };
 
 const INPUT_STYLE: CSSProperties = {
   width: '100%',
-  padding: '10px 12px',
-  border: '1px solid var(--doc-border-input)',
-  borderRadius: '4px',
+  padding: '9px 12px',
+  border: '1px solid var(--doc-border)',
+  borderRadius: '6px',
   fontSize: '14px',
   boxSizing: 'border-box',
   outline: 'none',
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text)',
+  transition:
+    'border-color 80ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const INPUT_ERROR_STYLE: CSSProperties = {
@@ -157,79 +105,75 @@ const SELECT_STYLE: CSSProperties = {
 const ERROR_TEXT_STYLE: CSSProperties = {
   color: 'var(--doc-error)',
   fontSize: '12px',
-  marginTop: '4px',
+  marginTop: '6px',
 };
 
 const HINT_TEXT_STYLE: CSSProperties = {
   color: 'var(--doc-text-muted)',
   fontSize: '12px',
-  marginTop: '4px',
+  marginTop: '6px',
 };
 
 const TAB_CONTAINER_STYLE: CSSProperties = {
   display: 'flex',
-  borderBottom: '1px solid var(--doc-border)',
+  borderBottom: '1px solid var(--doc-border-light)',
   marginBottom: '16px',
+  gap: 4,
 };
 
 const TAB_BUTTON_STYLE: CSSProperties = {
-  padding: '10px 16px',
+  padding: '8px 14px',
   border: 'none',
   background: 'none',
   cursor: 'pointer',
-  fontSize: '14px',
+  fontSize: '13px',
   color: 'var(--doc-text-muted)',
   borderBottom: '2px solid transparent',
   marginBottom: '-1px',
+  transition: 'color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const TAB_BUTTON_ACTIVE_STYLE: CSSProperties = {
   ...TAB_BUTTON_STYLE,
-  color: 'var(--doc-link)',
-  borderBottomColor: 'var(--doc-link)',
-  fontWeight: 500,
-};
-
-const DIALOG_FOOTER_STYLE: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '12px',
-  padding: '16px 20px',
-  borderTop: '1px solid var(--doc-border)',
+  color: 'var(--doc-primary)',
+  borderBottomColor: 'var(--doc-primary)',
+  fontWeight: 600,
 };
 
 const BUTTON_BASE_STYLE: CSSProperties = {
-  padding: '10px 20px',
-  borderRadius: '4px',
-  fontSize: '14px',
+  padding: '7px 16px',
+  borderRadius: '6px',
+  fontSize: '13px',
   fontWeight: 500,
   cursor: 'pointer',
-  border: 'none',
+  border: '1px solid transparent',
+  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const PRIMARY_BUTTON_STYLE: CSSProperties = {
   ...BUTTON_BASE_STYLE,
-  backgroundColor: 'var(--doc-link)',
+  backgroundColor: 'var(--doc-primary)',
+  borderColor: 'var(--doc-primary)',
   color: 'white',
 };
 
 const SECONDARY_BUTTON_STYLE: CSSProperties = {
   ...BUTTON_BASE_STYLE,
-  backgroundColor: 'var(--doc-bg-hover)',
+  backgroundColor: 'var(--doc-surface)',
   color: 'var(--doc-text)',
-  border: '1px solid var(--doc-border-input)',
+  borderColor: 'var(--doc-border)',
 };
 
 const DANGER_BUTTON_STYLE: CSSProperties = {
   ...BUTTON_BASE_STYLE,
-  backgroundColor: 'var(--doc-error)',
-  color: 'white',
+  backgroundColor: 'transparent',
+  color: 'var(--doc-error)',
+  borderColor: 'var(--doc-border)',
 };
 
 const DISABLED_BUTTON_STYLE: CSSProperties = {
-  ...BUTTON_BASE_STYLE,
-  backgroundColor: 'var(--doc-border-input)',
-  color: 'var(--doc-text-muted)',
+  ...PRIMARY_BUTTON_STYLE,
+  opacity: 0.5,
   cursor: 'not-allowed',
 };
 
@@ -238,84 +182,65 @@ const DISABLED_BUTTON_STYLE: CSSProperties = {
 // ============================================================================
 
 /**
- * Validate a URL string
- * Supports http, https, mailto, tel, ftp protocols
+ * Validate URL format. Accepts http, https, mailto, tel, ftp, sftp,
+ * file. Returns true when the input looks like a URL we can normalise
+ * into a real link.
  */
 export function isValidUrl(url: string): boolean {
-  if (!url || url.trim() === '') {
-    return false;
-  }
-
   const trimmed = url.trim();
-
-  // Allow mailto: and tel: links
-  if (trimmed.startsWith('mailto:') || trimmed.startsWith('tel:')) {
-    return trimmed.length > 7; // Has content after protocol
+  if (!trimmed) return false;
+  if (/^(https?|ftp|sftp|file|mailto|tel|sms):/i.test(trimmed)) {
+    try {
+      // mailto: and tel: don't parse via URL() in all engines.
+      if (/^(mailto|tel|sms):/i.test(trimmed)) return true;
+      // eslint-disable-next-line no-new
+      new URL(trimmed);
+      return true;
+    } catch {
+      return false;
+    }
   }
-
-  // Allow ftp: links
-  if (trimmed.startsWith('ftp://')) {
-    return trimmed.length > 6;
-  }
-
-  // HTTP/HTTPS URLs
-  try {
-    // Add protocol if missing for validation
-    const urlToValidate = trimmed.match(/^https?:\/\//) ? trimmed : `https://${trimmed}`;
-    const parsed = new URL(urlToValidate);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
+  // Allow bare domain forms — normalize will prefix https://
+  return /^[^\s]+\.[^\s]+$/.test(trimmed);
 }
 
 /**
- * Normalize a URL by adding protocol if needed
+ * Normalize a URL into a canonical form for storage.
  */
 export function normalizeUrl(url: string): string {
-  if (!url) return '';
-
   const trimmed = url.trim();
-
-  // Keep special protocols as-is
-  if (trimmed.startsWith('mailto:') || trimmed.startsWith('tel:') || trimmed.startsWith('ftp://')) {
+  if (/^(https?|ftp|sftp|file|mailto|tel|sms):/i.test(trimmed)) {
     return trimmed;
   }
-
-  // Add https:// if no protocol specified
-  if (!trimmed.match(/^https?:\/\//)) {
-    return `https://${trimmed}`;
+  // Email-ish patterns become mailto:
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return `mailto:${trimmed}`;
   }
-
-  return trimmed;
+  // Phone-ish patterns become tel:
+  if (/^\+?[\d\s\-().]{7,}$/.test(trimmed)) {
+    return `tel:${trimmed.replace(/[^\d+]/g, '')}`;
+  }
+  return `https://${trimmed}`;
 }
 
 /**
- * Detect URL type from string
+ * Classify a URL for downstream handling. Currently informational —
+ * exposed for tests + future per-type UI hints.
  */
 export function getUrlType(url: string): 'web' | 'email' | 'phone' | 'ftp' | 'unknown' {
-  if (!url) return 'unknown';
-
-  const trimmed = url.trim().toLowerCase();
-
-  if (trimmed.startsWith('mailto:')) return 'email';
-  if (trimmed.startsWith('tel:')) return 'phone';
-  if (trimmed.startsWith('ftp://')) return 'ftp';
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return 'web';
-  if (trimmed.includes('@') && !trimmed.includes(' ')) return 'email';
-
-  return 'web'; // Default to web
+  if (/^mailto:/i.test(url)) return 'email';
+  if (/^tel:/i.test(url)) return 'phone';
+  if (/^(ftp|sftp):/i.test(url)) return 'ftp';
+  if (/^https?:/i.test(url)) return 'web';
+  return 'unknown';
 }
 
 // ============================================================================
-// MAIN COMPONENT
+// COMPONENT
 // ============================================================================
 
 type LinkType = 'url' | 'bookmark';
 
-/**
- * HyperlinkDialog component - Modal for inserting/editing hyperlinks
- */
 export function HyperlinkDialog({
   isOpen,
   onClose,
@@ -325,12 +250,9 @@ export function HyperlinkDialog({
   selectedText = '',
   isEditing = false,
   bookmarks = [],
-  className,
-  style,
 }: HyperlinkDialogProps): React.ReactElement | null {
   const { t } = useTranslation();
 
-  // State
   const [linkType, setLinkType] = useState<LinkType>('url');
   const [url, setUrl] = useState('');
   const [displayText, setDisplayText] = useState('');
@@ -339,7 +261,6 @@ export function HyperlinkDialog({
   const [urlError, setUrlError] = useState('');
   const [touched, setTouched] = useState(false);
 
-  // Refs
   const urlInputRef = useRef<HTMLInputElement>(null);
   const bookmarkSelectRef = useRef<HTMLSelectElement>(null);
 
@@ -347,7 +268,6 @@ export function HyperlinkDialog({
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
-        // Editing existing hyperlink
         if (initialData.bookmark) {
           setLinkType('bookmark');
           setBookmark(initialData.bookmark);
@@ -358,7 +278,6 @@ export function HyperlinkDialog({
         setDisplayText(initialData.displayText || '');
         setTooltip(initialData.tooltip || '');
       } else {
-        // New hyperlink
         setLinkType('url');
         setUrl('');
         setDisplayText(selectedText);
@@ -383,9 +302,6 @@ export function HyperlinkDialog({
     }
   }, [isOpen, linkType]);
 
-  /**
-   * Validate URL on blur
-   */
   const validateUrl = useCallback(() => {
     if (linkType === 'url' && url.trim()) {
       if (!isValidUrl(url)) {
@@ -398,14 +314,9 @@ export function HyperlinkDialog({
     }
   }, [linkType, url, t]);
 
-  /**
-   * Handle form submission
-   */
   const handleSubmit = useCallback(
     (e?: FormEvent) => {
       e?.preventDefault();
-
-      // Validate
       if (linkType === 'url') {
         if (!url.trim()) {
           setUrlError(t('dialogs.hyperlink.urlRequired'));
@@ -418,256 +329,190 @@ export function HyperlinkDialog({
           return;
         }
       } else if (linkType === 'bookmark') {
-        if (!bookmark) {
-          return; // No bookmark selected
-        }
+        if (!bookmark) return;
       }
 
-      // Build hyperlink data
       const data: HyperlinkData = {
         displayText: displayText.trim() || undefined,
         tooltip: tooltip.trim() || undefined,
       };
-
       if (linkType === 'url') {
         data.url = normalizeUrl(url);
       } else {
         data.bookmark = bookmark;
       }
-
       onSubmit(data);
     },
-    [linkType, url, bookmark, displayText, tooltip, onSubmit]
+    [linkType, url, bookmark, displayText, tooltip, onSubmit, t]
   );
-
-  /**
-   * Handle keyboard events
-   */
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'Enter' && !e.shiftKey) {
-        // Submit on Enter (except in textarea)
-        const target = e.target as HTMLElement;
-        if (target.tagName !== 'TEXTAREA') {
-          e.preventDefault();
-          handleSubmit();
-        }
-      }
-    },
-    [onClose, handleSubmit]
-  );
-
-  /**
-   * Handle overlay click (close dialog)
-   */
-  const handleOverlayClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
-
-  // Don't render if not open
-  if (!isOpen) {
-    return null;
-  }
 
   const hasBookmarks = bookmarks.length > 0;
   const canSubmit =
     (linkType === 'url' && url.trim() && !urlError) || (linkType === 'bookmark' && bookmark);
 
   return (
-    <div
-      className={`docx-hyperlink-dialog-overlay ${className || ''}`}
-      style={{ ...DIALOG_OVERLAY_STYLE, ...style }}
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="hyperlink-dialog-title"
-    >
-      <FocusTrap>
-        <div className="docx-hyperlink-dialog" style={DIALOG_CONTENT_STYLE}>
-          {/* Header */}
-          <div className="docx-hyperlink-dialog-header" style={DIALOG_HEADER_STYLE}>
-            <h2 id="hyperlink-dialog-title" style={DIALOG_TITLE_STYLE}>
-              {isEditing ? t('dialogs.hyperlink.titleEdit') : t('dialogs.hyperlink.titleInsert')}
-            </h2>
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditing ? t('dialogs.hyperlink.titleEdit') : t('dialogs.hyperlink.titleInsert')}
+      width={520}
+      testId="hyperlink-dialog"
+      footer={
+        <>
+          {isEditing && onRemove && (
             <button
               type="button"
-              className="docx-hyperlink-dialog-close"
-              style={CLOSE_BUTTON_STYLE}
-              onClick={onClose}
-              aria-label={t('common.closeDialog')}
+              className="docx-hyperlink-dialog-remove"
+              style={{ ...DANGER_BUTTON_STYLE, marginRight: 'auto' }}
+              onClick={onRemove}
             >
-              &times;
+              {t('dialogs.hyperlink.removeLink')}
             </button>
-          </div>
-
-          {/* Body */}
-          <form
-            className="docx-hyperlink-dialog-body"
-            style={DIALOG_BODY_STYLE}
-            onSubmit={handleSubmit}
+          )}
+          <button
+            type="button"
+            className="docx-hyperlink-dialog-cancel"
+            style={SECONDARY_BUTTON_STYLE}
+            onClick={onClose}
           >
-            {/* Link type tabs */}
-            {hasBookmarks && (
-              <div className="docx-hyperlink-dialog-tabs" style={TAB_CONTAINER_STYLE}>
-                <button
-                  type="button"
-                  className={`docx-hyperlink-dialog-tab ${linkType === 'url' ? 'active' : ''}`}
-                  style={linkType === 'url' ? TAB_BUTTON_ACTIVE_STYLE : TAB_BUTTON_STYLE}
-                  onClick={() => setLinkType('url')}
-                  aria-selected={linkType === 'url'}
-                >
-                  {t('dialogs.hyperlink.tabWebAddress')}
-                </button>
-                <button
-                  type="button"
-                  className={`docx-hyperlink-dialog-tab ${linkType === 'bookmark' ? 'active' : ''}`}
-                  style={linkType === 'bookmark' ? TAB_BUTTON_ACTIVE_STYLE : TAB_BUTTON_STYLE}
-                  onClick={() => setLinkType('bookmark')}
-                  aria-selected={linkType === 'bookmark'}
-                >
-                  {t('dialogs.hyperlink.tabBookmark')}
-                </button>
-              </div>
-            )}
-
-            {/* URL input */}
-            {linkType === 'url' && (
-              <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
-                <label htmlFor="hyperlink-url" style={LABEL_STYLE}>
-                  {t('dialogs.hyperlink.urlLabel')}
-                </label>
-                <input
-                  ref={urlInputRef}
-                  id="hyperlink-url"
-                  type="text"
-                  className="docx-hyperlink-dialog-input"
-                  style={urlError && touched ? INPUT_ERROR_STYLE : INPUT_STYLE}
-                  value={url}
-                  onChange={(e) => {
-                    setUrl(e.target.value);
-                    if (touched) setUrlError('');
-                  }}
-                  onBlur={() => {
-                    setTouched(true);
-                    validateUrl();
-                  }}
-                  placeholder={t('dialogs.hyperlink.urlPlaceholder')}
-                  aria-invalid={!!urlError}
-                  aria-describedby={urlError ? 'url-error' : 'url-hint'}
-                />
-                {urlError && touched && (
-                  <div id="url-error" style={ERROR_TEXT_STYLE}>
-                    {urlError}
-                  </div>
-                )}
-                {!urlError && (
-                  <div id="url-hint" style={HINT_TEXT_STYLE}>
-                    {t('dialogs.hyperlink.urlHint')}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Bookmark select */}
-            {linkType === 'bookmark' && (
-              <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
-                <label htmlFor="hyperlink-bookmark" style={LABEL_STYLE}>
-                  {t('dialogs.hyperlink.bookmarkLabel')}
-                </label>
-                <select
-                  ref={bookmarkSelectRef}
-                  id="hyperlink-bookmark"
-                  className="docx-hyperlink-dialog-select"
-                  style={SELECT_STYLE}
-                  value={bookmark}
-                  onChange={(e) => setBookmark(e.target.value)}
-                >
-                  <option value="">{t('dialogs.hyperlink.bookmarkPlaceholder')}</option>
-                  {bookmarks.map((bm) => (
-                    <option key={bm.name} value={bm.name}>
-                      {bm.label || bm.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Display text */}
-            <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
-              <label htmlFor="hyperlink-display-text" style={LABEL_STYLE}>
-                {t('dialogs.hyperlink.displayTextLabel')}
-              </label>
-              <input
-                id="hyperlink-display-text"
-                type="text"
-                className="docx-hyperlink-dialog-input"
-                style={INPUT_STYLE}
-                value={displayText}
-                onChange={(e) => setDisplayText(e.target.value)}
-                placeholder={t('dialogs.hyperlink.displayTextPlaceholder')}
-              />
-              <div style={HINT_TEXT_STYLE}>{t('dialogs.hyperlink.displayTextHint')}</div>
-            </div>
-
-            {/* Tooltip */}
-            <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
-              <label htmlFor="hyperlink-tooltip" style={LABEL_STYLE}>
-                {t('dialogs.hyperlink.tooltipLabel')}
-              </label>
-              <input
-                id="hyperlink-tooltip"
-                type="text"
-                className="docx-hyperlink-dialog-input"
-                style={INPUT_STYLE}
-                value={tooltip}
-                onChange={(e) => setTooltip(e.target.value)}
-                placeholder={t('dialogs.hyperlink.tooltipPlaceholder')}
-              />
-            </div>
-          </form>
-
-          {/* Footer */}
-          <div className="docx-hyperlink-dialog-footer" style={DIALOG_FOOTER_STYLE}>
-            {isEditing && onRemove && (
-              <button
-                type="button"
-                className="docx-hyperlink-dialog-remove"
-                style={DANGER_BUTTON_STYLE}
-                onClick={onRemove}
-              >
-                {t('dialogs.hyperlink.removeLink')}
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
+            {t('common.cancel')}
+          </button>
+          <button
+            type="submit"
+            className="docx-hyperlink-dialog-submit"
+            style={canSubmit ? PRIMARY_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+          >
+            {isEditing ? t('common.update') : t('common.insert')}
+          </button>
+        </>
+      }
+    >
+      <form
+        className="docx-hyperlink-dialog-body"
+        onSubmit={handleSubmit}
+        // Submit-on-Enter falls back to the form. preventDefault inside
+        // handleSubmit keeps the dialog from closing on validation
+        // failure.
+      >
+        {hasBookmarks && (
+          <div className="docx-hyperlink-dialog-tabs" style={TAB_CONTAINER_STYLE} role="tablist">
             <button
               type="button"
-              className="docx-hyperlink-dialog-cancel"
-              style={SECONDARY_BUTTON_STYLE}
-              onClick={onClose}
+              role="tab"
+              className={`docx-hyperlink-dialog-tab ${linkType === 'url' ? 'active' : ''}`}
+              style={linkType === 'url' ? TAB_BUTTON_ACTIVE_STYLE : TAB_BUTTON_STYLE}
+              onClick={() => setLinkType('url')}
+              aria-selected={linkType === 'url'}
             >
-              {t('common.cancel')}
+              {t('dialogs.hyperlink.tabWebAddress')}
             </button>
             <button
-              type="submit"
-              className="docx-hyperlink-dialog-submit"
-              style={canSubmit ? PRIMARY_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
-              onClick={handleSubmit}
-              disabled={!canSubmit}
+              type="button"
+              role="tab"
+              className={`docx-hyperlink-dialog-tab ${linkType === 'bookmark' ? 'active' : ''}`}
+              style={linkType === 'bookmark' ? TAB_BUTTON_ACTIVE_STYLE : TAB_BUTTON_STYLE}
+              onClick={() => setLinkType('bookmark')}
+              aria-selected={linkType === 'bookmark'}
             >
-              {isEditing ? t('common.update') : t('common.insert')}
+              {t('dialogs.hyperlink.tabBookmark')}
             </button>
           </div>
+        )}
+
+        {linkType === 'url' && (
+          <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
+            <label htmlFor="hyperlink-url" style={LABEL_STYLE}>
+              {t('dialogs.hyperlink.urlLabel')}
+            </label>
+            <input
+              ref={urlInputRef}
+              id="hyperlink-url"
+              type="text"
+              className="docx-hyperlink-dialog-input"
+              style={urlError && touched ? INPUT_ERROR_STYLE : INPUT_STYLE}
+              value={url}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                if (touched) setUrlError('');
+              }}
+              onBlur={() => {
+                setTouched(true);
+                validateUrl();
+              }}
+              placeholder={t('dialogs.hyperlink.urlPlaceholder')}
+              aria-invalid={!!urlError}
+              aria-describedby={urlError ? 'url-error' : 'url-hint'}
+            />
+            {urlError && touched && (
+              <div id="url-error" style={ERROR_TEXT_STYLE}>
+                {urlError}
+              </div>
+            )}
+            {!urlError && (
+              <div id="url-hint" style={HINT_TEXT_STYLE}>
+                {t('dialogs.hyperlink.urlHint')}
+              </div>
+            )}
+          </div>
+        )}
+
+        {linkType === 'bookmark' && (
+          <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
+            <label htmlFor="hyperlink-bookmark" style={LABEL_STYLE}>
+              {t('dialogs.hyperlink.bookmarkLabel')}
+            </label>
+            <select
+              ref={bookmarkSelectRef}
+              id="hyperlink-bookmark"
+              className="docx-hyperlink-dialog-select"
+              style={SELECT_STYLE}
+              value={bookmark}
+              onChange={(e) => setBookmark(e.target.value)}
+            >
+              <option value="">{t('dialogs.hyperlink.bookmarkPlaceholder')}</option>
+              {bookmarks.map((bm) => (
+                <option key={bm.name} value={bm.name}>
+                  {bm.label || bm.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
+          <label htmlFor="hyperlink-display-text" style={LABEL_STYLE}>
+            {t('dialogs.hyperlink.displayTextLabel')}
+          </label>
+          <input
+            id="hyperlink-display-text"
+            type="text"
+            className="docx-hyperlink-dialog-input"
+            style={INPUT_STYLE}
+            value={displayText}
+            onChange={(e) => setDisplayText(e.target.value)}
+            placeholder={t('dialogs.hyperlink.displayTextPlaceholder')}
+          />
+          <div style={HINT_TEXT_STYLE}>{t('dialogs.hyperlink.displayTextHint')}</div>
         </div>
-      </FocusTrap>
-    </div>
+
+        <div className="docx-hyperlink-dialog-field" style={FORM_GROUP_STYLE}>
+          <label htmlFor="hyperlink-tooltip" style={LABEL_STYLE}>
+            {t('dialogs.hyperlink.tooltipLabel')}
+          </label>
+          <input
+            id="hyperlink-tooltip"
+            type="text"
+            className="docx-hyperlink-dialog-input"
+            style={INPUT_STYLE}
+            value={tooltip}
+            onChange={(e) => setTooltip(e.target.value)}
+            placeholder={t('dialogs.hyperlink.tooltipPlaceholder')}
+          />
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -713,16 +558,9 @@ export function isBookmarkHyperlinkData(data: HyperlinkData): boolean {
  * Get display text from HyperlinkData, falling back to URL/bookmark
  */
 export function getDisplayText(data: HyperlinkData): string {
-  if (data.displayText) {
-    return data.displayText;
-  }
-  if (data.url) {
-    // Strip protocol for display
-    return data.url.replace(/^https?:\/\//, '');
-  }
-  if (data.bookmark) {
-    return data.bookmark;
-  }
+  if (data.displayText) return data.displayText;
+  if (data.url) return data.url.replace(/^https?:\/\//, '');
+  if (data.bookmark) return data.bookmark;
   return '';
 }
 
@@ -730,9 +568,7 @@ export function getDisplayText(data: HyperlinkData): string {
  * Convert email address to mailto: link
  */
 export function emailToMailto(email: string): string {
-  if (email.startsWith('mailto:')) {
-    return email;
-  }
+  if (email.startsWith('mailto:')) return email;
   return `mailto:${email}`;
 }
 
@@ -740,11 +576,8 @@ export function emailToMailto(email: string): string {
  * Convert phone number to tel: link
  */
 export function phoneToTel(phone: string): string {
-  if (phone.startsWith('tel:')) {
-    return phone;
-  }
-  // Remove common formatting characters
-  const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+  if (phone.startsWith('tel:')) return phone;
+  const cleaned = phone.replace(/[\s\-().]/g, '');
   return `tel:${cleaned}`;
 }
 
@@ -755,11 +588,8 @@ export function extractBookmarksForDialog(
   bookmarks: { name: string; id: number }[]
 ): BookmarkOption[] {
   return bookmarks
-    .filter((bm) => !bm.name.startsWith('_')) // Filter out internal bookmarks
-    .map((bm) => ({
-      name: bm.name,
-      label: bm.name,
-    }))
+    .filter((bm) => !bm.name.startsWith('_'))
+    .map((bm) => ({ name: bm.name, label: bm.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
