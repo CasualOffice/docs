@@ -18,7 +18,13 @@
 
 import { Fragment, type Node as PMNode } from 'prosemirror-model';
 import { summariseDocStructure } from '../docContext';
-import { runJsonChatWithValidation } from '../validateAndRetry';
+import {
+  combineValidators,
+  noPlaceholderValidator,
+  runJsonChatWithValidation,
+  type ValidationIssue,
+  type Validator,
+} from '../validateAndRetry';
 import { researchTool } from './researchTool';
 import type { Tool, ToolResult, ToolContext } from './types';
 
@@ -785,7 +791,227 @@ interface TargetSpec<T> {
   maxTokens: number;
   /** Summary line shown in the chat reply + popover header. */
   summarise: (data: T) => string;
+  /** Per-target semantic checks layered on top of the universal
+   *  noPlaceholderValidator. Caught issues feed into the retry
+   *  prompt. */
+  validator?: Validator<T>;
 }
+
+// ---------------------------------------------------------------------------
+// Per-target semantic validators
+// ---------------------------------------------------------------------------
+
+const ACTION_VERB_RE =
+  /^(?:Led|Built|Shipped|Migrated|Reduced|Increased|Designed|Implemented|Launched|Owned|Mentored|Drove|Authored|Optimi[sz]ed|Streamlined|Automated|Cut|Grew|Scaled|Architected|Delivered)\b/;
+
+const CLICHE_RE =
+  /\b(?:dynamic team player|results[-\s]oriented|synerg[iy]z?e|think outside the box|go-getter|self[-\s]starter|hard[-\s]working|detail[-\s]oriented(?: individual)?|passionate about|hit the ground running|ninja|guru|rockstar)\b/i;
+
+const resumeSemanticValidator: Validator<ResumeJson> = (o) => {
+  const issues: ValidationIssue[] = [];
+  const exp = o.experience ?? [];
+  if (exp.length === 0) {
+    issues.push({
+      field: 'experience',
+      text: '',
+      reason: 'has no entries — extract at least one role from the source',
+    });
+  }
+  exp.forEach((e, i) => {
+    if (!e.role?.trim()) {
+      issues.push({ field: `experience[${i}].role`, text: '', reason: 'is empty' });
+    }
+    const bullets = e.bullets ?? [];
+    if (bullets.length === 0) {
+      issues.push({
+        field: `experience[${i}].bullets`,
+        text: '',
+        reason: 'has no accomplishments — every role needs at least one bullet',
+      });
+    } else {
+      bullets.forEach((b, bi) => {
+        if (!ACTION_VERB_RE.test(b)) {
+          issues.push({
+            field: `experience[${i}].bullets[${bi}]`,
+            text: b.slice(0, 60),
+            reason:
+              'does not start with a strong action verb (Led / Built / Shipped / Migrated / …)',
+          });
+        }
+      });
+    }
+  });
+  if (!o.summary?.trim() || o.summary.trim().length < 40) {
+    issues.push({
+      field: 'summary',
+      text: (o.summary ?? '').slice(0, 60),
+      reason: 'is empty or shorter than 40 chars — write a 2-3 sentence professional summary',
+    });
+  }
+  return issues;
+};
+
+const coverLetterSemanticValidator: Validator<CoverLetterJson> = (o) => {
+  const issues: ValidationIssue[] = [];
+  const body = o.body ?? [];
+  if (body.length < 1) {
+    issues.push({
+      field: 'body',
+      text: '',
+      reason: 'has no paragraphs — a cover letter needs 1-3 body paragraphs',
+    });
+  }
+  body.forEach((b, i) => {
+    if (b.length < 40) {
+      issues.push({
+        field: `body[${i}]`,
+        text: b.slice(0, 60),
+        reason: 'is too short — body paragraphs should be substantive prose',
+      });
+    }
+    if (CLICHE_RE.test(b)) {
+      const m = b.match(CLICHE_RE);
+      issues.push({
+        field: `body[${i}]`,
+        text: m?.[0] ?? b.slice(0, 60),
+        reason: 'contains a resume cliché — rewrite with concrete specifics',
+      });
+    }
+  });
+  if (o.opening && o.opening.length < 30) {
+    issues.push({
+      field: 'opening',
+      text: o.opening,
+      reason: 'is too short — the opening hook should be 2-3 sentences',
+    });
+  }
+  if (o.opening && CLICHE_RE.test(o.opening)) {
+    const m = o.opening.match(CLICHE_RE);
+    issues.push({
+      field: 'opening',
+      text: m?.[0] ?? o.opening.slice(0, 60),
+      reason: 'opens with a cliché — lead with a specific accomplishment instead',
+    });
+  }
+  return issues;
+};
+
+const memoSemanticValidator: Validator<MemoJson> = (o) => {
+  const issues: ValidationIssue[] = [];
+  if (o.subject && /[.!?]\s*$/.test(o.subject.trim())) {
+    issues.push({
+      field: 'subject',
+      text: o.subject,
+      reason: 'ends with terminal punctuation — memo subjects are short noun phrases',
+    });
+  }
+  if (o.subject && o.subject.length > 80) {
+    issues.push({
+      field: 'subject',
+      text: o.subject.slice(0, 60),
+      reason: 'is over 80 chars — shorten to a noun phrase',
+    });
+  }
+  const secs = o.sections ?? [];
+  if (secs.length === 0) {
+    issues.push({
+      field: 'sections',
+      text: '',
+      reason: 'has no sections — a memo needs at least one named section',
+    });
+  }
+  secs.forEach((s, i) => {
+    if (!s.body || s.body.length < 30) {
+      issues.push({
+        field: `sections[${i}].body`,
+        text: (s.body ?? '').slice(0, 60),
+        reason: 'is too short — section bodies need 2-5 sentences of substantive content',
+      });
+    }
+  });
+  return issues;
+};
+
+const blogSemanticValidator: Validator<BlogJson> = (o) => {
+  const issues: ValidationIssue[] = [];
+  if (!o.title?.trim()) {
+    issues.push({ field: 'title', text: '', reason: 'is empty' });
+  } else if (o.title.length > 100) {
+    issues.push({
+      field: 'title',
+      text: o.title.slice(0, 60),
+      reason: 'is over 100 chars — blog titles should fit on one line',
+    });
+  }
+  if ((o.sections?.length ?? 0) < 2) {
+    issues.push({
+      field: 'sections',
+      text: String(o.sections?.length ?? 0),
+      reason: 'has fewer than 2 sections — a blog post needs at least 2',
+    });
+  }
+  // Reject the "In today's fast-paced world…" opening trope.
+  const filler =
+    /\b(?:in today's (?:fast-paced )?world|in this article|this article will|let's dive in)\b/i;
+  if (o.intro && filler.test(o.intro)) {
+    const m = o.intro.match(filler);
+    issues.push({
+      field: 'intro',
+      text: m?.[0] ?? o.intro.slice(0, 60),
+      reason: 'opens with a filler cliché — lead with a concrete fact or question',
+    });
+  }
+  return issues;
+};
+
+const academicSemanticValidator: Validator<AcademicJson> = (o) => {
+  const issues: ValidationIssue[] = [];
+  if (!o.abstract || o.abstract.length < 80) {
+    issues.push({
+      field: 'abstract',
+      text: (o.abstract ?? '').slice(0, 60),
+      reason: 'is shorter than 80 chars — abstracts need 150-250 words',
+    });
+  }
+  if ((o.sections?.length ?? 0) < 2) {
+    issues.push({
+      field: 'sections',
+      text: String(o.sections?.length ?? 0),
+      reason:
+        'has fewer than 2 sections — academic papers need Methods + Results + Discussion at minimum',
+    });
+  }
+  (o.references ?? []).forEach((r, i) => {
+    if (r.year && !/^\d{4}$/.test(r.year)) {
+      issues.push({
+        field: `references[${i}].year`,
+        text: r.year,
+        reason: 'is not a 4-digit year',
+      });
+    }
+  });
+  return issues;
+};
+
+const slideDeckSemanticValidator: Validator<SlideDeckJson> = (o) => {
+  const issues: ValidationIssue[] = [];
+  const slides = o.slides ?? [];
+  if (slides.length < 3) {
+    issues.push({
+      field: 'slides',
+      text: String(slides.length),
+      reason: 'has fewer than 3 slides — title slide + at least 2 content slides',
+    });
+  }
+  slides.forEach((s, i) => {
+    if (!s.title?.trim()) {
+      issues.push({ field: `slides[${i}].title`, text: '', reason: 'is empty' });
+    }
+    // Most slides should have bullets unless it's a title or section
+    // break. We don't enforce that here — too many edge cases.
+  });
+  return issues;
+};
 
 const TARGETS: Record<string, TargetSpec<any>> = {
   resume: {
@@ -794,6 +1020,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     system: RESUME_SYSTEM,
     build: buildResumeFragment,
     maxTokens: 1100,
+    validator: resumeSemanticValidator,
     summarise: (r: ResumeJson) =>
       r.name
         ? `Resume — ${r.name}`
@@ -805,6 +1032,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     system: COVER_LETTER_SYSTEM,
     build: buildCoverLetterFragment,
     maxTokens: 900,
+    validator: coverLetterSemanticValidator,
     summarise: (c: CoverLetterJson) =>
       c.recipient?.company
         ? `Cover letter to ${c.recipient.company}`
@@ -816,6 +1044,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     system: MEMO_SYSTEM,
     build: buildMemoFragment,
     maxTokens: 900,
+    validator: memoSemanticValidator,
     summarise: (m: MemoJson) =>
       m.subject ? `Memo — ${m.subject}` : `Memo — ${m.sections?.length ?? 0} sections`,
   },
@@ -825,6 +1054,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     system: BLOG_SYSTEM,
     build: buildBlogFragment,
     maxTokens: 1100,
+    validator: blogSemanticValidator,
     summarise: (b: BlogJson) =>
       b.title ? `Blog post — ${b.title}` : `Blog post — ${b.sections?.length ?? 0} sections`,
   },
@@ -834,6 +1064,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     system: ACADEMIC_SYSTEM,
     build: buildAcademicFragment,
     maxTokens: 1400,
+    validator: academicSemanticValidator,
     summarise: (a: AcademicJson) =>
       a.title
         ? `Academic paper — ${a.title}`
@@ -845,6 +1076,7 @@ const TARGETS: Record<string, TargetSpec<any>> = {
     system: SLIDE_DECK_SYSTEM,
     build: buildSlideDeckFragment,
     maxTokens: 1400,
+    validator: slideDeckSemanticValidator,
     summarise: (d: SlideDeckJson) => {
       const count = d.slides?.length ?? 0;
       return d.title ? `Slide deck — ${d.title} · ${count} slides` : `Slide deck — ${count} slides`;
@@ -1005,6 +1237,12 @@ export const transformDocTool: Tool<TransformDocArgs> = {
       // system prompt forbidding it, the wrapper detects + retries
       // once with an explicit issue list. Costs ~3 sec on the bad
       // path, zero on the clean path. See validateAndRetry.ts.
+      // Combine the universal placeholder validator with the
+      // target's semantic checks so the retry message lists every
+      // issue at once (no second retry after the first fix).
+      const validator: Validator<unknown> = spec.validator
+        ? combineValidators(noPlaceholderValidator, spec.validator as Validator<unknown>)
+        : noPlaceholderValidator;
       extracted = await runJsonChatWithValidation<unknown>(
         [
           { role: 'system', content: spec.system + augment },
@@ -1013,7 +1251,13 @@ export const transformDocTool: Tool<TransformDocArgs> = {
             content: `Document structure: ${structure}\n\nDocument content (the source to draw facts from):\n\n${docText.slice(0, 5500)}\n\nInstruction (optional): ${args.instruction ?? '(none)'}`,
           },
         ],
-        { schema: spec.schema, maxTokens: spec.maxTokens, temperature: 0.25, signal: ctx.signal }
+        {
+          schema: spec.schema,
+          maxTokens: spec.maxTokens,
+          temperature: 0.25,
+          signal: ctx.signal,
+          validator,
+        }
       );
     } catch (err) {
       return { kind: 'error', message: `Couldn't restructure — ${(err as Error).message}` };
