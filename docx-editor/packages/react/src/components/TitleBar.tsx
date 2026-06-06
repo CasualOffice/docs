@@ -350,7 +350,7 @@ export function MenuBar() {
                     {
                       icon: 'note_add',
                       label: 'New',
-                      shortcut: '⌘N',
+                      shortcut: 'Ctrl+N',
                       onClick: onNew,
                     } as MenuEntry,
                   ]
@@ -472,14 +472,14 @@ export function MenuBar() {
             {
               icon: 'undo',
               label: 'Undo',
-              shortcut: '⌘Z',
+              shortcut: 'Ctrl+Z',
               onClick: onUndo ?? (() => {}),
               disabled: !canUndo,
             } as MenuEntry,
             {
               icon: 'redo',
               label: 'Redo',
-              shortcut: '⌘Y',
+              shortcut: 'Ctrl+Y',
               onClick: onRedo ?? (() => {}),
               disabled: !canRedo,
             } as MenuEntry,
@@ -490,7 +490,7 @@ export function MenuBar() {
             {
               icon: 'content_cut',
               label: 'Cut',
-              shortcut: '⌘X',
+              shortcut: 'Ctrl+X',
               onClick: () => {
                 onRefocusEditor?.();
                 document.execCommand('cut');
@@ -499,7 +499,7 @@ export function MenuBar() {
             {
               icon: 'content_copy',
               label: 'Copy',
-              shortcut: '⌘C',
+              shortcut: 'Ctrl+C',
               onClick: () => {
                 onRefocusEditor?.();
                 document.execCommand('copy');
@@ -508,7 +508,7 @@ export function MenuBar() {
             {
               icon: 'content_paste',
               label: 'Paste',
-              shortcut: '⌘V',
+              shortcut: 'Ctrl+V',
               onClick: () => {
                 onRefocusEditor?.();
                 document.execCommand('paste');
@@ -517,7 +517,7 @@ export function MenuBar() {
             {
               icon: 'content_paste_go',
               label: 'Paste without formatting',
-              shortcut: '⌘⇧V',
+              shortcut: 'Ctrl+Shift+V',
               onClick: async () => {
                 onRefocusEditor?.();
                 try {
@@ -533,8 +533,8 @@ export function MenuBar() {
               ? [
                   {
                     icon: 'search',
-                    label: 'Find',
-                    shortcut: '⌘F',
+                    label: 'Find…',
+                    shortcut: 'Ctrl+F',
                     onClick: onOpenFind,
                   } as MenuEntry,
                 ]
@@ -543,8 +543,8 @@ export function MenuBar() {
               ? [
                   {
                     icon: 'find_replace',
-                    label: 'Find and Replace',
-                    shortcut: '⌘H',
+                    label: 'Find and replace…',
+                    shortcut: 'Ctrl+H',
                     onClick: onOpenFindReplace,
                   } as MenuEntry,
                 ]
@@ -554,21 +554,14 @@ export function MenuBar() {
               : []),
             {
               icon: 'select_all',
-              label: 'Select All',
-              shortcut: '⌘A',
+              label: 'Select all',
+              shortcut: 'Ctrl+A',
               onClick: () => handleFormat('selectAll'),
             } as MenuEntry,
-            ...(onOpenWordCount
-              ? [
-                  { type: 'separator' as const } as MenuEntry,
-                  {
-                    icon: 'format_list_numbered',
-                    label: t('toolbar.wordCount'),
-                    shortcut: '⌘⇧C',
-                    onClick: onOpenWordCount,
-                  } as MenuEntry,
-                ]
-              : []),
+            // Word count lives in Tools → Word count (Google Docs
+            // convention). Removed from Edit on the Phase-4 menu pass
+            // — duplication confused users about which entry the
+            // Ctrl+Shift+C shortcut targeted.
             ...(onToggleVoiceTyping
               ? [
                   {
@@ -598,17 +591,17 @@ export function MenuBar() {
           items={[
             {
               label: `${currentFormatting?.bold ? '✓ ' : ''}Bold`,
-              shortcut: '⌘B',
+              shortcut: 'Ctrl+B',
               onClick: () => handleFormat('bold'),
             } as MenuEntry,
             {
               label: `${currentFormatting?.italic ? '✓ ' : ''}Italic`,
-              shortcut: '⌘I',
+              shortcut: 'Ctrl+I',
               onClick: () => handleFormat('italic'),
             } as MenuEntry,
             {
               label: `${currentFormatting?.underline ? '✓ ' : ''}Underline`,
-              shortcut: '⌘U',
+              shortcut: 'Ctrl+U',
               onClick: () => handleFormat('underline'),
             } as MenuEntry,
             {
@@ -641,7 +634,7 @@ export function MenuBar() {
             {
               icon: 'format_clear',
               label: 'Clear formatting',
-              shortcut: '⌘\\',
+              shortcut: 'Ctrl+\\',
               onClick: () => handleFormat('clearFormatting'),
             } as MenuEntry,
             { type: 'separator' as const } as MenuEntry,
@@ -673,19 +666,19 @@ export function MenuBar() {
                     {
                       icon: 'add',
                       label: 'Zoom in',
-                      shortcut: '⌘=',
+                      shortcut: 'Ctrl+=',
                       onClick: () => onZoomChange(Math.min((zoom ?? 1) * 1.1, 4)),
                     } as MenuEntry,
                     {
                       icon: 'remove',
                       label: 'Zoom out',
-                      shortcut: '⌘−',
+                      shortcut: 'Ctrl+-',
                       onClick: () => onZoomChange(Math.max((zoom ?? 1) / 1.1, 0.25)),
                     } as MenuEntry,
                     {
                       icon: 'restart_alt',
                       label: 'Reset zoom (100%)',
-                      shortcut: '⌘0',
+                      shortcut: 'Ctrl+0',
                       onClick: () => onZoomChange(1),
                     } as MenuEntry,
                   ]
@@ -714,7 +707,7 @@ export function MenuBar() {
                 ? [
                     {
                       label: `${outlineVisible ? '✓ ' : ''}${t('toolbar.showOutline')}`,
-                      shortcut: '⌘⇧H',
+                      shortcut: 'Ctrl+Shift+H',
                       onClick: onToggleOutline,
                     } as MenuEntry,
                   ]
@@ -775,7 +768,7 @@ export function MenuBar() {
             {
               icon: 'page_break',
               label: t('toolbar.pageBreak'),
-              shortcut: '⌘↵',
+              shortcut: 'Ctrl+Enter',
               onClick: onInsertPageBreak,
               disabled: !onInsertPageBreak,
             },
@@ -948,7 +941,7 @@ export function MenuBar() {
                     {
                       icon: 'format_list_numbered',
                       label: t('toolbar.wordCount'),
-                      shortcut: '⌘⇧C',
+                      shortcut: 'Ctrl+Shift+C',
                       onClick: onOpenWordCount,
                     } as MenuEntry,
                     { type: 'separator' as const } as MenuEntry,
@@ -958,7 +951,7 @@ export function MenuBar() {
                 ? [
                     {
                       label: t('toolbar.dictionary'),
-                      shortcut: '⌘⇧Y',
+                      shortcut: 'Ctrl+Shift+Y',
                       onClick: onOpenDictionary,
                     } as MenuEntry,
                   ]
@@ -966,6 +959,7 @@ export function MenuBar() {
               ...(onOpenTranslate
                 ? [
                     {
+                      icon: 'translate',
                       label: t('toolbar.translate'),
                       onClick: onOpenTranslate,
                     } as MenuEntry,
@@ -974,6 +968,7 @@ export function MenuBar() {
               ...(onTranslateDocument
                 ? [
                     {
+                      icon: 'description',
                       label: 'Translate document…',
                       onClick: onTranslateDocument,
                     } as MenuEntry,
@@ -982,6 +977,7 @@ export function MenuBar() {
               ...(onToggleSpellcheck
                 ? [
                     {
+                      icon: 'spellcheck',
                       label: spellcheckEnabled ? '✓ Spell check' : 'Spell check',
                       onClick: onToggleSpellcheck,
                     } as MenuEntry,
@@ -990,7 +986,8 @@ export function MenuBar() {
               ...(onOpenWritingAssistant
                 ? [
                     {
-                      label: 'Writing Assistant…',
+                      icon: 'auto_awesome',
+                      label: 'Writing assistant…',
                       onClick: onOpenWritingAssistant,
                     } as MenuEntry,
                   ]
@@ -998,6 +995,7 @@ export function MenuBar() {
               ...(onOpenExplore
                 ? [
                     {
+                      icon: 'explore',
                       label: t('toolbar.explore'),
                       onClick: onOpenExplore,
                     } as MenuEntry,
@@ -1006,6 +1004,7 @@ export function MenuBar() {
               ...(onOpenCitations
                 ? [
                     {
+                      icon: 'format_quote',
                       label: t('toolbar.citations'),
                       onClick: onOpenCitations,
                     } as MenuEntry,
@@ -1014,6 +1013,7 @@ export function MenuBar() {
               ...(onOpenPreferences
                 ? [
                     {
+                      icon: 'tune',
                       label: t('toolbar.preferences'),
                       onClick: onOpenPreferences,
                     } as MenuEntry,
@@ -1022,6 +1022,7 @@ export function MenuBar() {
               ...(onOpenAccessibility
                 ? [
                     {
+                      icon: 'accessibility',
                       label: t('toolbar.accessibility'),
                       onClick: onOpenAccessibility,
                     } as MenuEntry,
