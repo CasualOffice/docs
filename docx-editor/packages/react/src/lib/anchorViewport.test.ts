@@ -1,15 +1,11 @@
-// Register happy-dom BEFORE any import that touches `window` /
-// `document` — including the module under test. bun:test runs in a
-// Node-like environment by default so without this the DOM globals
-// are undefined and `anchorViewport`'s guards return 0 for everything.
+// bun:test runs in a Node-like env by default so DOM globals are
+// undefined. Other test files in this monorepo set Happy DOM up via
+// `beforeAll(register) / afterAll(unregister)` — match that pattern
+// here, not a top-level `register()`. Registering at module load
+// pollutes the global env permanently and crashes any subsequent
+// file's `register()` with "already globally registered".
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
-try {
-  GlobalRegistrator.register();
-} catch {
-  // Already registered (Bun's `--preload` path) — safe to ignore.
-}
-
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { rightDockChromeWidth, usableRightEdge } from './anchorViewport';
 
 function mountPanel(testId: string, width: number): HTMLElement {
@@ -24,7 +20,14 @@ function mountPanel(testId: string, width: number): HTMLElement {
   return el;
 }
 
-const originalInnerWidth = window.innerWidth;
+let originalInnerWidth = 0;
+
+beforeAll(() => {
+  GlobalRegistrator.register();
+  originalInnerWidth = window.innerWidth;
+});
+
+afterAll(() => GlobalRegistrator.unregister());
 
 beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
