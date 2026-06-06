@@ -65,59 +65,93 @@ export interface CommandPaletteDialogProps {
   items: CommandPaletteItem[];
 }
 
+/* ============================================================
+   Premium palette aesthetics: backdrop blur, soft scale-in,
+   refined typography, generous spacing, paginated shortcut chips.
+   No emoji. Animation curve matches Linear / Arc / Notion.
+   ============================================================ */
+
 const overlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0, 0, 0, 0.5)',
+  // Backdrop blur + low-opacity scrim — the doc behind stays
+  // legible enough to remind the user where they are; the palette
+  // is the focal point. Matches Arc / Linear.
+  background: 'rgba(15, 23, 42, 0.32)',
+  backdropFilter: 'blur(8px) saturate(140%)',
+  WebkitBackdropFilter: 'blur(8px) saturate(140%)',
   display: 'flex',
   alignItems: 'flex-start',
   justifyContent: 'center',
-  paddingTop: '15vh',
+  paddingTop: '14vh',
   zIndex: 10001,
+  // Fade the scrim in; the dialog handles its own scale-in.
+  animation: 'docCpOverlayIn 180ms cubic-bezier(0.4, 0, 0.2, 1) both',
 };
 
 const dialogStyle: CSSProperties = {
-  width: 560,
-  maxWidth: '90vw',
+  width: 600,
+  maxWidth: '92vw',
   background: 'var(--doc-surface, white)',
-  color: 'var(--doc-text-on-surface, #1f2937)',
-  borderRadius: 10,
-  boxShadow: 'var(--doc-shadow, 0 8px 24px rgba(0, 0, 0, 0.15))',
-  border: '1px solid var(--doc-border, #e0e0e0)',
+  color: 'var(--doc-text-on-surface)',
+  borderRadius: 14,
+  // Layered shadow — ambient softness + a tighter shadow for the
+  // edge definition. One shadow alone looks flat.
+  boxShadow:
+    '0 1px 1px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.08), 0 24px 64px rgba(15, 23, 42, 0.18)',
+  border: '1px solid var(--doc-border-light)',
   display: 'flex',
   flexDirection: 'column',
-  maxHeight: '70vh',
+  maxHeight: '64vh',
   overflow: 'hidden',
+  // Soft scale-in from slightly smaller — feels like the palette
+  // is settling into place rather than appearing.
+  animation: 'docCpDialogIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both',
 };
 
 const inputWrapStyle: CSSProperties = {
-  padding: 12,
-  borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+  padding: '14px 18px 14px 50px',
+  borderBottom: '1px solid var(--doc-border-light)',
+  position: 'relative',
+};
+
+// Leading magnifying-glass icon — quiet, premium signifier of
+// "this is search". Positioned absolute so the input is full-width
+// without leftPadding hacks.
+const searchIconStyle: CSSProperties = {
+  position: 'absolute',
+  left: 20,
+  top: '50%',
+  transform: 'translateY(-50%)',
+  color: 'var(--doc-text-muted)',
+  pointerEvents: 'none',
 };
 
 const inputStyle: CSSProperties = {
   width: '100%',
-  fontSize: 15,
-  padding: '8px 10px',
-  borderRadius: 6,
-  border: '1px solid var(--doc-border, #d1d5db)',
-  background: 'var(--doc-bg-input, #f8f9fa)',
-  color: 'var(--doc-text-on-surface, #1f2937)',
+  fontSize: 16,
+  fontWeight: 400,
+  padding: '4px 0',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--doc-text)',
   outline: 'none',
   boxSizing: 'border-box',
+  letterSpacing: '-0.005em',
 };
 
 const listStyle: CSSProperties = {
   overflowY: 'auto',
-  padding: '4px 0',
-  minHeight: 60,
+  padding: '6px 8px',
+  minHeight: 80,
 };
 
 const emptyStyle: CSSProperties = {
-  padding: '24px 16px',
+  padding: '28px 16px',
   textAlign: 'center',
-  color: 'var(--doc-text-on-surface-muted, #6b7280)',
+  color: 'var(--doc-text-muted)',
   fontSize: 13,
+  fontStyle: 'italic',
 };
 
 const itemStyle = (active: boolean): CSSProperties => ({
@@ -125,13 +159,16 @@ const itemStyle = (active: boolean): CSSProperties => ({
   textAlign: 'left',
   display: 'flex',
   alignItems: 'center',
-  gap: 12,
-  padding: '8px 14px',
+  gap: 14,
+  padding: '10px 14px',
   border: 'none',
-  background: active ? 'var(--doc-bg-hover, #f1f3f4)' : 'transparent',
-  color: 'inherit',
+  background: active ? 'var(--doc-primary-light)' : 'transparent',
+  color: active ? 'var(--doc-text)' : 'inherit',
   cursor: 'pointer',
-  fontSize: 13,
+  fontSize: 14,
+  borderRadius: 8,
+  // Smooth bg transition on keyboard navigation rather than a snap.
+  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 });
 
 const labelStyle: CSSProperties = {
@@ -139,33 +176,57 @@ const labelStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'flex-start',
-  gap: 2,
+  gap: 1,
   minWidth: 0,
 };
 
-const pathStyle: CSSProperties = {
-  fontSize: 11,
-  color: 'var(--doc-text-on-surface-muted, #6b7280)',
+const labelTextStyle: CSSProperties = {
+  fontWeight: 500,
+  letterSpacing: '-0.003em',
+  color: 'var(--doc-text)',
 };
 
-const shortcutStyle: CSSProperties = {
+const pathStyle: CSSProperties = {
+  fontSize: 11.5,
+  color: 'var(--doc-text-muted)',
+  fontWeight: 400,
+};
+
+// Shortcut chip — minimal monospace pill that matches the Mac
+// menu-bar feel. Each segment of the shortcut renders as its own
+// chip with a thin separator dot, which is a small premium move
+// that distinguishes the palette from a flat shortcut string.
+const shortcutChipStyle: CSSProperties = {
   fontSize: 11,
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-  color: 'var(--doc-text-on-surface-muted, #6b7280)',
-  border: '1px solid var(--doc-border, #d1d5db)',
+  color: 'var(--doc-text-muted)',
+  border: '1px solid var(--doc-border-light)',
   borderRadius: 4,
-  padding: '1px 6px',
-  background: 'var(--doc-bg-subtle, #f5f5f5)',
+  padding: '2px 6px',
+  background: 'var(--doc-surface)',
   whiteSpace: 'nowrap',
+  fontWeight: 500,
+  minWidth: 18,
+  textAlign: 'center',
+  lineHeight: 1.3,
 };
 
 const hintStyle: CSSProperties = {
-  padding: '8px 14px',
+  padding: '10px 18px',
   fontSize: 11,
-  color: 'var(--doc-text-on-surface-muted, #9ca3af)',
-  borderTop: '1px solid var(--doc-border, #e0e0e0)',
+  color: 'var(--doc-text-muted)',
+  borderTop: '1px solid var(--doc-border-light)',
+  background: 'var(--doc-surface-muted)',
   display: 'flex',
   justifyContent: 'space-between',
+  alignItems: 'center',
+  letterSpacing: '0.01em',
+};
+
+const kbdHintStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 5,
 };
 
 export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteDialogProps) {
@@ -264,6 +325,16 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
 
   return (
     <FocusTrap initialFocus={inputRef}>
+      <style>{`
+        @keyframes docCpOverlayIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes docCpDialogIn {
+          from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
       <div
         style={overlayStyle}
         onMouseDown={onClose}
@@ -273,10 +344,25 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
       >
         <div style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
           <div style={inputWrapStyle}>
+            <svg
+              style={searchIconStyle}
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
             <input
               ref={inputRef}
               type="text"
-              placeholder="Type a command…"
+              placeholder="Search commands, files, or settings…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -303,11 +389,14 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
               }}
               style={inputStyle}
               data-testid="command-palette-input"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
             />
           </div>
           <div ref={listRef} style={listStyle} role="listbox">
             {filtered.length === 0 ? (
-              <div style={emptyStyle}>No matching commands.</div>
+              <div style={emptyStyle}>No commands match — try a different search.</div>
             ) : (
               filtered.map((item, index) => (
                 <button
@@ -321,22 +410,56 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
                   onClick={() => void run(item)}
                 >
                   <span style={labelStyle}>
-                    <span>{item.label}</span>
+                    <span style={labelTextStyle}>{item.label}</span>
                     <span style={pathStyle}>{item.path}</span>
                   </span>
-                  {item.shortcut && (
-                    <span style={shortcutStyle}>{formatShortcut(item.shortcut)}</span>
-                  )}
+                  {item.shortcut && <ShortcutChips raw={item.shortcut} />}
                 </button>
               ))
             )}
           </div>
           <div style={hintStyle}>
-            <span>↑↓ navigate · ↵ run · Esc close</span>
+            <span style={kbdHintStyle}>
+              <span style={shortcutChipStyle}>↑</span>
+              <span style={shortcutChipStyle}>↓</span>
+              <span>navigate</span>
+              <span style={{ margin: '0 6px', opacity: 0.5 }}>·</span>
+              <span style={shortcutChipStyle}>↵</span>
+              <span>run</span>
+              <span style={{ margin: '0 6px', opacity: 0.5 }}>·</span>
+              <span style={shortcutChipStyle}>esc</span>
+              <span>close</span>
+            </span>
             <span>{filtered.length} commands</span>
           </div>
         </div>
       </div>
     </FocusTrap>
+  );
+}
+
+/**
+ * Render the shortcut as separate monospace chips per segment
+ * (e.g. ⌘ + ⇧ + P), which reads more like a Mac menu-bar shortcut
+ * than a single concatenated string. Falls back to the formatted
+ * full string when the platform formatter doesn't return a known
+ * separator.
+ */
+function ShortcutChips({ raw }: { raw: string }) {
+  const formatted = formatShortcut(raw);
+  // formatShortcut returns the platform-correct string; we split on
+  // common separators so each modifier / key becomes its own chip.
+  const parts = formatted.split(/(?<=.)(?=[⌘⇧⌥⌃])|\+| /).filter(Boolean);
+  if (parts.length <= 1) {
+    return <span style={shortcutChipStyle}>{formatted}</span>;
+  }
+  return (
+    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+      {parts.map((p, i) => (
+        <span key={i} style={shortcutChipStyle}>
+          {p}
+        </span>
+      ))}
+    </span>
   );
 }
