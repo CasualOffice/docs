@@ -60,15 +60,36 @@ test.describe('Version history visual audit', () => {
     });
 
     // State 5: back to Versions tab — capture the persisted snapshot
-    // list. Trigger a manual snapshot first so the tab has content.
+    // list. Trigger TWO manual snapshots with edits between so the
+    // newer one has a "previous" to diff against.
     await page.getByTestId('version-history-tab-versions').click();
     await page.waitForTimeout(200);
-    page.once('dialog', (d) => d.accept('Pre-launch draft'));
+    page.once('dialog', (d) => d.accept('Initial draft'));
     await page.getByTestId('version-history-save-version').click();
     await page.waitForSelector('[data-testid="version-history-version-row"]');
+
+    await editor.focus();
+    await editor.typeText(' Added a paragraph after the initial save.');
+    page.once('dialog', (d) => d.accept('Post-edit checkpoint'));
+    await page.getByTestId('version-history-save-version').click();
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-testid="version-history-version-row"]').length >= 2
+    );
     await page.waitForTimeout(200);
     await page.screenshot({
       path: 'screenshots/audit/vh-5-versions.png',
+      fullPage: false,
+    });
+
+    // State 6: expand the newer version's diff against the previous one.
+    await page
+      .locator('[data-testid="version-history-version-toggle-diff"]')
+      .first()
+      .click();
+    await page.waitForSelector('[data-testid="version-history-version-diff"]');
+    await page.waitForTimeout(200);
+    await page.screenshot({
+      path: 'screenshots/audit/vh-6-version-diff.png',
       fullPage: false,
     });
   });

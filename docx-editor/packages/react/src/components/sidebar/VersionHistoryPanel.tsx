@@ -399,6 +399,19 @@ function VersionsTab({
   const list = useLiveVersionList(docId);
   const groups = useMemo(() => groupByDay(list), [list]);
   const now = Date.now();
+  // Chronological neighbor for diffing: the list is newest-first, so
+  // each row's "previous version" is the entry one slot later in the
+  // array (older in time). The last row has no previous — its diff
+  // toggle is disabled.
+  const previousById = useMemo(() => {
+    const map = new Map<number, VersionSnapshot>();
+    for (let i = 0; i < list.length - 1; i++) {
+      const cur = list[i];
+      const prev = list[i + 1];
+      if (cur?.id != null && prev) map.set(cur.id, prev);
+    }
+    return map;
+  }, [list]);
 
   const handleSaveVersion = useCallback(async () => {
     if (!saveNamedVersion) return;
@@ -477,6 +490,7 @@ function VersionsTab({
                   <VersionRow
                     key={snap.id}
                     snap={snap}
+                    previousSnap={snap.id != null ? previousById.get(snap.id) : undefined}
                     now={now}
                     onRestore={() => handleRestore(snap)}
                     onRename={() => handleRename(snap)}
@@ -494,17 +508,43 @@ function VersionsTab({
 
 function VersionRow({
   snap,
+  previousSnap,
   now,
   onRestore,
   onRename,
   onDelete,
 }: {
   snap: VersionSnapshot;
+  /** Chronologically older snapshot — what we diff THIS one against.
+   *  Undefined for the very first saved version (nothing to compare). */
+  previousSnap?: VersionSnapshot;
   now: number;
   onRestore: () => void;
   onRename: () => void;
   onDelete: () => void;
 }) {
+  const [showDiff, setShowDiff] = useState(false);
+
+  // LCS word diff is O(N*M). Only compute on expand, then memoise
+  // against the snapshot pair so toggle hide/show keeps the value.
+  const diff = useMemo(() => {
+    if (!showDiff || !previousSnap) return null;
+    const before = extractText(previousSnap.data).slice(0, DIFF_TRUNCATE_LIMIT);
+    const after = extractText(snap.data).slice(0, DIFF_TRUNCATE_LIMIT);
+    return diffWords(before, after);
+  }, [showDiff, previousSnap, snap]);
+
+  // +/- word stats render at all times so the user can see the
+  // magnitude of the change without expanding the diff. Matches the
+  // Activity tab's row affordance.
+  const stats = useMemo(() => {
+    if (!previousSnap) return null;
+    const before = extractText(previousSnap.data).slice(0, DIFF_TRUNCATE_LIMIT);
+    const after = extractText(snap.data).slice(0, DIFF_TRUNCATE_LIMIT);
+    const segments = diffWords(before, after);
+    return diffStats(segments);
+  }, [previousSnap, snap]);
+
   return (
     <li style={ENTRY_STYLE} data-testid="version-history-version-row">
       <div style={ENTRY_HEAD_STYLE}>
@@ -527,6 +567,14 @@ function VersionRow({
       {typeof snap.size === 'number' && snap.size > 0 && (
         <div style={SIZE_STYLE}>{formatSize(snap.size)}</div>
       )}
+      {stats && (stats.added > 0 || stats.removed > 0) && (
+        <div style={STATS_PILL_STYLE} data-testid="version-history-version-stats">
+          {stats.added > 0 && <span style={STAT_ADD_STYLE}>+{stats.added}</span>}
+          {stats.added > 0 && stats.removed > 0 && <span>·</span>}
+          {stats.removed > 0 && <span style={STAT_REMOVE_STYLE}>-{stats.removed}</span>}
+          <span>word{stats.added + stats.removed === 1 ? '' : 's'}</span>
+        </div>
+      )}
       <div style={ENTRY_ACTIONS_STYLE}>
         <button
           type="button"
@@ -536,6 +584,17 @@ function VersionRow({
         >
           Restore
         </button>
+        {previousSnap && (
+          <button
+            type="button"
+            onClick={() => setShowDiff((v) => !v)}
+            style={SHOW_DIFF_BTN_STYLE}
+            aria-expanded={showDiff}
+            data-testid="version-history-version-toggle-diff"
+          >
+            {showDiff ? 'Hide changes' : 'Show changes'}
+          </button>
+        )}
         <button type="button" onClick={onRename} style={SHOW_DIFF_BTN_STYLE}>
           Rename
         </button>
@@ -547,6 +606,25 @@ function VersionRow({
           Delete
         </button>
       </div>
+      {showDiff && diff && (
+        <pre style={DIFF_BOX_STYLE} data-testid="version-history-version-diff">
+          {diff.map((seg, i) => {
+            if (seg.op === 'keep') return <span key={i}>{seg.text}</span>;
+            if (seg.op === 'add') {
+              return (
+                <ins key={i} style={DIFF_ADD_STYLE}>
+                  {seg.text}
+                </ins>
+              );
+            }
+            return (
+              <del key={i} style={DIFF_REMOVE_STYLE}>
+                {seg.text}
+              </del>
+            );
+          })}
+        </pre>
+      )}
     </li>
   );
 }
