@@ -1,17 +1,20 @@
 /**
  * Tools → Accessibility.
  *
- * Read-only summary of the issues `checkAccessibility` (core/utils) found
+ * Read-only summary of issues `checkAccessibility` (core/utils) finds
  * in the current PM document: images missing alt text + heading-order
- * jumps. Each row has a "Go to" button that calls back into the host to
- * move the caret to the offending element.
+ * jumps. Each row has a "Go to" button that calls back into the host
+ * to move the caret to the offending element.
  *
- * Visual language mirrors the other dialogs (overlay + shell with
- * header/body/footer split) for consistency.
+ * Migrated onto the shared <Dialog> shell in Phase 7 — the shell
+ * handles backdrop / blur / scale-in motion / close X / focus trap /
+ * Esc dismissal. This file only describes the body issue list +
+ * footer summary / Done button.
  */
 
-import { useEffect, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import type { AccessibilityIssue } from '@eigenpal/docx-core/utils';
+import { Dialog } from '../ui/Dialog';
 
 export interface AccessibilityDialogProps {
   isOpen: boolean;
@@ -22,48 +25,18 @@ export interface AccessibilityDialogProps {
   onGoto: (pmPos: number) => void;
 }
 
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 10000,
-};
-
-const dialogStyle: CSSProperties = {
-  backgroundColor: 'var(--doc-surface, white)',
-  borderRadius: 8,
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 460,
-  maxWidth: 560,
-  width: '100%',
-  margin: 20,
-};
-
-const headerStyle: CSSProperties = {
-  padding: '16px 20px 12px',
-  borderBottom: '1px solid var(--doc-border, #ddd)',
-  fontSize: 16,
-  fontWeight: 600,
-  color: 'var(--doc-text-on-surface, #1f2937)',
-};
-
 const bodyStyle: CSSProperties = {
-  padding: '16px 20px',
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  maxHeight: '50vh',
-  overflowY: 'auto',
 };
 
 const emptyStateStyle: CSSProperties = {
-  padding: '12px 0',
+  padding: '24px 0',
   fontSize: 14,
-  color: 'var(--doc-text-muted, #6b7280)',
+  color: 'var(--doc-text-muted)',
   textAlign: 'center',
+  fontStyle: 'italic',
 };
 
 const rowStyle: CSSProperties = {
@@ -71,61 +44,51 @@ const rowStyle: CSSProperties = {
   alignItems: 'flex-start',
   justifyContent: 'space-between',
   gap: 12,
-  padding: '10px 12px',
-  borderRadius: 4,
-  border: '1px solid var(--doc-border, #e5e7eb)',
+  padding: '12px 14px',
+  borderRadius: 8,
+  border: '1px solid var(--doc-border-light)',
+  background: 'var(--doc-surface)',
+  transition: 'border-color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const rowTitleStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: 13.5,
   fontWeight: 500,
-  color: 'var(--doc-text-on-surface, #1f2937)',
+  color: 'var(--doc-text)',
+  letterSpacing: '-0.003em',
 };
 
 const rowHintStyle: CSSProperties = {
-  fontSize: 12,
-  color: 'var(--doc-text-muted, #6b7280)',
-  marginTop: 2,
-};
-
-const footerStyle: CSSProperties = {
-  padding: '12px 20px 16px',
-  borderTop: '1px solid var(--doc-border, #ddd)',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-};
-
-const summaryStyle: CSSProperties = {
-  fontSize: 12,
-  color: 'var(--doc-text-muted, #6b7280)',
-};
-
-const btnBase: CSSProperties = {
-  padding: '6px 16px',
-  fontSize: 13,
-  borderRadius: 4,
-  cursor: 'pointer',
-  fontWeight: 500,
+  fontSize: 12.5,
+  color: 'var(--doc-text-muted)',
+  marginTop: 4,
+  lineHeight: 1.45,
 };
 
 const primaryBtnStyle: CSSProperties = {
-  ...btnBase,
-  border: '1px solid var(--doc-primary, #1a73e8)',
-  background: 'var(--doc-primary, #1a73e8)',
+  padding: '7px 16px',
+  fontSize: 13,
+  fontWeight: 500,
+  border: '1px solid var(--doc-primary)',
+  background: 'var(--doc-primary)',
   color: 'white',
+  borderRadius: 6,
+  cursor: 'pointer',
+  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const gotoBtnStyle: CSSProperties = {
-  padding: '4px 10px',
+  padding: '5px 12px',
   fontSize: 12,
-  border: '1px solid var(--doc-border, #d1d5db)',
-  background: 'transparent',
-  color: 'var(--doc-primary, #1a73e8)',
-  borderRadius: 4,
-  cursor: 'pointer',
   fontWeight: 500,
+  border: '1px solid var(--doc-border)',
+  background: 'transparent',
+  color: 'var(--doc-primary)',
+  borderRadius: 6,
+  cursor: 'pointer',
   flexShrink: 0,
+  transition:
+    'background 80ms cubic-bezier(0.4, 0, 0.2, 1), border-color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 function describe(issue: AccessibilityIssue): { title: string; hint: string } {
@@ -147,74 +110,53 @@ function describe(issue: AccessibilityIssue): { title: string; hint: string } {
 }
 
 export function AccessibilityDialog({ isOpen, onClose, issues, onGoto }: AccessibilityDialogProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
+  const summary =
+    issues.length === 0 ? null : `${issues.length} issue${issues.length === 1 ? '' : 's'}`;
   return (
-    <div
-      className="ep-dialog-overlay"
-      style={overlayStyle}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Accessibility check"
+      width={560}
+      testId="accessibility-dialog"
+      helper={summary}
+      footer={
+        <button type="button" style={primaryBtnStyle} onClick={onClose}>
+          Done
+        </button>
+      }
     >
-      <div
-        className="ep-dialog-shell"
-        style={dialogStyle}
-        role="dialog"
-        aria-label="Accessibility check"
-        data-testid="accessibility-dialog"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div style={headerStyle}>Accessibility check</div>
-        <div style={bodyStyle}>
-          {issues.length === 0 ? (
-            <div style={emptyStateStyle} data-testid="accessibility-empty">
-              No accessibility issues found.
-            </div>
-          ) : (
-            issues.map((issue, i) => {
-              const { title, hint } = describe(issue);
-              return (
-                <div key={`${issue.kind}-${issue.pmPos}-${i}`} style={rowStyle}>
-                  <div>
-                    <div style={rowTitleStyle}>{title}</div>
-                    <div style={rowHintStyle}>{hint}</div>
-                  </div>
-                  <button
-                    type="button"
-                    style={gotoBtnStyle}
-                    data-testid={`a11y-goto-${i}`}
-                    onClick={() => {
-                      onGoto(issue.pmPos);
-                      onClose();
-                    }}
-                  >
-                    Go to
-                  </button>
+      <div style={bodyStyle}>
+        {issues.length === 0 ? (
+          <div style={emptyStateStyle} data-testid="accessibility-empty">
+            No accessibility issues found.
+          </div>
+        ) : (
+          issues.map((issue, i) => {
+            const { title, hint } = describe(issue);
+            return (
+              <div key={`${issue.kind}-${issue.pmPos}-${i}`} style={rowStyle}>
+                <div>
+                  <div style={rowTitleStyle}>{title}</div>
+                  <div style={rowHintStyle}>{hint}</div>
                 </div>
-              );
-            })
-          )}
-        </div>
-        <div style={footerStyle}>
-          <span style={summaryStyle}>
-            {issues.length === 0 ? '' : `${issues.length} issue${issues.length === 1 ? '' : 's'}`}
-          </span>
-          <button type="button" style={primaryBtnStyle} onClick={onClose}>
-            Done
-          </button>
-        </div>
+                <button
+                  type="button"
+                  style={gotoBtnStyle}
+                  data-testid={`a11y-goto-${i}`}
+                  onClick={() => {
+                    onGoto(issue.pmPos);
+                    onClose();
+                  }}
+                >
+                  Go to
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
-    </div>
+    </Dialog>
   );
 }
 
