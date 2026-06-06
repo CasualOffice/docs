@@ -1,12 +1,13 @@
 /**
  * Help → About dialog.
  *
- * Visual language mirrors FilePropertiesDialog (overlay, dialog
- * shell, header/body/footer split, primary button) so all dialogs
- * feel consistent.
+ * First migration onto the unified <Dialog> shell. The shell handles
+ * the backdrop / blur / motion / header / close X / footer chrome —
+ * this file only describes the body content and primary button.
  */
 
 import type { CSSProperties } from 'react';
+import { Dialog } from '../ui/Dialog';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const APP_VERSION: string = (globalThis as any).__APP_VERSION__ ?? 'dev';
@@ -22,38 +23,7 @@ export interface AboutDialogProps {
   homepageUrl?: string;
 }
 
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 10000,
-};
-
-const dialogStyle: CSSProperties = {
-  backgroundColor: 'var(--doc-surface, white)',
-  borderRadius: 8,
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 420,
-  maxWidth: 520,
-  width: '100%',
-  margin: 20,
-};
-
-const headerStyle: CSSProperties = {
-  padding: '16px 20px 12px',
-  borderBottom: '1px solid var(--doc-border, #ddd)',
-  fontSize: 16,
-  fontWeight: 600,
-};
-
 const bodyStyle: CSSProperties = {
-  padding: '20px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -68,17 +38,18 @@ const logoWrap: CSSProperties = {
   justifyContent: 'center',
 };
 
-const titleStyle: CSSProperties = {
+const productTitleStyle: CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   margin: 0,
-  color: 'var(--doc-text-on-surface, #1f2937)',
+  color: 'var(--doc-text)',
+  letterSpacing: '-0.01em',
 };
 
 const taglineStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
-  color: 'var(--doc-text-muted, #555)',
+  color: 'var(--doc-text-muted)',
   textAlign: 'center',
   lineHeight: 1.5,
   maxWidth: 380,
@@ -96,37 +67,32 @@ const factsStyle: CSSProperties = {
 };
 
 const dtStyle: CSSProperties = {
-  color: 'var(--doc-text-muted, #6b7280)',
+  color: 'var(--doc-text-muted)',
 };
 
 const ddStyle: CSSProperties = {
   margin: 0,
-  color: 'var(--doc-text-on-surface, #1f2937)',
+  color: 'var(--doc-text)',
 };
 
 const copyrightStyle: CSSProperties = {
   margin: 0,
   fontSize: 11,
-  color: 'var(--doc-text-muted, #9ca3af)',
+  color: 'var(--doc-text-muted)',
   textAlign: 'center',
   marginTop: 4,
 };
 
-const footerStyle: CSSProperties = {
-  padding: '12px 20px 16px',
-  borderTop: '1px solid var(--doc-border, #ddd)',
-  display: 'flex',
-  justifyContent: 'flex-end',
-};
-
 const primaryBtnStyle: CSSProperties = {
-  padding: '6px 16px',
+  padding: '7px 16px',
   fontSize: 13,
-  border: '1px solid #1a73e8',
+  fontWeight: 500,
+  border: '1px solid var(--doc-primary)',
   background: 'var(--doc-primary)',
   color: 'white',
-  borderRadius: 4,
+  borderRadius: 6,
   cursor: 'pointer',
+  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const linkStyle: CSSProperties = {
@@ -156,66 +122,63 @@ export function AboutDialog({
   sourceUrl = 'https://github.com/schnsrw/docx',
   homepageUrl = 'https://doc.schnsrw.live/',
 }: AboutDialogProps) {
-  if (!isOpen) return null;
   const year = new Date().getFullYear();
   return (
-    <div
-      className="ep-dialog-overlay"
-      style={overlayStyle}
-      onMouseDown={onClose}
-      data-testid="about-dialog"
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`About ${appName}`}
+      testId="about-dialog"
+      width={520}
+      footer={
+        <button type="button" style={primaryBtnStyle} onClick={onClose} data-testid="about-close">
+          Close
+        </button>
+      }
     >
-      <div className="ep-dialog-shell" style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
-        <div style={headerStyle}>About {appName}</div>
-        <div style={bodyStyle}>
-          <div style={logoWrap}>
-            <CasualEditorLogo />
-          </div>
-          <h3 style={titleStyle}>{appName}</h3>
-          <p style={taglineStyle}>
-            A casual, real-time collaborative <code>.docx</code> editor.
-            <br />
-            Open it.{' '}
-            <a href={homepageUrl} target="_blank" rel="noreferrer noopener" style={linkStyle}>
-              Try the live demo
+      <div style={bodyStyle}>
+        <div style={logoWrap}>
+          <CasualEditorLogo />
+        </div>
+        <h3 style={productTitleStyle}>{appName}</h3>
+        <p style={taglineStyle}>
+          A casual, real-time collaborative <code>.docx</code> editor.
+          <br />
+          Open it.{' '}
+          <a href={homepageUrl} target="_blank" rel="noreferrer noopener" style={linkStyle}>
+            Try the live demo
+          </a>
+          .
+        </p>
+        <dl style={factsStyle}>
+          <dt style={dtStyle}>Version</dt>
+          <dd style={ddStyle} data-testid="about-version">
+            {APP_VERSION}
+          </dd>
+          <dt style={dtStyle}>Source</dt>
+          <dd style={ddStyle}>
+            <a href={sourceUrl} target="_blank" rel="noreferrer noopener" style={linkStyle}>
+              {sourceUrl.replace(/^https?:\/\//, '')}
             </a>
-            .
-          </p>
-          <dl style={factsStyle}>
-            <dt style={dtStyle}>Version</dt>
-            <dd style={ddStyle} data-testid="about-version">
-              {APP_VERSION}
-            </dd>
-            <dt style={dtStyle}>Source</dt>
-            <dd style={ddStyle}>
-              <a href={sourceUrl} target="_blank" rel="noreferrer noopener" style={linkStyle}>
-                {sourceUrl.replace(/^https?:\/\//, '')}
-              </a>
-            </dd>
-            <dt style={dtStyle}>Engine</dt>
-            <dd style={ddStyle}>
-              Built on{' '}
-              <a
-                href="https://github.com/eigenpal/docx-editor"
-                target="_blank"
-                rel="noreferrer noopener"
-                style={linkStyle}
-              >
-                eigenpal/docx-editor
-              </a>{' '}
-              (MIT)
-            </dd>
-            <dt style={dtStyle}>License</dt>
-            <dd style={ddStyle}>Apache-2.0</dd>
-          </dl>
-          <p style={copyrightStyle}>© {year} schnsrw. Released under the Apache-2.0 license.</p>
-        </div>
-        <div style={footerStyle}>
-          <button type="button" style={primaryBtnStyle} onClick={onClose} data-testid="about-close">
-            Close
-          </button>
-        </div>
+          </dd>
+          <dt style={dtStyle}>Engine</dt>
+          <dd style={ddStyle}>
+            Built on{' '}
+            <a
+              href="https://github.com/eigenpal/docx-editor"
+              target="_blank"
+              rel="noreferrer noopener"
+              style={linkStyle}
+            >
+              eigenpal/docx-editor
+            </a>{' '}
+            (MIT)
+          </dd>
+          <dt style={dtStyle}>License</dt>
+          <dd style={ddStyle}>Apache-2.0</dd>
+        </dl>
+        <p style={copyrightStyle}>© {year} schnsrw. Released under the Apache-2.0 license.</p>
       </div>
-    </div>
+    </Dialog>
   );
 }
