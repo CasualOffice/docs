@@ -35,6 +35,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/schnsrw/docx/backend/internal/auth/personal"
 	"github.com/schnsrw/docx/backend/internal/host"
 	"github.com/schnsrw/docx/backend/internal/host/inline"
 	"github.com/schnsrw/docx/backend/internal/host/local"
@@ -646,6 +647,41 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
+
+	// Personal-mode (Mode 3) auth wires onto the same mux when
+	// GATEWAY_AUTH=personal is set. CASUAL_LOCAL_PATH is the base
+	// for users.db (defaults to /data, same default as the local
+	// host); CASUAL_SESSION_KEY is the HMAC signing key (>= 16
+	// bytes; fatal if unset so a misconfigured deploy never falls
+	// back to an unsigned session). SECURE_COOKIES=true flips the
+	// `__Host-` prefix + Secure flag on every Set-Cookie — required
+	// for HTTPS production deploys, intentionally off by default
+	// so localhost dev works without TLS.
+	if strings.EqualFold(os.Getenv("GATEWAY_AUTH"), "personal") {
+		authRoot := os.Getenv("CASUAL_LOCAL_PATH")
+		if authRoot == "" {
+			authRoot = "/data"
+		}
+		users, err := personal.New(authRoot)
+		if err != nil {
+			log.Fatalf("auth: open user store at %q: %v", authRoot, err)
+		}
+		keyRaw := os.Getenv("CASUAL_SESSION_KEY")
+		if keyRaw == "" {
+			log.Fatal("auth: CASUAL_SESSION_KEY unset — refusing to mount unsigned sessions")
+		}
+		sess, err := personal.NewSession([]byte(keyRaw))
+		if err != nil {
+			log.Fatalf("auth: build session signer: %v", err)
+		}
+		secure := strings.EqualFold(os.Getenv("SECURE_COOKIES"), "true")
+		(&personal.Handlers{
+			Users:   users,
+			Session: sess,
+			Secure:  secure,
+		}).Routes(mux)
+		log.Printf("auth: personal mode mounted (secure cookies = %v, root = %s)", secure, authRoot)
+	}
 
 	// POST /api/docs (upload) — under the upload bucket (tighter).
 	mux.Handle("/api/docs", uploadLimiter.Middleware(uploadHandler(store)))
