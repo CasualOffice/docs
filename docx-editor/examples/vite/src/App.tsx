@@ -449,7 +449,10 @@ export function App() {
           transition: 'background 0.15s, transform 0.05s',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#f1f5f9';
+          // Token-aware hover bg so dark mode doesn't flash light grey
+          // behind the logo. var() resolves against the editor's
+          // theme; falls back to the light value.
+          e.currentTarget.style.background = 'var(--doc-bg-hover, #f1f3f4)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent';

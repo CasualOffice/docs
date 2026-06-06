@@ -100,17 +100,32 @@ const linkStyle: CSSProperties = {
   textDecoration: 'none',
 };
 
-function CasualEditorLogo() {
+/**
+ * Canonical Casual Editor mark — identical artwork to
+ * examples/vite/public/logo.svg + favicon.svg so the title-bar logo,
+ * favicon, About dialog, and README header all render the same
+ * recognisable square. Blue rounded background carries through both
+ * light and dark mode without a harsh white wrapper that disappears
+ * (light) or glares (dark).
+ */
+function CasualEditorLogo({ size = 56 }: { size?: number }) {
   return (
-    <svg width="56" height="56" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M2 0C0.9 0 0 0.9 0 2V38C0 39.1 0.9 40 2 40H30C31.1 40 32 39.1 32 38V10L22 0H2Z"
-        fill="#1a73e8"
-      />
-      <path d="M22 0L32 10H24C22.9 10 22 9.1 22 8V0Z" fill="#1557b0" />
-      <rect x="7" y="18" width="18" height="2" rx="1" fill="#fff" />
-      <rect x="7" y="23" width="18" height="2" rx="1" fill="#fff" />
-      <rect x="7" y="28" width="12" height="2" rx="1" fill="#fff" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Casual Editor"
+    >
+      <rect width="64" height="64" rx="14" fill="#1a73e8" />
+      <path d="M18 14 H42 L48 20 V50 H18 Z" fill="#ffffff" />
+      <path d="M42 14 L48 20 H42 Z" fill="#1557b0" />
+      <rect x="22" y="26" width="22" height="2.5" rx="1.25" fill="#1a73e8" opacity="0.85" />
+      <rect x="22" y="33" width="18" height="2.5" rx="1.25" fill="#1a73e8" opacity="0.6" />
+      <rect x="22" y="40" width="22" height="2.5" rx="1.25" fill="#1a73e8" opacity="0.85" />
+      <rect x="22" y="47" width="12" height="2.5" rx="1.25" fill="#1a73e8" opacity="0.6" />
     </svg>
   );
 }
