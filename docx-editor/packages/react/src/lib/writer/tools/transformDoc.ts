@@ -18,7 +18,7 @@
 
 import { Fragment, type Node as PMNode } from 'prosemirror-model';
 import { summariseDocStructure } from '../docContext';
-import { runJsonChat } from '../jsonMode';
+import { runJsonChatWithValidation } from '../validateAndRetry';
 import { researchTool } from './researchTool';
 import type { Tool, ToolResult, ToolContext } from './types';
 
@@ -1000,7 +1000,12 @@ export const transformDocTool: Tool<TransformDocArgs> = {
 
     let extracted: unknown;
     try {
-      extracted = await runJsonChat<unknown>(
+      // Self-correction loop: when Llama-1B's first try drops in a
+      // `[Your Name]` / `TBD` / lorem-ipsum placeholder despite the
+      // system prompt forbidding it, the wrapper detects + retries
+      // once with an explicit issue list. Costs ~3 sec on the bad
+      // path, zero on the clean path. See validateAndRetry.ts.
+      extracted = await runJsonChatWithValidation<unknown>(
         [
           { role: 'system', content: spec.system + augment },
           {
