@@ -19,7 +19,12 @@
  */
 
 import { markdownToFragment } from '../markdownToFragment';
-import { runJsonChat } from '../jsonMode';
+import {
+  combineValidators,
+  noPlaceholderValidator,
+  runJsonChatWithValidation,
+  type Validator,
+} from '../validateAndRetry';
 import type { Tool, ToolResult } from './types';
 
 export interface OutlineArgs {
@@ -77,9 +82,33 @@ export const insertOutlineTool: Tool<OutlineArgs> = {
     const kind = (args.kind || guessKind(args.topic) || 'memo').toLowerCase();
     const topic = (args.topic ?? '').trim() || 'general subject';
 
+    // Semantic check: every section must have a non-empty heading +
+    // non-trivial body. Catches the model returning an array of empty
+    // shells that the JSON schema's `minLength` thresholds didn't.
+    const semanticOutlineValidator: Validator<OutlineJson> = (o) => {
+      const issues: { field: string; text: string; reason: string }[] = [];
+      const secs = o.sections ?? [];
+      secs.forEach((s, i) => {
+        if (!s.heading?.trim()) {
+          issues.push({
+            field: `sections[${i}].heading`,
+            text: '',
+            reason: 'is empty',
+          });
+        }
+        if (!s.content?.trim() || s.content.trim().length < 30) {
+          issues.push({
+            field: `sections[${i}].content`,
+            text: (s.content ?? '').slice(0, 60),
+            reason: 'is empty or shorter than 30 chars — write real prose',
+          });
+        }
+      });
+      return issues;
+    };
     let outline: OutlineJson;
     try {
-      outline = await runJsonChat<OutlineJson>(
+      outline = await runJsonChatWithValidation<OutlineJson>(
         [
           { role: 'system', content: systemPromptFor(kind) },
           {
@@ -87,7 +116,16 @@ export const insertOutlineTool: Tool<OutlineArgs> = {
             content: `${kind.charAt(0).toUpperCase() + kind.slice(1)} topic: ${topic}`,
           },
         ],
-        { schema: SCHEMA, maxTokens: 900, temperature: 0.5, signal: ctx.signal }
+        {
+          schema: SCHEMA,
+          maxTokens: 900,
+          temperature: 0.5,
+          signal: ctx.signal,
+          validator: combineValidators(
+            noPlaceholderValidator as Validator<OutlineJson>,
+            semanticOutlineValidator
+          ),
+        }
       );
     } catch (err) {
       return { kind: 'error', message: `Couldn't draft the outline — ${(err as Error).message}` };

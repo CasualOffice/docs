@@ -21,7 +21,12 @@
  */
 
 import { Fragment, type Node as PMNode } from 'prosemirror-model';
-import { runJsonChat } from '../jsonMode';
+import {
+  combineValidators,
+  noPlaceholderValidator,
+  runJsonChatWithValidation,
+  type Validator,
+} from '../validateAndRetry';
 import type { Tool, ToolContext, ToolResult } from './types';
 
 export interface InsertTableArgs {
@@ -169,14 +174,66 @@ export const insertTableTool: Tool<InsertTableArgs> = {
     const colsTarget = clamp(args.cols ?? 3, 2, 6);
     const topic = (args.topic ?? '').trim() || 'a general overview';
 
+    // Semantic table check: headers must be present, distinct, and
+    // non-trivial. Catches the model returning ["Column 1", "Column 2",
+    // "Column 3"] or duplicate headers — both common Llama-1B failure
+    // modes that pass the JSON schema.
+    const semanticTableValidator: Validator<TableJson> = (o) => {
+      const issues: { field: string; text: string; reason: string }[] = [];
+      const heads = (o.headers ?? []).map((h) => (h ?? '').trim());
+      if (heads.length < 2) {
+        issues.push({
+          field: 'headers',
+          text: heads.join(', '),
+          reason: 'has fewer than 2 columns',
+        });
+      }
+      const seen = new Set<string>();
+      heads.forEach((h, i) => {
+        if (!h) {
+          issues.push({ field: `headers[${i}]`, text: '', reason: 'is empty' });
+          return;
+        }
+        const lower = h.toLowerCase();
+        if (seen.has(lower)) {
+          issues.push({
+            field: `headers[${i}]`,
+            text: h,
+            reason: 'duplicates an earlier header',
+          });
+        }
+        seen.add(lower);
+        if (/^column\s*\d+$/i.test(h) || /^col\s*\d+$/i.test(h)) {
+          issues.push({
+            field: `headers[${i}]`,
+            text: h,
+            reason: 'is a generic "Column N" placeholder — give it a meaningful name',
+          });
+        }
+      });
+      const rows = o.rows ?? [];
+      if (rows.length === 0) {
+        issues.push({ field: 'rows', text: '', reason: 'is empty — give at least one data row' });
+      }
+      return issues;
+    };
     let table: TableJson;
     try {
-      table = await runJsonChat<TableJson>(
+      table = await runJsonChatWithValidation<TableJson>(
         [
           { role: 'system', content: buildSystemPrompt(rowsTarget, colsTarget) },
           { role: 'user', content: `Topic: ${topic}` },
         ],
-        { schema: TABLE_SCHEMA, maxTokens: 600, temperature: 0.3, signal: ctx.signal }
+        {
+          schema: TABLE_SCHEMA,
+          maxTokens: 600,
+          temperature: 0.3,
+          signal: ctx.signal,
+          validator: combineValidators(
+            noPlaceholderValidator as Validator<TableJson>,
+            semanticTableValidator
+          ),
+        }
       );
     } catch (err) {
       return {

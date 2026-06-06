@@ -22,8 +22,13 @@
  */
 
 import { Fragment } from 'prosemirror-model';
-import { runJsonChat } from '../jsonMode';
 import { stripModelPreamble } from '../stripPreamble';
+import {
+  combineValidators,
+  noPlaceholderValidator,
+  runJsonChatWithValidation,
+  type Validator,
+} from '../validateAndRetry';
 import type { Tool, ToolResult } from './types';
 
 export interface TranslateArgs {
@@ -97,9 +102,26 @@ export const translateRangeTool: Tool<TranslateArgs> = {
       `Return ONLY a JSON object: {"translation": "<the translation>"}. ` +
       `No commentary, no quotation marks around the whole reply.`;
 
+    // Semantic translation check: must be non-empty AND not the same
+    // string as the source (a verbatim echo means the model failed to
+    // translate). Doesn't catch wrong-language output — that's a
+    // model-quality issue beyond a deterministic regex's reach.
+    const semanticTranslateValidator: Validator<{ translation: string }> = (o) => {
+      const t = (o.translation ?? '').trim();
+      if (!t) return [{ field: 'translation', text: '', reason: 'is empty' }];
+      if (t === selection.trim())
+        return [
+          {
+            field: 'translation',
+            text: t.slice(0, 60),
+            reason: 'is identical to the source — model did not translate',
+          },
+        ];
+      return [];
+    };
     let out: { translation: string };
     try {
-      out = await runJsonChat<{ translation: string }>(
+      out = await runJsonChatWithValidation<{ translation: string }>(
         [
           { role: 'system', content: system },
           { role: 'user', content: selection },
@@ -109,6 +131,10 @@ export const translateRangeTool: Tool<TranslateArgs> = {
           maxTokens: Math.min(768, Math.ceil(selection.length * 1.6) + 64),
           temperature: 0.2,
           signal: ctx.signal,
+          validator: combineValidators(
+            noPlaceholderValidator as Validator<{ translation: string }>,
+            semanticTranslateValidator
+          ),
         }
       );
     } catch (err) {

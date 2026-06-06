@@ -11,8 +11,13 @@
 
 import { Fragment } from 'prosemirror-model';
 import { summariseDocStructure } from '../docContext';
-import { runJsonChat } from '../jsonMode';
 import { stripModelPreamble } from '../stripPreamble';
+import {
+  combineValidators,
+  noPlaceholderValidator,
+  runJsonChatWithValidation,
+  type Validator,
+} from '../validateAndRetry';
 import type { Tool, ToolResult } from './types';
 
 export interface RewriteArgs {
@@ -79,9 +84,25 @@ ${docContext}
 Preserve the original language, proper nouns, and any inline structure (bullets stay bullets).
 Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no markdown>"}.`;
 
+    // Per-tool semantic check on top of the universal no-placeholder
+    // pass: the rewrite must be non-empty AND not byte-identical to
+    // the original (a verbatim echo means the model didn't rewrite).
+    const semanticRewriteValidator: Validator<{ rewrite: string }> = (o) => {
+      const r = (o.rewrite ?? '').trim();
+      if (!r) return [{ field: 'rewrite', text: '', reason: 'is empty' }];
+      if (r === selection.trim())
+        return [
+          {
+            field: 'rewrite',
+            text: r.slice(0, 60),
+            reason: 'is identical to the input — no actual rewrite happened',
+          },
+        ];
+      return [];
+    };
     let out: { rewrite: string };
     try {
-      out = await runJsonChat<{ rewrite: string }>(
+      out = await runJsonChatWithValidation<{ rewrite: string }>(
         [
           { role: 'system', content: system.trim() },
           { role: 'user', content: `Original:\n\n${selection}` },
@@ -91,6 +112,10 @@ Return ONLY a JSON object: {"rewrite": "<the rewritten text, plain prose, no mar
           maxTokens: Math.min(512, Math.ceil(selection.length * 1.4) + 64),
           temperature: 0.4,
           signal: ctx.signal,
+          validator: combineValidators(
+            noPlaceholderValidator as Validator<{ rewrite: string }>,
+            semanticRewriteValidator
+          ),
         }
       );
     } catch (err) {
