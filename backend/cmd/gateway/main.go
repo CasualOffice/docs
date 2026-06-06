@@ -37,6 +37,7 @@ import (
 
 	"github.com/schnsrw/docx/backend/internal/host"
 	"github.com/schnsrw/docx/backend/internal/host/inline"
+	"github.com/schnsrw/docx/backend/internal/host/local"
 	"github.com/schnsrw/docx/backend/internal/limit"
 	"github.com/schnsrw/docx/backend/internal/room"
 	"github.com/schnsrw/docx/backend/internal/yws"
@@ -179,7 +180,7 @@ func writeJSONError(w http.ResponseWriter, status int, code, msg string) {
 // uploadHandler accepts a multipart .docx upload, hands the
 // bytes to the inline store, and returns the freshly-minted
 // docId + the share URL.
-func uploadHandler(store *inline.Store) http.HandlerFunc {
+func uploadHandler(store host.DocStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method", "POST required")
@@ -264,7 +265,7 @@ func uploadHandler(store *inline.Store) http.HandlerFunc {
 // Cross-peer sync is the client's job — the React layer also
 // writes the new name into the shared Y.Doc's meta map so live
 // peers see it without polling the server.
-func renameHandler(store *inline.Store) http.HandlerFunc {
+func renameHandler(store host.DocStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method", "PATCH required")
@@ -306,7 +307,7 @@ func renameHandler(store *inline.Store) http.HandlerFunc {
 	}
 }
 
-func downloadHandler(store *inline.Store) http.HandlerFunc {
+func downloadHandler(store host.DocStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method", "GET required")
@@ -365,7 +366,7 @@ func docIDFromHistoryPath(path string) string {
 // the version-history panel may poll it. Content-revert to a past
 // revision is NOT supported here (needs the M2 serializer worker +
 // per-revision blob storage); this endpoint is metadata only.
-func historyHandler(store *inline.Store) http.HandlerFunc {
+func historyHandler(store host.DocStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method", "GET required")
@@ -576,8 +577,38 @@ func withCORS(next http.Handler) http.Handler {
 	})
 }
 
+// selectStore picks the concrete host implementation from env at
+// startup. GATEWAY_HOST=local routes through the filesystem store
+// (docs persist across restart) under CASUAL_LOCAL_PATH; anything
+// else falls back to inline (in-memory). Returning host.DocStore
+// keeps every handler downstream host-agnostic.
+func selectStore() (host.DocStore, error) {
+	kind := strings.ToLower(strings.TrimSpace(os.Getenv("GATEWAY_HOST")))
+	switch kind {
+	case "", "inline":
+		log.Printf("host: inline (in-memory; docs lost on restart)")
+		return inline.New(), nil
+	case "local":
+		path := os.Getenv("CASUAL_LOCAL_PATH")
+		if path == "" {
+			path = "/data"
+		}
+		s, err := local.New(path)
+		if err != nil {
+			return nil, fmt.Errorf("init local host at %q: %w", path, err)
+		}
+		log.Printf("host: local (filesystem) rooted at %s", s.Root())
+		return s, nil
+	default:
+		return nil, fmt.Errorf("unknown GATEWAY_HOST=%q (expected inline | local)", kind)
+	}
+}
+
 func main() {
-	store := inline.New()
+	store, err := selectStore()
+	if err != nil {
+		log.Fatalf("host init: %v", err)
+	}
 
 	// MAX_ROOMS caps concurrent open docs. Default 256 matches the
 	// sheets equivalent (Stream C2 of the production-readiness

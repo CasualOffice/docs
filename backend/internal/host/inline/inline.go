@@ -59,24 +59,12 @@ type entry struct {
 	revisions []RevisionMeta
 }
 
-// RevisionMeta is one entry in a doc's save history. Exported so the
-// gateway's history handler can serialize it directly.
-type RevisionMeta struct {
-	// Version is the monotonic save counter (matches entry.version
-	// at the time the revision was recorded).
-	Version uint64 `json:"version"`
-	// SavedAt is when this revision was recorded (doc creation for
-	// version 1, Snapshot time thereafter).
-	SavedAt time.Time `json:"savedAt"`
-	// SizeBytes is the .docx byte length at this revision. Lets the
-	// UI show a rough "how big was the doc then" without fetching.
-	SizeBytes int `json:"sizeBytes"`
-	// Author is the display name of whoever triggered the save, when
-	// known. The inline (anonymous) host leaves this empty; a future
-	// authenticated host populates it. JSON-omitted when empty so the
-	// client can fall back to a generic "Saved" label.
-	Author string `json:"author,omitempty"`
-}
+// RevisionMeta is a type alias for the shared host.RevisionMeta so
+// callers (gateway handlers, tests) that reference inline.RevisionMeta
+// still compile after the type was promoted to the host package. The
+// shared type lets every backend (inline, local, future remote) emit
+// the same wire shape from History.
+type RevisionMeta = host.RevisionMeta
 
 // maxRevisions caps the per-doc revision log. 100 save cycles is far
 // past any realistic share-link session; the oldest entries roll off.

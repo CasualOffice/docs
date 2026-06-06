@@ -23,7 +23,47 @@ package host
 import (
 	"context"
 	"errors"
+	"time"
 )
+
+// RevisionMeta is one entry in a doc's save history. Lives in the
+// shared host package so every concrete implementation (inline,
+// local, future wopi / s3 / postgres) emits the same wire shape,
+// and the gateway's history handler can serialize it without per-
+// impl branching.
+type RevisionMeta struct {
+	// Version is the monotonic save counter at the time this
+	// revision was recorded.
+	Version uint64 `json:"version"`
+	// SavedAt is when this revision was recorded (doc creation for
+	// version 1, Snapshot time thereafter).
+	SavedAt time.Time `json:"savedAt"`
+	// SizeBytes is the .docx byte length at this revision.
+	SizeBytes int `json:"sizeBytes"`
+	// Author is the display name of whoever triggered the save,
+	// when known. Anonymous hosts (inline, local) leave this
+	// empty; an authenticated host populates it. JSON-omitted
+	// when empty so clients can render a generic "Saved" label.
+	Author string `json:"author,omitempty"`
+}
+
+// DocStore is the superset of host.Integration that the gateway
+// uses directly: upload + persistence + history + rename. Every
+// concrete store (inline, local, future remote backends) implements
+// this so cmd/gateway/main.go can pick one at startup from an env
+// var and pass it through to every handler without type-switching.
+type DocStore interface {
+	Integration
+
+	// Store ingests freshly-uploaded bytes and returns a new docId.
+	Store(fileName string, contents []byte) (string, error)
+
+	// Rename updates the user-visible filename for an existing doc.
+	Rename(docID, newName string) error
+
+	// History returns the revision-metadata log oldest-first.
+	History(docID string) ([]RevisionMeta, error)
+}
 
 // FileInfo carries the metadata the gateway needs about a doc
 // beyond its raw bytes. Hosts that don't expose all fields can

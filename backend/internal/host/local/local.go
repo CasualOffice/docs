@@ -39,23 +39,16 @@ import (
 	"github.com/schnsrw/docx/backend/internal/host"
 )
 
-// RevisionMeta is one entry in the per-doc revision log. Mirrors
-// the inline host's shape so the gateway's history handler can
-// switch between implementations without per-type code.
-type RevisionMeta struct {
-	Version   uint64    `json:"version"`
-	SavedAt   time.Time `json:"savedAt"`
-	SizeBytes int       `json:"sizeBytes"`
-}
-
 // docMeta is the JSON sidecar persisted alongside each .docx. The
 // shape is intentionally small so it loads in microseconds even on
-// a directory with thousands of docs.
+// a directory with thousands of docs. Revision entries use the
+// shared host.RevisionMeta so the gateway's history handler can
+// serialize them without per-store branching.
 type docMeta struct {
-	FileName  string         `json:"fileName"`
-	Version   uint64         `json:"version"`
-	SavedAt   time.Time      `json:"savedAt"`
-	Revisions []RevisionMeta `json:"revisions"`
+	FileName  string              `json:"fileName"`
+	Version   uint64              `json:"version"`
+	SavedAt   time.Time           `json:"savedAt"`
+	Revisions []host.RevisionMeta `json:"revisions"`
 }
 
 // maxRevisions matches the inline cap. Once a doc has 100 saves
@@ -112,7 +105,7 @@ func (s *Store) Store(fileName string, contents []byte) (string, error) {
 		FileName: fileName,
 		Version:  1,
 		SavedAt:  now,
-		Revisions: []RevisionMeta{
+		Revisions: []host.RevisionMeta{
 			{Version: 1, SavedAt: now, SizeBytes: len(contents)},
 		},
 	}
@@ -180,7 +173,7 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	}
 	meta.Version++
 	meta.SavedAt = now
-	meta.Revisions = append(meta.Revisions, RevisionMeta{
+	meta.Revisions = append(meta.Revisions, host.RevisionMeta{
 		Version:   meta.Version,
 		SavedAt:   now,
 		SizeBytes: len(contents),
@@ -196,9 +189,30 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	return nil
 }
 
+// Rename updates the stored fileName so a subsequent /download
+// surfaces the new name in the Content-Disposition header. Does
+// not touch revision history — file renames aren't an edit.
+// Returns ErrNotFound if the doc isn't known.
+func (s *Store) Rename(docID, newName string) error {
+	if newName == "" {
+		return errors.New("local: rename to empty name")
+	}
+	if !safeDocID.MatchString(docID) {
+		return host.ErrNotFound
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	meta, err := s.readMeta(docID)
+	if err != nil {
+		return err
+	}
+	meta.FileName = newName
+	return s.writeMetaAtomic(docID, meta)
+}
+
 // History returns the revision-metadata log for docID, oldest-first.
 // Returns host.ErrNotFound for an unknown doc.
-func (s *Store) History(docID string) ([]RevisionMeta, error) {
+func (s *Store) History(docID string) ([]host.RevisionMeta, error) {
 	if !safeDocID.MatchString(docID) {
 		return nil, host.ErrNotFound
 	}
@@ -208,7 +222,7 @@ func (s *Store) History(docID string) ([]RevisionMeta, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([]RevisionMeta, len(meta.Revisions))
+	out := make([]host.RevisionMeta, len(meta.Revisions))
 	copy(out, meta.Revisions)
 	return out, nil
 }
