@@ -583,6 +583,39 @@ func withCORS(next http.Handler) http.Handler {
 // (docs persist across restart) under CASUAL_LOCAL_PATH; anything
 // else falls back to inline (in-memory). Returning host.DocStore
 // keeps every handler downstream host-agnostic.
+// peruserAdapter is the thin glue between the personal.FileLister
+// interface (which doesn't know about local) and local.PerUserStores
+// (which doesn't know about personal). Keeps the two packages
+// independent.
+type peruserAdapter struct {
+	stores *local.PerUserStores
+}
+
+// ListFor returns the user's docs as personal.FileSummary slices.
+// time.Time -> RFC3339 string happens at this seam so the personal
+// package can stay free of host-side type deps.
+func (a *peruserAdapter) ListFor(userID string) ([]personal.FileSummary, error) {
+	s, err := a.stores.For(userID)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := s.List(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]personal.FileSummary, len(raw))
+	for i, r := range raw {
+		out[i] = personal.FileSummary{
+			DocID:    r.DocID,
+			FileName: r.FileName,
+			Version:  r.Version,
+			SavedAt:  r.SavedAt.UTC().Format(time.RFC3339),
+			Size:     r.Size,
+		}
+	}
+	return out, nil
+}
+
 func selectStore() (host.DocStore, error) {
 	kind := strings.ToLower(strings.TrimSpace(os.Getenv("GATEWAY_HOST")))
 	switch kind {
@@ -675,9 +708,24 @@ func main() {
 			log.Fatalf("auth: build session signer: %v", err)
 		}
 		secure := strings.EqualFold(os.Getenv("SECURE_COOKIES"), "true")
+
+		// Per-user file scoping (Batch 3) — separate manager from the
+		// single-tenant `store` above so the legacy /api/docs/* path
+		// stays untouched. Each user lands under
+		// <authRoot>/users/<userID>/, with the docx + meta layout the
+		// single-tenant local host already uses. Mounted unconditionally
+		// alongside personal auth because the per-user dirs are cheap
+		// to create lazily and the FS layout is identical to the local
+		// host's.
+		perUser, err := local.NewPerUserStores(authRoot)
+		if err != nil {
+			log.Fatalf("auth: per-user stores at %q: %v", authRoot, err)
+		}
+
 		(&personal.Handlers{
 			Users:   users,
 			Session: sess,
+			Files:   &peruserAdapter{stores: perUser},
 			Secure:  secure,
 		}).Routes(mux)
 		log.Printf("auth: personal mode mounted (secure cookies = %v, root = %s)", secure, authRoot)

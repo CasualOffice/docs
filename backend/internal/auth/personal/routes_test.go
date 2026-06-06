@@ -232,6 +232,84 @@ func TestSecureCookieNamePrefix(t *testing.T) {
 }
 
 // ---------------------------------------------------------------
+// GET /files
+// ---------------------------------------------------------------
+
+// fakeFiles is an in-memory FileLister for the /files tests.
+type fakeFiles struct {
+	byUser map[string][]FileSummary
+}
+
+func (f *fakeFiles) ListFor(userID string) ([]FileSummary, error) {
+	return f.byUser[userID], nil
+}
+
+// TestFiles_RequiresSession — without a cookie, /files returns 401.
+func TestFiles_RequiresSession(t *testing.T) {
+	srv := newTestServer(t)
+	srv.h.Files = &fakeFiles{}
+	srv.mux = http.NewServeMux()
+	srv.h.Routes(srv.mux)
+	srv.srv = httptest.NewServer(srv.mux)
+	defer srv.close()
+
+	resp := srv.get("/files", "")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", resp.StatusCode)
+	}
+}
+
+// TestFiles_ReturnsUserScopedList — after signup + login, /files
+// returns the file list scoped to the authenticated user.
+func TestFiles_ReturnsUserScopedList(t *testing.T) {
+	srv := newTestServer(t)
+	// Wire the fake source AFTER signup so the user exists first.
+	srv.h.Files = &fakeFiles{byUser: map[string][]FileSummary{}}
+	srv.mux = http.NewServeMux()
+	srv.h.Routes(srv.mux)
+	srv.srv = httptest.NewServer(srv.mux)
+	defer srv.close()
+
+	signup := srv.post("/auth/signup", `{"email":"hank@example.com","password":"passw0rd!"}`)
+	cookie := extractSessionCookie(t, signup)
+
+	// Parse the user id out of the signup response so we can seed
+	// the fake lister for THAT id.
+	var u User
+	mustDecode(t, signup.Body, &u)
+	srv.h.Files = &fakeFiles{
+		byUser: map[string][]FileSummary{
+			u.ID: {{DocID: "abc", FileName: "report.docx", Version: 1, SavedAt: "2026-01-01T00:00:00Z", Size: 42}},
+		},
+	}
+	// Re-mount /files so the new lister is picked up.
+	srv.mux = http.NewServeMux()
+	srv.h.Routes(srv.mux)
+	srv.srv.Config.Handler = srv.mux
+
+	resp := srv.get("/files", cookie)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var got []FileSummary
+	mustDecode(t, resp.Body, &got)
+	if len(got) != 1 || got[0].FileName != "report.docx" {
+		t.Errorf("got %+v", got)
+	}
+}
+
+// TestFiles_NilListerOmitsRoute — when Files is nil, GET /files
+// returns 404 from the mux (route not registered).
+func TestFiles_NilListerOmitsRoute(t *testing.T) {
+	srv := newTestServer(t)
+	defer srv.close()
+	resp := srv.get("/files", "")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want 404 when Files lister isn't wired", resp.StatusCode)
+	}
+}
+
+// ---------------------------------------------------------------
 // Test harness
 // ---------------------------------------------------------------
 

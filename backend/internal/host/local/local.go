@@ -33,6 +33,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -208,6 +210,65 @@ func (s *Store) Rename(docID, newName string) error {
 	}
 	meta.FileName = newName
 	return s.writeMetaAtomic(docID, meta)
+}
+
+// Summary is the public-facing shape returned by List — one entry
+// per doc. Big-payload fields (revision log, full meta) are
+// intentionally omitted so a `/files` response stays small even on
+// users with thousands of docs.
+type Summary struct {
+	DocID    string    `json:"docId"`
+	FileName string    `json:"fileName"`
+	Version  uint64    `json:"version"`
+	SavedAt  time.Time `json:"savedAt"`
+	Size     int64     `json:"size"`
+}
+
+// List enumerates every doc under the store's root, returning a
+// summary per entry. Sorted by SavedAt descending so the most
+// recently edited doc lands at the top of a `/files` list without
+// the client needing to sort. Empty root returns an empty slice
+// (not an error).
+func (s *Store) List(_ context.Context) ([]Summary, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entries, err := os.ReadDir(s.root)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("local: read root: %w", err)
+	}
+	out := make([]Summary, 0, len(entries))
+	for _, e := range entries {
+		name := e.Name()
+		const suffix = ".meta.json"
+		if !strings.HasSuffix(name, suffix) {
+			continue
+		}
+		docID := strings.TrimSuffix(name, suffix)
+		meta, err := s.readMeta(docID)
+		if err != nil {
+			slog.Warn("local: skip unreadable meta during List", "docId", docID, "err", err)
+			continue
+		}
+		info, err := os.Stat(s.docxPath(docID))
+		if err != nil {
+			slog.Warn("local: skip meta without docx during List", "docId", docID, "err", err)
+			continue
+		}
+		out = append(out, Summary{
+			DocID:    docID,
+			FileName: meta.FileName,
+			Version:  meta.Version,
+			SavedAt:  meta.SavedAt,
+			Size:     info.Size(),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].SavedAt.After(out[j].SavedAt)
+	})
+	return out, nil
 }
 
 // History returns the revision-metadata log for docID, oldest-first.

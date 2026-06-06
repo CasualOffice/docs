@@ -33,12 +33,39 @@ func UserFromContext(ctx context.Context) (User, bool) {
 	return u, ok
 }
 
-// Handlers bundles the wire dependencies for the four routes. Built
-// once in main(), wired into the same mux that owns the upload /
-// download paths.
+// FileLister returns a per-user file summary list. The personal
+// routes use this through PerUserFiles to keep the routes package
+// from depending on host/local directly (avoids an import cycle if
+// later batches let local depend on auth/personal).
+type FileLister interface {
+	ListFor(userID string) ([]FileSummary, error)
+}
+
+// FileSummary is the wire shape returned by GET /files. Mirrors
+// local.Summary but lives in this package so the routes file can
+// reference it without importing host/local.
+type FileSummary struct {
+	DocID    string `json:"docId"`
+	FileName string `json:"fileName"`
+	Version  uint64 `json:"version"`
+	// SavedAt as RFC3339 string — the personal package shouldn't
+	// take a time.Time dep here; the local-side conversion handles
+	// formatting.
+	SavedAt string `json:"savedAt"`
+	Size    int64  `json:"size"`
+}
+
+// Handlers bundles the wire dependencies for the auth + files
+// routes. Built once in main(), wired into the same mux that owns
+// the upload / download paths.
 type Handlers struct {
 	Users   *UserStore
 	Session *Session
+	// Files, when non-nil, mounts GET /files behind RequireAuth so
+	// the calling user can enumerate their docs. Optional — a deploy
+	// that uses personal auth purely for an external host (WOPI etc.)
+	// can leave this nil and skip the route.
+	Files FileLister
 	// Secure flips Set-Cookie's `Secure` flag + the `__Host-` prefix
 	// on the cookie name. Operators set this true for production
 	// HTTPS deploys and false for localhost / docker-compose dev.
@@ -48,14 +75,42 @@ type Handlers struct {
 	Secure bool
 }
 
-// Routes registers the four endpoints on the given mux. Idempotent
-// per process — the standard mux panics on double-register, which is
-// the right failure mode (a duplicate call is a programming bug).
+// Routes registers the auth endpoints on the given mux. When
+// Handlers.Files is set, GET /files (auth-gated) lands too.
+// Idempotent per process — the standard mux panics on double-
+// register, which is the right failure mode (a duplicate call is a
+// programming bug).
 func (h *Handlers) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /auth/signup", h.Signup)
 	mux.HandleFunc("POST /auth/login", h.Login)
 	mux.HandleFunc("POST /auth/logout", h.Logout)
 	mux.HandleFunc("GET /auth/me", h.Me)
+	if h.Files != nil {
+		mux.Handle("GET /files", h.RequireAuth(http.HandlerFunc(h.ListFiles)))
+	}
+}
+
+// ListFiles returns the calling user's doc list. Mounted only when
+// Handlers.Files is non-nil. RequireAuth has already resolved the
+// User onto the request context.
+func (h *Handlers) ListFiles(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	list, err := h.Files.ListFor(u.ID)
+	if err != nil {
+		slog.Error("list files failed", "userId", u.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "internal", "list failed")
+		return
+	}
+	// Always return an array (never null) so the web client doesn't
+	// need a null-check before mapping.
+	if list == nil {
+		list = []FileSummary{}
+	}
+	writeJSON(w, http.StatusOK, list)
 }
 
 // ---------------------------------------------------------------
