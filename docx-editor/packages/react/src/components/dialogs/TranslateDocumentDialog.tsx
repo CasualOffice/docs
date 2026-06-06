@@ -258,6 +258,12 @@ export function TranslateDocumentDialog({
   const [liveChunkState, setLiveChunkState] = useState<ChunkTranslationState | null>(null);
   const [exporting, setExporting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // Translation does NOT start automatically when the dialog opens.
+  // The user picks source + target, then clicks Translate. Avoids the
+  // surprise-pop where opening the dialog kicked off an English→Spanish
+  // run nobody asked for AND froze the tab on long docs while WebLLM
+  // warmed up.
+  const [hasStarted, setHasStarted] = useState(false);
 
   // Capture the original buffer once on open so the left pane stays
   // stable even if the user keeps typing.
@@ -282,10 +288,11 @@ export function TranslateDocumentDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Re-run the translation whenever the target language changes (or
-  // first open with the snapshot already loaded).
+  // Translation runs only after the user explicitly starts it. Changing
+  // source/target post-start re-runs (the user clearly wants the new
+  // pair); changing them PRE-start updates labels only.
   useEffect(() => {
-    if (!isOpen || !originalBuffer) return;
+    if (!isOpen || !originalBuffer || !hasStarted) return;
     const view = getView();
     if (!view) return;
     if (source === target) {
@@ -354,7 +361,7 @@ export function TranslateDocumentDialog({
     })();
 
     return () => controller.abort();
-  }, [isOpen, originalBuffer, source, target, getView, onSave]);
+  }, [isOpen, originalBuffer, source, target, getView, onSave, hasStarted]);
 
   // Reset on close.
   useEffect(() => {
@@ -366,7 +373,10 @@ export function TranslateDocumentDialog({
     setPreviewStatus('idle');
     setPreviewError(null);
     setProgress(null);
+    setChunkInfo(null);
+    setLiveChunkState(null);
     setExporting(false);
+    setHasStarted(false);
     abortRef.current?.abort();
   }, [isOpen]);
 
@@ -479,7 +489,16 @@ export function TranslateDocumentDialog({
           <div style={paneStyle}>
             <div style={paneLabelStyle}>Translation · {targetLangLabel}</div>
             <div style={paneEditorWrapStyle} data-testid="translate-doc-preview-target">
-              {previewStatus === 'loading' && !liveChunkState && (
+              {!hasStarted && previewStatus !== 'error' && (
+                <div style={stateOverlayStyle}>
+                  <PanelState
+                    kind="empty"
+                    message={`Pick a target language and click Translate to render ${targetLangLabel}.`}
+                    hint="Nothing runs until you start — opening this dialog never modifies your document."
+                  />
+                </div>
+              )}
+              {hasStarted && previewStatus === 'loading' && !liveChunkState && (
                 <div style={stateOverlayStyle}>
                   <PanelState
                     kind="loading"
@@ -504,7 +523,7 @@ export function TranslateDocumentDialog({
                   />
                 </div>
               )}
-              {previewStatus === 'loading' && liveChunkState && (
+              {hasStarted && previewStatus === 'loading' && liveChunkState && (
                 <LiveTranslationPreview
                   state={liveChunkState}
                   chunkLabel={
@@ -523,7 +542,11 @@ export function TranslateDocumentDialog({
                     onRetry={() => {
                       setPreviewStatus('idle');
                       setPreviewError(null);
-                      setSource((s) => s);
+                      // Re-arm the user gate so the dialog returns to
+                      // the "Pick language + click Translate" idle
+                      // state. Avoids automatically re-firing the same
+                      // failing run.
+                      setHasStarted(false);
                     }}
                   />
                 </div>
@@ -540,19 +563,49 @@ export function TranslateDocumentDialog({
           <button type="button" style={secondaryBtnStyle} onClick={onClose} disabled={exporting}>
             Close
           </button>
-          <button
-            type="button"
-            style={{
-              ...primaryBtnStyle,
-              opacity: previewStatus === 'ready' && !exporting ? 1 : 0.6,
-              cursor: previewStatus === 'ready' && !exporting ? 'pointer' : 'not-allowed',
-            }}
-            disabled={previewStatus !== 'ready' || exporting || !translatedBuffer}
-            onClick={handleDownload}
-            data-testid="translate-doc-export"
-          >
-            {exporting ? 'Downloading…' : 'Download .docx'}
-          </button>
+          {!hasStarted && previewStatus !== 'ready' && (
+            <button
+              type="button"
+              style={{
+                ...primaryBtnStyle,
+                opacity: originalBuffer && source !== target ? 1 : 0.6,
+                cursor: originalBuffer && source !== target ? 'pointer' : 'not-allowed',
+              }}
+              disabled={!originalBuffer || source === target}
+              onClick={() => setHasStarted(true)}
+              data-testid="translate-doc-start"
+            >
+              {source === target ? 'Pick a different language' : `Translate to ${targetLangLabel}`}
+            </button>
+          )}
+          {hasStarted && previewStatus === 'loading' && (
+            <button
+              type="button"
+              style={secondaryBtnStyle}
+              onClick={() => {
+                abortRef.current?.abort();
+                setHasStarted(false);
+                setPreviewStatus('idle');
+                setProgress(null);
+                setChunkInfo(null);
+                setLiveChunkState(null);
+              }}
+              data-testid="translate-doc-stop"
+            >
+              Stop
+            </button>
+          )}
+          {previewStatus === 'ready' && (
+            <button
+              type="button"
+              style={primaryBtnStyle}
+              disabled={exporting || !translatedBuffer}
+              onClick={handleDownload}
+              data-testid="translate-doc-export"
+            >
+              {exporting ? 'Downloading…' : 'Download .docx'}
+            </button>
+          )}
         </div>
       </div>
     </div>
