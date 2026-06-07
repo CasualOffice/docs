@@ -15,6 +15,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { useAuthContext } from './PersonalAuthGate';
+import { ProfileSettingsDialog } from './ProfileSettingsDialog';
+import type { AuthClient } from './auth-client';
+import type { ProfileWire } from './wire';
 
 export interface UserMenuProps {
   /**
@@ -30,17 +33,32 @@ export interface UserMenuProps {
    */
   onLogout?: () => void;
   /**
+   * Optional AuthClient passed through to the Profile settings
+   * dialog. When omitted the dialog builds its own same-origin
+   * client. Tests inject a mock here so they don't have to wire
+   * page.route() against the real backend.
+   */
+  authClient?: AuthClient;
+  /**
    * Data-testid for E2E tests. Applied to the trigger; the dropdown
    * panel + sign-out button derive their testids from the same root.
    */
   testId?: string;
 }
 
-export function UserMenu({ className, onLogout, testId = 'user-menu' }: UserMenuProps) {
+export function UserMenu({ className, onLogout, authClient, testId = 'user-menu' }: UserMenuProps) {
   const { user, logout } = useAuthContext();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  // Locally-overridden displayName so the trigger updates the moment
+  // the profile dialog saves, without waiting for the gate to
+  // re-probe /auth/me. Falls back to the context's user.displayName
+  // when no override exists.
+  const [displayNameOverride, setDisplayNameOverride] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  const effectiveDisplayName = displayNameOverride ?? user.displayName;
 
   // Close on outside click — mousedown so the dropdown closes before
   // any other click handler fires.
@@ -82,7 +100,15 @@ export function UserMenu({ className, onLogout, testId = 'user-menu' }: UserMenu
     }
   };
 
-  const initials = displayInitials(user.displayName || user.email);
+  const initials = displayInitials(effectiveDisplayName || user.email);
+
+  const handleOpenProfile = () => {
+    setOpen(false);
+    setProfileOpen(true);
+  };
+  const handleProfileSaved = (profile: ProfileWire) => {
+    setDisplayNameOverride(profile.displayName);
+  };
 
   return (
     <div ref={rootRef} style={rootStyle}>
@@ -98,7 +124,7 @@ export function UserMenu({ className, onLogout, testId = 'user-menu' }: UserMenu
         <span style={initialsStyle} aria-hidden="true">
           {initials}
         </span>
-        <span style={triggerLabelStyle}>{user.displayName || user.email}</span>
+        <span style={triggerLabelStyle}>{effectiveDisplayName || user.email}</span>
         <svg
           width="14"
           height="14"
@@ -114,10 +140,19 @@ export function UserMenu({ className, onLogout, testId = 'user-menu' }: UserMenu
       {open && (
         <div role="menu" style={dropdownStyle} data-testid={`${testId}-dropdown`}>
           <div style={dropdownHeaderStyle}>
-            <div style={dropdownNameStyle}>{user.displayName || user.email}</div>
-            {user.displayName && <div style={dropdownEmailStyle}>{user.email}</div>}
+            <div style={dropdownNameStyle}>{effectiveDisplayName || user.email}</div>
+            {effectiveDisplayName && <div style={dropdownEmailStyle}>{user.email}</div>}
           </div>
           <div style={dropdownDividerStyle} />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleOpenProfile}
+            data-testid={`${testId}-profile`}
+            style={menuItemStyle(false)}
+          >
+            Profile settings
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -130,6 +165,12 @@ export function UserMenu({ className, onLogout, testId = 'user-menu' }: UserMenu
           </button>
         </div>
       )}
+      <ProfileSettingsDialog
+        isOpen={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        authClient={authClient}
+        onSaved={handleProfileSaved}
+      />
     </div>
   );
 }

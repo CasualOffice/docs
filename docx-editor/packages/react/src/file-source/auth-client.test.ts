@@ -144,6 +144,59 @@ describe('AuthClient', () => {
     expect(h.calls[0].init?.credentials).toBe('include');
   });
 
+  it('getProfile() GETs /auth/profile and returns the merged view', async () => {
+    const h = makeHarness();
+    h.setRespond(() =>
+      jsonRes(200, {
+        userId: 'user_42',
+        email: 'alex@example.com',
+        displayName: 'Alex',
+        timezone: 'America/Los_Angeles',
+        locale: 'en-US',
+        prefs: { showRulers: true },
+      })
+    );
+    const profile = await h.client.getProfile();
+    expect(h.calls[0].url).toBe('http://gateway.test/auth/profile');
+    expect(h.calls[0].init?.credentials).toBe('include');
+    expect(profile.timezone).toBe('America/Los_Angeles');
+    expect(profile.locale).toBe('en-US');
+  });
+
+  it('updateProfile() PUTs the patch and returns the refreshed view', async () => {
+    const h = makeHarness();
+    h.setRespond(() =>
+      jsonRes(200, {
+        userId: 'user_42',
+        email: 'alex@example.com',
+        displayName: 'Alex Tomato',
+        timezone: 'UTC',
+      })
+    );
+    const result = await h.client.updateProfile({
+      displayName: 'Alex Tomato',
+      timezone: 'UTC',
+    });
+    expect(h.calls[0].url).toBe('http://gateway.test/auth/profile');
+    expect(h.calls[0].init?.method).toBe('PUT');
+    const body = JSON.parse((h.calls[0].init?.body as string) ?? '{}');
+    expect(body).toEqual({ displayName: 'Alex Tomato', timezone: 'UTC' });
+    expect(result.displayName).toBe('Alex Tomato');
+  });
+
+  it('updateProfile() surfaces 400 errors with the code', async () => {
+    const h = makeHarness();
+    h.setRespond(() => jsonRes(400, { code: 'display_name', message: 'empty' }));
+    try {
+      await h.client.updateProfile({ displayName: '' });
+      throw new Error('expected throw');
+    } catch (err) {
+      const e = err as PersonalFileSourceError;
+      expect(e.code).toBe('display_name');
+      expect(e.status).toBe(400);
+    }
+  });
+
   it('falls back to a synthesized error when the body is not JSON', async () => {
     const h = makeHarness();
     h.setRespond(() => new Response('plain html 502', { status: 502 }));

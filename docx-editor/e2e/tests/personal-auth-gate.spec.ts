@@ -213,6 +213,94 @@ test.describe('PersonalAuthGate', () => {
     expect(logoutCalled).toBe(true);
   });
 
+  test('ProfileSettings — opens, loads, saves, updates UserMenu', async ({ page }) => {
+    await mockAuth(page, { signedInAtBoot: true });
+
+    let profileGets = 0;
+    let putBody: Record<string, unknown> | null = null;
+    const profileState = {
+      userId: 'user_42',
+      email: 'alex@example.com',
+      displayName: 'Alex',
+      timezone: 'America/Los_Angeles',
+      locale: 'en-US',
+    };
+    await page.route('**/auth/profile', async (route) => {
+      const req = route.request();
+      if (req.method() === 'GET') {
+        profileGets += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(profileState),
+        });
+      } else if (req.method() === 'PUT') {
+        putBody = JSON.parse(req.postData() ?? '{}');
+        Object.assign(profileState, putBody);
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(profileState),
+        });
+      } else {
+        await route.fallback();
+      }
+    });
+
+    await page.goto('/?e2e=auth-gate');
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('user-menu-profile').click();
+
+    // Dialog opens + GET /auth/profile fires.
+    await expect(page.getByTestId('profile-settings')).toBeVisible();
+    await expect(page.getByTestId('profile-settings-displayname')).toHaveValue('Alex');
+    await expect(page.getByTestId('profile-settings-timezone')).toHaveValue('America/Los_Angeles');
+    expect(profileGets).toBe(1);
+
+    // Edit displayName + timezone, save.
+    await page.getByTestId('profile-settings-displayname').fill('Alex Tomato');
+    await page.getByTestId('profile-settings-timezone').fill('UTC');
+    await page.getByTestId('profile-settings-save').click();
+
+    // Dialog closes + PUT carried the patch + UserMenu updated.
+    await expect(page.getByTestId('profile-settings')).toBeHidden();
+    expect(putBody).toEqual({
+      displayName: 'Alex Tomato',
+      timezone: 'UTC',
+      locale: 'en-US',
+    });
+    await expect(page.getByTestId('user-menu')).toContainText('Alex Tomato');
+  });
+
+  test('ProfileSettings — cancel discards edits', async ({ page }) => {
+    await mockAuth(page, { signedInAtBoot: true });
+    await page.route('**/auth/profile', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            userId: 'u',
+            email: 'alex@example.com',
+            displayName: 'Alex',
+            timezone: 'UTC',
+          }),
+        });
+      } else {
+        // PUT should never fire from this test.
+        await route.fulfill({ status: 500, body: 'should not be called' });
+      }
+    });
+    await page.goto('/?e2e=auth-gate');
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('user-menu-profile').click();
+    await page.getByTestId('profile-settings-displayname').fill('changed-but-cancelled');
+    await page.getByTestId('profile-settings-cancel').click();
+    await expect(page.getByTestId('profile-settings')).toBeHidden();
+    // UserMenu still shows the original name.
+    await expect(page.getByTestId('user-menu')).toContainText('Alex');
+  });
+
   test('UserMenu — outside click closes the dropdown', async ({ page }) => {
     await mockAuth(page, { signedInAtBoot: true });
     await page.goto('/?e2e=auth-gate');

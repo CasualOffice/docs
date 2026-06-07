@@ -29,6 +29,7 @@ export {
   type AuthContextValue,
 } from './PersonalAuthGate';
 export { UserMenu, type UserMenuProps } from './UserMenu';
+export { ProfileSettingsDialog, type ProfileSettingsDialogProps } from './ProfileSettingsDialog';
 export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
 export {
   chooseFileSource,

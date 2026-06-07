@@ -17,7 +17,7 @@
  */
 
 import { PersonalFileSourceError } from './personal';
-import type { ErrorWire, UserWire } from './wire';
+import type { ErrorWire, ProfilePatchWire, ProfileWire, UserWire } from './wire';
 
 export interface AuthClientOptions {
   /**
@@ -94,6 +94,42 @@ export class AuthClient {
    */
   async signup(creds: AuthCredentials): Promise<UserWire> {
     return this.postCredentials('/auth/signup', creds);
+  }
+
+  /**
+   * GET /auth/profile. Returns the merged identity + extended
+   * profile view (timezone, locale, avatarUrl, prefs). Throws on
+   * non-2xx — the gate guarantees a live session at the call site
+   * so 401 here means a session expired mid-flight (rare; treat
+   * as a transient error and re-probe).
+   */
+  async getProfile(): Promise<ProfileWire> {
+    const res = await this.fetchImpl(this.baseUrl + '/auth/profile', {
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      throw await this.errorFrom(res);
+    }
+    return (await res.json()) as ProfileWire;
+  }
+
+  /**
+   * PUT /auth/profile. Fields omitted from `patch` are left
+   * unchanged; explicit empty strings clear the field server-side.
+   * Returns the freshly-merged view so the caller can render the
+   * post-update state without a follow-up GET.
+   */
+  async updateProfile(patch: ProfilePatchWire): Promise<ProfileWire> {
+    const res = await this.fetchImpl(this.baseUrl + '/auth/profile', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      throw await this.errorFrom(res);
+    }
+    return (await res.json()) as ProfileWire;
   }
 
   /**
