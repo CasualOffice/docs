@@ -104,7 +104,10 @@ export async function chooseFileSource(opts: ChooseFileSourceOptions = {}): Prom
   }
 
   const baseUrl = opts.baseUrl ?? '';
-  const fetchImpl = opts.fetchImpl ?? fetch;
+  // Wrap fetch in an arrow so it's not bound to `this` — see the
+  // fetchImpl pattern in personal.ts / wopi.ts.
+  const fetchImpl: typeof fetch =
+    opts.fetchImpl ?? (((input, init) => fetch(input, init)) as typeof fetch);
 
   // 1. WOPI probe — the URL alone is enough to pick this branch.
   //    The token's validity is the gateway's problem; if it's bad,

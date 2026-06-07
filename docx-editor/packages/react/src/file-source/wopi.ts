@@ -101,7 +101,10 @@ export class WopiFileSource implements FileSource {
     this.accessToken = opts.accessToken;
     this.fileName = opts.fileName || opts.docId;
     this.baseUrl = opts.baseUrl ?? '';
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // Wrap fetch in an arrow so it's not bound to `this` — browsers
+    // throw "Illegal invocation" when fetch is called with anything
+    // but window / undefined as the receiver.
+    this.fetchImpl = opts.fetchImpl ?? (((input, init) => fetch(input, init)) as typeof fetch);
     this.label = opts.fileName || 'Embedded document';
     // Scope keyed by docID so two embeds open in two tabs don't
     // share recent-files state.

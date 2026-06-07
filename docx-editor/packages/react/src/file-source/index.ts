@@ -16,6 +16,16 @@ export {
   PersonalFileSourceError,
   type PersonalFileSourceOptions,
 } from './personal';
+export { AuthClient, type AuthClientOptions, type AuthCredentials } from './auth-client';
+export {
+  PersonalAuthGate,
+  PersonalAuthGateModal,
+  usePersonalAuth,
+  type PersonalAuthGateProps,
+  type UsePersonalAuthOptions,
+  type UsePersonalAuthReturn,
+  type AuthState,
+} from './PersonalAuthGate';
 export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
 export {
   chooseFileSource,

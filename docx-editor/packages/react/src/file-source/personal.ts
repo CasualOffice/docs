@@ -74,7 +74,10 @@ export class PersonalFileSource implements FileSource {
 
   constructor(opts: PersonalFileSourceOptions) {
     this.baseUrl = opts.baseUrl ?? '';
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // Wrap fetch in an arrow so it's not bound to `this` — browsers
+    // throw "Illegal invocation" when fetch is called with anything
+    // but window / undefined as the receiver.
+    this.fetchImpl = opts.fetchImpl ?? (((input, init) => fetch(input, init)) as typeof fetch);
     this.label = opts.user.displayName || 'My files';
     // Scoped per (kind, userId) so the recent-files cache survives
     // user-switching on the same browser without leaking.

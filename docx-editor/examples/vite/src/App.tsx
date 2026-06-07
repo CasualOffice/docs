@@ -11,6 +11,7 @@ import { ShareDialog } from './collab/Share';
 import { LoadingPanel } from './collab/LoadingPanel';
 import { ErrorPanel } from './collab/ErrorPanel';
 import { DisconnectedBanner } from './collab/DisconnectedBanner';
+import { PersonalAuthGate } from '@eigenpal/docx-js-editor';
 import { Home } from './Home';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
@@ -124,7 +125,40 @@ function useResponsiveLayout() {
   return { zoom, isMobile };
 }
 
+/**
+ * `?e2e=auth-gate` mounts the PersonalAuthGate around a placeholder
+ * editor surface so the spec at e2e/tests/personal-auth-gate.spec.ts
+ * can exercise the login / signup flow against mocked /auth endpoints.
+ * The branch returns early so none of the editor scaffolding boots —
+ * the spec only needs the modal + the post-auth handoff target.
+ */
+function isAuthGateE2E(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('e2e') === 'auth-gate';
+}
+
+function AuthGateE2E() {
+  return (
+    <PersonalAuthGate>
+      <div
+        data-testid="signed-in-content"
+        style={{
+          padding: 32,
+          fontSize: 18,
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        Signed in
+      </div>
+    </PersonalAuthGate>
+  );
+}
+
 export function App() {
+  if (isAuthGateE2E()) {
+    return <AuthGateE2E />;
+  }
+
   const randomAuthor = useMemo(
     () => `Docx Editor User ${Math.floor(Math.random() * 900) + 100}`,
     []
