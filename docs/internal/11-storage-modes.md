@@ -113,41 +113,95 @@ else just imports `useFileSource()` from `packages/react/src/file-source/context
 
 ### What exists today
 
-- The host abstraction is there (`backend/internal/host/host.go`) and
-  the `wopi` backend is listed as the planned v1 implementation in
-  `05-backend-design.md`.
-- The y-websocket gateway already speaks the protocol the WOPI host
-  would seed Y.Docs from.
+- ✅ `backend/internal/host/wopi/wopi.go` (`9185671`, D1) — WOPI
+  HTTP client implementing `host.Integration`. CheckFileInfo +
+  GetFile + PutFile. `docID = base64url(wopiSrc)` keeps the gateway
+  stateless. `DocStoreAdapter` satisfies `host.DocStore` (Store/
+  Rename/History stub to "not supported in WOPI mode").
+  Status mapping: 401/403→`ErrForbidden`, 404→`ErrNotFound`,
+  409/412→`ErrConflict`.
+- ✅ `backend/internal/auth/wopi/verifier.go` (`9185671`, D1) — JWT
+  verifier with JWKS fetch + 5-min cache. RS256/384/512 +
+  ES256/384/521 accepted; HS\* rejected (alg-confusion defence).
+  `ExpirationRequired`. Out-of-band JWKS refetch on unknown kid so
+  hosts can rotate keys without restarting the gateway.
+- ✅ `GET /wopi/host` redirect handler (`ccbd9a7`, D2) — the embed
+  entry point. Takes `wopiSrc=<url>&access_token=<JWT>`, verifies
+  the JWT against the configured JWKS, 303s to
+  `/doc/{base64(wopiSrc)}?access_token=<JWT>`. Mounted when
+  `CASUAL_WOPI_JWKS_URL` env is set; otherwise the route 404s.
+- ✅ Access-token threading (`ccbd9a7` D2 + `e43d232` D3) — the WS
+  preflight + the `/api/docs/{id}/download` handler both read
+  `access_token` from the request URL and pass it to
+  `store.Fetch`. Inline + local ignore the token; WOPI uses it for
+  the outbound host call.
+- ✅ `WopiFileSource` (`e43d232`, D3) — TS file-source. Open()
+  proxies through `/api/docs/{id}/download?access_token=…`; list()
+  returns the single embedded doc; save/rename/delete throw
+  `WopiNotSupportedError`. Wired through the `chooseFileSource`
+  probe (WOPI → Personal → Browser order).
+- ✅ Lock primitives (`bfc5e4b`, D4) — `host.Locker` capability
+  interface; WOPI client implements Lock/Unlock/RefreshLock with
+  `X-WOPI-Override` + `X-WOPI-Lock` headers. Room manager claims
+  the lock on first client join (with the joiner's authToken +
+  a freshly-minted lockID), releases it on drain.
+- ✅ RefreshLock ticker (`bd4a2b1`, D5) — per-room goroutine fires
+  `RefreshLock` every 10 min (`WithRefreshLockInterval` overrides;
+  0 disables). Stops cleanly on drain so the next tick doesn't
+  race the release and 409 the host.
 
-### What's planned
+### Wire shape recap
 
-1. **`backend/internal/host/wopi/wopi.go`** — implements `host.DocStore`:
-   - `CheckFileInfo` → maps to `Fetch` returning `FileInfo{ FileName,
-     Version, UserCanWrite }`. The version becomes the etag the gateway
-     hands back to the host on save.
-   - `GetFile` (`GET /wopi/files/{id}/contents`) → the `.docx` bytes.
-   - `PutFile` (`POST /wopi/files/{id}/contents`) → snapshot on room
-     drain. Carries `X-WOPI-Lock` if the host locked the file.
-   - 401 / 409 / 412 paths map to `host.ErrForbidden` / `host.ErrConflict`
-     so the gateway's WS close codes stay consistent.
-2. **`GET /wopi/host` redirect** — the embed surface. Takes
-   `wopiSrc=<base64 url>` + `access_token=<jwt>` query params, lands
-   the user inside the editor with the host's identity already in
-   memory.
-3. **JWT verification** — `backend/internal/auth/wopi.go` parses + validates
-   the token against the host's published JWK set. Cached for 5 min
-   matching WOPI proof-key conventions.
+```
+WOPI host                       Casual gateway                   Browser
+─────────                       ──────────────                   ───────
+                ←─── click "Open in editor" ───
+GET /wopi/host?wopiSrc=…&access_token=<JWT> ─→ verify JWT against JWKS
+                                              encode docID = base64url(wopiSrc)
+                                              303 → /doc/{docID}?access_token=<JWT>
+                                              ──────────────────────────→ open SPA
+                                              ←── WS /doc/{docID}?access_token=<JWT> ──
+                            store.Fetch(ctx, docID, token):
+                              GET wopiSrc?access_token=…  (CheckFileInfo)
+                              GET wopiSrc/contents?access_token=…  (GetFile)
+                            room manager: locker.Lock(ctx, docID, lockID, token)
+                              POST wopiSrc?access_token=…
+                              X-WOPI-Override: LOCK
+                              X-WOPI-Lock: <lockID>
+                            (every 10 min)
+                              POST wopiSrc?access_token=…
+                              X-WOPI-Override: REFRESH_LOCK
+                              X-WOPI-Lock: <lockID>
+              ←── y-prosemirror sync frames ─→
+                            (last client leaves)
+                            locker.Unlock(ctx, docID, lockID, token)
+                              POST wopiSrc?access_token=…
+                              X-WOPI-Override: UNLOCK
+                              X-WOPI-Lock: <lockID>
+```
 
-### Open questions
+### Env knobs
 
-- **Lock semantics**. WOPI hosts can lock files (`LOCK` / `UNLOCK` /
-  `REFRESH_LOCK`). For a y-websocket-backed editor, the natural
-  acquisition point is room create; releasing on room drain is
-  straightforward, refresh is an open question.
-- **Co-editing across hosts**. If two WOPI hosts integrate against
-  the same y-websocket gateway, can two of their users be in the
-  same room? Open. Default to "no, room per host" until a real use
-  case appears.
+- `GATEWAY_HOST=wopi` — picks the WOPI client backend in
+  `selectStore()`.
+- `CASUAL_WOPI_JWKS_URL=<url>` — host's published JWKS endpoint.
+  Required to mount `/wopi/host`; without it the route 404s.
+
+### Deferred
+
+- **Snapshot-on-drain content** — the room manager has the
+  authToken + lockID threaded through and would call
+  `host.Snapshot(...)` if it had `.docx` bytes, but the Y.Doc →
+  `.docx` serializer isn't wired yet. Today the gateway re-serves
+  the original upload on drain. M2 (Bun headless serializer worker
+  pool) is the unblock.
+- **Lock-stolen UX** — when `RefreshLock` returns `ErrConflict`
+  (another editor took the lock), the ticker logs a warn and
+  continues. A future pass could broadcast a "doc is now read-only"
+  frame to all clients in the room.
+- **Co-editing across hosts** — if two WOPI hosts integrate against
+  the same gateway, can two of their users be in the same room?
+  Open. Default to "room per host" until a real use case appears.
 
 ---
 
@@ -173,40 +227,70 @@ docker run -v $HOME/docs:/data \
 What's missing is the **per-user** layer that Mode 3 needs to be a
 real personal-use deploy.
 
-### What's planned (the "Phase C" of sheet's Mode 3)
+### "Phase C" buildout (closed)
 
-The shape mirrors sheet's [Phase C batches](../../../sheet/docs/STORAGE_MODES.md#mode-3):
+The shape mirrored sheet's [Phase C batches](../../../sheet/docs/STORAGE_MODES.md#mode-3):
 
-1. **Batch 1 — SQLite users + auth routes**
-   - `backend/internal/auth/personal.go`: `UserStore` (bcrypt hashes, password reset tokens) backed by a SQLite file at `<root>/.casual/users.db`.
-   - HTTP routes: `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
-   - Session via signed cookie (`__Host-` prefix on production), 30-day refresh, 1-hour access.
-2. **Batch 2 — per-user file scoping**
-   - Layout shifts to `<root>/<userId>/<docId>.docx + .meta.json`.
-   - `local.Store` becomes user-aware via a thin `local.UserScoped` wrapper that constructs sub-stores. Existing `inline` host stays single-tenant for the share-link demo.
-   - `GET /files` returns the calling user's doc list.
-3. **Batch 3 — `PersonalAuthGate` + signup/login UI**
-   - React modal seen on every Mode 3 boot.
-   - Wired through the `FileSource` probe — `kind: 'personal'` only after `/auth/me` returns 200.
-4. **Batch 4 — `PersonalFileSource`** (web client)
-   - Implements the `FileSource` contract against `/files`, `/files/:id`, `/files/:id/save`.
-5. **Batch 4.5 — Profile** (display name, email, timezone, avatar, prefs).
-   - Tiny CRUD on `<root>/<userId>/.profile.json`.
-6. **Batch 5 — CLI reset + IDB warning + full e2e**
-   - `casual-docs reset-password <email>` for self-hosting recovery.
-   - Mode 3 e2e CI job mirrored from sheet's `e2e-personal`.
+1. ✅ **Batch 1 — UserStore + sessions** (`97c330d`)
+   - `backend/internal/auth/personal/personal.go`: bcrypt + SQLite
+     at `<root>/.casual/users.db`.
+   - HMAC-signed session token (`Sign`/`Verify`), 30-day TTL.
+2. ✅ **Batch 2 — HTTP routes + gateway wire-up** (`f835960`)
+   - `POST /auth/signup`, `POST /auth/login`, `POST /auth/logout`,
+     `GET /auth/me` with `__Host-`-prefixed cookies on
+     `SECURE_COOKIES=true` deploys.
+3. ✅ **Batch 3 — per-user file scoping** (`bd3e753`)
+   - `local.PerUserStores` manager. Each user lands at
+     `<root>/users/<userID>/`.
+   - `GET /files` lists the calling user's docs.
+4. ✅ **Batch 4 — `PersonalFileSource` + per-user file CRUD**
+   (`3a0d204`)
+   - `POST /files`, `GET /files/{id}`, `PUT /files/{id}/contents`,
+     `PATCH /files/{id}`, `DELETE /files/{id}` all auth-gated.
+   - TS `PersonalFileSource` consumes the contract; cookie auth via
+     `credentials: 'include'`.
+5. ✅ **Batch 4.5 — Profile** (`2e197d7`)
+   - `UserStore.UpdateDisplayName` (SQLite stays authoritative for
+     identity).
+   - `FileProfileStore` writes `<root>/users/<userID>/.profile.json`
+     atomically. Fields: `timezone`, `locale`, `avatarUrl`, free-form
+     `prefs`.
+   - `GET /auth/profile` returns the merged identity + profile view;
+     `PUT /auth/profile` patches it (displayName routes to SQLite,
+     everything else to the sidecar).
+6. ✅ **Batch 5 — CLI + admin + slog + benchmarks + e2e**
+   (`a63941c`)
+   - `casual-docs` CLI: `reset-password / list-users / promote / demote`
+     with `--password` flag or no-echo prompt.
+   - `GET /admin/users` + `DELETE /admin/users/{id}` behind
+     `RequireAdmin`. First signup auto-promotes; self-delete returns
+     409. `UserDeleter` sweeps the user's on-disk directory.
+   - Request-id + access-log middleware; `log.Printf` → `slog` with
+     `LOG_FORMAT=json` / `LOG_LEVEL` env knobs; `ACCESS_LOG=true`
+     opts into request logs.
+   - Go benchmarks for the auth + local hot paths.
+   - Full Mode 3 e2e integration test (signup → upload → save →
+     download → rename → profile → logout/login → cross-user
+     isolation → admin list+delete with sweep).
 
-### Open questions
+### Resolved + still-open
 
-- **Password recovery on a single-node deploy with no SMTP.** Sheet
-  resolved this with a CLI reset command + a warning that IDB
-  doesn't survive a clean. Same answer here.
-- **Multi-user visibility on a single bind-mount.** Default to fully
-  scoped — user A never sees user B's docs. A future "shared folder"
-  feature is its own design.
-- **Disk quota / file-size caps.** Default to 100 MB per upload,
-  10 GB per user; both `CASUAL_MAX_UPLOAD_MB` /
-  `CASUAL_USER_QUOTA_GB` env tunable.
+- ✅ **Password recovery on a single-node deploy with no SMTP** —
+  `casual-docs reset-password <email>` lands a fresh bcrypt hash
+  directly in the SQLite store. Operator runs it inside the
+  container after ssh'ing the host.
+- ✅ **Bootstrap admin on a fresh deploy** — first signup
+  auto-promotes to `is_admin=true` (Batch 5). Avoids the chicken-
+  and-egg problem of an admin-only deploy with no admin to start.
+- ⬜ **Multi-user visibility on a single bind-mount.** Default
+  remains "fully scoped — user A never sees user B's docs". A
+  future "shared folder" feature is its own design.
+- ⬜ **Disk quota / file-size caps.** Default 100 MB per upload, no
+  per-user quota yet. `CASUAL_MAX_UPLOAD_MB` /
+  `CASUAL_USER_QUOTA_GB` reserved for the eventual implementation.
+- ⬜ **`PersonalAuthGate` UI surface.** Backend works; the React
+  modal that pops on a 401 still lives in the host app, not the
+  editor library.
 
 ---
 
@@ -217,12 +301,12 @@ to be filed):
 
 | Phase | Scope                                              | Backend                                            | Frontend                                       | Status                                 |
 | ----- | -------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------- | -------------------------------------- |
-| **A** | Home page reopen banner + File System Access       | none                                               | `recent-files` + landing                       | ⬜ planned                              |
-| **B** | `FileSource` abstraction                           | none                                               | `packages/react/src/file-source/` (new module) | ⬜ planned                              |
-| **C** | Personal (Mode 3) end-to-end                       | `auth/personal.go` + `files/` + `local` user scope | `PersonalAuthGate` + `PersonalFileSource`      | ⬜ pending — biggest single piece left   |
-| **D** | WOPI (Mode 2)                                      | `host/wopi/wopi.go` + JWT verify                   | `WopiFileSource`                               | ⬜ planned                              |
-| —     | Local filesystem host                              | `host/local/local.go`                              | n/a                                            | ✅ shipped (`b8972ae`)                  |
-| —     | Env-driven host selection                          | `cmd/gateway/main.go` + `host.DocStore`            | n/a                                            | ✅ shipped (`41759d5`)                  |
+| **A** | Home page reopen banner + File System Access       | none                                               | `recent-files` + landing                       | ⬜ planned                                                                 |
+| **B** | `FileSource` abstraction                           | none                                               | `packages/react/src/file-source/`              | ✅ shipped (`3a0d204`, Batch 4)                                            |
+| **C** | Personal (Mode 3) end-to-end                       | `auth/personal/` + per-user files + admin + CLI    | `PersonalFileSource`                           | ✅ shipped — Batches 1–5 (`97c330d` → `a63941c`); `PersonalAuthGate` open  |
+| **D** | WOPI (Mode 2)                                      | `host/wopi/` + `auth/wopi/` + locker + ticker      | `WopiFileSource`                               | ✅ shipped — D1–D5 (`9185671` → `bd4a2b1`); snapshot-on-drain blocked on M2 |
+| —     | Local filesystem host                              | `host/local/local.go`                              | n/a                                            | ✅ shipped (`b8972ae`)                                                     |
+| —     | Env-driven host selection                          | `cmd/gateway/main.go` + `host.DocStore`            | n/a                                            | ✅ shipped (`41759d5`)                                                     |
 
 ---
 
