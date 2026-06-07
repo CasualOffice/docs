@@ -301,6 +301,42 @@ test.describe('PersonalAuthGate', () => {
     await expect(page.getByTestId('user-menu')).toContainText('Alex');
   });
 
+  test('forgot-password — link visible in login mode, reveals CLI instructions', async ({
+    page,
+  }) => {
+    await mockAuth(page);
+    await page.goto('/?e2e=auth-gate');
+    // Link is visible in the default login mode.
+    await expect(page.getByTestId('personal-auth-forgot-toggle')).toBeVisible();
+    // Panel is hidden until the link is clicked.
+    await expect(page.getByTestId('personal-auth-forgot-panel')).toBeHidden();
+    // Pre-filling email so the rendered command shows the user's address.
+    await page.getByTestId('personal-auth-email').fill('alex@example.com');
+    await page.getByTestId('personal-auth-forgot-toggle').click();
+    const panel = page.getByTestId('personal-auth-forgot-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('casual-docs reset-password');
+    await expect(panel).toContainText('alex@example.com');
+  });
+
+  test('forgot-password — link hidden in signup mode + collapses on toggle', async ({
+    page,
+  }) => {
+    await mockAuth(page);
+    await page.goto('/?e2e=auth-gate');
+    await page.getByTestId('personal-auth-forgot-toggle').click();
+    await expect(page.getByTestId('personal-auth-forgot-panel')).toBeVisible();
+    await page.getByTestId('personal-auth-toggle').click();
+    // Now in signup mode — the forgot link should be gone.
+    await expect(page.getByTestId('personal-auth-forgot-toggle')).toBeHidden();
+    await expect(page.getByTestId('personal-auth-forgot-panel')).toBeHidden();
+    // Toggling back to login — panel stays collapsed (sticky-open
+    // across mode flips would be confusing UX).
+    await page.getByTestId('personal-auth-toggle').click();
+    await expect(page.getByTestId('personal-auth-forgot-toggle')).toBeVisible();
+    await expect(page.getByTestId('personal-auth-forgot-panel')).toBeHidden();
+  });
+
   test('UserMenu — outside click closes the dropdown', async ({ page }) => {
     await mockAuth(page, { signedInAtBoot: true });
     await page.goto('/?e2e=auth-gate');

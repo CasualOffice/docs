@@ -299,6 +299,7 @@ export function PersonalAuthGateModal({
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -348,7 +349,10 @@ export function PersonalAuthGateModal({
       helper={
         <button
           type="button"
-          onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+          onClick={() => {
+            setMode(mode === 'login' ? 'signup' : 'login');
+            setForgotOpen(false);
+          }}
           data-testid="personal-auth-toggle"
           style={toggleButtonStyle}
         >
@@ -399,6 +403,29 @@ export function PersonalAuthGateModal({
               style={inputStyle}
             />
           </label>
+        )}
+        {mode === 'login' && (
+          <div style={forgotWrapStyle}>
+            <button
+              type="button"
+              onClick={() => setForgotOpen((o) => !o)}
+              aria-expanded={forgotOpen}
+              data-testid="personal-auth-forgot-toggle"
+              style={forgotLinkStyle}
+            >
+              Forgot password?
+            </button>
+            {forgotOpen && (
+              <div role="note" data-testid="personal-auth-forgot-panel" style={forgotPanelStyle}>
+                Mode 3 doesn’t do email recovery — there’s no SMTP server on a single-node deploy.
+                Ask the operator to ssh into the container and run:
+                <pre style={forgotCodeStyle}>
+                  casual-docs reset-password {email || '<your-email>'}
+                </pre>
+                They’ll set a new password for you to sign in with.
+              </div>
+            )}
+          </div>
         )}
         {submitError && (
           <div data-testid="personal-auth-error" style={errorStyle}>
@@ -484,4 +511,45 @@ const toggleButtonStyle = {
   fontWeight: 500,
   cursor: 'pointer',
   textDecoration: 'underline',
+};
+
+const forgotWrapStyle = {
+  display: 'flex',
+  flexDirection: 'column' as const,
+  gap: 8,
+};
+
+const forgotLinkStyle = {
+  alignSelf: 'flex-start' as const,
+  padding: 0,
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--doc-text-muted, #475569)',
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: 'pointer',
+  textDecoration: 'underline',
+};
+
+const forgotPanelStyle = {
+  padding: '10px 12px',
+  background: 'var(--doc-surface-2, #f1f5f9)',
+  border: '1px solid var(--doc-border-light, #e2e8f0)',
+  borderRadius: 6,
+  fontSize: 12,
+  color: 'var(--doc-text-muted, #475569)',
+  lineHeight: 1.5,
+};
+
+const forgotCodeStyle = {
+  margin: '8px 0 4px',
+  padding: '6px 8px',
+  background: 'var(--doc-surface, #fff)',
+  border: '1px solid var(--doc-border, #cbd5e1)',
+  borderRadius: 4,
+  fontSize: 11.5,
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+  color: 'var(--doc-text, #0f172a)',
+  whiteSpace: 'pre-wrap' as const,
+  overflowWrap: 'anywhere' as const,
 };
