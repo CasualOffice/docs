@@ -40,6 +40,7 @@ import (
 	"github.com/schnsrw/docx/backend/internal/host"
 	"github.com/schnsrw/docx/backend/internal/host/inline"
 	"github.com/schnsrw/docx/backend/internal/host/local"
+	hostwopi "github.com/schnsrw/docx/backend/internal/host/wopi"
 	"github.com/schnsrw/docx/backend/internal/limit"
 	"github.com/schnsrw/docx/backend/internal/middleware"
 	"github.com/schnsrw/docx/backend/internal/room"
@@ -790,8 +791,17 @@ func selectStore() (host.DocStore, error) {
 		}
 		slog.Info("host: local (filesystem)", slog.String("root", s.Root()))
 		return s, nil
+	case "wopi":
+		// WOPI client: gateway acts as the editor consuming a remote
+		// WOPI host's files. No local file storage; every Fetch /
+		// Snapshot is an HTTP call to the host the user came from
+		// (encoded into the docID by the /wopi/host redirect — D3,
+		// not yet wired).
+		c := hostwopi.New(hostwopi.Options{})
+		slog.Info("host: wopi (remote)")
+		return hostwopi.DocStoreAdapter{Client: c}, nil
 	default:
-		return nil, fmt.Errorf("unknown GATEWAY_HOST=%q (expected inline | local)", kind)
+		return nil, fmt.Errorf("unknown GATEWAY_HOST=%q (expected inline | local | wopi)", kind)
 	}
 }
 
