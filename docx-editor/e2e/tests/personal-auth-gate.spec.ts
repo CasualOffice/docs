@@ -169,4 +169,57 @@ test.describe('PersonalAuthGate', () => {
     await expect(page.getByTestId('signed-in-content')).toBeVisible();
     await expect(page.getByTestId('personal-auth-gate')).toBeHidden();
   });
+
+  test('UserMenu — shows displayName and toggles dropdown', async ({ page }) => {
+    await mockAuth(page, { signedInAtBoot: true });
+    await page.goto('/?e2e=auth-gate');
+    await expect(page.getByTestId('user-menu')).toBeVisible();
+    await expect(page.getByTestId('user-menu')).toContainText('Alex');
+    // Dropdown is hidden until the trigger is clicked.
+    await expect(page.getByTestId('user-menu-dropdown')).toBeHidden();
+    await page.getByTestId('user-menu').click();
+    await expect(page.getByTestId('user-menu-dropdown')).toBeVisible();
+    await expect(page.getByTestId('user-menu-signout')).toBeVisible();
+  });
+
+  test('sign-out → /auth/logout fires + modal returns', async ({ page }) => {
+    let logoutCalled = false;
+    await mockAuth(page, { signedInAtBoot: true });
+    // Wire the logout mock — flips the shared state back to
+    // unauth'd so the gate re-renders the modal.
+    await page.route('**/auth/logout', async (route) => {
+      logoutCalled = true;
+      // Re-route /auth/me to 401 so the gate's next probe sees the
+      // unauth'd state.
+      await page.route('**/auth/me', async (subroute) => {
+        await subroute.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 'not_authenticated', message: 'no session' }),
+        });
+      });
+      await route.fulfill({ status: 204 });
+    });
+
+    await page.goto('/?e2e=auth-gate');
+    await expect(page.getByTestId('signed-in-content')).toBeVisible();
+
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('user-menu-signout').click();
+
+    // Modal returns; signed-in surface is hidden.
+    await expect(page.getByTestId('personal-auth-gate')).toBeVisible();
+    await expect(page.getByTestId('signed-in-content')).toBeHidden();
+    expect(logoutCalled).toBe(true);
+  });
+
+  test('UserMenu — outside click closes the dropdown', async ({ page }) => {
+    await mockAuth(page, { signedInAtBoot: true });
+    await page.goto('/?e2e=auth-gate');
+    await page.getByTestId('user-menu').click();
+    await expect(page.getByTestId('user-menu-dropdown')).toBeVisible();
+    // Click on a neutral area outside the dropdown.
+    await page.getByTestId('signed-in-content').click({ position: { x: 100, y: 100 } });
+    await expect(page.getByTestId('user-menu-dropdown')).toBeHidden();
+  });
 });

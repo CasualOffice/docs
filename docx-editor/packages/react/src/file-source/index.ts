@@ -21,11 +21,14 @@ export {
   PersonalAuthGate,
   PersonalAuthGateModal,
   usePersonalAuth,
+  useAuthContext,
   type PersonalAuthGateProps,
   type UsePersonalAuthOptions,
   type UsePersonalAuthReturn,
   type AuthState,
+  type AuthContextValue,
 } from './PersonalAuthGate';
+export { UserMenu, type UserMenuProps } from './UserMenu';
 export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
 export {
   chooseFileSource,

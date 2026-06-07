@@ -11,7 +11,7 @@ import { ShareDialog } from './collab/Share';
 import { LoadingPanel } from './collab/LoadingPanel';
 import { ErrorPanel } from './collab/ErrorPanel';
 import { DisconnectedBanner } from './collab/DisconnectedBanner';
-import { PersonalAuthGate } from '@eigenpal/docx-js-editor';
+import { PersonalAuthGate, UserMenu } from '@eigenpal/docx-js-editor';
 import { Home } from './Home';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
@@ -144,11 +144,22 @@ function AuthGateE2E() {
         data-testid="signed-in-content"
         style={{
           padding: 32,
-          fontSize: 18,
           fontFamily: 'system-ui, sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 24,
         }}
       >
-        Signed in
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+          }}
+        >
+          <UserMenu />
+        </div>
+        <div style={{ fontSize: 18 }}>Signed in</div>
       </div>
     </PersonalAuthGate>
   );

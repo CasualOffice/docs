@@ -22,7 +22,9 @@
  */
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -188,6 +190,36 @@ export function usePersonalAuth(opts: UsePersonalAuthOptions = {}): UsePersonalA
   return { state, login, signup, logout };
 }
 
+/**
+ * AuthContext exposes the authenticated user + the logout handler to
+ * descendants of <PersonalAuthGate>. The gate only provides a non-
+ * null value when the user is authed — children that need user data
+ * read it via `useAuthContext()` and never need to handle the
+ * unauthed case (the gate already swapped them out for the modal).
+ */
+export interface AuthContextValue {
+  user: UserWire;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+/**
+ * Returns the authed user + logout handler. Must be called from a
+ * descendant of <PersonalAuthGate>; throws otherwise so the bug
+ * shows up at the misplacement site rather than a downstream
+ * null-deref.
+ */
+export function useAuthContext(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (ctx === null) {
+    throw new Error(
+      'useAuthContext() called outside <PersonalAuthGate>. Either render the consumer inside the gate, or wrap a fragment of your tree with <PersonalAuthGate>.'
+    );
+  }
+  return ctx;
+}
+
 export function PersonalAuthGate({
   children,
   authClient,
@@ -196,10 +228,21 @@ export function PersonalAuthGate({
   heading = 'Sign in to Casual Editor',
   initialMode = 'login',
 }: PersonalAuthGateProps) {
-  const { state, login, signup } = usePersonalAuth({ authClient, baseUrl, onAuthenticated });
+  const { state, login, signup, logout } = usePersonalAuth({
+    authClient,
+    baseUrl,
+    onAuthenticated,
+  });
+
+  // Memoise the context value so re-renders of children don't fire
+  // just because the gate re-rendered with the same auth state.
+  const ctxValue = useMemo<AuthContextValue | null>(
+    () => (state.status === 'authed' ? { user: state.user, logout } : null),
+    [state, logout]
+  );
 
   if (state.status === 'authed') {
-    return <>{children}</>;
+    return <AuthContext.Provider value={ctxValue}>{children}</AuthContext.Provider>;
   }
 
   return (
