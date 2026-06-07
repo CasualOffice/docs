@@ -407,6 +407,118 @@ function relativeAgo(ms: number): string {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
+// Auto-reopen banner — Phase A from docs/internal/11-storage-modes.md.
+// Shows above the landing when the most recently-opened doc is < 7
+// days old, offering to reopen it in one click. Dismissal is sticky
+// for the rest of the browser session so a user who actively
+// dismissed it doesn't see it on every navigation back to Home.
+const AUTO_REOPEN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const AUTO_REOPEN_DISMISS_KEY = 'home.auto-reopen-dismissed';
+
+function isAutoReopenDismissed(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(AUTO_REOPEN_DISMISS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markAutoReopenDismissed(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(AUTO_REOPEN_DISMISS_KEY, '1');
+  } catch {
+    // sessionStorage can throw in sandboxed iframes. Best-effort.
+  }
+}
+
+interface AutoReopenBannerProps {
+  /** Most-recently-opened doc; null hides the banner. */
+  candidate: RecentFile | null;
+  onOpen: (r: RecentFile) => void;
+  /** Dismiss action — also persists to sessionStorage. */
+  onDismiss: () => void;
+}
+
+function AutoReopenBanner({
+  candidate,
+  onOpen,
+  onDismiss,
+}: AutoReopenBannerProps): React.JSX.Element | null {
+  if (!candidate) return null;
+  const age = Date.now() - candidate.openedAt;
+  if (age > AUTO_REOPEN_WINDOW_MS) return null;
+  return (
+    <section
+      data-testid="auto-reopen-banner"
+      style={autoReopenBannerStyle}
+      role="region"
+      aria-label="Reopen last document"
+    >
+      <span style={{ fontSize: 13, color: COLORS.inkMuted }}>Pick up where you left off</span>
+      <strong
+        data-testid="auto-reopen-banner-name"
+        style={{ fontSize: 14, color: COLORS.ink, marginRight: 'auto' }}
+      >
+        {candidate.name}
+      </strong>
+      <button
+        type="button"
+        onClick={onDismiss}
+        data-testid="auto-reopen-banner-dismiss"
+        style={autoReopenBannerDismissStyle}
+      >
+        Dismiss
+      </button>
+      <button
+        type="button"
+        onClick={() => onOpen(candidate)}
+        data-testid="auto-reopen-banner-open"
+        style={autoReopenBannerOpenStyle}
+      >
+        Reopen
+      </button>
+    </section>
+  );
+}
+
+const autoReopenBannerStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  padding: '10px 16px',
+  margin: '12px 24px 0',
+  borderRadius: 10,
+  border: `1px solid ${COLORS.border}`,
+  background: COLORS.paper,
+  boxShadow: '0 1px 1px rgba(15, 23, 42, 0.03)',
+};
+
+const autoReopenBannerOpenStyle: React.CSSProperties = {
+  padding: '6px 14px',
+  borderRadius: 6,
+  border: '1px solid transparent',
+  background: COLORS.brand,
+  color: '#fff',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
+const autoReopenBannerDismissStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: 6,
+  border: `1px solid ${COLORS.border}`,
+  background: 'transparent',
+  color: COLORS.ink,
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
 // Compact horizontal card used in the Recent strip. The big-thumbnail
 // template-card look would push the actual templates below the fold
 // (the user has nothing to render as a preview — Recent files are
@@ -529,6 +641,9 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
   // synthesized File so the existing onOpenFile path doesn't need to
   // care that the buffer didn't come from `<input type="file">`.
   const [recents, setRecents] = useState<RecentFile[]>([]);
+  const [autoReopenDismissed, setAutoReopenDismissed] = useState<boolean>(() =>
+    isAutoReopenDismissed(),
+  );
   useEffect(() => {
     let cancelled = false;
     void listRecentFiles().then((rows) => {
@@ -545,6 +660,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
     });
     onOpenFile(file);
   };
+  const autoReopenCandidate = autoReopenDismissed ? null : (recents[0] ?? null);
   // `deleteRecentFile` stays exported from the package for future
   // wiring (per-card remove, "Clear all" affordance), but v0 just lets
   // the 10-entry cap + 60-day stale window manage the list.
@@ -601,6 +717,15 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           </a>
         </div>
       </header>
+
+      <AutoReopenBanner
+        candidate={autoReopenCandidate}
+        onOpen={openRecent}
+        onDismiss={() => {
+          markAutoReopenDismissed();
+          setAutoReopenDismissed(true);
+        }}
+      />
 
       <section style={{ ...styles.hero, ...(isMobile && mobile.hero) }}>
         <div style={styles.heroEyebrow}>Casual Editor</div>
