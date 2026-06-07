@@ -1,0 +1,91 @@
+name: Release (npm)
+
+# Changesets-driven npm release flow.
+#
+# Pushes to `main` either:
+#   - Open/update a `chore(release): version packages` PR aggregating
+#     pending .changeset/*.md entries into version bumps + CHANGELOG
+#     edits. Merging that PR drains the queue + re-fires this workflow
+#     in publish mode.
+#   - Once the queue is empty (after the release PR merges), publish
+#     to npm via OIDC Trusted Publishing (no NPM_TOKEN needed).
+#
+# Setup (already done by the maintainer per CLAUDE.md):
+#   - npmjs.com Trusted Publisher configured for each published
+#     package → repo `eigenpal/docx-editor`, workflow `release-npm.yml`.
+#   - .changeset/config.json sets `"access": "public"` and ignores
+#     non-published packages (vue, core).
+#   - Settings → Actions → General → Workflow permissions = "Read and
+#     write" + "Allow GHA to create and approve PRs".
+#
+# Tag-driven Docker releases live in release.yml; the two flows
+# don't conflict — Docker fires on tag push, this one on branch push.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  # Needed for the action to push commits + open PRs in the release
+  # branch. Settings → Actions must also allow this at the repo level.
+  contents: write
+  pull-requests: write
+  # OIDC Trusted Publishing — npm verifies the workflow's identity
+  # without a long-lived NPM_TOKEN. The npm registry's "Publishing
+  # access" page must list this workflow.
+  id-token: write
+
+jobs:
+  release:
+    name: Version + Publish
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docx-editor
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Changesets needs full history to compute the package
+          # versions correctly across the .changeset queue.
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+
+      - uses: actions/setup-node@v4
+        with:
+          # changeset publish reads .npmrc + invokes npm under the hood;
+          # `npm` is available via the runner's preinstalled node.
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      # Build is part of the `release` script too, but pre-building
+      # here means the changesets action sees a clean `dist/` if it
+      # needs to inspect the artefact before publishing.
+      - name: Build core + react packages
+        run: bun run build
+
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          cwd: docx-editor
+          # When the queue is non-empty: opens/updates the release PR
+          # with these bumps + CHANGELOG edits.
+          version: bun run version-packages
+          # When the queue is empty (post-PR-merge): publishes via
+          # the `release` script (which builds + `changeset publish`).
+          publish: bun run release
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No NPM_TOKEN — OIDC Trusted Publishing handles auth.
