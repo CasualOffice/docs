@@ -36,6 +36,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/schnsrw/docx/backend/internal/auth/personal"
+	"github.com/schnsrw/docx/backend/internal/version"
 )
 
 // runner bundles the things the CLI subcommands need: the user
@@ -57,6 +58,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "  list-users")
 	fmt.Fprintln(w, "  promote <email>")
 	fmt.Fprintln(w, "  demote <email>")
+	fmt.Fprintln(w, "  version")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "global flags:")
 	fmt.Fprintln(w, "  --root <path>   data root (defaults to $CASUAL_LOCAL_PATH or /data)")
@@ -83,6 +85,20 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(rest) == 0 {
 		usage(stderr)
 		return 2
+	}
+
+	// `version` short-circuits the user-store open so it works on
+	// a host without `--root` configured — operators often run
+	// `casual-docs version` to confirm the binary identity before
+	// even thinking about data paths.
+	if rest[0] == "version" {
+		info := version.Get()
+		fmt.Fprintf(stdout, "casual-docs %s (%s)", info.Version, info.Commit)
+		if info.BuildTime != "" {
+			fmt.Fprintf(stdout, " built %s", info.BuildTime)
+		}
+		fmt.Fprintln(stdout)
+		return 0
 	}
 
 	users, err := openUsers(root)

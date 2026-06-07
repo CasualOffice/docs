@@ -42,6 +42,7 @@ import (
 	"github.com/schnsrw/docx/backend/internal/host/inline"
 	"github.com/schnsrw/docx/backend/internal/host/local"
 	hostwopi "github.com/schnsrw/docx/backend/internal/host/wopi"
+	"github.com/schnsrw/docx/backend/internal/version"
 	"github.com/schnsrw/docx/backend/internal/limit"
 	"github.com/schnsrw/docx/backend/internal/middleware"
 	"github.com/schnsrw/docx/backend/internal/room"
@@ -140,10 +141,22 @@ func staticHandler(dir string) http.HandlerFunc {
 // healthHandler is a lightweight liveness probe. Returns 200 with
 // the running gateway version. Reserved for container health
 // checks; not part of the WS protocol.
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
+//
+// Content negotiation: `Accept: application/json` returns the full
+// `version.Info` JSON so operators can scrape it; anything else
+// returns the historical one-line plain-text response that the
+// `docker run --health-cmd` probes have been pinned against.
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(version.Get())
+		return
+	}
+	info := version.Get()
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprintln(w, "casual-editor gateway: ok")
+	_, _ = fmt.Fprintf(w, "casual-editor gateway: ok (%s %s)\n", info.Version, info.Commit)
 }
 
 // docIDFromPath extracts `{docId}` from a `/doc/{docId}` request

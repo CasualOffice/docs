@@ -156,6 +156,21 @@ func TestPromoteDemote(t *testing.T) {
 	}
 }
 
+// TestVersion_WithoutRoot — `version` succeeds even when the user
+// store can't be opened. Operators run this to confirm the binary
+// identity before configuring data paths.
+func TestVersion_WithoutRoot(t *testing.T) {
+	// Point --root at a non-existent path; the version subcommand
+	// must NOT try to open the user store.
+	code, out, errOut := invoke(t, "/definitely/does/not/exist", "", "version")
+	if code != 0 {
+		t.Errorf("exit = %d, stderr = %q", code, errOut)
+	}
+	if !strings.Contains(out, "casual-docs") {
+		t.Errorf("stdout = %q", out)
+	}
+}
+
 // TestUnknownSubcommand — exit 2 (syntax error) + usage on stderr.
 func TestUnknownSubcommand(t *testing.T) {
 	root := t.TempDir()
