@@ -25,9 +25,17 @@ import (
 	"log/slog"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/schnsrw/docx/backend/internal/host"
 )
+
+// DefaultRefreshLockInterval is how often the room manager fires
+// host.Locker.RefreshLock against an active room. WOPI hosts
+// typically time out a lock after ~30 min of inactivity; 10 min
+// gives 3 attempts before expiry, which absorbs one or two transient
+// network failures without losing the lock.
+const DefaultRefreshLockInterval = 10 * time.Minute
 
 // outboundQueue is the per-client buffered channel of binary frames
 // waiting to be written to the websocket. Sized to absorb a small
@@ -95,6 +103,11 @@ type Room struct {
 	// but tracking the first-join token keeps the lock lifecycle
 	// tied to a known caller — easier to reason about in logs.
 	authToken string
+	// stopRefresh cancels the periodic RefreshLock goroutine spawned
+	// for this room. nil for rooms without a Locker. Called by Leave
+	// when the room drains so the goroutine exits cleanly before
+	// Unlock fires.
+	stopRefresh context.CancelFunc
 }
 
 // Clients returns the current number of connected clients. Safe
@@ -204,6 +217,12 @@ type Manager struct {
 	// releases it on last leave. When nil, lock calls are skipped
 	// (inline + local hosts).
 	locker host.Locker
+	// refreshInterval is how often locker.RefreshLock fires for
+	// each live room. Defaults to DefaultRefreshLockInterval. Set
+	// to 0 to disable the periodic refresh entirely (the lock will
+	// then idle out host-side; suitable for short-lived test
+	// fixtures).
+	refreshInterval time.Duration
 }
 
 // ErrCapacityFull is returned by Join when MaxRooms is configured
@@ -226,7 +245,10 @@ type DrainFunc func(docID string)
 // NewManager constructs an empty Manager. Rooms are lazily
 // allocated on first Join.
 func NewManager(opts ...ManagerOption) *Manager {
-	m := &Manager{rooms: make(map[string]*Room)}
+	m := &Manager{
+		rooms:           make(map[string]*Room),
+		refreshInterval: DefaultRefreshLockInterval,
+	}
 	for _, o := range opts {
 		o(m)
 	}
@@ -253,6 +275,19 @@ func WithDrainFunc(fn DrainFunc) ManagerOption {
 // so the gateway can refuse the WS join.
 func WithLocker(l host.Locker) ManagerOption {
 	return func(m *Manager) { m.locker = l }
+}
+
+// WithRefreshLockInterval overrides the default 10-min cadence for
+// the periodic RefreshLock call. Set to 0 to disable refresh
+// entirely — the host's own lock TTL becomes the only timeout
+// (which is fine for short-lived test fixtures).
+func WithRefreshLockInterval(d time.Duration) ManagerOption {
+	return func(m *Manager) {
+		if d < 0 {
+			d = 0
+		}
+		m.refreshInterval = d
+	}
 }
 
 // WithMaxRooms caps the number of concurrently open rooms (docIds).
@@ -326,6 +361,15 @@ func (m *Manager) Join(ctx context.Context, docID, authToken string) (*Room, *Cl
 			lockID:    lockID,
 			authToken: authToken,
 		}
+		// Spawn the periodic RefreshLock goroutine so the host's
+		// lock TTL doesn't expire on long editing sessions. Wired
+		// only when a Locker is present AND a positive interval is
+		// configured; zero interval disables refresh entirely.
+		if m.locker != nil && m.refreshInterval > 0 {
+			refreshCtx, cancel := context.WithCancel(context.Background())
+			r.stopRefresh = cancel
+			go m.refreshLoop(refreshCtx, docID, lockID, authToken)
+		}
 		m.rooms[docID] = r
 		// First-client seed (M2) plugs in here: load the .docx via
 		// host.Integration.Fetch, run it through the headless Bun
@@ -339,6 +383,34 @@ func (m *Manager) Join(ctx context.Context, docID, authToken string) (*Room, *Cl
 	c := r.AddClient(id)
 	m.mu.Unlock()
 	return r, c, nil
+}
+
+// refreshLoop calls locker.RefreshLock on a ticker until ctx is
+// cancelled. Errors are logged at warn so an operator notices a
+// host-side lock conflict (someone stole the lock) without the
+// goroutine taking down the room — the lock-stolen UX is a future
+// policy concern; for now we just keep trying so a transient
+// network blip doesn't drop the lock prematurely.
+//
+// Lives at the Manager level rather than Room because the
+// arguments it needs (docID, lockID, authToken) are immutable for
+// the room's lifetime; passing them by value avoids any goroutine-
+// vs-mutex coordination question.
+func (m *Manager) refreshLoop(ctx context.Context, docID, lockID, authToken string) {
+	t := time.NewTicker(m.refreshInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			err := m.locker.RefreshLock(ctx, docID, lockID, authToken)
+			if err != nil && !errors.Is(err, context.Canceled) {
+				slog.Warn("room: RefreshLock failed",
+					"docID", docID, "err", err)
+			}
+		}
+	}
 }
 
 // newLockID mints a 16-char hex token for a fresh WOPI lock. Length
@@ -393,6 +465,12 @@ func (m *Manager) Leave(r *Room, c *Client) {
 
 	if !drained {
 		return
+	}
+	// Stop the periodic RefreshLock goroutine before Unlock so the
+	// next tick doesn't race the release and end up refreshing a
+	// just-unlocked lockID (which the host would 409).
+	if r.stopRefresh != nil {
+		r.stopRefresh()
 	}
 	// Release the host-side lock before the drain func. A failure
 	// here doesn't block the drain — the host will eventually expire

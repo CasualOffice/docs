@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/schnsrw/docx/backend/internal/host"
 )
@@ -110,6 +111,87 @@ func TestLocker_NoLockerSkips(t *testing.T) {
 	if len(loc.lockCalls)+len(loc.unlockCalls) != 0 {
 		t.Errorf("locker called despite no WithLocker option: lock=%d unlock=%d",
 			len(loc.lockCalls), len(loc.unlockCalls))
+	}
+}
+
+// TestLocker_RefreshLockFires — the per-room goroutine calls
+// RefreshLock periodically while the room is alive. We inject a
+// short 30ms interval and wait long enough for at least two ticks
+// before asserting. Verifies the same docID + lockID + token round-
+// trip into Refresh so a host can recognise it as the original lock
+// being extended.
+func TestLocker_RefreshLockFires(t *testing.T) {
+	loc := &fakeLocker{}
+	m := NewManager(
+		WithLocker(loc),
+		WithRefreshLockInterval(30*time.Millisecond),
+	)
+	r, c, err := m.Join(context.Background(), "doc-E", "tok-refresh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Wait long enough for ~3 ticks. 110ms with a 30ms interval —
+	// generously above the threshold to absorb scheduler jitter
+	// without crossing into "test is needlessly slow" territory.
+	time.Sleep(110 * time.Millisecond)
+	m.Leave(r, c)
+
+	loc.mu.Lock()
+	got := len(loc.refreshCalls)
+	loc.mu.Unlock()
+	if got < 2 {
+		t.Fatalf("refresh calls = %d, want >= 2", got)
+	}
+	first := loc.refreshCalls[0]
+	if first.docID != "doc-E" || first.lockID != r.lockID || first.token != "tok-refresh" {
+		t.Errorf("refresh arg mismatch: %+v (room lockID = %q)", first, r.lockID)
+	}
+}
+
+// TestLocker_RefreshStopsOnDrain — once the last client leaves, no
+// more RefreshLock calls fire. Same setup as TestLocker_RefreshLockFires
+// but the second sleep should produce zero new calls.
+func TestLocker_RefreshStopsOnDrain(t *testing.T) {
+	loc := &fakeLocker{}
+	m := NewManager(
+		WithLocker(loc),
+		WithRefreshLockInterval(20*time.Millisecond),
+	)
+	r, c, _ := m.Join(context.Background(), "doc-F", "tok")
+	time.Sleep(50 * time.Millisecond)
+	m.Leave(r, c)
+
+	loc.mu.Lock()
+	before := len(loc.refreshCalls)
+	loc.mu.Unlock()
+
+	// Idle past several would-have-been-ticks; nothing should fire.
+	time.Sleep(80 * time.Millisecond)
+
+	loc.mu.Lock()
+	after := len(loc.refreshCalls)
+	loc.mu.Unlock()
+	if after != before {
+		t.Errorf("refresh fired after drain: %d → %d", before, after)
+	}
+}
+
+// TestLocker_RefreshDisabledByZeroInterval — a 0 interval skips the
+// ticker goroutine entirely. Useful for short-lived test fixtures
+// where the periodic tick is just noise.
+func TestLocker_RefreshDisabledByZeroInterval(t *testing.T) {
+	loc := &fakeLocker{}
+	m := NewManager(
+		WithLocker(loc),
+		WithRefreshLockInterval(0),
+	)
+	r, c, _ := m.Join(context.Background(), "doc-G", "tok")
+	time.Sleep(60 * time.Millisecond)
+	m.Leave(r, c)
+	loc.mu.Lock()
+	defer loc.mu.Unlock()
+	if len(loc.refreshCalls) != 0 {
+		t.Errorf("refresh calls = %d, want 0 with disabled interval", len(loc.refreshCalls))
 	}
 }
 
