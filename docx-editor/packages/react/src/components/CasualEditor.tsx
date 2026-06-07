@@ -59,6 +59,8 @@ import {
   type UseFileSourceAutoSaveReturn,
 } from '../file-source/useFileSourceAutoSave';
 import type { FileSource } from '../file-source/types';
+import { SigningProvider, SigningPane } from '../signing';
+import type { SigningSessionConfig } from '../signing';
 
 export interface CasualEditorProps {
   /**
@@ -117,6 +119,17 @@ export interface CasualEditorProps {
   /** Custom render override for the error state. */
   renderError?: (err: Error) => ReactNode;
   /**
+   * Active signing session — when set, the wrapper renders a
+   * SigningProvider + SigningPane next to the editor and walks the
+   * signer through the configured fields. Set null to disable
+   * signing mode.
+   *
+   * Drive supplies this when the user clicks "Sign this document";
+   * the wrapper fires the host's onFieldSigned / onComplete /
+   * onCancel callbacks as the signer progresses.
+   */
+  signing?: SigningSessionConfig | null;
+  /**
    * Forwarded escape hatch for any DocxEditor prop the wrapper
    * doesn't surface explicitly. Use sparingly — anything that
    * belongs on the SDK surface should get a real prop.
@@ -155,6 +168,7 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
       onCollabState,
       renderLoading,
       renderError,
+      signing,
       docxEditorProps,
     } = props;
 
@@ -252,7 +266,7 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
       return <>{renderError ? renderError(loadState.err) : <DefaultError err={loadState.err} />}</>;
     }
 
-    return (
+    const editor = (
       <DocxEditor
         ref={editorRef}
         documentBuffer={loadState.buffer}
@@ -265,6 +279,20 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
         onError={onError}
         {...docxEditorProps}
       />
+    );
+
+    // Without an active signing session, return the editor alone.
+    if (!signing) return editor;
+
+    // With a signing session, wrap the editor in a SigningProvider
+    // and render the SigningPane alongside. The provider captures
+    // the current document bytes so the eventual `onComplete`
+    // payload carries the right base buffer.
+    return (
+      <SigningProvider session={signing} documentBytes={loadState.buffer}>
+        {editor}
+        <SigningPane banner={signing.banner} />
+      </SigningProvider>
     );
   }
 );

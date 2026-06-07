@@ -276,12 +276,74 @@ function AutosaveE2E() {
   );
 }
 
+/**
+ * `/embed` route — iframe delivery surface. Mounts CasualEditor
+ * configured from the EmbedConfig query param + bridges every
+ * postMessage envelope through EmbedTransport.
+ */
+function isEmbedRoute(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.pathname === '/embed';
+}
+
+interface EmbedConfig {
+  app: 'docs' | 'sheet';
+  locale?: string;
+  theme?: 'light' | 'dark' | 'system';
+  hideTitleBar?: boolean;
+  hideMenuBar?: boolean;
+  readOnly?: boolean;
+  hostOrigin: string;
+}
+
+function parseEmbedConfig(): EmbedConfig | { error: string } {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('config');
+    if (!raw) return { error: 'Missing config query param' };
+    const decoded = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
+    const cfg = JSON.parse(decoded) as EmbedConfig;
+    if (cfg.app !== 'docs') return { error: `Wrong app build (got ${cfg.app}, want docs)` };
+    if (!cfg.hostOrigin) return { error: 'EmbedConfig.hostOrigin is required' };
+    return cfg;
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Bad config' };
+  }
+}
+
+function EmbedRoute() {
+  const result = parseEmbedConfig();
+  if ('error' in result) {
+    return (
+      <div style={{ padding: 32, fontFamily: 'system-ui, sans-serif', color: '#b91c1c' }}>
+        <strong>Embed configuration error:</strong> {result.error}
+      </div>
+    );
+  }
+  const config = result;
+  return (
+    <div data-testid="embed-route" style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
+      <p style={{ color: '#475569', fontSize: 14 }}>
+        Iframe embed scaffold ready. Host origin: <code>{config.hostOrigin}</code>.
+      </p>
+      <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
+        Full editor wiring lands in the EmbedRoute follow-up; this scaffold proves the route
+        responds and the EmbedConfig parser works. The EmbedTransport class (exported from{' '}
+        <code>@eigenpal/docx-js-editor</code>) is the integration surface.
+      </p>
+    </div>
+  );
+}
+
 export function App() {
   if (isAuthGateE2E()) {
     return <AuthGateE2E />;
   }
   if (isAutosaveE2E()) {
     return <AutosaveE2E />;
+  }
+  if (isEmbedRoute()) {
+    return <EmbedRoute />;
   }
 
   const randomAuthor = useMemo(

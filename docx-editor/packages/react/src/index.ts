@@ -46,6 +46,71 @@ export {
   type CasualEditorProps,
   type CasualEditorRef,
 } from './components/CasualEditor';
+
+// Embed — iframe delivery surface. EmbedTransport bridges
+// postMessage to React handlers; the envelope shapes mirror
+// docs/internal/13-iframe-protocol.md.
+export {
+  EmbedTransport,
+  isCasualEnvelope,
+  type EmbedTransportHandlers,
+  type EmbedTransportOptions,
+  type CasualApp,
+  type CasualEnvelope,
+  type EditorHelloData,
+  type HostHelloData,
+  type LoadRequestData,
+  type LoadResponseData,
+  type LoadResponseDataOk,
+  type LoadResponseDataErr,
+  type SaveRequestData,
+  type SaveResponseData,
+  type SaveResponseDataOk,
+  type SaveResponseDataErr,
+  type SelectionChangedData,
+  type TelemetryEventData,
+  type LockLostData,
+  type CommandSetReadOnlyData,
+  type CommandSetThemeData,
+  type CommandSetLocaleData,
+  type SignatureRequestData,
+  type SignatureRequestAckData,
+  type SignatureFieldSignedData,
+  type SignatureCompleteData,
+  type SignatureCancelData,
+} from './embed';
+
+// Signing — document-signature pipeline. Types mirror the iframe
+// envelopes (docs/internal/13-iframe-protocol.md) so SDK and
+// iframe deliveries are interchangeable. Uniform across docs +
+// sheet (anchor discriminator differs only).
+export {
+  SigningProvider,
+  useSigning,
+  SigningPane,
+  DrawnSignaturePad,
+  TypedSignatureField,
+  UploadedSignatureField,
+  createSigningController,
+  type SigningProviderProps,
+  type SigningPaneProps,
+  type CapturedSignature,
+  type DrawnSignaturePadProps,
+  type TypedSignatureFieldProps,
+  type UploadedSignatureFieldProps,
+  type SigningController,
+  type SigningSnapshot,
+  type CancelReason,
+  type DocAnchor,
+  type SheetAnchor,
+  type SignatureAnchor,
+  type SignatureCompletePayload,
+  type SignatureField,
+  type SignatureMethod,
+  type SignatureMode,
+  type SignedFieldPayload,
+  type SigningSessionConfig,
+} from './signing';
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils';
 export { AgentPanel, type AgentPanelProps } from './components/AgentPanel';
