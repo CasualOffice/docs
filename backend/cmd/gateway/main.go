@@ -37,6 +37,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/schnsrw/docx/backend/internal/auth/personal"
+	wopiauth "github.com/schnsrw/docx/backend/internal/auth/wopi"
 	"github.com/schnsrw/docx/backend/internal/host"
 	"github.com/schnsrw/docx/backend/internal/host/inline"
 	"github.com/schnsrw/docx/backend/internal/host/local"
@@ -454,7 +455,14 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 		// Refusing here gives the client a clean 404 instead of
 		// a successful WS connect that then sees only empty
 		// frames forever.
-		if _, _, err := integration.Fetch(r.Context(), docID, ""); err != nil {
+		//
+		// authToken comes from the WS connect URL's access_token
+		// query param — populated by the /wopi/host redirect in
+		// Mode 2, ignored by inline/local hosts (they treat it as
+		// the empty string). Stateless: the gateway never stores
+		// the token between connects.
+		authToken := r.URL.Query().Get("access_token")
+		if _, _, err := integration.Fetch(r.Context(), docID, authToken); err != nil {
 			if errors.Is(err, host.ErrNotFound) {
 				http.Error(w, "no such doc", http.StatusNotFound)
 				return
@@ -920,6 +928,23 @@ func main() {
 		slog.Info("auth: personal mode mounted",
 			slog.Bool("secureCookies", secure),
 			slog.String("root", authRoot))
+	}
+
+	// WOPI redirect (Mode 2) — mounted when CASUAL_WOPI_JWKS_URL is
+	// set so the gateway can verify access tokens against the host's
+	// published key set. Without it the route 404s, preserving the
+	// "no auth, no mount" pattern the personal and admin routes use.
+	if jwksURL := os.Getenv("CASUAL_WOPI_JWKS_URL"); jwksURL != "" {
+		verifier, err := wopiauth.NewVerifier(wopiauth.Options{JWKSURL: jwksURL})
+		if err != nil {
+			log.Fatalf("wopi verifier init: %v", err)
+		}
+		// Route only the exact path, not a prefix — the editor's
+		// /wopi/* surface might grow other endpoints later that
+		// shouldn't pass through the redirect handler.
+		mux.HandleFunc("GET "+wopiRedirectPath, wopiRedirectHandler(verifier))
+		slog.Info("auth: wopi mode mounted",
+			slog.String("jwksURL", jwksURL))
 	}
 
 	// POST /api/docs (upload) — under the upload bucket (tighter).
