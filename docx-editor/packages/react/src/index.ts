@@ -50,6 +50,28 @@ export {
   type RecentFile,
 } from './utils/recent-files';
 
+// File source — pluggable storage abstraction (Browser / WOPI /
+// Personal). See docs/internal/11-storage-modes.md. Host apps call
+// `chooseFileSource()` at boot and wrap the editor tree in
+// `<FileSourceProvider>`; everything inside reads via `useFileSource()`.
+export {
+  BrowserFileSource,
+  PersonalFileSource,
+  PersonalFileSourceError,
+  chooseFileSource,
+  FileSourceProvider,
+  useFileSource,
+  type FileSource,
+  type FileEntry,
+  type FileSourceKind,
+  type ChooseFileSourceOptions,
+  type FileSourceProviderProps,
+  type PersonalFileSourceOptions,
+  type UserWire,
+  type FileSummaryWire,
+  type ErrorWire,
+} from './file-source';
+
 // Spell-check asset config — host must call this with URLs for the
 // Hunspell .aff / .dic files before the Tools → Spell check toggle
 // runs (lazy-loaded). The dictionary asset files aren't bundled into

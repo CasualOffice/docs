@@ -203,6 +203,48 @@ func TestHistoryRollOff(t *testing.T) {
 	}
 }
 
+// TestDelete_RemovesBothFiles — after Delete, Fetch returns
+// ErrNotFound and neither the docx nor the meta sidecar remains on
+// disk.
+func TestDelete_RemovesBothFiles(t *testing.T) {
+	s := newStore(t)
+	docID, err := s.Store("scratch.docx", []byte("v1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(docID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, _, err := s.Fetch(context.Background(), docID, ""); !errors.Is(err, host.ErrNotFound) {
+		t.Errorf("Fetch after Delete = %v, want ErrNotFound", err)
+	}
+	for _, p := range []string{s.docxPath(docID), s.metaPath(docID)} {
+		if _, err := os.Stat(p); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("file %q still on disk after Delete (err=%v)", filepath.Base(p), err)
+		}
+	}
+}
+
+// TestDelete_IdempotentOnMissing — deleting an absent doc is a no-op,
+// not an error. Matches the HTTP handler's fire-and-forget semantics.
+func TestDelete_IdempotentOnMissing(t *testing.T) {
+	s := newStore(t)
+	if err := s.Delete("ghostghostA"); err != nil {
+		t.Errorf("Delete missing doc returned %v, want nil", err)
+	}
+}
+
+// TestDelete_RejectsUnsafeDocID — the safeDocID regex gates path
+// traversal at the type level, same as Fetch.
+func TestDelete_RejectsUnsafeDocID(t *testing.T) {
+	s := newStore(t)
+	for _, bad := range []string{"../etc/passwd", "foo/bar", "", "a"} {
+		if err := s.Delete(bad); !errors.Is(err, host.ErrNotFound) {
+			t.Errorf("Delete(%q) = %v, want ErrNotFound", bad, err)
+		}
+	}
+}
+
 // newStore returns a Store rooted at a temp dir cleaned up on test
 // teardown.
 func newStore(t *testing.T) *Store {

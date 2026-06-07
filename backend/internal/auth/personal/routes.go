@@ -4,10 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/schnsrw/docx/backend/internal/host"
 )
 
 // SessionCookieName is the cookie key set by /auth/login + /auth/signup
@@ -33,13 +40,39 @@ func UserFromContext(ctx context.Context) (User, bool) {
 	return u, ok
 }
 
-// FileLister returns a per-user file summary list. The personal
-// routes use this through PerUserFiles to keep the routes package
-// from depending on host/local directly (avoids an import cycle if
-// later batches let local depend on auth/personal).
-type FileLister interface {
+// FileStore is the per-user file CRUD surface the personal routes
+// consume. Implementations live in cmd/gateway as a thin adapter
+// over local.PerUserStores so the personal package stays free of any
+// host/local dep (the adapter sits at the wiring layer where both
+// packages are already imported).
+//
+// All methods are user-scoped at the boundary — callers pass the
+// authenticated userID resolved by RequireAuth, and the adapter is
+// responsible for routing to that user's store. Implementations
+// must reject any docID the user doesn't own with host.ErrNotFound.
+type FileStore interface {
+	// ListFor enumerates the calling user's docs. Newest first.
 	ListFor(userID string) ([]FileSummary, error)
+	// StoreFor ingests a freshly-uploaded .docx, mints a docID, and
+	// returns the resulting summary. fileName is the user-visible
+	// name shown in the editor title bar.
+	StoreFor(userID, fileName string, contents []byte) (FileSummary, error)
+	// FetchFor returns the raw .docx bytes for the user's doc plus
+	// the summary so the handler can advertise the filename via
+	// Content-Disposition. host.ErrNotFound when the doc isn't the
+	// caller's or doesn't exist.
+	FetchFor(ctx context.Context, userID, docID string) (FileSummary, []byte, error)
+	// SaveFor overwrites the doc's .docx bytes (snapshot save).
+	// Returns the updated summary with the bumped version.
+	SaveFor(ctx context.Context, userID, docID string, contents []byte) (FileSummary, error)
+	// RenameFor updates the stored fileName. Doesn't bump version
+	// — renames aren't an edit.
+	RenameFor(userID, docID, newName string) error
+	// DeleteFor removes the doc + its meta from disk. Idempotent at
+	// the FS layer; a re-delete of an already-absent doc returns nil.
+	DeleteFor(userID, docID string) error
 }
+
 
 // FileSummary is the wire shape returned by GET /files. Mirrors
 // local.Summary but lives in this package so the routes file can
@@ -61,11 +94,12 @@ type FileSummary struct {
 type Handlers struct {
 	Users   *UserStore
 	Session *Session
-	// Files, when non-nil, mounts GET /files behind RequireAuth so
-	// the calling user can enumerate their docs. Optional — a deploy
+	// Files, when non-nil, mounts the per-user file CRUD routes
+	// behind RequireAuth so the calling user can list / upload /
+	// download / rename / delete their own docs. Optional — a deploy
 	// that uses personal auth purely for an external host (WOPI etc.)
-	// can leave this nil and skip the route.
-	Files FileLister
+	// can leave this nil and skip the routes.
+	Files FileStore
 	// Secure flips Set-Cookie's `Secure` flag + the `__Host-` prefix
 	// on the cookie name. Operators set this true for production
 	// HTTPS deploys and false for localhost / docker-compose dev.
@@ -87,6 +121,11 @@ func (h *Handlers) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/me", h.Me)
 	if h.Files != nil {
 		mux.Handle("GET /files", h.RequireAuth(http.HandlerFunc(h.ListFiles)))
+		mux.Handle("POST /files", h.RequireAuth(http.HandlerFunc(h.UploadFile)))
+		mux.Handle("GET /files/{docId}", h.RequireAuth(http.HandlerFunc(h.DownloadFile)))
+		mux.Handle("PUT /files/{docId}/contents", h.RequireAuth(http.HandlerFunc(h.SaveFile)))
+		mux.Handle("PATCH /files/{docId}", h.RequireAuth(http.HandlerFunc(h.RenameFile)))
+		mux.Handle("DELETE /files/{docId}", h.RequireAuth(http.HandlerFunc(h.DeleteFile)))
 	}
 }
 
@@ -111,6 +150,210 @@ func (h *Handlers) ListFiles(w http.ResponseWriter, r *http.Request) {
 		list = []FileSummary{}
 	}
 	writeJSON(w, http.StatusOK, list)
+}
+
+// maxUploadBytes caps the body size for upload + save handlers. 100 MB
+// matches the legacy /api/docs path's MAX_UPLOAD_MB default; a future
+// CASUAL_MAX_UPLOAD_MB env tunable goes through main.go, not here.
+const maxUploadBytes = 100 * 1024 * 1024
+
+// UploadFile ingests a new .docx for the calling user and returns the
+// resulting summary (docId, fileName, version, size, savedAt). The
+// docID is server-minted so two users uploading "report.docx" never
+// collide. Accepts the same two body shapes as the legacy
+// `/api/docs` upload: multipart/form-data with a `file` field, or
+// raw bytes with the filename in `X-File-Name`.
+func (h *Handlers) UploadFile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+
+	contents, fileName, err := readUploadBody(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "upload", err.Error())
+		return
+	}
+	if len(contents) == 0 {
+		writeError(w, http.StatusBadRequest, "empty", "no upload body")
+		return
+	}
+	if fileName == "" {
+		fileName = "Untitled.docx"
+	}
+	fileName = filepath.Base(fileName)
+
+	summary, err := h.Files.StoreFor(u.ID, fileName, contents)
+	if err != nil {
+		slog.Error("upload failed", "userId", u.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "store", "upload failed")
+		return
+	}
+	writeJSON(w, http.StatusCreated, summary)
+}
+
+// DownloadFile streams the user's doc as a .docx response. The
+// Content-Disposition advertises the stored fileName so the browser
+// "Save as" dialog defaults to it.
+func (h *Handlers) DownloadFile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	docID := r.PathValue("docId")
+	summary, contents, err := h.Files.FetchFor(r.Context(), u.ID, docID)
+	if err != nil {
+		if errors.Is(err, host.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "no such doc")
+			return
+		}
+		slog.Error("download failed", "userId", u.ID, "docId", docID, "err", err)
+		writeError(w, http.StatusInternalServerError, "fetch", "download failed")
+		return
+	}
+	fileName := summary.FileName
+	if fileName == "" {
+		fileName = docID + ".docx"
+	}
+	w.Header().Set("Content-Type",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+	w.Header().Set("Content-Disposition",
+		fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.PathEscape(fileName)))
+	w.Header().Set("Content-Length", strconv.Itoa(len(contents)))
+	w.Header().Set("ETag", strconv.FormatUint(summary.Version, 10))
+	if r.Method == http.MethodHead {
+		return
+	}
+	_, _ = w.Write(contents)
+}
+
+// SaveFile overwrites the user's doc with new .docx bytes (snapshot
+// save — bumps version, appends to revision log). The body shape
+// mirrors UploadFile so the client doesn't need a different
+// serializer for save vs first-upload.
+func (h *Handlers) SaveFile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	docID := r.PathValue("docId")
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+	contents, _, err := readUploadBody(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "upload", err.Error())
+		return
+	}
+	if len(contents) == 0 {
+		writeError(w, http.StatusBadRequest, "empty", "no save body")
+		return
+	}
+	summary, err := h.Files.SaveFor(r.Context(), u.ID, docID, contents)
+	if err != nil {
+		if errors.Is(err, host.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "no such doc")
+			return
+		}
+		slog.Error("save failed", "userId", u.ID, "docId", docID, "err", err)
+		writeError(w, http.StatusInternalServerError, "save", "save failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
+
+// RenameFile updates the stored fileName. JSON body:
+// `{ "fileName": "..." }`. Capped at 255 chars; empty rejected.
+func (h *Handlers) RenameFile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	docID := r.PathValue("docId")
+	var body struct {
+		FileName string `json:"fileName"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_json", err.Error())
+		return
+	}
+	body.FileName = strings.TrimSpace(body.FileName)
+	if body.FileName == "" {
+		writeError(w, http.StatusBadRequest, "file_name", "fileName required")
+		return
+	}
+	if len(body.FileName) > 255 {
+		writeError(w, http.StatusBadRequest, "file_name", "fileName too long (>255)")
+		return
+	}
+	if err := h.Files.RenameFor(u.ID, docID, body.FileName); err != nil {
+		if errors.Is(err, host.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not_found", "no such doc")
+			return
+		}
+		slog.Error("rename failed", "userId", u.ID, "docId", docID, "err", err)
+		writeError(w, http.StatusInternalServerError, "rename", "rename failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
+		FileName string `json:"fileName"`
+	}{FileName: body.FileName})
+}
+
+// DeleteFile removes the user's doc. 204 on success; idempotent at
+// the FS layer so deleting an already-absent doc still returns 204.
+func (h *Handlers) DeleteFile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	docID := r.PathValue("docId")
+	if err := h.Files.DeleteFor(u.ID, docID); err != nil {
+		if errors.Is(err, host.ErrNotFound) {
+			// Malformed docID — gate at the FS layer returned ErrNotFound.
+			// 204 anyway so the client doesn't have to distinguish
+			// "deleted now" from "was never valid"; either way the
+			// caller's intent is satisfied.
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		slog.Error("delete failed", "userId", u.ID, "docId", docID, "err", err)
+		writeError(w, http.StatusInternalServerError, "delete", "delete failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// readUploadBody decodes either a multipart/form-data POST/PUT with
+// a `file` field or a raw-body POST/PUT with X-File-Name. Same shape
+// as the legacy /api/docs upload so the web client can reuse its
+// existing FormData-vs-raw branching.
+func readUploadBody(r *http.Request) ([]byte, string, error) {
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+			return nil, "", fmt.Errorf("multipart parse failed: %w", err)
+		}
+		file, header, ferr := r.FormFile("file")
+		if ferr != nil {
+			return nil, "", fmt.Errorf("missing `file` form field")
+		}
+		defer file.Close()
+		contents, err := io.ReadAll(file)
+		if err != nil {
+			return nil, "", fmt.Errorf("read failed: %w", err)
+		}
+		return contents, header.Filename, nil
+	}
+	contents, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("read failed: %w", err)
+	}
+	return contents, r.Header.Get("X-File-Name"), nil
 }
 
 // ---------------------------------------------------------------

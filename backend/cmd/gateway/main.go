@@ -583,12 +583,35 @@ func withCORS(next http.Handler) http.Handler {
 // (docs persist across restart) under CASUAL_LOCAL_PATH; anything
 // else falls back to inline (in-memory). Returning host.DocStore
 // keeps every handler downstream host-agnostic.
-// peruserAdapter is the thin glue between the personal.FileLister
+// peruserAdapter is the thin glue between the personal.FileStore
 // interface (which doesn't know about local) and local.PerUserStores
 // (which doesn't know about personal). Keeps the two packages
-// independent.
+// independent — both are imported here, at the wiring layer, and
+// nowhere else.
 type peruserAdapter struct {
 	stores *local.PerUserStores
+}
+
+// summaryFor synthesises a personal.FileSummary from a local Store
+// + docID by reading the meta sidecar. Used after operations that
+// touch the doc (Store / Snapshot) to return the freshly-updated
+// summary to the HTTP layer.
+func summaryFor(ctx context.Context, s *local.Store, docID string) (personal.FileSummary, error) {
+	contents, info, err := s.Fetch(ctx, docID, "")
+	if err != nil {
+		return personal.FileSummary{}, err
+	}
+	v, _ := strconv.ParseUint(info.Version, 10, 64)
+	// Fetch returns the full byte slice; we only need len() — a future
+	// optimization could split into Fetch + Stat to skip the read.
+	// At single-user M3 scale this is well under any latency budget.
+	return personal.FileSummary{
+		DocID:    docID,
+		FileName: info.FileName,
+		Version:  v,
+		SavedAt:  time.Now().UTC().Format(time.RFC3339),
+		Size:     int64(len(contents)),
+	}, nil
 }
 
 // ListFor returns the user's docs as personal.FileSummary slices.
@@ -614,6 +637,79 @@ func (a *peruserAdapter) ListFor(userID string) ([]personal.FileSummary, error) 
 		}
 	}
 	return out, nil
+}
+
+// StoreFor mints a docID and persists fresh upload bytes under the
+// user's scoped store. Returns the resulting summary with version 1.
+func (a *peruserAdapter) StoreFor(userID, fileName string, contents []byte) (personal.FileSummary, error) {
+	s, err := a.stores.For(userID)
+	if err != nil {
+		return personal.FileSummary{}, err
+	}
+	docID, err := s.Store(fileName, contents)
+	if err != nil {
+		return personal.FileSummary{}, err
+	}
+	return personal.FileSummary{
+		DocID:    docID,
+		FileName: fileName,
+		Version:  1,
+		SavedAt:  time.Now().UTC().Format(time.RFC3339),
+		Size:     int64(len(contents)),
+	}, nil
+}
+
+// FetchFor returns the user's doc bytes + a summary. ErrNotFound
+// surfaces up through host.ErrNotFound so the handler can map it to
+// a 404.
+func (a *peruserAdapter) FetchFor(ctx context.Context, userID, docID string) (personal.FileSummary, []byte, error) {
+	s, err := a.stores.For(userID)
+	if err != nil {
+		return personal.FileSummary{}, nil, err
+	}
+	contents, info, err := s.Fetch(ctx, docID, "")
+	if err != nil {
+		return personal.FileSummary{}, nil, err
+	}
+	v, _ := strconv.ParseUint(info.Version, 10, 64)
+	return personal.FileSummary{
+		DocID:    docID,
+		FileName: info.FileName,
+		Version:  v,
+		SavedAt:  time.Now().UTC().Format(time.RFC3339),
+		Size:     int64(len(contents)),
+	}, contents, nil
+}
+
+// SaveFor overwrites the doc and bumps version. The summary returned
+// after Snapshot reflects the new version.
+func (a *peruserAdapter) SaveFor(ctx context.Context, userID, docID string, contents []byte) (personal.FileSummary, error) {
+	s, err := a.stores.For(userID)
+	if err != nil {
+		return personal.FileSummary{}, err
+	}
+	if err := s.Snapshot(ctx, docID, "", contents); err != nil {
+		return personal.FileSummary{}, err
+	}
+	return summaryFor(ctx, s, docID)
+}
+
+// RenameFor updates fileName without bumping version.
+func (a *peruserAdapter) RenameFor(userID, docID, newName string) error {
+	s, err := a.stores.For(userID)
+	if err != nil {
+		return err
+	}
+	return s.Rename(docID, newName)
+}
+
+// DeleteFor removes the doc + sidecar from disk.
+func (a *peruserAdapter) DeleteFor(userID, docID string) error {
+	s, err := a.stores.For(userID)
+	if err != nil {
+		return err
+	}
+	return s.Delete(docID)
 }
 
 func selectStore() (host.DocStore, error) {

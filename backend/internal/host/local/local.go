@@ -212,6 +212,29 @@ func (s *Store) Rename(docID, newName string) error {
 	return s.writeMetaAtomic(docID, meta)
 }
 
+// Delete removes a doc and its meta sidecar from disk. Best-effort:
+// missing files are treated as success so a double-delete is a no-op
+// rather than an error the caller has to ignore. Returns ErrNotFound
+// only when the docID itself is malformed; a missing-on-disk doc maps
+// to nil so the HTTP layer can return 204 for both "deleted now" and
+// "was already gone".
+func (s *Store) Delete(docID string) error {
+	if !safeDocID.MatchString(docID) {
+		return host.ErrNotFound
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Remove docx + meta independently; only surface a real error,
+	// not "already absent". A meta-without-docx (or vice versa) gets
+	// cleaned up here too.
+	for _, p := range []string{s.docxPath(docID), s.metaPath(docID)} {
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("local: remove %q: %w", p, err)
+		}
+	}
+	return nil
+}
+
 // Summary is the public-facing shape returned by List — one entry
 // per doc. Big-payload fields (revision log, full meta) are
 // intentionally omitted so a `/files` response stays small even on
