@@ -356,7 +356,11 @@ func downloadHandler(store host.DocStore) http.HandlerFunc {
 			return
 		}
 
-		contents, info, err := store.Fetch(r.Context(), docID, "")
+		// authToken comes from the WOPI redirect flow — see the same
+		// pattern in wsHandler. Inline + local hosts ignore it; the
+		// WOPI host client uses it to authenticate the outbound call.
+		authToken := r.URL.Query().Get("access_token")
+		contents, info, err := store.Fetch(r.Context(), docID, authToken)
 		if err != nil {
 			if errors.Is(err, host.ErrNotFound) {
 				writeJSONError(w, http.StatusNotFound, "not_found", "no such doc")

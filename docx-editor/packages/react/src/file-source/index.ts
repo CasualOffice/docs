@@ -16,6 +16,12 @@ export {
   PersonalFileSourceError,
   type PersonalFileSourceOptions,
 } from './personal';
-export { chooseFileSource, type ChooseFileSourceOptions } from './select';
+export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
+export {
+  chooseFileSource,
+  extractWopiContext,
+  type ChooseFileSourceOptions,
+  type WopiContext,
+} from './select';
 export { FileSourceProvider, useFileSource, type FileSourceProviderProps } from './context';
 export type { UserWire, FileSummaryWire, ErrorWire, ProfileWire, ProfilePatchWire } from './wire';

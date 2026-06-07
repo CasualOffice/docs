@@ -2,7 +2,8 @@ import { describe, expect, it } from 'bun:test';
 
 import { BrowserFileSource } from './browser';
 import { PersonalFileSource } from './personal';
-import { chooseFileSource } from './select';
+import { chooseFileSource, extractWopiContext } from './select';
+import { WopiFileSource } from './wopi';
 
 function userJson(body: { userId: string; displayName: string }) {
   return new Response(
@@ -52,6 +53,18 @@ describe('chooseFileSource', () => {
     expect(source).toBeInstanceOf(BrowserFileSource);
   });
 
+  it('returns WopiFileSource when the URL matches /doc/{id}?access_token=', async () => {
+    const fetchImpl = (async () => new Response('', { status: 401 })) as unknown as typeof fetch;
+    const source = await chooseFileSource({
+      gatewayBuild: true,
+      baseUrl: 'http://gateway.test',
+      fetchImpl,
+      wopiContext: { docId: 'aHR0cDovL2hvc3QvZmlsZXMveA', accessToken: 'tok-abc' },
+    });
+    expect(source).toBeInstanceOf(WopiFileSource);
+    expect(source.kind).toBe('wopi');
+  });
+
   it('falls back to BrowserFileSource when the gateway is unreachable', async () => {
     const fetchImpl = (async () => {
       throw new Error('network down');
@@ -62,5 +75,50 @@ describe('chooseFileSource', () => {
       fetchImpl,
     });
     expect(source).toBeInstanceOf(BrowserFileSource);
+  });
+});
+
+describe('extractWopiContext', () => {
+  it('parses a /doc/{id}?access_token=… URL', () => {
+    const ctx = extractWopiContext({
+      pathname: '/doc/aHR0cDovL2hvc3QvZmlsZXMvYWJj',
+      search: '?access_token=jwt-xyz',
+    });
+    expect(ctx).toEqual({ docId: 'aHR0cDovL2hvc3QvZmlsZXMvYWJj', accessToken: 'jwt-xyz' });
+  });
+
+  it('tolerates a trailing slash on /doc/{id}', () => {
+    const ctx = extractWopiContext({
+      pathname: '/doc/abc123/',
+      search: '?access_token=tok',
+    });
+    expect(ctx).toEqual({ docId: 'abc123', accessToken: 'tok' });
+  });
+
+  it('returns null when access_token is missing', () => {
+    expect(
+      extractWopiContext({
+        pathname: '/doc/abc',
+        search: '',
+      })
+    ).toBeNull();
+  });
+
+  it('returns null for non-/doc paths', () => {
+    expect(
+      extractWopiContext({
+        pathname: '/home',
+        search: '?access_token=tok',
+      })
+    ).toBeNull();
+  });
+
+  it('returns null when docId carries characters outside the base64url set', () => {
+    expect(
+      extractWopiContext({
+        pathname: '/doc/has spaces',
+        search: '?access_token=tok',
+      })
+    ).toBeNull();
   });
 });
