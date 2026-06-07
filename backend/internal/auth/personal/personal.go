@@ -151,6 +151,15 @@ func (s *UserStore) Close() error {
 	return s.db.Close()
 }
 
+// Ping verifies the underlying database connection is reachable.
+// Used by the /health/ready readiness probe to detect a SQLite file
+// that's been deleted or made unreadable mid-process. Honours the
+// supplied context — the readiness handler enforces a per-probe
+// timeout so a hung disk can't tie up the response.
+func (s *UserStore) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
+}
+
 // Create registers a new user. Returns ErrEmailTaken if the email is
 // already in use, ErrInvalidEmail / ErrWeakPassword on validation
 // failures, and a wrapped DB error otherwise.

@@ -872,6 +872,25 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
+	// Readiness probes populated below as features wire in. The
+	// handler is mounted unconditionally further down so a load
+	// balancer always has a fixed endpoint to poll, even on an
+	// inline-only deploy where the probe list is empty (always 200).
+	var probes []ReadinessProbe
+	// Local-host FS probe: the data root must remain stat-able.
+	// Discovered via type assertion so the readiness layer doesn't
+	// have to depend on host/local — the selectStore abstraction
+	// keeps the gateway host-agnostic; only readiness opts in.
+	if ls, ok := store.(*local.Store); ok {
+		probes = append(probes, &FSProbe{
+			Label: "fs.root",
+			Path:  ls.Root(),
+			Stat: func(p string) error {
+				_, err := os.Stat(p)
+				return err
+			},
+		})
+	}
 
 	// Personal-mode (Mode 3) auth wires onto the same mux when
 	// GATEWAY_AUTH=personal is set. CASUAL_LOCAL_PATH is the base
@@ -891,6 +910,10 @@ func main() {
 		if err != nil {
 			log.Fatalf("auth: open user store at %q: %v", authRoot, err)
 		}
+		probes = append(probes, &SQLProbe{
+			Label:   "users.db",
+			PingCtx: users.Ping,
+		})
 		keyRaw := os.Getenv("CASUAL_SESSION_KEY")
 		if keyRaw == "" {
 			log.Fatal("auth: CASUAL_SESSION_KEY unset — refusing to mount unsigned sessions")
@@ -957,9 +980,21 @@ func main() {
 		// /wopi/* surface might grow other endpoints later that
 		// shouldn't pass through the redirect handler.
 		mux.HandleFunc("GET "+wopiRedirectPath, wopiRedirectHandler(verifier))
+		probes = append(probes, &HTTPProbe{
+			Label:  "wopi.jwks",
+			URL:    jwksURL,
+			Client: &http.Client{Timeout: 5 * time.Second},
+		})
 		slog.Info("auth: wopi mode mounted",
 			slog.String("jwksURL", jwksURL))
 	}
+
+	// Readiness probe mounted now that every conditional block has
+	// had a chance to append to `probes`. Capture the closure on the
+	// current slice so future writes to `probes` don't surprise the
+	// handler.
+	mux.HandleFunc("/health/ready", readinessHandler(time.Now, probes))
+	slog.Info("readiness: probes configured", slog.Int("count", len(probes)))
 
 	// POST /api/docs (upload) — under the upload bucket (tighter).
 	mux.Handle("/api/docs", uploadLimiter.Middleware(uploadHandler(store)))
