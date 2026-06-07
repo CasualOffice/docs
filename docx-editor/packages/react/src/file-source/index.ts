@@ -30,6 +30,13 @@ export {
 } from './PersonalAuthGate';
 export { UserMenu, type UserMenuProps } from './UserMenu';
 export { ProfileSettingsDialog, type ProfileSettingsDialogProps } from './ProfileSettingsDialog';
+export {
+  useFileSourceAutoSave,
+  type UseFileSourceAutoSaveOptions,
+  type UseFileSourceAutoSaveReturn,
+  type AutoSaveEditorRef,
+  type AutoSaveStatus as FileSourceAutoSaveStatus,
+} from './useFileSourceAutoSave';
 export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
 export {
   chooseFileSource,
