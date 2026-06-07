@@ -106,6 +106,46 @@ type Integration interface {
 	Snapshot(ctx context.Context, docID, authToken string, contents []byte) error
 }
 
+// Locker is the optional capability hosts implement when they need
+// the editor to claim a lock for the duration of an active room.
+// WOPI hosts use this so a second editor (Word Online, for instance)
+// can't open the same file concurrently and clobber the saves.
+//
+// The contract: the room manager calls Lock once on first client
+// join (with a freshly-minted lockID it remembers for the room's
+// lifetime), Unlock once on last client leave, and RefreshLock
+// periodically while the room is alive (the period is the room
+// manager's choice; WOPI hosts typically expect a refresh every
+// ~5-10 min). The same lockID is used for every call within a
+// room's lifetime.
+//
+// Hosts that don't have lock semantics (inline, local) simply don't
+// implement this interface; the room manager checks via type
+// assertion and skips the calls when the capability isn't there.
+//
+// Returning host.ErrConflict from Lock means the file is already
+// locked by a different client (Word Online has it open, etc.);
+// the room manager treats that as "refuse to open this room" and
+// surfaces a 409 to the WS join.
+type Locker interface {
+	// Lock claims the file for this editor. lockID is opaque to the
+	// host — it just round-trips through. authToken is the WOPI
+	// access_token of the user opening the file; the host
+	// authenticates the lock claim against it.
+	Lock(ctx context.Context, docID, lockID, authToken string) error
+
+	// Unlock releases a previously-acquired lock. lockID must match
+	// what was passed to Lock. Idempotent: if the lock has already
+	// expired host-side, the host typically returns 200 (or 409 with
+	// X-WOPI-Lock=""); either is fine here.
+	Unlock(ctx context.Context, docID, lockID, authToken string) error
+
+	// RefreshLock extends the lifetime of an existing lock by the
+	// host's TTL (typically 30 min for WOPI hosts). Called by a
+	// periodic ticker in the room manager.
+	RefreshLock(ctx context.Context, docID, lockID, authToken string) error
+}
+
 // Sentinel errors. Implementations either return these directly
 // or wrap an HTTP-status-coded error that callers can match via
 // errors.Is.

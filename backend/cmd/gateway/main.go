@@ -502,7 +502,7 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 		// below.
 		defer conn.CloseNow()
 
-		rm, client, joinErr := rooms.Join(docID)
+		rm, client, joinErr := rooms.Join(r.Context(), docID, authToken)
 		if joinErr != nil {
 			// Capacity cap reached. Close with PolicyViolation +
 			// "capacity_full" reason string so the client knows
@@ -829,7 +829,7 @@ func main() {
 	// pipeline). 0 disables the cap entirely — useful for dev +
 	// load testing where the cap would mask real failures.
 	maxRooms := envInt("MAX_ROOMS", 256)
-	rooms := room.NewManager(
+	managerOpts := []room.ManagerOption{
 		room.WithDrainFunc(func(docID string) {
 			// v0 snapshot: every joiner already has the original .docx
 			// bytes via /api/docs/{id}/download, and the gateway can't
@@ -841,7 +841,17 @@ func main() {
 				slog.String("docId", docID))
 		}),
 		room.WithMaxRooms(maxRooms),
-	)
+	}
+	// Locker capability: when the configured store implements
+	// host.Locker (today: WOPI), the room manager claims a lock on
+	// first client join and releases it on drain. Inline + local
+	// don't implement it; the type assertion fails and locking is
+	// silently skipped.
+	if locker, ok := store.(host.Locker); ok {
+		managerOpts = append(managerOpts, room.WithLocker(locker))
+		slog.Info("room manager: host.Locker capability detected")
+	}
+	rooms := room.NewManager(managerOpts...)
 	slog.Info("room manager started", slog.Int("maxRooms", maxRooms))
 
 	// Per-IP token-bucket limiters (G1 of the gateway hardening pass —

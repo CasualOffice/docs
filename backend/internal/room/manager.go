@@ -18,10 +18,15 @@
 package room
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"log/slog"
 	"sync"
 	"sync/atomic"
+
+	"github.com/schnsrw/docx/backend/internal/host"
 )
 
 // outboundQueue is the per-client buffered channel of binary frames
@@ -76,6 +81,20 @@ type Room struct {
 	mu      sync.RWMutex
 	docID   string
 	clients map[*Client]struct{}
+
+	// lockID is the per-room WOPI lock token minted on first join
+	// when the manager has a host.Locker capability. Empty for
+	// hosts without locking (inline, local). The same lockID is
+	// used for the eventual Unlock at drain time so the host
+	// recognises the release as ours.
+	lockID string
+	// authToken is the access_token of the FIRST client to join,
+	// retained so the Unlock at drain time can authenticate the
+	// release. A later client's token would also work (WOPI hosts
+	// don't care whose token unlocks as long as the lockID matches)
+	// but tracking the first-join token keeps the lock lifecycle
+	// tied to a known caller — easier to reason about in logs.
+	authToken string
 }
 
 // Clients returns the current number of connected clients. Safe
@@ -180,6 +199,11 @@ type Manager struct {
 	nextID   atomic.Uint64
 	onDrain  DrainFunc
 	maxRooms int // 0 = unbounded
+	// locker is the optional host.Locker capability. When non-nil,
+	// the manager claims a WOPI-style lock on first join and
+	// releases it on last leave. When nil, lock calls are skipped
+	// (inline + local hosts).
+	locker host.Locker
 }
 
 // ErrCapacityFull is returned by Join when MaxRooms is configured
@@ -219,6 +243,18 @@ func WithDrainFunc(fn DrainFunc) ManagerOption {
 	return func(m *Manager) { m.onDrain = fn }
 }
 
+// WithLocker registers a host.Locker capability. The manager calls
+// Lock on first client join (mints a lockID per room), Unlock on
+// last client leave. Hosts without locking (inline, local) leave
+// this nil; the manager simply skips lock calls.
+//
+// A Lock failure with host.ErrConflict means the file is already
+// locked by another editor; Join returns that error to the caller
+// so the gateway can refuse the WS join.
+func WithLocker(l host.Locker) ManagerOption {
+	return func(m *Manager) { m.locker = l }
+}
+
 // WithMaxRooms caps the number of concurrently open rooms (docIds).
 // Zero or negative disables the cap entirely (the default — useful
 // for tests + dev). When set and the cap is reached, Join returns
@@ -241,10 +277,18 @@ func WithMaxRooms(n int) ManagerOption {
 // Client handle whose `Send` channel the caller should drain
 // from a writer goroutine.
 //
+// authToken is the per-client access_token. The first client to
+// join a room contributes its token + a freshly-minted lockID
+// to the Room's lock state, so the drain-time Unlock can use
+// them. Subsequent joiners ignore their tokens for lock purposes
+// — the lock is already held.
+//
 // Returns ErrCapacityFull when MaxRooms is configured (>0) and a
 // new docId would push the registry past the cap. Joining an
 // existing docId NEVER returns this error — only new rooms count.
-// The HTTP layer maps the error to 503 + Retry-After.
+// Returns host.ErrConflict when the configured Locker rejects the
+// Lock (another editor holds the file); the gateway maps that to a
+// WS close.
 //
 // `m.mu` is held through `AddClient` to close the race against
 // Leave: if Join released `m.mu` before AddClient, a concurrent
@@ -255,7 +299,7 @@ func WithMaxRooms(n int) ManagerOption {
 // safe: lock order is m.mu → r.mu, and Leave follows the same
 // order in its drain branch (m.mu held while it reads
 // r.Clients()).
-func (m *Manager) Join(docID string) (*Room, *Client, error) {
+func (m *Manager) Join(ctx context.Context, docID, authToken string) (*Room, *Client, error) {
 	m.mu.Lock()
 	r, ok := m.rooms[docID]
 	if !ok {
@@ -263,7 +307,25 @@ func (m *Manager) Join(docID string) (*Room, *Client, error) {
 			m.mu.Unlock()
 			return nil, nil, ErrCapacityFull
 		}
-		r = &Room{docID: docID, clients: make(map[*Client]struct{})}
+		// New room — claim the host-side lock before publishing the
+		// Room to the manager registry. A Lock failure surfaces as
+		// host.ErrConflict (or whatever the host returned) and we
+		// never register the room — so a subsequent Join for the
+		// same docID will retry the lock claim.
+		lockID := ""
+		if m.locker != nil {
+			lockID = newLockID()
+			if err := m.locker.Lock(ctx, docID, lockID, authToken); err != nil {
+				m.mu.Unlock()
+				return nil, nil, err
+			}
+		}
+		r = &Room{
+			docID:     docID,
+			clients:   make(map[*Client]struct{}),
+			lockID:    lockID,
+			authToken: authToken,
+		}
 		m.rooms[docID] = r
 		// First-client seed (M2) plugs in here: load the .docx via
 		// host.Integration.Fetch, run it through the headless Bun
@@ -279,10 +341,28 @@ func (m *Manager) Join(docID string) (*Room, *Client, error) {
 	return r, c, nil
 }
 
+// newLockID mints a 16-char hex token for a fresh WOPI lock. Length
+// is short enough to fit in the X-WOPI-Lock header (some hosts cap
+// at 1024 bytes; 16 is well under) and long enough to be
+// collision-resistant within the lifetime of a deploy. Cryptographic
+// randomness is overkill for non-secret IDs but cheap.
+func newLockID() string {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// rand.Read should never fail on a sane OS; a fallback isn't
+		// worth the branching. Caller surfaces a 500 if the lock
+		// claim subsequently fails.
+		return "fallback-lock"
+	}
+	return hex.EncodeToString(b[:])
+}
+
 // Leave records a client disconnect. When the last client
 // disconnects from a room, the room is removed from the manager
 // and the DrainFunc (if any) is invoked — that's the hook the
-// host.Integration snapshot wires into.
+// host.Integration snapshot wires into. When the manager has a
+// Locker capability, the WOPI Unlock fires here too, before the
+// drain func.
 //
 // `r` and `c` come from a prior Join.
 func (m *Manager) Leave(r *Room, c *Client) {
@@ -306,9 +386,29 @@ func (m *Manager) Leave(r *Room, c *Client) {
 	}
 	drain := m.onDrain
 	docID := r.DocID()
+	lockID := r.lockID
+	authToken := r.authToken
+	locker := m.locker
 	m.mu.Unlock()
 
-	if drained && drain != nil {
+	if !drained {
+		return
+	}
+	// Release the host-side lock before the drain func. A failure
+	// here doesn't block the drain — the host will eventually expire
+	// the lock on its own — but it's logged so an operator can
+	// notice a steady stream of unlock failures.
+	if locker != nil && lockID != "" {
+		// Use a fresh context — the original request context is
+		// already done by the time Leave fires. Bounded by the
+		// locker implementation's own timeout (30s default for
+		// WOPI).
+		if err := locker.Unlock(context.Background(), docID, lockID, authToken); err != nil {
+			slog.Warn("room drain: unlock failed",
+				"docID", docID, "lockID", lockID, "err", err)
+		}
+	}
+	if drain != nil {
 		drain(docID)
 	}
 }

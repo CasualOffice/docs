@@ -229,6 +229,127 @@ func TestEmptyAccessToken(t *testing.T) {
 	}
 }
 
+// TestLock_HappyPath — POST to wopiSrc with X-WOPI-Override: LOCK
+// and X-WOPI-Lock header; 200 → nil.
+func TestLock_HappyPath(t *testing.T) {
+	m := newMockHost(t)
+	var seen struct {
+		method   string
+		override string
+		lock     string
+		token    string
+	}
+	m.mux.HandleFunc("/wopi/files/abc", func(w http.ResponseWriter, r *http.Request) {
+		seen.method = r.Method
+		seen.override = r.Header.Get("X-WOPI-Override")
+		seen.lock = r.Header.Get("X-WOPI-Lock")
+		seen.token = r.URL.Query().Get("access_token")
+		w.WriteHeader(http.StatusOK)
+	})
+	s := New(Options{})
+	docID := EncodeDocID(m.wopiSrc("abc"))
+	if err := s.Lock(context.Background(), docID, "lock-uuid-42", "tok-1"); err != nil {
+		t.Fatalf("Lock: %v", err)
+	}
+	if seen.method != http.MethodPost || seen.override != "LOCK" ||
+		seen.lock != "lock-uuid-42" || seen.token != "tok-1" {
+		t.Errorf("wire shape mismatch: %+v", seen)
+	}
+}
+
+// TestLock_ConflictAlreadyLocked — 409 surfaces as host.ErrConflict
+// so the room manager refuses to open the room.
+func TestLock_ConflictAlreadyLocked(t *testing.T) {
+	m := newMockHost(t)
+	m.mux.HandleFunc("/wopi/files/abc", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-WOPI-Lock", "held-by-someone-else")
+		w.WriteHeader(http.StatusConflict)
+	})
+	s := New(Options{})
+	docID := EncodeDocID(m.wopiSrc("abc"))
+	if err := s.Lock(context.Background(), docID, "mine", "tok"); !errors.Is(err, host.ErrConflict) {
+		t.Errorf("got %v, want host.ErrConflict", err)
+	}
+}
+
+// TestLock_EmptyLockIDRejected — caller bug surfaces locally
+// without an outbound HTTP call.
+func TestLock_EmptyLockIDRejected(t *testing.T) {
+	s := New(Options{})
+	docID := EncodeDocID("https://host.example/wopi/files/abc")
+	if err := s.Lock(context.Background(), docID, "", "tok"); err == nil {
+		t.Error("Lock with empty lockID returned nil")
+	}
+}
+
+// TestUnlock_OverrideHeader — confirms the Unlock op uses the right
+// X-WOPI-Override value, which is what the host switches on.
+func TestUnlock_OverrideHeader(t *testing.T) {
+	m := newMockHost(t)
+	seenOverride := ""
+	m.mux.HandleFunc("/wopi/files/abc", func(w http.ResponseWriter, r *http.Request) {
+		seenOverride = r.Header.Get("X-WOPI-Override")
+		w.WriteHeader(http.StatusOK)
+	})
+	s := New(Options{})
+	docID := EncodeDocID(m.wopiSrc("abc"))
+	if err := s.Unlock(context.Background(), docID, "mine", "tok"); err != nil {
+		t.Fatal(err)
+	}
+	if seenOverride != "UNLOCK" {
+		t.Errorf("X-WOPI-Override = %q, want UNLOCK", seenOverride)
+	}
+}
+
+// TestRefreshLock_OverrideHeader — same shape as Unlock, different
+// override token.
+func TestRefreshLock_OverrideHeader(t *testing.T) {
+	m := newMockHost(t)
+	seenOverride := ""
+	m.mux.HandleFunc("/wopi/files/abc", func(w http.ResponseWriter, r *http.Request) {
+		seenOverride = r.Header.Get("X-WOPI-Override")
+		w.WriteHeader(http.StatusOK)
+	})
+	s := New(Options{})
+	docID := EncodeDocID(m.wopiSrc("abc"))
+	if err := s.RefreshLock(context.Background(), docID, "mine", "tok"); err != nil {
+		t.Fatal(err)
+	}
+	if seenOverride != "REFRESH_LOCK" {
+		t.Errorf("X-WOPI-Override = %q, want REFRESH_LOCK", seenOverride)
+	}
+}
+
+// TestLockOps_BadDocID — bad encoding surfaces as ErrNotFound
+// before any outbound call. Same gate Fetch/Snapshot use.
+func TestLockOps_BadDocID(t *testing.T) {
+	s := New(Options{})
+	for _, fn := range []func() error{
+		func() error { return s.Lock(context.Background(), "@@", "id", "t") },
+		func() error { return s.Unlock(context.Background(), "@@", "id", "t") },
+		func() error { return s.RefreshLock(context.Background(), "@@", "id", "t") },
+	} {
+		if err := fn(); !errors.Is(err, host.ErrNotFound) {
+			t.Errorf("got %v, want host.ErrNotFound", err)
+		}
+	}
+}
+
+// TestLockOps_401_Forbidden — auth failure on a lock op surfaces as
+// host.ErrForbidden so the room manager can decide whether to retry
+// after re-auth.
+func TestLockOps_401_Forbidden(t *testing.T) {
+	m := newMockHost(t)
+	m.mux.HandleFunc("/wopi/files/abc", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "no", http.StatusUnauthorized)
+	})
+	s := New(Options{})
+	docID := EncodeDocID(m.wopiSrc("abc"))
+	if err := s.Lock(context.Background(), docID, "id", "bad-tok"); !errors.Is(err, host.ErrForbidden) {
+		t.Errorf("got %v, want host.ErrForbidden", err)
+	}
+}
+
 // TestUserAgent_SentOnEveryRequest — the User-Agent header lands on
 // outbound requests so the host's logs can identify the editor.
 func TestUserAgent_SentOnEveryRequest(t *testing.T) {

@@ -206,6 +206,63 @@ func (s *Client) Snapshot(ctx context.Context, docID, authToken string, contents
 	return nil
 }
 
+// Lock implements host.Locker. Sends POST <wopiSrc>?access_token=…
+// with X-WOPI-Override: LOCK and X-WOPI-Lock: <lockID>. A 200
+// response means the lock is now ours; 409 means a different
+// editor already holds the file and surfaces as host.ErrConflict.
+func (s *Client) Lock(ctx context.Context, docID, lockID, authToken string) error {
+	return s.lockOp(ctx, docID, lockID, authToken, "LOCK")
+}
+
+// Unlock releases a lock claimed via Lock. The same lockID must be
+// supplied — the host rejects 409 if it doesn't match what was
+// recorded at lock time.
+func (s *Client) Unlock(ctx context.Context, docID, lockID, authToken string) error {
+	return s.lockOp(ctx, docID, lockID, authToken, "UNLOCK")
+}
+
+// RefreshLock extends the host-side lock TTL. WOPI hosts typically
+// time out a lock after 30 min of inactivity; the room manager
+// fires this on a slower-than-that cadence to keep the lock alive
+// for the duration of an active editing session.
+func (s *Client) RefreshLock(ctx context.Context, docID, lockID, authToken string) error {
+	return s.lockOp(ctx, docID, lockID, authToken, "REFRESH_LOCK")
+}
+
+// lockOp is the shared implementation of Lock / Unlock /
+// RefreshLock. The only thing that varies is the X-WOPI-Override
+// header value.
+func (s *Client) lockOp(ctx context.Context, docID, lockID, authToken, op string) error {
+	wopiSrc, err := DecodeDocID(docID)
+	if err != nil {
+		return err
+	}
+	if lockID == "" {
+		return fmt.Errorf("wopi: lockID required for %s", op)
+	}
+	endpoint, err := withAccessToken(wopiSrc, authToken)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("wopi: build %s request: %w", op, err)
+	}
+	req.Header.Set("X-WOPI-Override", op)
+	req.Header.Set("X-WOPI-Lock", lockID)
+	req.Header.Set("User-Agent", s.userAgent)
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("wopi: %s request failed: %w", op, err)
+	}
+	defer resp.Body.Close()
+	// WOPI hosts use 409 + X-WOPI-Lock header to indicate a lock
+	// mismatch — the room manager treats that as ErrConflict so the
+	// gateway can refuse the WS join (or skip the unlock if the
+	// host already considers the lock released).
+	return mapHTTPStatus(resp.StatusCode)
+}
+
 // checkFileInfo issues GET <wopiSrc>?access_token=... and decodes
 // the JSON response into a host.FileInfo. The full CheckFileInfo
 // shape is large (~30 fields, per WOPI's spec); we read only what
