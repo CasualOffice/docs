@@ -37,6 +37,7 @@ export {
   type AutoSaveEditorRef,
   type AutoSaveStatus as FileSourceAutoSaveStatus,
 } from './useFileSourceAutoSave';
+export { AutosaveStatus, type AutosaveStatusProps } from './AutosaveStatus';
 export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
 export {
   chooseFileSource,

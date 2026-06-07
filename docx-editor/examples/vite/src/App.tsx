@@ -11,7 +11,14 @@ import { ShareDialog } from './collab/Share';
 import { LoadingPanel } from './collab/LoadingPanel';
 import { ErrorPanel } from './collab/ErrorPanel';
 import { DisconnectedBanner } from './collab/DisconnectedBanner';
-import { PersonalAuthGate, UserMenu } from '@eigenpal/docx-js-editor';
+import {
+  AutosaveStatus,
+  PersonalAuthGate,
+  UserMenu,
+  useFileSourceAutoSave,
+  type AutoSaveEditorRef,
+  type FileSource,
+} from '@eigenpal/docx-js-editor';
 import { Home } from './Home';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
@@ -137,6 +144,18 @@ function isAuthGateE2E(): boolean {
   return new URLSearchParams(window.location.search).get('e2e') === 'auth-gate';
 }
 
+/**
+ * `?e2e=autosave` mounts the useFileSourceAutoSave hook against a
+ * fake editor ref + a fake FileSource backed by /files/:id/contents
+ * route mocks. The spec at e2e/tests/autosave-indicator.spec.ts
+ * drives flush() via window.__autosaveE2E and asserts the
+ * AutosaveStatus component reflects the lifecycle.
+ */
+function isAutosaveE2E(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('e2e') === 'autosave';
+}
+
 function AuthGateE2E() {
   return (
     <PersonalAuthGate>
@@ -165,9 +184,104 @@ function AuthGateE2E() {
   );
 }
 
+/**
+ * Minimal FileSource that POSTs bytes to /files/:id/contents so the
+ * Playwright spec can mock the endpoint via page.route() without
+ * pulling in PersonalFileSource (which would also fire /files,
+ * /auth/me, etc. — noise the spec doesn't care about).
+ */
+function makeFakeFileSource(): FileSource {
+  return {
+    kind: 'personal',
+    label: 'Fake',
+    list: async () => [],
+    open: async () => {
+      throw new Error('not used in autosave e2e');
+    },
+    save: async (id, bytes) => {
+      const docId = id ?? 'autosave-doc';
+      const res = await fetch(`/files/${docId}/contents`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: bytes,
+      });
+      if (!res.ok) {
+        throw new Error(`save failed (${res.status})`);
+      }
+      const data = (await res.json()) as { version?: number };
+      return { id: docId, etag: String(data.version ?? 1) };
+    },
+    rename: async () => undefined,
+    delete: async () => undefined,
+    watchRecent: () => () => undefined,
+    rememberLastOpened: async () => undefined,
+    lastOpened: async () => null,
+  };
+}
+
+function AutosaveE2E() {
+  // Fake editor ref that returns a 4-byte buffer on demand. The
+  // bytes themselves don't matter — the spec only checks that the
+  // save round-trip fires and the status component updates.
+  const fakeRef = useRef<AutoSaveEditorRef>({
+    save: async () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]).buffer,
+  });
+  const [fileSource] = useState(() => makeFakeFileSource());
+  const state = useFileSourceAutoSave({
+    fileSource,
+    docId: 'autosave-doc',
+    editorRef: fakeRef,
+    // Disable the 30s tick — the spec drives saves via flush() so
+    // we get deterministic timing.
+    interval: 0,
+  });
+
+  // Expose flush() to the Playwright spec via a global hook. Same
+  // pattern as window.__DOCX_EDITOR_E2E__.
+  useEffect(() => {
+    (window as unknown as { __autosaveE2E?: { flush: () => Promise<void> } }).__autosaveE2E = {
+      flush: state.flush,
+    };
+    return () => {
+      delete (window as unknown as { __autosaveE2E?: unknown }).__autosaveE2E;
+    };
+  }, [state.flush]);
+
+  return (
+    <PersonalAuthGate>
+      <div
+        data-testid="signed-in-content"
+        style={{
+          padding: 32,
+          fontFamily: 'system-ui, sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 24,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          <AutosaveStatus state={state} />
+          <UserMenu />
+        </div>
+        <div style={{ fontSize: 18 }}>Autosave fixture</div>
+      </div>
+    </PersonalAuthGate>
+  );
+}
+
 export function App() {
   if (isAuthGateE2E()) {
     return <AuthGateE2E />;
+  }
+  if (isAutosaveE2E()) {
+    return <AutosaveE2E />;
   }
 
   const randomAuthor = useMemo(
