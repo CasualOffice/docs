@@ -818,11 +818,21 @@ func main() {
 			log.Fatalf("auth: per-user stores at %q: %v", authRoot, err)
 		}
 
+		// Profile store (Batch 4.5) — JSON sidecar at
+		// <authRoot>/users/<userID>/.profile.json. Lives next to the
+		// per-user docx files so an operator inspecting a user's
+		// directory sees everything in one place. The path closure
+		// keeps personal/ free of any host/local dep.
+		profiles := personal.NewFileProfileStore(func(userID string) string {
+			return filepath.Join(perUser.BaseRoot(), "users", userID, ".profile.json")
+		})
+
 		(&personal.Handlers{
-			Users:   users,
-			Session: sess,
-			Files:   &peruserAdapter{stores: perUser},
-			Secure:  secure,
+			Users:    users,
+			Session:  sess,
+			Files:    &peruserAdapter{stores: perUser},
+			Profiles: profiles,
+			Secure:   secure,
 		}).Routes(mux)
 		log.Printf("auth: personal mode mounted (secure cookies = %v, root = %s)", secure, authRoot)
 	}

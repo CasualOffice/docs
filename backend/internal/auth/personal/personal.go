@@ -250,6 +250,36 @@ func (s *UserStore) Get(ctx context.Context, id string) (User, error) {
 	return u, nil
 }
 
+// UpdateDisplayName changes the display name for an existing user.
+// Used by PUT /auth/profile so the editor's title bar / "Signed in
+// as X" surface updates without forcing a re-signup. ErrUserNotFound
+// when the id has no match. Empty input is rejected so the UI never
+// silently flips to a blank header.
+func (s *UserStore) UpdateDisplayName(ctx context.Context, id, newName string) error {
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return fmt.Errorf("personal: display name cannot be empty")
+	}
+	if len(newName) > 120 {
+		return fmt.Errorf("personal: display name too long (>120)")
+	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE users SET display_name = ? WHERE id = ?`, newName, id)
+	if err != nil {
+		return fmt.Errorf("personal: update display name: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("personal: rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------
 // Session — HMAC-signed cookie format.
 //

@@ -23,7 +23,7 @@
 
 import { RecentObserver, readLastOpened, writeLastOpened } from './local-prefs';
 import type { FileEntry, FileSource } from './types';
-import type { ErrorWire, FileSummaryWire, UserWire } from './wire';
+import type { ErrorWire, FileSummaryWire, ProfilePatchWire, ProfileWire, UserWire } from './wire';
 
 export interface PersonalFileSourceOptions {
   /**
@@ -158,6 +158,31 @@ export class PersonalFileSource implements FileSource {
 
   async lastOpened(): Promise<string | null> {
     return readLastOpened(this.scope);
+  }
+
+  /**
+   * Fetch the user's merged profile (identity + extended fields).
+   * Personal-mode only — not on the FileSource interface, so callers
+   * must narrow on `kind === 'personal'` before invoking.
+   */
+  async getProfile(): Promise<ProfileWire> {
+    const res = await this.req('/auth/profile');
+    return (await res.json()) as ProfileWire;
+  }
+
+  /**
+   * Update the user's profile. Fields omitted from the patch are
+   * left unchanged; explicit empty strings clear the field. Returns
+   * the freshly-merged view so the caller doesn't need a separate
+   * GET round-trip.
+   */
+  async updateProfile(patch: ProfilePatchWire): Promise<ProfileWire> {
+    const res = await this.req('/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    return (await res.json()) as ProfileWire;
   }
 
   // ---------------------------------------------------------------

@@ -664,6 +664,170 @@ func (errStore) RenameFor(string, string, string) error { return host.ErrNotFoun
 func (errStore) DeleteFor(string, string) error        { return nil }
 
 // ---------------------------------------------------------------
+// GET / PUT /auth/profile
+// ---------------------------------------------------------------
+
+// withProfile sets up a test server with both Files and Profiles
+// wired. The Profiles store is in-memory so tests don't fight a tmp
+// dir; the production store goes through FileProfileStore.
+func withProfile(t *testing.T) *testServer {
+	t.Helper()
+	srv := newTestServer(t)
+	srv.srv.Close()
+	srv.h.Profiles = newFakeProfiles()
+	srv.mux = http.NewServeMux()
+	srv.h.Routes(srv.mux)
+	srv.srv = httptest.NewServer(srv.mux)
+	return srv
+}
+
+// fakeProfiles is an in-memory ProfileStore. Mirrors the FS-backed
+// one's "missing returns zero" contract.
+type fakeProfiles struct {
+	byUser map[string]Profile
+}
+
+func newFakeProfiles() *fakeProfiles { return &fakeProfiles{byUser: map[string]Profile{}} }
+
+func (f *fakeProfiles) Read(userID string) (Profile, error) { return f.byUser[userID], nil }
+
+func (f *fakeProfiles) Write(userID string, p Profile) error {
+	f.byUser[userID] = p
+	return nil
+}
+
+// TestProfile_GetReturnsDefaultsWhenUnwritten — a never-written
+// profile yields the merged view with identity fields populated and
+// the extended fields empty (omitted from JSON via omitempty).
+func TestProfile_GetReturnsDefaultsWhenUnwritten(t *testing.T) {
+	srv := withProfile(t)
+	defer srv.close()
+	signup := srv.post("/auth/signup", `{"email":"rita@example.com","password":"passw0rd!","displayName":"Rita"}`)
+	cookie := extractSessionCookie(t, signup)
+
+	resp := srv.get("/auth/profile", cookie)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var got map[string]any
+	mustDecode(t, resp.Body, &got)
+	if got["email"] != "rita@example.com" {
+		t.Errorf("email = %v", got["email"])
+	}
+	if got["displayName"] != "Rita" {
+		t.Errorf("displayName = %v", got["displayName"])
+	}
+	if _, set := got["timezone"]; set {
+		t.Error("timezone should be omitted when unset")
+	}
+}
+
+// TestProfile_PutWritesExtendedFields — PUT with a patch lands the
+// fields in the store and the response reflects them.
+func TestProfile_PutWritesExtendedFields(t *testing.T) {
+	srv := withProfile(t)
+	defer srv.close()
+	signup := srv.post("/auth/signup", `{"email":"sam@example.com","password":"passw0rd!","displayName":"Sam"}`)
+	cookie := extractSessionCookie(t, signup)
+	var u User
+	mustDecode(t, signup.Body, &u)
+
+	body := `{"timezone":"America/Los_Angeles","locale":"en-US","prefs":{"showRulers":true}}`
+	resp := srv.put("/auth/profile", body, cookie)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var view map[string]any
+	mustDecode(t, resp.Body, &view)
+	if view["timezone"] != "America/Los_Angeles" {
+		t.Errorf("timezone = %v", view["timezone"])
+	}
+	if view["locale"] != "en-US" {
+		t.Errorf("locale = %v", view["locale"])
+	}
+
+	// Sanity: the underlying store has the values.
+	got := srv.h.Profiles.(*fakeProfiles).byUser[u.ID]
+	if got.Timezone != "America/Los_Angeles" {
+		t.Errorf("store timezone = %q", got.Timezone)
+	}
+	if got.Prefs["showRulers"] != true {
+		t.Errorf("store prefs = %v", got.Prefs)
+	}
+}
+
+// TestProfile_PutDisplayNameUpdatesSqlite — DisplayName piggybacks
+// the PUT but routes to UserStore.UpdateDisplayName so /auth/me
+// reflects it.
+func TestProfile_PutDisplayNameUpdatesSqlite(t *testing.T) {
+	srv := withProfile(t)
+	defer srv.close()
+	signup := srv.post("/auth/signup", `{"email":"tina@example.com","password":"passw0rd!","displayName":"Tina"}`)
+	cookie := extractSessionCookie(t, signup)
+
+	resp := srv.put("/auth/profile", `{"displayName":"Tina Tomato"}`, cookie)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var view map[string]any
+	mustDecode(t, resp.Body, &view)
+	if view["displayName"] != "Tina Tomato" {
+		t.Errorf("view displayName = %v", view["displayName"])
+	}
+
+	// /auth/me sees the same change.
+	me := srv.get("/auth/me", cookie)
+	var u User
+	mustDecode(t, me.Body, &u)
+	if u.DisplayName != "Tina Tomato" {
+		t.Errorf("me displayName = %q", u.DisplayName)
+	}
+}
+
+// TestProfile_PutRejectsEmptyDisplayName — whitespace-only display
+// name is 400, not 200. Mirrors UserStore.UpdateDisplayName.
+func TestProfile_PutRejectsEmptyDisplayName(t *testing.T) {
+	srv := withProfile(t)
+	defer srv.close()
+	signup := srv.post("/auth/signup", `{"email":"ulysses@example.com","password":"passw0rd!"}`)
+	cookie := extractSessionCookie(t, signup)
+
+	resp := srv.put("/auth/profile", `{"displayName":"   "}`, cookie)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", resp.StatusCode)
+	}
+	if body := readErrorBody(t, resp); body.Code != "display_name" {
+		t.Errorf("code = %q, want display_name", body.Code)
+	}
+}
+
+// TestProfile_RequiresSession — both routes reject anonymous calls.
+func TestProfile_RequiresSession(t *testing.T) {
+	srv := withProfile(t)
+	defer srv.close()
+	for _, path := range []string{"/auth/profile"} {
+		resp := srv.get(path, "")
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("GET %s status = %d, want 401", path, resp.StatusCode)
+		}
+		resp = srv.put(path, `{}`, "")
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("PUT %s status = %d, want 401", path, resp.StatusCode)
+		}
+	}
+}
+
+// TestProfile_NilStoreOmitsRoutes — with Profiles nil, both routes
+// 404 from the mux.
+func TestProfile_NilStoreOmitsRoutes(t *testing.T) {
+	srv := newTestServer(t)
+	defer srv.close()
+	if resp := srv.get("/auth/profile", ""); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("GET = %d, want 404 when Profiles store unwired", resp.StatusCode)
+	}
+}
+
+// ---------------------------------------------------------------
 // Test harness
 // ---------------------------------------------------------------
 
@@ -722,6 +886,23 @@ func (s *testServer) postRaw(path, contentType string, body []byte, cookie strin
 	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return resp
+}
+
+func (s *testServer) put(path, body, cookie string) *http.Response {
+	s.t.Helper()
+	req, err := http.NewRequest("PUT", s.srv.URL+path, bytes.NewBufferString(body))
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if cookie != "" {
+		req.Header.Set("Cookie", cookie)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

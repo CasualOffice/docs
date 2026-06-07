@@ -100,6 +100,11 @@ type Handlers struct {
 	// that uses personal auth purely for an external host (WOPI etc.)
 	// can leave this nil and skip the routes.
 	Files FileStore
+	// Profiles, when non-nil, mounts GET + PUT /auth/profile so the
+	// calling user can read / patch their extended profile (timezone,
+	// locale, avatar, prefs). Optional — leaving it nil skips the
+	// route and the editor falls back to client-side defaults.
+	Profiles ProfileStore
 	// Secure flips Set-Cookie's `Secure` flag + the `__Host-` prefix
 	// on the cookie name. Operators set this true for production
 	// HTTPS deploys and false for localhost / docker-compose dev.
@@ -126,6 +131,10 @@ func (h *Handlers) Routes(mux *http.ServeMux) {
 		mux.Handle("PUT /files/{docId}/contents", h.RequireAuth(http.HandlerFunc(h.SaveFile)))
 		mux.Handle("PATCH /files/{docId}", h.RequireAuth(http.HandlerFunc(h.RenameFile)))
 		mux.Handle("DELETE /files/{docId}", h.RequireAuth(http.HandlerFunc(h.DeleteFile)))
+	}
+	if h.Profiles != nil {
+		mux.Handle("GET /auth/profile", h.RequireAuth(http.HandlerFunc(h.GetProfile)))
+		mux.Handle("PUT /auth/profile", h.RequireAuth(http.HandlerFunc(h.PutProfile)))
 	}
 }
 
@@ -326,6 +335,107 @@ func (h *Handlers) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// profileView is the response shape for GET / PUT /auth/profile. It
+// merges the User identity fields (which live in SQLite) with the
+// Profile extended fields (which live in the JSON sidecar) so the
+// client gets a single object to render. The split between sources
+// is invisible to the web client.
+type profileView struct {
+	UserID      string         `json:"userId"`
+	Email       string         `json:"email"`
+	DisplayName string         `json:"displayName"`
+	Timezone    string         `json:"timezone,omitempty"`
+	Locale      string         `json:"locale,omitempty"`
+	AvatarURL   string         `json:"avatarUrl,omitempty"`
+	Prefs       map[string]any `json:"prefs,omitempty"`
+}
+
+func mergeProfileView(u User, p Profile) profileView {
+	return profileView{
+		UserID:      u.ID,
+		Email:       u.Email,
+		DisplayName: u.DisplayName,
+		Timezone:    p.Timezone,
+		Locale:      p.Locale,
+		AvatarURL:   p.AvatarURL,
+		Prefs:       p.Prefs,
+	}
+}
+
+// GetProfile returns the merged profile view for the calling user.
+// Missing .profile.json is normal (never written yet); zero values
+// for the extended fields signal "use client defaults".
+func (h *Handlers) GetProfile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	p, err := h.Profiles.Read(u.ID)
+	if err != nil {
+		slog.Error("read profile failed", "userId", u.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "internal", "read failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, mergeProfileView(u, p))
+}
+
+// PutProfile applies a patch. DisplayName updates route to
+// UserStore.UpdateDisplayName (identity stays authoritative in
+// SQLite); everything else lands in the JSON sidecar. Returns the
+// merged view so the client doesn't need a separate GET after PUT.
+func (h *Handlers) PutProfile(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not_authenticated", "session required")
+		return
+	}
+	var patch ProfilePatch
+	if err := decodeJSON(r, &patch); err != nil {
+		writeError(w, http.StatusBadRequest, "bad_json", err.Error())
+		return
+	}
+
+	// Apply the displayName update first so a downstream JSON-write
+	// failure doesn't leave SQLite and the sidecar inconsistent (if
+	// the write fails before we touch SQLite, neither has moved).
+	if patch.DisplayName != nil {
+		if err := h.Users.UpdateDisplayName(r.Context(), u.ID, *patch.DisplayName); err != nil {
+			if errors.Is(err, ErrUserNotFound) {
+				writeError(w, http.StatusNotFound, "not_found", "user not found")
+				return
+			}
+			if strings.Contains(err.Error(), "empty") || strings.Contains(err.Error(), "too long") {
+				writeError(w, http.StatusBadRequest, "display_name", err.Error())
+				return
+			}
+			slog.Error("update display name failed", "userId", u.ID, "err", err)
+			writeError(w, http.StatusInternalServerError, "internal", "update failed")
+			return
+		}
+		// Refresh the in-memory User so the merged view reflects the
+		// new name without an extra DB round-trip.
+		fresh, err := h.Users.Get(r.Context(), u.ID)
+		if err == nil {
+			u = fresh
+		}
+	}
+
+	current, err := h.Profiles.Read(u.ID)
+	if err != nil {
+		slog.Error("read profile failed", "userId", u.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "internal", "read failed")
+		return
+	}
+	next := current.Apply(patch)
+	if err := h.Profiles.Write(u.ID, next); err != nil {
+		slog.Error("write profile failed", "userId", u.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "internal", "write failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, mergeProfileView(u, next))
 }
 
 // readUploadBody decodes either a multipart/form-data POST/PUT with

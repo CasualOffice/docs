@@ -70,6 +70,8 @@ export {
   type UserWire,
   type FileSummaryWire,
   type ErrorWire,
+  type ProfileWire,
+  type ProfilePatchWire,
 } from './file-source';
 
 // Spell-check asset config — host must call this with URLs for the

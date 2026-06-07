@@ -231,6 +231,63 @@ describe('PersonalFileSource', () => {
     }
   });
 
+  it('getProfile() GETs /auth/profile and returns the merged view', async () => {
+    const h = makeHarness();
+    h.setRespond(() =>
+      jsonRes(200, {
+        userId: 'user_abc',
+        email: 'a@example.com',
+        displayName: 'Alex',
+        timezone: 'America/Los_Angeles',
+        prefs: { showRulers: true },
+      })
+    );
+    const profile = await h.source.getProfile();
+    expect(h.calls[0].url).toBe('http://gateway.test/auth/profile');
+    expect(h.calls[0].init?.method).toBeUndefined(); // default GET
+    expect(profile.displayName).toBe('Alex');
+    expect(profile.timezone).toBe('America/Los_Angeles');
+    expect((profile.prefs as { showRulers: boolean })?.showRulers).toBe(true);
+  });
+
+  it('updateProfile() PUTs the patch and returns the refreshed view', async () => {
+    const h = makeHarness();
+    h.setRespond(() =>
+      jsonRes(200, {
+        userId: 'user_abc',
+        email: 'a@example.com',
+        displayName: 'Alex Updated',
+        locale: 'de-DE',
+      })
+    );
+    const profile = await h.source.updateProfile({
+      displayName: 'Alex Updated',
+      locale: 'de-DE',
+    });
+    expect(h.calls[0].url).toBe('http://gateway.test/auth/profile');
+    expect(h.calls[0].init?.method).toBe('PUT');
+    const body = JSON.parse((h.calls[0].init?.body as string) ?? '{}');
+    expect(body).toEqual({ displayName: 'Alex Updated', locale: 'de-DE' });
+    expect(profile.displayName).toBe('Alex Updated');
+    expect(profile.locale).toBe('de-DE');
+  });
+
+  it('updateProfile() surfaces 400 errors with the gateway code', async () => {
+    const h = makeHarness();
+    h.setRespond(() =>
+      jsonRes(400, { code: 'display_name', message: 'display name cannot be empty' })
+    );
+    try {
+      await h.source.updateProfile({ displayName: '   ' });
+      throw new Error('expected updateProfile to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(PersonalFileSourceError);
+      const e = err as PersonalFileSourceError;
+      expect(e.status).toBe(400);
+      expect(e.code).toBe('display_name');
+    }
+  });
+
   it('rememberLastOpened / lastOpened round-trip via localStorage', async () => {
     const { source } = makeHarness();
     expect(await source.lastOpened()).toBeNull();

@@ -31,3 +31,33 @@ export interface ErrorWire {
   code: string;
   message: string;
 }
+
+/**
+ * Mirrors `profileView` from the backend — the merged identity +
+ * extended-profile shape served by GET / PUT /auth/profile. The
+ * extended fields are optional because the JSON sidecar may not
+ * exist yet (a never-edited profile yields a zero value).
+ */
+export interface ProfileWire {
+  userId: string;
+  email: string;
+  displayName: string;
+  timezone?: string;
+  locale?: string;
+  avatarUrl?: string;
+  prefs?: Record<string, unknown>;
+}
+
+/**
+ * Mirrors `ProfilePatch`. Each field optional → "leave unchanged".
+ * Explicit empty string → "clear". The backend interprets via
+ * pointer-nil semantics; on the wire that's just omission vs
+ * presence.
+ */
+export interface ProfilePatchWire {
+  displayName?: string;
+  timezone?: string;
+  locale?: string;
+  avatarUrl?: string;
+  prefs?: Record<string, unknown>;
+}

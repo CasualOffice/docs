@@ -18,4 +18,4 @@ export {
 } from './personal';
 export { chooseFileSource, type ChooseFileSourceOptions } from './select';
 export { FileSourceProvider, useFileSource, type FileSourceProviderProps } from './context';
-export type { UserWire, FileSummaryWire, ErrorWire } from './wire';
+export type { UserWire, FileSummaryWire, ErrorWire, ProfileWire, ProfilePatchWire } from './wire';

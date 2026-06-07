@@ -151,6 +151,44 @@ func TestGetByID(t *testing.T) {
 	}
 }
 
+// TestUpdateDisplayName — happy path: rename, then Get reflects it.
+func TestUpdateDisplayName(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	u, err := s.Create(context.Background(), "rename@example.com", "passw0rd!", "Old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpdateDisplayName(context.Background(), u.ID, "New"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Get(context.Background(), u.ID)
+	if got.DisplayName != "New" {
+		t.Errorf("DisplayName = %q, want New", got.DisplayName)
+	}
+}
+
+// TestUpdateDisplayName_UnknownUser — surfaces ErrUserNotFound
+// rather than silently succeeding.
+func TestUpdateDisplayName_UnknownUser(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	if err := s.UpdateDisplayName(context.Background(), "no-such-id", "X"); !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("got %v, want ErrUserNotFound", err)
+	}
+}
+
+// TestUpdateDisplayName_RejectsEmpty — whitespace-only input is
+// rejected so the UI never silently flips to a blank header.
+func TestUpdateDisplayName_RejectsEmpty(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	u, _ := s.Create(context.Background(), "blank@example.com", "passw0rd!", "Real Name")
+	if err := s.UpdateDisplayName(context.Background(), u.ID, "   "); err == nil {
+		t.Error("UpdateDisplayName('   ') = nil; want error")
+	}
+}
+
 // TestPersistsAcrossInstances — the whole point of SQLite over
 // in-memory state. A fresh UserStore on the same root reads what
 // the previous one wrote.
