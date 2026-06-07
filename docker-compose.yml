@@ -1,10 +1,13 @@
 # Local dev stack for Casual Editor.
 #
-# Design note: this service is stateless. The inline host stores the
-# uploaded .docx in process memory keyed by docId; the gateway holds
-# the live Y.Doc per session and drops it when the last peer leaves.
-# Persistence (WOPI / JWT-API) will hang off the host.Integration
-# interface in a future milestone.
+# Design note: the Go gateway is stateless — it holds the live Y.Doc
+# per session and drops it when the last peer leaves. Persistence is
+# delegated to host backends (inline / local-fs / WOPI) selected via
+# the GATEWAY_HOST env var. Mode 3 personal auth is delegated to the
+# SQLite-backed UserStore at <CASUAL_LOCAL_PATH>/.casual/users.db.
+#
+# All backend env vars are documented in docs/internal/12-env-vars.md.
+# Keep that doc + this file in sync when adding a new tunable.
 #
 # Two profiles:
 #
@@ -33,6 +36,38 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    healthcheck:
+      # /health stays a single-line OK so this probe is stable
+      # across version bumps. /health/ready is the per-component
+      # status — point a load balancer at that, not at /health.
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    # Default deploy is share-link mode (GATEWAY_HOST=inline). To
+    # flip to Mode 3 (personal auth) or Mode 2 (WOPI), uncomment one
+    # of the env blocks below and `docker compose up --force-recreate
+    # gateway`. Full reference: docs/internal/12-env-vars.md.
+    #
+    # environment:
+    #   # --- Mode 3: Standalone, personal auth ---
+    #   GATEWAY_HOST: "local"
+    #   GATEWAY_AUTH: "personal"
+    #   CASUAL_LOCAL_PATH: "/data"
+    #   CASUAL_SESSION_KEY: "${CASUAL_SESSION_KEY:?missing — generate via: openssl rand -hex 32}"
+    #   SECURE_COOKIES: "true"   # production HTTPS only
+    #   ADMIN_ROUTES: "true"     # mount /admin/users
+    #   LOG_FORMAT: "json"
+    #   ACCESS_LOG: "true"
+    # volumes:
+    #   - ./data:/data
+    #
+    # environment:
+    #   # --- Mode 2: WOPI client ---
+    #   GATEWAY_HOST: "wopi"
+    #   CASUAL_WOPI_JWKS_URL: "https://host.example/.well-known/jwks.json"
+    #   LOG_FORMAT: "json"
+    #   ACCESS_LOG: "true"
 
   editor-dev:
     profiles: ["dev"]
@@ -52,7 +87,10 @@ services:
 
   gateway-dev:
     profiles: ["dev"]
-    image: golang:1.24-alpine
+    # Pinned to 1.25-alpine to match backend/go.mod's `go 1.25.0`
+    # directive — running on 1.24 fails at `go run` with the same
+    # error the CI hotfix (ec9a2e7) caught.
+    image: golang:1.25-alpine
     container_name: casual-editor-gateway-dev
     working_dir: /src
     command: sh -c "go run ./cmd/gateway"
