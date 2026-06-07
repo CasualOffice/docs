@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 )
 
 // BenchmarkVerify measures the steady-state cost of a /auth/login.
@@ -80,7 +81,12 @@ func BenchmarkSessionSignVerify(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tok := sess.Sign("user-bench", 60)
+		// time.Minute, not the literal 60 — int → time.Duration is
+		// nanoseconds. The original "60" was sub-microsecond, which
+		// the single-iteration `-benchtime=1x` smoke run masked but
+		// any real bench (`-benchtime=1s`) tripped over once
+		// timestamp wall-clock crossed the next Unix second.
+		tok := sess.Sign("user-bench", time.Minute)
 		if _, err := sess.Verify(tok); err != nil {
 			b.Fatal(err)
 		}

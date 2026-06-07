@@ -328,6 +328,7 @@ export function PersonalAuthGateModal({
       width={420}
       dismissOnBackdrop={false}
       dismissOnEscape={false}
+      hideCloseButton
       testId="personal-auth-gate"
       footer={
         <button

@@ -168,6 +168,13 @@ export interface DialogProps {
   dismissOnBackdrop?: boolean;
   /** Disable Escape-to-close. Default true. */
   dismissOnEscape?: boolean;
+  /** Hide the header's close-X button. Default false (shown). Set
+   *  this true alongside `dismissOnBackdrop={false}` /
+   *  `dismissOnEscape={false}` when the dialog is genuinely
+   *  undismissable (e.g. an auth gate that must be completed
+   *  before the editor renders) — a visible X that does nothing
+   *  is worse UX than no X at all. */
+  hideCloseButton?: boolean;
   /** Accessible label override. Defaults to `title` if it's a string. */
   ariaLabel?: string;
   /** Data-testid for E2E tests. */
@@ -185,6 +192,7 @@ export function Dialog({
   helper,
   dismissOnBackdrop = true,
   dismissOnEscape = true,
+  hideCloseButton = false,
   ariaLabel,
   testId,
 }: DialogProps) {
@@ -234,32 +242,34 @@ export function Dialog({
               </span>
             )}
             <span style={titleStyle}>{title}</span>
-            <button
-              type="button"
-              style={closeBtnStyle(closeHover)}
-              onClick={onClose}
-              onMouseEnter={() => setCloseHover(true)}
-              onMouseLeave={() => setCloseHover(false)}
-              onFocus={() => setCloseHover(true)}
-              onBlur={() => setCloseHover(false)}
-              aria-label="Close dialog"
-              data-testid={testId ? `${testId}-close` : undefined}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            {!hideCloseButton && (
+              <button
+                type="button"
+                style={closeBtnStyle(closeHover)}
+                onClick={onClose}
+                onMouseEnter={() => setCloseHover(true)}
+                onMouseLeave={() => setCloseHover(false)}
+                onFocus={() => setCloseHover(true)}
+                onBlur={() => setCloseHover(false)}
+                aria-label="Close dialog"
+                data-testid={testId ? `${testId}-close` : undefined}
               >
-                <path d="M18 6L6 18" />
-                <path d="M6 6l12 12" />
-              </svg>
-            </button>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 6L6 18" />
+                  <path d="M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </header>
           <div style={bodyStyle}>{children}</div>
           {(footer || helper) && (
