@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,9 +41,38 @@ import (
 	"github.com/schnsrw/docx/backend/internal/host/inline"
 	"github.com/schnsrw/docx/backend/internal/host/local"
 	"github.com/schnsrw/docx/backend/internal/limit"
+	"github.com/schnsrw/docx/backend/internal/middleware"
 	"github.com/schnsrw/docx/backend/internal/room"
 	"github.com/schnsrw/docx/backend/internal/yws"
 )
+
+// initLogger sets up the process-wide slog default. LOG_FORMAT=json
+// (or unset on production deploys via the Docker image's env)
+// produces a JSON handler operators can pipe into Loki / Cloudwatch;
+// anything else produces the human-readable text handler used during
+// local development. LOG_LEVEL=debug raises the verbosity; default
+// is info.
+func initLogger() {
+	var level slog.Level
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	opts := &slog.HandlerOptions{Level: level}
+	var h slog.Handler
+	if strings.EqualFold(os.Getenv("LOG_FORMAT"), "json") {
+		h = slog.NewJSONHandler(os.Stderr, opts)
+	} else {
+		h = slog.NewTextHandler(os.Stderr, opts)
+	}
+	slog.SetDefault(slog.New(h))
+}
 
 // envInt returns the env var `name` parsed as int, falling back
 // to `def` when unset, empty, or unparseable.
@@ -244,7 +274,11 @@ func uploadHandler(store host.DocStore) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("upload doc=%s file=%q size=%d", docID, fileName, len(contents))
+		slog.Info("upload",
+			slog.String("docId", docID),
+			slog.String("file", fileName),
+			slog.Int("size", len(contents)),
+			slog.String("rid", middleware.RequestIDFromContext(r.Context())))
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(w).Encode(uploadResponse{
@@ -433,7 +467,8 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 			// — operators had to reproduce the failure from scratch
 			// to diagnose. Log the actual cause so transient host
 			// errors leave a breadcrumb.
-			log.Printf("ws preflight host.Fetch failed doc=%s: %v", docID, err)
+			slog.Error("ws preflight host.Fetch failed",
+				slog.String("docId", docID), slog.Any("err", err))
 			http.Error(w, "host integration error", http.StatusBadGateway)
 			return
 		}
@@ -445,7 +480,8 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
-			log.Printf("ws accept failed for doc=%s: %v", docID, err)
+			slog.Error("ws accept failed",
+				slog.String("docId", docID), slog.Any("err", err))
 			return
 		}
 		// Default to "going away" on any unhandled exit; we
@@ -462,13 +498,17 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 			// string is the only signal the joiner gets. Matches
 			// the sheets equivalent's 503 capacity_full envelope
 			// in spirit; only the transport differs.
-			log.Printf("ws join refused doc=%s: %v", docID, joinErr)
+			slog.Warn("ws join refused",
+				slog.String("docId", docID), slog.Any("err", joinErr))
 			_ = conn.Close(websocket.StatusPolicyViolation, "capacity_full")
 			return
 		}
 		defer rooms.Leave(rm, client)
 
-		log.Printf("ws join doc=%s client=%d total=%d", docID, client.ID(), rm.Clients())
+		slog.Info("ws join",
+			slog.String("docId", docID),
+			slog.Int("clientId", int(client.ID())),
+			slog.Int("clients", rm.Clients()))
 
 		// Tie the WS lifetime to the request context so an HTTP
 		// server shutdown unblocks both reader and writer loops.
@@ -483,7 +523,10 @@ func wsHandler(rooms *room.Manager, integration host.Integration) http.HandlerFu
 		runReader(ctx, conn, rm, client, docID)
 		<-writerDone
 
-		log.Printf("ws leave doc=%s client=%d remaining=%d", docID, client.ID(), rm.Clients())
+		slog.Info("ws leave",
+			slog.String("docId", docID),
+			slog.Int("clientId", int(client.ID())),
+			slog.Int("remaining", rm.Clients()))
 		_ = conn.Close(websocket.StatusNormalClosure, "")
 	}
 }
@@ -503,7 +546,10 @@ func runReader(ctx context.Context, conn *websocket.Conn, rm *room.Room, client 
 			// other errors are surfaced as a single log line.
 			var ce websocket.CloseError
 			if !errors.As(err, &ce) && !errors.Is(err, context.Canceled) {
-				log.Printf("ws read err doc=%s client=%d: %v", docID, client.ID(), err)
+				slog.Warn("ws read err",
+					slog.String("docId", docID),
+					slog.Int("clientId", int(client.ID())),
+					slog.Any("err", err))
 			}
 			return
 		}
@@ -546,7 +592,9 @@ func runWriter(ctx context.Context, conn *websocket.Conn, client *room.Client, d
 			cancel()
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					log.Printf("ws write err client=%d: %v", client.ID(), err)
+					slog.Warn("ws write err",
+						slog.Int("clientId", int(client.ID())),
+						slog.Any("err", err))
 				}
 				return
 			}
@@ -681,6 +729,19 @@ func (a *peruserAdapter) FetchFor(ctx context.Context, userID, docID string) (pe
 	}, contents, nil
 }
 
+// DeleteUserData removes the user's per-user directory wholesale.
+// Called by the admin DELETE /admin/users/{id} route after the
+// SQLite row is gone, so a half-deleted user never leaves orphaned
+// .docx blobs on disk. The cache entry for the user's Store is
+// dropped here too — a future admin-undelete would mint a fresh dir.
+func (a *peruserAdapter) DeleteUserData(userID string) error {
+	root := filepath.Join(a.stores.BaseRoot(), "users", userID)
+	if err := os.RemoveAll(root); err != nil {
+		return fmt.Errorf("delete user dir %q: %w", root, err)
+	}
+	return nil
+}
+
 // SaveFor overwrites the doc and bumps version. The summary returned
 // after Snapshot reflects the new version.
 func (a *peruserAdapter) SaveFor(ctx context.Context, userID, docID string, contents []byte) (personal.FileSummary, error) {
@@ -716,7 +777,7 @@ func selectStore() (host.DocStore, error) {
 	kind := strings.ToLower(strings.TrimSpace(os.Getenv("GATEWAY_HOST")))
 	switch kind {
 	case "", "inline":
-		log.Printf("host: inline (in-memory; docs lost on restart)")
+		slog.Info("host: inline (in-memory; docs lost on restart)")
 		return inline.New(), nil
 	case "local":
 		path := os.Getenv("CASUAL_LOCAL_PATH")
@@ -727,7 +788,7 @@ func selectStore() (host.DocStore, error) {
 		if err != nil {
 			return nil, fmt.Errorf("init local host at %q: %w", path, err)
 		}
-		log.Printf("host: local (filesystem) rooted at %s", s.Root())
+		slog.Info("host: local (filesystem)", slog.String("root", s.Root()))
 		return s, nil
 	default:
 		return nil, fmt.Errorf("unknown GATEWAY_HOST=%q (expected inline | local)", kind)
@@ -735,6 +796,7 @@ func selectStore() (host.DocStore, error) {
 }
 
 func main() {
+	initLogger()
 	store, err := selectStore()
 	if err != nil {
 		log.Fatalf("host init: %v", err)
@@ -753,11 +815,12 @@ func main() {
 			// pool (M2 / Bun headless serializer). Log the drain so
 			// operators can see room lifecycle; the original bytes
 			// remain in the inline store for re-seed on the next join.
-			log.Printf("room drain doc=%s — original snapshot retained", docID)
+			slog.Info("room drain — original snapshot retained",
+				slog.String("docId", docID))
 		}),
 		room.WithMaxRooms(maxRooms),
 	)
-	log.Printf("room manager: max %d concurrent rooms", maxRooms)
+	slog.Info("room manager started", slog.Int("maxRooms", maxRooms))
 
 	// Per-IP token-bucket limiters (G1 of the gateway hardening pass —
 	// equivalent of sheets Stream C1). Two tiers because upload is
@@ -771,8 +834,9 @@ func main() {
 	generalCfg := limit.DefaultGeneral()
 	generalCfg.PerMin = envInt("RATE_LIMIT_PER_MIN", generalCfg.PerMin)
 	generalLimiter := limit.New(generalCfg)
-	log.Printf("rate limit: upload %d/min/IP, general %d/min/IP",
-		uploadCfg.PerMin, generalCfg.PerMin)
+	slog.Info("rate limit configured",
+		slog.Int("uploadPerMin", uploadCfg.PerMin),
+		slog.Int("generalPerMin", generalCfg.PerMin))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
@@ -827,14 +891,25 @@ func main() {
 			return filepath.Join(perUser.BaseRoot(), "users", userID, ".profile.json")
 		})
 
+		// AdminRoutes toggles the /admin/* surface. Default off so a
+		// deploy that only uses personal auth for the editor doesn't
+		// inadvertently expose user-list + user-delete; flip
+		// ADMIN_ROUTES=true to mount them.
+		adminRoutes := strings.EqualFold(os.Getenv("ADMIN_ROUTES"), "true")
+
+		adapter := &peruserAdapter{stores: perUser}
 		(&personal.Handlers{
-			Users:    users,
-			Session:  sess,
-			Files:    &peruserAdapter{stores: perUser},
-			Profiles: profiles,
-			Secure:   secure,
+			Users:       users,
+			Session:     sess,
+			Files:       adapter,
+			Profiles:    profiles,
+			UserDeleter: adapter,
+			AdminRoutes: adminRoutes,
+			Secure:      secure,
 		}).Routes(mux)
-		log.Printf("auth: personal mode mounted (secure cookies = %v, root = %s)", secure, authRoot)
+		slog.Info("auth: personal mode mounted",
+			slog.Bool("secureCookies", secure),
+			slog.String("root", authRoot))
 	}
 
 	// POST /api/docs (upload) — under the upload bucket (tighter).
@@ -869,14 +944,24 @@ func main() {
 	// client-side routes. Local dev leaves it unset and runs Vite
 	// on :5173 against this gateway on :8080.
 	if dir := staticDir(); dir != "" {
-		log.Printf("serving static SPA from %s", dir)
+		slog.Info("serving static SPA", slog.String("dir", dir))
 		mux.Handle("/", staticHandler(dir))
 	}
 
 	addr := listenAddr()
+	// Middleware chain (outermost first): request-id → CORS → mux.
+	// Access logging is enabled when ACCESS_LOG=true so the local
+	// dev story stays quiet; production deploys flip the env var.
+	var handler http.Handler = mux
+	if strings.EqualFold(os.Getenv("ACCESS_LOG"), "true") {
+		handler = middleware.AccessLog(slog.Default(), handler)
+	}
+	handler = withCORS(handler)
+	handler = middleware.RequestID(handler)
+
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           withCORS(mux),
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -890,13 +975,13 @@ func main() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
-			log.Printf("gateway shutdown error: %v", err)
+			slog.Error("gateway shutdown error", slog.Any("err", err))
 		}
 	}()
 
-	log.Printf("casual-editor gateway listening on %s", addr)
+	slog.Info("casual-editor gateway listening", slog.String("addr", addr))
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("gateway listen error: %v", err)
 	}
-	log.Printf("casual-editor gateway shut down cleanly")
+	slog.Info("casual-editor gateway shut down cleanly")
 }

@@ -189,6 +189,144 @@ func TestUpdateDisplayName_RejectsEmpty(t *testing.T) {
 	}
 }
 
+// TestGetByEmail — round-trip via email (case-insensitive).
+func TestGetByEmail(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	_, _ = s.Create(context.Background(), "bymail@example.com", "passw0rd!", "")
+	u, err := s.GetByEmail(context.Background(), "ByMail@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Email != "bymail@example.com" {
+		t.Errorf("Email = %q, want bymail@example.com", u.Email)
+	}
+	if _, err := s.GetByEmail(context.Background(), "no@such.user"); !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("GetByEmail(unknown) = %v, want ErrUserNotFound", err)
+	}
+}
+
+// TestFirstSignupAutoPromotesAdmin — the bootstrap user inherits
+// admin so a single-tenant deploy has someone to run /admin/* through.
+func TestFirstSignupAutoPromotesAdmin(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	first, err := s.Create(context.Background(), "boot@example.com", "passw0rd!", "Boot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.IsAdmin {
+		t.Error("first user IsAdmin = false; want true (bootstrap auto-promotion)")
+	}
+	second, err := s.Create(context.Background(), "second@example.com", "passw0rd!", "Two")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.IsAdmin {
+		t.Error("second user IsAdmin = true; want false")
+	}
+}
+
+// TestListUsers — oldest-first, includes admin flag.
+func TestListUsers(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	_, _ = s.Create(context.Background(), "one@example.com", "passw0rd!", "One")
+	_, _ = s.Create(context.Background(), "two@example.com", "passw0rd!", "Two")
+	users, err := s.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 2 {
+		t.Fatalf("len = %d, want 2", len(users))
+	}
+	if users[0].Email != "one@example.com" {
+		t.Errorf("oldest = %q, want one@example.com", users[0].Email)
+	}
+}
+
+// TestDeleteUser — gone from SQLite + Get returns ErrUserNotFound.
+func TestDeleteUser(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	u, _ := s.Create(context.Background(), "delete@example.com", "passw0rd!", "")
+	if err := s.Delete(context.Background(), u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Get(context.Background(), u.ID); !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("Get after Delete = %v, want ErrUserNotFound", err)
+	}
+	if err := s.Delete(context.Background(), "no-such-id"); !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("Delete(unknown) = %v, want ErrUserNotFound", err)
+	}
+}
+
+// TestResetPassword — new password Verify-able, old one rejected.
+func TestResetPassword(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	_, _ = s.Create(context.Background(), "reset@example.com", "oldpassword", "")
+	if err := s.ResetPassword(context.Background(), "reset@example.com", "newpassword"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Verify(context.Background(), "reset@example.com", "newpassword"); err != nil {
+		t.Errorf("Verify(new) = %v", err)
+	}
+	if _, err := s.Verify(context.Background(), "reset@example.com", "oldpassword"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Errorf("Verify(old) = %v, want ErrInvalidCredentials", err)
+	}
+}
+
+// TestResetPassword_RejectsWeak — same length rule as Create.
+func TestResetPassword_RejectsWeak(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	_, _ = s.Create(context.Background(), "weak@example.com", "passw0rd!", "")
+	if err := s.ResetPassword(context.Background(), "weak@example.com", "123"); !errors.Is(err, ErrWeakPassword) {
+		t.Errorf("got %v, want ErrWeakPassword", err)
+	}
+}
+
+// TestResetPassword_UnknownEmail — bubbles ErrUserNotFound.
+func TestResetPassword_UnknownEmail(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	if err := s.ResetPassword(context.Background(), "no@such.user", "passw0rd!"); !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("got %v, want ErrUserNotFound", err)
+	}
+}
+
+// TestSetAdmin — promote then demote round-trip; unknown id surfaces
+// ErrUserNotFound.
+func TestSetAdmin(t *testing.T) {
+	s := newStore(t)
+	defer s.Close()
+	// Create a second user — first auto-promoted, so we test the
+	// promotion path on a non-admin.
+	_, _ = s.Create(context.Background(), "boot@example.com", "passw0rd!", "")
+	u, _ := s.Create(context.Background(), "promote@example.com", "passw0rd!", "")
+	if u.IsAdmin {
+		t.Fatal("second user should not start as admin")
+	}
+	if err := s.SetAdmin(context.Background(), u.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Get(context.Background(), u.ID)
+	if !got.IsAdmin {
+		t.Error("IsAdmin after promote = false")
+	}
+	if err := s.SetAdmin(context.Background(), u.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.Get(context.Background(), u.ID)
+	if got.IsAdmin {
+		t.Error("IsAdmin after demote = true")
+	}
+	if err := s.SetAdmin(context.Background(), "no-such-id", true); !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("SetAdmin(unknown) = %v, want ErrUserNotFound", err)
+	}
+}
+
 // TestPersistsAcrossInstances — the whole point of SQLite over
 // in-memory state. A fresh UserStore on the same root reads what
 // the previous one wrote.

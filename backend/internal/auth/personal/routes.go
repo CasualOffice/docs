@@ -105,6 +105,16 @@ type Handlers struct {
 	// locale, avatar, prefs). Optional — leaving it nil skips the
 	// route and the editor falls back to client-side defaults.
 	Profiles ProfileStore
+	// UserDeleter, when non-nil, lets the admin delete-user route
+	// sweep the deleted user's per-user FS directory after the
+	// SQLite row is gone. Optional — sweep is best-effort and the
+	// SQLite delete is the source of truth for "user exists".
+	UserDeleter UserDeleter
+	// AdminRoutes flips the admin surface (GET /admin/users,
+	// DELETE /admin/users/{id}). Off by default so a deploy that
+	// only uses personal auth for the editor surface doesn't
+	// inadvertently expose an admin API.
+	AdminRoutes bool
 	// Secure flips Set-Cookie's `Secure` flag + the `__Host-` prefix
 	// on the cookie name. Operators set this true for production
 	// HTTPS deploys and false for localhost / docker-compose dev.
@@ -135,6 +145,10 @@ func (h *Handlers) Routes(mux *http.ServeMux) {
 	if h.Profiles != nil {
 		mux.Handle("GET /auth/profile", h.RequireAuth(http.HandlerFunc(h.GetProfile)))
 		mux.Handle("PUT /auth/profile", h.RequireAuth(http.HandlerFunc(h.PutProfile)))
+	}
+	if h.AdminRoutes {
+		mux.Handle("GET /admin/users", h.RequireAdmin(http.HandlerFunc(h.adminListUsers)))
+		mux.Handle("DELETE /admin/users/{id}", h.RequireAdmin(http.HandlerFunc(h.adminDeleteUser)))
 	}
 }
 

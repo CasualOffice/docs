@@ -52,6 +52,11 @@ type User struct {
 	// version-history "by ..." rows. Defaults to the email-prefix
 	// when the signup form omits it.
 	DisplayName string `json:"displayName"`
+	// IsAdmin gates the /admin/* routes (user list, user delete).
+	// The first user to sign up on a fresh deploy is auto-promoted
+	// to admin — a single-tenant deploy without an admin would have
+	// no way to manage itself.
+	IsAdmin bool `json:"isAdmin"`
 	// CreatedAt is set by the store on Create; immutable after.
 	CreatedAt time.Time `json:"createdAt"`
 }
@@ -175,10 +180,21 @@ func (s *UserStore) Create(ctx context.Context, email, password, displayName str
 
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
+	// Auto-promote the first user on the deploy to admin. A
+	// single-tenant Mode 3 install with no admin can't list or
+	// delete users, so the bootstrap user has to inherit those
+	// privileges or the deploy ships with no escape hatch. The
+	// check is best-effort — if COUNT fails we default to false
+	// rather than risk handing every new signup admin rights.
+	isAdmin := false
+	var count int64
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&count); err == nil && count == 0 {
+		isAdmin = true
+	}
 	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO users (id, email, password_hash, display_name, created_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		id, email, hash, displayName, now.Unix())
+		`INSERT INTO users (id, email, password_hash, display_name, is_admin, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		id, email, hash, displayName, btoi(isAdmin), now.Unix())
 	if err != nil {
 		if isUniqueViolation(err) {
 			return User{}, ErrEmailTaken
@@ -189,6 +205,7 @@ func (s *UserStore) Create(ctx context.Context, email, password, displayName str
 		ID:          id,
 		Email:       email,
 		DisplayName: displayName,
+		IsAdmin:     isAdmin,
 		CreatedAt:   now,
 	}, nil
 }
@@ -204,14 +221,15 @@ func (s *UserStore) Create(ctx context.Context, email, password, displayName str
 func (s *UserStore) Verify(ctx context.Context, email, password string) (User, error) {
 	email = normalizeEmail(email)
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, email, password_hash, display_name, created_at
+		`SELECT id, email, password_hash, display_name, is_admin, created_at
 		 FROM users WHERE email = ?`, email)
 	var (
 		u         User
 		hash      []byte
+		isAdmin   int64
 		createdAt int64
 	)
-	err := row.Scan(&u.ID, &u.Email, &hash, &u.DisplayName, &createdAt)
+	err := row.Scan(&u.ID, &u.Email, &hash, &u.DisplayName, &isAdmin, &createdAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Dummy bcrypt compare to keep the unknown-email branch
 		// roughly the same wall-clock cost as the known-email
@@ -225,6 +243,7 @@ func (s *UserStore) Verify(ctx context.Context, email, password string) (User, e
 	if err := bcrypt.CompareHashAndPassword(hash, []byte(password)); err != nil {
 		return User{}, ErrInvalidCredentials
 	}
+	u.IsAdmin = isAdmin == 1
 	u.CreatedAt = time.Unix(createdAt, 0).UTC()
 	return u, nil
 }
@@ -233,21 +252,162 @@ func (s *UserStore) Verify(ctx context.Context, email, password string) (User, e
 // such id exists.
 func (s *UserStore) Get(ctx context.Context, id string) (User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, email, display_name, created_at
+		`SELECT id, email, display_name, is_admin, created_at
 		 FROM users WHERE id = ?`, id)
 	var (
 		u         User
+		isAdmin   int64
 		createdAt int64
 	)
-	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &createdAt)
+	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &isAdmin, &createdAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrUserNotFound
 	}
 	if err != nil {
 		return User{}, fmt.Errorf("personal: lookup user: %w", err)
 	}
+	u.IsAdmin = isAdmin == 1
 	u.CreatedAt = time.Unix(createdAt, 0).UTC()
 	return u, nil
+}
+
+// GetByEmail returns the User with the given email (case-insensitive
+// match against the normalised column). ErrUserNotFound when no row
+// matches. Used by the CLI reset-password command and the admin
+// "find user by email" surface.
+func (s *UserStore) GetByEmail(ctx context.Context, email string) (User, error) {
+	email = normalizeEmail(email)
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, email, display_name, is_admin, created_at
+		 FROM users WHERE email = ?`, email)
+	var (
+		u         User
+		isAdmin   int64
+		createdAt int64
+	)
+	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &isAdmin, &createdAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("personal: lookup user: %w", err)
+	}
+	u.IsAdmin = isAdmin == 1
+	u.CreatedAt = time.Unix(createdAt, 0).UTC()
+	return u, nil
+}
+
+// List returns every user, oldest first. Used by the admin
+// `GET /admin/users` route and the CLI's `list` subcommand.
+func (s *UserStore) List(ctx context.Context) ([]User, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, email, display_name, is_admin, created_at
+		 FROM users ORDER BY created_at ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("personal: list users: %w", err)
+	}
+	defer rows.Close()
+	var out []User
+	for rows.Next() {
+		var u User
+		var isAdmin int64
+		var createdAt int64
+		if err := rows.Scan(&u.ID, &u.Email, &u.DisplayName, &isAdmin, &createdAt); err != nil {
+			return nil, fmt.Errorf("personal: scan user: %w", err)
+		}
+		u.IsAdmin = isAdmin == 1
+		u.CreatedAt = time.Unix(createdAt, 0).UTC()
+		out = append(out, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("personal: iter users: %w", err)
+	}
+	return out, nil
+}
+
+// Delete removes the user record from SQLite. Returns ErrUserNotFound
+// when the id has no match. Files on disk under the user's per-user
+// directory are NOT removed by this method — the gateway adapter is
+// responsible for sweeping `users/<id>/` once SQLite returns
+// successfully so a half-deleted user never leaves orphaned bytes.
+func (s *UserStore) Delete(ctx context.Context, id string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	res, err := s.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("personal: delete user: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("personal: rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// ResetPassword updates the bcrypt hash for the user identified by
+// email. Used by the CLI `reset-password` command so an operator
+// can recover access after a forgotten password — same shape as
+// sheet's equivalent in the personal-mode tooling.
+//
+// Returns ErrUserNotFound for an unknown email and ErrWeakPassword
+// when the new password fails the same length check Create enforces.
+func (s *UserStore) ResetPassword(ctx context.Context, email, newPassword string) error {
+	if len(newPassword) < 8 {
+		return ErrWeakPassword
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), s.minCost)
+	if err != nil {
+		return fmt.Errorf("personal: hash password: %w", err)
+	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE users SET password_hash = ? WHERE email = ?`,
+		hash, normalizeEmail(email))
+	if err != nil {
+		return fmt.Errorf("personal: reset password: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("personal: rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// SetAdmin flips the is_admin flag. Used by the CLI `promote` /
+// `demote` subcommands and the admin route. Cannot be undone — a
+// demoted admin must be re-promoted via the CLI by another admin
+// (or the operator on the host).
+func (s *UserStore) SetAdmin(ctx context.Context, id string, isAdmin bool) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE users SET is_admin = ? WHERE id = ?`, btoi(isAdmin), id)
+	if err != nil {
+		return fmt.Errorf("personal: set admin: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("personal: rows affected: %w", err)
+	}
+	if n == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// btoi maps a bool to SQLite-friendly 0/1.
+func btoi(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // UpdateDisplayName changes the display name for an existing user.
@@ -352,8 +512,15 @@ func (sess *Session) Verify(token string) (string, error) {
 // Internals
 // ---------------------------------------------------------------
 
-// migrate creates the users table if it doesn't exist. Idempotent;
-// safe to call on every boot.
+// migrate creates the users table if it doesn't exist and applies
+// idempotent column additions. Safe to call on every boot — both the
+// CREATE TABLE and the ALTER ADD COLUMN paths swallow already-exists
+// errors at the schema level.
+//
+// Migration philosophy: never `DROP COLUMN` or rename. Schema changes
+// land as new ADD COLUMN entries with backfill defaults so an
+// operator upgrading a long-lived users.db never loses data and never
+// hits a "schema not found" error from old rows.
 func migrate(db *sql.DB) error {
 	const schema = `
 	CREATE TABLE IF NOT EXISTS users (
@@ -368,7 +535,38 @@ func migrate(db *sql.DB) error {
 	if _, err := db.Exec(schema); err != nil {
 		return err
 	}
+	// Batch 5 adds is_admin. SQLite's ALTER ADD COLUMN doesn't have
+	// an IF NOT EXISTS guard before 3.35, so we probe first.
+	if !hasColumn(db, "users", "is_admin") {
+		if _, err := db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("migrate: add is_admin: %w", err)
+		}
+	}
 	return nil
+}
+
+// hasColumn probes the SQLite pragma table_info to see if a column
+// already exists. Used by migrate so column-additions are idempotent
+// even on SQLite builds without ALTER ... IF NOT EXISTS.
+func hasColumn(db *sql.DB, table, column string) bool {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%q)", table))
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull, pk int
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
 }
 
 // normalizeEmail lower-cases + trims so lookup is case-insensitive.
