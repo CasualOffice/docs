@@ -54,16 +54,48 @@ Browser
 - `docs/internal/` — engineering notes (overview, fidelity gaps, gap matrix, pipeline, backend design, CI recovery, etc.).
 - `docker-compose.yml` — local dev stack. **No DB** — service is stateless; storage delegated. Backend service + editor SPA bundled into one image.
 
-## Status (2026-05-24)
+## Status (2026-06-08)
 
-- **Editor fork** — **39 of 39 fixtures round-trip pristine** in the per-tag audit (re-audited 2026-05-24). The ≥ 90 % desktop-ship floor is cleared. Previously-deferred VML cluster closed via raw-XML envelope capture (`302c210`). Remaining gaps are visual (floating-image-wrap, table-overlap-text) not round-trip.
-- **Home page** — Template gallery shipped with 14 real .docx templates across 4 categories (Personal / Work / Education / Career) and real first-page PNG previews rendered via LibreOffice. Title-bar logo click confirms + returns to gallery (Google Docs pattern).
-- **Word-compat heuristics** — #395 last-row closing border wired behind an opt-in `wordCompat` flag (off by default), with 5 unit tests.
-- **Backend M1** — Go gateway in `backend/`. POST /api/docs upload, GET /api/docs/{id}/download snapshot, GET /doc/{id} WebSocket. Inline host for the v0 share-link flow. WS broker fans frames between room members. Tests cover broadcast / room manager / upload / static SPA path. Three-way fidelity harness already in CI.
-- **CI** — green after three sweeps that fixed stale e2e selectors (list/indent aria-labels with shortcut chips, broadened file `accept`, hyperlinks "New" button, help-menu URL, demo-docx race conditions). Fidelity comparison and Pages deploy run on every push.
-- **Live deploys** — single-user demo at https://doc.schnsrw.live/. Co-edit ships with the Docker image (lands with the first tagged release).
+- **Editor fork** — **39 of 39 fixtures round-trip pristine**; the ≥ 90 % desktop-ship floor is cleared. VML cluster closed via raw-XML envelope capture (`302c210`). Remaining gaps are visual (floating-image-wrap, table-overlap-text), not round-trip.
+- **Home page** — Template gallery (14 templates × 4 categories, LibreOffice PNG previews). Recent-files strip shipped. Auto-reopen banner shipped (`2988b89`) — "Reopen `<name>`?" above the landing when the most-recently-opened doc is < 7 days old; sessionStorage-sticky dismissal.
+- **Backend** — Go gateway in `backend/`. M1 inline share-link surface (`/api/docs`, `/doc/{id}` WS). Per-IP rate limiting + `MAX_ROOMS` cap.
+- **CI** — green. Go toolchain pinned to 1.25 (`ec9a2e7`, recovered from a stealth Phase-C-Batch-1 regression).
+- **Live deploys** — single-user demo at https://doc.schnsrw.live/.
 
-Outstanding decisions:
-- **JWT host integration** — design pending; comes after the inline path proves the gateway shape.
+### Phase C — Personal (Mode 3) — ✅ end-to-end
+
+Backend (`backend/internal/auth/personal/`) + editor TS surface both shipped:
+
+- **Batch 1 (`97c330d`)** — `UserStore` + bcrypt + SQLite at `<root>/.casual/users.db`; HMAC-signed session token, 30-day TTL.
+- **Batch 2 (`f835960`)** — `POST /auth/signup` / `/auth/login` / `/auth/logout`, `GET /auth/me`; `__Host-`-prefixed cookies under `SECURE_COOKIES=true`.
+- **Batch 3 (`bd3e753`)** — Per-user file scoping via `local.PerUserStores`; users land at `<root>/users/<userID>/`; `GET /files`.
+- **Batch 4 (`3a0d204`)** — Full per-user file CRUD (`POST /files`, `GET /files/{id}`, `PUT /files/{id}/contents`, `PATCH`, `DELETE`); TS `PersonalFileSource` consumes the contract.
+- **Batch 4.5 (`2e197d7`)** — `Profile` (`displayName` / `timezone` / `locale` / `avatarUrl` / `prefs`); identity stays in SQLite, extended fields in `.profile.json` sidecar.
+- **Batch 5 (`a63941c`)** — `casual-docs` CLI (`reset-password / list-users / promote / demote`), admin routes (`GET /admin/users`, `DELETE /admin/users/{id}` behind `RequireAdmin`), first signup auto-promotes; structured logs + request-id middleware; Go benchmarks; full Mode 3 e2e integration test.
+
+User-facing UI (`packages/react/src/file-source/`):
+
+- **PersonalAuthGate** (`7a52b82`) — login / signup modal; Google Docs UX.
+- **UserMenu** (`38b2ffb`) — pill + dropdown; Sign out + Profile settings.
+- **ProfileSettingsDialog** (`bfbbdae`) — displayName / timezone / locale edit.
+
+### Phase D — WOPI (Mode 2) — ✅ end-to-end
+
+- **D1 (`9185671`)** — Backend client (`backend/internal/host/wopi/`) + JWT verifier with JWKS cache (`backend/internal/auth/wopi/`); `docID = base64url(wopiSrc)` keeps the gateway stateless; alg-confusion defence rejects HS\*.
+- **D2 (`ccbd9a7`)** — `GET /wopi/host` embed redirect; access_token threaded through the WS preflight handler.
+- **D3 (`e43d232`)** — `WopiFileSource` (TS) + token threading on `/api/docs/{id}/download`; `chooseFileSource` probe order WOPI → Personal → Browser.
+- **D4 (`bfc5e4b`)** — `host.Locker` capability interface; WOPI Lock/Unlock; room manager claims lock on first join, releases on drain; `host.ErrConflict` on lock-taken.
+- **D5 (`bd4a2b1`)** — Per-room `RefreshLock` ticker (10 min default) so long editing sessions don't lose the host-side lock idle-out.
+
+### M2 — Snapshot pipeline — ✅ via client-side push
+
+The CLAUDE.md design originally framed M2 as a server-side Bun worker pool decoding Y.Doc state. The pivot in `d24deaa`: `DocxEditorRef.save()` already produces serialized `.docx` bytes client-side. `useFileSourceAutoSave` pushes those through `FileSource.save()` on a schedule, covering the same need without putting a Bun runtime in the production Docker image. Stateless invariant preserved.
+
+`AutosaveStatus` (`9e1181b`) gives the host a Google-Docs-style "Saved 2 min ago" / "Saving…" / "Save failed" indicator.
+
+### Outstanding
+
+- **Snapshot-on-drain server-side fallback** — when no client is around to push a final save, ~last interval of edits can be lost. Real server-side serialization is still tracked but deprioritised given the client-push path covers the practical case.
+- **File System Access folder integration** (Phase A) — Chromium-only progressive enhancement; not started.
+- **Lock-stolen UX** — when `RefreshLock` returns `ErrConflict` mid-session, broadcast a "doc is now read-only" frame to clients. Deferred.
 - **Tauri desktop binary** — early scaffolding only; first binary ships once fidelity crosses 90%.
-- **Y.Doc → .docx serializer worker** — the gateway currently re-serves the original upload on drain; the next milestone replaces that with a Bun worker pool that turns live CRDT state into a fresh .docx (M2 in the roadmap).
