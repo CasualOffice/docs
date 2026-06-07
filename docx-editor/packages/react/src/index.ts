@@ -36,9 +36,32 @@ export {
   type DocxEditorRef,
   type EditorMode,
 } from './components/DocxEditor';
+
+// CasualEditor — composable SDK wrapper bundling DocxEditor +
+// FileSource + optional collab + optional autosave for host apps
+// (Drive, future sheet) that want the editor with minimum ceremony.
+// Advanced consumers can still use the raw DocxEditor.
+export {
+  CasualEditor,
+  type CasualEditorProps,
+  type CasualEditorRef,
+} from './components/CasualEditor';
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils';
 export { AgentPanel, type AgentPanelProps } from './components/AgentPanel';
+
+// Collab — Yjs/y-websocket wiring exposed so SDK consumers (host
+// apps embedding the editor) can opt into co-edit by passing the
+// returned plugins into DocxEditor's `externalPlugins`. `yjs`,
+// `y-websocket`, `y-prosemirror` are optional peerDependencies —
+// non-collab deploys don't pay the bundle cost.
+export {
+  useCollab,
+  type CollabPeer,
+  type CollabState,
+  type CollabStatus,
+  type UseCollabOptions,
+} from './collab/useCollab';
 
 // Recent files (host-facing — call `recordRecentFile` on doc open,
 // surface `listRecentFiles` on a "Home" / "Open" screen).
