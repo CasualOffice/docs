@@ -22,8 +22,13 @@ name: Release (npm)
 # don't conflict — Docker fires on tag push, this one on branch push.
 
 on:
+  # Manual trigger only. No more firing on every main merge.
+  workflow_dispatch:
+  # Also fire when changesets-action creates the per-package tag, or
+  # when a tag is pushed manually: `git tag @schnsrw/docx-js-editor@x.y.z`.
   push:
-    branches: [main]
+    tags:
+      - '@schnsrw/docx-js-editor@*'
 
 concurrency:
   group: release-npm-${{ github.ref }}
