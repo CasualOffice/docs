@@ -13,7 +13,7 @@
     "dev:remix": "cd examples/remix && npm run dev",
     "dev:astro": "cd examples/astro && npm run dev",
     "dev:demo": "bash examples/dev-all.sh",
-    "build": "bun run --filter '@eigenpal/docx-core' build && bun run --filter '@eigenpal/docx-js-editor' build",
+    "build": "bun run --filter '@eigenpal/docx-core' build && bun run --filter '@schnsrw/docx-js-editor' build",
     "build:demo": "vite build --config examples/vite/vite.config.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
