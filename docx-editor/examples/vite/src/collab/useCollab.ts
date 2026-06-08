@@ -6,11 +6,11 @@
 // in this folder keep working.
 //
 // New code should import from the package directly:
-//   import { useCollab, type CollabState } from '@eigenpal/docx-js-editor';
+//   import { useCollab, type CollabState } from '@schnsrw/docx-js-editor';
 export {
   useCollab,
   type CollabPeer,
   type CollabState,
   type CollabStatus,
   type UseCollabOptions,
-} from '@eigenpal/docx-js-editor';
+} from '@schnsrw/docx-js-editor';

@@ -1,7 +1,7 @@
 import './styles.css';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { setSpellAssetUrls, setWriterWorkerUrl } from '@eigenpal/docx-js-editor';
+import { setSpellAssetUrls, setWriterWorkerUrl } from '@schnsrw/docx-js-editor';
 // Vite asset imports — Hunspell dictionary files served as static
 // assets with hashed URLs. The lib doesn't pre-bundle these (its tsup
 // build has no loader for .aff / .dic); the demo provides them at

@@ -1,7 +1,7 @@
 import {
   createEmptyDocument,
   type Document as DocxDocument,
-} from '@eigenpal/docx-js-editor';
+} from '@schnsrw/docx-js-editor';
 import type { TemplateEntry } from './manifest';
 
 export type LoadedTemplate =

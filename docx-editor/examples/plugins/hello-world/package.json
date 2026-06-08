@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@eigenpal/docx-js-editor": "^0.0.7",
+    "@schnsrw/docx-js-editor": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -38,7 +38,7 @@
     "examples/vite": {
       "name": "docx-editor-example-vite",
       "dependencies": {
-        "@eigenpal/docx-js-editor": "^0.0.7",
+        "@schnsrw/docx-js-editor": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "y-prosemirror": "^1.2.12",
@@ -90,8 +90,8 @@
       },
     },
     "packages/react": {
-      "name": "@eigenpal/docx-js-editor",
-      "version": "0.5.1",
+      "name": "@schnsrw/docx-js-editor",
+      "version": "0.6.0",
       "dependencies": {
         "@huggingface/transformers": "^4.2.0",
         "@mlc-ai/web-llm": "^0.2.84",
@@ -244,8 +244,6 @@
     "@eigenpal/docx-core": ["@eigenpal/docx-core@workspace:packages/core"],
 
     "@eigenpal/docx-editor-vue": ["@eigenpal/docx-editor-vue@workspace:packages/vue"],
-
-    "@eigenpal/docx-js-editor": ["@eigenpal/docx-js-editor@workspace:packages/react"],
 
     "@emnapi/core": ["@emnapi/core@1.10.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.1", "tslib": "^2.4.0" } }, "sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw=="],
 
@@ -580,6 +578,8 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.2", "", { "os": "win32", "cpu": "x64" }, "sha512-Nd/SgG27WoA9e+/TdK74KnHz852TLa94ovOYySo/yMPuTmpckK/jIF2jSwS3g7ELSKXK13/cVdmg1Z/DaCWKxA=="],
 
     "@schnsrw/core": ["@schnsrw/core@0.1.1", "", {}, "sha512-IP1ug4JRr/YV9wsqXB96xytO8jioAwW8I76JYXS/7ktWDo6JXFeUcqy/iwuLZ6dWdYYQOXV6Pit/yccbeRI1Dg=="],
+
+    "@schnsrw/docx-js-editor": ["@schnsrw/docx-js-editor@workspace:packages/react"],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.1", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg=="],
 
@@ -1610,8 +1610,6 @@
     "anymatch/picomatch": ["picomatch@2.3.2", "", {}, "sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA=="],
 
     "chokidar/glob-parent": ["glob-parent@5.1.2", "", { "dependencies": { "is-glob": "^4.0.1" } }, "sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow=="],
-
-    "docx-editor-example-vite/@eigenpal/docx-js-editor": ["@eigenpal/docx-js-editor@0.0.7", "", { "dependencies": { "clsx": "^2.1.0", "docxtemplater": "^3.50.0", "jszip": "^3.10.1", "pizzip": "^3.1.7", "prosemirror-commands": "^1.5.2", "prosemirror-dropcursor": "^1.8.2", "prosemirror-history": "^1.4.0", "prosemirror-keymap": "^1.2.2", "prosemirror-model": "^1.19.4", "prosemirror-state": "^1.4.3", "prosemirror-tables": "^1.8.5", "prosemirror-view": "^1.32.7", "xml-js": "^1.6.11" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["react", "react-dom"], "bin": { "docx-editor-mcp": "dist/mcp-cli.js" } }, "sha512-u29yVSME5q90GJ2AB2bnkEw9vJFKYaQpkfJKEu4zOVUCjKHn2Wj9V/upfQM0lq02GGKu86E1VrSL0RTGUPWc3Q=="],
 
     "eslint/ignore": ["ignore@5.3.2", "", {}, "sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g=="],
 

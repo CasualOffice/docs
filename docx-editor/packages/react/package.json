@@ -1,5 +1,5 @@
 {
-  "name": "@eigenpal/docx-js-editor",
+  "name": "@schnsrw/docx-js-editor",
   "version": "0.6.0",
   "description": "A browser-based DOCX template editor with variable insertion support",
   "main": "./dist/index.js",
@@ -150,8 +150,8 @@
   "homepage": "https://docx-editor.dev/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eigenpal/docx-editor.git",
-    "directory": "packages/react"
+    "url": "https://github.com/schnsrw/docx.git",
+    "directory": "docx-editor/packages/react"
   },
   "publishConfig": {
     "access": "public"

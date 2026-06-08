@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DocxEditor, createEmptyDocument } from '@eigenpal/docx-js-editor';
+import { DocxEditor, createEmptyDocument } from '@schnsrw/docx-js-editor';
 import { GitHubBadge } from '../../shared/GitHubBadge';
 import { AvatarStack } from './AvatarStack';
 import { useCollaboration } from './useCollaboration';

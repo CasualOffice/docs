@@ -23,7 +23,7 @@ export default defineConfig(async () => {
       // examples/vite was added to the bun workspaces array, bun installed
       // a second physical React under examples/vite/node_modules/react —
       // separate from packages/react's hoisted copy. Vite ended up loading
-      // one React for the alias-resolved `@eigenpal/docx-js-editor` source
+      // one React for the alias-resolved `@schnsrw/docx-js-editor` source
       // and another for components that import React directly inside the
       // example, which crashed Radix Select with "Cannot read properties
       // of null (reading 'useMemo')" on the toolbar's ZoomControl.
@@ -32,7 +32,7 @@ export default defineConfig(async () => {
         // Resolve package imports to source for live development
         // Order matters: more-specific prefixes before less-specific ones
         {
-          find: '@eigenpal/docx-js-editor',
+          find: '@schnsrw/docx-js-editor',
           replacement: path.join(monorepoRoot, 'packages/react/src/index.ts'),
         },
         {

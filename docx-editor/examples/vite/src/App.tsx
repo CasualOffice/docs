@@ -4,7 +4,7 @@ import {
   type DocxEditorRef,
   type Document as DocxDocument,
   createEmptyDocument,
-} from '@eigenpal/docx-js-editor';
+} from '@schnsrw/docx-js-editor';
 import { useCollab } from './collab/useCollab';
 import { StatusBadge } from './collab/StatusBadge';
 import { ShareDialog } from './collab/Share';
@@ -18,7 +18,7 @@ import {
   useFileSourceAutoSave,
   type AutoSaveEditorRef,
   type FileSource,
-} from '@eigenpal/docx-js-editor';
+} from '@schnsrw/docx-js-editor';
 import { Home } from './Home';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
@@ -329,7 +329,7 @@ function EmbedRoute() {
       <p style={{ color: '#94a3b8', fontSize: 12, marginTop: 6 }}>
         Full editor wiring lands in the EmbedRoute follow-up; this scaffold proves the route
         responds and the EmbedConfig parser works. The EmbedTransport class (exported from{' '}
-        <code>@eigenpal/docx-js-editor</code>) is the integration surface.
+        <code>@schnsrw/docx-js-editor</code>) is the integration surface.
       </p>
     </div>
   );

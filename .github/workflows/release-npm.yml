@@ -88,4 +88,10 @@ jobs:
           title: 'chore(release): version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No NPM_TOKEN — OIDC Trusted Publishing handles auth.
+          # Token-based npm publish. The fork publishes under the
+          # @schnsrw scope; secrets.NODE_PASS is the npm automation
+          # token. (Originally CLAUDE.md described OIDC against the
+          # upstream eigenpal/docx-editor repo, which doesn't apply
+          # to this fork.)
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_PASS }}
+          NPM_TOKEN: ${{ secrets.NODE_PASS }}

@@ -10,7 +10,7 @@ import {
   formatSize,
   listRecentFiles,
   type RecentFile,
-} from '@eigenpal/docx-js-editor';
+} from '@schnsrw/docx-js-editor';
 
 /** Track viewport breakpoint. <720 = phone (single-col controls,
  *  2-col card grid, reduced padding, smaller hero). */
