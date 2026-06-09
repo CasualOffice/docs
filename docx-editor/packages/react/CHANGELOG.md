@@ -1,5 +1,32 @@
 # @eigenpal/docx-js-editor
 
+## 1.0.1
+
+### Patch Changes
+
+- Fix `format-converter.worker.ts` bundling. The published `dist/`
+  referenced `new Worker(new URL('./format-converter.worker.ts',
+import.meta.url))` but didn't ship the `.ts` source — any consumer
+  whose bundler honours the `new Worker(new URL(...), import.meta.url)`
+  pattern at build time (Vite, modern webpack with worker-plugin, esbuild's
+  bundler) errored with "Could not resolve entry module
+  .../format-converter.worker.ts" before the consumer's app could even
+  import a single editor symbol.
+
+  `tsup.config.ts` now adds `format-converter.worker` as its own entry
+  (emits `dist/format-converter.worker.mjs` + `.cjs` as siblings to the
+  main chunks) and rewrites the runtime URL in the compiled
+  `format-converter` chunk from `./format-converter.worker.ts` to
+  `./format-converter.worker.mjs` via a `renderChunk` plugin. Consumers'
+  bundlers resolve the URL correctly because the file exists in
+  `node_modules` at the path the URL points at.
+
+  Existing consumers (Casual Drive in particular) can drop the
+  Vite-transform workaround that rewrote the worker construction to a
+  no-op once they bump to this version.
+
+  See schnsrw/docx#4 for the original report.
+
 ## 1.0.0
 
 ### Major Changes

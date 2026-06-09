@@ -1,6 +1,6 @@
 {
   "name": "@schnsrw/docx-js-editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A browser-based DOCX template editor with variable insertion support",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
