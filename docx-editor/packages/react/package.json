@@ -42,6 +42,12 @@
       "require": "./dist/mcp-reexport.js"
     },
     "./styles.css": "./dist/styles.css",
+    "./embed-runtime": {
+      "types": "./dist/embed/embed-runtime.d.mts",
+      "import": "./dist/embed/embed-runtime.mjs"
+    },
+    "./embed/embed.html": "./dist/embed/embed.html",
+    "./embed/embed-runtime.css": "./dist/embed/embed-runtime.css",
     "./i18n/*.json": "./i18n/*.json"
   },
   "typesVersions": {

@@ -54,7 +54,12 @@ const rewriteWorkerUrlsInSource: Plugin = {
   ],
 };
 
-export default defineConfig({
+// Main library entries — code-split as before. Adding the embed-runtime
+// here would mean it shares chunks with `dist/`, which is fine for npm
+// consumers but awkward for the static-copy contract in doc 16 (the
+// consumer wants 2 self-contained files for `/embed/docs/`, not 100+
+// shared chunks). The runtime ships from a second config below.
+const mainConfig = defineConfig({
   entry: {
     index: 'src/index.ts',
     react: 'src/react.ts',
@@ -92,3 +97,58 @@ export default defineConfig({
   injectStyle: false,
   plugins: [rewriteWorkerUrls, rewriteWorkerUrlsInSource],
 });
+
+// Embed-runtime — the in-iframe entry. Doc 16 §6. One self-contained
+// file the consumer copies into `{embedBasePath}/embed-runtime.js`
+// alongside `embed.html` (also copied below). Splitting OFF so the
+// runtime is a single artifact — consumer ships 2 files total.
+const embedRuntimeConfig = defineConfig({
+  entry: { 'embed-runtime': 'src/embed-runtime/index.tsx' },
+  outDir: 'dist/embed',
+  format: ['esm'], // browsers serve ESM via <script type="module">; one format
+  dts: true,
+  splitting: false,
+  sourcemap: false,
+  clean: false, // mainConfig owns dist/ clean
+  treeshake: true,
+  minify: true,
+  // React + ProseMirror still externalised — bundled into the consumer's
+  // page via the same npm dep edge. The iframe doc has access because
+  // both run on the same origin under the consumer's bundler.
+  external: [
+    'react',
+    'react-dom',
+    'react-dom/client',
+    'prosemirror-commands',
+    'prosemirror-dropcursor',
+    'prosemirror-history',
+    'prosemirror-keymap',
+    'prosemirror-model',
+    'prosemirror-state',
+    'prosemirror-tables',
+    'prosemirror-transform',
+    'prosemirror-view',
+  ],
+  injectStyle: false,
+  plugins: [
+    rewriteWorkerUrls,
+    rewriteWorkerUrlsInSource,
+    // Copy the static embed.html as a sibling so consumers ship two
+    // files only: embed.html + embed-runtime.js. The HTML's script tag
+    // points at `./embed-runtime.js` — the relative path resolves once
+    // both are in `{embedBasePath}/`.
+    {
+      name: 'copy-embed-html',
+      async buildEnd() {
+        try {
+          await fs.mkdir('dist/embed', { recursive: true });
+          await fs.copyFile('src/embed-runtime/embed.html', 'dist/embed/embed.html');
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err;
+        }
+      },
+    },
+  ],
+});
+
+export default [mainConfig, embedRuntimeConfig];

@@ -47,6 +47,18 @@ export {
   type CasualEditorRef,
 } from './components/CasualEditor';
 
+// CasualEditorIframe — iframe-mounting variant of CasualEditor.
+// Doc 16 in the parent repo. Use this for hosts that need CSS / React
+// runtime isolation (most consumers; Drive in particular). The
+// consumer copies the SDK's `dist/embed/*` into its public dir
+// (default `/embed/docs`). v1.2 will rename this to CasualEditor and
+// the existing direct-mount component → CasualEditorDirect.
+export {
+  CasualEditorIframe,
+  type CasualEditorIframeProps,
+  type CasualEditorIframeRef,
+} from './components/CasualEditorIframe';
+
 // Embed — iframe delivery surface. EmbedTransport bridges
 // postMessage to React handlers; the envelope shapes mirror
 // docs/internal/13-iframe-protocol.md.
