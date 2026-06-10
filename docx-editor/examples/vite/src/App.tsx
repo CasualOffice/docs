@@ -22,21 +22,34 @@ import {
 import { Home } from './Home';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
+import { navigate, useRoute } from './router';
 
 /**
- * Initial view: home (Google-Docs-style template gallery) unless the
- * URL signals we should land straight in the editor:
- * - `?e2e=1` — 200+ Playwright specs assume direct editor mount.
- * - `?skipHome=1` — escape hatch for embedders / quick links.
- * (Collab `?room=…` is handled separately — CollabApp returns early
- * before this view branch.)
+ * Initial view derivation. Two signals matter:
+ * - **Legacy query flags** (`?e2e=1`, `?skipHome=1`) force the editor.
+ *   ~18 Playwright specs land via these and skip Home; preserved as-is.
+ * - **Pathname routing** (`/document/...`, `/home`, `/`) — added in the
+ *   Phase 1 IA mirror so the URL canonicalises which view is open. `/`
+ *   is treated the same as `/home` (kind:'home' from parseRoute).
+ *
+ * The flags win because they were the only signal before this turn; the
+ * 200+ specs that hit `/` plainly already expected Home, which also
+ * maps to home under the new routing. No regression surface.
  */
-function getInitialView(): 'home' | 'editor' {
-  if (typeof window === 'undefined') return 'home';
+function isLegacyForcedEditor(): boolean {
+  if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
-  if (params.get('e2e') === '1') return 'editor';
-  if (params.get('skipHome') === '1') return 'editor';
-  return 'home';
+  return params.get('e2e') === '1' || params.get('skipHome') === '1';
+}
+
+function getInitialView(): 'home' | 'editor' {
+  if (isLegacyForcedEditor()) return 'editor';
+  if (typeof window === 'undefined') return 'home';
+  // Route-driven. `/` and `/home` → home; `/document/*` → editor.
+  if (window.location.pathname === '/' || window.location.pathname === '/home') {
+    return 'home';
+  }
+  return 'editor';
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -353,6 +366,21 @@ export function App() {
   const editorRef = useRef<DocxEditorRef>(null);
   const suppressSeedDocumentRef = useRef(false);
   const [view, setView] = useState<'home' | 'editor'>(getInitialView);
+
+  // URL → view sync. Phase 1 IA mirror: pathname is the source of
+  // truth for which surface is rendered, so browser back / refresh /
+  // bookmark all converge. The legacy `?e2e=1` / `?skipHome=1` flags
+  // override (pin to editor) so the existing test fleet keeps working.
+  const route = useRoute();
+  const legacyForcedEditor = useMemo(() => isLegacyForcedEditor(), []);
+  useEffect(() => {
+    if (legacyForcedEditor) return;
+    if (route.kind === 'home') {
+      setView('home');
+    } else if (route.kind === 'document' || route.kind === 'document-draft') {
+      setView('editor');
+    }
+  }, [route.kind, legacyForcedEditor]);
   const [currentDocument, setCurrentDocument] = useState<DocxDocument | null>(null);
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
@@ -541,11 +569,13 @@ export function App() {
     setDocumentBuffer(null);
     setFileName('Untitled.docx');
     setStatus('');
-    // Switch to the editor view — without this, clicking File > New from
-    // the home/template gallery created the empty doc but left the user
-    // stuck on the gallery. Matches handleSelectTemplate / handleOpenFromHome.
+    // Navigate to the canonical draft URL so back / refresh / bookmark
+    // converge. The route effect picks this up and flips view='editor'.
+    // The legacy-flag check inside that effect ensures `?e2e=1` specs
+    // that already pinned editor mode aren't disturbed.
+    if (!legacyForcedEditor) navigate('/document/new');
     setView('editor');
-  }, []);
+  }, [legacyForcedEditor]);
 
   const handleSelectTemplate = useCallback(async (entry: TemplateEntry) => {
     try {
@@ -561,12 +591,13 @@ export function App() {
       }
       setFileName(loaded.fileName);
       setStatus('');
+      if (!legacyForcedEditor) navigate('/document/new');
       setView('editor');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setStatus(`Failed to load template: ${message}`);
     }
-  }, []);
+  }, [legacyForcedEditor]);
 
   const handleOpenFromHome = useCallback(async (file: File) => {
     try {
@@ -577,11 +608,12 @@ export function App() {
       setDocumentBuffer(buffer);
       setFileName(file.name);
       setStatus('');
+      if (!legacyForcedEditor) navigate('/document/new');
       setView('editor');
     } catch {
       setStatus('Error loading file');
     }
-  }, []);
+  }, [legacyForcedEditor]);
 
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -643,8 +675,10 @@ export function App() {
     setFileName('Untitled.docx');
     setStatus('');
     suppressSeedDocumentRef.current = false;
+    // Drives both the URL and the view; the route effect flips view='home'.
+    if (!legacyForcedEditor) navigate('/home');
     setView('home');
-  }, []);
+  }, [legacyForcedEditor]);
 
   // Clickable variant of the title-bar logo. Sources the branded
   // `/logo.svg` from the demo's `public/` so the title-bar mark, the
