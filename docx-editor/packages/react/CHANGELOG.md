@@ -1,5 +1,17 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.1
+
+### Patch Changes
+
+- Bundle React + ProseMirror + all deps into the embed-runtime instead
+  of leaving them as external imports. The previous build expected the
+  consumer to provide an importmap; consumers like Casual Drive that
+  embed via `<iframe src="…/embed.html">` had no way to do that, and
+  the bare `import 'react'` failed at runtime in the browser.
+
+  The runtime now ships ~2.8MB self-contained (cached after first load).
+
 ## 1.1.0
 
 ### Minor Changes

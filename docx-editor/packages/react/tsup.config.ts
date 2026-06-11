@@ -112,23 +112,15 @@ const embedRuntimeConfig = defineConfig({
   clean: false, // mainConfig owns dist/ clean
   treeshake: true,
   minify: true,
-  // React + ProseMirror still externalised — bundled into the consumer's
-  // page via the same npm dep edge. The iframe doc has access because
-  // both run on the same origin under the consumer's bundler.
-  external: [
-    'react',
-    'react-dom',
-    'react-dom/client',
-    'prosemirror-commands',
-    'prosemirror-dropcursor',
-    'prosemirror-history',
-    'prosemirror-keymap',
-    'prosemirror-model',
-    'prosemirror-state',
-    'prosemirror-tables',
-    'prosemirror-transform',
-    'prosemirror-view',
-  ],
+  // Bundle EVERYTHING (react, react-dom, prosemirror) into the runtime —
+  // the previous externalisation expected an importmap, which consumers
+  // like drive (`<iframe src="…/embed.html">`) don't provide. The bare
+  // `import 'react'` failed at runtime in the browser. The iframe is
+  // its own runtime context — bundling React there doesn't conflict
+  // with the host's copy. Trade-off: the runtime grows to ~10MB+,
+  // downloaded once per iframe load (cached after).
+  external: [],
+  noExternal: [/.*/],
   injectStyle: false,
   plugins: [
     rewriteWorkerUrls,
