@@ -121,6 +121,12 @@ const embedRuntimeConfig = defineConfig({
   // downloaded once per iframe load (cached after).
   external: [],
   noExternal: [/.*/],
+  // Browser target: pick the `browser` field from each dep's package.json
+  // so packages with Node/browser splits (nanoid, etc.) load the
+  // browser variant. Without this, esbuild grabs `from 'crypto'` from
+  // Node forks and the iframe load fails at runtime.
+  platform: 'browser',
+  target: 'es2020',
   injectStyle: false,
   plugins: [
     rewriteWorkerUrls,

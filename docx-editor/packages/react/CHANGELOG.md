@@ -1,5 +1,14 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.2
+
+### Patch Changes
+
+- Add `platform: 'browser'` to the embed-runtime tsup config so esbuild
+  picks the browser variant of dual-target deps. 1.1.1 bundled deps but
+  still grabbed `import { ... } from 'crypto'` from the Node fork of
+  nanoid, which the browser can't resolve. Runtime now lands clean.
+
 ## 1.1.1
 
 ### Patch Changes
