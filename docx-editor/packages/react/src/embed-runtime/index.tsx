@@ -102,6 +102,12 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
   // `casual.hello` arrives soon after; once we receive it,
   // EmbedTransport auto-sends `casual.ready`.
   transport.sendHello();
+  // Also send `casual.ready` eagerly so hosts that wait for ready
+  // before sending hello (the EmbedHostTransport contract) get
+  // unblocked. Without this the handshake deadlocks: iframe waits
+  // for host hello to auto-send ready, host waits for ready before
+  // sending hello.
+  transport.sendReady();
 
   // Mount the editor. We pass `viewMode` down as data attribute on
   // the root for now — preview chrome hiding is the v1.1.x polish PR;

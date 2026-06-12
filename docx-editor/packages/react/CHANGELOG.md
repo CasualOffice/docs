@@ -1,5 +1,14 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.3
+
+### Patch Changes
+
+- embed-runtime calls `transport.sendReady()` after `sendHello()`. The
+  host (CasualEditorIframe) only sends its hello inside `onEditorReady`;
+  without an eager `casual.ready` from the iframe, the handshake
+  deadlocked and bytes never loaded.
+
 ## 1.1.2
 
 ### Patch Changes
