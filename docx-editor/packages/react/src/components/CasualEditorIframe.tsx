@@ -85,26 +85,23 @@ export const CasualEditorIframe = forwardRef<CasualEditorIframeRef, CasualEditor
     const fileSourceRef = useRef(fileSource);
     fileSourceRef.current = fileSource;
 
-    const onLoad = useCallback(
-      async (req: { docId: string }): Promise<LoadResponseData> => {
-        try {
-          const { bytes, name, etag } = await fileSourceRef.current.open(req.docId);
-          return {
-            ok: true,
-            bytes,
-            fileName: name,
-            ...(etag !== undefined ? { etag } : {}),
-          };
-        } catch (err) {
-          return {
-            ok: false,
-            code: 'open_failed',
-            message: err instanceof Error ? err.message : String(err),
-          };
-        }
-      },
-      [],
-    );
+    const onLoad = useCallback(async (req: { docId: string }): Promise<LoadResponseData> => {
+      try {
+        const { bytes, name, etag } = await fileSourceRef.current.open(req.docId);
+        return {
+          ok: true,
+          bytes,
+          fileName: name,
+          ...(etag !== undefined ? { etag } : {}),
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          code: 'open_failed',
+          message: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }, []);
 
     const onSave = useCallback(
       async (req: {
@@ -124,7 +121,7 @@ export const CasualEditorIframe = forwardRef<CasualEditorIframeRef, CasualEditor
           };
         }
       },
-      [],
+      []
     );
 
     // Wire the transport when the iframe fires `load`.
@@ -191,5 +188,5 @@ export const CasualEditorIframe = forwardRef<CasualEditorIframeRef, CasualEditor
         data-testid={testId}
       />
     );
-  },
+  }
 );

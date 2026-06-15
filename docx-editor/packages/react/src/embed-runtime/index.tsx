@@ -71,7 +71,9 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
   const hostOrigin =
     opts.hostOrigin ??
     inferHostOrigin() ??
-    /* Fallback: same-origin embed. */ (typeof window !== 'undefined' ? window.location.origin : '');
+    /* Fallback: same-origin embed. */ (typeof window !== 'undefined'
+      ? window.location.origin
+      : '');
 
   const identity = opts.identity ?? {
     version: '0.0.0',
@@ -135,7 +137,7 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
         }}
         /* No collab inside the iframe for v1.1.0 — host wires it
            through a separate envelope if needed. */
-      />,
+      />
     );
   }
 

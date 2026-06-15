@@ -171,7 +171,7 @@ export class EmbedHostTransport {
               code: 'host_error',
               message: err instanceof Error ? err.message : String(err),
             },
-            id,
+            id
           );
         }
         return;
@@ -190,7 +190,7 @@ export class EmbedHostTransport {
               code: 'host_error',
               message: err instanceof Error ? err.message : String(err),
             },
-            id,
+            id
           );
         }
         return;
@@ -233,7 +233,7 @@ export class EmbedHostTransport {
       ...(id ? { id } : {}),
     };
     const send = this.opts.iframeWindow.postMessage.bind(
-      this.opts.iframeWindow,
+      this.opts.iframeWindow
     ) as IframePostMessage;
     send(env, this.opts.embedOrigin, transfer);
   }

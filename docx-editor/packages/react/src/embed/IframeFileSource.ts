@@ -50,11 +50,11 @@ export function createIframeFileSource(bridge: IframeFileSourceBridge): FileSour
     async save(
       id: string | null,
       bytes: ArrayBuffer,
-      opts?: { etag?: string; name?: string },
+      opts?: { etag?: string; name?: string }
     ): Promise<{ id: string; etag: string }> {
       if (id === null) {
         throw new Error(
-          'IframeFileSource: new-file save (id=null) isn\'t supported — the host owns new-file UI.',
+          "IframeFileSource: new-file save (id=null) isn't supported — the host owns new-file UI."
         );
       }
       const resp = await bridge.save(id, bytes, opts?.etag);
