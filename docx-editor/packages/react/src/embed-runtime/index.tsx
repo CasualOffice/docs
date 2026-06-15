@@ -109,30 +109,45 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
   // sending hello.
   transport.sendReady();
 
-  // Mount the editor. We pass `viewMode` down as data attribute on
-  // the root for now — preview chrome hiding is the v1.1.x polish PR;
-  // the wire + bytes round-trip is what 1.1.0 establishes.
+  // Mount the editor. Preview mode hides every piece of chrome — the
+  // menubar/toolbar, the panel rail, the status bar, the ruler, the
+  // zoom control — and locks the document read-only. The host's
+  // preview surface only needs the canvas; chrome from the iframe
+  // leaks through the preview modal and confuses the UX.
   opts.root.setAttribute('data-view-mode', config.viewMode);
 
   const reactRoot = createRoot(opts.root);
-  reactRoot.render(
-    <CasualEditor
-      fileSource={fileSource}
-      docId={config.docId}
-      autosave
-      /* No collab inside the iframe for v1.1.0 — host wires it
-         through a separate envelope if needed. */
-    />,
-  );
+
+  function render(viewMode: 'preview' | 'editor') {
+    const isPreview = viewMode === 'preview';
+    reactRoot.render(
+      <CasualEditor
+        fileSource={fileSource}
+        docId={config.docId}
+        autosave={!isPreview}
+        docxEditorProps={{
+          readOnly: isPreview,
+          showToolbar: !isPreview,
+          showPanelRail: !isPreview,
+          showStatusBar: !isPreview,
+          showZoomControl: !isPreview,
+          showRuler: !isPreview,
+        }}
+        /* No collab inside the iframe for v1.1.0 — host wires it
+           through a separate envelope if needed. */
+      />,
+    );
+  }
+
+  render(config.viewMode);
 
   // Wire iframe-side handlers that the editor surfaces via the
-  // EmbedTransport handler block. Future viewMode toggle lands here.
+  // EmbedTransport handler block. Switching viewMode re-renders
+  // with the new chrome / readOnly props.
   transport.on({
     onCommandSetViewMode: ({ viewMode }) => {
       opts.root.setAttribute('data-view-mode', viewMode);
-      // v1.1.x will toggle CasualEditor's chrome props in response;
-      // v1.1.0 just updates the data attribute so the iframe-side
-      // CSS can react.
+      render(viewMode);
     },
   });
 }

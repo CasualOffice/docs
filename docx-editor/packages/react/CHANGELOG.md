@@ -1,5 +1,11 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.4
+
+### Patch Changes
+
+- embed-runtime: hide all chrome (toolbar, menubar, panel rail, status bar, ruler, zoom) and lock read-only in preview mode; toggle on viewMode commands.
+
 ## 1.1.3
 
 ### Patch Changes
