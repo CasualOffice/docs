@@ -1,5 +1,11 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.5
+
+### Patch Changes
+
+- embed-runtime: bundle the tailwind-compiled editor CSS (dist/styles.css) into dist/embed/embed-runtime.css so the iframe's `<link rel="stylesheet">` serves the full editor stylesheet. Without this, every toolbar button stacked vertically with no layout and the canvas painted unstyled.
+
 ## 1.1.4
 
 ### Patch Changes
