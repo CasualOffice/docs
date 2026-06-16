@@ -127,6 +127,15 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
         fileSource={fileSource}
         docId={config.docId}
         autosave={!isPreview}
+        // Forward parse / load failures to the host so it can swap
+        // the iframe for a friendly fallback card instead of letting
+        // DocxEditor's own red error UI surface to end users.
+        onError={(err) => {
+          transport.sendError({
+            code: 'parse_failed',
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }}
         docxEditorProps={{
           readOnly: isPreview,
           showToolbar: !isPreview,

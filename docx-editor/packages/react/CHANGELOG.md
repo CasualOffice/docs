@@ -1,5 +1,11 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.6
+
+### Patch Changes
+
+- embed-runtime: forward DocxEditor parse / load errors to the host via `transport.sendError(parse_failed)` so hosts can swap the iframe for a friendly fallback instead of letting the SDK's own red error UI surface to end users.
+
 ## 1.1.5
 
 ### Patch Changes
