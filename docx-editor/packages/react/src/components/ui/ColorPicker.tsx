@@ -182,10 +182,15 @@ const S_APPLY_BTN: CSSProperties = {
 };
 
 const S_COLOR_BAR: CSSProperties = {
-  width: '16px',
-  height: '4px',
+  // Tighter, more polished indicator strip beneath the icon. The old
+  // 16×4 px with marginTop -2 made the bar overlap the icon by 2 px
+  // and look chunky next to the rest of the toolbar (UX-EDITOR-3:
+  // user feedback "highlight button and all CSS is messed up"). 18×3
+  // sits cleanly below the 18 px icon with a 1 px breathing gap.
+  width: '18px',
+  height: '3px',
   borderRadius: '1px',
-  marginTop: '-2px',
+  marginTop: '1px',
 };
 
 // ── Split-button styles ─────────────────────────────────────────────────────

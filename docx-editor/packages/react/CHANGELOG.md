@@ -1,5 +1,11 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.7
+
+### Patch Changes
+
+- Toolbar polish: tighter color-strip indicator under font-color / highlight / border buttons (was 16×4 px overlapping the icon, now 18×3 px sitting cleanly below with a 1 px breathing gap). Matches Google Docs' visual rhythm and clears the "chunky highlight strip" feedback from the 2026-06-17 demo walkthrough.
+
 ## 1.1.6
 
 ### Patch Changes
