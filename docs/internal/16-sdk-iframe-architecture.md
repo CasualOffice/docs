@@ -48,7 +48,7 @@ Host page (Drive)                               iframe (editor app)
 <CasualEditor>                                  ┌─ embed.html  (consumer-served, same-origin)
    └─ wrapper React component                   │     <script type="module">
         ├─ generates iframe URL                  │       import { mountEmbedded }
-        ├─ mounts <iframe sandbox="..." src/>   │         from '@schnsrw/docx-js-editor/embed-runtime';
+        ├─ mounts <iframe sandbox="..." src/>   │         from '@casualoffice/docs/embed-runtime';
         └─ owns EmbedHostTransport              │       mountEmbedded(config);
               ─ outbound postMessage             │     </script>
               ─ inbound  postMessage             │
@@ -76,7 +76,7 @@ postMessage wire (same envelope shapes as 13-iframe-protocol.md, just internal):
 ## 5. Component surface (consumer-facing)
 
 ```tsx
-import { CasualEditor, type CasualEditorRef } from '@schnsrw/docx-js-editor';
+import { CasualEditor, type CasualEditorRef } from '@casualoffice/docs';
 
 const ref = useRef<CasualEditorRef>(null);
 
@@ -101,7 +101,7 @@ ref.current?.signing.start(config);
 ref.current?.signing.cancel('signer_cancelled');
 ```
 
-Identical surface for `<CasualSheets>` from `@schnsrw/casual-sheets/sheets`. Both ship a `CasualSheetsRef` with the same imperative methods.
+Identical surface for `<CasualSheets>` from `@casualoffice/sheets/sheets`. Both ship a `CasualSheetsRef` with the same imperative methods.
 
 ### Behavioural details
 
@@ -115,9 +115,9 @@ Identical surface for `<CasualSheets>` from `@schnsrw/casual-sheets/sheets`. Bot
 
 ### `embedBasePath` default and the consumer build contract
 
-The default `embedBasePath = '/embed/docs'` (for `@schnsrw/docx-js-editor`) and `/embed/sheets` (for `@schnsrw/casual-sheets`). Consumers serve `embed.html` + the embed runtime under those paths. Two ways:
+The default `embedBasePath = '/embed/docs'` (for `@casualoffice/docs`) and `/embed/sheets` (for `@casualoffice/sheets`). Consumers serve `embed.html` + the embed runtime under those paths. Two ways:
 
-1. **Vite plugin.** The SDK ships `@schnsrw/docx-js-editor/vite-plugin` that, at build, copies `node_modules/@schnsrw/docx-js-editor/dist/embed/*` into the consumer's `outDir/embed/docs/`. One line in `vite.config.ts`: `plugins: [casualEditorEmbed()]`.
+1. **Vite plugin.** The SDK ships `@casualoffice/docs/vite-plugin` that, at build, copies `node_modules/@casualoffice/docs/dist/embed/*` into the consumer's `outDir/embed/docs/`. One line in `vite.config.ts`: `plugins: [casualEditorEmbed()]`.
 2. **Manual copy script.** Non-Vite consumers add a `postinstall` or `prebuild` step that does the copy. SDK docs the exact path pair.
 
 For Drive specifically: one Vite plugin call per editor type. No new HTML files Drive maintains by hand.
@@ -229,11 +229,11 @@ interface CasualEditorRef {
 
 After SDK v1.1 (docx) + v0.5 (sheet) publish:
 
-1. Bump `@schnsrw/docx-js-editor@^1.1.0` and `@schnsrw/casual-sheets@^0.5.0` in `web/package.json`.
+1. Bump `@casualoffice/docs@^1.1.0` and `@casualoffice/sheets@^0.5.0` in `web/package.json`.
 2. Add `casualEditorEmbed()` + `casualSheetsEmbed()` Vite plugins to `web/vite.config.ts`. Drop:
-   - The format-converter worker `transform` shim (`fix(build): stub @schnsrw/docx-js-editor's format-converter worker`).
+   - The format-converter worker `transform` shim (`fix(build): stub @casualoffice/docs's format-converter worker`).
    - The React + scheduler `manualChunks` workaround (the React.Activity init crash).
-   - The `lazy(() => import('@schnsrw/docx-js-editor'))` Suspense for `AutosaveStatus` in `PreviewModal.tsx`.
+   - The `lazy(() => import('@casualoffice/docs'))` Suspense for `AutosaveStatus` in `PreviewModal.tsx`.
 3. Strip `CasualDocEditor.tsx` and `CasualSheetWorkspace.tsx` to one-liners that just render `<CasualEditor>` / `<CasualSheets>` with `viewMode` plumbed.
 4. Add the `/file/:fileId` route (`?mode=editor` flips). Kind dispatch sits in one switch — docs/sheets go through the SDK; PDF / image / video / audio keep their current primitives.
 5. Preview modal's stage just becomes `<CasualEditor viewMode="preview">` or `<CasualSheets viewMode="preview">` per kind.
@@ -245,11 +245,11 @@ Result: Drive's net diff after the migration is a **subtractive** PR — fewer f
 
 `docx-editor/examples/vite/src/App.tsx` mounts `<CasualEditor>` directly. After v1.1, that mount becomes the iframe-internal one automatically — the example app gets the Vite plugin too. The example serves both the host page and the `/embed/docs/` target same-origin; verified locally before publish.
 
-`apps/web` for the sheet repo similarly. It already uses `@schnsrw/casual-sheets/sheets`; after the v0.5 bump, the wrapper switches to iframe transparently.
+`apps/web` for the sheet repo similarly. It already uses `@casualoffice/sheets/sheets`; after the v0.5 bump, the wrapper switches to iframe transparently.
 
 ## 14. Build / packaging
 
-### Editor SDK (`@schnsrw/docx-js-editor@1.1.0`)
+### Editor SDK (`@casualoffice/docs@1.1.0`)
 
 New tsup entries:
 
@@ -265,7 +265,7 @@ Existing entries stay. The `CasualEditor` component in `index.{js,mjs}` becomes 
 - `./embed.html` (asset path)
 - `./vite-plugin` → `dist/vite-plugin.js`
 
-### Sheet SDK (`@schnsrw/casual-sheets@0.5.0`)
+### Sheet SDK (`@casualoffice/sheets@0.5.0`)
 
 Same shape — own embed-runtime entry, own embed.html, own vite-plugin entry. `embedBasePath` defaults `/embed/sheets`.
 
@@ -275,8 +275,8 @@ The `format-converter.worker.ts` packaging fix shipped in `1.0.1` (`renderChunk`
 
 ## 15. Versioning + rollout
 
-- **`@schnsrw/docx-js-editor@1.1.0`** — minor bump. New behaviour (`viewMode`, iframe), unchanged consumer surface, but the consumer must add the Vite plugin (build-time contract change) so the CHANGELOG calls this out clearly.
-- **`@schnsrw/casual-sheets@0.5.0`** — minor bump, same shape.
+- **`@casualoffice/docs@1.1.0`** — minor bump. New behaviour (`viewMode`, iframe), unchanged consumer surface, but the consumer must add the Vite plugin (build-time contract change) so the CHANGELOG calls this out clearly.
+- **`@casualoffice/sheets@0.5.0`** — minor bump, same shape.
 - **Drive `package.json`** — bumps both, drops three workaround files, adds two Vite plugins, ships the `/file/:fileId` route.
 
 Each landing is independent; the SDKs can publish first (with their own apps/web examples verifying), Drive picks them up at its own pace. Old `1.0.x` consumers see the same direct-mount behaviour they have today (no breaking change for anyone not bumping).
@@ -309,8 +309,8 @@ Once each default is confirmed (or flipped), the work order in §12 / §13 start
 
 ## 19. Definition of done (for the v1.1 / v0.5 publishes)
 
-- [ ] `@schnsrw/docx-js-editor@1.1.0` published with `embed-runtime`, `embed.html`, `vite-plugin` entries.
-- [ ] `@schnsrw/casual-sheets@0.5.0` published with the same.
+- [ ] `@casualoffice/docs@1.1.0` published with `embed-runtime`, `embed.html`, `vite-plugin` entries.
+- [ ] `@casualoffice/sheets@0.5.0` published with the same.
 - [ ] Both SDKs' own apps/web examples open in iframe mode locally, no console errors.
 - [ ] Drive's PR diff (after migration) is net-subtractive; build passes; no React.Activity crash; no worker shim left in vite.config.ts.
 - [ ] Drive's `/file/:fileId` route + `?mode=editor` flip both load with viewMode applied; "Open in editor" button navigates correctly.

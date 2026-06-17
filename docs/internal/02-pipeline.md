@@ -169,7 +169,7 @@ Practical impact on this pipeline:
   signing convention. If Document ever ships webhooks, match it.
 - **Don't fork the admin panel UI until Document actually needs an
   admin panel.** When that day arrives, decide whether to factor a
-  shared `@schnsrw/admin-shell` package or just stand up a second
+  shared `@casualoffice/admin-shell` package or just stand up a second
   copy.
 - **No coupling at the runtime level.** Sheets uses Hocuspocus
   (Node) for collab; Document uses its own Go y-websocket gateway.

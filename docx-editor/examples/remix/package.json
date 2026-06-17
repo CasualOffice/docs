@@ -9,7 +9,7 @@
     "start": "remix-serve ./build/server/index.js"
   },
   "dependencies": {
-    "@schnsrw/docx-js-editor": "workspace:*",
+    "@casualoffice/docs": "workspace:*",
     "@remix-run/node": "^2.16.0",
     "@remix-run/react": "^2.16.0",
     "@remix-run/serve": "^2.16.0",

@@ -9,7 +9,7 @@ name: Release
 #   - Environment `dockerhub` with secrets:
 #       DOCKERHUB_USERNAME  — docker.io login
 #       DOCKERHUB_TOKEN     — scoped access token (Read/Write/Delete on
-#                              schnsrw/casual-editor)
+#                              casualoffice/docs)
 #
 # Usage:
 #   git tag v0.0.1 -m "first release"

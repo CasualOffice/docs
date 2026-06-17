@@ -38,7 +38,7 @@
     "examples/vite": {
       "name": "docx-editor-example-vite",
       "dependencies": {
-        "@schnsrw/docx-js-editor": "workspace:*",
+        "@casualoffice/docs": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "y-prosemirror": "^1.2.12",
@@ -90,7 +90,7 @@
       },
     },
     "packages/react": {
-      "name": "@schnsrw/docx-js-editor",
+      "name": "@casualoffice/docs",
       "version": "1.1.7",
       "dependencies": {
         "@huggingface/transformers": "^4.2.0",
@@ -202,6 +202,8 @@
     "@babel/traverse": ["@babel/traverse@7.29.0", "", { "dependencies": { "@babel/code-frame": "7.29.0", "@babel/generator": "7.29.1", "@babel/helper-globals": "7.28.0", "@babel/parser": "7.29.3", "@babel/template": "7.28.6", "@babel/types": "7.29.0", "debug": "4.4.3" } }, "sha512-4HPiQr0X7+waHfyXPZpWPfWL/J7dcN1mx9gL6WdQVMbPnF3+ZhSMs8tCxN7oHddJE9fhNE7+lxdnlyemKfJRuA=="],
 
     "@babel/types": ["@babel/types@7.29.0", "", { "dependencies": { "@babel/helper-string-parser": "7.27.1", "@babel/helper-validator-identifier": "7.28.5" } }, "sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A=="],
+
+    "@casualoffice/docs": ["@casualoffice/docs@workspace:packages/react"],
 
     "@changesets/apply-release-plan": ["@changesets/apply-release-plan@7.1.1", "", { "dependencies": { "@changesets/config": "3.1.4", "@changesets/get-version-range-type": "0.4.0", "@changesets/git": "3.0.4", "@changesets/should-skip-package": "0.1.2", "@changesets/types": "6.1.0", "@manypkg/get-packages": "1.1.3", "detect-indent": "6.1.0", "fs-extra": "7.0.1", "lodash.startcase": "4.4.0", "outdent": "0.5.0", "prettier": "2.8.8", "resolve-from": "5.0.0", "semver": "7.8.0" } }, "sha512-9qPCm/rLx/xoOFXIHGB229+4GOL76S4MC+7tyOuTsR6+1jYlfFDQORdvwR5hDA6y4FL2BPt3qpbcQIS+dW85LA=="],
 
@@ -576,8 +578,6 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.4", "", { "os": "win32", "cpu": "x64" }, "sha512-QVTUovf40zgTqlFVrKA1uXMVvU2QWEFWfAH8Wdc48IxLvrJMQVMBRjuQyUpzZCDkakImib9eVazbWlC6ksWtJw=="],
 
     "@schnsrw/core": ["@schnsrw/core@0.1.1", "", {}, "sha512-IP1ug4JRr/YV9wsqXB96xytO8jioAwW8I76JYXS/7ktWDo6JXFeUcqy/iwuLZ6dWdYYQOXV6Pit/yccbeRI1Dg=="],
-
-    "@schnsrw/docx-js-editor": ["@schnsrw/docx-js-editor@workspace:packages/react"],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.1", "", { "dependencies": { "@babel/code-frame": "7.29.0", "@babel/runtime": "7.29.2", "@types/aria-query": "5.0.4", "aria-query": "5.3.0", "dom-accessibility-api": "0.5.16", "lz-string": "1.5.0", "picocolors": "1.1.1", "pretty-format": "27.5.1" } }, "sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg=="],
 

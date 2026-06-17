@@ -17,7 +17,7 @@ friend on another machine."
 
 ```bash
 # 1. Pull the published image
-docker run --rm -p 8080:8080 schnsrw/casual-editor:latest
+docker run --rm -p 8080:8080 casualoffice/docs:latest
 # → "casual-editor gateway listening on :8080"
 
 # 2. Open the editor
@@ -58,7 +58,7 @@ share-link flow today; WOPI / JWT-API later).
 | Where | Collab | Use when |
 |---|---|---|
 | **GitHub Pages** (`doc.schnsrw.live`) | off | You want to demo the editor, single-user only. No backend behind it. |
-| **Docker Hub image** (`schnsrw/casual-editor`) | on | You want the share-link flow. Everyone hitting the same container co-edits in real time. |
+| **Docker Hub image** (`casualoffice/docs`) | on | You want the share-link flow. Everyone hitting the same container co-edits in real time. |
 | **Tauri desktop** (in progress) | off | Offline / single-user / local-file workflows. No server, no browser tab. |
 
 The same `examples/vite` Vite bundle ships to Pages and into the
@@ -76,7 +76,7 @@ button doesn't render against a nonexistent backend.
 docker run --rm \
   --name casual-editor \
   -p 8080:8080 \
-  schnsrw/casual-editor:latest
+  casualoffice/docs:latest
 ```
 
 | Flag | Why |
@@ -92,7 +92,7 @@ docker run -d \
   --name casual-editor \
   --restart unless-stopped \
   -p 8080:8080 \
-  schnsrw/casual-editor:latest
+  casualoffice/docs:latest
 ```
 
 Logs go to stdout / stderr — collect them with your usual runner
@@ -211,7 +211,7 @@ A production-style compose with Caddy fronting the gateway:
 ```yaml
 services:
   gateway:
-    image: schnsrw/casual-editor:latest
+    image: casualoffice/docs:latest
     restart: unless-stopped
     expose:
       - "8080"
@@ -296,7 +296,7 @@ integrations".
 **`docker run` hangs on first start.**
 The image pulls happen on first run. With slow networks a 200 MB
 multi-arch pull can take a couple of minutes. Watch with
-`docker pull schnsrw/casual-editor:latest` first if you want
+`docker pull casualoffice/docs:latest` first if you want
 visibility.
 
 **Browser shows "WebSocket connection failed" in the share link.**
@@ -348,4 +348,4 @@ GitHub Release is marked as pre-release.
 
 Docker Hub credentials live in the **`dockerhub`** GitHub
 Environment (`DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`). The Token
-should be scoped Read/Write/Delete on `schnsrw/casual-editor` only.
+should be scoped Read/Write/Delete on `casualoffice/docs` only.

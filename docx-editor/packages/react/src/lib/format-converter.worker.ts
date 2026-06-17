@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 /**
- * Format converter Web Worker — bridges to @schnsrw/core (WASM).
+ * Format converter Web Worker — bridges to @casualoffice/core (WASM).
  *
  * Vite picks this file up via `new Worker(new URL('./format-converter.worker.ts', import.meta.url), { type: 'module' })`
  * in `format-converter.ts` and bundles it as a separate chunk. The WASM

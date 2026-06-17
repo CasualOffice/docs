@@ -6,7 +6,7 @@
 ## The problem
 
 Right now `.md` and `.txt` are opened by routing through
-`@schnsrw/core` (Rust + WASM) which converts them to `.docx` bytes;
+`@casualoffice/core` (Rust + WASM) which converts them to `.docx` bytes;
 the bytes feed the standard docx parser; the editor sees a docx and
 edits as a docx; on save we serialise to docx then convert back to
 `.md` / `.txt`. The conversion is lossy in both directions:

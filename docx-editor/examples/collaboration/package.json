@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@schnsrw/docx-js-editor": "workspace:*",
+    "@casualoffice/docs": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "y-prosemirror": "^1.2.12",

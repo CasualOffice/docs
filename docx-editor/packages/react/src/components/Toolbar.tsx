@@ -315,13 +315,13 @@ export interface ToolbarProps {
    *  can pick "Save as PDF" as the destination. */
   onExportPdf?: () => void;
   /** Callback for Export as .odt — routes the serialized DOCX bytes through
-   *  the @schnsrw/core WASM converter. */
+   *  the @casualoffice/core WASM converter. */
   onExportOdt?: () => void;
   /** Callback for Export as .md — routes the serialized DOCX bytes through
-   *  the @schnsrw/core WASM converter. */
+   *  the @casualoffice/core WASM converter. */
   onExportMd?: () => void;
   /** Callback for Export as .txt — routes the serialized DOCX bytes through
-   *  the @schnsrw/core WASM converter. */
+   *  the @casualoffice/core WASM converter. */
   onExportTxt?: () => void;
   /** Help → Report a bug — opens the GitHub issue template prefilled with env info. */
   onReportBug?: () => void;

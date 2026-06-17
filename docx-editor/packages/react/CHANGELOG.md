@@ -70,7 +70,7 @@
   ### What the consumer-facing API looks like
 
   ```tsx
-  import { CasualEditorIframe } from '@schnsrw/docx-js-editor';
+  import { CasualEditorIframe } from '@casualoffice/docs';
 
   <CasualEditorIframe
     fileSource={driveFileSource}
@@ -94,13 +94,13 @@
   - `embed.html` — minimal HTML document the iframe loads.
 
   Consumers copy these into their public dir at `embedBasePath` (default
-  `/embed/docs`). A Vite plugin (`@schnsrw/docx-js-editor/vite-plugin`)
+  `/embed/docs`). A Vite plugin (`@casualoffice/docs/vite-plugin`)
   that does the copy ships in v1.1.x; for v1.1.0 the contract is a
   two-line postinstall script:
 
   ```sh
   mkdir -p web/public/embed/docs
-  cp node_modules/@schnsrw/docx-js-editor/dist/embed/* web/public/embed/docs/
+  cp node_modules/@casualoffice/docs/dist/embed/* web/public/embed/docs/
   ```
 
   ### Wire protocol additions
@@ -115,7 +115,7 @@
     in v1.1.x once Drive proves the wire end-to-end.
   - The Vite plugin — v1.1.x.
   - The `CasualSheets` mirror — separate publish of
-    `@schnsrw/casual-sheets@0.5.0`.
+    `@casualoffice/sheets@0.5.0`.
   - Preview-mode chrome hiding inside the iframe — currently surfaced as
     a `data-view-mode` attribute on the embed root; v1.1.x wires the
     attribute to component-level chrome toggles.
@@ -151,11 +151,11 @@ import.meta.url))` but didn't ship the `.ts` source — any consumer
 
 ### Major Changes
 
-- 56bdee8: Rename published scope from `@eigenpal/docx-js-editor` to `@schnsrw/docx-js-editor`.
+- 56bdee8: Rename published scope from `@eigenpal/docx-js-editor` to `@casualoffice/docs`.
 
   This fork has diverged substantially from upstream and now ships under a scope the
   maintainer owns on npm. Imports should switch from `@eigenpal/docx-js-editor` to
-  `@schnsrw/docx-js-editor` — every other export shape, type, and subpath is
+  `@casualoffice/docs` — every other export shape, type, and subpath is
   unchanged. Workspace internals (`@eigenpal/docx-core`, `@eigenpal/docx-editor-vue`)
   remain on the old scope; they're private and not published.
 
@@ -243,9 +243,9 @@ import.meta.url))` but didn't ship the `.ts` source — any consumer
   (E3). Matches Google Docs' visual language; the right-side "Switch
   to editing" button flips back. `role="status"` + `aria-live` keeps
   screen-reader announcements polite.
-- 74bb1ba: Round-trip fidelity, dark theme, and ODT/MD/TXT export via `@schnsrw/core`.
+- 74bb1ba: Round-trip fidelity, dark theme, and ODT/MD/TXT export via `@casualoffice/core`.
 
-  **New: ODT / Markdown / plain-text export.** The toolbar's Export menu now offers ODT, Markdown, and plain-text in addition to DOCX. Conversion runs off-thread in a Web Worker bridged to the `@schnsrw/core` WASM converter — added as a new runtime dependency (`@schnsrw/core@^0.1.1`). DOCX export is unchanged and still routes through the editor's own serializer.
+  **New: ODT / Markdown / plain-text export.** The toolbar's Export menu now offers ODT, Markdown, and plain-text in addition to DOCX. Conversion runs off-thread in a Web Worker bridged to the `@casualoffice/core` WASM converter — added as a new runtime dependency (`@casualoffice/core@^0.1.1`). DOCX export is unchanged and still routes through the editor's own serializer.
 
   **New: dark theme.** Real dark mode driven by semantic surface CSS variables (`--doc-surface`, `--doc-text-on-surface`, etc.) rather than CSS inversion. View → Theme picks Light / Dark / System, and the choice persists across reloads. Every dialog, dropdown, sidebar, ribbon button, toolbar icon, status bar, and context menu was reviewed and ported off hardcoded light colors. `[data-theme="dark"]` sets `color-scheme: dark` so native form controls follow.
 

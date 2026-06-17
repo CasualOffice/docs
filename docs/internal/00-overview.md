@@ -113,7 +113,7 @@ Sheets is **3 milestones ahead** on the platform side (already where Document's 
 
 1. **Document M2** (snapshot worker) — local to this repo; doesn't depend on sheets.
 2. **Document M3** (JWT host) — port from sheets, keep the same env-var names (`CASUAL_STORAGE`, `CASUAL_JWT_SECRET`, etc.) so a self-hoster can run both services with one config block.
-3. **Shared admin shell** — once both services have admin needs, decide whether to factor a `@schnsrw/admin-shell` package or run two copies. Defer until the second service actually needs it.
+3. **Shared admin shell** — once both services have admin needs, decide whether to factor a `@casualoffice/admin-shell` package or run two copies. Defer until the second service actually needs it.
 4. **Document M4** (Tauri desktop) — paused per user directive.
 5. **Document M5** (Notebook mode) — design landed in `06-notebook-mode-design.md`; implementation after M4.
 

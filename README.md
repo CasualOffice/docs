@@ -10,13 +10,13 @@
 
 [![CI](https://github.com/CasualOffice/docs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CasualOffice/docs/actions/workflows/ci.yml)
 [![Deploy](https://github.com/CasualOffice/docs/actions/workflows/deploy-demo.yml/badge.svg?branch=main)](https://github.com/CasualOffice/docs/actions/workflows/deploy-demo.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/schnsrw/casual-editor?logo=docker)](https://hub.docker.com/r/schnsrw/casual-editor)
-[![Image Size](https://img.shields.io/docker/image-size/schnsrw/casual-editor/latest?logo=docker&label=image)](https://hub.docker.com/r/schnsrw/casual-editor)
+[![Docker Pulls](https://img.shields.io/docker/pulls/casualoffice/docs?logo=docker)](https://hub.docker.com/r/casualoffice/docs)
+[![Image Size](https://img.shields.io/docker/image-size/casualoffice/docs/latest?logo=docker&label=image)](https://hub.docker.com/r/casualoffice/docs)
 [![E2E Tests](https://img.shields.io/badge/e2e-836%20tests-brightgreen?logo=playwright)](./docx-editor/e2e)
 [![Fixtures](https://img.shields.io/badge/fixtures-44%2F44%20pristine-brightgreen)](./docs/internal/03-gap-matrix.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
-[**Live Demo →**](https://docs.casualoffice.org/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/schnsrw/casual-editor) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md) &nbsp;·&nbsp; [Comparisons →](https://casualoffice.org/vs/)
+[**Live Demo →**](https://docs.casualoffice.org/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/casualoffice/docs) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md) &nbsp;·&nbsp; [Comparisons →](https://casualoffice.org/vs/)
 
 </div>
 
@@ -73,12 +73,12 @@ The editor under [`docx-editor/`](./docx-editor/) is a fork of [eigenpal/docx-ed
 | Format  | Open | Save / Export | Path |
 | ---     | :---: | :---: | --- |
 | `.docx` | ✅ | ✅ | native parser + serializer |
-| `.odt`  | ✅ | ✅ | via [`@schnsrw/core`](https://www.npmjs.com/package/@schnsrw/core) WASM worker (lazy-loaded) |
-| `.md`   | ✅ | ✅ | via `@schnsrw/core` WASM worker (lazy-loaded) |
-| `.txt`  | ✅ | ✅ | via `@schnsrw/core` WASM worker (lazy-loaded) |
+| `.odt`  | ✅ | ✅ | via [`@casualoffice/core`](https://www.npmjs.com/package/@casualoffice/core) WASM worker (lazy-loaded) |
+| `.md`   | ✅ | ✅ | via `@casualoffice/core` WASM worker (lazy-loaded) |
+| `.txt`  | ✅ | ✅ | via `@casualoffice/core` WASM worker (lazy-loaded) |
 | PDF     | — | ✅ | browser print pipeline (Save as PDF) |
 
-Non-DOCX formats route through a Web Worker that converts to/from DOCX bytes via `@schnsrw/core` (Rust + WASM). The ~3.3 MB WASM artifact is lazy-loaded on first use so the editor's initial bundle stays slim.
+Non-DOCX formats route through a Web Worker that converts to/from DOCX bytes via `@casualoffice/core` (Rust + WASM). The ~3.3 MB WASM artifact is lazy-loaded on first use so the editor's initial bundle stays slim.
 
 - Round-trip audit ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses every fixture, re-serializes, and diffs the resulting `document.xml` at the tag level
 - Each fidelity gap fix is pinned by a unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where it produces visible output) an e2e spec in `docx-editor/e2e/tests/`
@@ -110,7 +110,7 @@ A single multi-arch image (`linux/amd64` + `linux/arm64`). Editor SPA and Go gat
 ### Quick start
 
 ```sh
-docker run --rm -p 8080:8080 schnsrw/casual-editor:latest
+docker run --rm -p 8080:8080 casualoffice/docs:latest
 ```
 
 Open `http://localhost:8080`. Upload a `.docx`, click Share, send the link.
@@ -122,7 +122,7 @@ Paste this `docker-compose.yml` and run `docker compose up -d`:
 ```yaml
 services:
   app:
-    image: schnsrw/casual-editor:latest
+    image: casualoffice/docs:latest
     restart: unless-stopped
     ports: ['8080:8080']
     environment:

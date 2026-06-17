@@ -25,10 +25,10 @@ on:
   # Manual trigger only. No more firing on every main merge.
   workflow_dispatch:
   # Also fire when changesets-action creates the per-package tag, or
-  # when a tag is pushed manually: `git tag @schnsrw/docx-js-editor@x.y.z`.
+  # when a tag is pushed manually: `git tag @casualoffice/docs@x.y.z`.
   push:
     tags:
-      - '@schnsrw/docx-js-editor@*'
+      - '@casualoffice/docs@*'
 
 concurrency:
   group: release-npm-${{ github.ref }}
@@ -111,7 +111,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Token-based npm publish. The fork publishes under the
-          # @schnsrw scope; secrets.NODE_PASS is the npm automation
+          # @casualoffice scope; secrets.NODE_PASS is the npm automation
           # token. (Originally CLAUDE.md described OIDC against the
           # upstream eigenpal/docx-editor repo, which doesn't apply
           # to this fork.)

@@ -187,7 +187,7 @@ importers:
       '@radix-ui/react-select':
         specifier: ^2.2.6
         version: 2.2.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@schnsrw/core':
+      '@casualoffice/core':
         specifier: ^0.1.1
         version: 0.1.1
       clsx:
@@ -1192,7 +1192,7 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@schnsrw/core@0.1.1':
+  '@casualoffice/core@0.1.1':
     resolution: {integrity: sha512-IP1ug4JRr/YV9wsqXB96xytO8jioAwW8I76JYXS/7ktWDo6JXFeUcqy/iwuLZ6dWdYYQOXV6Pit/yccbeRI1Dg==}
     engines: {node: '>=18'}
 
@@ -4246,7 +4246,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.4':
     optional: true
 
-  '@schnsrw/core@0.1.1': {}
+  '@casualoffice/core@0.1.1': {}
 
   '@testing-library/dom@10.4.1':
     dependencies:

@@ -1,7 +1,7 @@
 import {
   createEmptyDocument,
   type Document as DocxDocument,
-} from '@schnsrw/docx-js-editor';
+} from '@casualoffice/docs';
 import type { TemplateEntry } from './manifest';
 
 export type LoadedTemplate =

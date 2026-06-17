@@ -1,6 +1,6 @@
 # Casual Core Integration Plan
 
-Plan for using `@schnsrw/core` (the Rust+WASM document engine in `~/Desktop/melp/rdrive/core/`) inside Casual Editor.
+Plan for using `@casualoffice/core` (the Rust+WASM document engine in `~/Desktop/melp/rdrive/core/`) inside Casual Editor.
 
 Two phases:
 - **Phase A** — use it as a peripheral bytes converter (ODT/MD/TXT only). Ships now.
@@ -30,7 +30,7 @@ Path (ii) is cheaper and stays cheap as we add formats.
 - No change to the editor's internal model, no change to ProseMirror, no change to collab
 
 **Build/runtime cost:**
-- `@schnsrw/core` published to npm, installed normally
+- `@casualoffice/core` published to npm, installed normally
 - WASM artifact (~3.3 MB) lazy-loaded — only fetched when the user picks a non-DOCX format
 - Worker isolates the WASM thread so the editor stays responsive on large files
 
@@ -194,7 +194,7 @@ export async function openToModelString(
 
 ### Editor-side adapter (Phase B in this repo)
 
-Once `openToModel()` ships in `@schnsrw/core`, the work in casual-editor is:
+Once `openToModel()` ships in `@casualoffice/core`, the work in casual-editor is:
 
 #### 1. Conversion crate equivalent
 
