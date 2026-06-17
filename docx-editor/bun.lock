@@ -97,13 +97,13 @@
         "@mlc-ai/web-llm": "^0.2.84",
         "@radix-ui/react-select": "^2.2.6",
         "@schnsrw/core": "^0.1.1",
+        "@schnsrw/design-system": "file:../../../../design-system",
         "clsx": "^2.1.0",
         "dictionary-en": "^4.0.0",
         "nspell": "^2.1.5",
         "sonner": "^2.0.7",
       },
       "devDependencies": {
-        "@schnsrw/design-system": "file:../../../../design-system",
         "prosemirror-commands": "^1.5.2",
         "prosemirror-dropcursor": "^1.8.2",
         "prosemirror-history": "^1.4.0",
@@ -116,9 +116,6 @@
         "y-prosemirror": "^1.2.0",
         "y-websocket": "^2.0.0",
         "yjs": "^13.6.0",
-      },
-      "optionalDependencies": {
-        "@schnsrw/design-system": "*",
       },
       "peerDependencies": {
         "prosemirror-commands": "^1.5.2",

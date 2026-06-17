@@ -30,15 +30,11 @@ import { EmbedTransport } from '../embed/EmbedTransport';
 import { createIframeFileSource } from '../embed/IframeFileSource';
 import type { CasualApp } from '../embed/protocol';
 
-// Install the Casual Office design system tokens — font-faces (Inter /
-// JetBrains Mono / Manrope), Material Symbols, and the canonical token
-// vocabulary the new shell components consume. The iframe also gets the
-// cyan accent ramp via `data-app="docs"` (set below). The bootstrap
-// helper injects a Google Fonts <link> + a critical-CSS <style> at
-// runtime because tsup's CSS pipeline doesn't follow bare-specifier
-// imports reliably; the literal mirrors @schnsrw/design-system@0.1.0.
-import { injectDesignSystemTokens } from './design-system-bootstrap';
-injectDesignSystemTokens();
+// Side-effect import: install the Casual Office design system tokens —
+// font-faces (Inter / JetBrains Mono / Manrope), Material Symbols, and the
+// canonical token vocabulary the new shell components consume. The iframe
+// also gets the cyan accent ramp via `data-app="docs"` (set below).
+import '@schnsrw/design-system/tokens.css';
 
 /** Parsed shape of the iframe URL — what `mountEmbedded()` reads
  *  before the host's `casual.hello` arrives. */
