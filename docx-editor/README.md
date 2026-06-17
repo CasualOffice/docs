@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://doc.schnsrw.live/">
+  <a href="https://docs.casualoffice.org/">
     <img src="../assets/logo.svg" alt="Casual Editor" width="80" height="80" />
   </a>
 </p>
