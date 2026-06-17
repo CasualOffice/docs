@@ -192,7 +192,7 @@ export function AboutDialog({
           <dt style={dtStyle}>License</dt>
           <dd style={ddStyle}>Apache-2.0</dd>
         </dl>
-        <p style={copyrightStyle}>© {year} schnsrw. Released under the Apache-2.0 license.</p>
+        <p style={copyrightStyle}>© {year} Casual Office. Released under the Apache-2.0 license.</p>
       </div>
     </Dialog>
   );
