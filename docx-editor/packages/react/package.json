@@ -157,7 +157,7 @@
   "homepage": "https://docx-editor.dev/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/schnsrw/docx.git",
+    "url": "https://github.com/CasualOffice/docs.git",
     "directory": "docx-editor/packages/react"
   },
   "publishConfig": {

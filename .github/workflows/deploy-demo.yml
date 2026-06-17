@@ -1,7 +1,7 @@
 name: Deploy demo to GitHub Pages
 
 # Builds the Vite demo under docx-editor/examples/vite and publishes the
-# static output to GitHub Pages at https://schnsrw.github.io/docx/.
+# static output to GitHub Pages at https://CasualOffice.github.io/docs/.
 # Repo settings → Pages → Source must be "GitHub Actions" for this to land.
 
 on:
@@ -40,7 +40,7 @@ jobs:
       - name: Build core + react libs
         run: bun run build
 
-      # Custom domain (doc.schnsrw.live) means Pages serves at root '/',
+      # Custom domain (docs.casualoffice.org) means Pages serves at root '/',
       # not '/<repo>/'. Vite's default base = '/' is correct; no override.
       - name: Build demo (Vite)
         run: bun run build:demo
@@ -51,7 +51,7 @@ jobs:
       # artifact's contents — without this step that CNAME would be
       # wiped on every deploy and the custom domain would be unset.
       - name: Write CNAME for custom domain
-        run: echo 'doc.schnsrw.live' > examples/vite/dist/CNAME
+        run: echo 'docs.casualoffice.org' > examples/vite/dist/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
