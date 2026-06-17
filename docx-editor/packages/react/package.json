@@ -41,6 +41,11 @@
       "import": "./dist/mcp-reexport.mjs",
       "require": "./dist/mcp-reexport.js"
     },
+    "./shell": {
+      "types": "./dist/shell.d.ts",
+      "import": "./dist/shell.mjs",
+      "require": "./dist/shell.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./embed-runtime": {
       "types": "./dist/embed/embed-runtime.d.mts",
@@ -69,6 +74,9 @@
       ],
       "mcp": [
         "./dist/mcp-reexport.d.ts"
+      ],
+      "shell": [
+        "./dist/shell.d.ts"
       ]
     }
   },
@@ -130,6 +138,7 @@
     "sonner": "^2.0.7"
   },
   "devDependencies": {
+    "@schnsrw/design-system": "file:../../../../design-system",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-dropcursor": "^1.8.2",
     "prosemirror-history": "^1.4.0",
@@ -142,6 +151,9 @@
     "y-prosemirror": "^1.2.0",
     "y-websocket": "^2.0.0",
     "yjs": "^13.6.0"
+  },
+  "optionalDependencies": {
+    "@schnsrw/design-system": "*"
   },
   "keywords": [
     "docx",

@@ -68,6 +68,7 @@ const mainConfig = defineConfig({
     'headless-reexport': 'src/headless-reexport.ts',
     'core-plugins-reexport': 'src/core-plugins-reexport.ts',
     'mcp-reexport': 'src/mcp-reexport.ts',
+    shell: 'src/shell/index.ts',
     // Worker entry — emits dist/format-converter.worker.mjs +
     // dist/format-converter.worker.cjs. The runtime URL in
     // format-converter.ts is rewritten to point at the .mjs sibling
@@ -84,6 +85,7 @@ const mainConfig = defineConfig({
   external: [
     'react',
     'react-dom',
+    '@schnsrw/design-system',
     'prosemirror-commands',
     'prosemirror-dropcursor',
     'prosemirror-history',
