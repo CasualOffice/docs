@@ -4,7 +4,7 @@
  * lives at `.github/ISSUE_TEMPLATE/bug.yml`; GitHub maps query params to
  * matching form fields by `id`.
  */
-export function openBugReport(repoUrl = 'https://github.com/schnsrw/docx'): void {
+export function openBugReport(repoUrl = 'https://github.com/CasualOffice/docs'): void {
   const url = new URL(`${repoUrl.replace(/\/$/, '')}/issues/new`);
   url.searchParams.set('template', 'bug.yml');
   url.searchParams.set('labels', 'bug');

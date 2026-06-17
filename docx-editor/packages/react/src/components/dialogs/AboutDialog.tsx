@@ -134,8 +134,8 @@ export function AboutDialog({
   isOpen,
   onClose,
   appName = 'Casual Editor',
-  sourceUrl = 'https://github.com/schnsrw/docx',
-  homepageUrl = 'https://doc.schnsrw.live/',
+  sourceUrl = 'https://github.com/CasualOffice/docs',
+  homepageUrl = 'https://docs.casualoffice.org/',
 }: AboutDialogProps) {
   const year = new Date().getFullYear();
   return (
