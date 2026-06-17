@@ -41,6 +41,11 @@
       "import": "./dist/mcp-reexport.mjs",
       "require": "./dist/mcp-reexport.js"
     },
+    "./shell": {
+      "types": "./dist/shell.d.ts",
+      "import": "./dist/shell.mjs",
+      "require": "./dist/shell.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./embed-runtime": {
       "types": "./dist/embed/embed-runtime.d.mts",
@@ -69,6 +74,9 @@
       ],
       "mcp": [
         "./dist/mcp-reexport.d.ts"
+      ],
+      "shell": [
+        "./dist/shell.d.ts"
       ]
     }
   },
@@ -124,6 +132,7 @@
     "@mlc-ai/web-llm": "^0.2.84",
     "@radix-ui/react-select": "^2.2.6",
     "@schnsrw/core": "^0.1.1",
+    "@schnsrw/design-system": "file:../../../../design-system",
     "clsx": "^2.1.0",
     "dictionary-en": "^4.0.0",
     "nspell": "^2.1.5",
