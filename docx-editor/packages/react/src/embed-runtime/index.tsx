@@ -30,12 +30,6 @@ import { EmbedTransport } from '../embed/EmbedTransport';
 import { createIframeFileSource } from '../embed/IframeFileSource';
 import type { CasualApp } from '../embed/protocol';
 
-// Side-effect import: install the Casual Office design system tokens —
-// font-faces (Inter / JetBrains Mono / Manrope), Material Symbols, and the
-// canonical token vocabulary the new shell components consume. The iframe
-// also gets the cyan accent ramp via `data-app="docs"` (set below).
-import '@schnsrw/design-system/tokens.css';
-
 /** Parsed shape of the iframe URL — what `mountEmbedded()` reads
  *  before the host's `casual.hello` arrives. */
 interface EmbedUrlConfig {
@@ -124,13 +118,6 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
   // leaks through the preview modal and confuses the UX.
   opts.root.setAttribute('data-view-mode', config.viewMode);
 
-  // Apply the docs editor's cyan accent ramp via the design-system's
-  // editor-theme.css. The token file watches for `data-app="docs"` and
-  // swaps `--color-accent` (and derivatives) from teal to cyan.
-  if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-app', config.app);
-  }
-
   const reactRoot = createRoot(opts.root);
 
   function render(viewMode: 'preview' | 'editor') {
@@ -172,16 +159,6 @@ export function mountEmbedded(opts: MountEmbeddedOptions): void {
     onCommandSetViewMode: ({ viewMode }) => {
       opts.root.setAttribute('data-view-mode', viewMode);
       render(viewMode);
-    },
-    onCommandSetTheme: ({ theme }) => {
-      if (typeof document === 'undefined') return;
-      // `system` clears the attribute so the OS-level color-scheme on
-      // :root takes over (the design tokens default to light).
-      if (theme === 'system') {
-        document.documentElement.removeAttribute('data-theme');
-      } else {
-        document.documentElement.setAttribute('data-theme', theme);
-      }
     },
   });
 }
