@@ -80,7 +80,21 @@ The raw-XML envelopes (the basis of the VML/textbox fidelity wins) live as `rawX
 So envelopes exist only on the parsed model held by `DocumentAgent` (seeded from the original `.docx`) + the bytes in `doc.originalBuffer`. **Not in the ProseMirror tree.**
 
 ### 2.2 y-prosemirror therefore can't sync them
-`react/src/collab/useCollab.ts:87-88` syncs only `ydoc.getXmlFragment('prosemirror')` (+ a `meta` map with `fileName`). The Y.Doc carries **only the PM tree**. The backend is a pure relay with no Y.Doc and no seeding (`backend/internal/room/manager.go:374-380` — "room is created empty and clients seed it via their own y-prosemirror update"; `internal/yws/protocol.go` only classifies frames; the "authoritative Y.Doc" in its comments does not exist).
+`react/src/collab/useCollab.ts:87-88` syncs only `ydoc.getXmlFragment('prosemirror')` (+ a `meta` map with `fileName`). The Y.Doc carries **only the PM tree**.
+
+> Correction (verified 2026-06-19 against `backend/`): the earlier claim that the
+> backend is a "pure relay with no Y.Doc, no seeding, no snapshot" is **imprecise**.
+> The room manager *does* have seed / room-lifecycle / lock / drain scaffolding and
+> a `host.Snapshot(docID, token, contents)` interface (`internal/host/host.go:106`).
+> What's actually true and decisive: **there is no server-side serializer**. The
+> drain hook is `DrainFunc(docID string)` — docID only, no contents — and the wired
+> impl (`cmd/gateway/main.go:846`) is a deliberate **no-op** whose own comment says
+> *"the gateway can't re-serialize the Y.Doc back to .docx without a worker pool
+> (M2 / Bun headless serializer)."* There is no Go CRDT dependency, the room does
+> **not** accumulate Y.Doc update bytes, and server-side serialization was removed
+> in the M2 pivot (`d24deaa`). So persistence is 100% client-push today; the server
+> keeps only the original seed for re-seeding the next join. The §2.4 "no
+> server-side snapshot" conclusion stands — for the right reason.
 
 ### 2.3 Why fidelity survives at all — a fragile trick
 Each joiner independently fetches and parses the seed `.docx` (`CollabApp` passes `documentBuffer={seed.buffer}`, **not** `externalContent`), so each agent has its own `originalBuffer` + envelopes. Save (`DocxEditor.tsx:5723-5793`):
