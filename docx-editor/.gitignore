@@ -73,3 +73,6 @@ reference/ecma-376/*.zip
 
 # Ground-truth renders (reproducible via scripts/ground-truth/render.py)
 scripts/ground-truth/libreoffice/
+
+# visual-fidelity harness output (large PNGs)
+visual-fidelity-out/
