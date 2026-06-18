@@ -1919,12 +1919,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
   }, [commentIdBase]);
 
-  // Extension manager — built once, provides schema + plugins + commands
+  // Extension manager — built once, provides schema + plugins + commands.
+  //
+  // When content is driven by an external CRDT (Yjs collab via
+  // `externalContent` + a `yUndoPlugin` in `externalPlugins`), undo/redo
+  // is owned by y-prosemirror's yUndoPlugin. Running the native
+  // prosemirror-history alongside it is the documented y-prosemirror
+  // footgun: native Ctrl+Z operates on the local EditorState's history and
+  // can revert *other* users' changes, desyncing the shared Y.Doc. Disable
+  // native history when content is external so undo stays scoped to the
+  // local user. (Read once at mount — collab-ness is fixed for the
+  // editor's lifetime; the schema must stay stable, hence the empty deps.)
   const extensionManager = useMemo(() => {
-    const mgr = new ExtensionManager(createStarterKit());
+    const mgr = new ExtensionManager(
+      createStarterKit(externalContent ? { disable: ['history'] } : {})
+    );
     mgr.buildSchema();
     mgr.initializeRuntime();
     return mgr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Suggestion mode plugin — merged with external plugins

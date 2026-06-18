@@ -95,8 +95,18 @@ Full repack is forced when (`DocxEditor.tsx:5754-5775`): any structural change, 
 ### 2.4 Propagation makes it permanent
 Whichever client autosaves (`useFileSourceAutoSave.ts:79` `ref.save({selective:true})`) writes canonical bytes back via `Snapshot`/`PutFile`. If that client was in full-repack, the **stripped version becomes the new stored seed for all future joiners**. Loss is permanent and propagates.
 
-### 2.5 Live footgun
-`useCollab.ts:76-77` documents hosts to pass `externalContent={true}`. If followed, the joiner never parses the seed (`DocxEditor.tsx:2613`), has no `originalBuffer`, and `repackDocx` throws (`rezip.ts:435-440`) — **no save at all.** The working example avoids this only by *not* following its own hook's docs.
+### 2.5 Seed-less save loses fidelity (corrected)
+`useCollab.ts` documents hosts to pass `externalContent={true}`; the joiner then
+never parses the seed (`DocxEditor.tsx:2613`) and has no `originalBuffer`.
+**Correction (verified against source):** this does *not* crash. The save path is
+`DocumentAgent.toBuffer()` (`agent/DocumentAgent.ts:675-695`), which falls back to
+`createDocx()` (full from-scratch serialize) when `originalBuffer` is absent. The
+real cost is **fidelity, not a throw**: a from-scratch serialize rebuilds the body
+from the PM-derived model, dropping the preserved raw-XML envelopes (§2.1-2.4) —
+exactly the silent-loss path. So the bug is "seed-less collab save degrades
+fidelity," which is the Phase 2 work, not a Phase 1 crash. (`rezip.ts:435` only
+throws if `repackDocx` is called *directly* without a buffer — the editor never
+does; it routes through `toBuffer`.)
 
 ### 2.6 Zero coverage
 - `e2e/tests/comment-id-collision.spec.ts` — two instances, **not** connected via real Y.Doc/WS; asserts comment-ID ranges.
@@ -156,10 +166,17 @@ auto-score — which is why the composites, not the number, are authoritative.
 
 #### Phase 0 baseline — full 44-fixture corpus (2026-06-19)
 
-LibreOffice installed; harness run across all 44 fixtures (43 scored, 1 no-render).
-**Mean 60/100.** Bucket distribution: 11 good (≥85), 7 fair (70-85), 7 poor (50-70),
-14 broken (<50), 4 page-count-mismatch, 1 no-render. Extremes verified by eye
+LibreOffice installed; harness run across all 44 fixtures (44 scored).
+**Mean 59/100.** Bucket distribution: 11 good (≥85), 7 fair (70-85), 7 poor (50-70),
+14 broken (<50), 5 page-count-mismatch. Extremes verified by eye
 (composites), so the ranking is trustworthy at the ends.
+
+> Correction (post-Phase-1): the first run reported `issue-319-sections` as a
+> 0-page **no-render**. That was a **harness flake** — the editor renders it
+> fine (11 pages); the screenshotter captured during a layout re-run. Fixed in
+> `render-editor.mjs` (wait for the page count to stabilise, not just appear).
+> `issue-319` is really a page-count mismatch (11 vs LibreOffice's 8), not a
+> render failure.
 
 The signal is unambiguous and **exactly matches the §1.2-1.3 predictions** — the
 editor is strong on text and weak-to-broken on drawings/layout:
@@ -171,7 +188,7 @@ editor is strong on text and weak-to-broken on drawings/layout:
 | **Images / shapes / textboxes** | **0-35 (broken)** | `drawingml-shape` 14, `image-hyperlink` 15, `textbox-test` 33, `wpg-group`, `vml-rect`. The §1.3 anchored-drawing cluster, now quantified. |
 | **Real-world forms** | **21-24 (broken)** | `Form025U` 23, `medical-incident-form` 24 — the docs real users bring. |
 | **Multi-page pagination** | page-count-mismatch | `sds-real-world` 18≠16, `header-with-textbox` 4≠5, `find-scroll` 4≠3, `issue-68-large` 312≠313 — §1.2 confirmed. |
-| **Hard failures** | 0 | `issue-319-sections` renders **0 pages** (total failure); `oversized-header-image` renders a **blank body** — header image eats the page (§1.3 header-overflow). |
+| **Hard failures** | 0 | `oversized-header-image` renders a **blank body** — the header image eats the page (§1.3 header-overflow). Confirmed by eye. |
 
 This ranks Phase 3 work directly: fix the broken drawing/forms/header cluster first;
 text is already production-grade. `issue-319-sections` (0 pages) is a Phase 1 bug.
@@ -183,10 +200,29 @@ Artifacts: `docx-editor/visual-fidelity-out/` (gitignored) — `visual-fidelity-
 score drop / new page-count mismatch); optional glyph-level registration for a
 tighter score; swap LibreOffice → Word PDFs for the strict oracle.
 
-### Phase 1 — Stop the bleeding (correctness bugs, cheap)
-- Disable native `prosemirror-history` when collab/`yUndoPlugin` is active (§3.2).
-- Fix the `externalContent={true}` save-throws footgun (§2.5) — either make save work without `originalBuffer`, or fix the hook docs + guard.
-- Add paste-as-plain-text (`Mod+Shift+V`).
+### Phase 1 — Stop the bleeding (correctness bugs, cheap) — DONE 2026-06-19
+
+Verifying each item against source (rule #1) deflated 3 of 4: the fast review
+subagents over-stated the bug list. Only one was a real, cheap bug.
+
+- **DONE — collab undo collision (§3.2).** Real. `DocxEditor.tsx` built the
+  extension manager with `createStarterKit()` (no options) → native
+  `prosemirror-history` always on, even when `externalContent` + `yUndoPlugin`
+  drive the doc. Fixed: `createStarterKit(externalContent ? { disable: ['history'] } : {})`.
+- **ALREADY IMPLEMENTED — paste-as-plain-text.** The audit claimed it was
+  missing; it is not. `DocxEditor.tsx:3190` wires `Mod+Shift+V` (reads the
+  clipboard as plain text, inserts via `execCommand`), with the matching Edit-menu
+  action (`pasteAsPlainText`) and the `PasteSpecialDialog`. No work needed; a
+  regression e2e test is the only gap.
+- **NOT A BUG AS AUDITED — `externalContent` save (§2.5).** The audit said
+  `repackDocx` "throws outright / no save at all" with no `originalBuffer`.
+  False: the editor saves via `DocumentAgent.toBuffer()` (`agent/DocumentAgent.ts:675`),
+  which **falls back to `createDocx()`** (full from-scratch serialize) when
+  `originalBuffer` is absent — no throw. The genuine concern (a collab joiner
+  saving without the original seed loses round-trip *fidelity*, vs *crashing*)
+  is the "where do save bytes come from" problem → **moved to Phase 2.**
+- **NOT AN EDITOR BUG — `issue-319` 0 pages.** Harness flake (see Phase 0
+  correction). Fixed in the harness, not the editor.
 
 ### Phase 2 — Co-editing fidelity (highest correctness risk)
 - Get preserved OOXML into the synced model or a synced side-channel so envelopes survive collaborative full-repack (§2.1-2.4).

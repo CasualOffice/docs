@@ -53,12 +53,21 @@ for (const fixture of fixtures) {
     const input = page.locator('input[type="file"][accept*=".docx"]').first();
     await input.setInputFiles(join(FIXTURE_DIR, fixture));
 
-    // Wait for at least one painted page, then for pagination to settle.
+    // Wait for at least one painted page, then for the page COUNT to settle.
+    // The layout pipeline re-runs after load (re-measure → re-paginate),
+    // briefly tearing pages down and back up; screenshotting during that
+    // window gives a false 0/low count. Poll until the count is non-zero
+    // and unchanged across consecutive samples before capturing.
     await page.waitForSelector('.layout-page', { timeout: 30000 });
-    await page.waitForTimeout(1500);
-
     const pages = page.locator('.layout-page');
-    const count = await pages.count();
+    let count = 0;
+    let stable = 0;
+    for (let i = 0; i < 40 && stable < 3; i++) {
+      await page.waitForTimeout(250);
+      const c = await pages.count();
+      stable = c > 0 && c === count ? stable + 1 : 0;
+      count = c;
+    }
     for (let i = 0; i < count; i++) {
       const el = pages.nth(i);
       await el.scrollIntoViewIfNeeded();
