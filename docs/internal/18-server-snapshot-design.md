@@ -25,9 +25,17 @@ The raw-XML envelopes (`Shape.rawXml`) live on the Document model, not in the Y.
 
 ---
 
-## Option A — Client-side flush on unload (lightest)
+## Option A — Client-side flush on unload (lightest) — IMPLEMENTED 2026-06-19
 
-Call `ref.save()` on `visibilitychange`/`pagehide`/`beforeunload` so the final interval is pushed **before** the tab closes, instead of waiting for the next 30s tick.
+Call `ref.save()` on `visibilitychange`/`pagehide` so the final interval is pushed **before** the tab closes, instead of waiting for the next 30s tick.
+
+> Shipped in `useFileSourceAutoSave.ts`: replaced the old `beforeunload`-only
+> handler (which the code admitted "doesn't honour async work") with
+> `visibilitychange`→'hidden' (primary) + `pagehide` (backup), avoiding
+> `beforeunload` so the bfcache stays enabled. Behavioural test:
+> `useFileSourceAutoSave.hide-flush.test.ts` (hidden→save, pagehide→save,
+> visible→no-save). "A now + C later" decision; C tracked as the deferred
+> follow-up.
 
 **Sequence:** user closes tab → `pagehide` fires → `useFileSourceAutoSave` triggers an immediate `save()` → `FileSource.save()` PUTs full-fidelity bytes to the host (WOPI `PutFile` / inline store) → tab closes.
 

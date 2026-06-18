@@ -249,19 +249,35 @@ export function useFileSourceAutoSave(
     return () => clearInterval(id);
   }, [enabled, interval, runSave]);
 
-  // Best-effort save on tab close. The browser doesn't honour async
-  // work in beforeunload — but fetch keepalive (which FileSource
-  // implementations may or may not pass through) gives us a chance.
-  // Without a guarantee, this is a "least-bad" hand-off, not a
-  // safety net.
+  // Flush the final interval of edits when the page is being hidden or
+  // unloaded, so closing the tab between ticks doesn't lose up to one
+  // interval's worth of edits (Phase 2 / audit doc 17 — "Option A").
+  //
+  // `visibilitychange` → 'hidden' is the reliable primary signal: it
+  // fires on tab switch, app switch, and close, while the page is usually
+  // still alive enough to complete an async save. `pagehide` backs it up
+  // for the real unload / bfcache path. We deliberately avoid
+  // `beforeunload` — browsers don't honour its async work and registering
+  // it disables the back/forward cache. Best-effort, not a safety net for
+  // crash / network-drop (that's the deferred server-side snapshot,
+  // "Option C" in doc 18); it closes the common tab-close case.
   useEffect(() => {
     if (!enabled) return;
-    const onBeforeUnload = () => {
-      // Don't await — the browser is already navigating away.
+    const flushOnHide = () => {
+      // Don't await — the page may be going away.
       void runSave();
     };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    const onVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        flushOnHide();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushOnHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flushOnHide);
+    };
   }, [enabled, runSave]);
 
   // Stable object identity so hosts can pass the return value into
