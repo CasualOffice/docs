@@ -207,6 +207,56 @@ function applyShade(hex: string, shade: number): string {
 }
 
 /**
+ * Apply DrawingML luminance modulation/offset (a:lumMod / a:lumOff) in HSL
+ * space. Unlike WML shade/tint (per-channel linear), lumMod multiplies and
+ * lumOff adds the HSL luminance — correct for chromatic theme colors too
+ * (e.g. accent1 lumMod 75%), not just grays. lumMod is applied before lumOff
+ * (their canonical order). Values are fractions 0-1.
+ */
+function applyLumModOff(hex: string, lumMod?: number, lumOff?: number): string {
+  if (lumMod === undefined && lumOff === undefined) return hex;
+  const { r, g, b } = hexToRgb(hex);
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  let h = 0;
+  let s = 0;
+  let l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h /= 6;
+  }
+  if (lumMod !== undefined) l *= lumMod;
+  if (lumOff !== undefined) l += lumOff;
+  l = Math.min(1, Math.max(0, l));
+  const hue2rgb = (p: number, q: number, t: number): number => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  let or = l;
+  let og = l;
+  let ob = l;
+  if (s !== 0) {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    or = hue2rgb(p, q, h + 1 / 3);
+    og = hue2rgb(p, q, h);
+    ob = hue2rgb(p, q, h - 1 / 3);
+  }
+  return rgbToHex(Math.round(or * 255), Math.round(og * 255), Math.round(ob * 255));
+}
+
+/**
  * Get a theme color by slot name
  *
  * @param theme - Theme object
@@ -314,6 +364,12 @@ export function resolveColor(
   } else {
     // No color specified
     hexColor = defaultColor;
+  }
+
+  // DrawingML luminance modulation/offset — applies to both theme- and
+  // rgb-resolved colors (e.g. a:schemeClr bg1 + a:lumMod 85% = light gray).
+  if (color.themeLumMod !== undefined || color.themeLumOff !== undefined) {
+    hexColor = applyLumModOff(hexColor.replace(/^#/, ''), color.themeLumMod, color.themeLumOff);
   }
 
   // Ensure proper format

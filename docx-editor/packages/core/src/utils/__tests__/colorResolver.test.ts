@@ -286,3 +286,26 @@ describe('resolveColorToHex — shared display-side color resolution', () => {
     expect(resolveColorToHex({ rgb: '#ABCDEF' }, theme)).toBe('ABCDEF');
   });
 });
+
+describe('resolveColor — DrawingML lumMod / lumOff (HSL luminance)', () => {
+  test('lumMod 0.85 on white → light gray (the bg1-border case)', () => {
+    // schemeClr bg1 + lumMod 85% — previously dropped (rendered white/invisible).
+    expect(resolveColor({ rgb: 'FFFFFF', themeLumMod: 0.85 }, null)).toBe('#D9D9D9');
+  });
+
+  test('lumMod keeps chromatic colors chromatic (red, not washed to gray)', () => {
+    // HSL luminance scaling, not per-channel — hue/saturation preserved.
+    expect(resolveColor({ rgb: 'FF0000', themeLumMod: 0.75 }, null)).toBe('#BF0000');
+  });
+
+  test('lumMod then lumOff combine (black + lumMod0.5 + lumOff0.6 → mid gray)', () => {
+    // L = 0 * 0.5 + 0.6 = 0.6 → 153 = #999999
+    expect(resolveColor({ rgb: '000000', themeLumMod: 0.5, themeLumOff: 0.6 }, null)).toBe(
+      '#999999'
+    );
+  });
+
+  test('no lum modifiers leaves the color unchanged', () => {
+    expect(resolveColor({ rgb: '0000FF' }, null)).toBe('#0000FF');
+  });
+});

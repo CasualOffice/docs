@@ -45,9 +45,24 @@ import { emuToPixels } from '../../docx/imageParser';
 import { isWrapNone } from '../../docx/wrapTypes';
 import { createStyleResolver, type StyleResolver } from '../styles';
 import type { TableAttrs, TableRowAttrs, TableCellAttrs } from '../schema/nodes';
-import { resolveColorToHex } from '../../utils/colorResolver';
+import { resolveColor, resolveColorToHex } from '../../utils/colorResolver';
+
+/**
+ * Resolve a DrawingML shape/textbox fill or outline ColorValue to a CSS hex.
+ * Reading `.rgb` directly (as the old code did) dropped THEME colors (e.g.
+ * `schemeClr bg1 + lumMod 85%` = light-gray border) entirely, since they carry
+ * no `.rgb`. `resolveColor` honours themeColor + tint/shade + lumMod/lumOff
+ * (default theme is fine for the base slots these borders use). Returns
+ * undefined for absent / `noFill` / auto colors so we don't paint a stray
+ * black border. (theme threading through convertRunContent is avoided here.)
+ */
+function resolveShapeColor(color: ColorValue | undefined): string | undefined {
+  if (!color || color.auto || (!color.rgb && !color.themeColor)) return undefined;
+  return resolveColor(color, undefined);
+}
 import { mergeTextFormatting } from '../../utils/textFormattingMerge';
 import type { Theme } from '../../types/document';
+import type { ColorValue } from '../../types/colors';
 
 /**
  * Options for document conversion
@@ -1789,9 +1804,7 @@ function convertShape(shape: Shape): PMNode {
   let gradientStops: string | undefined;
   if (shape.fill) {
     fillType = shape.fill.type;
-    if (shape.fill.color?.rgb) {
-      fillColor = `#${shape.fill.color.rgb}`;
-    }
+    fillColor = resolveShapeColor(shape.fill.color) ?? fillColor;
     // Extract gradient data
     if (shape.fill.type === 'gradient' && shape.fill.gradient) {
       const g = shape.fill.gradient;
@@ -1814,9 +1827,7 @@ function convertShape(shape: Shape): PMNode {
     if (shape.outline.width) {
       outlineWidth = Math.round((shape.outline.width / 914400) * 96 * 100) / 100;
     }
-    if (shape.outline.color?.rgb) {
-      outlineColor = `#${shape.outline.color.rgb}`;
-    }
+    outlineColor = resolveShapeColor(shape.outline.color);
     outlineStyle = ooxmlDashToCssBorderStyle(shape.outline.style);
   }
 
@@ -1928,20 +1939,20 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
   const heightPx = textBox.size?.height ? emuToPixels(textBox.size.height) : undefined;
 
   // Convert fill color
-  let fillColor: string | undefined;
-  if (textBox.fill?.color?.rgb) {
-    fillColor = `#${textBox.fill.color.rgb}`;
-  }
+  const fillColor: string | undefined = resolveShapeColor(textBox.fill?.color);
 
-  // Convert outline
+  // Convert outline. Render when the line carries EITHER a width or a
+  // resolvable color — a `<a:ln>` with a fill but no explicit `w` is a
+  // hairline (default ~0.75pt ≈ 1px), and its theme-color fill (e.g.
+  // bg1 + lumMod) must not be dropped.
   let outlineWidth: number | undefined;
   let outlineColor: string | undefined;
   let outlineStyle: string | undefined;
-  if (textBox.outline && textBox.outline.width) {
-    outlineWidth = Math.round((textBox.outline.width / 914400) * 96 * 100) / 100;
-    if (textBox.outline.color?.rgb) {
-      outlineColor = `#${textBox.outline.color.rgb}`;
-    }
+  if (textBox.outline && (textBox.outline.width || resolveShapeColor(textBox.outline.color))) {
+    outlineWidth = textBox.outline.width
+      ? Math.round((textBox.outline.width / 914400) * 96 * 100) / 100
+      : 1;
+    outlineColor = resolveShapeColor(textBox.outline.color);
     outlineStyle = ooxmlDashToCssBorderStyle(textBox.outline.style);
   }
 
