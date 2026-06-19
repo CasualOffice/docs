@@ -181,9 +181,21 @@ auto-score — which is why the composites, not the number, are authoritative.
 #### Phase 0 baseline — full 44-fixture corpus (2026-06-19)
 
 LibreOffice installed; harness run across all 44 fixtures (44 scored).
-**Mean 59/100.** Bucket distribution: 11 good (≥85), 7 fair (70-85), 7 poor (50-70),
-14 broken (<50), 5 page-count-mismatch. Extremes verified by eye
-(composites), so the ranking is trustworthy at the ends.
+**Mean 59/100** on the first (buggy-harness) run; **67/100 after the harness
+screenshot fix** (see correction below) — distribution then: 12 good (≥85),
+9 fair (70-85), 10 poor (50-70), 8 broken (<50), 5 page-count-mismatch. The
++8-point jump was the instrument under-scoring tall/low-content pages, not a
+product change. Extremes verified by eye (composites + live DOM probes).
+
+> **Second harness caveat (Phase 3): the score is unreliable on SPARSE pages.**
+> `image-hyperlink` (10) and similar near-empty fixtures score low only because
+> the density grid is dominated by where a single short line lands — the editor
+> render actually matches LibreOffice. Treat low scores on content-sparse
+> fixtures as noise; the reliable signals are **page-count mismatch**
+> (deterministic) and **content-rich fixtures scoring low** (e.g.
+> `medical-incident-form` 30, a dense form — a genuine layout gap). Confirmed
+> real bug from this pass: `drawingml-shape` (14) emits a spurious empty-src
+> `<img>` (broken-image icon) for a shape-only drawing — see the tracker.
 
 > Correction (post-Phase-1): the first run reported `issue-319-sections` as a
 > 0-page **no-render**. That was a **harness flake** — the editor renders it
