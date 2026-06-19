@@ -14,7 +14,9 @@ describe('createStarterKit — history disable', () => {
   });
 
   test('omits native history when disabled (collab uses yUndoPlugin)', () => {
-    const names = createStarterKit({ disable: ['history'] }).map((e) => (e as { config?: { name?: string } }).config?.name);
+    const names = createStarterKit({ disable: ['history'] }).map(
+      (e) => (e as { config?: { name?: string } }).config?.name
+    );
     expect(names).not.toContain('history');
   });
 });

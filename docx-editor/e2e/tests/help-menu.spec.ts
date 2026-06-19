@@ -38,7 +38,7 @@ test.describe('Help menu', () => {
     // Help > Report issue points at this fork's tracker via
     // packages/react/src/components/report-bug.ts (the DocxEditor's
     // onReportBug handler dynamic-imports it).
-    expect(url.origin + url.pathname).toBe('https://github.com/schnsrw/docx/issues/new');
+    expect(url.origin + url.pathname).toBe('https://github.com/CasualOffice/docs/issues/new');
 
     // report-bug.ts routes to GitHub's structured issue form (bug.yml)
     // and labels the issue; the pre-fill happens via the form fields,
