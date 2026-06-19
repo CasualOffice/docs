@@ -3933,6 +3933,41 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         runLayoutPipeline(view.state);
         updateSelectionOverlay(view.state);
 
+        // IME caret sync. The hidden ProseMirror lives off-screen
+        // (HIDDEN_HOST_STYLES, left:-9999px), so during CJK/JA/KO composition the
+        // OS candidate window — which tracks the contenteditable caret — appears
+        // off-screen and the user can't see what they're composing. During
+        // composition, translate the (opacity:0) hidden host so its caret aligns
+        // with the painted/visual caret, putting the candidate window in the
+        // right place; clear the translate when composition ends. The host stays
+        // opacity:0 so nothing extra becomes visible, and these listeners fire
+        // ONLY during composition — Latin typing is completely unaffected.
+        const imeHost = view.dom.closest('.paged-editor__hidden-pm') as HTMLElement | null;
+        const syncImeCaret = () => {
+          if (!imeHost) return;
+          // Measure in un-translated space first so repeated compositionupdate
+          // events don't compound the offset.
+          imeHost.style.transform = '';
+          // NB: `document` is shadowed by the OOXML Document prop in this
+          // component — use the view's owner document for DOM queries.
+          const caretEl = view.dom.ownerDocument.querySelector('[data-testid="caret"]');
+          if (!caretEl) return;
+          const vr = caretEl.getBoundingClientRect();
+          let hc: { left: number; top: number };
+          try {
+            hc = view.coordsAtPos(view.state.selection.head);
+          } catch {
+            return;
+          }
+          imeHost.style.transform = `translate(${vr.left - hc.left}px, ${vr.top - hc.top}px)`;
+        };
+        const clearImeCaret = () => {
+          if (imeHost) imeHost.style.transform = '';
+        };
+        view.dom.addEventListener('compositionstart', syncImeCaret);
+        view.dom.addEventListener('compositionupdate', syncImeCaret);
+        view.dom.addEventListener('compositionend', clearImeCaret);
+
         // Auto-focus the editor so the user can start typing immediately
         if (!readOnly) {
           // Use requestAnimationFrame to ensure DOM is ready
