@@ -286,6 +286,35 @@ So the "systemic spacing" work is really **targeted table cell/row-height fixes*
 not a metrics-model rewrite — and verifiable against LibreOffice without needing
 a Word oracle (text metrics already match).
 
+#### Phase 3 conclusion (2026-06-19): the product is in far better shape than the scores implied
+
+The single most important Phase-3 finding: **most "broken" scores were NOT
+product bugs.** Working the ranked list with look-then-probe discipline, the
+"broken" cluster decomposed as:
+
+- **Real, fixed bugs (only 2):** `drawingml-shape` empty-src `<img>` (`7f7f3fb`);
+  theme-color shape/textbox borders + `lumMod`/`lumOff` (`ec3220c`). Both crisp,
+  verified, generalizable.
+- **Harness/metric artifacts (many):** the screenshot-stitching false-blank
+  (`oversized-header-image`, fixed in `7e66cc0`); sparse-page density-grid noise
+  (`image-hyperlink` and similar); colored-box position noise (`float-wrap`).
+- **Stale audit §1.3 claims (several):** **floating-image text wrap WORKS**
+  (wrapSquare in all positions, anchored images absolute-positioned, text
+  indents beside them — matches LibreOffice; the "dead code" claim was wrong).
+  **Textboxes render well** (CLAUDE.md "weak spot" is stale).
+- **Genuine but ambiguous:** table cell/row heights — editor looks
+  content-correct; **LibreOffice appears to over-size** (task #11, needs a Word
+  oracle).
+
+**Bottom line:** four separate times this phase, a "broken" fixture turned out
+to be a measurement artifact or a stale claim, not a product defect. The
+editor's real visual fidelity is materially **better than the raw harness mean
+(67) suggests** — the genuine defect rate was low (2 crisp bugs across 44
+fixtures), and both are now fixed. The harness's real value was *separating* the
+2 real bugs from the ~10 false ones; treat low scores as triage leads to
+*verify*, never as defect counts. Remaining true gap worth a dedicated effort:
+the table-height question (#11), pending a Word reference.
+
 ### Phase 1 — Stop the bleeding (correctness bugs, cheap) — DONE 2026-06-19
 
 Verifying each item against source (rule #1) deflated 3 of 4: the fast review
