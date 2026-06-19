@@ -57,4 +57,11 @@ Known limitations (do not over-read absolute values):
 - **Page-count mismatch** (editor pages ≠ reference pages) is the single most
   reliable and most visible signal — it is surfaced separately and penalized hard.
 
-When the number and the composite disagree, **believe the composite.**
+When the number and the composite disagree, **believe the composite** — but
+note the composite is built from the same editor screenshot, so a bad *capture*
+fools both. Pages must fit in the viewport (`render-editor.mjs` uses 1200×1700)
+or Playwright scroll-and-stitches tall pages and garbles them (this once produced
+false "blank/0" scores for fixtures whose body sits low on a tall page). If a
+fixture looks broken in the composite, **confirm with a live DOM probe**
+(load it in the editor, read the element's `getBoundingClientRect()`) before
+concluding the product is at fault — the bug may be in the harness capture.

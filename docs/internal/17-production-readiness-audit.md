@@ -202,7 +202,23 @@ editor is strong on text and weak-to-broken on drawings/layout:
 | **Images / shapes / textboxes** | **0-35 (broken)** | `drawingml-shape` 14, `image-hyperlink` 15, `textbox-test` 33, `wpg-group`, `vml-rect`. The §1.3 anchored-drawing cluster, now quantified. |
 | **Real-world forms** | **21-24 (broken)** | `Form025U` 23, `medical-incident-form` 24 — the docs real users bring. |
 | **Multi-page pagination** | page-count-mismatch | `sds-real-world` 18≠16, `header-with-textbox` 4≠5, `find-scroll` 4≠3, `issue-68-large` 312≠313 — §1.2 confirmed. |
-| **Hard failures** | 0 | `oversized-header-image` renders a **blank body** — the header image eats the page (§1.3 header-overflow). Confirmed by eye. |
+| **Hard failures** | 0 | ~~`oversized-header-image` renders a **blank body**~~ — **RETRACTED**, see correction below. |
+
+> **Correction (2026-06-19, Phase 3) — the harness had a false-negative bug.**
+> `oversized-header-image` was NOT broken — it renders the body correctly
+> (body at 672px ≈ LibreOffice's 659px, verified by live DOM probe ×3 + the
+> refreshed composite). The "blank body / 0-score" was a **harness** bug:
+> `el.screenshot()` on a `.layout-page` taller than the default 720px viewport
+> made Playwright scroll-and-stitch, garbling the capture. Fixed in
+> `render-editor.mjs` (1200×1700 viewport, commit `7e66cc0`); the fixture now
+> scores 33 and the composite matches LibreOffice. **Implication:** any fixture
+> whose content sits low on a tall page may have been under-scored the same way,
+> so the baseline was **re-run with the fixed harness** — trust the refreshed
+> `visual-fidelity-report.md`, not the pre-fix numbers in the table above. A
+> margin-cap "fix" was tried against the false symptom and **reverted** (it
+> created text-over-image overlap). Lesson: even the composite can't catch a bad
+> *screenshot* — confirm a suspected render bug with a live DOM probe, not just
+> the captured PNG.
 
 This ranks Phase 3 work directly: fix the broken drawing/forms/header cluster first;
 text is already production-grade. `issue-319-sections` (0 pages) is a Phase 1 bug.
