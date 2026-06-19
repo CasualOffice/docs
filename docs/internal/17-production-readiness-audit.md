@@ -242,6 +242,35 @@ Artifacts: `docx-editor/visual-fidelity-out/` (gitignored) — `visual-fidelity-
 score drop / new page-count mismatch); optional glyph-level registration for a
 tighter score; swap LibreOffice → Word PDFs for the strict oracle.
 
+#### Phase 3 progress (2026-06-19) — the real shape of the remaining gap
+
+Working the ranked list with "look/probe before fixing" surfaced that the raw
+scores over-stated the number of *bugs*. Findings:
+
+- **Fixed — `drawingml-shape` (14 → 89, `7f7f3fb`).** A real, clear bug: a
+  shape-only `<w:drawing>` emitted an empty-src `<img>` (broken-image icon)
+  next to the painted shape. One-line parser fix; zero regressions. The kind of
+  crisp defect worth chasing.
+- **Not bugs — `image-hyperlink` (10), and other sparse pages.** Metric noise:
+  near-empty pages score low because the density grid is dominated by one short
+  line. The editor matches LibreOffice. (Harness caveat, noted above.)
+- **The dominant remaining gap is SYSTEMIC vertical-spacing drift, not
+  per-fixture bugs.** `medical-incident-form` (30), `textbox-test` (46),
+  `EP_ZMVZ_MULTI_v4` (43), `float-wrap` (45), `sds-real-world` (40, 18≠16 pp)
+  all render their *content correctly* (forms, text boxes, fills, borders match)
+  — they score low because the editor packs content slightly tighter than
+  LibreOffice and the offset **accumulates down the page** (and tips long docs
+  into page-count mismatches). This is the §1.2 line-height / paragraph-spacing /
+  empty-paragraph-height / table-row-height metrics model — the audit's
+  make-or-break, and the hardest category. CLAUDE.md's "textboxes are the weak
+  spot" is now **stale**: textboxes render well; spacing is the weak spot.
+
+**Decision needed before the spacing work:** it has a correctness fork. Matching
+LibreOffice's spacing may *diverge* from Word (the actual target). The strict-
+oracle TODO (Word PDFs) should land first, or be done in parallel, so the
+spacing fixes are validated against Word, not just LibreOffice. Until then,
+spacing changes risk chasing the wrong reference.
+
 ### Phase 1 — Stop the bleeding (correctness bugs, cheap) — DONE 2026-06-19
 
 Verifying each item against source (rule #1) deflated 3 of 4: the fast review
