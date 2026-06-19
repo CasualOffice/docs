@@ -692,13 +692,19 @@ function parseRunContents(
         contents.push({ type: 'noBreakHyphen' } as NoBreakHyphenContent);
         break;
 
-      case 'drawing':
-        // Drawing/image
+      case 'drawing': {
+        // Drawing/image. Only emit a drawing run when it carries actual image
+        // data: a shape-only drawing (e.g. <wps:wsp> with solidFill and no
+        // <a:blip>) parses to an image with an empty src, which the painter
+        // rendered as a spurious broken-image <img> *alongside* the shape that
+        // the shape pipeline already draws. Skip those here — same rule the
+        // AlternateContent branch below already applies ("skip shapes").
         const drawing = parseDrawingContent(child, rels, media);
-        if (drawing) {
+        if (drawing?.image?.src) {
           contents.push(drawing);
         }
         break;
+      }
 
       case 'pict':
       case 'object':
