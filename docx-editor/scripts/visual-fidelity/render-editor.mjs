@@ -30,7 +30,17 @@ const fixtures = readdirSync(FIXTURE_DIR)
   .filter((f) => !ONLY || ONLY.includes(basename(f, '.docx')));
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ deviceScaleFactor: 2 });
+// Viewport must be TALLER than a full page (Letter ≈ 1056px, A4 ≈ 1123px) and
+// wider than a landscape page (≈1056px). Element screenshots of a page taller
+// than the viewport make Playwright scroll-and-stitch, which garbles tall
+// pages — it produced false "blank" captures (body painted off the stitched
+// region) and bogus 0-scores for fixtures like oversized-header-image whose
+// body sits low on the page. A viewport that contains a whole page captures
+// it in one shot. Page width (≤1056px) is < 1200, so no fit-to-width zoom.
+const ctx = await browser.newContext({
+  deviceScaleFactor: 2,
+  viewport: { width: 1200, height: 1700 },
+});
 const page = await ctx.newPage();
 
 const summary = [];
