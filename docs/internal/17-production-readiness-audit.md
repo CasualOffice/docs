@@ -140,7 +140,16 @@ does; it routes through `toBuffer`.)
 
 ### 3.2 Findings
 - **IME/CJK — broken by design.** Candidate window renders at the off-screen contenteditable. **Zero** `compositionstart/update/end` handlers; only a `!isComposing` space-key band-aid (`PagedEditor.tsx:3866`, added for Hangul double-space). Non-Latin users can't really write.
-- **Typing latency 500ms–2s/keystroke on large docs.** Every layout pass re-runs `toFlowBlocks` + `measureBlocks` over the **whole document** (`PagedEditor.tsx:1546-1568`); only DOM paint is incremental. Perf-test threshold was **raised 500→2000ms** to stop flaking (`performance-large-docs.spec.ts:138-141`). ~30-50x Google Docs.
+- ~~**Typing latency 500ms–2s/keystroke on large docs.**~~ **OVER-STATED (verified
+  2026-06-19).** Measured on real hardware (300-page fixture): **start-of-doc
+  avg 115ms / max 150ms; mid- and end-of-doc 33ms; undo/redo ~90ms.** That is
+  fine (33ms ≈ 30fps; a one-off 115ms at the very top of a 300-page doc is
+  acceptable). The "533–868ms / 2000ms threshold" is a **CI-only artifact** —
+  the 2-vCPU GitHub runner is heavily throttled; the comment at
+  `performance-large-docs.spec.ts:138-141` says exactly that. The "~30-50× Google
+  Docs" claim was measuring CI throttling, not the editor. The full-document
+  re-measure does exist but the paragraph-measure cache keeps it cheap; not a
+  real-world problem. (5th over-stated audit claim deflated this session.)
 - **Collab undo three-way collision.** `createStarterKit()` always adds `prosemirror-history` (`StarterKit.ts:108`); collab also adds `yUndoPlugin()` (`useCollab.ts:88`); native history is **never disabled** in collab → undo can revert *other users'* changes. Plus a third React snapshot layer (`useDocumentHistory`, `DocxEditor.tsx:1874`).
 - **Caret/selection are faked overlays** decoupled from the text node; selection math lazy-`import()`s on every change (`SelectionOverlay.tsx:259`) → first-selection flicker; accuracy depends on the position→pixel map staying in sync with async relayout.
 - **Paste:** Google Docs path exists (`PasteStyleInlinerExtension.ts`); **no Word-specific path** (no `mso-*`/`StartFragment`) → mangled spacing/lists; **no paste-as-plain-text** (`Mod+Shift+V` absent).
