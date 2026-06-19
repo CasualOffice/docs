@@ -265,11 +265,26 @@ scores over-stated the number of *bugs*. Findings:
   make-or-break, and the hardest category. CLAUDE.md's "textboxes are the weak
   spot" is now **stale**: textboxes render well; spacing is the weak spot.
 
-**Decision needed before the spacing work:** it has a correctness fork. Matching
-LibreOffice's spacing may *diverge* from Word (the actual target). The strict-
-oracle TODO (Word PDFs) should land first, or be done in parallel, so the
-spacing fixes are validated against Word, not just LibreOffice. Until then,
-spacing changes risk chasing the wrong reference.
+**Update — rigorous diagnosis (per-element drift, PyMuPDF ref-Y vs editor
+DOM-Y) narrowed it.** It is NOT a global metric:
+
+- **Plain-text line-height is already correct** — editor 21.16px vs LibreOffice
+  21.2px on `demo`. So the §1.3 ascent/descent-approximation worry does *not*
+  manifest as a line-height error, and "fix the global line-height" is the wrong
+  move. (This also lowers the Word-divergence risk: text metrics are sound.)
+- **The dominant form-drift factor is TABLE ROW HEIGHTS.** On
+  `medical-incident-form`, the editor renders the checkbox table rows at ~33px
+  vs LibreOffice's ~75px (~42px too short each); the drift swings from +70px at
+  the top to −88px at the checkboxes purely from under-sized rows. Rows have two
+  paragraphs/cell + `<w:trHeight w:val="409"/>` (atLeast) + `vAlign=center`; the
+  editor tracks `heightRule` (`toFlowBlocks.ts:1339`) but under-computes the cell
+  content height (likely collapsing the empty second cell paragraph, or ignoring
+  cell margins / vAlign padding). **Tracker task #11.**
+- **Secondary:** header/logo pushes the title down ~70px.
+
+So the "systemic spacing" work is really **targeted table cell/row-height fixes**,
+not a metrics-model rewrite — and verifiable against LibreOffice without needing
+a Word oracle (text metrics already match).
 
 ### Phase 1 — Stop the bleeding (correctness bugs, cheap) — DONE 2026-06-19
 
