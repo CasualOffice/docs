@@ -116,9 +116,13 @@ export function toProseDoc(document: Document, options?: ToProseDocOptions): PMN
     if (block.type === 'paragraph') {
       // Convert paragraph and extract text boxes as sibling nodes
       nodes.push(...convertParagraphWithTextBoxes(block, styleResolver));
-      // If any run in this paragraph contains a page break, emit a pageBreak node after
-      if (paragraphHasPageBreak(block)) {
-        nodes.push(schema.node('pageBreak'));
+      // If any run in this paragraph contains a forced page/column break, emit
+      // a pageBreak node after. Column breaks (§17.3.3.1 `w:type="column"`) are
+      // carried via the node's `breakType` attr so they aren't silently
+      // collapsed into page breaks.
+      const forcedBreak = paragraphForcedBreakType(block);
+      if (forcedBreak) {
+        nodes.push(schema.node('pageBreak', { breakType: forcedBreak }));
       }
     } else if (block.type === 'table') {
       const pmTable = convertTable(block, styleResolver, theme);
@@ -1230,7 +1234,8 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
       if (content.breakType === 'textWrapping' || !content.breakType) {
         return [schema.node('hardBreak')];
       }
-      // Page breaks not supported in inline content
+      // Page/column breaks are not inline content; they are re-extracted to a
+      // block-level pageBreak node (see paragraphForcedBreakType in toProseDoc).
       return [];
 
     case 'tab':
@@ -1866,6 +1871,16 @@ function convertShape(shape: Shape): PMNode {
     }
   }
 
+  // Surface the parsed anchor position and wrap on the PM node so a floating
+  // shape round-trips through save without losing where it's anchored. Mirrors
+  // the textBox node (convertTextBox above): the layout engine doesn't honor
+  // these yet, but carrying the data is safe and unblocks future float work
+  // instead of silently dropping the anchor on the next save.
+  const posH = shape.position?.horizontal;
+  const posV = shape.position?.vertical;
+  const posOffsetH = posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
+  const posOffsetV = posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
+
   return schema.node('shape', {
     shapeType: shape.shapeType || 'rect',
     shapeId: shape.id,
@@ -1880,6 +1895,13 @@ function convertShape(shape: Shape): PMNode {
     outlineColor,
     outlineStyle,
     transform,
+    wrapType: shape.wrap?.type ?? 'inline',
+    posOffsetH,
+    posOffsetV,
+    posRelFromH: posH?.relativeTo ?? null,
+    posRelFromV: posV?.relativeTo ?? null,
+    posAlignH: posH?.alignment ?? null,
+    posAlignV: posV?.alignment ?? null,
   });
 }
 
@@ -2076,7 +2098,9 @@ export function footnoteToProseDoc(
 }
 
 /**
- * Returns true when `<w:br w:type="page"/>` appears anywhere in a paragraph.
+ * Returns the forced break type (`'page'` or `'column'`) when a
+ * `<w:br w:type="page"/>` or `<w:br w:type="column"/>` appears anywhere in a
+ * paragraph, or `null` when there is none.
  *
  * A hard page break is always a forced break per ECMA-376 §17.3.3.1. We used
  * to require visible content before the break (and rely on
@@ -2086,41 +2110,50 @@ export function footnoteToProseDoc(
  * forced break — Word renders such paragraphs with the next paragraph on a
  * fresh page.
  */
-function paragraphHasPageBreak(paragraph: Paragraph): boolean {
-  function visitRunContent(content: RunContent): boolean {
-    return content.type === 'break' && content.breakType === 'page';
+function paragraphForcedBreakType(paragraph: Paragraph): 'page' | 'column' | null {
+  function breakTypeOf(content: RunContent): 'page' | 'column' | null {
+    if (content.type !== 'break') return null;
+    if (content.breakType === 'page') return 'page';
+    if (content.breakType === 'column') return 'column';
+    return null;
   }
 
-  function visit(item: Paragraph['content'][number]): boolean {
+  function visit(item: Paragraph['content'][number]): 'page' | 'column' | null {
     if (item.type === 'run') {
       for (const c of (item as Run).content) {
-        if (visitRunContent(c)) return true;
+        const bt = breakTypeOf(c);
+        if (bt) return bt;
       }
-      return false;
+      return null;
     }
     if (item.type === 'hyperlink') {
       for (const r of (item as Hyperlink).children) {
-        if (r.type === 'run' && visit(r)) return true;
+        if (r.type === 'run') {
+          const bt = visit(r);
+          if (bt) return bt;
+        }
       }
-      return false;
+      return null;
     }
     if (item.type === 'insertion' || item.type === 'deletion') {
-      // Tracked-change wrappers can themselves contain a page break.
+      // Tracked-change wrappers can themselves contain a forced break.
       // Descend so a break inside <w:ins> or <w:del> still emits a
       // pageBreak node downstream.
       const tc = item as { content: Paragraph['content'] };
       for (const inner of tc.content) {
-        if (visit(inner)) return true;
+        const bt = visit(inner);
+        if (bt) return bt;
       }
-      return false;
+      return null;
     }
-    return false;
+    return null;
   }
 
   for (const item of paragraph.content) {
-    if (visit(item)) return true;
+    const bt = visit(item);
+    if (bt) return bt;
   }
-  return false;
+  return null;
 }
 
 /**

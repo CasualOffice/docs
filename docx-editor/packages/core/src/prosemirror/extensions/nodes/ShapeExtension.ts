@@ -40,6 +40,18 @@ export interface ShapeAttrs {
   cssFloat?: 'left' | 'right' | 'none';
   /** Wrap type */
   wrapType?: string;
+  /** Anchor horizontal offset in pixels (floating shapes) */
+  posOffsetH?: number | null;
+  /** Anchor vertical offset in pixels (floating shapes) */
+  posOffsetV?: number | null;
+  /** Horizontal anchor base (page/margin/column/...) */
+  posRelFromH?: string | null;
+  /** Vertical anchor base (page/margin/paragraph/...) */
+  posRelFromV?: string | null;
+  /** Horizontal anchor alignment (left/right/center/...) */
+  posAlignH?: string | null;
+  /** Vertical anchor alignment (top/bottom/center/...) */
+  posAlignV?: string | null;
   /** Shadow color as CSS color */
   shadowColor?: string;
   /** Shadow blur radius in pixels */
@@ -137,6 +149,12 @@ export const ShapeExtension = createNodeExtension({
       displayMode: { default: 'inline' },
       cssFloat: { default: null },
       wrapType: { default: 'inline' },
+      posOffsetH: { default: null },
+      posOffsetV: { default: null },
+      posRelFromH: { default: null },
+      posRelFromV: { default: null },
+      posAlignH: { default: null },
+      posAlignV: { default: null },
       shadowColor: { default: null },
       shadowBlur: { default: null },
       shadowOffsetX: { default: null },
@@ -166,6 +184,12 @@ export const ShapeExtension = createNodeExtension({
             displayMode: (el.dataset.displayMode as ShapeAttrs['displayMode']) || undefined,
             cssFloat: (el.dataset.cssFloat as ShapeAttrs['cssFloat']) || undefined,
             wrapType: el.dataset.wrapType || undefined,
+            posOffsetH: el.dataset.posOffsetH ? Number(el.dataset.posOffsetH) : undefined,
+            posOffsetV: el.dataset.posOffsetV ? Number(el.dataset.posOffsetV) : undefined,
+            posRelFromH: el.dataset.posRelFromH || undefined,
+            posRelFromV: el.dataset.posRelFromV || undefined,
+            posAlignH: el.dataset.posAlignH || undefined,
+            posAlignV: el.dataset.posAlignV || undefined,
             shadowColor: el.dataset.shadowColor || undefined,
             shadowBlur: el.dataset.shadowBlur ? Number(el.dataset.shadowBlur) : undefined,
             shadowOffsetX: el.dataset.shadowOffsetX ? Number(el.dataset.shadowOffsetX) : undefined,
@@ -203,6 +227,12 @@ export const ShapeExtension = createNodeExtension({
       if (attrs.displayMode) domAttrs['data-display-mode'] = attrs.displayMode;
       if (attrs.cssFloat) domAttrs['data-css-float'] = attrs.cssFloat;
       if (attrs.wrapType) domAttrs['data-wrap-type'] = attrs.wrapType;
+      if (attrs.posOffsetH != null) domAttrs['data-pos-offset-h'] = String(attrs.posOffsetH);
+      if (attrs.posOffsetV != null) domAttrs['data-pos-offset-v'] = String(attrs.posOffsetV);
+      if (attrs.posRelFromH) domAttrs['data-pos-rel-from-h'] = attrs.posRelFromH;
+      if (attrs.posRelFromV) domAttrs['data-pos-rel-from-v'] = attrs.posRelFromV;
+      if (attrs.posAlignH) domAttrs['data-pos-align-h'] = attrs.posAlignH;
+      if (attrs.posAlignV) domAttrs['data-pos-align-v'] = attrs.posAlignV;
       if (attrs.shadowColor) domAttrs['data-shadow-color'] = attrs.shadowColor;
       if (attrs.shadowBlur != null) domAttrs['data-shadow-blur'] = String(attrs.shadowBlur);
       if (attrs.shadowOffsetX != null)
