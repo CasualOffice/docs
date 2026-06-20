@@ -1262,6 +1262,17 @@ function buildFootnoteRenderItems(
 // =============================================================================
 
 /**
+ * Clicks / focus that originate inside a sidebar panel (comment textareas,
+ * tracked-change cards, the unified sidebar) must NOT be yanked back to the
+ * off-screen document editor — otherwise the user could never type in them.
+ * Centralised so every focus-recapture path applies the same exclusion.
+ */
+function isWithinSidebar(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  return !!(el?.closest('.docx-comments-sidebar') || el?.closest('.docx-unified-sidebar'));
+}
+
+/**
  * PagedEditor - Main paginated editing component.
  */
 const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
@@ -3682,17 +3693,29 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     /**
      * Handle focus on container - redirect to hidden PM.
      */
+    /**
+     * Single place that claims keyboard focus for the editor: moves DOM focus to
+     * the off-screen ProseMirror (only if it isn't already there, to avoid focus
+     * thrashing) and marks the editor focused so the caret blink, mobile format
+     * chip and image handles all light up. Previously this `focus()` +
+     * `setIsFocused(true)` pair was copy-pasted across every click/key handler,
+     * which made it easy to update one path and desync the others.
+     */
+    const claimEditorFocus = useCallback(() => {
+      if (readOnly) return;
+      if (!hiddenPMRef.current?.isFocused()) {
+        hiddenPMRef.current?.focus();
+      }
+      setIsFocused(true);
+    }, [readOnly]);
+
     const handleContainerFocus = useCallback(
       (e: React.FocusEvent) => {
-        if (readOnly) return;
         // Don't steal focus from sidebar inputs (textareas, inputs, buttons)
-        const target = e.target as HTMLElement;
-        if (target.closest('.docx-comments-sidebar') || target.closest('.docx-unified-sidebar'))
-          return;
-        hiddenPMRef.current?.focus();
-        setIsFocused(true);
+        if (isWithinSidebar(e.target)) return;
+        claimEditorFocus();
       },
-      [readOnly]
+      [claimEditorFocus]
     );
 
     /**
@@ -3858,10 +3881,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       (e: React.KeyboardEvent) => {
         if (readOnly) return;
         // Ensure hidden PM is focused if user types
-        if (!hiddenPMRef.current?.isFocused()) {
-          hiddenPMRef.current?.focus();
-          setIsFocused(true);
-        }
+        claimEditorFocus();
 
         // Prevent space from scrolling the container - let PM handle it as text input.
         // During IME composition, let the browser handle space natively to avoid
@@ -3900,7 +3920,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           if (sc) sc.scrollTop = sc.scrollHeight;
         }
       },
-      [readOnly, getScrollContainer]
+      [readOnly, getScrollContainer, claimEditorFocus]
     );
 
     /**
@@ -3908,20 +3928,12 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
      */
     const handleContainerMouseDown = useCallback(
       (e: React.MouseEvent) => {
-        if (readOnly) return;
         // Don't steal focus from sidebar inputs
-        if (
-          (e.target as HTMLElement).closest('.docx-comments-sidebar') ||
-          (e.target as HTMLElement).closest('.docx-unified-sidebar')
-        )
-          return;
+        if (isWithinSidebar(e.target)) return;
         // Focus hidden PM if clicking outside pages area
-        if (!hiddenPMRef.current?.isFocused()) {
-          hiddenPMRef.current?.focus();
-          setIsFocused(true);
-        }
+        claimEditorFocus();
       },
-      [readOnly]
+      [claimEditorFocus]
     );
 
     // =========================================================================
