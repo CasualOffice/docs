@@ -228,6 +228,20 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
 // =============================================================================
 
 /**
+ * The selection→pixel math lives in `layout-bridge`, imported dynamically to
+ * avoid a circular dependency. We kick that import off ONCE at module load so
+ * the chunk is warm long before the first selection (no first-click flicker),
+ * and cache the resolved module so subsequent selections compute synchronously
+ * inside the effect — the caret then tracks input in the same frame instead of
+ * lagging it by a microtask on every change.
+ */
+type LayoutBridge = typeof import('@eigenpal/docx-core/layout-bridge');
+let layoutBridge: LayoutBridge | null = null;
+const layoutBridgePromise: Promise<LayoutBridge> = import('@eigenpal/docx-core/layout-bridge').then(
+  (mod) => (layoutBridge = mod)
+);
+
+/**
  * Hook to manage selection overlay state.
  *
  * @param pmSelection - ProseMirror selection {from, to}.
@@ -255,8 +269,7 @@ export function useSelectionOverlay(
       return;
     }
 
-    // Import dynamically to avoid circular dependencies
-    import('@eigenpal/docx-core/layout-bridge').then(({ selectionToRects, getCaretPosition }) => {
+    const apply = ({ selectionToRects, getCaretPosition }: LayoutBridge) => {
       const { from, to } = pmSelection;
 
       if (from === to) {
@@ -270,7 +283,23 @@ export function useSelectionOverlay(
         setSelectionRects(rects);
         setCaretPosition(null);
       }
+    };
+
+    // Module already warm → compute synchronously, no per-selection frame lag.
+    if (layoutBridge) {
+      apply(layoutBridge);
+      return;
+    }
+
+    // First selection before the chunk finished loading → fall back to async,
+    // guarding against the effect being torn down before it resolves.
+    let cancelled = false;
+    layoutBridgePromise.then((mod) => {
+      if (!cancelled) apply(mod);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [pmSelection, layout, blocks, measures]);
 
   return { selectionRects, caretPosition };
