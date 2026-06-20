@@ -50,7 +50,7 @@ Net: "we say 4 pages, Word says 5," paragraphs split at the wrong line.
 | **Tight/through image wrap** → square wrap | `floatingObjects.ts:29` rect-only exclusion; `wp:wrapPolygon` never consumed |
 | **Floating tables (`tblpPr`)** overlap following text; spurious blank pages | `index.ts:584`; `01-fidelity-gaps.md:130-134` |
 | **Justified text** uses browser CSS `justify`, breaks measured on *unjustified* widths | `renderParagraph.ts:1045-1051` |
-| **Non-decimal list numbering** falls back to decimal | `layout-bridge/toFlowBlocks.ts`; `01:157,214` |
+| ~~**Non-decimal list numbering** falls back to decimal~~ **OVER-STATED (11th deflated, 2026-06-21)** — `formatCounter` (`toFlowBlocks.ts:306`) handles upper/lowerRoman, upper/lowerLetter, decimalZero, ordinal(+Text), cardinalText, hex, chicago, enclosed-circle/paren, none. Only rare CJK/Hebrew/Arabic/Thai/Korean script formats fall to decimal (need lookup tables; in no fixture). | `layout-bridge/toFlowBlocks.ts:306` |
 | **Column balancing** (continuous section) not implemented | `01:179` (GH #182) |
 | **Oversized header** clips instead of overflowing into margin | `01:120` |
 | **TOC tab leaders** — CSS-border approximation, not Word dot-fill metric | `renderParagraph.ts:367-404` |
