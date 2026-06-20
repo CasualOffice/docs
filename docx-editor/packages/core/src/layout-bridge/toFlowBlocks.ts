@@ -17,6 +17,7 @@ import type {
   ImageBlock,
   TextBoxBlock,
   PageBreakBlock,
+  ColumnBreakBlock,
   SectionBreakBlock,
   ColumnLayout,
   Run,
@@ -1678,6 +1679,23 @@ export function toFlowBlocks(doc: PMNode, options: ToFlowBlocksOptions = {}): Fl
 
       case 'horizontalRule':
       case 'pageBreak': {
+        // A `pageBreak` node carries a `breakType` attr: 'page' (the default,
+        // forced page break) or 'column' (§17.3.3.1 `<w:br w:type="column"/>`).
+        // Route a column break to a `columnBreak` FlowBlock so the paginator
+        // advances the column rather than forcing a whole new page — in a
+        // single-column section that advance is a no-op, matching Word, instead
+        // of spilling each column break onto its own page. `horizontalRule`
+        // has no attrs and falls through as a page break.
+        if (node.type.name === 'pageBreak' && node.attrs.breakType === 'column') {
+          const cb: ColumnBreakBlock = {
+            kind: 'columnBreak',
+            id: nextBlockId(),
+            pmStart: pos,
+            pmEnd: pos + node.nodeSize,
+          };
+          blocks.push(cb);
+          break;
+        }
         const pb: PageBreakBlock = {
           kind: 'pageBreak',
           id: nextBlockId(),

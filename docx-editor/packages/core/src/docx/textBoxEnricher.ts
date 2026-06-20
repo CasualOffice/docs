@@ -60,12 +60,7 @@ import {
   isDecorativeShapeDrawing,
   parseDecorativeDrawing,
 } from './textBoxParser';
-import {
-  isVmlTextBoxPict,
-  parseVmlTextBox,
-  isVmlDecorativeShapePict,
-  parseVmlDecorativeShape,
-} from './vmlTextBoxParser';
+import { parseVmlShapes } from './vmlTextBoxParser';
 import { parseFill, parseOutline, parseAnchorPosition, parseAnchorWrap } from './drawingUtils';
 import { resolveImageData } from './imageParser';
 
@@ -202,14 +197,12 @@ function processRunElement(runXml: XmlElement, parsedRun: RunContent, ctx: Ctx):
 }
 
 function handleVmlPict(pictEl: XmlElement, parsedRun: RunContent, envRef: EnvelopeRef): void {
-  if (isVmlTextBoxPict(pictEl)) {
-    const vml = parseVmlTextBox(pictEl, parseParagraph);
-    if (vml) injectShapeFromTextBox(vml, parsedRun, envRef);
-    return;
-  }
-  if (isVmlDecorativeShapePict(pictEl)) {
-    const dec = parseVmlDecorativeShape(pictEl);
-    if (dec) injectShapeFromTextBox(dec, parsedRun, envRef);
+  // A `<w:pict>` may hold several shapes — directly, or inside a `<v:group>`
+  // (e.g. the SDS divider line is a `<v:rect>` in `docshapegroup20`). Expand
+  // them all, applying the group's coordinate transform to each child, so no
+  // shape past the first is dropped and grouped shapes are placed/sized right.
+  for (const shape of parseVmlShapes(pictEl, parseParagraph)) {
+    injectShapeFromTextBox(shape, parsedRun, envRef);
   }
 }
 
