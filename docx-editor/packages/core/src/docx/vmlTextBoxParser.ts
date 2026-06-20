@@ -337,16 +337,11 @@ export function parseVmlDecorativeShape(pictEl: XmlElement): TextBox | null {
   return decorativeShapeToTextBox(shape);
 }
 
-function decorativeShapeToTextBox(
-  shape: XmlElement,
-  transform?: GroupTransform
-): TextBox {
+function decorativeShapeToTextBox(shape: XmlElement, transform?: GroupTransform): TextBox {
   const style = getAttribute(shape, null, 'style') ?? '';
   const decls = parseVmlStyle(style);
 
-  const size = transform
-    ? transformChildSize(decls, transform)
-    : parseVmlShapeSize(shape);
+  const size = transform ? transformChildSize(decls, transform) : parseVmlShapeSize(shape);
   const position = transform
     ? transformChildPosition(decls, transform)
     : parseVmlShapePosition(shape, decls);
@@ -421,13 +416,9 @@ function buildGroupTransform(groupEl: XmlElement): GroupTransform {
   // Scale = page-EMU span / coordinate-unit span. Falls back to 1 (identity)
   // when either side is missing so children at least land at the origin.
   const scaleX =
-    coordSize && coordSize[0] !== 0 && groupWidthEmu !== null
-      ? groupWidthEmu / coordSize[0]
-      : 1;
+    coordSize && coordSize[0] !== 0 && groupWidthEmu !== null ? groupWidthEmu / coordSize[0] : 1;
   const scaleY =
-    coordSize && coordSize[1] !== 0 && groupHeightEmu !== null
-      ? groupHeightEmu / coordSize[1]
-      : 1;
+    coordSize && coordSize[1] !== 0 && groupHeightEmu !== null ? groupHeightEmu / coordSize[1] : 1;
 
   return {
     leftEmu: lengthDeclToEmu(decls.get('margin-left')),
@@ -451,10 +442,7 @@ function childCoordValue(value: string | undefined): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
-function transformChildSize(
-  decls: Map<string, string>,
-  t: GroupTransform
-): ImageSize {
+function transformChildSize(decls: Map<string, string>, t: GroupTransform): ImageSize {
   const cw = childCoordValue(decls.get('width'));
   const ch = childCoordValue(decls.get('height'));
   return {
@@ -502,10 +490,7 @@ function transformChildPosition(
  * single-shape `parseVmlTextBox` / `parseVmlDecorativeShape` remain for
  * callers that only need the first shape (and the `isVml*Pict` probes).
  */
-export function parseVmlShapes(
-  pictEl: XmlElement,
-  parseParagraph: ParagraphParserFn
-): TextBox[] {
+export function parseVmlShapes(pictEl: XmlElement, parseParagraph: ParagraphParserFn): TextBox[] {
   const out: TextBox[] = [];
   for (const child of getChildElements(pictEl)) {
     const local = getLocalName(child.name ?? '');
