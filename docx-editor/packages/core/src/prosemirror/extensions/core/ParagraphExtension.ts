@@ -327,6 +327,33 @@ const paragraphNodeSpec: NodeSpec = {
         };
       },
     },
+    // List items (`<li>` inside `<ul>`/`<ol>`) — pasted from the web, Word,
+    // Google Docs, etc. The editor models lists as PARAGRAPHS carrying `numPr`
+    // + `listIsBullet`/`listNumFmt`, not as nested list nodes, so without this
+    // rule pasted lists collapsed to plain paragraphs. Bullet-vs-ordered comes
+    // from the nearest `<ul>`/`<ol>` ancestor; `ilvl` from the nesting depth.
+    {
+      tag: 'li',
+      getAttrs(dom: HTMLElement): ParagraphAttrs {
+        let ordered = false;
+        let depth = 0;
+        for (let el = dom.parentElement; el; el = el.parentElement) {
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'ul' || tag === 'ol') {
+            if (depth === 0) ordered = tag === 'ol';
+            depth++;
+          }
+        }
+        const ilvl = Math.max(0, depth - 1);
+        const styleAttrs = extractParagraphAttrsFromStyle(dom);
+        return {
+          ...styleAttrs,
+          numPr: { numId: ordered ? 2 : 1, ilvl },
+          listIsBullet: !ordered,
+          listNumFmt: ordered ? 'decimal' : undefined,
+        };
+      },
+    },
     // Heading tags (h1-h6) — pasted from Google Docs, Word Online, etc.
     // Map to paragraphs with appropriate styleId and formatting extracted from CSS.
     ...(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => ({

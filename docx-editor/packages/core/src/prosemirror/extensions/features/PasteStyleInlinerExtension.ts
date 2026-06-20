@@ -14,6 +14,7 @@
  */
 
 import { Plugin } from 'prosemirror-state';
+import { Slice } from 'prosemirror-model';
 import { createExtension } from '../create';
 import type { ExtensionRuntime } from '../types';
 import { Priority } from '../types';
@@ -156,13 +157,63 @@ function unwrapGoogleDocsStructuralB(doc: Document): void {
 }
 
 /**
- * Transform pasted HTML by inlining class-based CSS and unwrapping Google Docs wrappers.
+ * Convert Word's HTML list markup into real `<ul>`/`<ol>` lists.
+ *
+ * Word exports list items as plain `<p style="mso-list:...">` paragraphs with
+ * the bullet/number baked in as a literal character inside a
+ * `<span style="mso-list:Ignore">`. Pasted as-is, ProseMirror sees ordinary
+ * paragraphs prefixed with a literal "·". Here we strip that literal-marker
+ * span and wrap each run of consecutive list paragraphs in a `<ul>` (bullets)
+ * or `<ol>` (numbers, detected from the marker text); the `<li>` parseDOM rule
+ * in ParagraphExtension then turns them into real list paragraphs. (v1: nesting
+ * folded flat.)
+ */
+function convertWordLists(doc: Document): void {
+  const IGNORE_SEL = 'span[style*="mso-list:Ignore"], span[style*="mso-list: Ignore"]';
+  const isListPara = (el: Element): boolean => /mso-list\s*:/.test(el.getAttribute('style') || '');
+  const paras = Array.from(doc.querySelectorAll('p'));
+
+  let i = 0;
+  while (i < paras.length) {
+    if (!isListPara(paras[i])) {
+      i++;
+      continue;
+    }
+    const firstMarker = (paras[i].querySelector(IGNORE_SEL)?.textContent || '').trim();
+    const ordered = /[0-9a-z][.)]/i.test(firstMarker);
+
+    const items: HTMLElement[] = [];
+    let j = i;
+    while (j < paras.length && isListPara(paras[j])) {
+      const item = paras[j] as HTMLElement;
+      item.querySelector(IGNORE_SEL)?.remove(); // drop the literal bullet/number
+      items.push(item);
+      j++;
+    }
+
+    const list = doc.createElement(ordered ? 'ol' : 'ul');
+    for (const item of items) {
+      const li = doc.createElement('li');
+      while (item.firstChild) li.appendChild(item.firstChild);
+      list.appendChild(li);
+    }
+    items[0].parentNode?.insertBefore(list, items[0]);
+    for (const item of items) item.remove();
+
+    i = j;
+  }
+}
+
+/**
+ * Transform pasted HTML: inline class-based CSS, unwrap Google Docs wrappers,
+ * and convert Word list markup to real lists.
  */
 function transformPastedHTML(html: string): string {
   const hasStyleBlock = html.includes('<style');
   const hasGoogleDocsWrapper = html.includes('docs-internal-guid-');
+  const hasWordList = html.includes('mso-list');
 
-  if (!hasStyleBlock && !hasGoogleDocsWrapper) return html;
+  if (!hasStyleBlock && !hasGoogleDocsWrapper && !hasWordList) return html;
 
   try {
     const parser = new DOMParser();
@@ -180,10 +231,32 @@ function transformPastedHTML(html: string): string {
       unwrapGoogleDocsStructuralB(doc);
     }
 
+    if (hasWordList) {
+      convertWordLists(doc);
+    }
+
     return doc.body.innerHTML;
   } catch {
     return html;
   }
+}
+
+/**
+ * When a pasted slice begins with a list paragraph but is "open" at the start
+ * (openStart > 0), ProseMirror merges that first list paragraph into the
+ * destination paragraph on insert — and the destination's (non-list) attrs win,
+ * so the first list item silently loses its bullet/number. Closing the slice
+ * start (openStart = 0) inserts the first item as its own block, preserving its
+ * list attrs. Only applied when the leading block is actually a list paragraph,
+ * so ordinary text paste is untouched.
+ */
+function closeListSliceStart(slice: Slice): Slice {
+  if (slice.openStart === 0) return slice;
+  const first = slice.content.firstChild;
+  if (!first || first.type.name !== 'paragraph' || !first.attrs.numPr) {
+    return slice;
+  }
+  return new Slice(slice.content, 0, slice.openEnd);
 }
 
 export const PasteStyleInlinerExtension = createExtension({
@@ -195,6 +268,9 @@ export const PasteStyleInlinerExtension = createExtension({
       props: {
         transformPastedHTML(html: string): string {
           return transformPastedHTML(html);
+        },
+        transformPasted(slice: Slice): Slice {
+          return closeListSliceStart(slice);
         },
       },
     });
