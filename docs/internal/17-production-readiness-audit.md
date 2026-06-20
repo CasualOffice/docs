@@ -49,7 +49,7 @@ Net: "we say 4 pages, Word says 5," paragraphs split at the wrong line.
 | **Page/margin/column-anchored shapes/textboxes** snap to text cursor, not real position | `renderTextBox.ts:86-100` forces `dxPx/dyPx=0` for non-paragraph anchors |
 | **Tight/through image wrap** → square wrap | `floatingObjects.ts:29` rect-only exclusion; `wp:wrapPolygon` never consumed |
 | **Floating tables (`tblpPr`)** overlap following text; spurious blank pages | `index.ts:584`; `01-fidelity-gaps.md:130-134` |
-| **Justified text** uses browser CSS `justify`, breaks measured on *unjustified* widths | `renderParagraph.ts:1045-1051` |
+| ~~**Justified text** uses browser CSS justify~~ **OVER-STATED (12th deflated, 2026-06-21)** — verified: non-last lines fill the full content width (`text-align: justify`), last line stays ragged, matching Word. Breaking on natural widths then justifying is correct (Word does the same); only the break-point *algorithm* (greedy vs Knuth-Plass) differs subtly. | `renderParagraph.ts:1036-1051` |
 | ~~**Non-decimal list numbering** falls back to decimal~~ **OVER-STATED (11th deflated, 2026-06-21)** — `formatCounter` (`toFlowBlocks.ts:306`) handles upper/lowerRoman, upper/lowerLetter, decimalZero, ordinal(+Text), cardinalText, hex, chicago, enclosed-circle/paren, none. Only rare CJK/Hebrew/Arabic/Thai/Korean script formats fall to decimal (need lookup tables; in no fixture). | `layout-bridge/toFlowBlocks.ts:306` |
 | **Column balancing** (continuous section) not implemented | `01:179` (GH #182) |
 | **Oversized header** clips instead of overflowing into margin | `01:120` |
