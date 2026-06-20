@@ -907,6 +907,13 @@ export function renderFloatingImagesLayer(
     img.src = floatImg.src;
     img.style.width = `${floatImg.width}px`;
     img.style.height = `${floatImg.height}px`;
+    // Override the global `img { max-width: 100% }` reset: a floating image is
+    // sized to its explicit anchor extent (and to the user's resize), so it must
+    // honor that width even when it exceeds the container. Without this the width
+    // is capped to the container while the height is not, distorting the image
+    // (e.g. resizing a wide logo larger stretched it vertically).
+    img.style.maxWidth = 'none';
+    img.style.maxHeight = 'none';
     img.style.display = 'block';
     if (floatImg.alt) img.alt = floatImg.alt;
     if (floatImg.transform) {
