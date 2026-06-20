@@ -1,9 +1,32 @@
 # Anchored shape layout — attempt #3 design
 
-**Status:** Design — no code yet. Read this before any code changes.
+**Status (updated 2026-06-21):** Partly superseded — read this together with the
+authoritative current trackers [`19-content-drops-and-inconsistencies.md`](19-content-drops-and-inconsistencies.md)
+and [`20-overlap-and-interaction.md`](20-overlap-and-interaction.md). Since this
+design was written, anchored *positioning* shipped: PR #7 (page/margin/column-anchored
+textboxes), PR #11 (`26cc155` — inline-shape position + `wrapType` threaded through
+`toProseDoc`, the PM schema `TextBoxExtension.ts`, and the layout-engine `types.ts`),
+and PR #13 (anchor geometry). The exclusion-zone engine premise below is **no longer the
+believed fix** — see the correction box. The proposed `wrapMode` / `exclusionZones`
+names never existed in source (only `wrapType` does); don't reintroduce them.
 **Tracker row:** `08-improvement-tracker.md` P1 #5.
 **Reverts to avoid repeating:** `d8b85d1` (attempt #1, reverted in `d4ceebf` on 2026-05-24).
 **Shipped (the safe half):** `159cfc3` (2026-05-25) — data round-trip only, no layout change.
+
+> **Correction (doc 20, 2026-06-21): the diagnosis below is wrong.** Full
+> diagnosis on the real-world fixtures found anchored objects are placed
+> *correctly relative to their anchor paragraph* (B2's VML group transform is
+> pixel-exact; B1's logo sits at its anchor-paragraph Y + offset). The real
+> divergence from Word is **anchor-paragraph flow-spacing** — empty-paragraph
+> heights and line-spacing metrics — and, for the SDS, **multi-column
+> completion** (un-rendered `w:cols num="2"` continuous sections flowing
+> single-column). It is **not** a text-wrap exclusion-zone gap. The fix is a
+> spacing-metrics pass + multi-column completion, not the engine described here.
+> See [`20-overlap-and-interaction.md`](20-overlap-and-interaction.md) "Unifying
+> conclusion". `medical-incident-form` specifically is **not** a generic
+> page-count regression — doc 20 B1 root-causes it to `inFront` body-image
+> `fragmentY` mis-sourcing (logo lands ~75px too high). The exclusion-zone
+> design below is retained for history only.
 
 ## What's already shipped
 
@@ -13,7 +36,10 @@
 
 Attempt #1 (`d8b85d1`) threaded the position attrs through the layout engine too: `TextBoxBlock.anchor`, `convertTextBoxNode`, `layoutTextBox`'s anchored branch. The 8/8 `drawing-fidelity-audit` specs went green.
 
-It broke real-world fixtures, in particular `medical-incident-form`:
+It broke real-world fixtures, in particular `medical-incident-form` (note: the
+*current* medical-incident-form defect is **not** this generic page-count
+regression — doc 20 B1 root-causes it to `inFront` body-image `fragmentY`
+mis-sourcing; the account below is the historical attempt-#1 breakage):
 
 - Anchored shapes started rendering as **overlays** that didn't advance `paginator.cursorY`.
 - Body text below the anchored shapes flowed UP into the space those shapes used to reserve.
@@ -52,7 +78,17 @@ For our layout engine that means:
 
 ### Parse → engine wiring
 
-The Shape model already carries `position` (EMU offsets + relFrom anchors). It's already on the PM textBox node (shipped in `159cfc3`). What's missing is the `wrapMode`:
+> **Outdated since PR #11 (`26cc155`).** The wrap value is no longer "missing":
+> `wrapType` is parsed and threaded through `toProseDoc`, the PM schema
+> (`TextBoxExtension.ts` — `wrapType` attr, `data-wrap-type` DOM round-trip), and
+> the layout-engine `TextBoxBlock` (`types.ts:162 wrapType?: string`). The
+> `wrapMode` name and `exclusionZones` field proposed in this section were never
+> built and don't exist in source. The remaining gap is *consuming* that wrap
+> value in the engine — and per the correction box, the believed-correct fix is
+> flow-spacing + multi-column work (docs 19/20), not the exclusion-zone engine
+> sketched here.
+
+The Shape model already carries `position` (EMU offsets + relFrom anchors). It's already on the PM textBox node (shipped in `159cfc3`); the wrap value (`wrapType`) followed in PR #11. The historical "what's missing" list below predates that:
 
 1. **Parse side (`textBoxEnricher.ts`)** — extract `wp:wrapSquare` / `wp:wrapTight` / `wp:wrapTopAndBottom` / `wp:wrapNone` from the `<w:drawing>` envelope. Default to `'topAndBottom'` (safe legacy behavior) when none of those four is present.
 2. **PM schema (`TextBoxExtension.ts`)** — add `wrapMode: { default: 'topAndBottom' }` attr next to the position attrs added in `159cfc3`. parseDOM reads from `data-wrap-mode`; toDOM writes it back.

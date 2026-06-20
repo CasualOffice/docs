@@ -1,7 +1,7 @@
 # 17 — Production-Readiness Audit: the Four Fidelities
 
-**Date:** 2026-06-19
-**Status:** Honest-state assessment. Supersedes the optimistic framing in the status block of `CLAUDE.md` and the headline of `roundtrip-audit-report.md`.
+**Date:** 2026-06-19 (Phase-3 conclusion revised 2026-06-21 after real-world fixtures; PRs #10–#16)
+**Status:** Honest-state assessment. Supersedes the optimistic framing in the status block of `CLAUDE.md` and the headline of `roundtrip-audit-report.md`. **For live visual-fidelity tracking use [[19-content-drops-and-inconsistencies]] (content drops) and [[20-overlap-and-interaction]] (overlap/interaction) — they are authoritative; the Phase-3 conclusion here is historical and was over-optimistic on the synthetic corpus.**
 **Method:** Three independent code-reading audits (visual rendering, co-editing persistence, editing input), deliberately skeptical of the docs, citing source. No claims from memory.
 
 ---
@@ -225,7 +225,7 @@ editor is strong on text and weak-to-broken on drawings/layout:
 | Tables, borders, page color, sections | 70-85 (fair) | `with-tables`, `between-bar-borders`, `three-section-header`, `page-color` — close, minor drift. |
 | **Images / shapes / textboxes** | **0-35 (broken)** | `drawingml-shape` 14, `image-hyperlink` 15, `textbox-test` 33, `wpg-group`, `vml-rect`. The §1.3 anchored-drawing cluster, now quantified. |
 | **Real-world forms** | **21-24 (broken)** | `Form025U` 23, `medical-incident-form` 24 — the docs real users bring. |
-| **Multi-page pagination** | page-count-mismatch | `sds-real-world` 18≠16, `header-with-textbox` 4≠5, `find-scroll` 4≠3, `issue-68-large` 312≠313 — §1.2 confirmed. |
+| **Multi-page pagination** | page-count-mismatch | `sds-anti-t-zh` 18≠16, `header-with-textbox` 4≠5, `find-scroll` 4≠3, `issue-68-large` 312≠313 — §1.2 confirmed. |
 | **Hard failures** | 0 | ~~`oversized-header-image` renders a **blank body**~~ — **RETRACTED**, see correction below. |
 
 > **Correction (2026-06-19, Phase 3) — the harness had a false-negative bug.**
@@ -268,14 +268,17 @@ scores over-stated the number of *bugs*. Findings:
   line. The editor matches LibreOffice. (Harness caveat, noted above.)
 - **The dominant remaining gap is SYSTEMIC vertical-spacing drift, not
   per-fixture bugs.** `medical-incident-form` (30), `textbox-test` (46),
-  `EP_ZMVZ_MULTI_v4` (43), `float-wrap` (45), `sds-real-world` (40, 18≠16 pp)
+  `EP_ZMVZ_MULTI_v4` (43), `float-wrap` (45), `sds-anti-t-zh` (40, 18≠16 pp)
   all render their *content correctly* (forms, text boxes, fills, borders match)
   — they score low because the editor packs content slightly tighter than
   LibreOffice and the offset **accumulates down the page** (and tips long docs
   into page-count mismatches). This is the §1.2 line-height / paragraph-spacing /
   empty-paragraph-height / table-row-height metrics model — the audit's
-  make-or-break, and the hardest category. CLAUDE.md's "textboxes are the weak
-  spot" is now **stale**: textboxes render well; spacing is the weak spot.
+  make-or-break, and the hardest category. (The earlier "textboxes render well /
+  weak spot is just spacing" read here was itself over-stated: the real-world
+  trackers later found genuine VML textbox/group parse drops and systemic
+  anchored-object flow-spacing overlap — see [[19-content-drops-and-inconsistencies]]
+  A1/A2 and [[20-overlap-and-interaction]] B1/B2/B4.)
 
 **Update — rigorous diagnosis (per-element drift, PyMuPDF ref-Y vs editor
 DOM-Y) narrowed it.** It is NOT a global metric:
@@ -317,19 +320,22 @@ a Word oracle (text metrics already match).
 > by the line factor and then summed across the form. **#11 is now fully
 > actionable** — LibreOffice reference + precise locus (`toFlowBlocks.ts:1339`,
 > trHeight `atLeast` + `vAlign=center` cell padding). Real-world forms
-> (`medical-incident-form`, `Form025U`, `sds-real-world`, and the user's Chinese
-> SDS) are the highest-value fidelity corpus; keep them in the VF pipeline.
+> (`medical-incident-form`, `Form025U`, `sds-anti-t-zh`) are the highest-value
+> fidelity corpus; keep them in the VF pipeline.
 
 > **Chinese SDS added to corpus 2026-06-20** (`sds-anti-t-zh`, a 16-page GB/T
 > chemical Safety Data Sheet, CJK, 581 paragraphs / 2 tables / 30 sectPr;
 > composites `visual-fidelity-out/composites/sds-anti-t-zh-p{01..18}.png`).
 > Score **40.3**, **page-count MISMATCH 18≠16** (+2 overflow). Findings:
-> 1. **Vertical-metric overflow (dominant)** — the same row/line under-sizing
->    pushes content long; p1 shows the editor packing ~25% more per page early,
->    yet the doc ends 2 pages LONGER overall, so the error is non-uniform (some
->    rows compress, other blocks/CJK wrapping expand). col-corr ~98% on p1-3
->    then degrades as the offset cascades (later-page scores are
->    pagination-offset artifacts, not element bugs).
+> 1. **Page overflow — root-caused later to INCOMPLETE MULTI-COLUMN LAYOUT, not
+>    diffuse vertical drift.** This block originally read the +2 overflow as
+>    cumulative row/line under-sizing. The instrumented re-diagnosis in
+>    [[20-overlap-and-interaction]] (b583966) ruled that out (line height, CJK
+>    glyph width, group transform, auto-ratio all measure correct) and found the
+>    real cause: the SDS has 30 `<w:sectPr>` sections, ~7 of them `continuous`
+>    with `w:cols num="2"`; we render some 2-column regions but not all, so the
+>    missed `cols=2` sections flow single-column at ~2× height → the 2 extra
+>    pages. Fix is multi-column completion, tracked in doc 20.
 > 2. **Table borders dropped** — the "外观与性状/颜色/气味" hazard box is a
 >    bordered table in LibreOffice but renders borderless/flat in the editor.
 >    NEW gap, distinct from #11.
@@ -357,22 +363,34 @@ product bugs.** Working the ranked list with look-then-probe discipline, the
 - **Harness/metric artifacts (many):** the screenshot-stitching false-blank
   (`oversized-header-image`, fixed in `7e66cc0`); sparse-page density-grid noise
   (`image-hyperlink` and similar); colored-box position noise (`float-wrap`).
-- **Stale audit §1.3 claims (several):** **floating-image text wrap WORKS**
-  (wrapSquare in all positions, anchored images absolute-positioned, text
-  indents beside them — matches LibreOffice; the "dead code" claim was wrong).
-  **Textboxes render well** (CLAUDE.md "weak spot" is stale).
+- **Partly stale §1.3 claims:** square `wrapSquare` text wrap works on the
+  synthetic fixtures; but the "floating-image wrap is fully solved" /
+  "textboxes render well, CLAUDE.md weak spot is stale" reads here were
+  premature. The real-world trackers later found genuine VML textbox/group parse
+  drops ([[19-content-drops-and-inconsistencies]] A1/A2) and systemic
+  anchored-object flow-spacing overlap ([[20-overlap-and-interaction]] B1/B2/B4)
+  — see the conclusion update below.
 - **Genuine but ambiguous:** table cell/row heights — editor looks
   content-correct; **LibreOffice appears to over-size** (task #11, needs a Word
   oracle).
 
-**Bottom line:** four separate times this phase, a "broken" fixture turned out
-to be a measurement artifact or a stale claim, not a product defect. The
-editor's real visual fidelity is materially **better than the raw harness mean
-(67) suggests** — the genuine defect rate was low (2 crisp bugs across 44
-fixtures), and both are now fixed. The harness's real value was *separating* the
-2 real bugs from the ~10 false ones; treat low scores as triage leads to
-*verify*, never as defect counts. Remaining true gap worth a dedicated effort:
-the table-height question (#11), pending a Word reference.
+**Bottom line (superseded — see below):** on the *synthetic* 44-fixture corpus,
+four separate times this phase a "broken" fixture turned out to be a measurement
+artifact or a stale claim, not a product defect, and only 2 crisp bugs surfaced
+(both fixed). That conclusion held for the synthetic corpus but was
+**over-optimistic as a general claim.** Once real-world fixtures
+(`sds-anti-t-zh`, `medical-incident-form`, `Form025U`) were driven through the
+pipeline, the audit found a batch of genuine visible drops and overlaps that the
+synthetic corpus never exercised — catalogued in the authoritative current
+trackers [[19-content-drops-and-inconsistencies]] (A1 nested VML groups, A2
+textbox position, A4 inline-shape anchor, A5 line numbers) and
+[[20-overlap-and-interaction]] (B1 logo overlap, B2 SDS hazard-box overlap, B5
+image-move). Several are fixed (PRs #10–#11, #16); B1/B2/B4 reduced to one
+systemic anchored-object flow-spacing problem and the SDS 18≠16 to incomplete
+multi-column layout. Treat low scores as triage leads to *verify*, never as
+defect counts — and treat docs 19/20 as the live fidelity trackers, not this
+section. Remaining true gap worth a dedicated effort: the table-height question
+(#11) plus the multi-column / flow-spacing pass in doc 20.
 
 ### Phase 1 — Stop the bleeding (correctness bugs, cheap) — DONE 2026-06-19
 

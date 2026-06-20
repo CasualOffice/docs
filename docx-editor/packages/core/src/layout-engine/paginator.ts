@@ -97,6 +97,11 @@ export function createPaginator(options: PaginatorOptions) {
   // (continuous section break). When advanceColumn moves to the next column,
   // it resets cursorY to this value instead of topMargin.
   let columnRegionTop = margins.top;
+  // Deepest cursorY any column in the current region reached. Column 0 usually
+  // ends lower than later columns, so when a multi-column region ends we must
+  // resume below THIS, not below the last column's (higher) cursor — otherwise
+  // the following single-column content paints over column 0.
+  let columnRegionMaxBottom = margins.top;
 
   /**
    * Get X position for a given column index.
@@ -150,6 +155,7 @@ export function createPaginator(options: PaginatorOptions) {
 
     // Reset column region to page top on new page
     columnRegionTop = topMargin;
+    columnRegionMaxBottom = topMargin;
 
     if (options.onNewPage) {
       options.onNewPage(state);
@@ -189,6 +195,9 @@ export function createPaginator(options: PaginatorOptions) {
   function advanceColumn(state: PageState): PageState {
     // Check if there are more columns on this page
     if (state.columnIndex < columns.count - 1) {
+      // Remember how deep this column got before we jump back up to the region
+      // top for the next column.
+      columnRegionMaxBottom = Math.max(columnRegionMaxBottom, state.cursorY);
       state.columnIndex += 1;
       state.cursorY = columnRegionTop;
       state.trailingSpacing = 0;
@@ -324,10 +333,15 @@ export function createPaginator(options: PaginatorOptions) {
     const state = getCurrentState();
     state.page.columns = columns.count > 1 ? { ...columns } : undefined;
 
-    // Set column region top to current cursor position.
-    // This ensures that when advancing columns, new columns start
-    // at the same Y as where the multi-column content began (not page top).
-    columnRegionTop = state.cursorY;
+    // Start the new column region BELOW the deepest column of the region we're
+    // leaving — not just where the current column's cursor sits. When a
+    // multi-column region ends (a continuous section break dropping 2 columns
+    // back to 1), the last column usually ends higher than column 0; resuming
+    // at the current cursor would paint the next content over column 0.
+    const regionStart = Math.max(state.cursorY, columnRegionMaxBottom);
+    columnRegionTop = regionStart;
+    state.cursorY = regionStart;
+    columnRegionMaxBottom = regionStart;
 
     // Reset to column 0 for the new column layout
     state.columnIndex = 0;

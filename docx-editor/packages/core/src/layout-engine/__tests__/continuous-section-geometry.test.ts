@@ -100,4 +100,49 @@ describe('continuous section break geometry', () => {
     expect(lastPage.size.w).toBe(1200);
     expect(lastPage.size.h).toBe(700);
   });
+
+  test('content after a 2-column region resumes below the DEEPEST column, not the last one', () => {
+    // 1-col A, then a continuous break to 2 columns: B fills column 0 deep,
+    // a column break jumps to the shorter column 1 (C), then a continuous
+    // break drops back to 1 column. D must start below column 0's bottom —
+    // not at column 1's (higher) cursor, which would overpaint column 0.
+    const A = para('a', 100); // 1-col: 50(margin)+100 = 150
+    const to2: SectionBreakBlock = {
+      kind: 'sectionBreak',
+      id: 'to2',
+      type: 'continuous',
+      columns: { count: 2, gap: 20 },
+    };
+    const B = para('b', 300); // column 0: 150 → 450
+    const colBreak: FlowBlock = { kind: 'columnBreak', id: 'cb' };
+    const C = para('c', 80); // column 1: 150 → 230
+    const to1: SectionBreakBlock = {
+      kind: 'sectionBreak',
+      id: 'to1',
+      type: 'continuous',
+      columns: { count: 1, gap: 0 },
+    };
+    const D = para('d', 100);
+
+    const blocks: FlowBlock[] = [A.block, to2, B.block, colBreak, C.block, to1, D.block];
+    const measures = [
+      A.measure,
+      { kind: 'sectionBreak' },
+      B.measure,
+      { kind: 'columnBreak' },
+      C.measure,
+      { kind: 'sectionBreak' },
+      D.measure,
+    ] as never;
+
+    const result = layoutDocument(blocks, measures, {
+      pageSize: { w: 800, h: 2000 }, // tall page so nothing overflows
+      margins: { top: 50, right: 50, bottom: 50, left: 50 },
+    });
+
+    const dFrag = result.pages.flatMap((p) => p.fragments).find((f) => f.blockId === 'd');
+    expect(dFrag).toBeDefined();
+    // Column 0 (B) ended at 450; D must be at or below that, never at ~230.
+    expect(dFrag!.y).toBeGreaterThanOrEqual(450);
+  });
 });

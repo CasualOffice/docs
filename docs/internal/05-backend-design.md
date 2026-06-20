@@ -10,7 +10,7 @@ The v0 self-contained shape described below is implemented and
 unit-tested in `backend/`:
 
 - **Entry point:** `backend/cmd/gateway/main.go`
-- **Module:** `github.com/schnsrw/docx/backend` (`go 1.24`,
+- **Module:** `github.com/schnsrw/docx/backend` (`go 1.25`,
   one third-party dep: `github.com/coder/websocket`)
 - **Routes wired:**
   - `POST /api/docs` — upload a .docx, mint a docId, return
@@ -30,15 +30,31 @@ unit-tested in `backend/`:
     (`inline.go` + tests).
 - **Tests cover:** broadcast, room manager, upload, static-SPA path.
 
-What's still ahead:
-- **M2** — replace the "re-serve original upload on drain" snapshot
-  path with a Bun-worker pool that turns live Y.Doc state into a
-  fresh `.docx`.
-- **M3** — concrete WOPI host integration. The
-  `host.Integration` interface is already plug-in-ready; needs the
-  WOPI HTTP impl + a real host to integrate against.
-- **JWT auth on the WS query string** — designed below but not
-  enforced yet (v0 is anonymous; the room URL is the capability).
+Since shipped (the "still ahead" list below is now history):
+- **M2 — snapshot pipeline. Shipped via client-side push**, not
+  the Bun-worker / wazero serializer this doc originally sketched.
+  Pivot in `d24deaa`: `DocxEditorRef.save()` already serializes
+  `.docx` bytes client-side, and `useFileSourceAutoSave` pushes
+  them through `FileSource.save()` on a schedule. This was a
+  deliberate choice to keep a Bun runtime **out of** the
+  production Docker image. The headless-serializer-on-drain
+  discussion further down is superseded — see the M2 note below.
+  A server-side snapshot-on-drain fallback (for when no client is
+  around to push a final save) is tracked but deprioritised.
+- **M3 / Phase D — WOPI host integration. Shipped end-to-end**
+  (D1–D5): `internal/host/wopi/` client, JWKS-backed JWT verifier
+  in `internal/auth/wopi/` (alg-confusion defence rejects HS\*),
+  `GET /wopi/host` embed redirect, `WopiFileSource` on the editor
+  side, and a `host.Locker` capability (Lock / Unlock /
+  RefreshLock) the room manager drives on join / drain. See the
+  "Auth" and "Host integration" sections below for the as-built
+  surface.
+- **Auth — shipped, no longer anonymous-only.** Phase C
+  (Personal, `internal/auth/personal/`) added bcrypt + SQLite
+  sessions, `POST /auth/signup` · `/auth/login` · `/auth/logout`,
+  `GET /auth/me`, per-user file scoping, and the `casual-docs`
+  CLI. Phase D added JWT-on-the-WS for WOPI. v0 anonymous
+  share-links still exist as the inline mode.
 
 ## Deployment shapes (collab is opt-in, single-channel)
 
@@ -48,8 +64,8 @@ includes the Go backend at all:
 | Distribution | Mode | Backend |
 |---|---|---|
 | **GitHub Pages** — `doc.schnsrw.live` | single-user demo | none |
-| **Docker Hub** — `schnsrw/casual-doc` (planned) | collab on | the Go gateway in this repo |
-| **Tauri desktop app** (in progress) | single-user | none |
+| **Docker Hub** — `casualoffice/` scope (shipping) | collab on | the Go gateway in this repo |
+| **Tauri desktop app** (paused) | single-user | none |
 
 Mode 1 (Pages) already ships. Mode 3 (Tauri) reuses the same
 React+ProseMirror bundle inside a native window — no network calls,
@@ -57,7 +73,7 @@ no gateway, the user owns the file locally. Mode 2 (Docker) is the
 only place collab + the Go gateway live.
 
 This matches what sheet does: GitHub Pages demo at
-`sheet.schnsrw.live` is single-user, the `schnsrw/casual-sheets`
+`sheet.schnsrw.live` is single-user, the `casualoffice/casual-sheets`
 Docker image bundles the Hocuspocus server for collab.
 
 It shapes everything else:
@@ -74,8 +90,9 @@ It shapes everything else:
   integrate with.
 - The editor's existing `.docx` round-trip (parse + serialize)
   is the **only path** for bytes in and out in modes 1 and 3.
-  Mode 2 reuses it: the gateway delegates to the editor's
-  headless serializer rather than running its own.
+  Mode 2 reuses it client-side: rather than running a server-side
+  serializer, the editor pushes already-serialized `.docx` bytes
+  to the gateway (M2 pivot, `d24deaa`; see the M2 note below).
 
 ## What this service is (and what it isn't)
 
@@ -203,17 +220,20 @@ Three concrete implementations land in this order:
    share-link demo: spin up the container, upload, share URL,
    collaborate, download.
 
-2. **`wopi`** (v1) — real WOPI client over HTTP. Fetch ↔
-   `GET /wopi/files/{id}/contents`; Snapshot ↔ `PUT /wopi/files/
-   {id}/contents`; uses the host's `access_token` query-param
-   convention plus `CheckFileInfo` for metadata.
+2. **`wopi`** (shipped, Phase D) — real WOPI client over HTTP in
+   `internal/host/wopi/`. Fetch ↔ `GET /wopi/files/{id}/contents`;
+   Snapshot ↔ `PUT /wopi/files/{id}/contents`; uses the host's
+   `access_token` query-param convention plus `CheckFileInfo` for
+   metadata. Pairs with `internal/auth/wopi/` (JWKS-cached JWT
+   verifier) and the `host.Locker` Lock/Unlock/RefreshLock surface.
 
-3. **`jwtapi`** (v1+) — a leaner "API integration" host (the
-   user's "similar to WOPI but not exactly"). Fetch ↔
-   `GET <fetchURL>` with `Authorization: Bearer <jwt>`; Snapshot
-   ↔ `POST <callbackURL>` with the same auth. Useful when the
-   integrating service doesn't want to implement WOPI's full
-   surface.
+3. **`local`** (shipped, Phase C) — the on-disk per-user store
+   in `internal/host/local/` (`PerUserStores`) that backs the
+   Personal auth mode: bcrypt + SQLite identity, users land at
+   `<root>/users/<userID>/`, full file CRUD. This replaced the
+   originally-sketched `jwtapi` "WOPI-like but simpler" placeholder
+   — the actual leaner-than-WOPI integration is Personal mode, not
+   a generic bearer-token REST host.
 
 Adding a fourth (S3, raw filesystem, Git, …) is a single new
 struct implementing `Integration`. The gateway never grows a
@@ -241,8 +261,9 @@ browser → backend → inline.Fetch → seed Y.Doc → edit → snapshot
                   → inline.Snapshot → next-joiner Fetch → re-seed
 ```
 
-Once that's stable, plugging in `wopi` or `jwtapi` is a config
-change plus whatever real-host quirks surface.
+Once that's stable, plugging in `wopi` or the Personal `local`
+store is a config change plus whatever real-host quirks surface.
+(Both shipped — `wopi` in Phase D, `local` in Phase C.)
 
 ## Wire-level lifecycle
 
@@ -261,9 +282,9 @@ change plus whatever real-host quirks surface.
        v1+: validate JWT against host's JWKS (RS256)
      - join or create the room for docId
        - if creating: integration.Fetch(docId, token)
-                      → parse .docx via the eigenpal headless
-                        serializer (out-of-process Bun pool for
-                        v0; wazero-embedded WASM later)
+                      → the joining client parses the .docx with
+                        the editor's own round-trip (no server-side
+                        serializer; see the M2 pivot note above)
                       → seed an empty Y.Doc with the parsed model
      - send sync-step-1 over the WS, expect sync-step-2 back
      - then stream client awareness + updates
@@ -277,11 +298,15 @@ change plus whatever real-host quirks surface.
 
 3. DISCONNECT (last client)
    - Mark room "draining"
-   - Serialize Y.Doc → .docx via the headless serializer
+   - As shipped, the .docx bytes are produced client-side and
+     pushed via integration.Snapshot before drain (M2 pivot,
+     `d24deaa`) rather than serialized on the server. A
+     server-side serialize-on-drain fallback (for when no client
+     is present to push) is tracked but deprioritised.
    - integration.Snapshot(docId, token, contents)
-     - v0 inline:  update the in-process map
-     - v1 wopi:    PUT /wopi/files/{id}/contents
-     - v1+ jwtapi: POST <callbackURL> with bearer JWT
+     - inline:  update the in-process map
+     - wopi:    PUT /wopi/files/{id}/contents
+     - local:   write into <root>/users/<userID>/ (Personal mode)
    - Drop the in-memory Y.Doc (free room)
 
 4. DOWNLOAD (v0 only)
@@ -295,33 +320,43 @@ change plus whatever real-host quirks surface.
 ```
 
 The .docx-aware steps (deserialize on seed, serialize on snapshot)
-are the only non-CRDT-trivial pieces. Options for the headless
-serializer:
+are the only non-CRDT-trivial pieces.
 
-- **Embed the eigenpal core via wazero (Go WASM runtime).** Compile
-  `@eigenpal/docx-core` to WASM (it's already a TS package with
-  no DOM dependencies in its parser/serializer modules), call it
-  from Go. Same code path as the editor; no duplication.
-- **Out-of-process Bun worker pool.** Run `bun run serialize` as
-  a subprocess pool, pipe data over stdin/stdout. Higher latency
-  per op, simpler to ship in v0.
-- **Reimplement in Go.** Months of work; not v0.
+**M2 pivot (`d24deaa`) — superseding the options below.** This doc
+originally weighed three server-side serializers: embed the editor
+core via wazero (Go WASM), an out-of-process Bun worker pool, or a
+Go reimplementation. **All three were dropped.** `DocxEditorRef.save()`
+already produces serialized `.docx` bytes client-side, and
+`useFileSourceAutoSave` pushes them through `FileSource.save()` on a
+schedule — so the practical snapshot need is covered without putting
+a Bun runtime in the production Docker image, which is the whole
+point. The only remaining server-side serializer question is the
+deprioritised snapshot-on-drain fallback for the case where no
+client is around to push the final save.
 
-v0 plan: out-of-process Bun pool. Reassess after first usable
-build.
+## Auth: anonymous inline → Personal (Phase C) + WOPI JWT (Phase D)
 
-## Auth: anonymous (v0) → JWT + JWKS (v1+)
+All three are now shipped and coexist; mode is selected by config.
 
-**v0** — no JWT. The capability *is* the room URL. Anyone with
-the `/r/{docId}` link can join and edit. This is the share-link
-model sheet ships today: low ceremony, fine for the "spin up a
-container, demo it" path, and matches what an integration host
-would do with a one-off share URL anyway.
+**Inline / anonymous** — no JWT. The capability *is* the room URL.
+Anyone with the `/r/{docId}` link can join and edit. This is the
+share-link model sheet ships today: low ceremony, fine for the
+"spin up a container, demo it" path, and matches what an
+integration host would do with a one-off share URL anyway.
 
-**v1+** — JWT in the WS query string at connect: `?token=…`. The
-host (the service integrating with us) signs the token; we
-validate against the host's JWKS endpoint, configured at gateway
-startup via `HOST_JWKS_URL`. The token carries `{ docId,
+**Personal (Phase C, shipped)** — `internal/auth/personal/`:
+bcrypt-hashed credentials in SQLite at `<root>/.casual/users.db`,
+HMAC-signed session token (30-day TTL) in a `__Host-`-prefixed
+cookie under `SECURE_COOKIES=true`. `POST /auth/signup` ·
+`/auth/login` · `/auth/logout`, `GET /auth/me`, per-user file
+scoping, the `casual-docs` admin CLI, and `RequireAdmin` admin
+routes. First signup auto-promotes to admin.
+
+**WOPI (Phase D, shipped)** — JWT in the WS query string at
+connect: `?token=…`. The host (the service integrating with us)
+signs the token; we validate against the host's JWKS endpoint
+(cached) in `internal/auth/wopi/`, with an alg-confusion defence
+that rejects HS\*. The token carries `{ docId,
 permissions: 'r' | 'rw', exp }`; we validate `docId` matches the
 URL path and gate `MessageUpdate` frames on `permissions === 'rw'`.
 
@@ -362,17 +397,21 @@ services/document/
     ├── cmd/gateway/       — main entry: HTTP + WS
     ├── internal/yws/      — y-websocket binary protocol
     ├── internal/room/     — in-memory Y.Doc room manager
-    ├── internal/host/     — Integration interface +
-    │   ├── inline/        —   in-process map (v0)
-    │   ├── wopi/          —   WOPI client (v1)
-    │   └── jwtapi/        —   "WOPI-like but simpler" REST client (v1+)
-    ├── internal/auth/     — JWT + JWKS validation (v1+)
-    └── test/mock-host/    — local HTTP host harness for integration tests
+    ├── internal/host/     — Integration interface (+ Locker) +
+    │   ├── inline/        —   in-process map (anonymous share-link)
+    │   ├── wopi/          —   WOPI client (Phase D)
+    │   └── local/         —   on-disk per-user store (Phase C)
+    ├── internal/auth/     —
+    │   ├── personal/      —   bcrypt + SQLite sessions (Phase C)
+    │   └── wopi/          —   JWKS-cached JWT verifier (Phase D)
+    ├── internal/limit/    — per-IP rate limiting
+    ├── internal/middleware/ — request-id / structured logging
+    └── internal/version/  — build version
 ```
 
-Note: the M1 scaffold currently has `internal/wopi/` rather than
-the wider `internal/host/` tree above — the rename + interface
-generalisation lands with the first `inline` integration.
+(As built. The `internal/host/` rename + interface generalisation
+landed long ago, and the originally-sketched `jwtapi` placeholder
+was never built — Personal mode's `local` store fills that role.)
 
 ## Relationship to `services/sheet`
 
@@ -404,15 +443,15 @@ need it.
 2. ✅ Room manager with thread-safe Join/Leave (commit `451c4e6`,
    7 unit tests).
 3. ✅ y-websocket protocol message-type stubs (commit `451c4e6`).
-4. ⏳ Implement the four y-websocket message handlers — sync-1,
+4. ✅ Implement the four y-websocket message handlers — sync-1,
    sync-2, update, awareness — with a per-room broadcast hub.
-5. ⏳ `host.Integration` interface + `inline` implementation.
+5. ✅ `host.Integration` interface + `inline` implementation.
    `POST /api/docs` accepts an upload; `GET /api/docs/{id}/
    download` returns the latest snapshot.
-6. ⏳ Wire room creation to `inline.Fetch` (seed on first connect)
+6. ✅ Wire room creation to `inline.Fetch` (seed on first connect)
    and room drain to `inline.Snapshot` (snapshot on last
    disconnect).
-7. ⏳ Local test: two browsers each call `POST /api/docs` once,
+7. ✅ Local test: two browsers each call `POST /api/docs` once,
    share the returned `shareUrl`, connect via WS, see each
    other's edits live.
 
@@ -424,13 +463,12 @@ After M1 lands, scope M2:
 1. **Awareness / presence** — multi-cursor rendering, name
    badges. Y.Awareness is on the same WS channel, separate
    message type from updates.
-2. **`host` interface generalisation** — rename `internal/wopi`
-   to `internal/host`, move the existing scaffold under
-   `internal/host/wopi/`, add `internal/host/inline/` (the v0
-   path already running as part of M1) and `internal/host/jwtapi/`
-   (the "WOPI-like but simpler" REST client the user described).
-3. **JWT + JWKS** validation at connect when a non-inline host
-   is configured.
+2. **`host` interface generalisation** — done. `internal/host/`
+   holds `inline/`, `wopi/`, and `local/` (the Phase C per-user
+   store that replaced the never-built `jwtapi` placeholder).
+3. **JWT + JWKS** validation at connect — shipped for the WOPI
+   host (Phase D, `internal/auth/wopi/`); Personal mode (Phase C)
+   uses cookie sessions instead.
 4. **Docker image** — multi-stage build mirroring sheet's, single
    image that bundles the gateway + the static Vite editor.
    Landed: `Dockerfile` at the repo root, three stages
@@ -458,6 +496,9 @@ After M1 lands, scope M2:
 
 ---
 
-*Last updated 2026-05-18. Update when the first backend code
-lands. Supersedes the relevant "Open questions" rows in
-`docs/00-overview.md`.*
+*Last updated 2026-06-21 (Phase C + Phase D shipped; M2 snapshot
+pivoted to client-side push). Supersedes the relevant "Open
+questions" rows in `docs/00-overview.md`. Real-world visual
+fidelity is tracked in `docs/internal/19` (content drops) and
+`docs/internal/20` (overlap / interaction), not here; recent work
+landed in PRs #10–#16.*

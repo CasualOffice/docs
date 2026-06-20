@@ -1,18 +1,21 @@
 # 02 — Work Pipeline
 
-Per-gap workflow. Optimized for **TDD**: write the failing test first, fix until it passes, push upstream.
+Per-gap workflow. Optimized for **TDD**: write the failing test first, fix until it passes, open the PR on the CasualOffice org.
 
 ## Per-gap flow
 
 ```
-┌───────────────────────────┐
-│ 1. Pick from gap matrix    │  pick the highest-priority "open" entry in
-│    (docs/03-gap-matrix.md) │  docs/03-gap-matrix.md
-└──────────┬────────────────┘
+┌───────────────────────────────────┐
+│ 1. Pick from the active tracker    │  pick the highest-priority "open" entry
+│    (docs/internal/19 + 20)         │  in docs/internal/19 (content drops) /
+│                                    │  20 (overlap/interaction). Round-trip
+│                                    │  gaps: docs/internal/03-gap-matrix.md
+└──────────┬─────────────────────────┘
            ▼
 ┌───────────────────────────┐
-│ 2. Read the source         │  GH issue + openspec proposal + linked PRs
-│    sources                 │  in eigenpal/docx-editor
+│ 2. Read the source         │  the inlined fork source under
+│    sources                 │  docx-editor/ + the tracker row's cited
+│                            │  file:line evidence
 └──────────┬────────────────┘
            ▼
 ┌───────────────────────────┐
@@ -50,49 +53,48 @@ Per-gap workflow. Optimized for **TDD**: write the failing test first, fix until
 └──────────┬────────────────┘
            ▼
 ┌───────────────────────────┐
-│ 9. Upstream PR             │  open against eigenpal/docx-editor.
-│   (or fork-only if         │  Title: short factual. Body: minimum a
-│    upstream-hostile)       │  reviewer needs, screenshots for visual.
+│ 9. PR                      │  the fork is inlined (no separate .git);
+│                            │  open the PR on the CasualOffice org from a
+│                            │  `fidelity/<gap>` branch. Title: short
+│                            │  factual. Body: minimum a reviewer needs,
+│                            │  screenshots for visual.
 └──────────┬────────────────┘
            ▼
 ┌───────────────────────────┐
-│ 10. Update matrix          │  mark status in docs/03-gap-matrix.md
+│ 10. Update tracker         │  mark status in docs/internal/19 or 20
+│                            │  (round-trip rows: 03-gap-matrix.md)
 └───────────────────────────┘
 ```
 
 ## Test conventions
 
-- **Playwright** for anything user-visible (rendering, layout, interaction). Tests live in `docx-editor/e2e/tests/<gap>.spec.ts`. Use the `EditorPage` helper from `e2e/helpers/`.
+- **Playwright** for anything user-visible (rendering, layout, interaction). Tests live under `docx-editor/e2e/tests/` (e.g. `<gap>.spec.ts`). Use the `EditorPage` helper from `e2e/helpers/`.
 - **Bun test** for pure-logic units (parsers, serializers, model transforms). Co-located with source under `__tests__/`.
-- **Test fixture** under `docx-editor/e2e/fixtures/`. If a useful fixture already exists, reuse it (`textbox-test.docx`, `demo/demo.docx`, etc.) — see `e2e/fixtures/`.
+- **Test fixture** under `docx-editor/e2e/fixtures/`. The active visual-fidelity work exercises the real-world VF group there — `sds-anti-t-zh.docx`, `medical-incident-form.docx`, `Form025U.docx` — verify against those (and the composites in `docx-editor/visual-fidelity-out/`). If a useful fixture already exists, reuse it.
 - One assertion per behaviour. Don't pile six checks into one test.
 - A test for a gap must initially **fail** before the fix. If it passes already, the gap might already be partially fixed — investigate before declaring it open.
 
-## Running tests in Docker
+## Running tests
 
-The editor service already runs Vite on `:5173`. We run Playwright against it from inside the same container so no host installs are required. First time, Playwright downloads Chromium and its OS deps inside the container (~few hundred MB).
+Run Playwright locally from `docx-editor/` (per `docx-editor/CLAUDE.md`); the
+config starts/reuses the dev server on `:5173`. Always typecheck first.
 
 ```bash
-# One-time per container lifecycle (Chromium + apt deps):
-docker compose exec -u root editor bunx playwright install --with-deps chromium
-
 # Run a single test file:
-docker compose exec editor bunx playwright test e2e/tests/textbox-rendering.spec.ts
+bun run typecheck && npx playwright test tests/textbox-rendering.spec.ts --timeout=30000
 
 # Run by grep pattern:
-docker compose exec editor bunx playwright test --grep "Simple Text Box"
+bun run typecheck && npx playwright test --grep "Simple Text Box" --timeout=30000 --workers=4
 
-# Run with the existing dev server (reuses :5173 since reuseExistingServer is on):
-docker compose exec editor bunx playwright test --workers=2
+# Full suite:
+bun run typecheck && npx playwright test --timeout=60000 --workers=4
 ```
-
-If chromium install bloats the container too much over time, we can switch to a sibling Playwright image — but defer until it actually annoys us.
 
 ## Bun unit tests
 
 ```bash
-docker compose exec editor bun run typecheck                  # whole monorepo
-docker compose exec editor bun test packages/core/src/docx/  # one folder
+bun run typecheck                  # whole monorepo
+bun test packages/core/src/docx/   # one folder
 ```
 
 ## Commit message style (per docx-editor/CLAUDE.md)
@@ -105,13 +107,9 @@ feat(layout-painter): render text-box border per OOXML spPr
 
 Body: minimum a reviewer needs that they can't get from the diff. One sentence is often enough. Don't `@`-mention; don't list changed files; don't reference unrelated issues.
 
-## Upstream PR style
+## PR style
 
-For visual fixes, include before/after screenshots in the PR body. For round-trip fixes, include a sample `.docx` fixture or describe the minimal reproducer. Reference the issue number with `Fixes #N` so GitHub auto-links.
-
-## Fork-only fallback
-
-If upstream rejects or stalls past a reasonable window, keep the fix in our fork and document it in `docs/04-fork-divergence.md` (will be created when first divergence happens).
+For visual fixes, include before/after screenshots in the PR body. For round-trip fixes, include a sample `.docx` fixture or describe the minimal reproducer. PRs land on the CasualOffice org from `fidelity/<gap>` branches (see `git log` — `fidelity/content-drops`, `fidelity/anchor-geometry`, etc.).
 
 ## Format roadmap (post-docx)
 
@@ -130,8 +128,9 @@ docx (canon) ───┐                        ┌─── docx
 
 Order:
 
-1. **docx fidelity to ≥ 90% pristine** (current focus — gap matrix
-   working set).
+1. **docx fidelity** — round-trip floor (≥ 90% pristine) is cleared
+   (39/39 fixtures); current focus is real-world *visual* fidelity on the
+   VF `real-world` fixtures, tracked in docs/internal/19 + 20.
 2. **.odt input parser + output converter.** Closest neighbour to
    docx; LibreOffice's reference docs are public.
 3. **.md input parser + output converter.** Lossy in both

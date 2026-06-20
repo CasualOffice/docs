@@ -62,18 +62,20 @@ export interface MathEquation {
 }
 ```
 
-The deferred `roundtrip-vml-cluster` row needs the same shape — an
-opaque-XML preservation field on Image/Shape/TextBox that's emitted
-verbatim when present and bypasses the model-driven serializer. The
-blocker noted in the matrix is that the **enricher pipeline**
-(`textBoxEnricher.ts`) currently flattens wpg-groups into individual
-parsed shapes for *rendering*, and on save those parsed shapes
-re-serialize as standalone `<w:drawing>` elements — duplicating
-content if we also emit the raw `<mc:AlternateContent>` envelope.
+The `roundtrip-vml-cluster` row needed the same shape — an opaque-XML
+preservation field on Image/Shape/TextBox that's emitted verbatim when
+present and bypasses the model-driven serializer. The earlier blocker
+was that the **enricher pipeline** (`textBoxEnricher.ts`) flattened
+wpg-groups into individual parsed shapes for *rendering*, and on save
+those parsed shapes re-serialized as standalone `<w:drawing>` elements
+— duplicating content if we also emit the raw `<mc:AlternateContent>`
+envelope.
 
-The correct fix is a **separation of render-only content from
-serialization-canonical content** — the same A/B/C split the review
-recommends.
+That's now **landed** (commit `302c210`): the enricher captures the
+raw envelope at parse time and re-emits it verbatim on save, with the
+parsed shapes kept render-only. This is the **separation of render-only
+content from serialization-canonical content** the review recommends,
+and it closes the VML cluster end-to-end (doc 19 A1, PR #11).
 
 ### Cross-browser font-metric drift is real (but bounded)
 
@@ -156,20 +158,23 @@ which matters for:
 2. Forensic / archival workflows.
 
 It does *not* mean we were losing the user's work. The fixes were
-worth doing for cleanliness — the audit now shows 19/39 fixtures
-round-trip with zero element drops — but the framing of "2,396
-dropped tags is alarming" overstates the real impact.
+worth doing for cleanliness — the audit now shows all 39/39 fixtures
+round-trip pristine (the ≥ 90 % desktop-ship floor is cleared) — but
+the framing of "2,396 dropped tags is alarming" overstates the real
+impact.
 
-The **one** remaining genuine information-loss item is the VML
-cluster (~108 tags) for older docs, deferred behind the enricher
-refactor.
+The VML cluster (~108 tags for older docs) was the last genuine
+information-loss item, and it is now **closed** — round-tripped
+verbatim via raw-XML envelope capture in the enricher (commit
+`302c210`; doc 19 row A1, PR #11), exactly the opaque-XML-island model
+this document sketches below.
 
 ## What's actually in flight (vs. what's deferred)
 
 | Item | Status | Why |
 |---|---|---|
 | Floating-image wrap | open, XL | Needs measurement-time exclusion zones with shape masks |
-| VML round-trip | deferred, M-L | Needs render-only / serialize-canonical content separation in the enricher |
+| VML round-trip | done (commit `302c210`) | Raw-XML envelope capture in the enricher — render-only / serialize-canonical separation; closes doc 19 A1 (PR #11) |
 | Multi-section sectPr | done (commit `a3d7efe`) | Was a one-liner once the model already captured it |
 | TOC tab leaders | done (commit `929d631`) | CSS padding + content-box clip + border-bottom for solid leaders |
 | TIFF images | done (commit `6a03f46`) | Browser-native fallback insufficient; ship a styled placeholder |
@@ -182,9 +187,14 @@ Not now, but the trigger conditions are:
 
 1. **Server-side document layout** — generating snapshots / PDFs /
    page screenshots in a headless backend without a browser. Today
-   we don't do this (snapshots are produced client-side by the Yjs
-   doc handing off to the WOPI snapshot worker; that worker runs
-   the eigenpal headless serializer, not a full layout pass).
+   we don't do this. M2 snapshots are produced **client-side**:
+   `DocxEditorRef.save()` serializes the `.docx` bytes in the browser
+   and `useFileSourceAutoSave` pushes them through `FileSource.save()`
+   on a schedule (commit `d24deaa`). The earlier "Bun worker pool /
+   headless serializer on drain" plan was explicitly dropped to keep
+   Bun out of the production image; server-side snapshot-on-drain
+   survives only as a deprioritised fallback for the no-client-around
+   case, and no headless serializer or layout pass runs in production.
 2. **Multi-client visual consistency that matters** — collab cursors
    need pixel-accurate alignment across peers. Our current Yjs plan
    uses paragraph IDs + character offsets, not pixel coords, so this
@@ -196,17 +206,14 @@ Until those land, the cost (multi-month refactor of all paint paths,
 adding Rust/AssemblyScript build pipeline, performance work to
 keep WASM ↔ DOM transfer fast) outweighs the benefit.
 
-## When the enricher refactor becomes the right call
+## The enricher refactor (now landed)
 
-The trigger is the **VML preservation gap** becoming visible in real
-user docs. Currently it's flagged on two fixtures (medical-incident-
-form, sds-real-world) and only affects `Save → re-open in Word 2003`
-compatibility — modern Word saves and re-renders cleanly because
-the Choice path round-trips through our pipeline correctly.
-
-When a real user hits "saved my doc, sent it to Legal, they opened
-it in [old client] and shapes were gone," that's the trigger to
-land the split. The design sketch:
+This was framed as a future call triggered by the **VML preservation
+gap** becoming visible in real user docs. It has since landed (commit
+`302c210`, PR #11): the enricher captures the raw VML envelope at parse
+time and re-emits it verbatim on save, so `Save → re-open in Word 2003`
+compatibility is preserved alongside the modern Choice-path render.
+The design that shipped is the one sketched here:
 
 ```
 RunContent (current)
@@ -224,10 +231,15 @@ Edit detection: marks the opaque field as dirty → falls back to
 ## Bottom line
 
 The review's diagnosis is mostly accurate; the prescriptions are
-mostly already in place. The two genuinely-open items — floating-
-image wrap and VML preservation — are correctly scoped as the
-remaining hard pieces, and both have known shapes for what the fix
-needs to look like.
+mostly already in place. Of the two items flagged as hard, VML
+preservation has since landed (raw-XML envelope capture, commit
+`302c210`, PR #11); floating-image wrap remains the genuinely-open
+piece. The live fidelity work has moved on to real-world *visual*
+fidelity (overlap, anchor flow position) on fixtures `sds-anti-t-zh`,
+`medical-incident-form`, and `Form025U` — tracked authoritatively in
+[`19-content-drops-and-inconsistencies.md`](19-content-drops-and-inconsistencies.md)
+and [`20-overlap-and-interaction.md`](20-overlap-and-interaction.md),
+not here.
 
 The 2,396-dropped-tags framing is the one piece worth recalibrating
 in future writeups: it's a structural-fidelity metric, not a data-loss
@@ -237,5 +249,8 @@ been previously corrupted on save.
 
 ---
 
-*Written 2026-05-18 to capture session context. Update or supersede
-when the floating-image-wrap or VML-preservation work actually lands.*
+*Written 2026-05-18 to capture session context; updated 2026-06-21 —
+VML preservation landed (commit `302c210`, PR #11); M2 snapshot is
+client-side push (`d24deaa`); fidelity work tracked in docs/internal/19
+and /20 (PRs #10–#16). Update or supersede when floating-image-wrap
+lands.*
