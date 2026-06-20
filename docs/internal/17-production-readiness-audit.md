@@ -45,7 +45,7 @@ Net: "we say 4 pages, Word says 5," paragraphs split at the wrong line.
 ### 1.3 Data-preserved-but-visually-wrong (round-trips fine, renders wrong)
 | Feature | Evidence |
 |---|---|
-| **Widow/orphan control** — *not implemented at all* | zero `widow`/`orphan` hits in `layout-engine/`; greedy line-fill `index.ts:391-452` |
+| ~~**Widow/orphan control** — *not implemented*~~ **IMPLEMENTED (2026-06-21)** — `layoutParagraph` keeps >=2 lines of a split paragraph on each side of a page/column break (Word default §17.3.1.44); orphan-push + widow-pull, unit-tested (`widowOrphan.test.ts`). Applied by default; explicit `w:val=0` opt-out not yet plumbed. | `layout-engine/index.ts` |
 | **Page/margin/column-anchored shapes/textboxes** snap to text cursor, not real position | `renderTextBox.ts:86-100` forces `dxPx/dyPx=0` for non-paragraph anchors |
 | **Tight/through image wrap** → square wrap | `floatingObjects.ts:29` rect-only exclusion; `wp:wrapPolygon` never consumed |
 | **Floating tables (`tblpPr`)** overlap following text; spurious blank pages | `index.ts:584`; `01-fidelity-gaps.md:130-134` |
