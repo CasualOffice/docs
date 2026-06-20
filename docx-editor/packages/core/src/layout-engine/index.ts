@@ -427,6 +427,41 @@ function layoutParagraph(
       }
     }
 
+    // Widow/orphan control (OOXML §17.3.1.44 `w:widowControl`, Word default ON):
+    // keep at least two lines of a paragraph together on each side of a
+    // page/column break. Applied by default — the rare explicit `w:widowControl
+    // w:val="0"` opt-out isn't yet plumbed to the layout block.
+    if (lines.length >= 2 && fittingLines > 0) {
+      const remainingAfter = lines.length - currentLineIndex - fittingLines;
+      const st = paginator.getCurrentState();
+      const atRegionTop = st.cursorY <= st.topMargin + 0.5;
+
+      if (remainingAfter > 0 && currentLineIndex === 0 && fittingLines < 2 && !atRegionTop) {
+        // Orphan: fewer than two opening lines would sit before the break.
+        // Push the whole paragraph to the next page/column.
+        paginator.forcePageBreak();
+        continue;
+      }
+      if (remainingAfter === 1) {
+        // Widow: exactly one line would be stranded after the break.
+        const minThisSide = currentLineIndex === 0 ? 2 : 1;
+        if (fittingLines - 1 >= minThisSide) {
+          // Pull one line down so two travel together.
+          fittingLines -= 1;
+          linesHeight = 0;
+          for (let j = currentLineIndex; j < currentLineIndex + fittingLines; j++) {
+            linesHeight += lines[j].lineHeight;
+          }
+        } else if (!atRegionTop) {
+          // Reducing would orphan the opening — move the whole paragraph.
+          paginator.forcePageBreak();
+          continue;
+        }
+        // else: at region top and unsatisfiable (paragraph taller than the
+        // page) — accept rather than loop forever.
+      }
+    }
+
     // Create fragment for these lines
     const isFirstFragment = currentLineIndex === 0;
     const isLastFragment = currentLineIndex + fittingLines >= lines.length;
