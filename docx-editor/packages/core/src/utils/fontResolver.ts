@@ -76,19 +76,22 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
   arial: {
     googleFont: 'Arimo',
     category: 'sans-serif',
-    fallbackStack: ['Arial', 'Arimo', 'Helvetica', 'sans-serif'],
+    // Liberation Sans (bundled, OFL) is metric-compatible with Arial and is
+    // what LibreOffice substitutes — preferred over the CDN Arimo so the editor
+    // matches the reference deterministically without a network fetch.
+    fallbackStack: ['Arial', 'Liberation Sans', 'Arimo', 'Helvetica', 'sans-serif'],
     singleLineRatio: 1.1172, // (1854+434)/2048 — no sTypoLineGap
   },
   'times new roman': {
     googleFont: 'Tinos',
     category: 'serif',
-    fallbackStack: ['Times New Roman', 'Tinos', 'Times', 'serif'],
+    fallbackStack: ['Times New Roman', 'Liberation Serif', 'Tinos', 'Times', 'serif'],
     singleLineRatio: 1.1074, // (1825+443)/2048 — no sTypoLineGap
   },
   'courier new': {
     googleFont: 'Cousine',
     category: 'monospace',
-    fallbackStack: ['Courier New', 'Cousine', 'Courier', 'monospace'],
+    fallbackStack: ['Courier New', 'Liberation Mono', 'Cousine', 'Courier', 'monospace'],
     singleLineRatio: 1.1328, // 2320/2048
   },
 

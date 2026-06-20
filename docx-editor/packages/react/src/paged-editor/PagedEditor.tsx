@@ -1364,6 +1364,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const onDocumentChangeRef = useRef(onDocumentChange);
     const onReadyRef = useRef(onReady);
     const onRenderedDomContextReadyRef = useRef(onRenderedDomContextReady);
+    // Always-current document, read by async layout passes (font-load / rAF
+    // relayout) for doc-level overlays. Without this they close over a stale
+    // `document` and a late relayout can clobber freshly-applied state — e.g.
+    // applying a watermark then a font-triggered relayout dropping it.
+    const documentRef = useRef(document);
     // Last PM state we invoked onSelectionChange for. updateSelectionOverlay
     // runs from ResizeObserver / layout / font-load paths too, not only on real
     // state changes — firing the callback in those cases caused the sidebar
@@ -1377,6 +1382,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     onDocumentChangeRef.current = onDocumentChange;
     onReadyRef.current = onReady;
     onRenderedDomContextReadyRef.current = onRenderedDomContextReady;
+    documentRef.current = document;
 
     // State
     const [layout, setLayout] = useState<Layout | null>(null);
@@ -1821,11 +1827,14 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             // painter's `applyPageStyles` reads `backgroundColor`
             // (not `pageBackground`), so we set both keys to keep
             // `LayoutPainter`'s own `pageBackground` option happy too.
-            const docBgColor = document?.package.document.background?.color?.rgb ?? undefined;
+            // Read doc-level overlays from the ref so a late/async relayout
+            // (font-load, rAF) uses the current document, not a stale closure.
+            const currentDoc = documentRef.current;
+            const docBgColor = currentDoc?.package.document.background?.color?.rgb ?? undefined;
             const pageBackground = docBgColor ? `#${docBgColor}` : '#fff';
             // Document-level text watermark (C5). Painter draws it as a
             // rotated overlay behind the content on every page.
-            const watermark = document?.package.document.watermark;
+            const watermark = currentDoc?.package.document.watermark;
 
             // Render pages to container
             const renderPagesKind = renderPages(newLayout.pages, pagesContainerRef.current, {
