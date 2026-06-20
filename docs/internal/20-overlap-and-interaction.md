@@ -53,7 +53,25 @@ its own scoped effort with round-trip + VF guards.
 
 ## Plan
 
-Work by clarity × impact: **B1 (concentrated, header anchored image)** →
-**B2 (flagship SDS, anchored text-frame reserve-space)** → B4 (shares anchor
-geometry) → verify+fix B5/B6 (live repro) → B3 (scan/verify). Each validated
-against the reference via the VF `real-world` group before/after.
+B5/B6 (move) — **done.** B3 — **not a bug.** B1/B2/B4 reduce to the systemic
+flow-spacing problem above.
+
+### Spacing-fidelity pass — measured scope (SDS 18pp vs ref 16pp, ~12.5% tall)
+
+Ruled OUT as the systematic cause (measured, so the next pass doesn't re-chase
+them):
+- **Line height** — exact line spacing IS honored (rendered 17/21/23px lines
+  match `w:line=260/313/343 exact`).
+- **CJK glyph width** — correct (~1.0em full-width; width/char/fontSize ≈ 0.95–1.07),
+  so no over-wrapping. #19 isn't inflating the SDS.
+- **VML group transform** — pixel-exact (B2).
+- **Auto line ratio** — only touches the few `auto` lines; most SDS spacing is
+  `exact`.
+
+Remaining suspects (where the diffuse ~2px/element lives): **paragraph
+space-before/after** application, **empty-paragraph heights** (11 empties =
+145px on p1), and **pagination break decisions** (p1 only fills 833/920px, so
+keep-together / non-splitting blocks waste page space → extra pages). Next pass:
+measure our per-paragraph margins vs the LibreOffice reference, fix the
+consistent excess, and re-check break placement — each step gated by the VF
+`real-world` group + the 39 round-trip fixtures.
