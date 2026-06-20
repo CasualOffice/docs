@@ -15,7 +15,6 @@ import type { CSSProperties } from 'react';
 import type { SectionProperties, TabStop } from '@eigenpal/docx-core/types/document';
 import { twipsToPixels, pixelsToTwips, formatPx } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
-import { findVerticalScrollParentOrRoot } from '../../paged-editor/findVerticalScrollParent';
 
 // ============================================================================
 // TYPES
@@ -104,25 +103,14 @@ export function HorizontalRuler({
   const [dragValue, setDragValue] = useState<number | null>(null);
   const [dragPositionPx, setDragPositionPx] = useState<number | null>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
-  // Anchor captured at drag-start so each mousemove computes a screen-
-  // pixel delta against a stable reference instead of re-reading the
-  // ruler's current bounding rect. Without this, changing a margin or
-  // indent during the drag re-flows the page, shifts the ruler on
-  // screen, changes the rect on the next mousemove, and the pin
-  // oscillates ("shakes") — most visible when the user reverses drag
-  // direction. Same pattern lives in VerticalRuler.
-  //
-  // ALSO captures the editor scroller's scrollLeft. The horizontal
-  // ruler responds to horizontal drag, so the relevant scroll axis
-  // is horizontal — when the user scrolls the editor sideways
-  // mid-drag (page is wider than the viewport at higher zoom
-  // levels), the cursor sits at a different page coordinate even
-  // though clientX hasn't changed. Folding scrollLeft delta into
-  // dxPx keeps the drag value tracking the cursor in page space.
+  // Anchor captured at drag-start; the new value is computed as
+  // `startValue + (pointer delta in twips)` against this fixed reference, so
+  // re-flowing the page mid-drag can't shift it and make the marker oscillate.
+  // `marker` is stored here (not read from React state) so handleDrag can stay
+  // referentially stable — see its definition. Same pattern in VerticalRuler.
   const dragAnchorRef = useRef<{
+    marker: MarkerType;
     startClientX: number;
-    startScrollX: number;
-    scroller: HTMLElement | null;
     startLeftMarginTwips: number;
     startRightMarginTwips: number;
     startFirstLineIndentTwips: number;
@@ -152,21 +140,55 @@ export function HorizontalRuler({
   const rightIndentPosPx = pageWidthPx - rightMarginPx - indentRightPx;
   const firstLinePosPx = leftMarginPx + indentLeftPx + firstLineIndentPx;
 
+  // Live values mirrored into a ref so handleDrag is referentially STABLE
+  // (empty deps). Depending on the live margins/indents would recreate
+  // handleDrag on every drag step, churning the mousemove listener (remove +
+  // re-add every frame) which drops events and makes the marker jitter/"shake".
+  const liveRef = useRef({
+    zoom,
+    pageWidthTwips,
+    pageWidthPx,
+    leftMarginTwips,
+    leftMarginPx,
+    rightMarginTwips,
+    rightMarginPx,
+    contentTwips,
+    indentLeft,
+    indentLeftPx,
+    indentRight,
+    onLeftMarginChange,
+    onRightMarginChange,
+    onFirstLineIndentChange,
+    onIndentLeftChange,
+    onIndentRightChange,
+  });
+  liveRef.current = {
+    zoom,
+    pageWidthTwips,
+    pageWidthPx,
+    leftMarginTwips,
+    leftMarginPx,
+    rightMarginTwips,
+    rightMarginPx,
+    contentTwips,
+    indentLeft,
+    indentLeftPx,
+    indentRight,
+    onLeftMarginChange,
+    onRightMarginChange,
+    onFirstLineIndentChange,
+    onIndentLeftChange,
+    onIndentRightChange,
+  };
+
   const handleDragStart = useCallback(
     (e: React.MouseEvent, marker: MarkerType) => {
       if (!editable) return;
       e.preventDefault();
       e.stopPropagation();
-      // Snapshot the mouse position + every margin/indent value at
-      // drag-start, plus the scroller's scrollLeft so the drag tracks
-      // the cursor in page space (not viewport space) when the user
-      // scrolls horizontally mid-drag.
-      // See dragAnchorRef declaration for the full why.
-      const scroller = rulerRef.current ? findVerticalScrollParentOrRoot(rulerRef.current) : null;
       dragAnchorRef.current = {
+        marker,
         startClientX: e.clientX,
-        startScrollX: scroller ? scroller.scrollLeft : 0,
-        scroller,
         startLeftMarginTwips: leftMarginTwips,
         startRightMarginTwips: rightMarginTwips,
         startFirstLineIndentTwips: effectiveFirstLineIndent,
@@ -178,20 +200,37 @@ export function HorizontalRuler({
     [editable, leftMarginTwips, rightMarginTwips, effectiveFirstLineIndent, indentLeft, indentRight]
   );
 
+  // Referentially stable (reads everything from refs) so the mousemove
+  // listener is attached exactly once per drag.
   const handleDrag = useCallback(
     (e: MouseEvent) => {
       const anchor = dragAnchorRef.current;
-      if (!dragging || !anchor) return;
+      if (!anchor) return;
+      const {
+        zoom,
+        pageWidthTwips,
+        pageWidthPx,
+        leftMarginTwips,
+        leftMarginPx,
+        rightMarginTwips,
+        rightMarginPx,
+        contentTwips,
+        indentLeft,
+        indentLeftPx,
+        indentRight,
+        onLeftMarginChange,
+        onRightMarginChange,
+        onFirstLineIndentChange,
+        onIndentLeftChange,
+        onIndentRightChange,
+      } = liveRef.current;
 
-      // Cursor delta + horizontal scroll delta. Both contribute to
-      // "how far the marker should move in page coordinates" — pure
-      // mouse delta alone breaks when the user scrolls the editor
-      // sideways mid-drag (page wider than viewport at higher zoom).
-      const scrollDelta = anchor.scroller ? anchor.scroller.scrollLeft - anchor.startScrollX : 0;
-      const dxPx = e.clientX - anchor.startClientX + scrollDelta;
+      // Pointer delta only — no scroll feedback (see VerticalRuler for why folding
+      // in the scroller delta created a margin-runaway/stuck feedback loop).
+      const dxPx = e.clientX - anchor.startClientX;
       const dxTwips = pixelsToTwips(dxPx / zoom);
 
-      if (dragging === 'leftMargin') {
+      if (anchor.marker === 'leftMargin') {
         // Drag right = larger left margin.
         const maxMargin = pageWidthTwips - rightMarginTwips - 720;
         const rounded = Math.round(
@@ -204,7 +243,7 @@ export function HorizontalRuler({
         // monotonic px value; absolute accuracy isn't required.
         setDragPositionPx(twipsToPixels(rounded) * zoom);
         onLeftMarginChange?.(rounded);
-      } else if (dragging === 'rightMargin') {
+      } else if (anchor.marker === 'rightMargin') {
         // Drag right = smaller right margin (the right edge moves
         // right with the pin).
         const maxMargin = pageWidthTwips - leftMarginTwips - 720;
@@ -214,7 +253,7 @@ export function HorizontalRuler({
         setDragValue(rounded);
         setDragPositionPx(pageWidthPx - twipsToPixels(rounded) * zoom);
         onRightMarginChange?.(rounded);
-      } else if (dragging === 'firstLineIndent') {
+      } else if (anchor.marker === 'firstLineIndent') {
         const maxIndent = contentTwips - indentLeft - indentRight - 720;
         const rounded = Math.round(
           Math.max(-indentLeft, Math.min(anchor.startFirstLineIndentTwips + dxTwips, maxIndent))
@@ -222,7 +261,7 @@ export function HorizontalRuler({
         setDragValue(rounded);
         setDragPositionPx(leftMarginPx + indentLeftPx + twipsToPixels(rounded) * zoom);
         onFirstLineIndentChange?.(rounded);
-      } else if (dragging === 'leftIndent') {
+      } else if (anchor.marker === 'leftIndent') {
         const maxIndent = contentTwips - indentRight - 720;
         const rounded = Math.round(
           Math.max(0, Math.min(anchor.startLeftIndentTwips + dxTwips, maxIndent))
@@ -230,7 +269,7 @@ export function HorizontalRuler({
         setDragValue(rounded);
         setDragPositionPx(leftMarginPx + twipsToPixels(rounded) * zoom);
         onIndentLeftChange?.(rounded);
-      } else if (dragging === 'rightIndent') {
+      } else if (anchor.marker === 'rightIndent') {
         // Drag right = smaller right indent.
         const maxIndent = contentTwips - indentLeft - 720;
         const rounded = Math.round(
@@ -241,25 +280,8 @@ export function HorizontalRuler({
         onIndentRightChange?.(rounded);
       }
     },
-    [
-      dragging,
-      zoom,
-      pageWidthTwips,
-      pageWidthPx,
-      leftMarginTwips,
-      leftMarginPx,
-      rightMarginTwips,
-      rightMarginPx,
-      contentTwips,
-      indentLeft,
-      indentLeftPx,
-      indentRight,
-      onLeftMarginChange,
-      onRightMarginChange,
-      onFirstLineIndentChange,
-      onIndentLeftChange,
-      onIndentRightChange,
-    ]
+    // Stable: all live values are read from liveRef.current.
+    []
   );
 
   const handleDragEnd = useCallback(() => {

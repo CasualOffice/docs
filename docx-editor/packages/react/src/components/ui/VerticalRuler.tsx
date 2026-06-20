@@ -15,7 +15,6 @@ import type { CSSProperties } from 'react';
 import type { SectionProperties } from '@eigenpal/docx-core/types/document';
 import { twipsToPixels, pixelsToTwips, formatPx } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
-import { findVerticalScrollParentOrRoot } from '../../paged-editor/findVerticalScrollParent';
 
 // ============================================================================
 // TYPES
@@ -77,30 +76,14 @@ export function VerticalRuler({
   const [dragging, setDragging] = useState<MarkerType | null>(null);
   const [hoveredMarker, setHoveredMarker] = useState<MarkerType | null>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
-  // Anchor captured at drag-start so the drag delta is computed
-  // against a stable reference, not the live bounding rect. Without
-  // this, changing the margin during a drag re-lays the page, which
-  // shifts the ruler's screen position, which changes the rect, which
-  // changes the next mouse→twips calculation — the pin oscillates
-  // ("shakes"), especially noticeable when the user reverses
-  // direction mid-drag.
-  //
-  // We ALSO capture the scroll position of the editor's vertical
-  // scroller. The user complaint that exposed this: "I grab and
-  // scroll it down, when I try to scroll up the pin shakes." When
-  // the user scrolls the editor mid-drag, the page's content moves
-  // under a stationary cursor — clientY stays the same but the
-  // marker is now at a different page coordinate. Without folding
-  // the scroll delta into dyPx, the drag value snaps back to
-  // wherever the cursor is in page coords, which reads as a jump
-  // when the user resumes moving the mouse. Adding the scroll
-  // delta makes the drag value follow the cursor in *page* space,
-  // so scrolling-while-dragging produces a smooth, predictable
-  // continuous drag.
+  // Anchor captured at drag-start. The new margin is computed as
+  // `startMargin + (pointer delta in twips)` against this fixed anchor, so
+  // re-laying the page mid-drag can't shift the reference and make the marker
+  // oscillate. `marker` is stored here (not read from React state) so the
+  // mousemove handler can stay referentially stable — see handleDrag.
   const dragAnchorRef = useRef<{
+    marker: MarkerType;
     startClientY: number;
-    startScrollY: number;
-    scroller: HTMLElement | null;
     startTopMarginTwips: number;
     startBottomMarginTwips: number;
   } | null>(null);
@@ -115,23 +98,36 @@ export function VerticalRuler({
   const topMarginPx = twipsToPixels(topMarginTwips) * zoom;
   const bottomMarginPx = twipsToPixels(bottomMarginTwips) * zoom;
 
+  // Live values the mousemove handler needs, mirrored into a ref so handleDrag
+  // can be referentially STABLE (empty deps). If handleDrag depended on the
+  // live margins, it would be recreated on every drag step and the useEffect
+  // would remove+re-add the mousemove listener every frame — dropping events
+  // and making the marker jitter/"shake".
+  const liveRef = useRef({
+    zoom,
+    pageHeightTwips,
+    topMarginTwips,
+    bottomMarginTwips,
+    onTopMarginChange,
+    onBottomMarginChange,
+  });
+  liveRef.current = {
+    zoom,
+    pageHeightTwips,
+    topMarginTwips,
+    bottomMarginTwips,
+    onTopMarginChange,
+    onBottomMarginChange,
+  };
+
   // Handle drag start
   const handleDragStart = useCallback(
     (e: React.MouseEvent, marker: MarkerType) => {
       if (!editable) return;
       e.preventDefault();
-      // Capture the anchor on drag-start: the mouse Y at this instant
-      // + the margin values at this instant + the scrollTop of the
-      // editor's vertical scroller. The drag handler computes a
-      // screen-pixel delta from the start mouse Y AND folds in the
-      // scroll delta so dragging-while-scrolling tracks the cursor
-      // in page space instead of viewport space. See the
-      // dragAnchorRef declaration above for the full rationale.
-      const scroller = rulerRef.current ? findVerticalScrollParentOrRoot(rulerRef.current) : null;
       dragAnchorRef.current = {
+        marker,
         startClientY: e.clientY,
-        startScrollY: scroller ? scroller.scrollTop : 0,
-        scroller,
         startTopMarginTwips: topMarginTwips,
         startBottomMarginTwips: bottomMarginTwips,
       };
@@ -140,43 +136,41 @@ export function VerticalRuler({
     [editable, topMarginTwips, bottomMarginTwips]
   );
 
-  // Handle drag
-  const handleDrag = useCallback(
-    (e: MouseEvent) => {
-      const anchor = dragAnchorRef.current;
-      if (!dragging || !anchor) return;
-
-      // Cursor delta + scroll delta. Both contribute to "how far the
-      // marker should move in page coordinates" — pure mouse delta
-      // alone breaks when the user scrolls the editor mid-drag.
-      const scrollDelta = anchor.scroller ? anchor.scroller.scrollTop - anchor.startScrollY : 0;
-      const dyPx = e.clientY - anchor.startClientY + scrollDelta;
-      const dyTwips = pixelsToTwips(dyPx / zoom);
-
-      if (dragging === 'topMargin') {
-        // Dragging down (positive dy) → larger top margin.
-        const maxMargin = pageHeightTwips - bottomMarginTwips - 720;
-        const newMargin = Math.max(0, Math.min(anchor.startTopMarginTwips + dyTwips, maxMargin));
-        onTopMarginChange?.(Math.round(newMargin));
-      } else if (dragging === 'bottomMargin') {
-        // Dragging down (positive dy) → smaller bottom margin
-        // (bottom edge of the content area moves down with the
-        // pin, so the bottom margin shrinks).
-        const maxMargin = pageHeightTwips - topMarginTwips - 720;
-        const newMargin = Math.max(0, Math.min(anchor.startBottomMarginTwips - dyTwips, maxMargin));
-        onBottomMarginChange?.(Math.round(newMargin));
-      }
-    },
-    [
-      dragging,
+  // Handle drag. Referentially stable (reads everything from refs) so the
+  // mousemove listener is attached exactly once per drag.
+  const handleDrag = useCallback((e: MouseEvent) => {
+    const anchor = dragAnchorRef.current;
+    if (!anchor) return;
+    const {
       zoom,
       pageHeightTwips,
       topMarginTwips,
       bottomMarginTwips,
       onTopMarginChange,
       onBottomMarginChange,
-    ]
-  );
+    } = liveRef.current;
+
+    // Pointer delta only. We deliberately do NOT fold in the scroller's
+    // scrollTop change: dragging the margin reflows the page and auto-scrolls
+    // to keep the caret in view, and reading that auto-scroll as additional
+    // drag created a feedback loop — the margin ran straight to its clamp and
+    // the marker got stuck (one direction wouldn't move).
+    const dyPx = e.clientY - anchor.startClientY;
+    const dyTwips = pixelsToTwips(dyPx / zoom);
+
+    if (anchor.marker === 'topMargin') {
+      // Dragging down (positive dy) → larger top margin.
+      const maxMargin = pageHeightTwips - bottomMarginTwips - 720;
+      const newMargin = Math.max(0, Math.min(anchor.startTopMarginTwips + dyTwips, maxMargin));
+      onTopMarginChange?.(Math.round(newMargin));
+    } else {
+      // Dragging down (positive dy) → smaller bottom margin (the content
+      // area's bottom edge follows the pin down).
+      const maxMargin = pageHeightTwips - topMarginTwips - 720;
+      const newMargin = Math.max(0, Math.min(anchor.startBottomMarginTwips - dyTwips, maxMargin));
+      onBottomMarginChange?.(Math.round(newMargin));
+    }
+  }, []);
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
