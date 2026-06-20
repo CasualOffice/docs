@@ -68,10 +68,19 @@ them):
 - **Auto line ratio** — only touches the few `auto` lines; most SDS spacing is
   `exact`.
 
-Remaining suspects (where the diffuse ~2px/element lives): **paragraph
-space-before/after** application, **empty-paragraph heights** (11 empties =
-145px on p1), and **pagination break decisions** (p1 only fills 833/920px, so
-keep-together / non-splitting blocks waste page space → extra pages). Next pass:
-measure our per-paragraph margins vs the LibreOffice reference, fix the
-consistent excess, and re-check break placement — each step gated by the VF
-`real-world` group + the 39 round-trip fixtures.
+**ACTUAL cause found (2026-06-21) — multi-column layout, not diffuse drift.**
+Instrumented the paginator on the SDS: the page-2→3 break is a `nextPage`
+section break (correct), not the table or keep-together (zero keepNext chains,
+zero orphan/widow/PBB fired). The SDS has **30 `<w:sectPr>` sections**, ~7 of
+them `continuous` with **`w:cols num="2"`** — it's a heavily multi-column doc
+that toggles 1↔2 columns. We render *some* 2-column regions (pages 3 & 5 show
+7–8 side-by-side paragraph pairs) but not all the `cols=2` sections, so the
+missed ones flow single-column at ~2× height → the 2 extra pages (18 vs 16).
+Margins/padding are 0 and the ~8px inter-paragraph gaps match the doc's
+`space-before=122`, so paragraph spacing is NOT the cause.
+
+Next pass = **multi-column completion**: ensure every `cols=2` continuous
+section renders two balanced columns, and the 1↔2 column transitions don't
+waste vertical space. Feature-completion (not a one-line fix); gate each step
+on the VF `real-world` group + the 39 round-trip fixtures. Earlier paragraph
+column breaks (PR #11) and this share the same multi-column subsystem.
