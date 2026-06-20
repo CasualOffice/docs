@@ -96,40 +96,7 @@ export function parseVmlTextBox(
 ): TextBox | null {
   const shape = findVmlTextBoxShape(pictEl);
   if (!shape) return null;
-
-  const textBoxEl = findChild(shape, 'v', 'textbox');
-  if (!textBoxEl) return null;
-
-  const txbxContent = findDeep(textBoxEl, 'w', 'txbxContent');
-  if (!txbxContent) return null;
-
-  // Parse inner paragraphs.
-  const content: Paragraph[] = [];
-  for (const child of getChildElements(txbxContent)) {
-    const local = getLocalName(child.name ?? '');
-    if (local === 'p') {
-      content.push(parseParagraph(child, null, null, null, null));
-    }
-  }
-
-  const size = parseVmlShapeSize(shape);
-  const id = getAttribute(shape, null, 'id') ?? undefined;
-  // Capture the shape's absolute position (`position:absolute; margin-left/top;
-  // mso-position-*-relative`). Without this, VML text-frames lost their anchor
-  // and were laid out in-flow — mispositioned, and in headers the stacked
-  // heights inflated the header so the body spilled onto extra pages.
-  const position = parseVmlShapePosition(
-    shape,
-    parseVmlStyle(getAttribute(shape, null, 'style') ?? '')
-  );
-
-  return {
-    type: 'textBox',
-    id,
-    size,
-    position,
-    content,
-  };
+  return textBoxShapeToTextBox(shape, parseParagraph, undefined);
 }
 
 /**
@@ -365,11 +332,25 @@ function findVmlDecorativeShape(pictEl: XmlElement): XmlElement | null {
 export function parseVmlDecorativeShape(pictEl: XmlElement): TextBox | null {
   const shape = findVmlDecorativeShape(pictEl);
   if (!shape) return null;
+  // Only meaningful for a direct (ungrouped) decorative shape; grouped
+  // shapes go through `parseVmlShapes` so the group transform applies.
+  return decorativeShapeToTextBox(shape);
+}
 
-  const size = parseVmlShapeSize(shape);
+function decorativeShapeToTextBox(
+  shape: XmlElement,
+  transform?: GroupTransform
+): TextBox {
   const style = getAttribute(shape, null, 'style') ?? '';
   const decls = parseVmlStyle(style);
-  const position = parseVmlShapePosition(shape, decls);
+
+  const size = transform
+    ? transformChildSize(decls, transform)
+    : parseVmlShapeSize(shape);
+  const position = transform
+    ? transformChildPosition(decls, transform)
+    : parseVmlShapePosition(shape, decls);
+
   const fill = parseFillForShape(shape);
   const outline = parseOutlineForShape(shape);
   const id = getAttribute(shape, null, 'id') ?? undefined;
@@ -385,5 +366,227 @@ export function parseVmlDecorativeShape(pictEl: XmlElement): TextBox | null {
     // so the textBox node is valid; the renderer paints fill + outline
     // regardless of inner content.
     content: [buildEmptyParagraph()],
+  };
+}
+
+// ============================================================================
+// VML GROUPS (<v:group>) — transform + multi-shape expansion
+// ============================================================================
+
+/**
+ * The coordinate transform a `<v:group>` imposes on its children. A child
+ * shape lives in the group's local coordinate space, defined by
+ * `coordorigin="x,y"` / `coordsize="w,h"`. That space maps onto the page
+ * rectangle the group's own `style` describes (margin offset + width/height).
+ *
+ * Mapping for a child at local (cx,cy) of local size (cw,ch):
+ *   pageX = groupLeftEmu + (cx - originX) * scaleX
+ *   pageY = groupTopEmu  + (cy - originY) * scaleY
+ *   pageW = cw * scaleX,  pageH = ch * scaleY
+ * where scaleX = groupWidthEmu / coordW, scaleY = groupHeightEmu / coordH.
+ */
+interface GroupTransform {
+  /** Page-space offset of the group origin (EMU); undefined when the group
+   *  carries only relative anchoring and no margin offset. */
+  leftEmu: number | null;
+  topEmu: number | null;
+  /** Group anchoring frame, inherited by every child. */
+  position: ImagePosition | undefined;
+  originX: number;
+  originY: number;
+  scaleX: number;
+  scaleY: number;
+}
+
+function parseCoordPair(value: string | null | undefined): [number, number] | null {
+  if (!value) return null;
+  const parts = value.split(',');
+  if (parts.length !== 2) return null;
+  const a = parseFloat(parts[0]);
+  const b = parseFloat(parts[1]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return [a, b];
+}
+
+function buildGroupTransform(groupEl: XmlElement): GroupTransform {
+  const style = getAttribute(groupEl, null, 'style') ?? '';
+  const decls = parseVmlStyle(style);
+
+  const groupWidthEmu = lengthDeclToEmu(decls.get('width'));
+  const groupHeightEmu = lengthDeclToEmu(decls.get('height'));
+
+  const origin = parseCoordPair(getAttribute(groupEl, null, 'coordorigin')) ?? [0, 0];
+  const coordSize = parseCoordPair(getAttribute(groupEl, null, 'coordsize'));
+
+  // Scale = page-EMU span / coordinate-unit span. Falls back to 1 (identity)
+  // when either side is missing so children at least land at the origin.
+  const scaleX =
+    coordSize && coordSize[0] !== 0 && groupWidthEmu !== null
+      ? groupWidthEmu / coordSize[0]
+      : 1;
+  const scaleY =
+    coordSize && coordSize[1] !== 0 && groupHeightEmu !== null
+      ? groupHeightEmu / coordSize[1]
+      : 1;
+
+  return {
+    leftEmu: lengthDeclToEmu(decls.get('margin-left')),
+    topEmu: lengthDeclToEmu(decls.get('margin-top')),
+    position: parseVmlShapePosition(groupEl, decls),
+    originX: origin[0],
+    originY: origin[1],
+    scaleX,
+    scaleY,
+  };
+}
+
+/**
+ * A child of a `<v:group>` carries its geometry as bare numbers in the
+ * group's coordinate space (NOT twips), e.g. `left:0;top:0;width:9131`.
+ * Read them as plain floats — the transform converts to page EMU.
+ */
+function childCoordValue(value: string | undefined): number | null {
+  if (!value) return null;
+  const num = parseFloat(value.trim());
+  return Number.isFinite(num) ? num : null;
+}
+
+function transformChildSize(
+  decls: Map<string, string>,
+  t: GroupTransform
+): ImageSize {
+  const cw = childCoordValue(decls.get('width'));
+  const ch = childCoordValue(decls.get('height'));
+  return {
+    width: cw !== null ? Math.max(1, Math.round(cw * t.scaleX)) : 0,
+    height: ch !== null ? Math.max(1, Math.round(ch * t.scaleY)) : 0,
+  };
+}
+
+function transformChildPosition(
+  decls: Map<string, string>,
+  t: GroupTransform
+): ImagePosition | undefined {
+  // No anchoring frame from the group → nothing meaningful to offset against.
+  if (!t.position) return undefined;
+
+  const cx = childCoordValue(decls.get('left')) ?? 0;
+  const cy = childCoordValue(decls.get('top')) ?? 0;
+
+  const childLeftEmu = Math.round((cx - t.originX) * t.scaleX);
+  const childTopEmu = Math.round((cy - t.originY) * t.scaleY);
+
+  const horizontal = { ...t.position.horizontal };
+  const vertical = { ...t.position.vertical };
+
+  // Add the child's in-group offset to the group's page offset. Only adjust
+  // posOffset-style anchoring; alignment-anchored groups keep their alignment.
+  if (horizontal.alignment === undefined) {
+    horizontal.posOffset = (t.leftEmu ?? horizontal.posOffset ?? 0) + childLeftEmu;
+  }
+  if (vertical.alignment === undefined) {
+    vertical.posOffset = (t.topEmu ?? vertical.posOffset ?? 0) + childTopEmu;
+  }
+
+  return { horizontal, vertical };
+}
+
+/**
+ * Parse a `<w:pict>` into ALL the VML shapes it carries, expanding any
+ * `<v:group>` into its individual children with the group's coordinate
+ * transform applied. Text-frame shapes (`#_x0000_t202`) get their inner
+ * `<w:txbxContent>` parsed; decorative `<v:rect>` / `<v:oval>` / `<v:line>`
+ * become styled rectangles.
+ *
+ * This is the multi-shape entry point the enricher uses; the older
+ * single-shape `parseVmlTextBox` / `parseVmlDecorativeShape` remain for
+ * callers that only need the first shape (and the `isVml*Pict` probes).
+ */
+export function parseVmlShapes(
+  pictEl: XmlElement,
+  parseParagraph: ParagraphParserFn
+): TextBox[] {
+  const out: TextBox[] = [];
+  for (const child of getChildElements(pictEl)) {
+    const local = getLocalName(child.name ?? '');
+    if (local === 'group') {
+      collectGroupShapes(child, buildGroupTransform(child), parseParagraph, out);
+      continue;
+    }
+    if (local === 'shape' && isTextBoxShape(child)) {
+      const tb = textBoxShapeToTextBox(child, parseParagraph, undefined);
+      if (tb) out.push(tb);
+      continue;
+    }
+    if (VML_DECORATIVE_TAGS.has(local)) {
+      out.push(decorativeShapeToTextBox(child, undefined));
+    }
+  }
+  return out;
+}
+
+function collectGroupShapes(
+  groupEl: XmlElement,
+  transform: GroupTransform,
+  parseParagraph: ParagraphParserFn,
+  out: TextBox[]
+): void {
+  for (const child of getChildElements(groupEl)) {
+    const local = getLocalName(child.name ?? '');
+    if (local === 'group') {
+      // Nested group — compose transforms by chaining the outer onto a
+      // fresh inner transform. Simplest faithful approach: recurse with the
+      // inner group's own transform; the inner group's page offset already
+      // derives from its style. (Deep nesting is rare in real docs.)
+      collectGroupShapes(child, buildGroupTransform(child), parseParagraph, out);
+      continue;
+    }
+    if (local === 'shape' && isTextBoxShape(child)) {
+      const tb = textBoxShapeToTextBox(child, parseParagraph, transform);
+      if (tb) out.push(tb);
+      continue;
+    }
+    if (VML_DECORATIVE_TAGS.has(local)) {
+      out.push(decorativeShapeToTextBox(child, transform));
+    }
+  }
+}
+
+/**
+ * Convert a single `<v:shape type="#_x0000_t202">` text-frame element to a
+ * TextBox, optionally applying a group transform to its size/position.
+ */
+function textBoxShapeToTextBox(
+  shape: XmlElement,
+  parseParagraph: ParagraphParserFn,
+  transform?: GroupTransform
+): TextBox | null {
+  const textBoxEl = findChild(shape, 'v', 'textbox');
+  if (!textBoxEl) return null;
+
+  const txbxContent = findDeep(textBoxEl, 'w', 'txbxContent');
+  if (!txbxContent) return null;
+
+  const content: Paragraph[] = [];
+  for (const child of getChildElements(txbxContent)) {
+    if (getLocalName(child.name ?? '') === 'p') {
+      content.push(parseParagraph(child, null, null, null, null));
+    }
+  }
+
+  const style = getAttribute(shape, null, 'style') ?? '';
+  const decls = parseVmlStyle(style);
+  const size = transform ? transformChildSize(decls, transform) : parseVmlShapeSize(shape);
+  const position = transform
+    ? transformChildPosition(decls, transform)
+    : parseVmlShapePosition(shape, decls);
+  const id = getAttribute(shape, null, 'id') ?? undefined;
+
+  return {
+    type: 'textBox',
+    id,
+    size,
+    position,
+    content,
   };
 }
