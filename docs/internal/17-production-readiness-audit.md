@@ -298,6 +298,20 @@ So the "systemic spacing" work is really **targeted table cell/row-height fixes*
 not a metrics-model rewrite — and verifiable against LibreOffice without needing
 a Word oracle (text metrics already match).
 
+> **Re-confirmed 2026-06-20** (medical-doc pipeline re-run, composites in
+> `visual-fidelity-out/composites/medical-incident-form-p0{1..4}.png`):
+> `medical-incident-form` scores **29.8** with the gap compounding page-over-page
+> — p1 30.3, p2 36.2, **p3 13.3** (block-corr 0.0: by page 3 the same content is
+> offset a full section purely from accumulated row-under-sizing), p4 39.2.
+> `col-corr` stays ~94% throughout: horizontal layout is right, only vertical
+> metrics drift. Source uses `w:line="360"/276 w:lineRule="auto"` (1.5×/1.15×)
+> over ~160 mostly-empty paragraphs, so any per-row height deficit is multiplied
+> by the line factor and then summed across the form. **#11 is now fully
+> actionable** — LibreOffice reference + precise locus (`toFlowBlocks.ts:1339`,
+> trHeight `atLeast` + `vAlign=center` cell padding). Real-world forms
+> (`medical-incident-form`, `Form025U`, `sds-real-world`, and the user's Chinese
+> SDS) are the highest-value fidelity corpus; keep them in the VF pipeline.
+
 #### Phase 3 conclusion (2026-06-19): the product is in far better shape than the scores implied
 
 The single most important Phase-3 finding: **most "broken" scores were NOT
