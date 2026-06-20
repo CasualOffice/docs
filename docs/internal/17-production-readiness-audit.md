@@ -152,13 +152,13 @@ does; it routes through `toBuffer`.)
   real-world problem. (5th over-stated audit claim deflated this session.)
 - **Collab undo three-way collision.** `createStarterKit()` always adds `prosemirror-history` (`StarterKit.ts:108`); collab also adds `yUndoPlugin()` (`useCollab.ts:88`); native history is **never disabled** in collab → undo can revert *other users'* changes. Plus a third React snapshot layer (`useDocumentHistory`, `DocxEditor.tsx:1874`).
 - **Caret/selection are faked overlays** decoupled from the text node; selection math lazy-`import()`s on every change (`SelectionOverlay.tsx:259`) → first-selection flicker; accuracy depends on the position→pixel map staying in sync with async relayout.
-- **Paste:** Google Docs path exists (`PasteStyleInlinerExtension.ts`); **no Word-specific path** (no `mso-*`/`StartFragment`) → mangled spacing/lists; **no paste-as-plain-text** (`Mod+Shift+V` absent).
+- **Paste:** Google Docs path exists (`PasteStyleInlinerExtension.ts`). ~~no Word-specific path → mangled lists~~ **List paste FIXED (`e61f650`, 2026-06-20):** `<li>` parseDOM rule + `convertWordLists` (`mso-list`) now produce real list paragraphs (numPr), and `transformPasted` keeps the first item's marker; covered by `e2e/tests/list-paste.spec.ts`. Remaining: no general `mso-*`/`StartFragment` spacing normalisation; paste-as-plain-text already exists (`pasteAsPlainText` action, see Phase 1).
 - **Accessibility — leap of faith.** Visible doc is `aria-hidden`; screen readers read a separate hidden tree with no verifying test. Focus must be force-recaptured to hidden PM on every interaction (`PagedEditor.tsx:3858-3919`), with documented "focus stealing" pitfalls requiring `stopPropagation` everywhere.
 
 Solid: cross-page selection, table cell nav/merge/resize, list continuation, smart quotes/autocorrect, image paste, internal copy/paste.
 
 ### 3.3 Top tech-demo tells
-1. IME/CJK effectively unsupported. 2. 500ms–2s large-doc typing latency. 3. Collab undo collision. 4. Faked caret/selection drift under load. 5. Word paste mangles + no paste-plain. 6. a11y unverified. 7. Constant focus recapture.
+1. IME/CJK effectively unsupported. 2. 500ms–2s large-doc typing latency. 3. Collab undo collision. 4. Faked caret/selection drift under load. 5. ~~Word paste mangles + no paste-plain~~ list paste + paste-plain now work; general Word spacing normalisation still TODO. 6. a11y unverified. 7. Constant focus recapture.
 
 **Caveat:** input findings are from source + the project's own CI perf numbers + absence of composition handlers; not from live keystroke timing or driving a real IME. Fastest confirmation: load the 300-page fixture and type at the top with the profiler open; type Japanese/Korean and watch the candidate window.
 
