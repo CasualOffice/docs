@@ -276,6 +276,8 @@ export interface PagedEditorProps {
   externalPlugins?: Plugin[];
   /** Extension manager for plugins/schema/commands (optional — falls back to default) */
   extensionManager?: import('@eigenpal/docx-core/prosemirror/extensions').ExtensionManager;
+  /** Accessible name for the off-screen editing surface (screen-reader label). */
+  contentLabel?: string;
   /** Callback when editor is ready. */
   onReady?: (ref: PagedEditorRef) => void;
   /** Callback when rendered DOM context is ready. */
@@ -1283,6 +1285,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onSelectionChange,
       externalPlugins = EMPTY_PLUGINS,
       extensionManager,
+      contentLabel,
       onReady,
       onRenderedDomContextReady,
       pluginOverlays,
@@ -4179,6 +4182,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           onSelectionChange={handleSelectionChange}
           externalPlugins={externalPlugins}
           extensionManager={extensionManager}
+          ariaLabel={contentLabel}
           onEditorViewReady={handleEditorViewReady}
           onKeyDown={handlePMKeyDown}
         />

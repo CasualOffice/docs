@@ -896,6 +896,7 @@
     "comment": "Comment"
   },
   "editor": {
+    "contentLabel": "Document content",
     "toggleCommentsSidebar": "Toggle comments sidebar",
     "showDocumentOutline": "Show document outline",
     "editing": "Editing",

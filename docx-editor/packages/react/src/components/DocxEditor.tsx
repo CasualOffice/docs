@@ -7768,6 +7768,7 @@ body { background: white; }
                           showFormattingMarks={showFormattingMarks}
                           readOnly={readOnly}
                           extensionManager={extensionManager}
+                          contentLabel={t('editor.contentLabel')}
                           selectionFormatting={state.selectionFormatting}
                           onFormat={handleFormat}
                           onZoomChange={handleZoomChange}

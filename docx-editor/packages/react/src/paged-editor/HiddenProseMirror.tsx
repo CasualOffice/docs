@@ -98,6 +98,12 @@ export interface HiddenProseMirrorProps {
   onEditorViewDestroy?: () => void;
   /** Intercept key events before ProseMirror processes them. Return true to prevent PM handling. */
   onKeyDown?: (view: EditorView, event: KeyboardEvent) => boolean;
+  /**
+   * Accessible name for the editing surface, announced by screen readers.
+   * This is the editor's primary text input; without it AT reads an unlabeled
+   * edit field. Falls back to English "Document content" when not provided.
+   */
+  ariaLabel?: string;
 }
 
 export interface HiddenProseMirrorRef {
@@ -221,6 +227,7 @@ const HiddenProseMirrorComponent = forwardRef<HiddenProseMirrorRef, HiddenProseM
       onEditorViewReady,
       onEditorViewDestroy,
       onKeyDown,
+      ariaLabel,
     } = props;
 
     // Refs
@@ -241,6 +248,7 @@ const HiddenProseMirrorComponent = forwardRef<HiddenProseMirrorRef, HiddenProseM
     const onEditorViewReadyRef = useRef(onEditorViewReady);
     const onEditorViewDestroyRef = useRef(onEditorViewDestroy);
     const onKeyDownRef = useRef(onKeyDown);
+    const ariaLabelRef = useRef(ariaLabel);
 
     // Keep refs in sync
     onTransactionRef.current = onTransaction;
@@ -248,6 +256,7 @@ const HiddenProseMirrorComponent = forwardRef<HiddenProseMirrorRef, HiddenProseM
     onEditorViewReadyRef.current = onEditorViewReady;
     onEditorViewDestroyRef.current = onEditorViewDestroy;
     onKeyDownRef.current = onKeyDown;
+    ariaLabelRef.current = ariaLabel;
 
     // Keep document ref in sync
     documentRef.current = document;
@@ -279,6 +288,13 @@ const HiddenProseMirrorComponent = forwardRef<HiddenProseMirrorRef, HiddenProseM
         // Keeps `overflow-anchor` on the PM root across outer-deco sync (prosemirror#933).
         attributes: {
           style: 'overflow-anchor: none',
+          // This off-screen contenteditable is the real editing surface AT reads
+          // (the visible pages are aria-hidden). Give it an explicit textbox role
+          // and accessible name so screen readers announce a named multi-line
+          // editor rather than an anonymous edit field (WCAG 4.1.2).
+          role: 'textbox',
+          'aria-multiline': 'true',
+          'aria-label': ariaLabelRef.current ?? 'Document content',
         },
         // Use a regular function (not arrow) so ProseMirror's `.call(this, tr)`
         // binding gives us the EditorView. This is critical: plugins like ySyncPlugin

@@ -895,7 +895,8 @@
     "failedToParse": "Dokument konnte nicht verarbeitet werden",
     "linkRemoved": "Link entfernt",
     "linkCopied": "Link in Zwischenablage kopiert",
-    "failedToSave": "Dokument konnte nicht gespeichert werden"
+    "failedToSave": "Dokument konnte nicht gespeichert werden",
+    "contentLabel": null
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "Anzuzeigender Text",
