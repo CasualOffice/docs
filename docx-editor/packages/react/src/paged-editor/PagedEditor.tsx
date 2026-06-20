@@ -1856,6 +1856,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                 ? twipsToPixels(sectionProperties.footerDistance)
                 : undefined,
               pageBorders: sectionProperties?.pageBorders,
+              lineNumbers: sectionProperties?.lineNumbers,
               theme: _theme,
               footnotesByPage: footnotesByPage?.size ? footnotesByPage : undefined,
               resolvedCommentIds,

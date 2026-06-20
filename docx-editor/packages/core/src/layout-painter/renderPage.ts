@@ -42,7 +42,7 @@ import type { Theme } from '../types/document';
 import { measureParagraph, type FloatingImageZone } from '../layout-bridge/measuring';
 import { resolveFontFamily } from '../utils/fontResolver';
 import { isFloatingWrapType, isWrapNone, wrapsAroundText } from '../docx/wrapTypes';
-import { pointsToPixels } from '../utils/units';
+import { pointsToPixels, twipsToPixels } from '../utils/units';
 
 /**
  * Page-level floating image that has been extracted from paragraphs.
@@ -235,6 +235,25 @@ export interface RenderPageOptions {
     display?: 'allPages' | 'firstPage' | 'notFirstPage';
     offsetFrom?: 'page' | 'text';
     zOrder?: 'front' | 'back';
+  };
+  /**
+   * OOXML line numbering from section properties (`w:lnNumType`). When set,
+   * a left-margin gutter of line numbers is painted next to each body text
+   * line per ECMA-376 §17.6.10.
+   *
+   * `start` is the number of the first line (default 1); `countBy` prints a
+   * number only every Nth line (default 1 = every line); `distance` is the
+   * gap from the text to the numbers in twips (default ≈ 0.25").
+   *
+   * Numbering currently restarts on each page. True cross-page `continuous`
+   * numbering needs the paginator to thread a per-page starting line index,
+   * which isn't available at the painter level yet.
+   */
+  lineNumbers?: {
+    start?: number;
+    countBy?: number;
+    distance?: number;
+    restart?: 'continuous' | 'newPage' | 'newSection';
   };
   /** Theme for resolving border colors. */
   theme?: Theme | null;
@@ -1200,6 +1219,98 @@ function renderFootnoteArea(
 }
 
 /**
+ * Default distance (twips) from the line-number gutter to the body text when
+ * `w:lnNumType/@w:distance` is omitted. Word uses ~0.25" ≈ 360 twips; we keep a
+ * small fixed gap so the numbers sit just outside the content area.
+ */
+const DEFAULT_LINE_NUMBER_DISTANCE_TWIPS = 180;
+
+/**
+ * Paint the left-margin line-number gutter for a page (`w:lnNumType`,
+ * ECMA-376 §17.6.10). Walks each body paragraph fragment in document order,
+ * tracking a running line counter, and emits a number in the left margin
+ * aligned to the vertical centre of every Nth line (`countBy`).
+ *
+ * Coordinates are content-area-relative (the gutter is appended to the page's
+ * content element). The numbers are positioned to the LEFT of the content box
+ * via a negative `left`, separated by `distance`.
+ *
+ * Limitation: the counter restarts on each page. Continuous cross-page
+ * numbering would need the paginator to assign each page a starting line
+ * index, which isn't surfaced to the painter — see `RenderPageOptions.lineNumbers`.
+ *
+ * @internal
+ */
+function renderLineNumberGutter(
+  page: Page,
+  options: RenderPageOptions,
+  doc: Document
+): HTMLElement | null {
+  const ln = options.lineNumbers;
+  if (!ln || !options.blockLookup) return null;
+
+  const start = ln.start ?? 1;
+  const countBy = ln.countBy && ln.countBy > 0 ? ln.countBy : 1;
+  const distancePx = twipsToPixels(ln.distance ?? DEFAULT_LINE_NUMBER_DISTANCE_TWIPS);
+
+  const gutter = doc.createElement('div');
+  gutter.className = 'layout-line-numbers';
+  gutter.style.position = 'absolute';
+  gutter.style.top = '0';
+  gutter.style.left = '0';
+  gutter.style.right = '0';
+  gutter.style.bottom = '0';
+  gutter.style.pointerEvents = 'none';
+  gutter.style.userSelect = 'none';
+  gutter.setAttribute('aria-hidden', 'true');
+
+  // 1-based running line number across the page's body paragraphs.
+  let lineCounter = 0;
+  let emitted = 0;
+
+  for (const fragment of page.fragments) {
+    if (fragment.kind !== 'paragraph') continue;
+    const blockData = options.blockLookup.get(String(fragment.blockId));
+    if (blockData?.block.kind !== 'paragraph' || blockData.measure.kind !== 'paragraph') continue;
+
+    const measure = blockData.measure as ParagraphMeasure;
+    // Fragment Y is page-relative; convert to content-area-relative.
+    let lineTop = fragment.y - page.margins.top;
+
+    for (let i = fragment.fromLine; i < fragment.toLine && i < measure.lines.length; i++) {
+      const line = measure.lines[i];
+      lineCounter += 1;
+      const displayNumber = start - 1 + lineCounter;
+
+      // Print only every Nth line (countBy); the first line (1) always prints
+      // when countBy is 1, matching Word's gutter cadence.
+      if (displayNumber % countBy === 0) {
+        const numberEl = doc.createElement('div');
+        numberEl.className = 'layout-line-number';
+        numberEl.textContent = String(displayNumber);
+        numberEl.style.position = 'absolute';
+        // Right-align the number against the inner edge of the left margin so
+        // it reads `… 5 |text`, then push it out by `distance`.
+        numberEl.style.right = `calc(100% + ${distancePx}px)`;
+        numberEl.style.top = `${lineTop}px`;
+        numberEl.style.height = `${line.lineHeight}px`;
+        numberEl.style.lineHeight = `${line.lineHeight}px`;
+        numberEl.style.whiteSpace = 'nowrap';
+        numberEl.style.fontSize = '9px';
+        numberEl.style.color = '#000';
+        numberEl.style.textAlign = 'right';
+        gutter.appendChild(numberEl);
+        emitted += 1;
+      }
+
+      lineTop += line.lineHeight;
+    }
+  }
+
+  return emitted > 0 ? gutter : null;
+}
+
+/**
  * Render a single page to DOM
  *
  * @param page - The page to render
@@ -1537,6 +1648,14 @@ export function renderPage(
     contentEl.appendChild(fnAreaEl);
   }
 
+  // Line-number gutter (w:lnNumType) — painted in the left margin alongside
+  // body text. Appended to the content area so its coordinates are
+  // content-area-relative; the numbers themselves spill into the left margin.
+  const lineNumberGutter = renderLineNumberGutter(page, options, doc);
+  if (lineNumberGutter) {
+    contentEl.appendChild(lineNumberGutter);
+  }
+
   pageEl.appendChild(contentEl);
 
   // Render header area (always rendered for hover hint / double-click target)
@@ -1800,6 +1919,11 @@ function computeOptionsHash(options: RenderPageOptions): string {
   // Page border changes
   if (options.pageBorders) {
     parts.push(`pb:${JSON.stringify(options.pageBorders)}`);
+  }
+
+  // Line numbering changes
+  if (options.lineNumbers) {
+    parts.push(`ln:${JSON.stringify(options.lineNumbers)}`);
   }
 
   // Header/footer distances
