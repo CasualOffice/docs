@@ -3792,7 +3792,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
      * to the drop position determined by mouse coordinates.
      */
     const handleImageDragMove = useCallback(
-      (pmPos: number, clientX: number, clientY: number) => {
+      (pmPos: number, clientX: number, clientY: number, grabOffsetX = 0, grabOffsetY = 0) => {
         const view = hiddenPMRef.current?.getView();
         if (!view) return;
 
@@ -3829,9 +3829,12 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             if (!contentEl) return;
 
             const contentRect = contentEl.getBoundingClientRect();
-            // Convert drop coordinates to content-area-relative pixels
-            const dropX = (clientX - contentRect.left) / zoom;
-            const dropY = (clientY - contentRect.top) / zoom;
+            // Convert the image's NEW top-left to content-area-relative pixels.
+            // Subtract the grab offset so the image tracks the pointer instead
+            // of snapping its top-left corner to the cursor (the grabbed point
+            // stays under the cursor, matching the drag ghost and Google Docs).
+            const dropX = (clientX - grabOffsetX - contentRect.left) / zoom;
+            const dropY = (clientY - grabOffsetY - contentRect.top) / zoom;
             const hOffsetEmu = pixelsToEmu(dropX);
             const vOffsetEmu = pixelsToEmu(dropY);
 
