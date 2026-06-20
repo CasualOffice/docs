@@ -81,6 +81,27 @@ export async function loadFont(
     return true;
   }
 
+  // Self-hosted first: if this family is already declared via a bundled
+  // `@font-face` (Carlito/Caladea/Liberation, shipped in fonts.css), load it
+  // from the local woff2 instead of fetching from the Google CDN. This is what
+  // keeps rendering deterministic offline and in regions where Google is
+  // blocked — no third-party request, no IP leak.
+  if ('fonts' in document) {
+    const declared = Array.from(document.fonts).some(
+      (ff) => ff.family.replace(/['"]/g, '').toLowerCase() === normalizedFamily.toLowerCase()
+    );
+    if (declared) {
+      try {
+        await document.fonts.load(`400 16px "${normalizedFamily}"`);
+      } catch {
+        // ignore — the @font-face is present; canvas/CSS will still use it
+      }
+      loadedFonts.add(normalizedFamily);
+      notifyCallbacks([normalizedFamily]);
+      return true;
+    }
+  }
+
   // Currently loading? Return existing promise
   const existingLoad = loadingFonts.get(normalizedFamily);
   if (existingLoad) {
@@ -365,12 +386,13 @@ export async function loadFontFromBuffer(
  * but these are close alternatives that work well for document rendering.
  */
 export const FONT_MAPPING: Record<string, string> = {
-  // Microsoft Office fonts → Google Fonts equivalents
+  // Microsoft Office fonts → bundled OFL equivalents (self-hosted; loaded
+  // locally via the @font-face guard in loadFont, no CDN fetch).
   Calibri: 'Carlito',
   Cambria: 'Caladea',
-  Arial: 'Arimo',
-  'Times New Roman': 'Tinos',
-  'Courier New': 'Cousine',
+  Arial: 'Liberation Sans',
+  'Times New Roman': 'Liberation Serif',
+  'Courier New': 'Liberation Mono',
   Garamond: 'EB Garamond',
   'Book Antiqua': 'EB Garamond',
   Georgia: 'Tinos',

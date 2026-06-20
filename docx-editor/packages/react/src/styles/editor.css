@@ -17,6 +17,11 @@
  * resetting styles in the consuming application.
  */
 
+/* Self-hosted metric-compatible fonts (Carlito/Caladea/Liberation, OFL) so
+ * rendering is deterministic offline / in CDN-blocked regions. Must precede
+ * other rules per the CSS @import ordering requirement. */
+@import './fonts.css';
+
 @tailwind utilities;
 
 /* ============================================================================
