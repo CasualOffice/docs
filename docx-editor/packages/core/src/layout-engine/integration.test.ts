@@ -270,6 +270,29 @@ describe('Layout Engine - Page Production', () => {
       expect(layout.pages[1].fragments.length).toBe(1);
     });
 
+    test('column break does NOT create a new page in single-column layout', () => {
+      // A `<w:br w:type="column"/>` in a single-column section has no next
+      // column to advance to, so Word keeps the following content on the same
+      // page. The paginator must treat it as a no-op rather than spilling onto
+      // a fresh page (regression guard: column breaks were collapsing into page
+      // breaks and inflating the SDS page count 18 → 22).
+      const blocks: FlowBlock[] = [
+        makeParagraphBlock(0, 'Before column break', 1),
+        { kind: 'columnBreak', id: 1, pmStart: 19, pmEnd: 20 },
+        makeParagraphBlock(2, 'After column break', 21),
+      ];
+      const measures: Measure[] = [
+        makeParagraphMeasure([makeLine(0, 0, 0, 18, 150, 24)]),
+        { kind: 'columnBreak' },
+        makeParagraphMeasure([makeLine(0, 0, 0, 17, 140, 24)]),
+      ];
+
+      const layout = layoutDocument(blocks, measures, makeLayoutOptions());
+
+      expect(layout.pages.length).toBe(1);
+      expect(layout.pages[0].fragments.length).toBe(2);
+    });
+
     test('pageBreakBefore attribute creates new page', () => {
       const blocks: FlowBlock[] = [
         makeParagraphBlock(0, 'First paragraph', 1),

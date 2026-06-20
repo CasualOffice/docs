@@ -293,10 +293,20 @@ export function createPaginator(options: PaginatorOptions) {
   }
 
   /**
-   * Force a column break - move to next column or new page.
+   * Force a column break - move to next column.
+   *
+   * In a multi-column layout this advances to the next column (or a new page
+   * from the last column). In a single-column layout there is no next column,
+   * so an explicit column break is a no-op for pagination — Word keeps the
+   * following content on the same page. (This differs from `advanceColumn`,
+   * which `ensureFits` calls on genuine overflow and which must still create a
+   * new page in single-column.)
    */
   function forceColumnBreak(): PageState {
     const state = getCurrentState();
+    if (columns.count <= 1) {
+      return state;
+    }
     return advanceColumn(state);
   }
 
