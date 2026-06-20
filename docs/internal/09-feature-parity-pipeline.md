@@ -29,11 +29,11 @@ What ships today, grouped the way Google Docs groups it.
 | Suggesting / Track changes  | ✅     | `TrackedChangeCard` in unified sidebar, `Mod+Shift+E` shortcut |
 | Document outline (headings) | ✅     | `DocumentOutline.tsx`                                          |
 | Version history             | 🟡     | `VersionHistoryPanel` exists; local-only (no peer entries)     |
-| Explore / Research          | ❌     | —                                                              |
-| Dictionary / Define         | ❌     | —                                                              |
+| Explore / Research          | ✅     | Wikipedia v0; see A3                                            |
+| Dictionary / Define         | ✅     | see A4                                                          |
 | Word count                  | 🟡     | status-bar live count; no dedicated panel                      |
-| Translate                   | ❌     | —                                                              |
-| Citations                   | ❌     | —                                                              |
+| Translate                   | 🟡     | selection translate shipped; see A5                            |
+| Citations                   | 🟡     | v0 manager shipped; see A6                                     |
 | Find & replace              | ✅     | non-modal dialog (intentional)                                 |
 
 ### Editing surfaces
@@ -45,7 +45,7 @@ What ships today, grouped the way Google Docs groups it.
 | Floating selection toolbar | ✅ | desktop selection chip (B/I/U/S) via `MobileFormatBar` `variant='desktop'`; see C1                     |
 | Right-click context menu | 🟡 | exists; needs Docs-parity coverage audit (lookup, define, link, comment, suggest)                       |
 | Table toolbar / dropdown | 🟡 | live surface is `TableMoreDropdown` (in `FormattingBar`); distribute rows/cols (B3) + pin header (B4) shipped; sort still missing (B5) |
-| Drawing canvas    | ❌     | no inline drawing (Docs has full vector tool)                                                          |
+| Drawing canvas    | 🟡     | basic shapes shipped; full vector canvas deferred (see C2)                                             |
 | Equation editor   | ❌     | —                                                                                                      |
 | Voice typing      | ✅     | `useVoiceTyping` (Web Speech API); Edit-menu entry gated on browser support; see D6                    |
 | Spell-check underlines | ❌| browser spellcheck only; no in-editor squiggles                                                        |
@@ -395,8 +395,8 @@ a standalone column-break item is deferred (low demand).
 
 ## Stream D — Tools menu / smart engines
 
-This is where industry-standard polish lives. None of these are
-shipped today.
+This is where industry-standard polish lives. Most of these have
+shipped (D1/D2/D5/D6/D7/D8 ✅); D3/D4 remain deferred.
 
 ### D1 — Smart quotes engine ✅
 
@@ -746,28 +746,28 @@ Per item:
 
 ### What to pull first (recommended order)
 
-| Stream | Item                                                | Rationale                                                                               |
-| ------ | --------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| X1     | Tooltip coverage audit                              | User explicitly named tooltips; pre-req for every other UI we ship.                     |
-| B3     | Distribute rows / columns evenly                    | Highest-value table gap users hit daily.                                                |
-| B4     | Pin table header row                                | Common docx ask; trivial XML attr.                                                      |
-| C1     | Floating selection toolbar                          | Biggest single visible-polish win; signals "real editor."                               |
-| D1     | Smart quotes                                        | Tiny effort, very visible (typing `"` produces curly quote).                            |
-| A7     | Word-count dialog                                   | Quick win; status-bar plumbing already exists.                                          |
-| A2     | Outline → click-to-navigate refinement              | Verify what's there; polish gaps that surface.                                          |
-| E1     | @-mention in comments                               | Adds presence-aware feel without a user-graph.                                          |
-| D6     | Voice typing                                        | Web Speech API; quick demo-friendly win.                                                |
-| A1     | Version history → cross-peer entries                | Real-collab requirement; larger but unblocks "collab feels finished."                   |
+The original recommended queue (X1, B3, B4, C1, D1, A7, A2, E1, D6, A1) has
+been worked through — every item on it is now ✅ or foundation-shipped. The
+remaining open items in the streams above are the small set still marked
+❌ / 🟡: in-editor spell-check + grammar (D3/D4), equation/chart (C3/C4),
+pageless mode (F5), and the polish 🟡s (X1/X5/X7). Pull the highest
+user-impact 🟡 from whichever stream the current focus touches.
 
-Everything else queues behind those.
+Note: the project's active priority is now real-world **visual fidelity**,
+not feature parity — feature parity has largely landed. Fidelity work is
+tracked authoritatively in `19-content-drops-and-inconsistencies.md` and
+`20-overlap-and-interaction.md`, not here.
 
 ---
 
 ## What this pipeline doesn't cover
 
 - **Performance** — tracked in `08-improvement-tracker.md`.
-- **Fidelity / round-trip gaps** — tracked in `01-fidelity-gaps.md` +
-  `03-gap-matrix.md`.
+- **Fidelity / round-trip + visual gaps** — the active trackers are
+  `19-content-drops-and-inconsistencies.md` (content drops) and
+  `20-overlap-and-interaction.md` (overlap / interaction). The older
+  `01-fidelity-gaps.md` + `03-gap-matrix.md` predate the real-world
+  visual-fidelity focus.
 - **Backend / collab infra** — tracked in `05-backend-design.md`.
 - **Tauri desktop binary** — paused per user direction; resumes when
   fidelity + parity cross a user-decided bar.

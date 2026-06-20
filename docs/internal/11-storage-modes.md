@@ -189,12 +189,17 @@ GET /wopi/host?wopiSrc=…&access_token=<JWT> ─→ verify JWT against JWKS
 
 ### Deferred
 
-- **Snapshot-on-drain content** — the room manager has the
-  authToken + lockID threaded through and would call
-  `host.Snapshot(...)` if it had `.docx` bytes, but the Y.Doc →
-  `.docx` serializer isn't wired yet. Today the gateway re-serves
-  the original upload on drain. M2 (Bun headless serializer worker
-  pool) is the unblock.
+- **Server-side snapshot-on-drain (deprioritised fallback)** — the
+  room manager has the authToken + lockID threaded through and would
+  call `host.Snapshot(...)` if it had `.docx` bytes, but no
+  server-side Y.Doc → `.docx` serializer is wired. M2 instead shipped
+  client-side (`d24deaa`): `DocxEditorRef.save()` serializes `.docx`
+  in the browser and `useFileSourceAutoSave` pushes it on a schedule,
+  so the live case is covered without a serializer in the gateway. The
+  earlier Bun headless serializer worker pool was explicitly rejected
+  to keep Bun out of the production image. The server-side path is only
+  a fallback for when no client is around to push a final save — until
+  then the gateway re-serves the original upload on drain.
 - **Lock-stolen UX** — when `RefreshLock` returns `ErrConflict`
   (another editor took the lock), the ticker logs a warn and
   continues. A future pass could broadcast a "doc is now read-only"
@@ -221,7 +226,7 @@ runs:
 docker run -v $HOME/docs:/data \
   -e GATEWAY_HOST=local \
   -e CASUAL_LOCAL_PATH=/data \
-  schnsrw/docx:latest
+  casual-editor:local
 ```
 
 What's missing is the **per-user** layer that Mode 3 needs to be a
@@ -288,9 +293,10 @@ The shape mirrored sheet's [Phase C batches](../../../sheet/docs/STORAGE_MODES.m
 - ⬜ **Disk quota / file-size caps.** Default 100 MB per upload, no
   per-user quota yet. `CASUAL_MAX_UPLOAD_MB` /
   `CASUAL_USER_QUOTA_GB` reserved for the eventual implementation.
-- ⬜ **`PersonalAuthGate` UI surface.** Backend works; the React
-  modal that pops on a 401 still lives in the host app, not the
-  editor library.
+- ✅ **`PersonalAuthGate` UI surface.** Shipped in the editor
+  library (`7a52b82`) — login / signup modal that pops on a 401 —
+  alongside `UserMenu` (`38b2ffb`) and `ProfileSettingsDialog`
+  (`bfbbdae`). All live under `packages/react/src/file-source/`.
 
 ---
 
@@ -303,8 +309,8 @@ to be filed):
 | ----- | -------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------- | -------------------------------------- |
 | **A** | Home page reopen banner + File System Access       | none                                               | `recent-files` + landing                       | ⬜ planned                                                                 |
 | **B** | `FileSource` abstraction                           | none                                               | `packages/react/src/file-source/`              | ✅ shipped (`3a0d204`, Batch 4)                                            |
-| **C** | Personal (Mode 3) end-to-end                       | `auth/personal/` + per-user files + admin + CLI    | `PersonalFileSource`                           | ✅ shipped — Batches 1–5 (`97c330d` → `a63941c`); `PersonalAuthGate` open  |
-| **D** | WOPI (Mode 2)                                      | `host/wopi/` + `auth/wopi/` + locker + ticker      | `WopiFileSource`                               | ✅ shipped — D1–D5 (`9185671` → `bd4a2b1`); snapshot-on-drain blocked on M2 |
+| **C** | Personal (Mode 3) end-to-end                       | `auth/personal/` + per-user files + admin + CLI    | `PersonalFileSource` + `PersonalAuthGate`      | ✅ shipped — Batches 1–5 (`97c330d` → `a63941c`); auth UI shipped (`7a52b82`) |
+| **D** | WOPI (Mode 2)                                      | `host/wopi/` + `auth/wopi/` + locker + ticker      | `WopiFileSource`                               | ✅ shipped — D1–D5 (`9185671` → `bd4a2b1`); M2 save shipped client-side (`d24deaa`) |
 | —     | Local filesystem host                              | `host/local/local.go`                              | n/a                                            | ✅ shipped (`b8972ae`)                                                     |
 | —     | Env-driven host selection                          | `cmd/gateway/main.go` + `host.DocStore`            | n/a                                            | ✅ shipped (`41759d5`)                                                     |
 

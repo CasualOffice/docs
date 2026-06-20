@@ -5,7 +5,18 @@
 > Microsoft Word — the project's own stated invariant ("Output must look
 > identical to Microsoft Word", per `docx-editor/CLAUDE.md`).
 >
-> Date: 2026-05-16. Sources cited inline.
+> Date: 2026-05-16 (original sweep); status updated 2026-06-21. Sources cited inline.
+>
+> **Status note (2026-06-21):** this doc was the *original* gap sweep against
+> upstream. Much of it is now resolved — the VML/textbox cluster is closed, the
+> editor round-trips 39/39 fixtures pristine, and the ≥ 90 % desktop-ship floor
+> is cleared. The project has since shipped full Yjs collab (Phases C/D) and the
+> client-push snapshot pipeline (M2). Current real-world **visual** fidelity work
+> (fixtures `sds-anti-t-zh`, `medical-incident-form`, `Form025U`) is tracked
+> authoritatively in **docs/internal/19** (content drops) and **docs/internal/20**
+> (overlap / interaction) — those, not this doc, are the live trackers. Entries
+> below are kept for provenance and annotated with their current state. Recent
+> work: PRs #10–#16.
 
 ## Methodology
 
@@ -19,9 +30,15 @@ Where a gap is acknowledged in multiple sources, all are cited.
 
 ## Critical for our use case
 
-### Textboxes — entirely missing
+### Textboxes — entirely missing — ✅ CLOSED
 
-**Symptom:** uploaded `.docx` with textboxes shows missing or misplaced content. Sometimes the textbox doesn't appear at all. Reproducible with a fresh Word doc containing a single textbox.
+**Status (2026-06-21): RESOLVED.** The VML/textbox cluster is closed via
+raw-XML envelope capture (CLAUDE.md: "VML cluster closed via raw-XML envelope
+capture"). The remaining textbox/anchored-shape items are now *positioning /
+overlap* refinements tracked in docs/internal/19 (A1/A2 **FIXED**, PRs #10/#11)
+and docs/internal/20, not "entirely missing" rendering. Historical detail below.
+
+**Symptom (original):** uploaded `.docx` with textboxes shows missing or misplaced content. Sometimes the textbox doesn't appear at all. Reproducible with a fresh Word doc containing a single textbox.
 
 **Severity:** HIGH for us. Confirmed in our own test against the live demo. Common in templates (headers, sidebars, callouts).
 
@@ -36,11 +53,16 @@ Where a gap is acknowledged in multiple sources, all are cited.
 
 ## CRDT-relevant gaps (matter for our Yjs integration)
 
-### Comment IDs collide between peers
+### Comment IDs collide between peers — no longer a v1 blocker
+
+**Status (2026-06-21):** Yjs collab has since shipped end-to-end (Phases C/D,
+M2 client-push snapshots) and the editor reports 39/39 fixtures round-trip
+pristine, so this is no longer an open v1 blocker. Kept here as an upstream
+hardening item (their `commentIdBase` option B remains the right fix if revisited).
 
 **Symptom:** comments created concurrently by two peers both get `id: 1`. Subsequent reply / resolve / delete operations apply to the wrong comment.
 
-**Severity:** HIGH for us. Our entire premise is multi-peer Yjs collab. This bug is a data-corruption hazard for our v1.
+**Severity (original framing):** HIGH — multi-peer Yjs collab was our entire premise and this was flagged as a data-corruption hazard for v1.
 
 **Source:** GH issue **#257** — detailed reproducer and three proposed fixes. They recommend **option B** (numeric ID partitioning via a new `commentIdBase` prop). Discovered in the review of PR #255 (their own Yjs collab demo).
 
@@ -61,9 +83,14 @@ Where a gap is acknowledged in multiple sources, all are cited.
 
 ### `examples/collaboration/` exists
 
-The fork ships an existing Yjs collaboration example (`docx-editor/examples/collaboration/`). This is a major asset — it's the reference for how their `externalContent` + `externalPlugins` + `y-prosemirror` integration is meant to work. Should be the first thing we run end-to-end and the basis for our backend's compatibility contract.
+The fork ships an existing Yjs collaboration example (`docx-editor/examples/collaboration/`). This was the reference for how their `externalContent` + `externalPlugins` + `y-prosemirror` integration is meant to work. **Status:** consumed — our Go backend's y-websocket contract has since shipped (`backend/internal/yws/protocol.go`); this example is no longer a pending "first thing to run".
 
 ## Round-trip fidelity gaps (data corruption / silent loss)
+
+> The round-trip floor is met (39/39 fixtures pristine; ≥ 90 % desktop-ship floor
+> cleared). The items below are the *upstream proposals* that informed that work;
+> remaining round-trip/save-only drops are tracked precisely in
+> **docs/internal/19** (section B). Treat 19 as authoritative.
 
 ### Highlight export emits invalid OOXML
 
@@ -102,6 +129,12 @@ The fork ships an existing Yjs collaboration example (`docx-editor/examples/coll
 **Effort estimate:** large. Touches the entire serializer pipeline.
 
 ## Visual fidelity gaps (renders differently from Word)
+
+> These upstream proposals seeded the current real-world visual-fidelity push.
+> Live, per-fixture tracking of floating-image-wrap, table overlap/merged-cells,
+> and header/footer behaviour now lives in **docs/internal/20** (overlap &
+> interaction) and **docs/internal/19** (content drops). Use 19/20 as the
+> authoritative trackers; the list below is the original upstream framing.
 
 ### Floating-image text wrapping is broken
 
@@ -212,14 +245,15 @@ The fork ships an existing Yjs collaboration example (`docx-editor/examples/coll
 
 - `packages/core/src/layout-bridge/footnoteLayout.ts` — "TODO once the style cascade for paragraph styles is fully wired through" → suggests footnote styling can be incomplete.
 - `packages/core/src/layout-bridge/toFlowBlocks.ts` — "decimal and unsupported formats fall back to decimal" → list-numbering formats silently degrade.
-- `packages/core/src/agent/context.ts` — "TODO: detect if selection is in a table" → agent context loses table awareness (low priority for us, agent-adjacent).
+
+(The former `packages/core/src/agent/context.ts` "detect if selection is in a table" TODO was removed when the AGPL agent surface was purged from the fork — see docs/internal/agpl-removal.md. No longer applicable.)
 
 ## Our prioritization
 
 | Tier | Gap | Why it matters for us |
 |------|-----|----------------------|
-| P0 (block v1) | Textbox rendering (#318) | User's own tested failure mode |
-| P0 | Comment ID collision (#257) | Direct hazard for our Yjs collab plan |
+| ✅ DONE | Textbox rendering (#318) | VML cluster closed (raw-XML envelope); see docs/internal/19 A1/A2 |
+| ✅ DONE | Comment ID collision (#257) | Yjs collab shipped (Phases C/D, M2); 39/39 fixtures pristine — not a v1 blocker |
 | P1 (data integrity, before any production use) | Highlight roundtrip (invalid OOXML) | Silent data loss |
 | P1 | Theme color roundtrip corruption | Wrong output not authored by user |
 | P1 | Header/footer rendering | Common in templates |
@@ -235,7 +269,7 @@ P0 items are what we touch first — fix upstream where possible, fork-diverge o
 
 ## Open follow-ups (not in this analysis)
 
-- Inspect `docx-editor/examples/collaboration/` — their Yjs reference implementation. Confirm what protocol/transport they assume, what state their backend stub handles. This is the basis for our Go backend's compatibility contract.
+- ~~Inspect `docx-editor/examples/collaboration/` as the basis for our Go backend's compatibility contract.~~ **Done** — the backend's y-websocket contract shipped (`backend/internal/yws/protocol.go`).
 - Read GH issue #256 (remote cursors in collab demo).
 - Read the full body of each P1 proposal's "What Changes" + "Implementation" sections to estimate fix effort.
 - Run the editor against a real-world stress corpus (large legal doc with HF + comments + tracked changes + a TOC + a couple of textboxes) and log every visible deviation from Word.

@@ -3,8 +3,8 @@
 Plan for using `@casualoffice/core` (the Rust+WASM document engine in `~/Desktop/melp/rdrive/core/`) inside Casual Editor.
 
 Two phases:
-- **Phase A** — use it as a peripheral bytes converter (ODT/MD/TXT only). Ships now.
-- **Phase B** — use the richer `s1-model` document tree as a parser, replacing parts of our TS parser. Requires upstream work in casual-core.
+- **Phase A** — use it as a peripheral bytes converter (ODT/MD/TXT only). **Shipped** — code is in the built dist.
+- **Phase B** — use the richer `s1-model` document tree as a parser, replacing parts of our TS parser. Requires upstream work in casual-core. Not committed yet.
 
 ---
 
@@ -19,13 +19,13 @@ Path (ii) is cheaper and stays cheap as we add formats.
 
 ---
 
-## Phase A — bytes converter only
+## Phase A — bytes converter only (shipped)
 
 **Scope:** ODT, MD, TXT. Open them by converting to DOCX bytes in a Web Worker, then feed our existing TS parser. Save them by serializing to DOCX bytes with our existing serializer, then converting via casual-core.
 
-**Surface area:**
-- One Web Worker file (`docx-editor/packages/react/src/workers/format-converter.worker.ts`)
-- One main-thread helper (`convertViaCasualCore(bytes, { from, to })`)
+**Surface area (as shipped):**
+- One Web Worker file (`docx-editor/packages/react/src/lib/format-converter.worker.ts`)
+- One main-thread shim (`docx-editor/packages/react/src/lib/format-converter.ts`) exposing `convertToDocx(bytes, from)` and `exportDocxAs(docxBytes, to)` over `ForeignFormat` (`odt` | `md` | `txt`)
 - Two File menu changes: extend `accept=` on Open, add Export-as submenu (ODT/MD/TXT)
 - No change to the editor's internal model, no change to ProseMirror, no change to collab
 
@@ -240,8 +240,8 @@ This is not committed. Phase B has to deliver value first.
 
 | Phase | Editor work | rdrive/core work | Value |
 |---|---|---|---|
-| **A** | ~1 day (worker + 2 menu items) | none (just `npm publish`) | ODT/MD/TXT open + save |
+| **A** | done (shipped — worker + 2 menu items) | none (just `npm publish`) | ODT/MD/TXT open + save |
 | **B** | ~1–2 weeks (adapter + parity + flag rollout) | 1–2 days (serde + 2 wasm exports + TS types) | Replace TS parser; shared fidelity story across editor + sheet; one place to fix parser bugs |
 | **C** | ~1 week (reverse adapter + cutover) | half-day (Deserialize derives) | Replace TS serializer |
 
-Phase A pays for itself the day it ships. Phase B only pays if maintaining two parsers becomes painful — defer until we feel that pain. Phase C is conditional on B.
+Phase A is shipped and in the built dist. Phase B only pays if maintaining two parsers becomes painful — defer until we feel that pain. Phase C is conditional on B.
