@@ -258,6 +258,43 @@ function normalizeHex(value: string): string | null {
   return null;
 }
 
+/** VML `mso-position-horizontal-relative` → OOXML ST_RelFromH. */
+const VML_H_REL: Record<string, ImagePosition['horizontal']['relativeTo']> = {
+  page: 'page',
+  margin: 'margin',
+  text: 'column',
+  char: 'character',
+  'left-margin-area': 'leftMargin',
+  'right-margin-area': 'rightMargin',
+  'inner-margin-area': 'insideMargin',
+  'outer-margin-area': 'outsideMargin',
+};
+/** VML `mso-position-vertical-relative` → OOXML ST_RelFromV. */
+const VML_V_REL: Record<string, ImagePosition['vertical']['relativeTo']> = {
+  page: 'page',
+  margin: 'margin',
+  text: 'paragraph',
+  line: 'line',
+  'top-margin-area': 'topMargin',
+  'bottom-margin-area': 'bottomMargin',
+  'inner-margin-area': 'insideMargin',
+  'outer-margin-area': 'outsideMargin',
+};
+const VML_H_ALIGN: Record<string, ImagePosition['horizontal']['alignment']> = {
+  left: 'left',
+  center: 'center',
+  right: 'right',
+  inside: 'inside',
+  outside: 'outside',
+};
+const VML_V_ALIGN: Record<string, ImagePosition['vertical']['alignment']> = {
+  top: 'top',
+  center: 'center',
+  bottom: 'bottom',
+  inside: 'inside',
+  outside: 'outside',
+};
+
 function parseVmlShapePosition(
   _shapeEl: XmlElement,
   decls: Map<string, string>
@@ -267,17 +304,27 @@ function parseVmlShapePosition(
 
   const left = lengthDeclToEmu(decls.get('margin-left'));
   const top = lengthDeclToEmu(decls.get('margin-top'));
-  if (left === null && top === null) return undefined;
 
-  // The DOCX `mso-position-*-relative` style hints would let us bind
-  // the offset to `page`, `margin`, `paragraph`, etc., but the model's
-  // `ImagePosition.horizontal.relativeTo` is required and the typed
-  // enum doesn't accept the loose VML strings. Default to a margin-
-  // relative anchor — for the SDS-style page-divider shapes this puts
-  // the rectangle inside the content area, which is close enough.
+  // `mso-position-*-relative` binds the offset frame (page / margin / column /
+  // …); `mso-position-*` carries a symbolic alignment (left/center/right or
+  // `absolute` = use the offset). Defaults mirror Word: margin for H, paragraph
+  // for V.
+  const hRel = VML_H_REL[decls.get('mso-position-horizontal-relative') ?? ''] ?? 'margin';
+  const vRel = VML_V_REL[decls.get('mso-position-vertical-relative') ?? ''] ?? 'paragraph';
+  const hPos = decls.get('mso-position-horizontal');
+  const vPos = decls.get('mso-position-vertical');
+  const hAlign = hPos && hPos !== 'absolute' ? VML_H_ALIGN[hPos] : undefined;
+  const vAlign = vPos && vPos !== 'absolute' ? VML_V_ALIGN[vPos] : undefined;
+
+  if (left === null && top === null && !hAlign && !vAlign) return undefined;
+
   return {
-    horizontal: { relativeTo: 'margin', posOffset: left ?? 0 },
-    vertical: { relativeTo: 'paragraph', posOffset: top ?? 0 },
+    horizontal: hAlign
+      ? { relativeTo: hRel, alignment: hAlign }
+      : { relativeTo: hRel, posOffset: left ?? 0 },
+    vertical: vAlign
+      ? { relativeTo: vRel, alignment: vAlign }
+      : { relativeTo: vRel, posOffset: top ?? 0 },
   };
 }
 
