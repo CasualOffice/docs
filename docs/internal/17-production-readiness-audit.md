@@ -333,8 +333,15 @@ a Word oracle (text metrics already match).
 > 2. **Table borders dropped** — the "外观与性状/颜色/气味" hazard box is a
 >    bordered table in LibreOffice but renders borderless/flat in the editor.
 >    NEW gap, distinct from #11.
-> 3. **CJK glyph-spacing quirks** — stray gaps inside CJK runs (e.g. 说明 书 in
->    the title). NEW, CJK-specific; suspect run-splitting or per-char advance.
+> 3. **CJK glyph-spacing / page-overflow** — investigated 2026-06-20 (#19). CJK
+>    *line heights already match* LibreOffice (~16px). The residual (+2 page
+>    overflow, stray inter-run gaps like 说明 书) is **advance-width drift**: the
+>    doc uses Microsoft JhengHei, which we don't ship, so measure+render fall to
+>    a system CJK substitute whose glyph advances differ from Word's → different
+>    wrapping. Confirmed it's the §1.2 font-substitution class, NOT a quick bug:
+>    explicitly remapping the CJK fonts to Noto/PingFang made the SDS score
+>    *worse* (41.9→39.4) and was reverted. Closing it needs bundling the actual
+>    CJK fonts (large) — deferred with §1.2.
 > The dominant issue is #11; (2) and (3) are new tracker candidates. Fixture is
 > copied to `e2e/fixtures/sds-anti-t-zh.docx` (not yet committed — user's file).
 
