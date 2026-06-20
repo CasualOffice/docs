@@ -372,6 +372,12 @@ export function parseVmlDecorativeShape(pictEl: XmlElement): TextBox | null {
     position,
     fill,
     outline,
+    // Decorative shapes (box-border rects, dividers) are pure fill with no
+    // text inset. Without explicit zero margins they'd inherit the default
+    // 4px/7px text padding, which — with `box-sizing: border-box` — floors a
+    // ~0.6px hairline rect to its 8px vertical padding. VML emits these with
+    // `<v:textbox inset="0,0,0,0">`; mirror that.
+    margins: { top: 0, bottom: 0, left: 0, right: 0 },
     // Schema requires (paragraph | table)+ — emit one empty paragraph
     // so the textBox node is valid; the renderer paints fill + outline
     // regardless of inner content.
