@@ -42,8 +42,18 @@ export interface ImageSelectionOverlayProps {
   onResizeStart?: () => void;
   /** Callback when resize ends */
   onResizeEnd?: () => void;
-  /** Callback when image drag-move completes. Receives drop clientX/clientY. */
-  onDragMove?: (pmPos: number, clientX: number, clientY: number) => void;
+  /** Callback when image drag-move completes. Receives the drop clientX/clientY
+   *  and the grab offset — where inside the image the drag started, measured
+   *  from the image's top-left. Floating-image moves must subtract the grab
+   *  offset so the image tracks the pointer instead of snapping its top-left
+   *  corner to the cursor. */
+  onDragMove?: (
+    pmPos: number,
+    clientX: number,
+    clientY: number,
+    grabOffsetX: number,
+    grabOffsetY: number
+  ) => void;
   /** Callback when drag starts */
   onDragStart?: () => void;
   /** Callback when drag ends (cancelled or completed) */
@@ -342,6 +352,13 @@ export function ImageSelectionOverlay({
       const DRAG_THRESHOLD = 4; // px before considering it a drag
       const startX = e.clientX;
       const startY = e.clientY;
+      // Where inside the image the pointer grabbed, from the image's top-left.
+      // The draggable body div exactly overlays the painted image, so its rect
+      // is the image's on-screen box. Preserving this offset keeps the grabbed
+      // point under the cursor for the whole drag (Google-Docs behaviour).
+      const bodyRect = e.currentTarget.getBoundingClientRect();
+      const grabOffsetX = startX - bodyRect.left;
+      const grabOffsetY = startY - bodyRect.top;
       let dragStarted = false;
       let ghostEl: HTMLElement | null = null;
 
@@ -370,8 +387,10 @@ export function ImageSelectionOverlay({
         }
 
         if (ghostEl) {
-          ghostEl.style.left = `${moveEvent.clientX - overlayRect.width / 2}px`;
-          ghostEl.style.top = `${moveEvent.clientY - overlayRect.height / 2}px`;
+          // Track the grabbed point, not the image centre, so the ghost sits
+          // exactly where the image will land on drop.
+          ghostEl.style.left = `${moveEvent.clientX - grabOffsetX}px`;
+          ghostEl.style.top = `${moveEvent.clientY - grabOffsetY}px`;
         }
       };
 
@@ -389,7 +408,13 @@ export function ImageSelectionOverlay({
         if (dragStarted) {
           const info = imageInfoRef.current;
           if (info) {
-            onDragMoveRef.current?.(info.pmPos, upEvent.clientX, upEvent.clientY);
+            onDragMoveRef.current?.(
+              info.pmPos,
+              upEvent.clientX,
+              upEvent.clientY,
+              grabOffsetX,
+              grabOffsetY
+            );
           }
           onDragEndRef.current?.();
         }
