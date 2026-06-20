@@ -203,6 +203,45 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
     fallbackStack: ['Malgun Gothic', 'Noto Sans KR', 'sans-serif'],
     singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
   },
+
+  // Symbol / dingbat fonts. Their glyphs (form checkboxes, dingbats) have a
+  // very tall ink box, so Word/LibreOffice give lines set in these fonts a
+  // line height far above a normal text font. The browser almost never has
+  // these fonts and falls back to a normal one whose metrics are wrong, which
+  // collapsed form rows to ~half height (#11). We can't ship the proprietary
+  // fonts, so we hardcode an empirically-calibrated line ratio instead.
+  //
+  // Wingdings 2 is calibrated against LibreOffice: a 16pt `w14:checkbox` cell
+  // renders a 75px row → ratio ≈ 75px / ptToPx(16) ≈ 3.3. The sibling dingbat
+  // fonts (Wingdings, Wingdings 2/3, Webdings) share the same tall-glyph
+  // character, so they inherit the calibrated value pending per-font
+  // measurement. `Symbol` (Greek/math) has normal text metrics and is left at
+  // the default. fallbackStack keeps a normal font so substituted Unicode
+  // glyphs (☐ ☒ ●) still render; only the line *metrics* are inflated.
+  wingdings: {
+    googleFont: '',
+    category: 'sans-serif',
+    fallbackStack: ['Wingdings', 'sans-serif'],
+    singleLineRatio: 3.3, // empirical (dingbat glyph ink box), not OS/2-derived
+  },
+  'wingdings 2': {
+    googleFont: '',
+    category: 'sans-serif',
+    fallbackStack: ['Wingdings 2', 'sans-serif'],
+    singleLineRatio: 3.3, // calibrated: 16pt checkbox → 75px row in LibreOffice
+  },
+  'wingdings 3': {
+    googleFont: '',
+    category: 'sans-serif',
+    fallbackStack: ['Wingdings 3', 'sans-serif'],
+    singleLineRatio: 3.3,
+  },
+  webdings: {
+    googleFont: '',
+    category: 'sans-serif',
+    fallbackStack: ['Webdings', 'sans-serif'],
+    singleLineRatio: 3.3,
+  },
 };
 
 /**
