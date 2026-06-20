@@ -542,6 +542,8 @@ export type TextBoxBlock = {
     relFromV?: string;
     alignH?: string;
     alignV?: string;
+    /** VML `z-index` < 0 — paint behind body text. */
+    behindDoc?: boolean;
   };
   pmStart?: number;
   pmEnd?: number;
@@ -763,6 +765,14 @@ export type TextBoxFragment = FragmentBase & {
   kind: 'textBox';
   /** Height of the text box. */
   height: number;
+  /**
+   * True when positioned absolutely from its anchor (page/margin/column),
+   * NOT advancing the in-flow cursor. The renderer then places it from
+   * `x`/`y` directly instead of the paragraph-relative transform.
+   */
+  isAnchored?: boolean;
+  /** Stacking: negative paints behind body text (VML `z-index` < 0). */
+  zIndex?: number;
 };
 
 /**

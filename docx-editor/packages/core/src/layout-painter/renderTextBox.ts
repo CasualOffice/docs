@@ -50,9 +50,16 @@ export function renderTextBoxFragment(
   // Basic styling
   containerEl.style.position = 'absolute';
   containerEl.style.width = `${fragment.width}px`;
-  containerEl.style.height = `${fragment.height}px`;
+  // Decorative hairlines (e.g. SDS box borders drawn as ~0.6px filled rects)
+  // would vanish after sub-pixel rounding; clamp filled boxes to ≥1px.
+  const paintedHeight =
+    block.fillColor && fragment.height < 1 ? Math.max(fragment.height, 1) : fragment.height;
+  containerEl.style.height = `${paintedHeight}px`;
   containerEl.style.overflow = 'hidden';
   containerEl.style.boxSizing = 'border-box';
+  if (fragment.zIndex !== undefined) {
+    containerEl.style.zIndex = String(fragment.zIndex);
+  }
 
   // Fill color
   if (block.fillColor) {
@@ -83,7 +90,7 @@ export function renderTextBoxFragment(
   // place + offset" which is worse than the current "wrong place,
   // no offset" — wait for the hybrid cursor-reservation work before
   // touching those.
-  if (block.anchor) {
+  if (block.anchor && !fragment.isAnchored) {
     const isParagraphH = !block.anchor.relFromH || block.anchor.relFromH === 'paragraph';
     const isParagraphV = !block.anchor.relFromV || block.anchor.relFromV === 'paragraph';
     const dxPx =

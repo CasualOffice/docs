@@ -37,6 +37,8 @@ import {
   getMidChainIndices,
   hasPageBreakBefore,
 } from './keep-together';
+import { resolveAnchorX, resolveAnchorY, type AnchorGeometry } from './anchorGeometry';
+import { pixelsToEmu } from '../utils/units';
 
 // Default page size (US Letter in pixels at 96 DPI)
 const DEFAULT_PAGE_SIZE = { w: 816, h: 1056 };
@@ -303,9 +305,20 @@ export function layoutDocument(
         layoutImage(block, measure as ImageMeasure, paginator);
         break;
 
-      case 'textBox':
-        layoutTextBox(block as TextBoxBlock, measure as TextBoxMeasure, paginator);
+      case 'textBox': {
+        const tb = block as TextBoxBlock;
+        // A textBox carries an `anchor` only when it came from a genuinely
+        // positioned source (DrawingML `wp:anchor` or VML `position:absolute`)
+        // — those float and must NOT reserve in-flow space (Word flows text
+        // independently). Inline textboxes (no anchor) keep the in-flow
+        // reservation, which is the d8b85d1 regression guard.
+        if (tb.anchor) {
+          layoutAnchoredTextBox(tb, measure as TextBoxMeasure, paginator);
+        } else {
+          layoutTextBox(tb, measure as TextBoxMeasure, paginator);
+        }
         break;
+      }
 
       case 'pageBreak':
         paginator.forcePageBreak();
@@ -773,6 +786,73 @@ function layoutTextBox(
 
   const result = paginator.addFragment(fragment, measure.height, 0, 0);
   fragment.y = result.y;
+}
+
+/**
+ * Layout an anchored (floating) text box: position absolutely from its
+ * page/margin/column anchor and push WITHOUT advancing the cursor, so body
+ * text flows independently (matching Word's wrap=none / behind-text shapes).
+ * Mirrors `layoutAnchoredImage` but resolves the full `relativeFrom` band math.
+ */
+function layoutAnchoredTextBox(
+  block: TextBoxBlock,
+  measure: TextBoxMeasure,
+  paginator: ReturnType<typeof createPaginator>
+): void {
+  if (measure.kind !== 'textBox') {
+    throw new Error(`layoutAnchoredTextBox: expected textBox measure`);
+  }
+  const state = paginator.getCurrentState();
+  const page = state.page;
+  const margins = page.margins;
+  const anchor = block.anchor!;
+
+  const contentWidth = page.size.w - margins.left - margins.right;
+  const geom: AnchorGeometry = {
+    pageWidth: page.size.w,
+    pageHeight: page.size.h,
+    marginLeft: margins.left,
+    marginTop: margins.top,
+    contentWidth,
+    contentHeight: page.size.h - margins.top - margins.bottom,
+    // Content-relative column origin (single-column ≈ 0).
+    columnX: paginator.getColumnX(state.columnIndex) - margins.left,
+    columnWidth: contentWidth,
+  };
+
+  // Block anchor offsets are PIXELS (converted in toProseDoc); resolveAnchor*
+  // expects EMU (it converts internally), so round-trip back to EMU.
+  const toEmu = (px: number | undefined) => (px != null ? pixelsToEmu(px) : undefined);
+  const hSpec = {
+    relativeTo: anchor.relFromH,
+    align: anchor.alignH,
+    posOffset: toEmu(anchor.offsetH),
+  };
+  const vSpec = {
+    relativeTo: anchor.relFromV,
+    align: anchor.alignV,
+    posOffset: toEmu(anchor.offsetV),
+  };
+
+  // resolveAnchor* work in content-area coordinates; cursorY is page-absolute.
+  const contentCursorY = state.cursorY - margins.top;
+  const { x: cx } = resolveAnchorX(hSpec, measure.width, geom);
+  const cy = resolveAnchorY(vSpec, measure.height, contentCursorY, geom);
+
+  const fragment: TextBoxFragment = {
+    kind: 'textBox',
+    blockId: block.id,
+    // applyFragmentStyles subtracts margins, so emit page-absolute coords.
+    x: margins.left + cx,
+    y: margins.top + cy,
+    width: measure.width,
+    height: measure.height,
+    pmStart: block.pmStart,
+    pmEnd: block.pmEnd,
+    isAnchored: true,
+    zIndex: anchor.behindDoc ? -1 : undefined,
+  };
+  page.fragments.push(fragment);
 }
 
 /**
