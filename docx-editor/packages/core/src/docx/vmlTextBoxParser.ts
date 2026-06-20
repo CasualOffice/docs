@@ -114,11 +114,20 @@ export function parseVmlTextBox(
 
   const size = parseVmlShapeSize(shape);
   const id = getAttribute(shape, null, 'id') ?? undefined;
+  // Capture the shape's absolute position (`position:absolute; margin-left/top;
+  // mso-position-*-relative`). Without this, VML text-frames lost their anchor
+  // and were laid out in-flow — mispositioned, and in headers the stacked
+  // heights inflated the header so the body spilled onto extra pages.
+  const position = parseVmlShapePosition(
+    shape,
+    parseVmlStyle(getAttribute(shape, null, 'style') ?? '')
+  );
 
   return {
     type: 'textBox',
     id,
     size,
+    position,
     content,
   };
 }
