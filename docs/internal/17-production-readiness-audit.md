@@ -312,6 +312,24 @@ a Word oracle (text metrics already match).
 > (`medical-incident-form`, `Form025U`, `sds-real-world`, and the user's Chinese
 > SDS) are the highest-value fidelity corpus; keep them in the VF pipeline.
 
+> **Chinese SDS added to corpus 2026-06-20** (`sds-anti-t-zh`, a 16-page GB/T
+> chemical Safety Data Sheet, CJK, 581 paragraphs / 2 tables / 30 sectPr;
+> composites `visual-fidelity-out/composites/sds-anti-t-zh-p{01..18}.png`).
+> Score **40.3**, **page-count MISMATCH 18≠16** (+2 overflow). Findings:
+> 1. **Vertical-metric overflow (dominant)** — the same row/line under-sizing
+>    pushes content long; p1 shows the editor packing ~25% more per page early,
+>    yet the doc ends 2 pages LONGER overall, so the error is non-uniform (some
+>    rows compress, other blocks/CJK wrapping expand). col-corr ~98% on p1-3
+>    then degrades as the offset cascades (later-page scores are
+>    pagination-offset artifacts, not element bugs).
+> 2. **Table borders dropped** — the "外观与性状/颜色/气味" hazard box is a
+>    bordered table in LibreOffice but renders borderless/flat in the editor.
+>    NEW gap, distinct from #11.
+> 3. **CJK glyph-spacing quirks** — stray gaps inside CJK runs (e.g. 说明 书 in
+>    the title). NEW, CJK-specific; suspect run-splitting or per-char advance.
+> The dominant issue is #11; (2) and (3) are new tracker candidates. Fixture is
+> copied to `e2e/fixtures/sds-anti-t-zh.docx` (not yet committed — user's file).
+
 #### Phase 3 conclusion (2026-06-19): the product is in far better shape than the scores implied
 
 The single most important Phase-3 finding: **most "broken" scores were NOT
