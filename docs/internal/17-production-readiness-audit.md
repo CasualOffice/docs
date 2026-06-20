@@ -284,15 +284,23 @@ DOM-Y) narrowed it.** It is NOT a global metric:
   21.2px on `demo`. So the §1.3 ascent/descent-approximation worry does *not*
   manifest as a line-height error, and "fix the global line-height" is the wrong
   move. (This also lowers the Word-divergence risk: text metrics are sound.)
-- **The dominant form-drift factor is TABLE ROW HEIGHTS.** On
-  `medical-incident-form`, the editor renders the checkbox table rows at ~33px
-  vs LibreOffice's ~75px (~42px too short each); the drift swings from +70px at
-  the top to −88px at the checkboxes purely from under-sized rows. Rows have two
-  paragraphs/cell + `<w:trHeight w:val="409"/>` (atLeast) + `vAlign=center`; the
-  editor tracks `heightRule` (`toFlowBlocks.ts:1339`) but under-computes the cell
-  content height (likely collapsing the empty second cell paragraph, or ignoring
-  cell margins / vAlign padding). **Tracker task #11.**
-- **Secondary:** header/logo pushes the title down ~70px.
+- **The dominant form-drift factor was CHECKBOX ROW HEIGHTS — ROOT-CAUSED & FIXED
+  (`da8943c`, 2026-06-20, branch `fidelity/table-row-height-11`).** A controlled
+  LibreOffice experiment (vary the source, re-render) proved the row height is
+  driven by the **checkbox cell's font size**, NOT `trHeight`: a 16pt
+  `w14:checkbox` (Wingdings 2) row is 75px in LibreOffice, 35px at 11pt, and
+  unchanged when `trHeight` is removed. The editor substitutes a Unicode `☐` in a
+  normal font → ~34px rows → every form compresses. Fix: `fontResolver` now
+  carries a calibrated `singleLineRatio` (~3.3) for Wingdings/Wingdings 2/3 +
+  Webdings, and `toProseDoc` keeps the dingbat font name on translated symbol
+  glyphs so the measurer applies it (still rendering the safe glyph). Result:
+  checkbox rows now ~78px (ref 75px); p1 aligns closely with LibreOffice.
+  Guarded by `e2e/tests/checkbox-row-height.spec.ts`. The coarse density-grid
+  score only moved 29.8→30.8 (it under-rewards this), but the composite shows the
+  real win. **#11 checkbox driver done.**
+- **Secondary (still open):** header/logo pushes the title down ~70px — the
+  remaining medical-form offset and the main thing still dragging its score.
+  Distinct root cause (header/anchored-logo layout), tracked separately.
 
 So the "systemic spacing" work is really **targeted table cell/row-height fixes**,
 not a metrics-model rewrite — and verifiable against LibreOffice without needing

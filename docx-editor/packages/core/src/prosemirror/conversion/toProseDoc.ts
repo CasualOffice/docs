@@ -1271,7 +1271,14 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
       // safe Unicode character — substitution chars (☐ ☒ ➤ etc.) are
       // universally available so forcing a specific font would hurt
       // rather than help.
-      if (isTranslatedUnicode(ch, content.font, content.char)) {
+      //
+      // Exception: tall dingbat fonts (Wingdings/Webdings). Their glyphs have
+      // a much taller ink box than a normal font, so a line set in them gets a
+      // large line height in Word/LibreOffice. We still render the substituted
+      // Unicode glyph (browsers fall back per-glyph), but we KEEP the dingbat
+      // font name so the measurer applies its hardcoded line metrics — without
+      // it, form checkbox rows collapse to ~half height (#11).
+      if (isTranslatedUnicode(ch, content.font, content.char) && !isTallSymbolFont(content.font)) {
         return [schema.text(ch, marks)];
       }
       const fontMark = schema.mark('fontFamily', {
@@ -1314,6 +1321,17 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
  * Map sources: Adobe / ECMA-376 Annex L, plus
  * https://www.alanwood.net/demos/wingdings.html (cross-checked).
  */
+/**
+ * Tall dingbat fonts whose glyphs (checkboxes, dingbats) occupy a much taller
+ * ink box than normal text, so lines set in them get an inflated line height in
+ * Word/LibreOffice. Mirrors the calibrated entries in `fontResolver`'s
+ * FONT_MAPPINGS. `Symbol` (Greek/math) is excluded — it has normal metrics.
+ */
+function isTallSymbolFont(font: string | undefined): boolean {
+  const f = (font || '').toLowerCase().trim();
+  return f === 'wingdings' || f === 'wingdings 2' || f === 'wingdings 3' || f === 'webdings';
+}
+
 function symbolToUnicodeChar(font: string, char: string): string | null {
   if (!char) return null;
   // OOXML stores `w:char` as a hex string. Word also sometimes emits
