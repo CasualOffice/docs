@@ -330,9 +330,10 @@ a Word oracle (text metrics already match).
 >    rows compress, other blocks/CJK wrapping expand). col-corr ~98% on p1-3
 >    then degrades as the offset cascades (later-page scores are
 >    pagination-offset artifacts, not element bugs).
-> 2. **Table borders dropped** — the "外观与性状/颜色/气味" hazard box is a
->    bordered table in LibreOffice but renders borderless/flat in the editor.
->    NEW gap, distinct from #11.
+> 2. ~~**Table borders dropped**~~ **FIXED (#18, PR #7)** — the hazard/section
+>    box borders are thin filled `<v:rect>` shapes positioned relative to the
+>    page; with anchored positioning + zero decorative-shape margins they now
+>    render as 1px hairlines (sds-anti-t-zh + sds-real-world 40.3→41.9).
 > 3. **CJK glyph-spacing quirks** — stray gaps inside CJK runs (e.g. 说明 书 in
 >    the title). NEW, CJK-specific; suspect run-splitting or per-char advance.
 > The dominant issue is #11; (2) and (3) are new tracker candidates. Fixture is
