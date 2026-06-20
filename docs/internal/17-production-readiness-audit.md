@@ -46,7 +46,7 @@ Net: "we say 4 pages, Word says 5," paragraphs split at the wrong line.
 | Feature | Evidence |
 |---|---|
 | **Widow/orphan control** — *not implemented at all* | zero `widow`/`orphan` hits in `layout-engine/`; greedy line-fill `index.ts:391-452` |
-| **Page/margin/column-anchored shapes/textboxes** snap to text cursor, not real position | `renderTextBox.ts:86-100` forces `dxPx/dyPx=0` for non-paragraph anchors |
+| ~~**Page/margin/column-anchored shapes/textboxes** snap to text cursor~~ **FIXED (PR #7, 2026-06-20)** — anchored textboxes now layout absolutely from their `relativeFrom` band (`layoutAnchoredObject` + shared `anchorGeometry`), no in-flow reservation; renderer places from `fragment.x/y`. No new page-count regressions; medical 30.8→33.1, textbox-test 33→46.2, wrap-none fixtures 85–97. The dominant real-world lever — also underlies the medical header offset + SDS box borders. | `layout-engine/{index,anchorGeometry}.ts`, `renderTextBox.ts` |
 | **Tight/through image wrap** → square wrap | `floatingObjects.ts:29` rect-only exclusion; `wp:wrapPolygon` never consumed |
 | **Floating tables (`tblpPr`)** overlap following text; spurious blank pages | `index.ts:584`; `01-fidelity-gaps.md:130-134` |
 | **Justified text** uses browser CSS `justify`, breaks measured on *unjustified* widths | `renderParagraph.ts:1045-1051` |
