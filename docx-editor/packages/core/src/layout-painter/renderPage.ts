@@ -1083,13 +1083,35 @@ function renderHeaderFooterContent(
       // inside `<w:hdr>` rendered nothing.
       const tbBlock = block as TextBoxBlock;
       const tbMeasure = measure as TextBoxMeasure;
+      const a = tbBlock.anchor;
+      const anchored =
+        !!a && (a.offsetH != null || a.offsetV != null || a.relFromH != null || a.relFromV != null);
+
+      // Anchored (floating) header/footer textboxes are positioned absolutely
+      // from their page/margin offset — mapped into the header content box,
+      // which is inset by margins.left with its flow-top at layout.flowTop — and
+      // do NOT take flow space. In-flow stacking (the old behavior) both
+      // mispositioned them (all at left:0) and inflated the header height,
+      // pushing the body onto extra pages.
+      let tbLeft = 0;
+      let tbTop = cursorY;
+      if (anchored) {
+        const offH = a!.offsetH ?? 0;
+        const offV = a!.offsetV ?? 0;
+        tbLeft = a!.relFromH === 'page' ? offH - layout.margins.left : offH;
+        if (a!.relFromV === 'page') tbTop = offV - layout.flowTop;
+        else if (a!.relFromV === 'margin') tbTop = layout.margins.top + offV - layout.flowTop;
+        else tbTop = offV;
+      }
+
       const syntheticFragment: TextBoxFragment = {
         kind: 'textBox',
         blockId: tbBlock.id,
-        x: 0,
-        y: cursorY,
+        x: tbLeft,
+        y: tbTop,
         width: tbMeasure.width,
         height: tbMeasure.height,
+        isAnchored: anchored || undefined,
       };
       const fragEl = renderTextBoxFragment(
         syntheticFragment,
@@ -1098,10 +1120,10 @@ function renderHeaderFooterContent(
         { ...context, positioning: 'absolute' },
         { document: doc }
       );
-      fragEl.style.top = `${cursorY}px`;
-      fragEl.style.left = '0';
+      fragEl.style.top = `${tbTop}px`;
+      fragEl.style.left = `${tbLeft}px`;
       containerEl.appendChild(fragEl);
-      cursorY += tbMeasure.height;
+      if (!anchored) cursorY += tbMeasure.height;
     }
   }
 
