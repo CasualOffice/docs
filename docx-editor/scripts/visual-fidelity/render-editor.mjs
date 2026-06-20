@@ -15,12 +15,13 @@ import { chromium } from '@playwright/test';
 import { readdirSync, mkdirSync, rmSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveFixtureFilter } from './corpus.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const FIXTURE_DIR = join(ROOT, 'e2e/fixtures');
 const OUT_DIR = join(ROOT, process.env.VF_OUT ?? 'visual-fidelity-out', 'editor');
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
-const ONLY = process.env.VF_ONLY?.split(',').map((s) => s.trim()).filter(Boolean);
+const ONLY = resolveFixtureFilter();
 
 rmSync(OUT_DIR, { recursive: true, force: true });
 mkdirSync(OUT_DIR, { recursive: true });
@@ -93,4 +94,6 @@ for (const fixture of fixtures) {
 }
 
 await browser.close();
-console.log(`\n[editor] rendered ${summary.filter((s) => s.ok).length}/${summary.length} fixtures → ${OUT_DIR}`);
+console.log(
+  `\n[editor] rendered ${summary.filter((s) => s.ok).length}/${summary.length} fixtures → ${OUT_DIR}`
+);

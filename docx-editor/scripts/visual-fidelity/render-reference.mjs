@@ -17,6 +17,7 @@ import { readdirSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:f
 import { join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { resolveFixtureFilter } from './corpus.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const FIXTURE_DIR = join(ROOT, 'e2e/fixtures');
@@ -24,7 +25,7 @@ const OUT_ROOT = join(ROOT, process.env.VF_OUT ?? 'visual-fidelity-out');
 const OUT_DIR = join(OUT_ROOT, 'reference');
 const PDF_DIR = join(OUT_ROOT, '_pdf');
 const DPI = Number(process.env.VF_DPI ?? 150);
-const ONLY = process.env.VF_ONLY?.split(',').map((s) => s.trim()).filter(Boolean);
+const ONLY = resolveFixtureFilter();
 
 const SOFFICE = process.env.SOFFICE ?? 'soffice';
 
@@ -44,7 +45,7 @@ for (const fixture of fixtures) {
     execFileSync(
       SOFFICE,
       ['--headless', '--convert-to', 'pdf', '--outdir', PDF_DIR, join(FIXTURE_DIR, fixture)],
-      { stdio: 'pipe', timeout: 60000 },
+      { stdio: 'pipe', timeout: 60000 }
     );
     if (!existsSync(join(PDF_DIR, `${name}.pdf`))) throw new Error('no pdf produced');
     console.log(`[ref] pdf: ${name}`);

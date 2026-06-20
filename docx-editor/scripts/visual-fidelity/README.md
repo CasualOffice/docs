@@ -22,12 +22,25 @@ See `docs/internal/17-production-readiness-audit.md` for why this exists.
 # Full corpus (starts its own dev server, renders reference + editor, diffs):
 node scripts/visual-fidelity/run.mjs
 
-# Subset:
+# Subset by name:
 VF_ONLY=demo,with-tables node scripts/visual-fidelity/run.mjs
+
+# Subset by named group (see groups.json):
+VF_GROUP=real-world node scripts/visual-fidelity/run.mjs
 
 # Reuse an already-running dev server:
 BASE_URL=http://localhost:5173 node scripts/visual-fidelity/run.mjs
 ```
+
+### Groups (`groups.json`)
+
+`VF_GROUP` selects a named set of fixtures from `groups.json`. The
+**`real-world`** group is the corpus of actual documents users bring — dense
+forms and multi-page CJK safety data sheets (`medical-incident-form`,
+`Form025U`, `sds-real-world`, `sds-anti-t-zh`). These are the highest-value
+fidelity targets; when a new real-world doc surfaces a gap, add it to
+`groups.json` so it stays tracked in the pipeline instead of being a one-off
+run. `VF_ONLY` and `VF_GROUP` union together.
 
 Stages can also be run individually: `render-reference.mjs`, `render-editor.mjs`
 (needs `BASE_URL`), `diff.py <out>`, `composite.py <out>`.
