@@ -30,6 +30,11 @@ import { renderParagraphFragment } from './renderParagraph';
 import { renderTableFragment } from './renderTable';
 import { renderImageFragment, applyImageVisualAttrs, hasImageVisualAttrs } from './renderImage';
 import { renderTextBoxFragment } from './renderTextBox';
+import {
+  resolveAnchorX,
+  resolveAnchorY,
+  type AnchorGeometry,
+} from '../layout-engine/anchorGeometry';
 import type { BlockLookup } from './index';
 import type { BorderSpec } from '../types/document';
 import { borderToStyle } from '../utils/formatToStyle';
@@ -686,146 +691,32 @@ function extractFloatingImagesFromParagraph(
     // `*Margin` and `character` / `line` variants we fall back to the
     // content-area frame, which matches Word's render for single-column
     // body documents.
+    const geom: AnchorGeometry = {
+      pageWidth: geometry?.pageWidth ?? 0,
+      pageHeight: geometry?.pageHeight ?? 0,
+      marginLeft: geometry?.marginLeft ?? 0,
+      marginTop: geometry?.marginTop ?? 0,
+      contentWidth,
+      contentHeight: geometry?.contentHeight ?? 0,
+    };
+
     let side: 'left' | 'right' = 'left';
     let x = 0;
-
     if (position?.horizontal) {
-      const h = position.horizontal;
-      // ECMA-376 §20.4.3.2 (ST_RelFromH). Same translation pattern as the
-      // vertical axis: pick a band origin (`baseX`) and a band width. For
-      // body text the painter's content origin is `marginLeft` from the page
-      // edge, so `relativeFrom="page"` is just `-marginLeft`.
-      const pageWidth = geometry?.pageWidth ?? 0;
-      const marginLeft = geometry?.marginLeft ?? 0;
-      const baseX = (() => {
-        switch (h.relativeTo) {
-          case 'page':
-          case 'leftMargin':
-            return -marginLeft;
-          case 'rightMargin':
-            return contentWidth;
-          case 'character':
-          case 'column':
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return 0;
-        }
-      })();
-      const bandWidth = (() => {
-        switch (h.relativeTo) {
-          case 'page':
-            return pageWidth;
-          case 'leftMargin':
-          case 'rightMargin':
-            return marginLeft;
-          case 'character':
-            return 0;
-          case 'column':
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return contentWidth;
-        }
-      })();
-      if (h.align === 'right') {
-        side = 'right';
-        x = bandWidth ? baseX + bandWidth - imgRun.width : 0;
-      } else if (h.align === 'left') {
-        side = 'left';
-        x = baseX;
-      } else if (h.align === 'center') {
-        side = 'left';
-        x = bandWidth ? baseX + (bandWidth - imgRun.width) / 2 : 0;
-      } else if (h.posOffset !== undefined) {
-        x = baseX + emuToPixels(h.posOffset);
-        side = x > contentWidth / 2 ? 'right' : 'left';
-      } else {
-        // Bare positionH (no align, no offset) — anchor at band origin.
-        x = baseX;
-      }
+      const r = resolveAnchorX(position.horizontal, imgRun.width, geom);
+      x = r.x;
+      side = r.side;
     } else if (imgRun.cssFloat === 'right') {
       side = 'right';
       x = contentWidth - imgRun.width;
     }
 
-    // Determine vertical position. The OOXML attribute can be either an
-    // explicit `posOffset` (EMUs from the relativeFrom origin) or a symbolic
-    // `align` (top / center / bottom). When neither is present, fall back
-    // to the paragraph anchor — that's Word's default for `wp:anchor` with
-    // a bare `<wp:positionV>`.
-    //
-    // `relativeFrom` decides which anchor coordinate offset/align is
-    // computed against. We translate every variant into the painter's
-    // coordinate space (content-area top = 0).
+    // Vertical position: paragraph/line bands stay in flow; page/margin bands
+    // resolve against the painter's content-area coordinate space. See
+    // `resolveAnchorY` (ported from this code) for the full ST_RelFromV map.
     let y = 0;
-
     if (position?.vertical) {
-      const v = position.vertical;
-      const pageHeight = geometry?.pageHeight ?? 0;
-      const marginTop = geometry?.marginTop ?? 0;
-      const contentHeight = geometry?.contentHeight ?? 0;
-      // ECMA-376 §20.4.3.1 (ST_RelFromV) — translate the OOXML anchor band
-      // into the painter's coordinate space (content-area top = 0). `topMargin`
-      // is the strip ABOVE the content area (negative offset); `bottomMargin`
-      // is BELOW (`contentHeight`). `margin` is the content area itself.
-      // `insideMargin`/`outsideMargin` are mirror-margins for facing pages —
-      // we approximate as `margin`, which matches single-sided layouts.
-      const baseY = (() => {
-        switch (v.relativeTo) {
-          case 'paragraph':
-          case 'line':
-            return fragmentY;
-          case 'page':
-            return -marginTop;
-          case 'topMargin':
-            return -marginTop;
-          case 'bottomMargin':
-            return contentHeight;
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return 0;
-        }
-      })();
-      // The "band height" within which align="center"/"bottom" is computed.
-      // page → page height; topMargin → marginTop; bottomMargin → bottom margin
-      // (which we don't track separately, fall back to marginTop ≈ symmetric
-      // pages); paragraph/line → no band (fall back to paragraph anchor).
-      const bandHeight = (() => {
-        switch (v.relativeTo) {
-          case 'page':
-            return pageHeight;
-          case 'topMargin':
-          case 'bottomMargin':
-            return marginTop;
-          case 'paragraph':
-          case 'line':
-            return 0;
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return contentHeight;
-        }
-      })();
-      if (v.align === 'top') {
-        y = baseY;
-      } else if (v.align === 'center') {
-        y = bandHeight ? baseY + (bandHeight - imgRun.height) / 2 : fragmentY;
-      } else if (v.align === 'bottom') {
-        y = bandHeight ? baseY + bandHeight - imgRun.height : fragmentY;
-      } else if (v.posOffset !== undefined) {
-        y = baseY + emuToPixels(v.posOffset);
-      } else {
-        // Bare positionV (no align, no offset). For paragraph/line bands the
-        // image stays in flow; for any other band, the spec means "anchor at
-        // the band origin", which is `baseY`.
-        y = v.relativeTo === 'paragraph' || v.relativeTo === 'line' ? fragmentY : baseY;
-      }
+      y = resolveAnchorY(position.vertical, imgRun.height, fragmentY, geom);
     } else {
       // No positionV at all — default to paragraph anchor.
       y = fragmentY;
