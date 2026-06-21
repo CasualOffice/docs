@@ -112,12 +112,21 @@ test.describe('Table Content & Text Wrapping', () => {
   });
 
   test('long text wraps within cell', async ({ page }) => {
+    // Heavy editing test (insert table → layout → read back). The one-shot
+    // insert below removes per-keystroke layout, but table insert + first
+    // layout still varies; give loaded CI shards headroom over the 30s default.
+    test.setTimeout(60_000);
     await editor.insertTable(2, 2);
     await editor.clickTableCell(0, 0, 0);
 
     const longText =
       'This is a very long text that should wrap within the cell without expanding the column width';
-    await editor.typeText(longText);
+    // insertText (one InputEvent) rather than per-char typing: this test asserts
+    // wrapping + table width, not key-by-key behavior, and char-by-char typing of
+    // a ~90-char string re-lays out the page per keystroke — fast locally but slow
+    // enough to time out on loaded CI shards (flaked shard 4). typeText only takes
+    // the fast path above 100 chars, and this string is just under.
+    await page.keyboard.insertText(longText);
 
     // Verify text is in the cell
     const content = await editor.getTableCellContent(0, 0, 0);

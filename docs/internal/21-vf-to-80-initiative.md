@@ -79,6 +79,45 @@ Raise the CI VF floor (`fidelity-compare.yml` `FIDELITY_FLOOR`) from `0.5` towar
 
 Incremental: each Phase-2/3 step reports the new mean. Stop when **mean ≥ 80 with the full editor-safety gate green**, or at clear diminishing returns (then re-scope: revisit the proxy/corpus representativeness, or accept a documented lower bar with rationale).
 
+## Results — representative corpus clears 80 (2026-06-21)
+
+Measuring the app's own 13 templates (the `representative` VF group — letters,
+resumes, reports, memos: the docs people actually edit) exposed that the gap was
+**systematic spacing**, not fixture-specific row drift. Three render-only,
+ECMA/Word-correct fixes — each fully gated (round-trip pristine, 1251 unit, smoke,
+zero stress-corpus regression):
+
+| # | Fix | PR | Representative VF |
+|---|---|---|---:|
+| 0 | baseline | — | 58.5 |
+| 2a | docDefaults not overridden by Word's built-in Normal when no Normal style | #37 | 63.4 |
+| 2b | paragraph spacing = `spaceBefore + spaceAfter` (Word adds; we collapsed to `max`) | #38 | 76.7 |
+| 2c | empty paragraphs keep inherited before/after spacing | #39 | **82.8** |
+
+**Representative overall: 58.5 → 82.8 (+24.3), above the 80 bar.** Per-doc: letter
+57→95, cover-letter 65→94, essay 32→83; most templates 76-95. The stress corpus
+stayed 52.8 throughout (no regression). All three were genuine correctness bugs,
+found by measuring rather than guessing — and render-only, so round-trip and Yjs
+collab were never at risk (the load-bearing insight in §0 held).
+
+The `representative` group + its fixtures are checked in so the result is
+reproducible (`VF_GROUP=representative node scripts/visual-fidelity/run.mjs`).
+
+**Phase 5 — DONE.** `.github/workflows/visual-fidelity.yml` renders the
+representative corpus (LibreOffice reference + headless editor) and fails the run
+if the mean drops below `VF_FLOOR=0.80` (`diff.py` gained floor support). The
+**canonical CI baseline is 87.6/100** — higher than the local 82.8 because CI
+pins the metric-compatible fonts (Carlito = Calibri, Liberation = Arial/Times/
+Courier) that LibreOffice substitutes to, so editor and reference agree even more
+tightly than on a dev Mac. The floor sits at the 0.80 credibility bar with ~7.6pt
+of headroom; tighten later if desired. Real-document fidelity can no longer
+silently regress.
+
+Remaining (optional): the **stress corpus** (52.8) still needs the deferred
+table-row-metrics work — its own worst-case floor, separate from the
+representative overall — and a Phase-3 line-height calibration could push the
+representative *above* 87.6 (risky shared change; only if warranted).
+
 ## 4. Non-negotiables
 
 - No change ships if the Phase-1 gate is red.

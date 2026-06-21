@@ -76,3 +76,4 @@ scripts/ground-truth/libreoffice/
 
 # visual-fidelity harness output (large PNGs)
 visual-fidelity-out/
+vf-repr-out/

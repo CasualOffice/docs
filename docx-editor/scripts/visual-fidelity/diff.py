@@ -20,7 +20,7 @@ which is exactly what the project did not have before.
 
 Usage: python3 diff.py <out_dir>
 """
-import sys, pathlib, json, re
+import os, sys, pathlib, json, re
 from collections import defaultdict
 import numpy as np
 from PIL import Image
@@ -157,5 +157,15 @@ report = out / "visual-fidelity-report.md"
 report.write_text("\n".join(lines))
 (out / "visual-fidelity-report.json").write_text(json.dumps(rows, indent=2, default=float))
 print(f"[diff] wrote {report}")
-print(f"[diff] {len(scored)} scored, mean "
-      f"{(sum(r['final'] for r in scored)/len(scored)) if scored else 0:.1f}/100")
+mean = (sum(r["final"] for r in scored) / len(scored)) if scored else 0.0
+print(f"[diff] {len(scored)} scored, mean {mean:.1f}/100")
+
+# Optional CI floor: VF_FLOOR is a 0..1 fraction (e.g. 0.80). Fail the run if
+# the mean dips below it, so a checked-in fidelity bar can't silently regress.
+floor_env = os.environ.get("VF_FLOOR")
+if floor_env:
+    floor = float(floor_env) * 100.0
+    if mean < floor:
+        print(f"[diff] FAIL: mean {mean:.1f} < floor {floor:.1f} (VF_FLOOR={floor_env})")
+        sys.exit(1)
+    print(f"[diff] OK: mean {mean:.1f} >= floor {floor:.1f} (VF_FLOOR={floor_env})")

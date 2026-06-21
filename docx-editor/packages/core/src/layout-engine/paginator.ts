@@ -277,9 +277,15 @@ export function createPaginator(options: PaginatorOptions) {
     spaceBefore: number = 0,
     spaceAfter: number = 0
   ): { state: PageState; x: number; y: number } {
-    // Word collapses adjacent paragraphs' spaceAfter / next.spaceBefore to
-    // the larger of the two (CSS-style margin-collapse), not the sum.
-    const effectiveSpaceBefore = Math.max(spaceBefore, getCurrentState().trailingSpacing);
+    // Word/LibreOffice ADD a paragraph's spaceBefore to the previous
+    // paragraph's spaceAfter (this is the well-known Word "extra space
+    // between paragraphs" — NOT CSS-style margin-collapse). Summing matches
+    // the reference renderer; max() compressed every body→heading transition
+    // by the smaller of the two values (e.g. a 6pt body-after lost against a
+    // 10pt heading-before), accumulating ~1 line of drift per page.
+    // Contextual-spacing suppression (same-style paragraphs) is applied
+    // upstream by zeroing the relevant side, so it still works under summing.
+    const effectiveSpaceBefore = spaceBefore + getCurrentState().trailingSpacing;
     const totalHeight = effectiveSpaceBefore + height;
 
     // Ensure we have space
