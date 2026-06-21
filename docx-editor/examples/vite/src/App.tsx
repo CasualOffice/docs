@@ -990,6 +990,7 @@ function CollabApp({
           author={author}
           onError={onError}
           onFontsLoaded={onFontsLoaded}
+          versionBackend={{ baseUrl: backendHttp, docId: room }}
           showToolbar={true}
           showRuler={!isMobile}
           showZoomControl={true}
