@@ -48,4 +48,33 @@ test.describe('Vertical ruler — sits beside the page and stays draggable', () 
     if (!after) throw new Error('heading box not measurable after drag');
     expect(after.y).toBeGreaterThan(before.y + 20);
   });
+
+  test('stays aligned with the page top across zoom levels', async ({ page }) => {
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.loadDocxFile('fixtures/example-with-image.docx');
+    await page.waitForSelector('.layout-page', { timeout: 30000 });
+
+    const measure = async () => {
+      const rb = await page.locator('.docx-vertical-ruler').first().boundingBox();
+      const pb = await page.locator('.layout-page').first().boundingBox();
+      if (!rb || !pb) throw new Error('ruler/page box not measurable');
+      return { gap: pb.x - (rb.x + rb.width), topDelta: rb.y - pb.y };
+    };
+    const setZoom = async (label: string) => {
+      await page.locator('[aria-label^="Zoom:"]').first().click();
+      await page.getByRole('option', { name: label }).first().click();
+      await page.waitForTimeout(500);
+    };
+
+    // The page's top padding and width both scale with zoom; the ruler must
+    // track both, so the gap and the top alignment stay constant.
+    for (const z of ['50%', '200%', '75%', '100%']) {
+      await setZoom(z);
+      const { gap, topDelta } = await measure();
+      expect(gap, `gap at ${z}`).toBeGreaterThanOrEqual(0);
+      expect(gap, `gap at ${z}`).toBeLessThan(24);
+      expect(Math.abs(topDelta), `top alignment at ${z}`).toBeLessThan(6);
+    }
+  });
 });
