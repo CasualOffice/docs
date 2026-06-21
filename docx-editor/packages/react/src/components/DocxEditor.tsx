@@ -7704,15 +7704,19 @@ body { background: white; }
                         }}
                         onContextMenu={handleEditorContextMenu}
                       >
-                        {/* Vertical Ruler - sits at the editor content's left
-                          edge so it scrolls horizontally with the page instead
-                          of pinning to the viewport (which would lay over the
-                          doc when the user scrolls right). */}
+                        {/* Vertical Ruler - hangs off the left edge of the
+                          centered page (Google Docs style) instead of floating
+                          against the content area's far-left edge. It reuses the
+                          horizontal ruler's centering (same padding + sidebar
+                          bias) so a page-width spacer lands exactly under the
+                          page, and the ruler is pinned to that spacer's left
+                          edge. */}
                         {showRulerEffective && !readOnlyProp && (
                           <div
                             style={{
                               position: 'absolute',
                               left: 0,
+                              right: 0,
                               top: 0,
                               // Above the inline HF editor (Z_INDEX.hfInlineEditor)
                               // so it stays readable on horizontal scroll.
@@ -7721,16 +7725,48 @@ body { background: white; }
                               // editor.css (24 viewport + 24 pages container);
                               // update both together or the ruler misaligns.
                               paddingTop: 48,
+                              // Same horizontal centering as the horizontal ruler
+                              // so the vertical ruler tracks the centered page
+                              // (and its comment-sidebar bias).
+                              paddingLeft: 20,
+                              paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
+                              display: 'flex',
+                              justifyContent: 'center',
+                              // Only the ruler itself is interactive; the wrapper
+                              // must not swallow clicks over the gutter/page.
+                              pointerEvents: 'none',
+                              transition: 'padding 0.2s ease',
                             }}
                           >
-                            <VerticalRuler
-                              sectionProps={initialSectionProperties}
-                              zoom={state.zoom}
-                              unit={rulerUnit}
-                              editable={!readOnly}
-                              onTopMarginChange={handleTopMarginChange}
-                              onBottomMarginChange={handleBottomMarginChange}
-                            />
+                            {/* Invisible page-width spacer; the ruler is pinned
+                              to its left edge (right: 100%) so it sits just left
+                              of the page. */}
+                            <div
+                              style={{
+                                width: pageWidthPx * state.zoom,
+                                flexShrink: 0,
+                                position: 'relative',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  right: '100%',
+                                  top: 0,
+                                  marginRight: 6,
+                                  pointerEvents: 'auto',
+                                }}
+                              >
+                                <VerticalRuler
+                                  sectionProps={initialSectionProperties}
+                                  zoom={state.zoom}
+                                  unit={rulerUnit}
+                                  editable={!readOnly}
+                                  onTopMarginChange={handleTopMarginChange}
+                                  onBottomMarginChange={handleBottomMarginChange}
+                                />
+                              </div>
+                            </div>
                           </div>
                         )}
                         {/* Brighten highlight for the focused/expanded sidebar item */}
