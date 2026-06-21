@@ -856,6 +856,13 @@ export interface TextBox {
    * - `normAutofit` — shrink text to fit (rare; renderer treats as fixed).
    */
   autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
+  /**
+   * Original OOXML envelope (VML/DrawingML) for a text-box-bearing shape, so a
+   * from-PM rebuild re-emits the drawing verbatim. Same `rawXml`/`envelopeKey`
+   * contract as `Shape` / `Image`.
+   */
+  rawXml?: string;
+  envelopeKey?: string;
 }
 
 // ============================================================================
