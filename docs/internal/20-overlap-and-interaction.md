@@ -41,9 +41,12 @@ width ~1em). The remaining SDS **18-vs-16 page count** is multi-column layout
 (see Plan), NOT diffuse spacing.
 - B5/B6 are interaction, invisible to the VF PNG pipeline — they need live
   Playwright drag/keyboard repros (see [[feedback-verify-ui-with-playwright]]).
-- VF scoring caveat: editor PNGs render at ~192dpi, reference at ~150dpi; the
-  block/row-correlation proxy is scale-sensitive, so a faithful page can score
-  low. Convert to physical units before trusting a "broken" score
+- VF dpi alignment (was a caveat, now **fixed**): editor PNGs used to render at
+  ~192dpi vs reference ~150dpi. `render-editor.mjs` now renders at
+  `deviceScaleFactor = VF_DPI/96` (150dpi), so both sides are byte-comparable
+  (1275×1650 = 1275×1650, no resampling). Re-running with alignment moved the
+  scores <1pt — so **medical's 33 is REAL vertical drift, not a scale artifact**
+  (confirmed). Convert to physical units only when a row looks off
   (`reference-dingbat-line-ratio` memory).
 
 ## Plan

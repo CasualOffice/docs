@@ -38,8 +38,15 @@ const browser = await chromium.launch();
 // region) and bogus 0-scores for fixtures like oversized-header-image whose
 // body sits low on the page. A viewport that contains a whole page captures
 // it in one shot. Page width (≤1056px) is < 1200, so no fit-to-width zoom.
+// Render at the SAME effective DPI as the reference (render-reference.mjs uses
+// 150 DPI). The editor lays out at 96 CSS px/inch, so deviceScaleFactor =
+// 150/96 = 1.5625 produces a PNG the same physical resolution as the reference
+// PDF raster. Previously this was 2 (= 192 DPI), a 1.28× mismatch that forced
+// diff.py to resample one side and depressed the block/row-correlation scores
+// (a faithful page could score low purely from the scale gap). VF_DPI overrides.
+const VF_DPI = Number(process.env.VF_DPI ?? 150);
 const ctx = await browser.newContext({
-  deviceScaleFactor: 2,
+  deviceScaleFactor: VF_DPI / 96,
   viewport: { width: 1200, height: 1700 },
 });
 const page = await ctx.newPage();
