@@ -28,7 +28,7 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 ## Todo — editing existing objects
 | Pri | Item | Impact | Notes / fix direction |
 | --- | --- | --- | --- |
-| P1 | 🔬 **Textbox node select + delete** | High — you can insert one now but not easily remove it | Probe: Escape+Delete left 9→9. Click-to-enter works, selecting the whole box doesn't. Re-verifying gestures; if confirmed, add a textBox node-select path (mirror `findImageElement`) + delete. |
+| P3 | ⬜ **Textbox click-to-select-as-node** (Word border-select) | Low — deletion already works | `Ctrl+A`→Delete already removes a box; **Backspace in an empty box now deletes it** too (✅, BaseKeymapExtension). Remaining nicety: click the box border to select the whole node (for move/resize); not blocking. |
 | P2 | ⬜ **Textbox move / resize** | Med | No drag/resize handles for textbox (only images have them). Add an overlay like `ImageSelectionOverlay`. |
 | P2 | ⬜ **Anchored position honored by layout** | High (shared) | Floating images + textboxes + shapes store `posOffsetH/V` but the layout engine ignores them (reverted `d8b85d1`). Drag-move updates attrs but a re-layout can reset. Needs hybrid cursor-advance + wrap-exclusion zones. |
 | P2 | ⬜ **Shape (rawXml) safety** | Med | rawXml shapes are preserve-only; editing silently rebuilds → loses VML. Make click-selectable + safely deletable; block in-place edit or patch only the textBody. |
