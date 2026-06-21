@@ -38,12 +38,12 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 | P3 | ⬜ **Image UI: dist-margins / rotate-flip / border / topAndBottom wrap** | Low | Attrs exist + round-trip; no UI to edit. |
 | P3 | ⬜ **Cell-range selection polish / col-resize width constraint** | Low | Multi-cell selection lacks anchor styling; col-resize can breach fixed table width. |
 
-## Todo — insertion (user's main ask: "only there, can't create")
-| Pri | Item | Impact | Notes / fix direction |
+## Insertion (user's main ask: "only there, can't create")
+| Pri | Item | Impact | Notes |
 | --- | --- | --- | --- |
-| ✅ | Insert **text box / callout** | — | done (above) |
-| P1 | ⬜ **Insert real shape / vector** | High | "Insert shape" today drops a **flat rasterized PNG** (`generateShape`→dataUrl→image node), not an editable vector. Make it a real `shape` node (resizable, optional text), or at minimum a proper drawing. |
-| P2 | ⬜ **Insert callout presets** | Low | Callout exists (styled textbox); could add shaped callouts (speech bubble) once real shapes land. |
+| ✅ | Insert **text box / callout** | — | done — editable, deletable (Backspace/Ctrl+A) |
+| ✅ | Insert **shape (rect/ellipse/line/arrow)** | — | **Works** — `generateShape` emits a **vector SVG** (not raster as the audit said), inserted as an image node: renders, selectable, **resizable** (4 handles), movable. Guarded by e2e. |
+| P3 | ⬜ **Native DrawingML shape + recolor** | Med (enhancement) | The inserted shape saves as an *image*, not a Word shape, and can't be recolored after insert. A real `shape`-node path needs **painter shape rendering** (none today — shapes only paint via the image path) + a resize overlay + fill UI. Larger build; deprioritized since insert-shape is already functional. |
 
 ## Polish / debt
 | Item | Notes |
