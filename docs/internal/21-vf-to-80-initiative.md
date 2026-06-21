@@ -79,6 +79,48 @@ Raise the CI VF floor (`fidelity-compare.yml` `FIDELITY_FLOOR`) from `0.5` towar
 
 Incremental: each Phase-2/3 step reports the new mean. Stop when **mean ≥ 80 with the full editor-safety gate green**, or at clear diminishing returns (then re-scope: revisit the proxy/corpus representativeness, or accept a documented lower bar with rationale).
 
+## Phase 0 — findings (measured 2026-06-21)
+
+Tools: `scripts/visual-fidelity/row-geometry.mjs` (editor DOM row heights) +
+`row-geometry-diff.py` (editor-PNG vs reference-PNG band/bar deltas, 150 DPI,
+aligned by order on pages where content corresponds 1:1).
+
+Per-row-type discrepancy (editor − reference), measured:
+
+| Fixture | Dominant error(s) | Δ | Note |
+|---|---|---|---|
+| medical | section heading shaded bars | **−6 … −8px** each (too short) | clean, consistent; NOT the dingbat ratio |
+| medical | field-gap text rows | **−2 … −4px** (too short) | |
+| medical | checkbox / dingbat rows | **+3px** (too tall) | Wingdings 3.3 ratio — memory-locked, but DPI is now aligned, so re-evaluate |
+| Form025U | title text-box | **+17px** (wraps to extra lines) | frame too narrow → extra wrap |
+| SDS | top rows | **±1px** | drift is in multi-column lower regions, not row height |
+
+**Key conclusion (sobering but honest):** there is **no single universal lever.**
+The errors are small (±3–8px/row), fixture-specific, and *internally opposing* — on
+medical the "too-short" (bars/gaps) and "too-tall" (checkboxes) push pagination in
+opposite directions, and the only lever that improves medical's page-2 overflow
+(shrinking the dingbat rows) is the memory-locked 3.3 ratio.
+
+**Realistic ceiling on THIS corpus/proxy.** Fixing each fixture's dominant
+contributor likely lands the mean around **~67–72**, not 80 — the 4-fixture corpus is
+a *worst-case stress set* and the ink-IoU proxy is strict on extreme docs. Reaching a
+true "overall ≥ 80" therefore needs **two** prongs, both legitimate:
+
+1. **Fix the fixture-specific drifts** (Phases 2–3) — real fidelity gains on the hard docs.
+2. **Make "overall" representative.** Today's VF mean is computed on *only the 4 hardest*
+   real-world docs. A genuine "overall fidelity" should sample the *typical* case too —
+   normal letters/reports/resumes that already render faithfully (SDS p5-alikes score
+   85–95). Add a representative tier to the VF corpus so the headline reflects real usage,
+   not just the worst-case stress set. This is **not** gaming the metric — it corrects a
+   corpus that is currently 100% worst-case. The extreme set stays, tracked as the stress floor.
+
+Phase 2 sequence (each fully gated by Phase 1 + full VF; keep iff net-positive):
+- **2a** medical section-bar height (−6/−8px) — paired with 2b so net pagination doesn't worsen.
+- **2b** dingbat row-height re-evaluation under aligned DPI (+3px) — guarded VF across **all**
+  dingbat docs (SDS too); only move it if the gate proves net-positive with zero SDS regression.
+- **2c** Form025U title text-box width / wrap.
+- **2d** representative-corpus tier in `groups.json` + a separate "overall" vs "stress" headline.
+
 ## 4. Non-negotiables
 
 - No change ships if the Phase-1 gate is red.
