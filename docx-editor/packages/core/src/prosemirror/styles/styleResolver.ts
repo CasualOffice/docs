@@ -280,7 +280,17 @@ export class StyleResolver {
     }
     // Fall back to "Normal" for paragraph styles
     if (type === 'paragraph') {
-      return this.stylesById.get('Normal') ?? BUILTIN_NORMAL_STYLE;
+      const normal = this.stylesById.get('Normal');
+      if (normal) return normal;
+      // No Normal style in the document. If it defines its own
+      // `docDefaults`, THOSE are the paragraph defaults (ECMA-376
+      // §17.7.2) — substituting Word's built-in Normal (8pt after /
+      // 1.08 line) here would merge OVER and override the document's
+      // explicit docDefaults, compressing spacing vs Word/LibreOffice on
+      // every doc that relies on docDefaults without a Normal style.
+      // Only use the built-in when the document provides no paragraph
+      // defaults at all.
+      return this.docDefaults?.pPr ? undefined : BUILTIN_NORMAL_STYLE;
     }
     return undefined;
   }
