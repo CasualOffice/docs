@@ -1014,6 +1014,13 @@ function createShapeRun(node: PMNode): Run {
     };
   }
 
+  // Restore the original OOXML envelope so the serializer re-emits the drawing
+  // verbatim (the rawXml invariant: when set, model-based emission is skipped).
+  // This is what makes drawings survive a from-PM rebuild — structural edit,
+  // collab peer, or server snapshot — instead of being dropped.
+  if (attrs.rawXml) shape.rawXml = attrs.rawXml;
+  if (attrs.envelopeKey) shape.envelopeKey = attrs.envelopeKey;
+
   const shapeContent: ShapeContent = { type: 'shape', shape };
 
   return {
@@ -1684,6 +1691,12 @@ function convertPMTextBox(node: PMNode): Paragraph {
       },
     },
   };
+
+  // Restore the original OOXML envelope so the serializer re-emits this drawing
+  // verbatim (rawXml invariant) — the core of surviving a from-PM rebuild from a
+  // structural edit / collab peer / server snapshot.
+  if (attrs.rawXml) shape.rawXml = attrs.rawXml;
+  if (attrs.envelopeKey) shape.envelopeKey = attrs.envelopeKey;
 
   // Convert fill color back
   if (attrs.fillColor) {
