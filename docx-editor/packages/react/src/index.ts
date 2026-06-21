@@ -126,6 +126,13 @@ export {
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils';
 export { AgentPanel, type AgentPanelProps } from './components/AgentPanel';
+// Collab presence cluster (avatars + room status + Share) for the title bar's
+// `renderTitleBarRight` slot. Built from the shared design-system UI-kit.
+export {
+  PresenceCluster,
+  type PresenceClusterProps,
+  type PresencePeer,
+} from './components/PresenceCluster';
 
 // Collab — Yjs/y-websocket wiring exposed so SDK consumers (host
 // apps embedding the editor) can opt into co-edit by passing the

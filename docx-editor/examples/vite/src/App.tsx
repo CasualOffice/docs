@@ -4,6 +4,7 @@ import {
   type DocxEditorRef,
   type Document as DocxDocument,
   createEmptyDocument,
+  PresenceCluster,
 } from '@casualoffice/docs';
 import { useCollab } from './collab/useCollab';
 import { StatusBadge } from './collab/StatusBadge';
@@ -967,19 +968,15 @@ function CollabApp({
 
   const renderTitleBarRight = useCallback(
     () => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={styles.status}>Room: {room.slice(0, 8)}…</span>
-        <button
-          style={styles.button}
-          onClick={() => {
-            void navigator.clipboard.writeText(window.location.href);
-          }}
-        >
-          Copy invite link
-        </button>
-      </div>
+      <PresenceCluster
+        peers={peers.map((p) => ({ name: p.name, color: p.color, active: true }))}
+        status={status}
+        onShare={() => {
+          void navigator.clipboard.writeText(window.location.href);
+        }}
+      />
     ),
-    [room]
+    [peers, status]
   );
 
   if (seed.kind === 'loading') {

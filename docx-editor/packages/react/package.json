@@ -131,6 +131,7 @@
     "sonner": "^2.0.7"
   },
   "devDependencies": {
+    "@schnsrw/design-system": "file:../../vendor/design-system",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-dropcursor": "^1.8.2",
     "prosemirror-history": "^1.4.0",
