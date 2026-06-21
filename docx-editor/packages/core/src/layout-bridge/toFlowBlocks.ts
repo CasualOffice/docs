@@ -1530,6 +1530,10 @@ function convertTextBoxNode(
     attrs.posRelFromV != null ||
     attrs.posAlignH != null ||
     attrs.posAlignV != null;
+  // `behindDoc` (VML z-index<0 → wrapType 'behind') drives both the paint
+  // order (z-index −1) and the flow space-reservation for paragraph-anchored
+  // groups (the SDS hazard box). Carried on the anchor only.
+  const behindDoc = (attrs.wrapType as string | undefined) === 'behind';
   const anchor: TextBoxBlock['anchor'] = hasAnchor
     ? {
         offsetH: (attrs.posOffsetH as number | undefined) ?? undefined,
@@ -1538,6 +1542,7 @@ function convertTextBoxNode(
         relFromV: (attrs.posRelFromV as string | undefined) ?? undefined,
         alignH: (attrs.posAlignH as string | undefined) ?? undefined,
         alignV: (attrs.posAlignV as string | undefined) ?? undefined,
+        behindDoc: behindDoc || undefined,
       }
     : undefined;
 
@@ -1655,6 +1660,22 @@ export function toFlowBlocks(doc: PMNode, options: ToFlowBlocksOptions = {}): Fl
                   equalWidth: secProps.equalWidth ?? true,
                   separator: secProps.separator,
                 };
+                // Unequal columns (`w:equalWidth="0"`): carry the explicit
+                // per-column `w:col` widths/spaces so the value column gets its
+                // true (wider) width instead of an even split — even columns
+                // over-narrow the wide column, over-wrapping its text and
+                // inflating the region (and document) height.
+                if (
+                  secProps.equalWidth === false &&
+                  secProps.columns &&
+                  secProps.columns.length === colCount &&
+                  secProps.columns.every((c) => typeof c.width === 'number' && c.width > 0)
+                ) {
+                  cols.columnWidths = secProps.columns.map((c) => ({
+                    width: twipsToPixels(c.width as number),
+                    space: twipsToPixels(c.space ?? 0),
+                  }));
+                }
                 sectionBreak.columns = cols;
               }
             }

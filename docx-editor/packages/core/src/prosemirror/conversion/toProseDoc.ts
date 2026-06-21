@@ -2040,6 +2040,11 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
       marginLeft,
       marginRight,
       autoFit: textBox.autoFit,
+      // Behind-text wrap (VML z-index<0) — carried so the layout engine can
+      // both paint the box behind body text AND reserve its band in the flow
+      // (the SDS hazard box). 'inline' is the schema default for non-anchored
+      // boxes; only emit a non-default when the source said so.
+      wrapType: textBox.wrap?.type ?? 'inline',
       posOffsetH,
       posOffsetV,
       posRelFromH: posH?.relativeTo ?? null,

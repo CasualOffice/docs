@@ -840,6 +840,15 @@ export type ColumnLayout = {
   equalWidth?: boolean;
   /** Draw vertical separator line between columns (w:sep). */
   separator?: boolean;
+  /**
+   * Per-column geometry for unequal columns (`w:equalWidth="0"`), in pixels,
+   * in document order. Each entry's `width` is the column body width and
+   * `space` is the gap to the FOLLOWING column (the trailing column's `space`
+   * is unused). When present and `count` matches, the paginator uses these
+   * directly instead of splitting the content width equally. Absent / empty =
+   * equal columns.
+   */
+  columnWidths?: Array<{ width: number; space: number }>;
 };
 
 /**
