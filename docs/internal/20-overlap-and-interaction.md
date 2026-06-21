@@ -102,10 +102,21 @@ multi-column page count all solved.
   ignoring the negative margin. `computeExtendedTopMargin` adds a `min(marginTop,0)`
   overlap-pull (no-op for positive-margin docs), so the header now overlaps the
   body per Word — body top recovered ~13.5pt. medical 33.1→33.6, SDS/Form025U
-  unchanged. **Remaining medical gap (the bulk of its low score):** font-metric
-  row-height — the editor wraps some left-column label cells to MORE lines than
-  LibreOffice, making cells taller and cascading ~1 row/page (p3/p4 block-corr
-  ≈0). Separate, higher-risk (font substitution / line-wrap metrics) — tracked
-  for a focused metrics pass, NOT the header path.
+  unchanged. **Remaining medical gap (the bulk of its low score, re-diagnosed
+  2026-06-21, ACCEPTED FOR v1):** table-row-height drift, NOT line-wrap. Measured
+  per-row on identical-content p1 (both VF PNGs at 150 DPI, apples-to-apples):
+  the whole form is ~10 stacked tables and the row heights drift in *opposite*
+  directions — checkbox/dingbat rows ~+5px too tall (Wingdings `singleLineRatio=3.3`,
+  memory-locked, see [[reference-dingbat-line-ratio]]), multi-line description rows
+  too tall, shaded section bars ~8px too short, field-row gaps too short. They
+  partially cancel (p1 nets shorter, p2 nets taller) but the residual pushes one
+  block (`Describe the immediate actions`) from p2→p3, offsetting downstream
+  content (p3/p4 block-corr/row-corr ≈0 while col-corr stays 80-94 → pure vertical
+  offset, content is complete + correct). NO safe single lever: errors oppose each
+  other, all 4 fixtures share Arial+Calibri (SDS uses Arial 734×) so any global
+  ratio change is max blast radius, and the biggest tall-contributor is the
+  memory-locked dingbat ratio. Decision: ship medical-form as-is for v1 (content-
+  complete, paginates one block early); revisit as a dedicated calibration task
+  needing runtime per-row instrumentation, NOT a guessed metric tweak.
 - **B4** (SDS subtitle Y) — recheck since B1 landed.
 - **Address text-frame cramp** (SDS p1, incremental — separate behind-doc frame).
