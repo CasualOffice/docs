@@ -106,6 +106,16 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
+      - name: Drop broken Microsoft apt repo
+        # The GitHub-hosted runner image pre-configures Microsoft's apt repos
+        # (azure-cli / packages.microsoft.com). They intermittently return 403,
+        # and `playwright install --with-deps` runs `apt-get update`, which
+        # fails the whole step (exit 100) when any configured repo errors. We
+        # don't need those repos for the browser system deps (they come from
+        # the stock Ubuntu archives), so remove them first.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure* 2>/dev/null || true
+
       - name: Install Playwright browsers
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
