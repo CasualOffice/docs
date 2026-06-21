@@ -306,6 +306,13 @@ function applyPageStyles(
   element.style.height = `${height}px`;
   element.style.backgroundColor = options.backgroundColor ?? '#ffffff';
   element.style.overflow = 'hidden';
+  // Establish a stacking context on the page so behind-doc objects (anchored
+  // shapes / text-boxes painted at z-index:-1, e.g. "behind text" VML frames)
+  // stay contained within the page and render ABOVE its background. Without it,
+  // no ancestor forms a stacking context, so a z-index:-1 child escapes to the
+  // root's negative layer and paints behind the page's opaque background —
+  // making real behind-doc content (not just watermarks) silently vanish.
+  element.style.isolation = 'isolate';
 
   // Page-level default (11pt Calibri). Must use the same chain as canvas
   // measurement in measureContainer.ts, otherwise unbreakable runs that lack
