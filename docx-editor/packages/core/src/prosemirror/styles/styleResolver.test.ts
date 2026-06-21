@@ -58,9 +58,13 @@ describe('StyleResolver', () => {
   });
 
   describe('resolveParagraphStyle', () => {
-    test('returns docDefaults merged with built-in Normal when no styleId provided', () => {
+    test('uses docDefaults (not the built-in Normal) when the doc has no Normal style', () => {
+      // A document with its own docDefaults but no Normal style: docDefaults
+      // ARE the paragraph defaults (ECMA-376 §17.7.2). The built-in Normal
+      // (8pt after / 1.08 line) must NOT override them — doing so compressed
+      // spacing vs Word/LibreOffice on every doc that relies on docDefaults.
       const docDefaults: DocDefaults = {
-        pPr: { lineSpacing: 240, spaceAfter: 160 },
+        pPr: { lineSpacing: 312, spaceAfter: 120 },
         rPr: { fontSize: 22 },
       };
 
@@ -72,10 +76,19 @@ describe('StyleResolver', () => {
       const resolver = createStyleResolver(styleDefinitions);
       const result = resolver.resolveParagraphStyle(null);
 
-      // Built-in Normal style overrides docDefaults for lineSpacing (259) and spaceAfter (160)
+      expect(result.paragraphFormatting?.lineSpacing).toBe(312);
+      expect(result.paragraphFormatting?.spaceAfter).toBe(120);
+      expect(result.runFormatting?.fontSize).toBe(22);
+    });
+
+    test('falls back to the built-in Normal only when there are no docDefaults', () => {
+      // Truly bare document: no Normal style AND no docDefaults → Word's
+      // built-in Normal (8pt after / 1.08x line) is the correct fallback.
+      const resolver = createStyleResolver({ styles: [] });
+      const result = resolver.resolveParagraphStyle(null);
+
       expect(result.paragraphFormatting?.lineSpacing).toBe(259);
       expect(result.paragraphFormatting?.spaceAfter).toBe(160);
-      expect(result.runFormatting?.fontSize).toBe(22);
     });
 
     test('applies Normal style when no styleId and Normal exists', () => {
