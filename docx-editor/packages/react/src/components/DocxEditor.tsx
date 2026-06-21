@@ -504,7 +504,26 @@ export interface DocxEditorProps {
   onEditorViewReady?: (view: import('prosemirror-view').EditorView) => void;
   /** Theme for styling */
   theme?: Theme | null;
-  /** Whether to show toolbar (default: true) */
+  /**
+   * Built-in chrome preset — a shortcut for the individual `show*` flags so
+   * hosts pick a UI level the way the sister sheet SDK does:
+   *   - `"full"` (default): batteries-included shell — toolbar + status bar +
+   *     panel rail + zoom. For 3rd-party hosts.
+   *   - `"minimal"`: lean editing surface — toolbar + zoom only.
+   *   - `"none"`: bare editing canvas, no built-in chrome — the host brings its
+   *     own shell and consumes the editor core.
+   * Any explicit `showToolbar` / `showStatusBar` / `showPanelRail` /
+   * `showZoomControl` prop overrides the preset.
+   */
+  chrome?: 'none' | 'minimal' | 'full';
+  /**
+   * Called once, after the editor mounts and finishes loading its initial
+   * document, with the imperative API (the same object exposed via `ref`).
+   * Mirrors the sheet SDK's `onReady(api)` handshake so hosts get a single
+   * "ready" signal instead of polling the ref.
+   */
+  onReady?: (api: DocxEditorRef) => void;
+  /** Whether to show toolbar (default: true, or per `chrome` preset) */
   showToolbar?: boolean;
   /** Whether to show the right-edge PanelRail (default: true). Set to
    *  `false` when embedding the editor as a read-only preview so the
@@ -730,6 +749,11 @@ export interface DocxEditorRef {
   loadDocument: (doc: Document) => void;
   /** Load a DOCX buffer programmatically (ArrayBuffer, Uint8Array, Blob, or File) */
   loadDocumentBuffer: (buffer: DocxInput) => Promise<void>;
+  /** Alias of `loadDocumentBuffer` — parity with the sheet SDK's `importXlsx`. */
+  importDocx: (buffer: DocxInput) => Promise<void>;
+  /** Alias of `save` — parity with the sheet SDK's `exportXlsx`. Returns the
+   *  serialized .docx bytes, or null if serialization fails. */
+  exportDocx: (options?: { selective?: boolean }) => Promise<ArrayBuffer | null>;
   /** Add a comment programmatically. Anchored by Word `w14:paraId` so
    * it survives unrelated edits. Returns the comment ID, or null if
    * the paraId is unknown or the search text isn't found / is ambiguous. */
@@ -1476,10 +1500,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onError,
     onFontsLoaded: onFontsLoadedCallback,
     theme,
-    showToolbar = true,
-    showPanelRail = true,
-    showStatusBar = true,
-    showZoomControl = true,
+    chrome,
+    onReady,
+    // `chrome` sets the default UI level; an explicit show* prop still wins
+    // (destructuring defaults only apply when the prop is undefined). No
+    // chrome → "full" defaults, so existing consumers are unaffected.
+    showToolbar = chrome === 'none' ? false : true,
+    showPanelRail = chrome === 'none' || chrome === 'minimal' ? false : true,
+    showStatusBar = chrome === 'none' || chrome === 'minimal' ? false : true,
+    showZoomControl = chrome === 'none' ? false : true,
     showMarginGuides: _showMarginGuides = false,
     marginGuideColor: _marginGuideColor,
     showRuler = false,
@@ -6350,9 +6379,11 @@ body { background: white; }
   );
 
   // Expose ref methods
-  useImperativeHandle(
-    ref,
-    () => ({
+  // Captured imperative handle + once-guard for the onReady handshake.
+  const exposedApiRef = useRef<DocxEditorRef | null>(null);
+  const onReadyFiredRef = useRef(false);
+  useImperativeHandle(ref, () => {
+    const api: DocxEditorRef = {
       getAgent: () => agentRef.current,
       getDocument: () => history.state,
       getEditorRef: () => pagedEditorRef.current,
@@ -6374,6 +6405,8 @@ body { background: white; }
       print: handleDirectPrint,
       loadDocument: loadParsedDocument,
       loadDocumentBuffer: loadBuffer,
+      importDocx: loadBuffer,
+      exportDocx: handleSave,
 
       addComment: (options) => {
         const view = pagedEditorRef.current?.getView();
@@ -6770,18 +6803,30 @@ body { background: white; }
           selectionChangeSubscribersRef.current.delete(listener);
         };
       },
-    }),
-    [
-      history.state,
-      state.zoom,
-      scrollPageInfo,
-      handleSave,
-      handleDirectPrint,
-      loadParsedDocument,
-      loadBuffer,
-      comments,
-    ]
-  );
+    };
+    // Expose the same handle to the onReady effect below.
+    exposedApiRef.current = api;
+    return api;
+  }, [
+    history.state,
+    state.zoom,
+    scrollPageInfo,
+    handleSave,
+    handleDirectPrint,
+    loadParsedDocument,
+    loadBuffer,
+    comments,
+  ]);
+
+  // onReady — fire once, after the editor has mounted and the initial document
+  // has finished loading, with the imperative API (sheet-SDK parity).
+  useEffect(() => {
+    if (!onReady || onReadyFiredRef.current || state.isLoading) return;
+    const api = exposedApiRef.current;
+    if (!api) return;
+    onReadyFiredRef.current = true;
+    onReady(api);
+  }, [onReady, state.isLoading]);
 
   const initialSectionProperties = useMemo(
     () => getInitialSectionProperties(history.state),
