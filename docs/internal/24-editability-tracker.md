@@ -12,18 +12,23 @@ and they get slotted in.
 ## Status legend
 ✅ done · 🟡 in progress · ⬜ todo · 🔬 needs verify
 
-## Done
+## ⚠️ Audit caveat
+The initial code-reading audit was **unreliable** — 3 of its "broken" claims were
+actually working (textbox text-edit, inline-image resize handles, inline-image drag-
+resize). Treat every row as **verified by Playwright probe**, not by reading code.
+
+## Done / verified-working
 | Item | Notes |
 | --- | --- |
 | ✅ **Table delete** | Right-click "Delete table" was a no-op — missing `case 'deleteTable'` in the context-menu action switch (`DocxEditor.tsx`). Fixed + e2e. (user-reported) |
 | ✅ **Insert text box / callout** | No way to create a text box existed. `handleInsertTextBox` + Insert-menu entries; caret lands inside; callout = fill+outline variant. e2e. (user-reported) |
-| ✅ **Textbox text editing** | Already worked (DOM click path → inner paragraph `data-pm-start`); pinned with a guard test so it stays working. |
+| ✅ **Textbox text editing** | Already worked (DOM click path → inner paragraph `data-pm-start`); guard test pins it. |
+| ✅ **Inline image resize** | Already works — select shows 4 handles, drag resizes (333→256px). Audit's "no resize UI" was wrong; my first probe missed the target with raw coords. Guard test pins it. |
 
 ## Todo — editing existing objects
 | Pri | Item | Impact | Notes / fix direction |
 | --- | --- | --- | --- |
-| P1 | ⬜ **Inline image resize** | High — can't resize the most common image type | Selecting an inline image shows the overlay but **0 resize handles** (handles gate on `displayMode !== 'inline'`). Render handles for inline + dispatch width/height. |
-| P1 | ⬜ **Textbox node select + delete** | High | Probe: Escape+Delete left 9→9. Click-to-enter works, but selecting the whole box (to delete/move) doesn't. Add a textBox node-select path (mirror `findImageElement`) + delete. |
+| P1 | 🔬 **Textbox node select + delete** | High — you can insert one now but not easily remove it | Probe: Escape+Delete left 9→9. Click-to-enter works, selecting the whole box doesn't. Re-verifying gestures; if confirmed, add a textBox node-select path (mirror `findImageElement`) + delete. |
 | P2 | ⬜ **Textbox move / resize** | Med | No drag/resize handles for textbox (only images have them). Add an overlay like `ImageSelectionOverlay`. |
 | P2 | ⬜ **Anchored position honored by layout** | High (shared) | Floating images + textboxes + shapes store `posOffsetH/V` but the layout engine ignores them (reverted `d8b85d1`). Drag-move updates attrs but a re-layout can reset. Needs hybrid cursor-advance + wrap-exclusion zones. |
 | P2 | ⬜ **Shape (rawXml) safety** | Med | rawXml shapes are preserve-only; editing silently rebuilds → loses VML. Make click-selectable + safely deletable; block in-place edit or patch only the textBody. |
