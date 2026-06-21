@@ -707,6 +707,35 @@ function computePerBlockWidths(
 // duplicates were drifting from the canonical implementations; sharing
 // keeps them in lockstep across React + Vue adapters.
 
+/**
+ * Top body margin (px) once the header content has been accounted for.
+ *
+ * When header content is taller than the gap between the page top and the
+ * header distance, Word pushes body content down to clear it. The body top is
+ * normally `headerDistance + headerContentHeight`, with the authored top margin
+ * (`marginTop`) acting as a floor.
+ *
+ * The negative-top-margin case is the subtle one. `w:pgMar w:top` can be
+ * negative (e.g. medical-incident-form's `w:top="-270"` = −13.5pt). Word reads
+ * that as permission for the header to OVERLAP the body rather than fully
+ * displace it: the negative margin pulls body content up under the header by
+ * |marginTop|. So the clear position is reduced by the negative margin and
+ * clamped to the page edge (never above 0).
+ *
+ * For every positive-top document `Math.min(marginTop, 0)` is 0, so this
+ * reduces to the original `headerDistance + headerContentHeight` push — the
+ * function is provably a no-op for positive-margin docs.
+ */
+export function computeExtendedTopMargin(
+  marginTop: number,
+  headerDistance: number,
+  headerContentHeight: number
+): number {
+  const headerOverlapPull = Math.min(marginTop, 0);
+  const clearTop = Math.max(0, headerDistance + headerContentHeight + headerOverlapPull);
+  return Math.max(marginTop, clearTop);
+}
+
 export function measureTableCellBlockVisualHeight(block: FlowBlock, blockMeasure: Measure): number {
   if (block.kind !== 'paragraph' || blockMeasure.kind !== 'paragraph') {
     if ('totalHeight' in blockMeasure) return blockMeasure.totalHeight;
@@ -1707,7 +1736,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             const extend = (m: PageMargins): PageMargins => {
               const out = { ...m };
               if (extendHeader) {
-                out.top = Math.max(m.top, headerDistance + headerContentHeight);
+                // Negative-top-margin docs let the header overlap the body
+                // instead of fully displacing it; see computeExtendedTopMargin.
+                // Positive-top docs are unaffected (no-op).
+                out.top = computeExtendedTopMargin(m.top, headerDistance, headerContentHeight);
               }
               if (extendFooter) {
                 out.bottom = Math.max(m.bottom, footerDistance + footerContentHeight);
