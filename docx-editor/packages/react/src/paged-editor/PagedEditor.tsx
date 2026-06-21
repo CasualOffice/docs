@@ -621,18 +621,43 @@ function getColumns(sectionProps: SectionProperties | null | undefined): ColumnL
   if (count <= 1) return undefined;
   // Default column spacing: 720 twips (0.5 inch) per OOXML spec
   const gap = twipsToPixels(sectionProps?.columnSpace ?? 720);
-  return {
+  const cols: ColumnLayout = {
     count,
     gap,
     equalWidth: sectionProps?.equalWidth ?? true,
     separator: sectionProps?.separator,
   };
+  // Unequal columns: carry explicit per-column widths so measurement uses the
+  // true (wider) value-column width instead of an even split. Mirrors the
+  // inner-section path in toFlowBlocks.
+  const colDefs = sectionProps?.columns;
+  if (
+    sectionProps?.equalWidth === false &&
+    colDefs &&
+    colDefs.length === count &&
+    colDefs.every((c) => typeof c.width === 'number' && (c.width as number) > 0)
+  ) {
+    cols.columnWidths = colDefs.map((c) => ({
+      width: twipsToPixels(c.width as number),
+      space: twipsToPixels(c.space ?? 0),
+    }));
+  }
+  return cols;
 }
 
-function columnWidthForSection(config: SectionLayoutConfig): number {
+/**
+ * Body width for column index `colIndex` of a section. With explicit unequal
+ * columns (`w:equalWidth="0"`) returns that column's true width; otherwise the
+ * even split. Single-column sections return full content width.
+ */
+function columnWidthForSection(config: SectionLayoutConfig, colIndex = 0): number {
   const contentWidth = config.pageSize.w - config.margins.left - config.margins.right;
   const cols = config.columns;
   if (!cols || cols.count <= 1) return contentWidth;
+  if (cols.columnWidths && cols.columnWidths.length === cols.count) {
+    const w = cols.columnWidths[Math.min(colIndex, cols.count - 1)]?.width;
+    if (typeof w === 'number' && w > 0) return Math.floor(w);
+  }
   return Math.floor((contentWidth - (cols.count - 1) * cols.gap) / cols.count);
 }
 
@@ -654,13 +679,24 @@ function computePerBlockWidths(
   );
 
   let sectionIdx = 0;
+  // Column index within the current section, advanced by explicit column
+  // breaks so unequal columns measure each block at its own column's width.
+  let colIndex = 0;
   const widths: number[] = [];
 
   for (let i = 0; i < blocks.length; i++) {
-    widths.push(columnWidthForSection(sectionConfigs[sectionIdx] ?? initialConfig));
+    const cfg = sectionConfigs[sectionIdx] ?? initialConfig;
+    widths.push(columnWidthForSection(cfg, colIndex));
+
+    const block = blocks[i];
+    if (block.kind === 'columnBreak') {
+      const count = cfg.columns?.count ?? 1;
+      if (colIndex < count - 1) colIndex += 1;
+    }
 
     if (sectionIdx < breakIndices.length && i === breakIndices[sectionIdx]) {
       sectionIdx++;
+      colIndex = 0; // new section restarts at column 0
     }
   }
 

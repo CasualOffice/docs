@@ -34,6 +34,7 @@ import type {
   ShapeFill,
   ShapeOutline,
   ImagePosition,
+  ImageWrap,
 } from '../types/content';
 import {
   findDeep,
@@ -271,6 +272,21 @@ const VML_V_ALIGN: Record<string, ImagePosition['vertical']['alignment']> = {
   outside: 'outside',
 };
 
+/**
+ * A negative VML `z-index` means the shape paints BEHIND the body text
+ * (Word's "Behind Text" wrap). Word authors the SDS hazard box this way
+ * (`z-index:-15728128`). The sign is what matters; the magnitude is just a
+ * stacking order among other behind-doc shapes. Returns the `behind` wrap so
+ * downstream layout can both paint it behind and reserve its band in the flow.
+ */
+function parseVmlBehindWrap(decls: Map<string, string>): ImageWrap | undefined {
+  const z = decls.get('z-index');
+  if (z === undefined) return undefined;
+  const n = parseFloat(z);
+  if (Number.isFinite(n) && n < 0) return { type: 'behind' };
+  return undefined;
+}
+
 function parseVmlShapePosition(
   _shapeEl: XmlElement,
   decls: Map<string, string>
@@ -348,6 +364,7 @@ function decorativeShapeToTextBox(shape: XmlElement, transform?: GroupTransform)
 
   const fill = parseFillForShape(shape);
   const outline = parseOutlineForShape(shape);
+  const wrap = transform ? transform.wrap : parseVmlBehindWrap(decls);
   const id = getAttribute(shape, null, 'id') ?? undefined;
 
   return {
@@ -355,6 +372,7 @@ function decorativeShapeToTextBox(shape: XmlElement, transform?: GroupTransform)
     id,
     size,
     position,
+    wrap,
     fill,
     outline,
     // Decorative shapes (box-border rects, dividers) are pure fill with no text
@@ -391,6 +409,8 @@ interface GroupTransform {
   topEmu: number | null;
   /** Group anchoring frame, inherited by every child. */
   position: ImagePosition | undefined;
+  /** Behind-text wrap inherited from the group's `z-index < 0`, if any. */
+  wrap: ImageWrap | undefined;
   originX: number;
   originY: number;
   scaleX: number;
@@ -428,6 +448,7 @@ function buildGroupTransform(groupEl: XmlElement): GroupTransform {
     leftEmu: lengthDeclToEmu(decls.get('margin-left')),
     topEmu: lengthDeclToEmu(decls.get('margin-top')),
     position: parseVmlShapePosition(groupEl, decls),
+    wrap: parseVmlBehindWrap(decls),
     originX: origin[0],
     originY: origin[1],
     scaleX,
@@ -569,6 +590,9 @@ function textBoxShapeToTextBox(
   const position = transform
     ? transformChildPosition(decls, transform)
     : parseVmlShapePosition(shape, decls);
+  // Behind-text wrap: a grouped child inherits the group's z-index<0; an
+  // ungrouped shape carries its own.
+  const wrap = transform ? transform.wrap : parseVmlBehindWrap(decls);
   const id = getAttribute(shape, null, 'id') ?? undefined;
 
   return {
@@ -576,6 +600,7 @@ function textBoxShapeToTextBox(
     id,
     size,
     position,
+    wrap,
     content,
   };
 }
