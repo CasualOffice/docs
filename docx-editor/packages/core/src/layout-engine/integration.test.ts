@@ -971,7 +971,7 @@ describe('Layout Engine - Contextual Spacing', () => {
 
     const frags = layout.pages[0].fragments;
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(13); // max(13, 5)
+    expect(gap).toBe(18); // 13 + 5 (Word adds spaceAfter + spaceBefore)
   });
 
   test('does NOT suppress spacing when styles differ', () => {
@@ -998,7 +998,7 @@ describe('Layout Engine - Contextual Spacing', () => {
     const frags = layout.pages[0].fragments;
     // Different styles — spacing should NOT be suppressed
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(13); // max(13, 5)
+    expect(gap).toBe(18); // 13 + 5 (Word adds spaceAfter + spaceBefore)
   });
 
   test('does NOT suppress when only one paragraph has contextualSpacing', () => {
@@ -1024,7 +1024,7 @@ describe('Layout Engine - Contextual Spacing', () => {
 
     const frags = layout.pages[0].fragments;
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(13); // max(13, 5)
+    expect(gap).toBe(18); // 13 + 5 (Word adds spaceAfter + spaceBefore)
   });
 
   test('suppresses spacing in a chain of 3+ same-style paragraphs', () => {
@@ -1102,17 +1102,17 @@ describe('Layout Engine - Contextual Spacing', () => {
     const frags = layout.pages[0].fragments;
     expect(frags.length).toBe(4);
 
-    // Normal → Bullet: no contextualSpacing, max(13, 5)
+    // Normal → Bullet: no contextualSpacing, 13 + 5 (Word sums)
     const gap0to1 = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap0to1).toBe(13);
+    expect(gap0to1).toBe(18);
 
     // Bullet → Bullet: both contextual, same style → suppressed
     const gap1to2 = frags[2].y - (frags[1].y + frags[1].height);
     expect(gap1to2).toBe(0);
 
-    // Bullet → Normal: Normal lacks contextualSpacing, max(13, 5)
+    // Bullet → Normal: Normal lacks contextualSpacing, 13 + 5 (Word sums)
     const gap2to3 = frags[3].y - (frags[2].y + frags[2].height);
-    expect(gap2to3).toBe(13);
+    expect(gap2to3).toBe(18);
   });
 
   test('does NOT suppress when styleId is undefined', () => {
@@ -1139,7 +1139,7 @@ describe('Layout Engine - Contextual Spacing', () => {
     const frags = layout.pages[0].fragments;
     // Without styleId, contextual spacing should NOT be applied
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(10); // max(10, 5)
+    expect(gap).toBe(15); // 10 + 5 (Word adds spaceAfter + spaceBefore)
   });
 });
 
