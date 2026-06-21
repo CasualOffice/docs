@@ -2623,6 +2623,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Monotonically increasing generation counter to discard stale async loads
   const loadGenerationRef = useRef(0);
+  // Real on-disk byte size of the most recently loaded document (Properties).
+  const loadedSizeRef = useRef<number | null>(null);
 
   // Reset internal state when loading a new document (clears stale refs, comments, tracked changes, etc.)
   const resetForNewDocument = useCallback(() => {
@@ -2660,6 +2662,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Load a DOCX buffer (used by ref method and internally)
   const loadBuffer = useCallback(
     async (buffer: DocxInput) => {
+      // Capture the REAL on-disk size of the loaded bytes (not an in-memory
+      // serialization estimate) for the Properties dialog.
+      loadedSizeRef.current =
+        buffer instanceof Blob
+          ? buffer.size
+          : buffer instanceof ArrayBuffer
+            ? buffer.byteLength
+            : ArrayBuffer.isView(buffer)
+              ? buffer.byteLength
+              : null;
       const generation = ++loadGenerationRef.current;
       resetForNewDocument();
       // Loading a fresh buffer wipes the prior edit state, so the new
@@ -8808,6 +8820,8 @@ body { background: white; }
                 <FilePropertiesDialog
                   isOpen={showFileProperties}
                   onClose={() => setShowFileProperties(false)}
+                  fileName={documentName}
+                  sizeBytes={loadedSizeRef.current ?? undefined}
                   current={history.state?.package?.properties}
                   onApply={(edits) => {
                     // Push edits onto the current package so the next save
