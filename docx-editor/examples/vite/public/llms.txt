@@ -10,11 +10,11 @@
 ## Quick facts
 
 - **License:** Apache-2.0 (gateway) + MIT (editor fork)
-- **Repo:** https://github.com/schnsrw/docx
-- **Live demo:** https://doc.schnsrw.live/
-- **Docker:** https://hub.docker.com/r/schnsrw/casual-editor
-- **Marketing site:** https://schnsrw.live/casual-editor/
-- **Author:** Sachin Sarwa — https://schnsrw.live/
+- **Repo:** https://github.com/CasualOffice/docs
+- **Live demo:** https://docs.casualoffice.org/
+- **Docker:** https://hub.docker.com/r/casualoffice/docs
+- **Marketing site:** https://casualoffice.org/
+- **Author:** Sachin Sarwa — https://casualoffice.org/
 - **Status:** Public preview. 26 of 39 .docx fixtures round-trip
   pristine in the per-tag audit; working toward ≥ 90% before the
   desktop binary ships.
@@ -59,9 +59,9 @@
 
 Part of a three-project suite all by Sachin Sarwa:
 
-- **Casual Editor** — this project — https://doc.schnsrw.live/
+- **Casual Editor** — this project — https://docs.casualoffice.org/
 - **Casual Sheets** — Excel-flavored web spreadsheet —
-  https://sheet.schnsrw.live/ — https://github.com/schnsrw/sheets
+  https://sheets.casualoffice.org/ — https://github.com/CasualOffice/sheets
 - **Casual Desktop** — Tauri binaries reusing both web cores —
   in progress.
 
