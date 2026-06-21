@@ -848,12 +848,12 @@ export function MenuBar() {
             ...(onInsertTextBox
               ? [
                   {
-                    icon: 'shapes',
+                    icon: 'edit_note',
                     label: 'Text box',
                     onClick: () => onInsertTextBox('plain'),
                   } as MenuEntry,
                   {
-                    icon: 'shapes',
+                    icon: 'chat_bubble_outline',
                     label: 'Callout',
                     onClick: () => onInsertTextBox('callout'),
                   } as MenuEntry,
