@@ -100,12 +100,23 @@ stayed 52.8 throughout (no regression). All three were genuine correctness bugs,
 found by measuring rather than guessing — and render-only, so round-trip and Yjs
 collab were never at risk (the load-bearing insight in §0 held).
 
-The `representative` group + its fixtures are checked in so 82.8 is reproducible
-(`VF_GROUP=representative node scripts/visual-fidelity/run.mjs`). Remaining:
-**Phase 5** — wire the representative tier into CI and raise the floor toward 0.80
-so it can't silently regress; and the **stress corpus** (52.8) still needs the
-deferred table-row-metrics work (its own worst-case floor, separate from the
-representative overall).
+The `representative` group + its fixtures are checked in so the result is
+reproducible (`VF_GROUP=representative node scripts/visual-fidelity/run.mjs`).
+
+**Phase 5 — DONE.** `.github/workflows/visual-fidelity.yml` renders the
+representative corpus (LibreOffice reference + headless editor) and fails the run
+if the mean drops below `VF_FLOOR=0.80` (`diff.py` gained floor support). The
+**canonical CI baseline is 87.6/100** — higher than the local 82.8 because CI
+pins the metric-compatible fonts (Carlito = Calibri, Liberation = Arial/Times/
+Courier) that LibreOffice substitutes to, so editor and reference agree even more
+tightly than on a dev Mac. The floor sits at the 0.80 credibility bar with ~7.6pt
+of headroom; tighten later if desired. Real-document fidelity can no longer
+silently regress.
+
+Remaining (optional): the **stress corpus** (52.8) still needs the deferred
+table-row-metrics work — its own worst-case floor, separate from the
+representative overall — and a Phase-3 line-height calibration could push the
+representative *above* 87.6 (risky shared change; only if warranted).
 
 ## 4. Non-negotiables
 
