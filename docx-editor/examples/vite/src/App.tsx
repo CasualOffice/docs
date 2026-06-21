@@ -415,7 +415,13 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const room = params.get('room');
     if (!room) return null;
-    let backend = params.get('backend');
+    // Collab WS endpoint. The shared CasualOffice collab server
+    // (Hocuspocus) is a SEPARATE service from the REST/share-link
+    // gateway, so resolve it on its own and let it differ from
+    // `backendHttp`. Order:
+    //   ?collab=ws(s)://…  →  VITE_COLLAB_BACKEND  →  ?backend=  →  same-origin
+    const env = (import.meta as { env?: Record<string, string> }).env?.VITE_COLLAB_BACKEND;
+    let backend = params.get('collab') || env || params.get('backend');
     if (!backend) {
       // Same-origin default — production: the Docker image
       // bundles the gateway and the static editor under one host,
