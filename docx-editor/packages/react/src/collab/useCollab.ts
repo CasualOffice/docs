@@ -1,26 +1,28 @@
 /**
- * useCollab — bridges a Yjs Y.Doc + WebsocketProvider into the
+ * useCollab — bridges a Yjs Y.Doc + HocuspocusProvider into the
  * DocxEditor via `externalPlugins` + `externalContent`.
  *
  * Opt-in. The host imports this hook only when collab is wanted;
- * `yjs`, `y-websocket`, and `y-prosemirror` are optional peer
- * dependencies so SDK consumers who don't enable collab don't
+ * `yjs`, `@hocuspocus/provider`, and `y-prosemirror` are optional
+ * peer dependencies so SDK consumers who don't enable collab don't
  * pay the bundle weight.
  *
- * Wire shape: a stateless WS gateway speaking the standard
- * y-websocket binary protocol. `ySyncPlugin` populates ProseMirror
- * from the shared Y state; `yCursorPlugin` renders remote cursors
- * from awareness; `yUndoPlugin` scopes undo to the local user.
+ * Wire shape: the shared CasualOffice `collab` server (Hocuspocus +
+ * Yjs) holds one authoritative Y.Doc per room — so a fresh peer syncs
+ * from server state and the server can snapshot/version on its own.
+ * `ySyncPlugin` populates ProseMirror from the shared Y state;
+ * `yCursorPlugin` renders remote cursors from awareness; `yUndoPlugin`
+ * scopes undo to the local user.
  *
  * Lifecycle:
  *   - First call constructs Y.Doc + provider + plugins.
- *   - Provider opens a WS to `${backend}/doc/${room}`.
+ *   - Provider opens a WS to `backend` and joins room `name`.
  *   - When peers' awareness picks up users, remote cursors light up.
  *   - On unmount, provider is destroyed and the Y.Doc closed.
  */
 import { useEffect, useMemo, useState } from 'react';
 import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
+import { HocuspocusProvider } from '@hocuspocus/provider';
 import { ySyncPlugin, yCursorPlugin, yUndoPlugin } from 'y-prosemirror';
 import type { Plugin } from 'prosemirror-state';
 
@@ -43,7 +45,7 @@ export interface CollabState {
   /** Live snapshot of who's connected, including the local user. */
   peers: CollabPeer[];
   /** The Yjs awareness instance — exposed for advanced consumers. */
-  awareness: WebsocketProvider['awareness'];
+  awareness: HocuspocusProvider['awareness'];
   /**
    * Shared document metadata. Lives in the same Y.Doc as the
    * editor content so it travels over the same WS, with the same
@@ -63,11 +65,16 @@ export interface CollabState {
 export interface UseCollabOptions {
   /** Per-doc room identifier — typically the docID. */
   room: string;
-  /** Base ws:// or wss:// URL of the gateway. The hook appends
-   *  `/doc/${room}` so the gateway's existing routing works. */
+  /** Base ws:// or wss:// URL of the collab server (Hocuspocus).
+   *  Unlike the old y-websocket gateway, the room name travels in the
+   *  Hocuspocus handshake, so this is the bare endpoint with no path. */
   backend: string;
   /** Local user metadata published over awareness. */
   user: { name: string; color: string };
+  /** Optional auth token for the server's onAuthenticate hook.
+   *  Defaults to a truthy placeholder so the handshake completes even
+   *  when the server gates joins by role. */
+  token?: string;
 }
 
 /**
@@ -76,20 +83,32 @@ export interface UseCollabOptions {
  * DocxEditor alongside the returned plugins so the editor's own
  * loader doesn't overwrite the Yjs-populated PM state.
  */
-export function useCollab({ room, backend, user }: UseCollabOptions): CollabState {
+export function useCollab({ room, backend, user, token }: UseCollabOptions): CollabState {
   const { ydoc, provider, plugins, metaMap } = useMemo(() => {
     const ydoc = new Y.Doc();
-    // WebsocketProvider takes a *URL prefix* and appends `/${room}`.
-    // Gateway routes /doc/{docId}, so the prefix is `${backend}/doc`.
-    const provider = new WebsocketProvider(`${backend}/doc`, room, ydoc, {
-      connect: true,
+    // Hocuspocus carries the document name in the handshake (`name`),
+    // not the URL path — so `backend` is the bare ws endpoint. A
+    // truthy token lets the handshake complete past an onAuthenticate
+    // hook even for anonymous sessions.
+    const provider = new HocuspocusProvider({
+      url: backend,
+      name: room,
+      document: ydoc,
+      token: token ?? 'anon',
     });
     const fragment = ydoc.getXmlFragment('prosemirror');
-    const plugins = [ySyncPlugin(fragment), yCursorPlugin(provider.awareness), yUndoPlugin()];
+    // Hocuspocus creates awareness by default; guard the type union so
+    // the cursor plugin is only wired when it's actually present.
+    const awareness = provider.awareness;
+    const plugins = [
+      ySyncPlugin(fragment),
+      ...(awareness ? [yCursorPlugin(awareness)] : []),
+      yUndoPlugin(),
+    ];
     const metaMap = ydoc.getMap('meta');
     return { ydoc, provider, plugins, metaMap };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room, backend]);
+  }, [room, backend, token]);
 
   const [status, setStatus] = useState<CollabStatus>('connecting');
   const [peers, setPeers] = useState<CollabPeer[]>([]);
@@ -98,14 +117,16 @@ export function useCollab({ room, backend, user }: UseCollabOptions): CollabStat
   // avatars + remote cursors. Re-runs on rename / recolor without
   // rebuilding the doc.
   useEffect(() => {
-    provider.awareness.setLocalStateField('user', user);
+    provider.awareness?.setLocalStateField('user', user);
   }, [provider, user.name, user.color]);
 
   useEffect(() => {
+    const awareness = provider.awareness;
+    if (!awareness) return;
     const refreshPeers = () => {
-      const localId = provider.awareness.clientID;
+      const localId = awareness.clientID;
       const out: CollabPeer[] = [];
-      provider.awareness.getStates().forEach((state, clientId) => {
+      awareness.getStates().forEach((state, clientId) => {
         if (!state.user) return;
         out.push({
           clientId,
@@ -123,12 +144,12 @@ export function useCollab({ room, backend, user }: UseCollabOptions): CollabStat
     const onStatus = (e: { status: CollabStatus }) => setStatus(e.status);
 
     provider.on('status', onStatus);
-    provider.awareness.on('change', refreshPeers);
+    awareness.on('change', refreshPeers);
     refreshPeers();
 
     return () => {
       provider.off('status', onStatus);
-      provider.awareness.off('change', refreshPeers);
+      awareness.off('change', refreshPeers);
     };
   }, [provider]);
 
