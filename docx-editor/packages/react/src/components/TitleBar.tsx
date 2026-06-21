@@ -277,6 +277,7 @@ export function MenuBar() {
     onOpenExplore,
     onOpenCitations,
     onInsertShape,
+    onInsertTextBox,
     onSetColorTheme,
     colorTheme,
     zoom,
@@ -846,6 +847,20 @@ export function MenuBar() {
                         ))}
                       </>
                     ),
+                  } as MenuEntry,
+                ]
+              : []),
+            ...(onInsertTextBox
+              ? [
+                  {
+                    icon: 'shapes',
+                    label: 'Text box',
+                    onClick: () => onInsertTextBox('plain'),
+                  } as MenuEntry,
+                  {
+                    icon: 'shapes',
+                    label: 'Callout',
+                    onClick: () => onInsertTextBox('callout'),
                   } as MenuEntry,
                 ]
               : []),
