@@ -61,7 +61,7 @@ const ROOT_STYLE: CSSProperties = {
   borderRadius: 'var(--radius-lg)',
   boxShadow: 'var(--shadow-2)',
   color: 'var(--doc-text-on-surface)',
-  animation: 'docPanelSlideIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  animation: 'docPanelSlideIn var(--doc-anim-slow) both',
   overflow: 'hidden',
   minHeight: 0,
 };

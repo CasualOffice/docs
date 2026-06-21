@@ -1007,3 +1007,64 @@
     animation-duration: 0.01ms;
   }
 }
+
+/* ============================================================================
+ * A11y + consistency sweep (cross-editor)
+ *
+ * The chrome historically set focus/transition behavior ad-hoc and inline,
+ * which (a) left many controls with no visible keyboard focus, (b) ignored
+ * prefers-reduced-motion, and (c) made hover feedback feel inconsistent
+ * (0.1s here, 0.15s there, 80ms elsewhere, none on some). These three global,
+ * .ep-root-scoped rules fix all three at the source instead of editing dozens
+ * of call sites. Bespoke per-component transitions set INLINE still win.
+ * ============================================================================ */
+
+/* (1) Universal keyboard focus ring. Many controls set `outline: none` inline
+   (inline beats a plain stylesheet rule), so this uses !important to guarantee
+   a visible keyboard-only indicator on every interactive control. :focus-visible
+   keeps it off mouse/touch; tabindex="-1" (programmatic focus targets like the
+   scroll container / dialog shells) is excluded so they never flash a ring. */
+.ep-root a:focus-visible,
+.ep-root button:focus-visible,
+.ep-root input:focus-visible,
+.ep-root textarea:focus-visible,
+.ep-root select:focus-visible,
+.ep-root [role='button']:focus-visible,
+.ep-root [role='slider']:focus-visible,
+.ep-root [role='tab']:focus-visible,
+.ep-root [role='option']:focus-visible,
+.ep-root [tabindex]:not([tabindex='-1']):focus-visible {
+  outline: 2px solid var(--doc-primary) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* (2) Honor prefers-reduced-motion across ALL chrome. Editor animations live
+   mostly inline (component <style> + style props), so a scoped blanket is the
+   only way to neutralize them without touching 50+ sites. 0.01ms (not 0) so
+   animation-end listeners still fire and dialogs still appear. */
+@media (prefers-reduced-motion: reduce) {
+  .ep-root *,
+  .ep-root *::before,
+  .ep-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* (3) One consistent hover/active transition for every chrome control, so
+   feedback feels uniform. --doc-anim-fast already carries the DS easing.
+   A control that genuinely needs a different curve overrides it inline. */
+.ep-root button,
+.ep-root [role='button'],
+.ep-root [role='menuitem'],
+.ep-root [role='tab'],
+.ep-root [role='option'] {
+  transition:
+    background-color var(--doc-anim-fast),
+    color var(--doc-anim-fast),
+    border-color var(--doc-anim-fast),
+    box-shadow var(--doc-anim-fast);
+}

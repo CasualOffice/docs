@@ -331,7 +331,7 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
           style={{
             display: 'inline-flex',
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 150ms ease',
+            transition: 'transform var(--doc-anim-base)',
           }}
         >
           <MaterialSymbol name="arrow_drop_down" size={16} />

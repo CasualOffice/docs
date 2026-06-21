@@ -86,7 +86,7 @@ const overlayStyle: CSSProperties = {
   paddingTop: '14vh',
   zIndex: 10001,
   // Fade the scrim in; the dialog handles its own scale-in.
-  animation: 'docCpOverlayIn 180ms cubic-bezier(0.4, 0, 0.2, 1) both',
+  animation: 'docCpOverlayIn var(--doc-anim-base) both',
 };
 
 const dialogStyle: CSSProperties = {
@@ -106,7 +106,7 @@ const dialogStyle: CSSProperties = {
   overflow: 'hidden',
   // Soft scale-in from slightly smaller — feels like the palette
   // is settling into place rather than appearing.
-  animation: 'docCpDialogIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  animation: 'docCpDialogIn var(--doc-anim-base) both',
 };
 
 const inputWrapStyle: CSSProperties = {
@@ -168,7 +168,7 @@ const itemStyle = (active: boolean): CSSProperties => ({
   fontSize: 14,
   borderRadius: 8,
   // Smooth bg transition on keyboard navigation rather than a snap.
-  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-fast)',
 });
 
 const labelStyle: CSSProperties = {
