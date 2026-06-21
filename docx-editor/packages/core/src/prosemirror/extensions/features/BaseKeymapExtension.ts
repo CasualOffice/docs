@@ -74,6 +74,36 @@ const clearIndentOnBackspace: Command = (state, dispatch) => {
 };
 
 /**
+ * Backspace inside an EMPTY text box deletes the whole box (Word /
+ * Google Docs behavior). A text box is `isolating`, so the default
+ * `joinBackward` can't cross its boundary — without this, Backspace in
+ * an empty text box is a dead key. Only fires when the box holds a
+ * single empty paragraph and the caret is at its very start; a
+ * non-empty box falls through so its content deletes normally first.
+ */
+const deleteEmptyTextBoxOnBackspace: Command = (state, dispatch) => {
+  const sel = state.selection;
+  if (!sel.empty) return false;
+  const $from = sel.$from;
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d);
+    if (node.type.name === 'textBox') {
+      const onlyChildEmpty = node.childCount === 1 && (node.firstChild?.content.size ?? 0) === 0;
+      const atStart = $from.parentOffset === 0 && $from.index(d) === 0;
+      if (onlyChildEmpty && atStart) {
+        if (dispatch) {
+          const before = $from.before(d);
+          dispatch(state.tr.delete(before, before + node.nodeSize).scrollIntoView());
+        }
+        return true;
+      }
+      return false; // inside a non-empty box — let default handling run
+    }
+  }
+  return false;
+};
+
+/**
  * Custom Enter handler: splits the block, inherits style-related attrs,
  * clears paragraph borders, and preserves font marks on the new paragraph.
  *
@@ -257,7 +287,12 @@ export const BaseKeymapExtension = createExtension({
         ...baseKeymap,
         // Override some keys with better defaults
         Enter: splitBlockClearBorders,
-        Backspace: chainCommands(deleteSelection, clearIndentOnBackspace, joinBackward),
+        Backspace: chainCommands(
+          deleteSelection,
+          deleteEmptyTextBoxOnBackspace,
+          clearIndentOnBackspace,
+          joinBackward
+        ),
         Delete: chainCommands(deleteSelection, joinForward),
         'Mod-a': selectAll,
         Escape: selectParentNode,
