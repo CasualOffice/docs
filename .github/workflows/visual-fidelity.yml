@@ -70,6 +70,18 @@ jobs:
           sudo apt-get install -y --no-install-recommends libreoffice
           soffice --version
 
+      # Both renderers must use the SAME fonts or they disagree on line breaks
+      # and the score collapses (CI scored 64.8 vs 82.8 locally purely from font
+      # substitution). Carlito is metric-compatible with Calibri; Liberation
+      # with Arial / Times New Roman / Courier New — exactly what LibreOffice
+      # substitutes to and what the editor's fallback stacks target. Installing
+      # them system-wide covers both LibreOffice and headless Chromium.
+      - name: Install metric-compatible fonts
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            fonts-crosextra-carlito fonts-liberation fonts-dejavu-core
+          fc-cache -f >/dev/null 2>&1 || true
+
       - name: Install Python render/diff deps
         run: python3 -m pip install --quiet --break-system-packages PyMuPDF numpy Pillow
 
