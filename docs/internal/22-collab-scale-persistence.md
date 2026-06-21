@@ -43,16 +43,35 @@ A snapshot/version system is worthless if it persists a doc with drawings droppe
 3. **2-peer convergence guard.** New test: peer A and peer B, concurrent edits via
    exchanged Yjs updates → both converge to the identical doc + no lost content.
 
-### B. Large-doc edit latency
-"Can't pass whole OOXML while editing" — already true on the wire; the cost is
-**client re-layout**. Plan:
-1. Profile edit latency on a synthetic 200-page doc (keystroke → painted).
-2. **Incremental pagination**: re-flow only from the edited block forward, reusing
-   prior page geometry above it (today a structural edit can re-measure the whole
-   doc).
-3. **Virtualized measurement**: measure only visible + near pages; defer the rest.
-4. Coalesce/debounce paint to animation frames; keep serialization off-keystroke.
-Target: keystroke-to-paint < 1 frame (16ms) regardless of doc length.
+### B. Large-doc edit latency — PROFILED 2026-06-22: not a bottleneck (deferred, YAGNI)
+
+Step 1 (profile) was done before optimizing, and it overturned the premise. Measured
+the per-keystroke layout pipeline on a synthetic text doc (`globalThis.__docxLayoutTiming`,
+Playwright, paste-to-grow):
+
+| blocks | pages | toFlowBlocks | measureBlocks | layoutDocument | total |
+| ------ | ----- | ------------ | ------------- | -------------- | ----- |
+| 1,500  | 29    | 0.8ms        | 0.9ms         | 0.4ms          | 2.1ms |
+| 3,000  | 63    | 1.4ms        | 2.1ms         | 0.9ms          | 4.5ms |
+
+~0.5µs/block each phase → **~12ms extrapolated at 200 pages (10k blocks): within the
+16ms frame budget.** Keystroke→2×rAF wall-clock at 63 pages settled ~12ms. Why it's
+already fast:
+
+- Canvas text measurement (the expensive part) is **already cached** by content hash
+  (`layout-bridge/measuring/cache.ts`) — survives position shifts, so even structural
+  edits hit the cache.
+- The remaining O(doc) phases (toFlowBlocks rebuild, hashing, pagination) are cheap
+  constants; paint is effectively virtualized (≈800 DOM nodes for 63 pages).
+- Layout is already rAF-coalesced (`scheduleLayout`) and serialization is off-keystroke.
+
+**Decision:** do NOT build the planned incremental-pagination / measurement-cache-key
+work — it would optimize a non-bottleneck and add real fidelity risk to the most
+sensitive code. The original plan (kept for reference) was: incremental pagination,
+virtualized measurement, paint coalescing. Re-open only if a real large-doc lag is
+reported with a profile pointing at layout compute. Likelier future suspects if lag
+ever appears: cold-cache **initial parse/measure** of a huge doc (one-time load, not
+edits), or paint on float-heavy docs.
 
 ### C. Server snapshots (fast new-peer sync + safe drain) — keep the gateway stateless
 Persistence stays in `host.Integration`; extend its contract:
