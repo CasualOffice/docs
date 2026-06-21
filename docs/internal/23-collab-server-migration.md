@@ -65,8 +65,10 @@ A `CasualEditor` host points `backend` at `ws://localhost:1234/yjs`.
 
 ## Staged / follow-ups
 
-- **Deploy cutover** — pair the production `backend` switch with deploying a collab
-  instance; until then the live demo stays on the Go gateway.
+- **Deploy cutover** — production topology + Caddy reverse proxy (`/yjs` → collab,
+  else → gateway) is in [`deploy/`](../../deploy/README.md)
+  (`docker compose -f docker-compose.prod.yml up`). Pair the origin switch with
+  deploying a collab instance; until then the live demo stays on the Go gateway.
 - **Sheets onto the same server** — point the sheet app at the vendored submodule
   (its server is the source of this extraction, so behaviour is unchanged at the
   `.xlsx` default).

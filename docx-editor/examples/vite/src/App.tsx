@@ -423,12 +423,13 @@ export function App() {
     const env = (import.meta as { env?: Record<string, string> }).env?.VITE_COLLAB_BACKEND;
     let backend = params.get('collab') || env || params.get('backend');
     if (!backend) {
-      // Same-origin default — production: the Docker image
-      // bundles the gateway and the static editor under one host,
-      // so the share URL doesn't need to carry the WS URL
-      // explicitly.
+      // Same-origin default — production: a reverse proxy routes
+      // `/yjs` to the collab server (Hocuspocus) and everything else
+      // to the gateway, so the share URL doesn't need to carry the WS
+      // URL explicitly. The `/yjs` path is required — that's the
+      // Hocuspocus upgrade route on the collab server.
       const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      backend = `${proto}//${window.location.host}`;
+      backend = `${proto}//${window.location.host}/yjs`;
     }
     return { room, backend };
   }, []);

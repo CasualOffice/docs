@@ -1,0 +1,15 @@
+# Unify the gateway + collab server behind one origin so the editor can
+# reach both same-origin (no per-host config baked into the SPA build):
+#
+#   /yjs, /yjs/*   ->  collab server (Hocuspocus WS upgrade route)
+#   everything else ->  gateway (REST /api/docs, seed/download, share-link,
+#                       and the bundled SPA)
+#
+# Set COLLAB_SITE_ADDRESS to a real hostname (e.g. doc.example.com) for
+# automatic HTTPS, or leave the :8080 default for local/proxied use.
+
+{$COLLAB_SITE_ADDRESS::8080} {
+	@collab path /yjs /yjs/*
+	reverse_proxy @collab collab:1234
+	reverse_proxy gateway:8080
+}
