@@ -22,6 +22,16 @@
  * other rules per the CSS @import ordering requirement. */
 @import './fonts.css';
 
+/* Casual design system tokens (@schnsrw/design-system), vendored as a git
+ * submodule at docx-editor/vendor/design-system. The committed dist/ is the
+ * source of truth — no build step. This barrel pulls in colors, typography,
+ * spacing/radius/shadow, motion, the docs accent override ([data-app='docs'])
+ * and the Inter + Material Symbols webfonts. Imported here so the Tailwind CLI
+ * inlines the tokens straight into the published dist/styles.css (the package
+ * isn't on npm, so consumers must not need it at runtime). The doc editor maps
+ * its own --doc-* vars onto these DS tokens below. */
+@import '../../../../vendor/design-system/dist/tokens.css';
+
 @tailwind utilities;
 
 /* ============================================================================
@@ -53,95 +63,104 @@
 
   /* ========================================
    * Document Editor Color System
+   *
+   * Cross-editor consistency: every --doc-* token below is mapped onto a
+   * @schnsrw/design-system token (see vendor/design-system) so the doc
+   * editor's chrome shares one palette/scale with the sister apps (sheet,
+   * slides). Variable NAMES are unchanged — every component that reads a
+   * --doc-* var keeps working — but the rendered VALUES now come from the
+   * DS tokens, which themselves swap under [data-theme='dark'] and pick up
+   * the docs cyan accent under [data-app='docs']. The doc editor keeps its
+   * Google-Docs content UX; only the chrome palette is unified.
+   *
+   * Where the DS has no exact equivalent (status-tint borders), the literal
+   * is kept and given a dark override in the [data-theme='dark'] block.
    * ======================================== */
 
-  /* Document background - area behind the page */
-  --doc-bg: #f8f9fa;
+  /* Chrome typography — Inter (DS --font-sans). Document CONTENT sets its
+     own metric-compatible fonts on the painted elements, so this only
+     styles the surrounding chrome (toolbar, menus, dialogs, status bar). */
+  font-family: var(--font-sans);
 
-  /* Primary action color (Google blue) */
-  --doc-primary: #1a73e8;
-  --doc-primary-hover: #1557b0;
-  --doc-primary-light: #e8f0fe; /* selected/active backgrounds */
+  /* Document background - the grey "desk" behind the white page, unified
+     with the suite chrome strip. */
+  --doc-bg: var(--color-surface-strip);
+
+  /* Primary action color — DS accent (cyan under [data-app='docs']). */
+  --doc-primary: var(--color-accent);
+  --doc-primary-hover: var(--color-accent-hover);
+  --doc-primary-light: var(--color-accent-soft); /* selected/active backgrounds */
 
   /* Text colors */
-  --doc-text: #202124; /* primary text */
-  --doc-text-muted: #5f6368; /* secondary text */
-  --doc-text-subtle: #9aa0a6; /* tertiary/disabled text */
-  --doc-text-placeholder: #999; /* placeholder text */
+  --doc-text: var(--color-text); /* primary text */
+  --doc-text-muted: var(--color-text-secondary); /* secondary text */
+  --doc-text-subtle: var(--color-text-muted); /* tertiary/disabled text */
+  --doc-text-placeholder: var(--color-text-disabled); /* placeholder text */
 
   /* Border colors — values stratified by contrast: light < base < dark */
-  --doc-border: #e0e0e0; /* standard borders */
-  --doc-border-light: #ebedee; /* softer separators (was #dadce0 — actually darker than base; corrected so the name matches reality) */
-  --doc-border-dark: #d0d0d0; /* darker borders (tables) */
-  --doc-border-input: #ccc; /* input borders */
+  --doc-border: var(--color-border-strong); /* standard borders */
+  --doc-border-light: var(--color-divider); /* softer separators */
+  --doc-border-dark: var(--color-border-strong); /* darker borders (tables) */
+  --doc-border-input: var(--color-border-strong); /* input borders */
 
   /* Background colors */
-  --doc-bg-subtle: #f5f5f5; /* subtle backgrounds */
-  --doc-bg-hover: #f1f3f4; /* hover states */
-  --doc-bg-input: #f8f9fa; /* input backgrounds */
+  --doc-bg-subtle: var(--color-surface-alt); /* subtle backgrounds */
+  --doc-bg-hover: var(--color-hover); /* hover states (translucent — composes on any zone) */
+  --doc-hover: var(--color-hover); /* alias used by some chrome components */
+  --doc-bg-input: var(--color-surface-alt); /* input backgrounds */
 
-  /* Status colors */
-  --doc-error: #c5221f; /* error states */
-  --doc-error-bg: #fce8e6; /* error backgrounds */
-  --doc-error-border: #f5c6cb; /* error border on bg */
-  --doc-success: #34a853; /* success states */
-  --doc-success-bg: #e8f5e9; /* success backgrounds */
-  --doc-warning: #f9a825; /* warning states */
-  --doc-warning-bg: #fff8e1; /* warning backgrounds */
-  --doc-warning-border: #ffeeba; /* warning border on bg */
-  --doc-warning-text: #856404; /* readable text on warning bg */
-  --doc-info: #1a73e8; /* informational states */
-  --doc-info-bg: #e8f4fd; /* info backgrounds */
-  --doc-info-border: #b8daff; /* info border on bg */
-  --doc-info-text: #174ea6; /* readable text on info bg — Google blue-800, matches palette (was #0c5460, Bootstrap teal that didn't belong) */
+  /* Status colors — DS semantic ramp (success/warning/danger/info + soft). */
+  --doc-error: var(--color-danger); /* error states */
+  --doc-error-bg: var(--color-danger-soft); /* error backgrounds */
+  --doc-error-border: var(--color-danger-soft); /* error border on bg */
+  --doc-success: var(--color-success); /* success states */
+  --doc-success-bg: var(--color-success-soft); /* success backgrounds */
+  --doc-warning: var(--color-warning); /* warning states */
+  --doc-warning-bg: var(--color-warning-soft); /* warning backgrounds */
+  --doc-warning-border: var(--color-warning-soft); /* warning border on bg */
+  --doc-warning-text: var(--color-warning); /* readable text on warning bg */
+  --doc-info: var(--color-info); /* informational states */
+  --doc-info-bg: var(--color-info-soft); /* info backgrounds */
+  --doc-info-border: var(--color-info-soft); /* info border on bg */
+  --doc-info-text: var(--color-info); /* readable text on info bg */
 
   /* Link color */
-  --doc-link: #0563c1; /* hyperlinks */
+  --doc-link: var(--color-info); /* hyperlinks */
 
-  /* Surface colors — chrome panels, dialogs, dropdowns. Use these
-     instead of hardcoded white so dark theme can swap them in one place. */
-  --doc-surface: #ffffff; /* panel / dialog / dropdown background */
-  --doc-surface-raised: #ffffff; /* slightly elevated card on a surface */
-  --doc-surface-sunken: #f5f5f5; /* input field background */
-  --doc-surface-muted: #fafafa; /* tinted preview pane / inactive tab background */
-  /* Surface text + accent — aliased to the canonical text / primary tokens
-     so we have ONE blue and ONE primary text color. Keeping the alias
-     names lets every consumer that already imports them continue to work
-     without a codemod, while the rendered colors collapse to a single
-     value. (Was: #1f2937 / #6b7280 / #2563eb / #eff6ff — four
-     near-duplicates of the canonicals below.) */
+  /* Surface colors — chrome panels, dialogs, dropdowns. */
+  --doc-surface: var(--color-surface); /* panel / dialog / dropdown background */
+  --doc-surface-raised: var(--color-surface-raised); /* slightly elevated card on a surface */
+  --doc-surface-sunken: var(--color-surface-alt); /* input field background */
+  --doc-surface-muted: var(--color-surface-alt); /* tinted preview pane / inactive tab background */
+  /* Surface text + accent — aliased to the canonical text / primary tokens. */
   --doc-text-on-surface: var(--doc-text);
   --doc-text-on-surface-muted: var(--doc-text-muted);
-  --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* dropdown / dialog shadow */
+  --doc-shadow: var(--shadow-2); /* dropdown / dialog shadow */
   --doc-accent: var(--doc-primary);
   --doc-accent-soft: var(--doc-primary-light);
 
-  /* Animation tier (X4). Three speeds, one easing.
-   *
-   *   --doc-anim-fast (100ms): micro-interactions — hover-color flips on
-   *     color picker swatches, grid cells, list buttons. Anything more
-   *     visible than this would feel laggy.
-   *   --doc-anim-base (150ms): the default for chrome — dropdown opens,
-   *     button hover/focus, dialog overlay fade-in. Matches what Google
-   *     Docs uses for the same surfaces.
-   *   --doc-anim-slow (200ms): larger-shift transitions (dialog hover
-   *     accordion, image-position knob). Keep rare; over-long animations
-   *     feel sluggish.
-   *
-   * Easing is the W3C Material "standard" curve (ease-out feel): subtle
-   * acceleration at the start, gentle landing.
-   */
-  --doc-anim-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
-  --doc-anim-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --doc-anim-slow: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Animation tier — mapped onto the DS motion scale so every suite app
+     eases the same way. (DS: --motion-fast 90ms, --motion-base 160ms,
+     --motion-slow 240ms; --ease-out decelerating curve.) */
+  --doc-anim-fast: var(--motion-fast) var(--ease-out);
+  --doc-anim-base: var(--motion-base) var(--ease-out);
+  --doc-anim-slow: var(--motion-slow) var(--ease-out);
 }
 
 /* ============================================================================
  * Dark theme — applied when `[data-theme="dark"]` is set on a wrapping
- * element (typically `<html>` or `.ep-root`). Auto-follow OS via
- * `prefers-color-scheme` is opt-in: the consumer adds
- *   data-theme="auto"
- * and the browser preference picks light vs dark below.
+ * element (typically `<html>`). The `auto` choice (follow OS) is resolved
+ * to a concrete `light`/`dark` value in JS (DocxEditor.tsx) — the DS tokens
+ * are manual-only (no prefers-color-scheme), so resolving in JS lets a
+ * single [data-theme='dark'] selector drive both the DS palette and the
+ * chrome. That's why there is no longer a prefers-color-scheme block here.
+ *
+ * Every --doc-* token is defined once in the .ep-root block above as a
+ * reference to a DS --color-* / --shadow-* token, and those DS tokens swap
+ * to their dark values under this same [data-theme='dark'] selector (see
+ * vendor/design-system). So the doc editor's chrome goes dark with NO
+ * per-variable override here. Only the shadcn bridge vars (a separate
+ * system consumed by ui/Button.tsx) still need explicit dark values.
  *
  * Only chrome (toolbar, dialogs, popovers, sidebars) is recolored. The
  * paginated document pages stay white — matches what will print, and
@@ -174,112 +193,6 @@
   --border: 220 5% 25%;
   --input: 220 5% 25%;
   --ring: 217 89% 61%;
-  /* doc vars */
-  --doc-bg: #1f1f1f;
-  --doc-text: #e8eaed;
-  --doc-text-muted: #9aa0a6;
-  --doc-text-subtle: #6e7378;
-  --doc-text-placeholder: #6e7378;
-  --doc-border: #3c4043;
-  --doc-border-light: #2d2f31; /* lighter = closer to dark bg = lower contrast (correct for dark mode) */
-  --doc-border-dark: #5f6368;
-  --doc-border-input: #3c4043;
-  --doc-bg-subtle: #2d2f31;
-  --doc-bg-hover: #3c4043;
-  --doc-hover: #3c4043;
-  --doc-bg-input: #2d2f31;
-  --doc-primary: #8ab4f8; /* lighter primary blue for dark surfaces */
-  --doc-primary-hover: #a8c7fa;
-  --doc-primary-light: #1a3a5e;
-  --doc-link: #8ab4f8;
-  /* Status colors — light shades so red/green/yellow stay legible on dark */
-  --doc-error: #f28b82;
-  --doc-error-bg: #5c2b29;
-  --doc-error-border: #8a3b39;
-  --doc-success: #81c995;
-  --doc-success-bg: #1e3a26;
-  --doc-warning: #fdd663;
-  --doc-warning-bg: #4e3c1a;
-  --doc-warning-border: #6e5828;
-  --doc-warning-text: #fdd663;
-  --doc-info: #8ab4f8;
-  --doc-info-bg: #1e3142;
-  --doc-info-border: #2a4459;
-  --doc-info-text: #aac9fb;
-  --doc-surface: #2d2f31;
-  --doc-surface-raised: #3c4043;
-  --doc-surface-sunken: #1f1f1f;
-  --doc-surface-muted: #262626;
-  /* Aliases: same canonicalization as the light theme. */
-  --doc-text-on-surface: var(--doc-text);
-  --doc-text-on-surface-muted: var(--doc-text-muted);
-  --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --doc-accent: var(--doc-primary);
-  --doc-accent-soft: var(--doc-primary-light);
-}
-
-@media (prefers-color-scheme: dark) {
-  .ep-root[data-theme='auto'],
-  [data-theme='auto'] .ep-root,
-  [data-theme='auto'] {
-    color-scheme: dark;
-    /* shadcn vars (mirror the dark overrides above) */
-    --background: 220 6% 19%;
-    --foreground: 220 14% 91%;
-    --card: 220 6% 19%;
-    --card-foreground: 220 14% 91%;
-    --popover: 220 6% 19%;
-    --popover-foreground: 220 14% 91%;
-    --primary: 217 89% 61%;
-    --primary-foreground: 220 14% 91%;
-    --secondary: 220 5% 25%;
-    --secondary-foreground: 220 14% 91%;
-    --muted: 220 5% 25%;
-    --muted-foreground: 220 7% 63%;
-    --accent: 220 5% 25%;
-    --accent-foreground: 220 14% 91%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 220 14% 91%;
-    --border: 220 5% 25%;
-    --input: 220 5% 25%;
-    --ring: 217 89% 61%;
-    --doc-bg: #1f1f1f;
-    --doc-text: #e8eaed;
-    --doc-text-muted: #9aa0a6;
-    --doc-text-subtle: #6e7378;
-    --doc-text-placeholder: #6e7378;
-    --doc-border: #3c4043;
-    --doc-border-light: #2d2f31;
-    --doc-border-dark: #5f6368;
-    --doc-border-input: #3c4043;
-    --doc-bg-subtle: #2d2f31;
-    --doc-bg-hover: #3c4043;
-    --doc-hover: #3c4043;
-    --doc-bg-input: #2d2f31;
-    --doc-primary: #8ab4f8;
-    --doc-primary-hover: #a8c7fa;
-    --doc-primary-light: #1a3a5e;
-    --doc-link: #8ab4f8;
-    --doc-error: #f28b82;
-    --doc-error-bg: #5c2b29;
-    --doc-error-border: #8a3b39;
-    --doc-success: #81c995;
-    --doc-success-bg: #1e3a26;
-    --doc-warning: #fdd663;
-    --doc-warning-bg: #4e3c1a;
-    --doc-warning-border: #6e5828;
-    --doc-warning-text: #fdd663;
-    --doc-info: #8ab4f8;
-    --doc-info-bg: #1e3142;
-    --doc-info-border: #2a4459;
-    --doc-info-text: #aac9fb;
-    --doc-surface: #2d2f31;
-    --doc-surface-raised: #3c4043;
-    --doc-surface-sunken: #1f1f1f;
-    --doc-text-on-surface: var(--doc-text);
-    --doc-text-on-surface-muted: var(--doc-text-muted);
-    --doc-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-  }
 }
 
 /* ============================================================================

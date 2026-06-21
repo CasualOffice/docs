@@ -2526,36 +2526,63 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   );
 
   // Color theme: 'auto' (follow OS) | 'light' | 'dark'. Persisted in
-  // localStorage. editor.css selects `[data-theme="dark"]` and
-  // `[data-theme="auto"]` (the latter only when the OS reports dark).
+  // localStorage. The @schnsrw/design-system tokens are manual-only — they
+  // only define a [data-theme='dark'] override, with no prefers-color-scheme
+  // fallback — so 'auto' is resolved to a concrete 'light'/'dark' attribute
+  // in JS (resolveColorTheme below) and a single [data-theme='dark'] selector
+  // drives both the DS palette and the editor chrome.
   const [colorTheme, setColorTheme] = useState<'light' | 'dark' | 'auto'>(() => {
     if (typeof window === 'undefined') return 'auto';
     const stored = window.localStorage.getItem('casual-editor:color-theme');
     return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
   });
-  // Apply the *initial* theme synchronously on mount so the attribute is
-  // set before the first paint (no flash).
+  // Resolve the user's choice to the concrete value the CSS keys off of:
+  // 'auto' follows the OS via matchMedia, everything else passes through.
+  const resolveColorTheme = useCallback((choice: 'light' | 'dark' | 'auto'): 'light' | 'dark' => {
+    if (choice !== 'auto') return choice;
+    if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }, []);
+  // Apply the *initial* theme synchronously on mount so the attribute is set
+  // before the first paint (no flash). Also tag the document with
+  // data-app="docs" so the DS swaps in the docs cyan accent ramp.
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    document.documentElement.setAttribute('data-theme', colorTheme);
+    document.documentElement.setAttribute('data-app', 'docs');
+    document.documentElement.setAttribute('data-theme', resolveColorTheme(colorTheme));
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // While the user's choice is 'auto', track OS theme changes live so the
+  // chrome flips with the system without a reload.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    if (colorTheme !== 'auto') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => {
+      document.documentElement.setAttribute('data-theme', mql.matches ? 'dark' : 'light');
+    };
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [colorTheme]);
   // Update the data-theme attribute synchronously in the click handler so
   // the CSS recalc happens immediately, without waiting for React's
   // commit phase + useEffect. The setState below only drives the icon
   // re-render in the title bar.
-  const handleSetColorTheme = useCallback((t: 'light' | 'dark' | 'auto') => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', t);
-    }
-    try {
-      window.localStorage.setItem('casual-editor:color-theme', t);
-    } catch {
-      // localStorage may be unavailable (private mode); harmless.
-    }
-    setColorTheme(t);
-  }, []);
+  const handleSetColorTheme = useCallback(
+    (t: 'light' | 'dark' | 'auto') => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', resolveColorTheme(t));
+      }
+      try {
+        window.localStorage.setItem('casual-editor:color-theme', t);
+      } catch {
+        // localStorage may be unavailable (private mode); harmless.
+      }
+      setColorTheme(t);
+    },
+    [resolveColorTheme]
+  );
 
   // Hyperlink popup state (Google Docs-style floating popup on link click)
   const [hyperlinkPopupData, setHyperlinkPopupData] = useState<HyperlinkPopupData | null>(null);
@@ -7112,6 +7139,13 @@ body { background: white; }
     flexDirection: 'column',
     height: '100%',
     width: '100%',
+    // The shell fills its (host-bounded) box and never scrolls itself — only
+    // the inner canvas (editorContainerStyle) scrolls. overflow:hidden +
+    // minHeight:0 keep the flex column from overflowing its parent, so the
+    // chrome (toolbar/status bar) stays fixed regardless of how the host
+    // sizes us.
+    minHeight: 0,
+    overflow: 'hidden',
     backgroundColor: 'var(--doc-bg)',
     ...style,
   };
@@ -7344,6 +7378,9 @@ body { background: white; }
     minHeight: 0,
     minWidth: 0, // Allow flex item to shrink below content width on narrow viewports
     overflow: 'auto', // Sole scroll container — PagedEditor sizes to content
+    // Contain the scroll: reaching the top/bottom of the canvas must NOT
+    // chain to the document and rubber-band the whole page (macOS/iOS).
+    overscrollBehavior: 'contain',
     position: 'relative',
     overflowAnchor: 'none',
   };

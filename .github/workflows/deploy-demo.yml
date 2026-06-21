@@ -28,6 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # @schnsrw/design-system tokens are a submodule under
+          # docx-editor/vendor/design-system; the CSS build needs them.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
