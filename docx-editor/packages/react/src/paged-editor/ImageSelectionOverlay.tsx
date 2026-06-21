@@ -63,10 +63,6 @@ export interface ImageSelectionOverlayProps {
    *  paged-editor's contextmenu handler never fires for it — the parent wires
    *  this prop to route through to the same image-context-menu opener. */
   onContextMenu?: (e: React.MouseEvent) => void;
-  /** Open the contextual Format/Properties panel for this image. When set,
-   *  a small "Format" chip appears at the selection's top-left — the
-   *  intentional, object-specific entry to the panel (no auto-open). */
-  onOpenProperties?: () => void;
 }
 
 // =============================================================================
@@ -174,7 +170,6 @@ export function ImageSelectionOverlay({
   onDragStart,
   onDragEnd,
   onContextMenu,
-  onOpenProperties,
 }: ImageSelectionOverlayProps): React.ReactElement | null {
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -509,47 +504,6 @@ export function ImageSelectionOverlay({
         >
           {resizeWidth} × {resizeHeight}
         </div>
-      )}
-
-      {/* "Format" chip — the intentional, object-specific entry to the
-          contextual Format panel (Google-Docs "Image options" model).
-          Hidden mid-resize/drag so it never gets in the way. */}
-      {onOpenProperties && !isResizing && !isDragging && (
-        <button
-          type="button"
-          data-testid="image-format-chip"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onOpenProperties();
-          }}
-          style={{
-            position: 'absolute',
-            left,
-            top: top - 30,
-            height: 24,
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '0 10px',
-            fontSize: 12,
-            fontWeight: 500,
-            color: '#fff',
-            background: ACCENT_COLOR,
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
-            pointerEvents: 'auto',
-            zIndex: 16,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Format
-        </button>
       )}
     </div>
   );
