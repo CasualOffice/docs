@@ -204,8 +204,6 @@ const CitationsDialog = lazy(() =>
   import('./dialogs/CitationsDialog').then((m) => ({ default: m.CitationsDialog }))
 );
 import { MaterialSymbol } from './ui/Icons';
-import { RightDockPanel } from './RightDockPanel';
-import { PanelState } from './ui/PanelState';
 import { Tooltip } from './ui/Tooltip';
 import {
   TextContextMenu,
@@ -512,7 +510,26 @@ export interface DocxEditorProps {
   onEditorViewReady?: (view: import('prosemirror-view').EditorView) => void;
   /** Theme for styling */
   theme?: Theme | null;
-  /** Whether to show toolbar (default: true) */
+  /**
+   * Built-in chrome preset — a shortcut for the individual `show*` flags so
+   * hosts pick a UI level the way the sister sheet SDK does:
+   *   - `"full"` (default): batteries-included shell — toolbar + status bar +
+   *     panel rail + zoom. For 3rd-party hosts.
+   *   - `"minimal"`: lean editing surface — toolbar + zoom only.
+   *   - `"none"`: bare editing canvas, no built-in chrome — the host brings its
+   *     own shell and consumes the editor core.
+   * Any explicit `showToolbar` / `showStatusBar` / `showPanelRail` /
+   * `showZoomControl` prop overrides the preset.
+   */
+  chrome?: 'none' | 'minimal' | 'full';
+  /**
+   * Called once, after the editor mounts and finishes loading its initial
+   * document, with the imperative API (the same object exposed via `ref`).
+   * Mirrors the sheet SDK's `onReady(api)` handshake so hosts get a single
+   * "ready" signal instead of polling the ref.
+   */
+  onReady?: (api: DocxEditorRef) => void;
+  /** Whether to show toolbar (default: true, or per `chrome` preset) */
   showToolbar?: boolean;
   /** Whether to show the right-edge PanelRail (default: true). Set to
    *  `false` when embedding the editor as a read-only preview so the
@@ -738,6 +755,11 @@ export interface DocxEditorRef {
   loadDocument: (doc: Document) => void;
   /** Load a DOCX buffer programmatically (ArrayBuffer, Uint8Array, Blob, or File) */
   loadDocumentBuffer: (buffer: DocxInput) => Promise<void>;
+  /** Alias of `loadDocumentBuffer` — parity with the sheet SDK's `importXlsx`. */
+  importDocx: (buffer: DocxInput) => Promise<void>;
+  /** Alias of `save` — parity with the sheet SDK's `exportXlsx`. Returns the
+   *  serialized .docx bytes, or null if serialization fails. */
+  exportDocx: (options?: { selective?: boolean }) => Promise<ArrayBuffer | null>;
   /** Add a comment programmatically. Anchored by Word `w14:paraId` so
    * it survives unrelated edits. Returns the comment ID, or null if
    * the paraId is unknown or the search text isn't found / is ambiguous. */
@@ -917,7 +939,7 @@ function PageIndicator({
         pointerEvents: 'none',
         zIndex: 1000,
         opacity: visible ? 1 : 0,
-        transition: 'opacity 0.3s ease',
+        transition: 'opacity var(--doc-anim-slow)',
         userSelect: 'none',
       }}
       aria-live="polite"
@@ -1485,10 +1507,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     versionBackend,
     onFontsLoaded: onFontsLoadedCallback,
     theme,
-    showToolbar = true,
-    showPanelRail = true,
-    showStatusBar = true,
-    showZoomControl = true,
+    chrome,
+    onReady,
+    // `chrome` sets the default UI level; an explicit show* prop still wins
+    // (destructuring defaults only apply when the prop is undefined). No
+    // chrome → "full" defaults, so existing consumers are unaffected.
+    showToolbar = chrome === 'none' ? false : true,
+    showPanelRail = chrome === 'none' || chrome === 'minimal' ? false : true,
+    showStatusBar = chrome === 'none' || chrome === 'minimal' ? false : true,
+    showZoomControl = chrome === 'none' ? false : true,
     showMarginGuides: _showMarginGuides = false,
     marginGuideColor: _marginGuideColor,
     showRuler = false,
@@ -1638,10 +1665,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // variable. Updated every render in an effect below.
   const commentsCountRef = useRef(0);
   const handleToggleComments = useCallback(() => {
-    // Always flip the panel — the empty-state RightDockPanel below
-    // handles the no-comments case so the rail icon's behavior is
-    // consistent: it opens or closes a visible surface, never a toast.
-    setShowCommentsSidebar((v) => !v);
+    // Comments use the anchored-cards approach: each thread renders as a
+    // card floating next to its commented text (UnifiedSidebar), not a
+    // solid docked panel. On an empty doc there are no anchors to show, so
+    // surface a toast hint instead of an empty panel.
+    setShowCommentsSidebar((v) => {
+      const next = !v;
+      if (next && commentsCountRef.current === 0) {
+        toast.info('No comments yet. Select text and click "Add comment" to start a thread.');
+      }
+      return next;
+    });
     setExpandedSidebarItem(null);
     setShowVersionHistory(false);
   }, []);
@@ -2533,42 +2567,71 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   );
 
   // Color theme: 'auto' (follow OS) | 'light' | 'dark'. Persisted in
-  // localStorage. editor.css selects `[data-theme="dark"]` and
-  // `[data-theme="auto"]` (the latter only when the OS reports dark).
+  // localStorage. The @schnsrw/design-system tokens are manual-only — they
+  // only define a [data-theme='dark'] override, with no prefers-color-scheme
+  // fallback — so 'auto' is resolved to a concrete 'light'/'dark' attribute
+  // in JS (resolveColorTheme below) and a single [data-theme='dark'] selector
+  // drives both the DS palette and the editor chrome.
   const [colorTheme, setColorTheme] = useState<'light' | 'dark' | 'auto'>(() => {
     if (typeof window === 'undefined') return 'auto';
     const stored = window.localStorage.getItem('casual-editor:color-theme');
     return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
   });
-  // Apply the *initial* theme synchronously on mount so the attribute is
-  // set before the first paint (no flash).
+  // Resolve the user's choice to the concrete value the CSS keys off of:
+  // 'auto' follows the OS via matchMedia, everything else passes through.
+  const resolveColorTheme = useCallback((choice: 'light' | 'dark' | 'auto'): 'light' | 'dark' => {
+    if (choice !== 'auto') return choice;
+    if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }, []);
+  // Apply the *initial* theme synchronously on mount so the attribute is set
+  // before the first paint (no flash). Also tag the document with
+  // data-app="docs" so the DS swaps in the docs cyan accent ramp.
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    document.documentElement.setAttribute('data-theme', colorTheme);
+    document.documentElement.setAttribute('data-app', 'docs');
+    document.documentElement.setAttribute('data-theme', resolveColorTheme(colorTheme));
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // While the user's choice is 'auto', track OS theme changes live so the
+  // chrome flips with the system without a reload.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    if (colorTheme !== 'auto') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => {
+      document.documentElement.setAttribute('data-theme', mql.matches ? 'dark' : 'light');
+    };
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [colorTheme]);
   // Update the data-theme attribute synchronously in the click handler so
   // the CSS recalc happens immediately, without waiting for React's
   // commit phase + useEffect. The setState below only drives the icon
   // re-render in the title bar.
-  const handleSetColorTheme = useCallback((t: 'light' | 'dark' | 'auto') => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', t);
-    }
-    try {
-      window.localStorage.setItem('casual-editor:color-theme', t);
-    } catch {
-      // localStorage may be unavailable (private mode); harmless.
-    }
-    setColorTheme(t);
-  }, []);
+  const handleSetColorTheme = useCallback(
+    (t: 'light' | 'dark' | 'auto') => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', resolveColorTheme(t));
+      }
+      try {
+        window.localStorage.setItem('casual-editor:color-theme', t);
+      } catch {
+        // localStorage may be unavailable (private mode); harmless.
+      }
+      setColorTheme(t);
+    },
+    [resolveColorTheme]
+  );
 
   // Hyperlink popup state (Google Docs-style floating popup on link click)
   const [hyperlinkPopupData, setHyperlinkPopupData] = useState<HyperlinkPopupData | null>(null);
 
   // Monotonically increasing generation counter to discard stale async loads
   const loadGenerationRef = useRef(0);
+  // Real on-disk byte size of the most recently loaded document (Properties).
+  const loadedSizeRef = useRef<number | null>(null);
 
   // Reset internal state when loading a new document (clears stale refs, comments, tracked changes, etc.)
   const resetForNewDocument = useCallback(() => {
@@ -2606,6 +2669,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Load a DOCX buffer (used by ref method and internally)
   const loadBuffer = useCallback(
     async (buffer: DocxInput) => {
+      // Capture the REAL on-disk size of the loaded bytes (not an in-memory
+      // serialization estimate) for the Properties dialog.
+      loadedSizeRef.current =
+        buffer instanceof Blob
+          ? buffer.size
+          : buffer instanceof ArrayBuffer
+            ? buffer.byteLength
+            : ArrayBuffer.isView(buffer)
+              ? buffer.byteLength
+              : null;
       const generation = ++loadGenerationRef.current;
       resetForNewDocument();
       // Loading a fresh buffer wipes the prior edit state, so the new
@@ -6344,9 +6417,11 @@ body { background: white; }
   );
 
   // Expose ref methods
-  useImperativeHandle(
-    ref,
-    () => ({
+  // Captured imperative handle + once-guard for the onReady handshake.
+  const exposedApiRef = useRef<DocxEditorRef | null>(null);
+  const onReadyFiredRef = useRef(false);
+  useImperativeHandle(ref, () => {
+    const api: DocxEditorRef = {
       getAgent: () => agentRef.current,
       getDocument: () => history.state,
       getEditorRef: () => pagedEditorRef.current,
@@ -6368,6 +6443,8 @@ body { background: white; }
       print: handleDirectPrint,
       loadDocument: loadParsedDocument,
       loadDocumentBuffer: loadBuffer,
+      importDocx: loadBuffer,
+      exportDocx: handleSave,
 
       addComment: (options) => {
         const view = pagedEditorRef.current?.getView();
@@ -6764,18 +6841,30 @@ body { background: white; }
           selectionChangeSubscribersRef.current.delete(listener);
         };
       },
-    }),
-    [
-      history.state,
-      state.zoom,
-      scrollPageInfo,
-      handleSave,
-      handleDirectPrint,
-      loadParsedDocument,
-      loadBuffer,
-      comments,
-    ]
-  );
+    };
+    // Expose the same handle to the onReady effect below.
+    exposedApiRef.current = api;
+    return api;
+  }, [
+    history.state,
+    state.zoom,
+    scrollPageInfo,
+    handleSave,
+    handleDirectPrint,
+    loadParsedDocument,
+    loadBuffer,
+    comments,
+  ]);
+
+  // onReady — fire once, after the editor has mounted and the initial document
+  // has finished loading, with the imperative API (sheet-SDK parity).
+  useEffect(() => {
+    if (!onReady || onReadyFiredRef.current || state.isLoading) return;
+    const api = exposedApiRef.current;
+    if (!api) return;
+    onReadyFiredRef.current = true;
+    onReady(api);
+  }, [onReady, state.isLoading]);
 
   const initialSectionProperties = useMemo(
     () => getInitialSectionProperties(history.state),
@@ -7138,6 +7227,13 @@ body { background: white; }
     flexDirection: 'column',
     height: '100%',
     width: '100%',
+    // The shell fills its (host-bounded) box and never scrolls itself — only
+    // the inner canvas (editorContainerStyle) scrolls. overflow:hidden +
+    // minHeight:0 keep the flex column from overflowing its parent, so the
+    // chrome (toolbar/status bar) stays fixed regardless of how the host
+    // sizes us.
+    minHeight: 0,
+    overflow: 'hidden',
     backgroundColor: 'var(--doc-bg)',
     ...style,
   };
@@ -7370,6 +7466,9 @@ body { background: white; }
     minHeight: 0,
     minWidth: 0, // Allow flex item to shrink below content width on narrow viewports
     overflow: 'auto', // Sole scroll container — PagedEditor sizes to content
+    // Contain the scroll: reaching the top/bottom of the canvas must NOT
+    // chain to the document and rubber-band the whole page (macOS/iOS).
+    overscrollBehavior: 'contain',
     position: 'relative',
     overflowAnchor: 'none',
   };
@@ -7496,7 +7595,7 @@ body { background: white; }
                       // makes opening / closing ease instead of snap.
                       className={agentPanelOpen ? 'rounded-br-2xl' : undefined}
                       style={{
-                        transition: 'border-radius 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'border-radius var(--doc-anim-slow)',
                       }}
                       currentFormatting={state.selectionFormatting}
                       onFormat={handleFormat}
@@ -7622,9 +7721,10 @@ body { background: white; }
                   }}
                 />
 
-                {/* Below-toolbar horizontal row: scroll container + right-edge
-                    PanelRail. The rail sits inside this wrapper so it spans
-                    only the editor body's height, not the toolbar's. */}
+                {/* Below-toolbar horizontal row: scroll container + the floating
+                    PanelRail. position:relative anchors the rail's absolute
+                    positioning so it floats over the top-right of the editor
+                    body (not the toolbar) without taking flex space. */}
                 <div
                   style={{
                     display: 'flex',
@@ -7632,6 +7732,7 @@ body { background: white; }
                     minHeight: 0,
                     minWidth: 0,
                     flexDirection: 'row',
+                    position: 'relative',
                   }}
                 >
                   {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
@@ -7677,7 +7778,7 @@ body { background: white; }
                           paddingLeft: 20,
                           paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
                           minWidth: minLayoutWidth,
-                          transition: 'padding 0.2s ease',
+                          transition: 'padding var(--doc-anim-slow)',
                         }}
                       >
                         <HorizontalRuler
@@ -7770,7 +7871,7 @@ body { background: white; }
                               // Only the ruler itself is interactive; the wrapper
                               // must not swallow clicks over the gutter/page.
                               pointerEvents: 'none',
-                              transition: 'padding 0.2s ease',
+                              transition: 'padding var(--doc-anim-slow)',
                             }}
                           >
                             {/* Invisible page-width spacer; the ruler is pinned
@@ -8086,7 +8187,8 @@ body { background: white; }
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 boxShadow: '0 1px 3px rgba(60,64,67,0.2)',
-                                transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
+                                transition:
+                                  'background-color var(--doc-anim-base), box-shadow var(--doc-anim-base)',
                               }}
                               onMouseOver={(e) => {
                                 (e.currentTarget as HTMLButtonElement).style.backgroundColor =
@@ -8168,32 +8270,11 @@ body { background: white; }
                     />
                   )}
 
-                  {/* Comments empty-state panel — the rail icon's toggle
-                      should always reveal a visible surface, even when
-                      no comments exist. The audit caught the previous
-                      behavior: clicking the icon flashed a toast at the
-                      bottom and the user never saw a panel. The
-                      existing UnifiedSidebar only paints margin cards
-                      next to each anchored comment, so on an empty
-                      doc nothing was visible. This panel fills that
-                      gap. When `comments.length` rises above zero the
-                      margin-cards take over and this empty state goes
-                      away naturally. */}
-                  {showCommentsSidebar && comments.length === 0 && (
-                    <RightDockPanel
-                      title="Comments"
-                      icon={<MaterialSymbol name="comment" size={18} />}
-                      testId="comments-panel"
-                      ariaLabel="Comments"
-                      onClose={() => setShowCommentsSidebar(false)}
-                    >
-                      <PanelState
-                        kind="empty"
-                        message="No comments yet."
-                        hint='Select text in the document and click "Add comment" to start a thread.'
-                      />
-                    </RightDockPanel>
-                  )}
+                  {/* Comments use the anchored-cards approach (UnifiedSidebar
+                      paints a floating card next to each commented span).
+                      There is intentionally no solid docked comments panel —
+                      the empty-doc case is handled by a toast hint in
+                      handleToggleComments. */}
 
                   {/* AI right-side panels — laid out as flex siblings of
                       the scroll container so they share the exact same
@@ -8767,6 +8848,8 @@ body { background: white; }
                 <FilePropertiesDialog
                   isOpen={showFileProperties}
                   onClose={() => setShowFileProperties(false)}
+                  fileName={documentName}
+                  sizeBytes={loadedSizeRef.current ?? undefined}
                   current={history.state?.package?.properties}
                   onApply={(edits) => {
                     // Push edits onto the current package so the next save

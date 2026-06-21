@@ -150,7 +150,7 @@ const menuItemStyles: CSSProperties = {
   backgroundColor: 'transparent',
   width: '100%',
   textAlign: 'left',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
 };
 
 const separatorStyles: CSSProperties = {
@@ -808,7 +808,7 @@ export function TableOptionsDropdown({
       size="icon-sm"
       className={cn(
         'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
-        isOpen && 'bg-slate-100 dark:bg-slate-800',
+        isOpen && 'bg-[color:var(--doc-bg-hover)]',
         disabled && 'opacity-30 cursor-not-allowed',
         className
       )}

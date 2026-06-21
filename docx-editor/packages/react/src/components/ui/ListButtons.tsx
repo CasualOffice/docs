@@ -112,7 +112,7 @@ const BUTTON_STYLE: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 

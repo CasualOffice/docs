@@ -51,7 +51,7 @@ const overlayStyle: CSSProperties = {
   paddingLeft: 16,
   paddingRight: 16,
   zIndex: 10000,
-  animation: 'docDialogOverlayIn 180ms cubic-bezier(0.4, 0, 0.2, 1) both',
+  animation: 'docDialogOverlayIn var(--doc-anim-base) both',
 };
 
 const shellStyle = (width: number | string): CSSProperties => ({
@@ -67,7 +67,7 @@ const shellStyle = (width: number | string): CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  animation: 'docDialogShellIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  animation: 'docDialogShellIn var(--doc-anim-base) both',
 });
 
 const headerStyle: CSSProperties = {

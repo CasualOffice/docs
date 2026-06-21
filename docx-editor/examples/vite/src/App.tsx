@@ -4,6 +4,7 @@ import {
   type DocxEditorRef,
   type Document as DocxDocument,
   createEmptyDocument,
+  PresenceCluster,
 } from '@casualoffice/docs';
 import { useCollab } from './collab/useCollab';
 import { StatusBadge } from './collab/StatusBadge';
@@ -385,6 +386,18 @@ export function App() {
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
   const [status, setStatus] = useState<string>('');
+
+  // Browser tab title = the open file's name (Google-Docs style), not the
+  // app name. On the home screen, fall back to the product name.
+  useEffect(() => {
+    const APP_NAME = 'Casual Editor';
+    if (view === 'editor' && fileName) {
+      const base = fileName.replace(/\.docx$/i, '').trim() || 'Untitled';
+      document.title = `${base} — ${APP_NAME}`;
+    } else {
+      document.title = APP_NAME;
+    }
+  }, [view, fileName]);
   const disableFindReplaceShortcuts = useMemo(
     () => new URLSearchParams(window.location.search).get('disableFindReplaceShortcuts') === '1',
     []
@@ -584,43 +597,49 @@ export function App() {
     setView('editor');
   }, [legacyForcedEditor]);
 
-  const handleSelectTemplate = useCallback(async (entry: TemplateEntry) => {
-    try {
-      if (entry.source.kind === 'docx') setStatus('Loading template…');
-      const loaded = await loadTemplate(entry);
-      suppressSeedDocumentRef.current = true;
-      if (loaded.kind === 'document') {
-        setDocumentBuffer(null);
-        setCurrentDocument(loaded.document);
-      } else {
-        setCurrentDocument(null);
-        setDocumentBuffer(loaded.buffer);
+  const handleSelectTemplate = useCallback(
+    async (entry: TemplateEntry) => {
+      try {
+        if (entry.source.kind === 'docx') setStatus('Loading template…');
+        const loaded = await loadTemplate(entry);
+        suppressSeedDocumentRef.current = true;
+        if (loaded.kind === 'document') {
+          setDocumentBuffer(null);
+          setCurrentDocument(loaded.document);
+        } else {
+          setCurrentDocument(null);
+          setDocumentBuffer(loaded.buffer);
+        }
+        setFileName(loaded.fileName);
+        setStatus('');
+        if (!legacyForcedEditor) navigate('/document/new');
+        setView('editor');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setStatus(`Failed to load template: ${message}`);
       }
-      setFileName(loaded.fileName);
-      setStatus('');
-      if (!legacyForcedEditor) navigate('/document/new');
-      setView('editor');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setStatus(`Failed to load template: ${message}`);
-    }
-  }, [legacyForcedEditor]);
+    },
+    [legacyForcedEditor]
+  );
 
-  const handleOpenFromHome = useCallback(async (file: File) => {
-    try {
-      suppressSeedDocumentRef.current = true;
-      setStatus('Loading…');
-      const buffer = await file.arrayBuffer();
-      setCurrentDocument(null);
-      setDocumentBuffer(buffer);
-      setFileName(file.name);
-      setStatus('');
-      if (!legacyForcedEditor) navigate('/document/new');
-      setView('editor');
-    } catch {
-      setStatus('Error loading file');
-    }
-  }, [legacyForcedEditor]);
+  const handleOpenFromHome = useCallback(
+    async (file: File) => {
+      try {
+        suppressSeedDocumentRef.current = true;
+        setStatus('Loading…');
+        const buffer = await file.arrayBuffer();
+        setCurrentDocument(null);
+        setDocumentBuffer(buffer);
+        setFileName(file.name);
+        setStatus('');
+        if (!legacyForcedEditor) navigate('/document/new');
+        setView('editor');
+      } catch {
+        setStatus('Error loading file');
+      }
+    },
+    [legacyForcedEditor]
+  );
 
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -956,19 +975,15 @@ function CollabApp({
 
   const renderTitleBarRight = useCallback(
     () => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={styles.status}>Room: {room.slice(0, 8)}…</span>
-        <button
-          style={styles.button}
-          onClick={() => {
-            void navigator.clipboard.writeText(window.location.href);
-          }}
-        >
-          Copy invite link
-        </button>
-      </div>
+      <PresenceCluster
+        peers={peers.map((p) => ({ name: p.name, color: p.color, active: true }))}
+        status={status}
+        onShare={() => {
+          void navigator.clipboard.writeText(window.location.href);
+        }}
+      />
     ),
-    [room]
+    [peers, status]
   );
 
   if (seed.kind === 'loading') {

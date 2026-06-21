@@ -332,10 +332,11 @@ export function HorizontalRuler({
         cursor: dragging ? 'ew-resize' : 'default',
         ...style,
       }}
-      role="slider"
+      // The ruler is a GROUP of margin/indent sliders, not a slider itself —
+      // role="slider" here both lacked aria-valuenow and nested the focusable
+      // indent markers inside an interactive control (nested-interactive).
+      role="group"
       aria-label={t('ruler.horizontal')}
-      aria-valuemin={0}
-      aria-valuemax={pageWidthTwips}
     >
       {/* Gray margin zones — click & drag anywhere in the gray area to adjust margin */}
       <div
@@ -392,6 +393,7 @@ export function HorizontalRuler({
           onMouseLeave={() => setHoveredMarker(null)}
           onMouseDown={(e) => handleDragStart(e, 'firstLineIndent')}
           label={t('ruler.firstLineIndent')}
+          maxPx={pageWidthPx}
         />
       )}
 
@@ -407,6 +409,7 @@ export function HorizontalRuler({
           onMouseLeave={() => setHoveredMarker(null)}
           onMouseDown={(e) => handleDragStart(e, 'leftIndent')}
           label={t('ruler.leftIndent')}
+          maxPx={pageWidthPx}
         />
       )}
 
@@ -422,6 +425,7 @@ export function HorizontalRuler({
           onMouseLeave={() => setHoveredMarker(null)}
           onMouseDown={(e) => handleDragStart(e, 'rightIndent')}
           label={t('ruler.rightIndent')}
+          maxPx={pageWidthPx}
         />
       )}
 
@@ -501,6 +505,8 @@ interface IndentTriangleProps {
   onMouseLeave: () => void;
   onMouseDown: (e: React.MouseEvent) => void;
   label: string;
+  /** Ruler width in px — the slider's aria-valuemax (aria-valuenow uses positionPx). */
+  maxPx: number;
 }
 
 function IndentTriangle({
@@ -513,6 +519,7 @@ function IndentTriangle({
   onMouseLeave,
   onMouseDown,
   label,
+  maxPx,
 }: IndentTriangleProps): React.ReactElement {
   const color = isDragging ? INDENT_ACTIVE_COLOR : isHovered ? INDENT_HOVER_COLOR : INDENT_COLOR;
   const triHeight = Math.round(TRI_SIZE * 1.6);
@@ -538,7 +545,7 @@ function IndentTriangle({
           borderLeft: `${TRI_SIZE}px solid transparent`,
           borderRight: `${TRI_SIZE}px solid transparent`,
           borderTop: `${triHeight}px solid ${color}`,
-          transition: 'border-top-color 0.1s',
+          transition: 'border-top-color var(--doc-anim-fast)',
         }
       : {
           position: 'absolute',
@@ -549,7 +556,7 @@ function IndentTriangle({
           borderLeft: `${TRI_SIZE}px solid transparent`,
           borderRight: `${TRI_SIZE}px solid transparent`,
           borderBottom: `${triHeight}px solid ${color}`,
-          transition: 'border-bottom-color 0.1s',
+          transition: 'border-bottom-color var(--doc-anim-fast)',
         };
 
   return (
@@ -562,6 +569,9 @@ function IndentTriangle({
       role="slider"
       aria-label={label}
       aria-orientation="horizontal"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(maxPx)}
+      aria-valuenow={Math.round(Math.min(Math.max(positionPx, 0), maxPx))}
       tabIndex={editable ? 0 : -1}
     >
       <div style={triangleStyle} />

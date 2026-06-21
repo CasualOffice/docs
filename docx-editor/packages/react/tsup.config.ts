@@ -94,6 +94,11 @@ const mainConfig = defineConfig({
     'prosemirror-transform',
     'prosemirror-view',
   ],
+  // The design-system isn't on npm (git submodule), so its React components
+  // MUST be bundled into our dist — consumers can't resolve
+  // `@schnsrw/design-system` themselves. It has no deps of its own (react is a
+  // peer we already externalize), so this stays small.
+  noExternal: ['@schnsrw/design-system'],
   injectStyle: false,
   plugins: [rewriteWorkerUrls, rewriteWorkerUrlsInSource],
 });

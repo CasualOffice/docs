@@ -200,7 +200,7 @@ export function UnifiedSidebar({
         overflowY: 'visible',
         overflowX: 'visible',
         opacity: hasPositions ? 1 : 0,
-        transition: 'opacity 0.15s ease',
+        transition: 'opacity var(--doc-anim-base)',
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >

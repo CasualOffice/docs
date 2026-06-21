@@ -48,7 +48,7 @@ const rowStyle: CSSProperties = {
   borderRadius: 8,
   border: '1px solid var(--doc-border-light)',
   background: 'var(--doc-surface)',
-  transition: 'border-color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'border-color var(--doc-anim-fast)',
 };
 
 const rowTitleStyle: CSSProperties = {
@@ -74,7 +74,7 @@ const primaryBtnStyle: CSSProperties = {
   color: 'white',
   borderRadius: 6,
   cursor: 'pointer',
-  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-fast)',
 };
 
 const gotoBtnStyle: CSSProperties = {
@@ -87,8 +87,7 @@ const gotoBtnStyle: CSSProperties = {
   borderRadius: 6,
   cursor: 'pointer',
   flexShrink: 0,
-  transition:
-    'background 80ms cubic-bezier(0.4, 0, 0.2, 1), border-color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-fast), border-color var(--doc-anim-fast)',
 };
 
 function describe(issue: AccessibilityIssue): { title: string; hint: string } {

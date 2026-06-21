@@ -125,7 +125,7 @@ const DROP_ZONE_STYLE: CSSProperties = {
   padding: '40px 20px',
   textAlign: 'center',
   cursor: 'pointer',
-  transition: 'border-color 0.2s, background-color 0.2s',
+  transition: 'border-color var(--doc-anim-slow), background-color var(--doc-anim-slow)',
   marginBottom: '16px',
 };
 

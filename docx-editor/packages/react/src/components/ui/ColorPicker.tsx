@@ -86,7 +86,7 @@ const S_BUTTON: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 
@@ -124,7 +124,7 @@ const S_CELL: CSSProperties = {
   borderRadius: '2px',
   cursor: 'pointer',
   padding: 0,
-  transition: 'transform 0.1s, border-color 0.1s',
+  transition: 'transform var(--doc-anim-fast), border-color var(--doc-anim-fast)',
 };
 
 const S_CELL_HOVER: CSSProperties = {
@@ -216,7 +216,7 @@ const S_SPLIT_APPLY_BTN: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 
@@ -230,7 +230,7 @@ const S_SPLIT_ARROW_BTN: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 

@@ -215,9 +215,11 @@ export function VerticalRuler({
       ref={rulerRef}
       className={`docx-vertical-ruler ${className}`}
       style={rulerStyle}
-      role="slider"
+      // A GROUP of margin sliders, not a slider itself — role="slider" here
+      // lacked aria-valuenow and nested the focusable markers inside an
+      // interactive control (nested-interactive).
+      role="group"
       aria-label={t('ruler.vertical')}
-      aria-orientation="vertical"
     >
       {/* Tick marks */}
       <div
@@ -245,6 +247,7 @@ export function VerticalRuler({
         onMouseEnter={() => setHoveredMarker('topMargin')}
         onMouseLeave={() => setHoveredMarker(null)}
         onMouseDown={(e) => handleDragStart(e, 'topMargin')}
+        maxPx={pageHeightPx}
       />
 
       {/* Bottom margin marker */}
@@ -257,6 +260,7 @@ export function VerticalRuler({
         onMouseEnter={() => setHoveredMarker('bottomMargin')}
         onMouseLeave={() => setHoveredMarker(null)}
         onMouseDown={(e) => handleDragStart(e, 'bottomMargin')}
+        maxPx={pageHeightPx}
       />
     </div>
   );
@@ -310,6 +314,8 @@ interface VerticalMarginMarkerProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onMouseDown: (e: React.MouseEvent) => void;
+  /** Ruler height in px — the slider's aria-valuemax (aria-valuenow = position). */
+  maxPx: number;
 }
 
 function VerticalMarginMarker({
@@ -321,6 +327,7 @@ function VerticalMarginMarker({
   onMouseEnter,
   onMouseLeave,
   onMouseDown,
+  maxPx,
 }: VerticalMarginMarkerProps): React.ReactElement {
   const { t } = useTranslation();
   const color = isDragging ? MARKER_ACTIVE_COLOR : isHovered ? MARKER_HOVER_COLOR : MARKER_COLOR;
@@ -345,7 +352,7 @@ function VerticalMarginMarker({
     borderTop: '5px solid transparent',
     borderBottom: '5px solid transparent',
     borderRight: `8px solid ${color}`,
-    transition: 'border-right-color 0.1s',
+    transition: 'border-right-color var(--doc-anim-fast)',
   };
 
   return (
@@ -358,6 +365,9 @@ function VerticalMarginMarker({
       role="slider"
       aria-label={type === 'topMargin' ? t('ruler.topMargin') : t('ruler.bottomMargin')}
       aria-orientation="vertical"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(maxPx)}
+      aria-valuenow={Math.round(Math.min(Math.max(position, 0), maxPx))}
       tabIndex={editable ? 0 : -1}
     >
       <div style={triangleStyle} />

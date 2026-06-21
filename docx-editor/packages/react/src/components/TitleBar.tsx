@@ -351,7 +351,12 @@ export function MenuBar() {
       <div
         className="flex items-center overflow-x-auto whitespace-nowrap min-w-0"
         style={{ scrollbarWidth: 'none' }}
-        role="menubar"
+        // role="toolbar" (not "menubar"): a menubar's required children are
+        // menuitems, but these triggers are native <button>s (kept so they
+        // expose role="button" to AT + tests). A toolbar permits button
+        // children and carries no required-children rule, clearing the
+        // aria-required-children violation while staying a labeled group.
+        role="toolbar"
         aria-label={t('titleBar.menuBarAriaLabel')}
       >
         {/* File Menu */}
@@ -1146,7 +1151,7 @@ export function TitleBar({ children }: TitleBarProps) {
 
   return (
     <div
-      className="flex items-stretch bg-[color:var(--doc-surface,white)] text-[color:var(--doc-text-on-surface,#1f2937)] pt-2 pb-1"
+      className="flex items-stretch bg-[color:var(--doc-chrome,#eef1f5)] text-[color:var(--doc-text-on-surface,#1f2937)] pt-2 pb-1"
       onMouseDown={handleMouseDown}
       data-testid="title-bar"
     >

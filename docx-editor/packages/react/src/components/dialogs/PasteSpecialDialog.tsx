@@ -178,7 +178,7 @@ const PasteOptionButton: React.FC<PasteOptionButtonProps> = ({
         cursor: 'pointer',
         textAlign: 'left',
         borderRadius: '4px',
-        transition: 'background-color 0.15s ease',
+        transition: 'background-color var(--doc-anim-base)',
       }}
     >
       <span

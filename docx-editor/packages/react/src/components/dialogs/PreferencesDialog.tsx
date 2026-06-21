@@ -43,7 +43,7 @@ const rowStyle: CSSProperties = {
   padding: '12px 12px',
   borderRadius: 10,
   cursor: 'pointer',
-  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-fast)',
 };
 
 const labelTextStyle: CSSProperties = {
@@ -92,8 +92,7 @@ const switchPillStyle = (on: boolean): CSSProperties => ({
   borderRadius: 999,
   background: on ? 'var(--doc-primary)' : 'var(--doc-border)',
   position: 'relative',
-  transition:
-    'background 140ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 140ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-base), box-shadow var(--doc-anim-base)',
   boxShadow: 'inset 0 0 0 1px rgba(15, 23, 42, 0.06)',
 });
 
@@ -106,7 +105,7 @@ const switchKnobStyle = (on: boolean): CSSProperties => ({
   borderRadius: 999,
   background: '#fff',
   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.08)',
-  transition: 'left 160ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'left var(--doc-anim-base)',
 });
 
 const codeStyle: CSSProperties = {

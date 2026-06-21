@@ -387,7 +387,7 @@ export const ResponsiveToolbar: React.FC<ResponsiveToolbarProps> = ({
         backgroundColor: isOverflowOpen ? 'var(--doc-primary-light)' : 'transparent',
         color: 'var(--doc-text-muted)',
         cursor: 'pointer',
-        transition: 'background-color 0.15s ease',
+        transition: 'background-color var(--doc-anim-base)',
       }}
     >
       <MoreIcon />

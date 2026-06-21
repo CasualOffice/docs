@@ -21,7 +21,7 @@ const cellStyle: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   border: '1px solid var(--doc-border, #d1d5db)',
   borderRadius: 2,
-  transition: 'background-color 0.1s, border-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast), border-color var(--doc-anim-fast)',
   cursor: 'pointer',
 };
 

@@ -34,6 +34,10 @@ jobs:
     environment: dockerhub
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Design-system tokens (submodule) ride into the Docker build
+          # context for the editor's CSS build.
+          submodules: recursive
 
       - name: Resolve version
         id: ver

@@ -136,6 +136,7 @@
   },
   "devDependencies": {
     "@hocuspocus/provider": "^2.15.0",
+    "@schnsrw/design-system": "file:../../vendor/design-system",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-dropcursor": "^1.8.2",
     "prosemirror-history": "^1.4.0",

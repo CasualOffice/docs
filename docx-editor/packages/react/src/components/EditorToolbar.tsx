@@ -48,7 +48,7 @@ function EditorToolbarBase({
     <EditorToolbarContext.Provider value={toolbarProps}>
       <div
         className={cn(
-          'flex flex-col shadow-sm flex-shrink-0 bg-[color:var(--doc-surface,white)] text-[color:var(--doc-text-on-surface,#1f2937)]',
+          'flex flex-col flex-shrink-0 bg-[color:var(--doc-chrome,#eef1f5)] text-[color:var(--doc-text-on-surface,#1f2937)]',
           className
         )}
         style={style}

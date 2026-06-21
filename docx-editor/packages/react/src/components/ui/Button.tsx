@@ -9,9 +9,14 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        outline:
+          'border border-input bg-background hover:bg-[color:var(--doc-bg-hover)] hover:text-[color:var(--doc-text)]',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        // ghost/outline hover used to be shadcn's `bg-accent` (#f1f5f9), which
+        // diverged from the rest of the chrome's --doc-bg-hover. Point them at
+        // the shared token so every ghost/outline button (toolbar, dialogs,
+        // dropdown triggers) hovers identically.
+        ghost: 'hover:bg-[color:var(--doc-bg-hover)] hover:text-[color:var(--doc-text)]',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

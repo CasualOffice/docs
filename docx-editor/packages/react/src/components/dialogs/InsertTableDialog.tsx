@@ -132,7 +132,7 @@ const GRID_CELL_STYLE: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   border: '1px solid var(--doc-border-dark)',
   borderRadius: '2px',
-  transition: 'background-color 0.1s, border-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast), border-color var(--doc-anim-fast)',
 };
 
 const GRID_CELL_SELECTED_STYLE: CSSProperties = {

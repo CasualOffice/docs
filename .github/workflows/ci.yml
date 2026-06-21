@@ -25,6 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -45,6 +50,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -81,6 +91,11 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -147,6 +162,11 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Go
         uses: actions/setup-go@v6

@@ -61,6 +61,8 @@ jobs:
           # Changesets needs full history to compute the package
           # versions correctly across the .changeset queue.
           fetch-depth: 0
+          # Design-system tokens (submodule) are inlined by the CSS build.
+          submodules: recursive
 
       - uses: oven-sh/setup-bun@v2
         with:

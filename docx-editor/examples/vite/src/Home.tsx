@@ -5,12 +5,7 @@ import {
   type TemplateCategory,
   type TemplateEntry,
 } from './templates/manifest';
-import {
-  deleteRecentFile,
-  formatSize,
-  listRecentFiles,
-  type RecentFile,
-} from '@casualoffice/docs';
+import { deleteRecentFile, formatSize, listRecentFiles, type RecentFile } from '@casualoffice/docs';
 
 /** Track viewport breakpoint. <720 = phone (single-col controls,
  *  2-col card grid, reduced padding, smaller hero). */
@@ -249,8 +244,7 @@ const styles: Record<string, CSSProperties> = {
   },
   cardHover: {
     borderColor: '#cbd5e1',
-    boxShadow:
-      '0 14px 28px -16px rgba(15, 23, 42, 0.18), 0 4px 8px -2px rgba(15, 23, 42, 0.06)',
+    boxShadow: '0 14px 28px -16px rgba(15, 23, 42, 0.18), 0 4px 8px -2px rgba(15, 23, 42, 0.06)',
     transform: 'translateY(-3px)',
   },
   cardThumbWrap: {
@@ -300,7 +294,10 @@ const styles: Record<string, CSSProperties> = {
   },
   cardCategory: {
     fontSize: '11.5px',
-    color: COLORS.inkSubtle,
+    // #94a3b8 (inkSubtle) on white is only 2.56:1 — fails WCAG AA for this
+    // small label. #64748b (slate-500) is 4.86:1 and reads as the same quiet
+    // grey while passing AA.
+    color: '#64748b',
     fontWeight: 500,
   },
 
@@ -334,7 +331,12 @@ const mobile: Record<string, CSSProperties> = {
   hero: { padding: '24px 16px 8px' },
   heroTitle: { fontSize: '30px', letterSpacing: '-0.02em' },
   heroLede: { fontSize: '15px', marginTop: '10px' },
-  controls: { padding: '20px 16px 4px', flexDirection: 'column', alignItems: 'stretch', gap: '10px' },
+  controls: {
+    padding: '20px 16px 4px',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: '10px',
+  },
   searchWrap: { minWidth: 0, flex: '1 1 auto', maxWidth: 'none' },
   openFileBtn: { justifyContent: 'center' },
   pillRow: { marginLeft: 0, overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: '4px' },
@@ -349,7 +351,13 @@ const mobile: Record<string, CSSProperties> = {
   cardTitle: { fontSize: '12.5px' },
   cardCategory: { fontSize: '10.5px' },
   cardIconBadge: { width: '24px', height: '24px', top: '6px', right: '6px' },
-  footer: { padding: '20px 16px 24px', flexDirection: 'column', gap: '6px', textAlign: 'center', alignItems: 'center' },
+  footer: {
+    padding: '20px 16px 24px',
+    flexDirection: 'column',
+    gap: '6px',
+    textAlign: 'center',
+    alignItems: 'center',
+  },
 };
 
 function TemplateCard({
@@ -383,7 +391,10 @@ function TemplateCard({
           loading="lazy"
           style={{ ...styles.cardThumb, ...(hovered ? styles.cardThumbHover : null) }}
         />
-        <span style={{ ...styles.cardIconBadge, ...(isMobile && mobile.cardIconBadge) }} aria-hidden="true">
+        <span
+          style={{ ...styles.cardIconBadge, ...(isMobile && mobile.cardIconBadge) }}
+          aria-hidden="true"
+        >
           <span className="material-symbols-outlined" style={{ fontSize: isMobile ? 14 : 16 }}>
             {entry.icon}
           </span>
@@ -391,7 +402,9 @@ function TemplateCard({
       </div>
       <div style={{ ...styles.cardBody, ...(isMobile && mobile.cardBody) }}>
         <div style={{ ...styles.cardTitle, ...(isMobile && mobile.cardTitle) }}>{entry.name}</div>
-        <div style={{ ...styles.cardCategory, ...(isMobile && mobile.cardCategory) }}>{entry.category}</div>
+        <div style={{ ...styles.cardCategory, ...(isMobile && mobile.cardCategory) }}>
+          {entry.category}
+        </div>
       </div>
     </button>
   );
@@ -543,8 +556,7 @@ const recentCardStyle: CSSProperties = {
 
 const recentCardHoverStyle: CSSProperties = {
   borderColor: '#cbd5e1',
-  boxShadow:
-    '0 8px 18px -12px rgba(15, 23, 42, 0.16), 0 2px 4px -1px rgba(15, 23, 42, 0.05)',
+  boxShadow: '0 8px 18px -12px rgba(15, 23, 42, 0.16), 0 2px 4px -1px rgba(15, 23, 42, 0.05)',
   transform: 'translateY(-1px)',
 };
 
@@ -605,11 +617,7 @@ function RecentCard({
       aria-label={`Reopen ${entry.name}`}
     >
       <div style={recentIconBoxStyle}>
-        <span
-          className="material-symbols-outlined"
-          aria-hidden="true"
-          style={{ fontSize: 22 }}
-        >
+        <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 22 }}>
           description
         </span>
       </div>
@@ -642,7 +650,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
   // care that the buffer didn't come from `<input type="file">`.
   const [recents, setRecents] = useState<RecentFile[]>([]);
   const [autoReopenDismissed, setAutoReopenDismissed] = useState<boolean>(() =>
-    isAutoReopenDismissed(),
+    isAutoReopenDismissed()
   );
   useEffect(() => {
     let cancelled = false;
@@ -733,9 +741,8 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           Start something today.
         </h1>
         <p style={{ ...styles.heroLede, ...(isMobile && mobile.heroLede) }}>
-          A real-time collaborative <code>.docx</code> editor that runs in the browser.
-          Pick a template designed for the way you actually work — or open a file from
-          your computer.
+          A real-time collaborative <code>.docx</code> editor that runs in the browser. Pick a
+          template designed for the way you actually work — or open a file from your computer.
         </p>
       </section>
 
@@ -770,14 +777,22 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           </span>
           Open file
         </button>
-        <div style={{ ...styles.pillRow, ...(isMobile && mobile.pillRow) }} role="group" aria-label="Filter by category">
+        <div
+          style={{ ...styles.pillRow, ...(isMobile && mobile.pillRow) }}
+          role="group"
+          aria-label="Filter by category"
+        >
           {(['All', ...CATEGORIES] as CategoryFilter[]).map((c) => {
             const active = category === c;
             return (
               <button
                 key={c}
                 type="button"
-                style={{ ...styles.pill, ...(isMobile && mobile.pill), ...(active ? styles.pillActive : null) }}
+                style={{
+                  ...styles.pill,
+                  ...(isMobile && mobile.pill),
+                  ...(active ? styles.pillActive : null),
+                }}
                 onClick={() => setCategory(c)}
                 data-testid={`home-category-${c.toLowerCase()}`}
                 aria-pressed={active}
@@ -843,7 +858,12 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           ) : (
             <div style={{ ...styles.grid, ...(isMobile && mobile.grid) }}>
               {filtered.map((t) => (
-                <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} isMobile={isMobile} />
+                <TemplateCard
+                  key={t.id}
+                  entry={t}
+                  onSelect={onSelectTemplate}
+                  isMobile={isMobile}
+                />
               ))}
             </div>
           )}
@@ -862,7 +882,12 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
               </div>
               <div style={{ ...styles.grid, ...(isMobile && mobile.grid) }}>
                 {items.map((t) => (
-                  <TemplateCard key={t.id} entry={t} onSelect={onSelectTemplate} isMobile={isMobile} />
+                  <TemplateCard
+                    key={t.id}
+                    entry={t}
+                    onSelect={onSelectTemplate}
+                    isMobile={isMobile}
+                  />
                 ))}
               </div>
             </section>

@@ -19,6 +19,12 @@
 **/target/
 **/.next/
 
+# Exception: the @schnsrw/design-system submodule ships its built dist/
+# (committed, no build step) and the editor's CSS build @imports those
+# tokens. Re-include it so it survives the **/dist/ exclusion above.
+!docx-editor/vendor/design-system/dist/
+!docx-editor/vendor/design-system/dist/**
+
 # Test outputs
 **/playwright-report/
 **/test-results/

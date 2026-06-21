@@ -46,17 +46,25 @@ export interface PanelRailProps {
   onToggleChat?: () => void;
 }
 
+// Floating rounded card pinned to the top-right of the canvas area (not
+// edge-docked). Positioned absolutely within the editor's below-toolbar row
+// (which is position:relative), so it overlays the grey desk margin without
+// taking flex space or scrolling with the document.
 const railStyle: CSSProperties = {
-  flex: '0 0 36px',
-  width: 36,
+  position: 'absolute',
+  top: 12,
+  right: 12,
+  zIndex: 30,
+  width: 40,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'stretch',
-  gap: 2,
-  padding: '6px 2px',
-  background: 'var(--doc-surface-alt, var(--doc-surface, #fafafa))',
-  borderTop: '1px solid var(--doc-border, #e0e0e0)',
-  borderLeft: '1px solid var(--doc-border, #e0e0e0)',
+  gap: 4,
+  padding: 4,
+  background: 'var(--doc-surface)',
+  border: '1px solid var(--doc-border-light)',
+  borderRadius: 'var(--radius-lg)',
+  boxShadow: 'var(--shadow-2)',
 };
 
 const btnStyle = (active: boolean): CSSProperties => ({
@@ -72,7 +80,7 @@ const btnStyle = (active: boolean): CSSProperties => ({
   background: active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
   color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text-on-surface-muted, #5f6368)',
   cursor: 'pointer',
-  transition: 'background var(--doc-anim-fast, 100ms) ease, color var(--doc-anim-fast, 100ms) ease',
+  transition: 'background var(--doc-anim-fast), color var(--doc-anim-fast)',
 });
 
 const markerStyle: CSSProperties = {

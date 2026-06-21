@@ -286,14 +286,11 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
       <button
         ref={triggerRef}
         type="button"
-        // Popup-menu pattern (button-opens-menu): we keep the
-        // native button role here because there's no enclosing
-        // <div role="menubar"> in this React tree, and role=
-        // "menuitem" is invalid outside a menu/menubar parent.
-        // aria-haspopup="menu" signals the popup type (vs dialog /
-        // listbox); aria-expanded tracks open state so screen
-        // readers can announce "collapsed/expanded". Once a
-        // proper menubar wrapper lands we can re-add role here.
+        // Popup-menu pattern (button-opens-menu). The trigger stays a native
+        // <button>: its container is a role="toolbar" (see TitleBar), which
+        // permits button children — unlike role="menubar", whose required
+        // children must be menuitems. aria-haspopup="menu" signals the popup
+        // type; aria-expanded tracks open state for screen readers.
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -334,7 +331,7 @@ export function MenuDropdown({ label, items, disabled, id }: MenuDropdownProps) 
           style={{
             display: 'inline-flex',
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 150ms ease',
+            transition: 'transform var(--doc-anim-base)',
           }}
         >
           <MaterialSymbol name="arrow_drop_down" size={16} />

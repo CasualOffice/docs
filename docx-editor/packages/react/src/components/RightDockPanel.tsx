@@ -52,13 +52,16 @@ const ROOT_STYLE: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   background: 'var(--doc-surface, #ffffff)',
-  borderLeft: '1px solid var(--doc-border-light)',
-  // Ambient shadow on the left edge gives depth so the panel reads
-  // as layered over the doc, not a flat sidebar slice. Subtle —
-  // 4px reach, 5% alpha.
-  boxShadow: '-4px 0 12px rgba(15, 23, 42, 0.04)',
+  // Floating card (suite parity): detached from the edge with a uniform
+  // gap, rounded, and an ambient shadow. The right gap (56px) clears the
+  // floating PanelRail so the two never overlap. A hairline border keeps it
+  // legible on dark surfaces where the shadow alone is too soft.
+  margin: '12px 56px 12px 12px',
+  border: '1px solid var(--doc-border-light)',
+  borderRadius: 'var(--radius-lg)',
+  boxShadow: 'var(--shadow-2)',
   color: 'var(--doc-text-on-surface)',
-  animation: 'docPanelSlideIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  animation: 'docPanelSlideIn var(--doc-anim-slow) both',
   overflow: 'hidden',
   minHeight: 0,
 };

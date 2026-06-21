@@ -15,6 +15,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { FocusTrap } from '../ui/FocusTrap';
+import { formatSize } from '../../utils/recent-files';
 
 export interface FilePropertiesValue {
   title?: string;
@@ -36,6 +37,10 @@ export interface FilePropertiesDialogProps {
   /** Called with the four user-editable fields when the user clicks Apply. */
   onApply: (props: Partial<FilePropertiesValue>) => void;
   current?: FilePropertiesValue;
+  /** The open file's name (shown read-only). */
+  fileName?: string;
+  /** Real on-disk byte size of the loaded file (shown read-only). */
+  sizeBytes?: number;
 }
 
 const overlayStyle: CSSProperties = {
@@ -151,6 +156,9 @@ const primaryBtnStyle: CSSProperties = {
 
 function formatDate(d: Date | undefined): string {
   if (!d) return '—';
+  // Guard Invalid Date (e.g. an unparseable core.xml timestamp) — toLocaleString
+  // would render the literal "Invalid Date".
+  if (isNaN(d.getTime())) return '—';
   try {
     return d.toLocaleString();
   } catch {
@@ -158,11 +166,21 @@ function formatDate(d: Date | undefined): string {
   }
 }
 
+// Drop placeholder junk that some producers stamp into core.xml so the dialog
+// shows a clean em-dash instead of "Unknown" / "null" / empty.
+function sanitize(value: string | undefined): string {
+  const v = value?.trim();
+  if (!v || v.toLowerCase() === 'unknown' || v.toLowerCase() === 'null') return '—';
+  return v;
+}
+
 export function FilePropertiesDialog({
   isOpen,
   onClose,
   onApply,
   current,
+  fileName,
+  sizeBytes,
 }: FilePropertiesDialogProps): React.ReactElement | null {
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
@@ -292,9 +310,21 @@ export function FilePropertiesDialog({
             <section style={{ ...sectionStyle, marginTop: 16 }}>
               <h3 style={sectionTitleStyle}>File info</h3>
               <div style={rowStyle}>
+                <span style={labelStyle}>File name</span>
+                <span style={readonlyValueStyle} data-testid="fp-fileName">
+                  {sanitize(fileName)}
+                </span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>Size</span>
+                <span style={readonlyValueStyle} data-testid="fp-size">
+                  {typeof sizeBytes === 'number' ? formatSize(sizeBytes) : '—'}
+                </span>
+              </div>
+              <div style={rowStyle}>
                 <span style={labelStyle}>Last modified by</span>
                 <span style={readonlyValueStyle} data-testid="fp-lastModifiedBy">
-                  {current?.lastModifiedBy ?? '—'}
+                  {sanitize(current?.lastModifiedBy)}
                 </span>
               </div>
               <div style={rowStyle}>
