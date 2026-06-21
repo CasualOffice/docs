@@ -7722,9 +7722,11 @@ body { background: white; }
                               // so it stays readable on horizontal scroll.
                               zIndex: Z_INDEX.ruler,
                               // Must match `.paged-editor__pages` padding-top in
-                              // editor.css (24 viewport + 24 pages container);
-                              // update both together or the ruler misaligns.
-                              paddingTop: 48,
+                              // editor.css (24 viewport + 24 pages container).
+                              // That padding scales with zoom, so the ruler's
+                              // top offset has to scale too or it drifts off the
+                              // page top at non-100% zoom.
+                              paddingTop: 48 * state.zoom,
                               // Same horizontal centering as the horizontal ruler
                               // so the vertical ruler tracks the centered page
                               // (and its comment-sidebar bias).
