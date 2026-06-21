@@ -1,0 +1,99 @@
+name: Visual fidelity (representative)
+
+# Enforces the visual-fidelity floor on the *representative* corpus — the app's
+# own templates (letters, resumes, reports, memos), i.e. the documents people
+# actually edit. The mean cleared 80/100 once the paragraph-spacing fixes
+# landed (see docs/internal/21); this gate keeps it there so a future layout or
+# style change can't silently regress real-document fidelity.
+#
+# How it works: LibreOffice renders each fixture to a PNG reference (ground
+# truth), the editor renders the same docs via a headless dev server, and
+# diff.py scores ink-IoU + row-profile agreement. VF_FLOOR fails the run if the
+# mean dips below the bar.
+#
+# Heavier than the unit CI (LibreOffice + Playwright + per-page rendering), so
+# it's scoped to PRs/pushes that touch the layout/style code or the corpus, plus
+# manual dispatch — not every PR.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docx-editor/packages/core/**'
+      - 'docx-editor/scripts/visual-fidelity/**'
+      - 'docx-editor/e2e/fixtures/repr-*.docx'
+  pull_request:
+    paths:
+      - 'docx-editor/packages/core/**'
+      - 'docx-editor/scripts/visual-fidelity/**'
+      - 'docx-editor/e2e/fixtures/repr-*.docx'
+  workflow_dispatch:
+    inputs:
+      floor:
+        description: 'Minimum mean as a 0..1 fraction'
+        required: false
+        default: '0.80'
+
+concurrency:
+  group: vf-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  representative:
+    name: Representative corpus floor (>= 80)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: docx-editor
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+
+      - name: Install editor deps
+        run: bun install --frozen-lockfile
+
+      # The reference renderer shells out to LibreOffice (DOCX → PDF) and the
+      # editor renderer drives headless Chromium; both apt installs hit the same
+      # 403ing Microsoft/azure repo that breaks `playwright install --with-deps`,
+      # so drop those sources first (matches ci.yml).
+      - name: Drop broken Microsoft apt repo
+        run: sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure* 2>/dev/null || true
+
+      - name: Install LibreOffice (reference renderer)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libreoffice
+          soffice --version
+
+      - name: Install Python render/diff deps
+        run: python3 -m pip install --quiet --break-system-packages PyMuPDF numpy Pillow
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+
+      # The editor imports @eigenpal/docx-core from its built dist, so the dev
+      # server must serve freshly-built core (with the PR's changes), not a stale
+      # build. run.mjs starts its own dev server when BASE_URL is unset.
+      - name: Build core + react
+        run: bun run build
+
+      - name: Run representative visual fidelity (enforce floor)
+        env:
+          VF_GROUP: representative
+          VF_FLOOR: ${{ github.event.inputs.floor || '0.80' }}
+        run: node scripts/visual-fidelity/run.mjs
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-fidelity-representative-report
+          path: |
+            docx-editor/visual-fidelity-out/visual-fidelity-report.md
+            docx-editor/visual-fidelity-out/visual-fidelity-report.json
+          retention-days: 14
