@@ -35,6 +35,9 @@ export interface HorizontalRulerProps {
   onIndentLeftChange?: (indentTwips: number) => void;
   onIndentRightChange?: (indentTwips: number) => void;
   unit?: 'inch' | 'cm';
+  /** Fired with `true` when a margin/indent marker drag starts and `false`
+   *  when it ends, so the host can freeze the editor scroll during the drag. */
+  onDragStateChange?: (dragging: boolean) => void;
   className?: string;
   style?: CSSProperties;
   tabStops?: TabStop[] | null;
@@ -92,6 +95,7 @@ export function HorizontalRuler({
   onIndentLeftChange,
   onIndentRightChange,
   unit = 'inch',
+  onDragStateChange,
   className = '',
   style,
   tabStops,
@@ -196,8 +200,17 @@ export function HorizontalRuler({
         startRightIndentTwips: indentRight,
       };
       setDragging(marker);
+      onDragStateChange?.(true);
     },
-    [editable, leftMarginTwips, rightMarginTwips, effectiveFirstLineIndent, indentLeft, indentRight]
+    [
+      editable,
+      leftMarginTwips,
+      rightMarginTwips,
+      effectiveFirstLineIndent,
+      indentLeft,
+      indentRight,
+      onDragStateChange,
+    ]
   );
 
   // Referentially stable (reads everything from refs) so the mousemove
@@ -289,7 +302,8 @@ export function HorizontalRuler({
     setDragValue(null);
     setDragPositionPx(null);
     dragAnchorRef.current = null;
-  }, []);
+    onDragStateChange?.(false);
+  }, [onDragStateChange]);
 
   useEffect(() => {
     if (dragging) {

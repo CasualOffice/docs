@@ -33,6 +33,9 @@ export interface VerticalRulerProps {
   onBottomMarginChange?: (marginTwips: number) => void;
   /** Unit to display (inches or cm) */
   unit?: 'inch' | 'cm';
+  /** Fired with `true` when a margin marker drag starts and `false` when it
+   *  ends, so the host can freeze the editor scroll position during the drag. */
+  onDragStateChange?: (dragging: boolean) => void;
   /** Additional CSS class name */
   className?: string;
   /** Additional inline styles */
@@ -69,6 +72,7 @@ export function VerticalRuler({
   onTopMarginChange,
   onBottomMarginChange,
   unit = 'inch',
+  onDragStateChange,
   className = '',
   style,
 }: VerticalRulerProps): React.ReactElement {
@@ -132,8 +136,9 @@ export function VerticalRuler({
         startBottomMarginTwips: bottomMarginTwips,
       };
       setDragging(marker);
+      onDragStateChange?.(true);
     },
-    [editable, topMarginTwips, bottomMarginTwips]
+    [editable, topMarginTwips, bottomMarginTwips, onDragStateChange]
   );
 
   // Handle drag. Referentially stable (reads everything from refs) so the
@@ -176,7 +181,8 @@ export function VerticalRuler({
   const handleDragEnd = useCallback(() => {
     setDragging(null);
     dragAnchorRef.current = null;
-  }, []);
+    onDragStateChange?.(false);
+  }, [onDragStateChange]);
 
   // Add/remove document event listeners
   useEffect(() => {
