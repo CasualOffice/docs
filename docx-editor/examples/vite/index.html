@@ -145,16 +145,18 @@
         padding: 0;
         box-sizing: border-box;
       }
-      /* Lock the shell to the viewport so the editor owns ALL scrolling.
-       Without this, reaching the end of the canvas chains the scroll up to
-       the document and the whole page rubber-bands on macOS/iOS (the "slides
-       a bit then snaps back" effect). height:100% + overflow:hidden +
-       overscroll-behavior:none on the root chain kills that. */
+      /* Two view shapes share this shell:
+         - Home is a TALL, normally-scrolling page (template gallery), so the
+           root chain must NOT be overflow:hidden — that froze it.
+         - The Editor wraps itself in a height:100vh, overflow:hidden container
+           (App's styles.container) and owns its own internal scroll, so it
+           stays fixed without locking the document.
+         overscroll-behavior:none kills the macOS/iOS whole-page elastic
+         rubber-band ("slides a bit then snaps back") WITHOUT blocking normal
+         page scroll — it only disables bounce/scroll-chaining at the edges. */
       html,
-      body,
-      #app {
+      body {
         height: 100%;
-        overflow: hidden;
         overscroll-behavior: none;
       }
       body {
@@ -163,6 +165,7 @@
       }
       #app {
         width: 100%;
+        min-height: 100%;
       }
       .loading {
         display: flex;

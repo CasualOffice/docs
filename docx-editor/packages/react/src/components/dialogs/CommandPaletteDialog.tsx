@@ -362,6 +362,7 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
             <input
               ref={inputRef}
               type="text"
+              aria-label="Search commands, files, or settings"
               placeholder="Search commands, files, or settings…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -394,7 +395,11 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
               autoCapitalize="off"
             />
           </div>
-          <div ref={listRef} style={listStyle} role="listbox">
+          {/* Results are plain <button>s navigated via the input's Arrow keys.
+              No role="listbox" — a listbox requires role="option" children and
+              an aria-activedescendant combobox wiring; buttons are already
+              named + keyboard-operable, so we keep it simple and compliant. */}
+          <div ref={listRef} style={listStyle}>
             {filtered.length === 0 ? (
               <div style={emptyStyle}>No commands match — try a different search.</div>
             ) : (
