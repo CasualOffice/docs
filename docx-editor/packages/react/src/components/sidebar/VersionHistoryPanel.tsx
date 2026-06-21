@@ -28,6 +28,7 @@ import { RightDockPanel } from '../RightDockPanel';
 import type { EditHistoryEntry, UseEditHistoryReturn } from '../../hooks/useEditHistory';
 import { diffStats, diffWords, extractText } from '../../hooks/wordDiff';
 import { useLiveVersionList } from '../../version-history/useLiveVersionList';
+import type { ServerVersionBackend } from '../../version-history/server-source';
 import {
   deleteVersion,
   readVersion,
@@ -51,6 +52,13 @@ export interface VersionHistoryPanelProps {
   /** Called when the user clicks the close (X) button in the panel
    *  header. The host (DocxEditor) flips the panel-open flag. */
   onClose?: () => void;
+  /** When set, the Versions tab lists the host's server-persisted
+   *  revision chain (`/history`) instead of the local IndexedDB
+   *  snapshots. Absent → local-only (unchanged). */
+  serverBackend?: ServerVersionBackend;
+  /** Restore a server revision: the host downloads its `.docx` and
+   *  reloads the editor. Required for server entries to be restorable. */
+  onRestoreServerVersion?: (version: number) => void;
   /** Display title for the panel. Default "Version history". */
   title?: string;
   /** Empty-state message when no entries exist yet. */
@@ -261,6 +269,8 @@ export function VersionHistoryPanel({
   onClose,
   title = 'Version history',
   emptyHint = 'No edits yet. Type into the document to start recording.',
+  serverBackend,
+  onRestoreServerVersion,
 }: VersionHistoryPanelProps) {
   // Default to Versions when we have a docId (the persisted timeline
   // is what users come here for); Activity is the secondary "what
@@ -306,6 +316,8 @@ export function VersionHistoryPanel({
           docId={docId}
           saveNamedVersion={saveNamedVersion}
           onRestoreSnapshot={onRestoreSnapshot}
+          serverBackend={serverBackend}
+          onRestoreServerVersion={onRestoreServerVersion}
         />
       ) : (
         <ActivityTab history={history} emptyHint={emptyHint} />
@@ -380,12 +392,16 @@ function VersionsTab({
   docId,
   saveNamedVersion,
   onRestoreSnapshot,
+  serverBackend,
+  onRestoreServerVersion,
 }: {
   docId: string | null;
   saveNamedVersion?: (name: string) => Promise<number | null>;
   onRestoreSnapshot?: (data: unknown) => void;
+  serverBackend?: ServerVersionBackend;
+  onRestoreServerVersion?: (version: number) => void;
 }) {
-  const list = useLiveVersionList(docId);
+  const list = useLiveVersionList(docId, serverBackend);
   const groups = useMemo(() => groupByDay(list), [list]);
   const now = Date.now();
   // Chronological neighbor for diffing: the list is newest-first, so
@@ -417,16 +433,22 @@ function VersionsTab({
 
   const handleRestore = useCallback(
     async (snap: VersionSnapshot) => {
+      // Server-backed entry: restore by downloading its .docx bytes
+      // (the host owns the content; the list carries metadata only).
+      if (snap.serverVersion != null) {
+        onRestoreServerVersion?.(snap.serverVersion);
+        return;
+      }
       if (!onRestoreSnapshot || snap.id == null) return;
       const full = await readVersion(snap.id);
       if (!full) return;
       onRestoreSnapshot(full.data);
     },
-    [onRestoreSnapshot]
+    [onRestoreSnapshot, onRestoreServerVersion]
   );
 
   const handleRename = useCallback(async (snap: VersionSnapshot) => {
-    if (snap.id == null) return;
+    if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
     // eslint-disable-next-line no-alert
     const next = window.prompt('Rename version', snap.name);
     if (next == null) return;
@@ -436,7 +458,7 @@ function VersionsTab({
   }, []);
 
   const handleDelete = useCallback(async (snap: VersionSnapshot) => {
-    if (snap.id == null) return;
+    if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
     // eslint-disable-next-line no-alert
     if (!window.confirm(`Delete "${snap.name}"? This cannot be undone.`)) return;
     await deleteVersion(snap.id);
@@ -453,7 +475,7 @@ function VersionsTab({
         <span style={COUNT_STYLE} data-testid="version-history-versions-count">
           {list.length}
         </span>
-        {saveNamedVersion && (
+        {saveNamedVersion && !serverBackend && (
           <button
             type="button"
             onClick={handleSaveVersion}
@@ -482,8 +504,8 @@ function VersionsTab({
                     previousSnap={snap.id != null ? previousById.get(snap.id) : undefined}
                     now={now}
                     onRestore={() => handleRestore(snap)}
-                    onRename={() => handleRename(snap)}
-                    onDelete={() => handleDelete(snap)}
+                    onRename={snap.serverVersion != null ? undefined : () => handleRename(snap)}
+                    onDelete={snap.serverVersion != null ? undefined : () => handleDelete(snap)}
                   />
                 ))}
               </ol>
@@ -509,8 +531,10 @@ function VersionRow({
   previousSnap?: VersionSnapshot;
   now: number;
   onRestore: () => void;
-  onRename: () => void;
-  onDelete: () => void;
+  /** Omitted for server-backed (host-owned) revisions — they aren't
+   *  renamed/deleted from the client. */
+  onRename?: () => void;
+  onDelete?: () => void;
 }) {
   const [showDiff, setShowDiff] = useState(false);
 
@@ -584,16 +608,20 @@ function VersionRow({
             {showDiff ? 'Hide changes' : 'Show changes'}
           </button>
         )}
-        <button type="button" onClick={onRename} style={SHOW_DIFF_BTN_STYLE}>
-          Rename
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          style={{ ...SHOW_DIFF_BTN_STYLE, color: '#b91c1c' }}
-        >
-          Delete
-        </button>
+        {onRename && (
+          <button type="button" onClick={onRename} style={SHOW_DIFF_BTN_STYLE}>
+            Rename
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            style={{ ...SHOW_DIFF_BTN_STYLE, color: '#b91c1c' }}
+          >
+            Delete
+          </button>
+        )}
       </div>
       {showDiff && diff && (
         <pre style={DIFF_BOX_STYLE} data-testid="version-history-version-diff">

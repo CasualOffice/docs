@@ -54,10 +54,16 @@ export interface VersionSnapshot {
   /** Source format at capture, for round-trip on later "Save as" from
    *  a preview. Currently always `'docx'`; here as a forward hook. */
   sourceFormat: string | null;
-  /** Full ProseMirror doc JSON — `view.state.doc.toJSON()` output. */
+  /** Full ProseMirror doc JSON — `view.state.doc.toJSON()` output.
+   *  Undefined for server-backed entries (their bytes are fetched on
+   *  restore, not held in the list). */
   data: unknown;
   /** Approximate JSON byte size, set on persist for UI display. */
   size?: number;
+  /** Set for server-backed revisions (host `/history`): the host's
+   *  monotonic version number. When present the panel restores by
+   *  downloading that revision's `.docx` instead of reading `data`. */
+  serverVersion?: number;
 }
 
 export type VersionDraft = Omit<VersionSnapshot, 'id'>;

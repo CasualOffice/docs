@@ -415,11 +415,73 @@ func docIDFromHistoryPath(path string) string {
 	return path[len(prefix) : len(path)-len(suffix)]
 }
 
+// docIDAndVersionFromRevisionPath extracts `{docId}` and `{version}`
+// from `/api/docs/{docId}/history/{version}/download`. ok=false for
+// any other shape.
+func docIDAndVersionFromRevisionPath(path string) (docID string, version uint64, ok bool) {
+	const prefix = "/api/docs/"
+	const mid = "/history/"
+	const suffix = "/download"
+	if !strings.HasPrefix(path, prefix) || !strings.HasSuffix(path, suffix) {
+		return "", 0, false
+	}
+	rest := path[len(prefix) : len(path)-len(suffix)] // {docId}/history/{version}
+	i := strings.Index(rest, mid)
+	if i <= 0 {
+		return "", 0, false
+	}
+	docID = rest[:i]
+	verStr := rest[i+len(mid):]
+	if verStr == "" || strings.Contains(verStr, "/") {
+		return "", 0, false
+	}
+	v, err := strconv.ParseUint(verStr, 10, 64)
+	if err != nil {
+		return "", 0, false
+	}
+	return docID, v, true
+}
+
+// revisionDownloadHandler streams the .docx bytes of a specific past
+// revision so the editor can restore it. Requires the host to retain
+// per-revision bytes (host.RevisionStore); hosts that don't (e.g.
+// WOPI, where the host owns versioning) get a 501. Read-only, unrated.
+func revisionDownloadHandler(store host.DocStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSONError(w, http.StatusMethodNotAllowed, "method", "GET required")
+			return
+		}
+		docID, version, ok := docIDAndVersionFromRevisionPath(r.URL.Path)
+		if !ok {
+			writeJSONError(w, http.StatusBadRequest, "path", "expected /api/docs/{docId}/history/{version}/download")
+			return
+		}
+		rs, ok := store.(host.RevisionStore)
+		if !ok {
+			writeJSONError(w, http.StatusNotImplemented, "unsupported", "host does not retain per-revision bytes")
+			return
+		}
+		contents, err := rs.FetchRevision(docID, version)
+		if err != nil {
+			if errors.Is(err, host.ErrNotFound) {
+				writeJSONError(w, http.StatusNotFound, "not_found", "no such doc or version")
+				return
+			}
+			writeJSONError(w, http.StatusInternalServerError, "revision", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="v%d.docx"`, version))
+		_, _ = w.Write(contents)
+	}
+}
+
 // historyHandler returns the revision-metadata log for a doc as a
 // JSON array (creation first, newest last). Read-only, unrated —
-// the version-history panel may poll it. Content-revert to a past
-// revision is NOT supported here (needs the M2 serializer worker +
-// per-revision blob storage); this endpoint is metadata only.
+// the version-history panel may poll it. Per-revision content for
+// restore is served by revisionDownloadHandler
+// (`/history/{version}/download`) when the host retains the bytes.
 func historyHandler(store host.DocStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -1020,11 +1082,19 @@ func main() {
 	docsActionHandler := downloadHandler(store)
 	docsRenameHandler := renameHandler(store)
 	docsHistoryHandler := historyHandler(store)
+	docsRevisionHandler := revisionDownloadHandler(store)
 	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/rename") {
 			// Apply the general bucket only for the rename path;
 			// the rest of the handler tree (download) stays unrated.
 			generalLimiter.Middleware(http.HandlerFunc(docsRenameHandler)).ServeHTTP(w, r)
+			return
+		}
+		// `/history/{version}/download` (revision restore) must be
+		// checked before the bare `/download` fallback below — it ends
+		// in `/download` too.
+		if strings.Contains(r.URL.Path, "/history/") && strings.HasSuffix(r.URL.Path, "/download") {
+			docsRevisionHandler(w, r)
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/history") {

@@ -53,6 +53,7 @@ import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
 import { useEditHistory } from '../hooks/useEditHistory';
 import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
+import { downloadServerVersion, type ServerVersionBackend } from '../version-history/server-source';
 import { useVoiceTyping } from '../hooks/useVoiceTyping';
 import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
@@ -473,6 +474,11 @@ export interface DocxEditorProps {
   onSelectionChange?: (state: SelectionState | null) => void;
   /** Callback on error */
   onError?: (error: Error) => void;
+  /** When set, the Version-history panel lists the host's
+   *  server-persisted revision chain (`/history`) and restores by
+   *  downloading a revision's `.docx` into the editor. Absent → the
+   *  panel uses local IndexedDB snapshots only (unchanged). */
+  versionBackend?: ServerVersionBackend;
   /** Callback when fonts are loaded */
   onFontsLoaded?: () => void;
   /** External ProseMirror plugins (from PluginHost) */
@@ -1476,6 +1482,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onChange,
     onSelectionChange,
     onError,
+    versionBackend,
     onFontsLoaded: onFontsLoadedCallback,
     theme,
     showToolbar = true,
@@ -2622,6 +2629,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
     },
     [resetForNewDocument, loadParsedDocument, onError]
+  );
+
+  // Restore a server-persisted revision: download its .docx from the
+  // host and load it into the editor. In a live collab room the load
+  // flows through the same PM path, so peers converge on the restored
+  // content. Surfaces failures via onError rather than throwing.
+  const handleRestoreServerVersion = useCallback(
+    (version: number) => {
+      if (!versionBackend) return;
+      void (async () => {
+        try {
+          const buf = await downloadServerVersion(versionBackend, version);
+          await loadBuffer(buf);
+        } catch (err) {
+          onError?.(err instanceof Error ? err : new Error(String(err)));
+        }
+      })();
+    },
+    [versionBackend, loadBuffer, onError]
   );
 
   // React to document/documentBuffer prop changes
@@ -8136,6 +8162,8 @@ body { background: white; }
                       docId={documentName?.trim() || 'Untitled'}
                       saveNamedVersion={versionCapture.saveNamedVersion}
                       onRestoreSnapshot={handleRestoreSnapshot}
+                      serverBackend={versionBackend}
+                      onRestoreServerVersion={handleRestoreServerVersion}
                       onClose={() => setShowVersionHistory(false)}
                     />
                   )}

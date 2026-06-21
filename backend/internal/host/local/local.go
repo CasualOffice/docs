@@ -117,10 +117,15 @@ func (s *Store) Store(fileName string, contents []byte) (string, error) {
 	if err := s.writeDocxAtomic(docID, contents); err != nil {
 		return "", err
 	}
+	if err := s.writeRevisionAtomic(docID, 1, contents); err != nil {
+		_ = os.Remove(s.docxPath(docID))
+		return "", err
+	}
 	if err := s.writeMetaAtomic(docID, meta); err != nil {
 		// Rollback: best-effort remove the .docx so the next Store
 		// doesn't see a half-created doc.
 		_ = os.Remove(s.docxPath(docID))
+		_ = os.Remove(s.revPath(docID, 1))
 		return "", err
 	}
 	return docID, nil
@@ -180,8 +185,16 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 		SavedAt:   now,
 		SizeBytes: len(contents),
 	})
+	if err := s.writeRevisionAtomic(docID, meta.Version, contents); err != nil {
+		return err
+	}
 	if len(meta.Revisions) > maxRevisions {
 		meta.Revisions = meta.Revisions[len(meta.Revisions)-maxRevisions:]
+		// Drop the per-revision bytes that just rolled off the window.
+		// Versions are monotonic +1, so version (V-maxRevisions) is gone.
+		if meta.Version > maxRevisions {
+			_ = os.Remove(s.revPath(docID, meta.Version-maxRevisions))
+		}
 	}
 	if err := s.writeMetaAtomic(docID, meta); err != nil {
 		slog.Warn("local: meta write failed after docx snapshot — log mismatch",
@@ -230,6 +243,13 @@ func (s *Store) Delete(docID string) error {
 	for _, p := range []string{s.docxPath(docID), s.metaPath(docID)} {
 		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("local: remove %q: %w", p, err)
+		}
+	}
+	// Sweep per-revision blobs (<docId>.v<N>.docx). docID is regex-safe
+	// (no glob metacharacters), so the pattern can't escape the root.
+	if revs, err := filepath.Glob(filepath.Join(s.root, docID+".v*.docx")); err == nil {
+		for _, p := range revs {
+			_ = os.Remove(p)
 		}
 	}
 	return nil
@@ -323,6 +343,46 @@ var safeDocID = regexp.MustCompile(`^[A-Za-z0-9_-]{8,64}$`)
 
 func (s *Store) docxPath(docID string) string {
 	return filepath.Join(s.root, docID+".docx")
+}
+
+func (s *Store) revPath(docID string, version uint64) string {
+	return filepath.Join(s.root, fmt.Sprintf("%s.v%d.docx", docID, version))
+}
+
+// writeRevisionAtomic persists the immutable .docx bytes of one
+// revision (write tmp + rename) so a partial write never leaves a
+// truncated revision blob behind.
+func (s *Store) writeRevisionAtomic(docID string, version uint64, contents []byte) error {
+	final := s.revPath(docID, version)
+	tmp := final + ".tmp"
+	if err := os.WriteFile(tmp, contents, 0o644); err != nil {
+		return fmt.Errorf("local: write revision tmp %q v%d: %w", docID, version, err)
+	}
+	if err := os.Rename(tmp, final); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("local: rename revision %q v%d: %w", docID, version, err)
+	}
+	return nil
+}
+
+// FetchRevision implements host.RevisionStore: the .docx bytes of a
+// specific past revision (for version restore). Returns
+// host.ErrNotFound when the doc or version is unknown — including
+// versions that rolled off the maxRevisions window.
+func (s *Store) FetchRevision(docID string, version uint64) ([]byte, error) {
+	if !safeDocID.MatchString(docID) {
+		return nil, host.ErrNotFound
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	b, err := os.ReadFile(s.revPath(docID, version))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, host.ErrNotFound
+		}
+		return nil, fmt.Errorf("local: read revision %q v%d: %w", docID, version, err)
+	}
+	return b, nil
 }
 
 func (s *Store) metaPath(docID string) string {
