@@ -32,9 +32,14 @@ func startTestGateway(t *testing.T) (*httptest.Server, *room.Manager, *inline.St
 	dlHandler := downloadHandler(store)
 	rnHandler := renameHandler(store)
 	histHandler := historyHandler(store)
+	revHandler := revisionDownloadHandler(store)
 	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/rename") {
 			rnHandler(w, r)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/history/") && strings.HasSuffix(r.URL.Path, "/download") {
+			revHandler(w, r)
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/history") {
