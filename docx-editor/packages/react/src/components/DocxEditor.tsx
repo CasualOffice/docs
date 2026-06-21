@@ -7997,6 +7997,7 @@ body { background: white; }
                           onBodyClick={handleBodyClick}
                           zoom={state.zoom}
                           marginDraggingRef={marginDraggingRef}
+                          onOpenImageProperties={() => openRightPanel('properties')}
                           wordCompat={wordCompat}
                           showFormattingMarks={showFormattingMarks}
                           readOnly={readOnly}
