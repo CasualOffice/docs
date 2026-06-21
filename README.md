@@ -1,103 +1,90 @@
 <div align="center">
 
 <a href="https://docs.casualoffice.org/">
-  <img src="https://raw.githubusercontent.com/CasualOffice/docs/main/assets/logo.svg" alt="Casual Editor" width="96" height="96" />
+  <img src="https://raw.githubusercontent.com/CasualOffice/docs/main/assets/logo.svg" alt="Casual Docs" width="96" height="96" />
 </a>
 
-# Casual Editor
+# Casual Docs
 
-**Open-source self-hosted web `.docx` editor with real-time co-editing — an alternative to Google Docs, Microsoft Word Online, and OnlyOffice Document Server you run on your own server.**
+**Open-source, self-hosted web `.docx` editor with real-time co-editing — a Google Docs / Word Online / OnlyOffice alternative you run on your own server.**
 
 [![CI](https://github.com/CasualOffice/docs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CasualOffice/docs/actions/workflows/ci.yml)
 [![Deploy](https://github.com/CasualOffice/docs/actions/workflows/deploy-demo.yml/badge.svg?branch=main)](https://github.com/CasualOffice/docs/actions/workflows/deploy-demo.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/casualoffice/docs?logo=docker)](https://hub.docker.com/r/casualoffice/docs)
 [![Image Size](https://img.shields.io/docker/image-size/casualoffice/docs/latest?logo=docker&label=image)](https://hub.docker.com/r/casualoffice/docs)
-[![E2E Tests](https://img.shields.io/badge/e2e-836%20tests-brightgreen?logo=playwright)](./docx-editor/e2e)
-[![Fixtures](https://img.shields.io/badge/fixtures-44%2F44%20pristine-brightgreen)](./docs/internal/03-gap-matrix.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
-[**Live Demo →**](https://docs.casualoffice.org/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/casualoffice/docs) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md) &nbsp;·&nbsp; [Comparisons →](https://casualoffice.org/vs/)
+[**Live Demo →**](https://docs.casualoffice.org/) &nbsp;·&nbsp; [Docker Hub →](https://hub.docker.com/r/casualoffice/docs) &nbsp;·&nbsp; [Architecture →](./docs/ARCHITECTURE.md)
+
+<sub>The hosted demo is **single-user** (try the editor). **Real-time co-editing** runs in the [Docker image](#-self-host-with-docker) — one container, share a link, edit together.</sub>
+
+<br />
+
+<img src="https://raw.githubusercontent.com/CasualOffice/docs/main/assets/screenshot.png" alt="Casual Docs editing a resume — ribbon toolbar, ruler, paginated WYSIWYG page" width="860" />
 
 </div>
 
 ---
 
-Casual Editor is a **self-hostable, browser-based `.docx` editor** that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with **real-time multi-user co-editing** built in. Upload a `.docx`, share a link, edit together instantly. **No accounts, no Microsoft / Google login, no lock-in.** One Docker container, **stateless Go gateway** (~120 LOC of y-websocket protocol), in-memory rooms.
+Casual Docs is a **self-hostable, browser-based `.docx` editor** that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with **real-time multi-user co-editing** built in. Upload a `.docx`, share a link, edit together instantly. **No accounts, no Microsoft / Google login, no lock-in.** One Docker container, a **stateless Go gateway** (~120 LOC of y-websocket protocol), in-memory rooms.
 
-**Compares to:** Google Docs · Microsoft Word Online · OnlyOffice Document Server · CryptPad. See the [comparison directory](https://casualoffice.org/vs/) for write-ups as they land.
-
-The editor under [`docx-editor/`](./docx-editor/) is a fork of [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT upstream, attribution preserved). The fork's own modifications + the Go gateway + this whole repository are **Apache-2.0**. Sister projects: [Casual Sheets](https://github.com/CasualOffice/sheets) (`.xlsx`) and [Casual Slides](https://github.com/CasualOffice/slides) (`.pptx`).
+Sister projects: [Casual Sheets](https://github.com/CasualOffice/sheets) (`.xlsx`) and [Casual Slides](https://github.com/CasualOffice/slides) (`.pptx`).
 
 ---
 
 ## ✨ What's Inside
 
-### Document Engine
+<details open>
+<summary><b>Core editing</b> — a full Word-style writing surface</summary>
 
-- **Paginated WYSIWYG layout** — true page breaks, headers/footers, page numbers, section breaks
-- **Full WordprocessingML core** — paragraphs, runs, tables, lists, sections, hyperlinks, footnotes/endnotes, custom XML, math equations
-- **DrawingML rendering** — pictures, shapes, textboxes (modern + VML fallback), `wpg:wgp` groups with per-child positioning and rotation/flip, decorative shapes, connector lines, image hyperlinks
-- **Comments and tracked changes** — inline markers, comments sidebar, accept/reject revisions
-- **Styles** — paragraph + character styles, theme colors, theme fonts, style inheritance chain
-- **Tables** — borders (7 modes + color picker), shading, merged cells, header row, row height, table styles
-- **Lists** — bullet and numbered, multi-level, list level inc/dec, contextual spacing
-- **Find & Replace** dialog with match-case, whole-word, and regex modes
-- **Formatting** — bold, italic, underline (styles + color), strikethrough, super/subscript, small caps, all caps, character spacing, RTL/LTR
-- **Print** with page setup (orientation + margins) and Export-as-PDF
-- **File → Properties** dialog, **Help → Report a Bug** (GitHub issue prefill), **Help → About**
+- Paragraphs, runs, **tables** (borders, shading, merged cells, header rows, table styles), **lists** (multi-level bullet/numbered), hyperlinks, footnotes/endnotes
+- Full character formatting — bold/italic/underline (styled + colored), strike, super/subscript, small/all caps, character spacing, RTL/LTR; paragraph + character **styles** with inheritance
+- **Find & Replace** (match-case / whole-word / regex), **command palette** (Ctrl+Shift+P), canonical Word **keyboard shortcuts**
+- **Writing aids** — spell check (Hunspell), autocorrect + smart quotes, translate-selection, dictionary/explore lookup, citations, voice typing, document outline, live word/character/reading-time counts
+- **Autosave + restore** (IndexedDB), recent files, **Print / Export-as-PDF** with page setup
+</details>
 
-### Writing Aids
+<details>
+<summary><b>Word compatibility</b> — OOXML fidelity, not a lossy import</summary>
 
-- **Spell check** — red wavy underlines on misspelled words, right-click suggestions popover with replace + ignore, lazy-loaded en_US Hunspell dictionary, persisted toggle
-- **Autocorrect** — Word-style symbol substitution (`(c)` → ©, `-->` → →) plus a common-typo dictionary (`teh` → the); off in a single click via Tools → Preferences
-- **Smart quotes** — straight quotes typed `"` `'` are flipped to typographic equivalents in context; same preference dial
-- **Translate selection** — right-click any selection → "Translate selection…" → format-preserving in-place replace. Walks the slice per text-mark-run so bold / italic / link boundaries land exactly where you drew them
-- **Dictionary** + **Explore** — selection-driven inline lookup via free public APIs (no key)
-- **Citations** — local citation manager seeded from the selection
-- **Voice typing** — Web Speech API dictation with one-click toggle
-- **Document outline** — left-rail heading tree with active-heading highlight and collapsible chevrons
-- **Word count / character count / reading-time** — live in the status bar, Excel-style right-click checklist to pick which to show
-- **Autosave + restore banner** — IndexedDB autosave every 30 s while dirty; reload offers to restore drafts younger than 24 h
-- **Recent files** — IndexedDB-backed list of recently opened docs on the home page
+- **Paginated WYSIWYG** — true page breaks, headers/footers, page numbers, multi-column sections
+- Full **WordprocessingML** core + **DrawingML** rendering: pictures, shapes, textboxes (modern + VML), `wpg:wgp` groups with per-child positioning/rotation, behind-text anchoring, math equations
+- **Comments & tracked changes**, theme colors/fonts, the style inheritance chain
+- Tag-level **round-trip audit** ([`roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses → re-serializes → diffs `document.xml`; each fidelity fix is pinned by a unit test and (where visible) an e2e/visual-fidelity spec against a LibreOffice reference
+</details>
 
-### Shell & UX
+<details>
+<summary><b>Collaboration</b> — real-time, in the Docker image</summary>
 
-- **Right-edge panel rail** — Outline / Comments / Version-history toggles spanning only the editor body height; opening a panel reflows the page sideways instead of overlaying it (Google Docs pattern)
-- **Title-bar + ribbon-style toolbar** — File / Edit / Format / View / Insert / Tools / Help menus, all with platform-aware shortcut chips (`⌘` on Mac, `Ctrl` on Windows / Linux via the shared `formatShortcut`)
-- **Command palette** — Ctrl+Shift+P fuzzy search across every menu action
-- **i18n** — Toolbar / dialog strings translatable; auto-derived `LocaleStrings` type with CI-enforced sync between locale files
-- **Material-Symbols icons** — bundled as SVGs (no font fetch), matching Google Docs glyphs
+- **Share dialog** — File → Share: get an edit URL and a view-only URL
+- **Presence avatars** + **live cursors** (each peer's selection in their color, name-labeled)
+- **Full mutation sync** — text, formatting, lists, tables, images, comments, headers/footers propagate cross-peer; **view-only enforced** at the Y.Doc layer
+- **Lightweight password-protected rooms** for link sharing (constant-time compare on the WS upgrade). This is sharing-grade protection, not an identity system — for production auth, integrate through the **WOPI / JWT-API** host interface
+- **Stateless backend** — no DB, no on-disk log; rooms live in memory, persistence delegated to the host (inline, WOPI, or JWT-API)
+</details>
 
-### File I/O
+<details>
+<summary><b>File formats</b> — open & save round-trip</summary>
 
-| Format  | Open | Save / Export | Path |
-| ---     | :---: | :---: | --- |
+| Format | Open | Save / Export | Path |
+| --- | :---: | :---: | --- |
 | `.docx` | ✅ | ✅ | native parser + serializer |
-| `.odt`  | ✅ | ✅ | via [`@casualoffice/core`](https://www.npmjs.com/package/@casualoffice/core) WASM worker (lazy-loaded) |
-| `.md`   | ✅ | ✅ | via `@casualoffice/core` WASM worker (lazy-loaded) |
-| `.txt`  | ✅ | ✅ | via `@casualoffice/core` WASM worker (lazy-loaded) |
-| PDF     | — | ✅ | browser print pipeline (Save as PDF) |
+| `.odt` | ✅ | ✅ | [`@casualoffice/core`](https://www.npmjs.com/package/@casualoffice/core) WASM worker (lazy) |
+| `.md` | ✅ | ✅ | `@casualoffice/core` WASM worker (lazy) |
+| `.txt` | ✅ | ✅ | `@casualoffice/core` WASM worker (lazy) |
+| PDF | — | ✅ | browser print pipeline (Save as PDF) |
 
-Non-DOCX formats route through a Web Worker that converts to/from DOCX bytes via `@casualoffice/core` (Rust + WASM). The ~3.3 MB WASM artifact is lazy-loaded on first use so the editor's initial bundle stays slim.
+Non-DOCX formats convert to/from DOCX bytes in a Web Worker (Rust + WASM); the ~3.3 MB artifact is lazy-loaded so the initial bundle stays slim.
+</details>
 
-- Round-trip audit ([`docx-editor/scripts/roundtrip-audit.mjs`](docx-editor/scripts/roundtrip-audit.mjs)) parses every fixture, re-serializes, and diffs the resulting `document.xml` at the tag level
-- Each fidelity gap fix is pinned by a unit test in `docx-editor/packages/core/src/docx/__tests__/*.test.ts` and (where it produces visible output) an e2e spec in `docx-editor/e2e/tests/`
+<details>
+<summary><b>Developer & self-hosting</b> — embeddable, extensible, one container</summary>
 
-### Keyboard Shortcuts
-
-Canonical Word shortcuts wired: Ctrl+B/I/U/Shift+X (bold/italic/underline/strike), Ctrl+L/E/R/J (alignment), Ctrl+Z/Y (undo/redo), Ctrl+F/H (find / replace), Ctrl+K (hyperlink), Ctrl+P (print), Ctrl+A (select all), Tab/Shift+Tab (list indent), and more.
-
-### Co-editing
-
-Available in the Docker image. Single-user on the hosted demo.
-
-- **Share dialog** — File → Share for co-editing. Set a password, get two copyable URLs (edit + view-only)
-- **Presence avatars** in the title bar with "Active now / Last seen Ns ago" tooltips
-- **Live cursors** — each peer's selection range in their color with a name label
-- **Full mutation sync** — text edits, formatting, lists, tables, images, comments, headers/footers all propagate cross-peer
-- **View-only enforcement** at the Y.Doc layer — view-only joiners cannot mutate the document
-- **Password-protected rooms** — SHA-256 + constant-time compare; wrong password → HTTP 401 on the WS upgrade
-- **Stateless backend** — no DB, no on-disk update log. Rooms live in memory; persistence is delegated to the host (inline, WOPI, or JWT-API)
+- **`<DocxEditor>`** React component ([`@casualoffice/docs`](https://www.npmjs.com/package/@casualoffice/docs)) + an extension system for custom nodes/marks/menus
+- **i18n** — translatable toolbar/dialog strings with a CI-enforced, auto-derived `LocaleStrings` type
+- **Single multi-arch Docker image** (`linux/amd64` + `linux/arm64`): editor SPA + Go gateway in one container behind one port
+- Material-Symbols icons bundled as SVGs (no font fetch)
+</details>
 
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full design.
 
@@ -105,7 +92,7 @@ See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full design.
 
 ## 🐳 Self-Host with Docker
 
-A single multi-arch image (`linux/amd64` + `linux/arm64`). Editor SPA and Go gateway run in one container behind a single port.
+A single multi-arch image. Editor SPA and Go gateway run in one container behind a single port.
 
 ### Quick start
 
@@ -116,8 +103,6 @@ docker run --rm -p 8080:8080 casualoffice/docs:latest
 Open `http://localhost:8080`. Upload a `.docx`, click Share, send the link.
 
 ### Recommended: with `docker-compose`
-
-Paste this `docker-compose.yml` and run `docker compose up -d`:
 
 ```yaml
 services:
@@ -134,7 +119,7 @@ services:
 
 1. Open `http://localhost:8080`. Upload a `.docx`, then **File → Share for co-editing…** to set a password and get two URLs.
 2. Paste either URL into another browser or device — the joiner connects in under a second.
-3. Type in the document — peers see characters appear in real time, with named cursors tracking selection.
+3. Type — peers see characters appear in real time, with named cursors tracking selection.
 
 ### API surface
 
@@ -158,13 +143,11 @@ services:
 | `HOST_INTEGRATION` | server | `inline` | `inline`, `wopi`, or `jwtapi` |
 | `VITE_COLLAB_ENABLED` | build | `true` in image | Include co-edit code in the bundle |
 
-`VITE_*` vars are baked in at build time. Pass them with `--build-arg` on `docker build`, or via the `args:` block in `docker-compose.yml`.
-
 ---
 
 ## 🛠 Develop
 
-**Prerequisites:** Bun ≥ 1.3.14, Go ≥ 1.24
+**Prerequisites:** Bun ≥ 1.3.14, Go ≥ 1.25
 
 ```sh
 # Editor (browser side)
@@ -191,28 +174,20 @@ go run ./cmd/gateway      # listens on :8080
 
 ```
 .
-├── docx-editor/                  # Editor (browser side) — built on eigenpal/docx-editor (MIT)
+├── docx-editor/                  # Editor (browser side)
 │   ├── packages/core/            # DOCX parser, serializer, layout engine, ProseMirror schema
-│   ├── packages/react/           # React <DocxEditor> component
+│   ├── packages/react/           # React <DocxEditor> component (@casualoffice/docs)
 │   ├── examples/vite/            # Demo app deployed at docs.casualoffice.org
-│   ├── examples/vite/src/collab/ # Yjs wire-up, share dialog, presence
-│   ├── e2e/                      # Playwright suite — 661 tests across 79 files
-│   └── scripts/                  # Round-trip audit + fixture-generator scripts
+│   └── e2e/                      # Playwright suite
 ├── backend/                      # Go gateway (this repo)
 │   ├── cmd/gateway/              # Entry point, REST + WS handlers
 │   └── internal/
 │       ├── host/                 # host.Integration interface + impls (inline / wopi / jwtapi)
 │       ├── room/                 # Per-docId room manager (in-memory Y.Doc lifecycle)
 │       └── yws/                  # y-websocket protocol helpers
-├── docs/
-│   ├── ARCHITECTURE.md           # System design — editor ↔ gateway ↔ host
-│   ├── CO-EDITING.md             # Y.Doc + presence model
-│   ├── DEPLOYMENT.md             # Operating the bundled image
-│   └── ROUNDTRIP.md              # Fidelity pipeline & gap matrix
+├── docs/                         # Architecture, co-editing, deployment, round-trip
 ├── Dockerfile                    # Multi-stage build (web → gateway → runtime)
-├── docker-compose.yml            # Local dev stack
-├── CLAUDE.md                     # Project guardrails for AI-assisted development
-└── .github/workflows/            # CI + Pages deploy
+└── docker-compose.yml            # Local dev stack
 ```
 
 ---
@@ -222,12 +197,11 @@ go run ./cmd/gateway      # listens on :8080
 | Concern | Choice |
 | --- | --- |
 | Editor model | ProseMirror schema preserving OOXML round-trip |
-| Layout | Custom paginated layout-painter (preserves Word-fidelity output) |
-| Frontend | React 18 + Vite + TypeScript (strict mode) |
-| DOCX parser / serializer | In-house — based on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT) |
+| Layout | Custom paginated layout-painter (Word-fidelity output) |
+| Frontend | React 18 + Vite + TypeScript (strict) |
 | Collab transport | Yjs (CRDT) + `y-prosemirror` over y-websocket |
-| Backend | Go 1.24 — stateless gateway, in-memory Y.Doc per room |
-| Persistence | Delegated to host (inline, WOPI, or JWT-API integration) |
+| Backend | Go 1.25 — stateless gateway, in-memory Y.Doc per room |
+| Persistence | Delegated to host (inline, WOPI, or JWT-API) |
 | E2E tests | Playwright (Chromium) |
 | Editor toolchain | Bun |
 
@@ -238,9 +212,12 @@ go run ./cmd/gateway      # listens on :8080
 - **No database on the gateway** — sessions are in-memory; persistence is the host's job. The gateway dies cleanly and restarts cleanly.
 - **No AI / LLM features** — the editor is a pure document tool. Wire your own model in via the extension system if you need one.
 - **No mobile editor** — desktop browsers only. The shell is responsive to 768 px, but the paginated editing UX assumes a pointer device.
-- **No `@eigenpal/docx-editor-agents`** — the AGPL agent package has been removed; only MIT code remains in `docx-editor/`.
 
 ---
+
+## 🛠 Built on
+
+The editor under [`docx-editor/`](./docx-editor/) is a fork of [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) (MIT). The fork's modifications, the Go gateway, and this repository are **Apache-2.0**. The AGPL `@eigenpal/docx-editor-agents` package was removed; only MIT code remains in the editor tree.
 
 ## 📄 License
 
