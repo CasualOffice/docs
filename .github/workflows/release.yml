@@ -62,7 +62,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/casual-editor
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/docs
           tags: |
             type=raw,value=${{ steps.ver.outputs.version }}
             type=raw,value=latest,enable=${{ steps.ver.outputs.prerelease == 'false' }}
@@ -90,7 +90,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/casual-editor
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/docs
           short-description: 'Word-flavored web .docx editor with real-time co-editing via a stateless Go gateway. Apache-2.0.'
           readme-filepath: ./README.md
 
@@ -138,7 +138,7 @@ jobs:
             echo "## Self-host"
             echo ""
             echo '```bash'
-            echo "docker run --rm -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/casual-editor:${GITHUB_REF_NAME#v}"
+            echo "docker run --rm -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/docs:${GITHUB_REF_NAME#v}"
             echo '```'
             echo ""
             echo "Then open http://localhost:8080. Upload a .docx, click Share, send the link."

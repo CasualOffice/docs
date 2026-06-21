@@ -3,7 +3,7 @@
 # Single container that serves the Go gateway (WS broker + REST upload/
 # download) AND the built editor SPA from the same origin. Users:
 #
-#   docker run -p 8080:8080 casual-editor:latest
+#   docker run -p 8080:8080 casualoffice/docs:latest
 #   open http://localhost:8080/
 #
 # Upload a .docx, click Share, send the link to a friend, edit live.
