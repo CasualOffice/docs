@@ -889,7 +889,7 @@ export function Toolbar({
                   <button
                     key={item.action}
                     role="menuitem"
-                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-[color:var(--doc-bg-hover)]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleFormat(item.action);
@@ -918,7 +918,7 @@ export function Toolbar({
                   <button
                     key={item.value}
                     role="menuitem"
-                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-[color:var(--doc-bg-hover)]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleFormat({ type: 'charSpacing', value: item.value });
@@ -1018,7 +1018,7 @@ export function Toolbar({
                   <button
                     key={item.type}
                     role="menuitem"
-                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-[color:var(--doc-bg-hover)]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       onInsertSectionBreak?.(item.type);
@@ -1057,7 +1057,7 @@ export function Toolbar({
                   <button
                     key={item.type}
                     role="menuitem"
-                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="w-full text-left px-4 py-1.5 text-sm hover:bg-[color:var(--doc-bg-hover)]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       onInsertField?.(item.type);
