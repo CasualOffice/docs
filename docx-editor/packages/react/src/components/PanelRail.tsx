@@ -36,6 +36,10 @@ export interface PanelRailProps {
   onToggleComments?: () => void;
   /** Toggle the version-history panel. */
   onToggleHistory?: () => void;
+  /** Whether the Format/Properties panel is open. */
+  propertiesVisible?: boolean;
+  /** Toggle the Format/Properties panel. */
+  onToggleProperties?: () => void;
   /** Whether the Writing Assistant sheet is open. */
   writerVisible?: boolean;
   /** Toggle the Writing Assistant sheet. */
@@ -133,6 +137,8 @@ export function PanelRail({
   onToggleOutline,
   onToggleComments,
   onToggleHistory,
+  propertiesVisible,
+  onToggleProperties,
   writerVisible,
   onToggleWriter,
   chatVisible,
@@ -141,7 +147,14 @@ export function PanelRail({
   const { t } = useTranslation();
   // No-op if nothing to toggle (host wired no panels) — render nothing
   // rather than an empty bar.
-  if (!onToggleOutline && !onToggleComments && !onToggleHistory && !onToggleWriter && !onToggleChat)
+  if (
+    !onToggleOutline &&
+    !onToggleComments &&
+    !onToggleHistory &&
+    !onToggleProperties &&
+    !onToggleWriter &&
+    !onToggleChat
+  )
     return null;
 
   const outlineShortcut = formatShortcut('Ctrl+Shift+H');
@@ -173,6 +186,15 @@ export function PanelRail({
           icon="history"
           active={!!historyVisible}
           onClick={onToggleHistory}
+        />
+      )}
+      {onToggleProperties && (
+        <RailButton
+          testId="rail-properties"
+          label={propertiesVisible ? 'Hide format panel' : 'Format'}
+          icon="tune"
+          active={!!propertiesVisible}
+          onClick={onToggleProperties}
         />
       )}
       {onToggleWriter && (

@@ -51,6 +51,8 @@ import {
 } from './DocumentOutline';
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
+import { PropertiesPanel, type PropertiesTargetKind } from './sidebar/PropertiesPanel';
+import { ImagePropertiesSection } from './sidebar/ImagePropertiesSection';
 import { useEditHistory } from '../hooks/useEditHistory';
 import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
 import { downloadServerVersion, type ServerVersionBackend } from '../version-history/server-source';
@@ -1654,6 +1656,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Comments + version-history are mutually exclusive — opening one
   // closes the other so the right rail doesn't double-stack panels.
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
   const editHistory = useEditHistory({ author: 'You' });
 
   // Shared toggle handlers — used by both the toolbar buttons and the
@@ -2378,11 +2381,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // `handleToggleVersionHistory`'s historical behaviour — those two
   // share the right-margin slot).
   const openRightPanel = useCallback(
-    (which: 'writer' | 'chat' | 'history' | 'aiSuggestion' | 'none') => {
+    (which: 'writer' | 'chat' | 'history' | 'properties' | 'aiSuggestion' | 'none') => {
       setShowWritingAssistant(which === 'writer');
       setShowChatPanel(which === 'chat');
       setShowVersionHistory(which === 'history');
-      if (which === 'history') {
+      setShowProperties(which === 'properties');
+      if (which === 'history' || which === 'properties') {
         setShowCommentsSidebar(false);
         setExpandedSidebarItem(null);
       }
@@ -8323,6 +8327,29 @@ body { background: white; }
                     />
                   )}
 
+                  {showProperties &&
+                    (() => {
+                      // Flex sibling — IDENTICAL to VersionHistoryPanel above:
+                      // the page area auto-shrinks (flex:1 scroll container +
+                      // this fixed-width column), so it sits BESIDE the doc and
+                      // never overlaps it. Kind derived from the live selection.
+                      const propsKind: PropertiesTargetKind | null = state.pmImageContext
+                        ? 'image'
+                        : state.pmTableContext?.isInTable
+                          ? 'table'
+                          : null;
+                      return (
+                        <PropertiesPanel kind={propsKind} onClose={() => openRightPanel('none')}>
+                          {propsKind === 'image' && state.pmImageContext && (
+                            <ImagePropertiesSection
+                              wrapType={state.pmImageContext.wrapType}
+                              onSetWrap={handleImageWrapType}
+                            />
+                          )}
+                        </PropertiesPanel>
+                      );
+                    })()}
+
                   {/* Comments use the anchored-cards approach (UnifiedSidebar
                       paints a floating card next to each commented span).
                       There is intentionally no solid docked comments panel —
@@ -8356,6 +8383,10 @@ body { background: white; }
                       historyVisible={showVersionHistory}
                       onToggleOutline={handleToggleOutline}
                       onToggleComments={handleToggleComments}
+                      propertiesVisible={showProperties}
+                      onToggleProperties={() =>
+                        openRightPanel(showProperties ? 'none' : 'properties')
+                      }
                       onToggleHistory={() =>
                         openRightPanel(showVersionHistory ? 'none' : 'history')
                       }
