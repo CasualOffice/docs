@@ -85,6 +85,14 @@ jobs:
         # quickstart / deployment instructions visitors see on
         # GitHub. Skipped on prereleases — the docker hub copy
         # tracks the latest production release.
+        #
+        # continue-on-error: the description API needs account-level
+        # permissions the registry push token may lack (it returned 403
+        # Forbidden on v0.0.3). The image is already published by this
+        # point, so a failed description sync must NOT fail the release
+        # or block the GitHub Release job. Set the description manually
+        # on Docker Hub if this keeps 403-ing.
+        continue-on-error: true
         if: steps.ver.outputs.prerelease == 'false'
         uses: peter-evans/dockerhub-description@v4
         with:
