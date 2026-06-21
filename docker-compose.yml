@@ -103,6 +103,31 @@ services:
       - go-mod-cache:/go
     restart: unless-stopped
 
+  # Shared CasualOffice collab server (Hocuspocus + Yjs), vendored as a
+  # git submodule at ./collab. Holds one authoritative Y.Doc per room so
+  # a fresh peer syncs from server state and the server can snapshot /
+  # version on its own — the forward path that replaces the Go gateway's
+  # relay-only collab. Run in DOCS mode here (CASUAL_FILE_EXT=.docx); the
+  # sheet app deploys the same image with .xlsx. A CasualEditor host
+  # points its `backend` at ws://localhost:1234/yjs to use it.
+  collab-dev:
+    profiles: ["dev"]
+    build:
+      context: ./collab
+      dockerfile: Dockerfile
+    container_name: casual-collab-dev
+    environment:
+      PORT: "1234"
+      HOST: "0.0.0.0"
+      CASUAL_FILE_EXT: ".docx"
+      CASUAL_STORAGE: "local"
+      CASUAL_LOCAL_PATH: "/data"
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./data/collab:/data
+    restart: unless-stopped
+
 volumes:
   editor-node-modules:
   go-mod-cache:

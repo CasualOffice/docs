@@ -1,0 +1,3 @@
+[submodule "collab"]
+	path = collab
+	url = git@github.com:CasualOffice/collab.git
