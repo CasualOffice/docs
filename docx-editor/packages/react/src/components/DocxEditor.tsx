@@ -5108,6 +5108,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         case 'deleteColumn':
           pmDeleteColumn(view.state, view.dispatch);
           break;
+        case 'deleteTable':
+          // The right-click "Delete table" item (see context-menu items)
+          // routes here; without this case it fell through to a no-op,
+          // so the menu entry did nothing.
+          pmDeleteTable(view.state, view.dispatch);
+          break;
         case 'mergeCells':
           pmMergeCells(view.state, view.dispatch);
           break;
