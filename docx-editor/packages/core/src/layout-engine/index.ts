@@ -162,7 +162,10 @@ function computeColumnRegionHeight(
       spaceBefore = getSpacingBefore(block as ParagraphBlock);
       spaceAfter = getSpacingAfter(block as ParagraphBlock);
     }
-    const effectiveBefore = Math.max(spaceBefore, colTrailing[col]);
+    // Sum prev-after + this-before (Word/LibreOffice behavior), matching the
+    // paginator's addFragment — see the note there. Must stay in sync or the
+    // region-height estimate disagrees with the painted layout.
+    const effectiveBefore = spaceBefore + colTrailing[col];
     colHeights[col] += effectiveBefore + height;
     colTrailing[col] = spaceAfter;
   }
