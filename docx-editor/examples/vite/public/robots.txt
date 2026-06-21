@@ -1,8 +1,8 @@
-# doc.schnsrw.live — open to search engines + AI crawlers.
+# docs.casualoffice.org — open to search engines + AI crawlers.
 # The app is the live demo for Casual Editor, an open-source web .docx
 # editor. Indexing helps users + assistants discover it.
 # Matches the policy declared on the canonical landing site
-# (https://schnsrw.live/robots.txt).
+# (https://casualoffice.org/robots.txt).
 
 User-agent: *
 Allow: /
@@ -45,4 +45,4 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
-Sitemap: https://doc.schnsrw.live/sitemap.xml
+Sitemap: https://docs.casualoffice.org/sitemap.xml
