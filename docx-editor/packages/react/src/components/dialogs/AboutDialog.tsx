@@ -92,7 +92,7 @@ const primaryBtnStyle: CSSProperties = {
   color: 'white',
   borderRadius: 6,
   cursor: 'pointer',
-  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-fast)',
 };
 
 const linkStyle: CSSProperties = {

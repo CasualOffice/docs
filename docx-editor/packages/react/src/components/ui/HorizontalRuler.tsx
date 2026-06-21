@@ -545,7 +545,7 @@ function IndentTriangle({
           borderLeft: `${TRI_SIZE}px solid transparent`,
           borderRight: `${TRI_SIZE}px solid transparent`,
           borderTop: `${triHeight}px solid ${color}`,
-          transition: 'border-top-color 0.1s',
+          transition: 'border-top-color var(--doc-anim-fast)',
         }
       : {
           position: 'absolute',
@@ -556,7 +556,7 @@ function IndentTriangle({
           borderLeft: `${TRI_SIZE}px solid transparent`,
           borderRight: `${TRI_SIZE}px solid transparent`,
           borderBottom: `${triHeight}px solid ${color}`,
-          transition: 'border-bottom-color 0.1s',
+          transition: 'border-bottom-color var(--doc-anim-fast)',
         };
 
   return (

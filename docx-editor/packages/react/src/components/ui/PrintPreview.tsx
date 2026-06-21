@@ -100,7 +100,7 @@ export function PrintButton({
     cursor: disabled ? 'not-allowed' : 'pointer',
     color: disabled ? 'var(--doc-text-muted)' : 'var(--doc-text)',
     opacity: disabled ? 0.6 : 1,
-    transition: 'background-color 0.15s, border-color 0.15s',
+    transition: 'background-color var(--doc-anim-base), border-color var(--doc-anim-base)',
     ...style,
   };
 

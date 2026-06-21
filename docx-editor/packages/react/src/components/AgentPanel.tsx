@@ -277,7 +277,7 @@ export function AgentPanel({
                 justifyContent: 'center',
                 color: 'var(--doc-text-muted)',
                 borderRadius: 999,
-                transition: 'background 0.15s',
+                transition: 'background var(--doc-anim-base)',
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =

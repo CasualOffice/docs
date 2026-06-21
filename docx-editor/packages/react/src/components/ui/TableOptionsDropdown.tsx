@@ -150,7 +150,7 @@ const menuItemStyles: CSSProperties = {
   backgroundColor: 'transparent',
   width: '100%',
   textAlign: 'left',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
 };
 
 const separatorStyles: CSSProperties = {

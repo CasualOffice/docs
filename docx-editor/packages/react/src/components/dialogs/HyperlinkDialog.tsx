@@ -88,8 +88,7 @@ const INPUT_STYLE: CSSProperties = {
   outline: 'none',
   background: 'var(--doc-surface)',
   color: 'var(--doc-text)',
-  transition:
-    'border-color 80ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'border-color var(--doc-anim-fast), box-shadow var(--doc-anim-fast)',
 };
 
 const INPUT_ERROR_STYLE: CSSProperties = {
@@ -130,7 +129,7 @@ const TAB_BUTTON_STYLE: CSSProperties = {
   color: 'var(--doc-text-muted)',
   borderBottom: '2px solid transparent',
   marginBottom: '-1px',
-  transition: 'color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'color var(--doc-anim-fast)',
 };
 
 const TAB_BUTTON_ACTIVE_STYLE: CSSProperties = {
@@ -147,7 +146,7 @@ const BUTTON_BASE_STYLE: CSSProperties = {
   fontWeight: 500,
   cursor: 'pointer',
   border: '1px solid transparent',
-  transition: 'background 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: 'background var(--doc-anim-fast)',
 };
 
 const PRIMARY_BUTTON_STYLE: CSSProperties = {

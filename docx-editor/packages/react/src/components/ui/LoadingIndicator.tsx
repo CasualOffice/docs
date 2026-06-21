@@ -281,7 +281,7 @@ const ProgressVariant: React.FC<{
           width: `${clampedProgress}%`,
           backgroundColor: color,
           borderRadius: size / 8,
-          transition: 'width 0.3s ease',
+          transition: 'width var(--doc-anim-slow)',
         }}
       />
       {showText && (

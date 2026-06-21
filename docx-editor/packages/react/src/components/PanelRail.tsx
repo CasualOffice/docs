@@ -80,7 +80,7 @@ const btnStyle = (active: boolean): CSSProperties => ({
   background: active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
   color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text-on-surface-muted, #5f6368)',
   cursor: 'pointer',
-  transition: 'background var(--doc-anim-fast, 100ms) ease, color var(--doc-anim-fast, 100ms) ease',
+  transition: 'background var(--doc-anim-fast), color var(--doc-anim-fast)',
 });
 
 const markerStyle: CSSProperties = {

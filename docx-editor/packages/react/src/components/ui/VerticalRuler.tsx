@@ -352,7 +352,7 @@ function VerticalMarginMarker({
     borderTop: '5px solid transparent',
     borderBottom: '5px solid transparent',
     borderRight: `8px solid ${color}`,
-    transition: 'border-right-color 0.1s',
+    transition: 'border-right-color var(--doc-anim-fast)',
   };
 
   return (

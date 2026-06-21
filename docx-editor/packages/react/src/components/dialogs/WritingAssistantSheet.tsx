@@ -86,7 +86,7 @@ const toggleTrackStyle: CSSProperties = {
   background: 'var(--doc-border, #d1d5db)',
   flexShrink: 0,
   marginTop: 2,
-  transition: 'background-color 0.18s ease',
+  transition: 'background-color var(--doc-anim-base)',
   cursor: 'pointer',
 };
 
@@ -104,7 +104,7 @@ const toggleHandleStyle: CSSProperties = {
   borderRadius: '50%',
   background: 'white',
   boxShadow: '0 1px 2px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.08)',
-  transition: 'transform 0.18s ease',
+  transition: 'transform var(--doc-anim-base)',
 };
 
 const toggleHandleOnStyle: CSSProperties = {
@@ -239,7 +239,7 @@ function progressFillStyle(progress: number): CSSProperties {
     height: '100%',
     width: `${Math.max(2, Math.min(100, progress * 100))}%`,
     background: 'var(--doc-primary, #1a73e8)',
-    transition: 'width 0.15s linear',
+    transition: 'width var(--doc-anim-base)',
   };
 }
 

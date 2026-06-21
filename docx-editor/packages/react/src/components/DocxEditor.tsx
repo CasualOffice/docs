@@ -909,7 +909,7 @@ function PageIndicator({
         pointerEvents: 'none',
         zIndex: 1000,
         opacity: visible ? 1 : 0,
-        transition: 'opacity 0.3s ease',
+        transition: 'opacity var(--doc-anim-slow)',
         userSelect: 'none',
       }}
       aria-live="polite"
@@ -7512,7 +7512,7 @@ body { background: white; }
                       // makes opening / closing ease instead of snap.
                       className={agentPanelOpen ? 'rounded-br-2xl' : undefined}
                       style={{
-                        transition: 'border-radius 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'border-radius var(--doc-anim-slow)',
                       }}
                       currentFormatting={state.selectionFormatting}
                       onFormat={handleFormat}
@@ -7695,7 +7695,7 @@ body { background: white; }
                           paddingLeft: 20,
                           paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
                           minWidth: minLayoutWidth,
-                          transition: 'padding 0.2s ease',
+                          transition: 'padding var(--doc-anim-slow)',
                         }}
                       >
                         <HorizontalRuler
@@ -7788,7 +7788,7 @@ body { background: white; }
                               // Only the ruler itself is interactive; the wrapper
                               // must not swallow clicks over the gutter/page.
                               pointerEvents: 'none',
-                              transition: 'padding 0.2s ease',
+                              transition: 'padding var(--doc-anim-slow)',
                             }}
                           >
                             {/* Invisible page-width spacer; the ruler is pinned
@@ -8104,7 +8104,8 @@ body { background: white; }
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 boxShadow: '0 1px 3px rgba(60,64,67,0.2)',
-                                transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
+                                transition:
+                                  'background-color var(--doc-anim-base), box-shadow var(--doc-anim-base)',
                               }}
                               onMouseOver={(e) => {
                                 (e.currentTarget as HTMLButtonElement).style.backgroundColor =

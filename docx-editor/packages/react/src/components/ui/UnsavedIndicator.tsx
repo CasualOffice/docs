@@ -176,7 +176,7 @@ const getIndicatorStyles = (
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'all 0.2s ease',
+    transition: 'all var(--doc-anim-slow)',
     animation:
       hasUnsavedChanges && showPulse ? 'docx-unsaved-pulse 2s ease-in-out infinite' : 'none',
   };

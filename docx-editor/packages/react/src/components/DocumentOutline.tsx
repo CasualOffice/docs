@@ -178,7 +178,7 @@ export const DocumentOutline = React.memo(function DocumentOutline({
         // Only `transform` transitions; horizontal-scroll tracking via `left`
         // is intentionally untransitioned so the panel keeps up with the doc.
         transform: open ? 'translateX(0)' : `translateX(-${OUTLINE_LEFT_OFFSET + OUTLINE_WIDTH}px)`,
-        transition: 'transform 0.15s ease-out',
+        transition: 'transform var(--doc-anim-base)',
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
@@ -230,8 +230,7 @@ export const DocumentOutline = React.memo(function DocumentOutline({
               justifyContent: 'center',
               borderRadius: 6,
               flexShrink: 0,
-              transition:
-                'background 80ms cubic-bezier(0.4, 0, 0.2, 1), color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'background var(--doc-anim-fast), color var(--doc-anim-fast)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'var(--doc-bg-hover)';
@@ -302,7 +301,7 @@ export const DocumentOutline = React.memo(function DocumentOutline({
                       justifyContent: 'center',
                       flexShrink: 0,
                       transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.12s ease-out',
+                      transition: 'transform var(--doc-anim-fast)',
                     }}
                   >
                     <MaterialSymbol name="arrow_drop_down" size={18} />

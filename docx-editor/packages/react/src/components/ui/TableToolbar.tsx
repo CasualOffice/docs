@@ -282,7 +282,7 @@ const TOOLBAR_STYLES: Record<string, CSSProperties> = {
     cursor: 'pointer',
     fontSize: '12px',
     lineHeight: '1',
-    transition: 'background-color 0.15s, color 0.15s',
+    transition: 'background-color var(--doc-anim-base), color var(--doc-anim-base)',
   },
   buttonCompact: {
     padding: '3px 5px',

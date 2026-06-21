@@ -135,7 +135,7 @@ const CATEGORY_TAB_STYLE: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   cursor: 'pointer',
   fontSize: '12px',
-  transition: 'all 0.15s',
+  transition: 'all var(--doc-anim-base)',
 };
 
 const CATEGORY_TAB_ACTIVE_STYLE: CSSProperties = {
@@ -164,7 +164,7 @@ const SYMBOL_BUTTON_STYLE: CSSProperties = {
   backgroundColor: 'var(--doc-surface, white)',
   cursor: 'pointer',
   fontSize: '18px',
-  transition: 'all 0.15s',
+  transition: 'all var(--doc-anim-base)',
 };
 
 const PREVIEW_SECTION_STYLE: CSSProperties = {
