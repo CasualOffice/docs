@@ -1,4 +1,4 @@
-# Local dev stack for Casual Editor.
+# Local dev stack for Casual Docs.
 #
 # Design note: the Go gateway is stateless — it holds the live Y.Doc
 # per session and drops it when the last peer leaves. Persistence is

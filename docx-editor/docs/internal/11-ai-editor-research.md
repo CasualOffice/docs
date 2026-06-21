@@ -1,6 +1,6 @@
 # 11 — AI flows in production editors (research notes)
 
-Reference study for the on-device assistant (Llama-3.2-1B / WebLLM) Casual Editor will ship. Goal: copy load-bearing UX from three shipping AI editors before we write more glue code, so we stop half-building. Sources: official docs, MS Tech Community, Computerworld, Notion Help Center. No source-code access.
+Reference study for the on-device assistant (Llama-3.2-1B / WebLLM) Casual Docs will ship. Goal: copy load-bearing UX from three shipping AI editors before we write more glue code, so we stop half-building. Sources: official docs, MS Tech Community, Computerworld, Notion Help Center. No source-code access.
 
 ## 1. Google Docs — Help me write (Gemini)
 
@@ -57,7 +57,7 @@ Two non-negotiables fall out:
 1. **AI output never lands directly in the committed doc.** All three stage it.
 2. **Accept and reject are explicit single-click affordances anchored to the preview** — not buried in a menu, not requiring the user to delete unwanted text by hand.
 
-## Design principles for Casual Editor
+## Design principles for Casual Docs
 
 1. **Stage every AI edit in a preview affordance the user must explicitly accept.** Direct insertion creates anxiety and silently corrupts the OOXML round-trip if the model hallucinates structure. All three competitors stage; we stage.
 

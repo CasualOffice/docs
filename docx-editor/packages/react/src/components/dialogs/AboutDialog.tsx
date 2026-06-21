@@ -15,7 +15,7 @@ const APP_VERSION: string = (globalThis as any).__APP_VERSION__ ?? 'dev';
 export interface AboutDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Optional override — defaults to "Casual Editor". */
+  /** Optional override — defaults to "Casual Docs". */
   appName?: string;
   /** Optional override — defaults to the project GitHub repo. */
   sourceUrl?: string;
@@ -101,7 +101,7 @@ const linkStyle: CSSProperties = {
 };
 
 /**
- * Canonical Casual Editor mark — identical artwork to
+ * Canonical Casual Docs mark — identical artwork to
  * examples/vite/public/logo.svg + favicon.svg so the title-bar logo,
  * favicon, About dialog, and README header all render the same
  * recognisable square. Blue rounded background carries through both
@@ -117,7 +117,7 @@ function CasualEditorLogo({ size = 56 }: { size?: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="Casual Editor"
+      aria-label="Casual Docs"
     >
       <rect width="64" height="64" rx="14" fill="#1a73e8" />
       <path d="M18 14 H42 L48 20 V50 H18 Z" fill="#ffffff" />
@@ -133,7 +133,7 @@ function CasualEditorLogo({ size = 56 }: { size?: number }) {
 export function AboutDialog({
   isOpen,
   onClose,
-  appName = 'Casual Editor',
+  appName = 'Casual Docs',
   sourceUrl = 'https://github.com/CasualOffice/docs',
   homepageUrl = 'https://docs.casualoffice.org/',
 }: AboutDialogProps) {

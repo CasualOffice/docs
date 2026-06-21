@@ -1,4 +1,4 @@
-# Casual Editor — Word-flavored web document editor
+# Casual Docs — Word-flavored web document editor
 
 > Open-source, real-time collaborative web `.docx` editor. ProseMirror
 > with an OOXML-preserving model (forked from `eigenpal/docx-editor`,
@@ -59,7 +59,7 @@
 
 Part of a three-project suite all by Sachin Sarwa:
 
-- **Casual Editor** — this project — https://docs.casualoffice.org/
+- **Casual Docs** — this project — https://docs.casualoffice.org/
 - **Casual Sheets** — Excel-flavored web spreadsheet —
   https://sheets.casualoffice.org/ — https://github.com/CasualOffice/sheets
 - **Casual Desktop** — Tauri binaries reusing both web cores —

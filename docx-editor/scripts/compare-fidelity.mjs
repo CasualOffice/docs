@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Three-way fidelity comparison: Casual Editor vs LibreOffice vs OnlyOffice.
+ * Three-way fidelity comparison: Casual Docs vs LibreOffice vs OnlyOffice.
  *
  * For each fixture, run each engine's docx → docx round-trip, then diff the
  * resulting document.xml against the original at the tag level. Emit a
@@ -297,7 +297,7 @@ function fmtRetention(r) {
 
 function renderReport(rows, engines, totals, skipped) {
   const lines = [];
-  lines.push('# Fidelity comparison — Casual Editor vs reference engines');
+  lines.push('# Fidelity comparison — Casual Docs vs reference engines');
   lines.push('');
   lines.push(
     'Each fixture is round-tripped through every available engine (open → save'

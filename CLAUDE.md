@@ -1,8 +1,8 @@
-# CLAUDE.md — Casual Editor
+# CLAUDE.md — Casual Docs
 
 ## What this repo is
 
-Solo / personal project named **Casual Editor**. The path contains `melp/` as a folder name only — **not** a company or product. Do not call this project "melp" or imply organizational context.
+Solo / personal project named **Casual Docs**. The path contains `melp/` as a folder name only — **not** a company or product. Do not call this project "melp" or imply organizational context.
 
 A casual, real-time collaborative `.docx` editor, built on a local fork of `eigenpal/docx-editor` (MIT, React + ProseMirror with OOXML-preserving model) with a custom Go backend providing the Yjs CRDT sync, presence, and `.docx` snapshots. Document persistence is delegated to a pluggable host integration (inline for v0; WOPI / JWT-API later).
 

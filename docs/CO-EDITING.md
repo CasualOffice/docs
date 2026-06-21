@@ -1,6 +1,6 @@
 # Co-editing
 
-How Casual Editor handles real-time multi-user editing. For the broader system shape, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+How Casual Docs handles real-time multi-user editing. For the broader system shape, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 
@@ -29,7 +29,7 @@ The gateway never interprets CRDT contents. It is a **pure relay** that fans inc
 
 ## Awareness (presence)
 
-Yjs ships with an `Awareness` channel that's separate from the document CRDT. Casual Editor uses it for:
+Yjs ships with an `Awareness` channel that's separate from the document CRDT. Casual Docs uses it for:
 
 - **Live cursors** — each peer's selection range, with a color and name label.
 - **Live-typing ghost** — characters appear in peers' views as you type, before the change commits to Y.Doc.

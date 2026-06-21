@@ -1,4 +1,4 @@
-// Command casual-docs is the operator CLI for a Casual Editor
+// Command casual-docs is the operator CLI for a Casual Docs
 // Mode 3 (Standalone) deploy. It's the recovery + admin surface that
 // pairs with the y-websocket gateway: things the operator should be
 // able to do from inside the container, ssh'd into the host, without

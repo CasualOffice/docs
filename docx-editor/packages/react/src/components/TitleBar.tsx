@@ -26,7 +26,7 @@ import { openReportIssue } from './reportIssue';
 // Default Doc Icon (shown when no Logo is provided)
 // ============================================================================
 
-// Casual Editor brand mark — same shape and palette as the About dialog
+// Casual Docs brand mark — same shape and palette as the About dialog
 // logo so the title-bar icon and the About icon are visually identical.
 function DefaultDocIcon() {
   return (
@@ -1056,7 +1056,7 @@ export function MenuBar() {
                   { type: 'separator' as const } as MenuEntry,
                   {
                     icon: 'info',
-                    label: 'About Casual Editor',
+                    label: 'About Casual Docs',
                     onClick: onShowAbout,
                   } as MenuEntry,
                 ]

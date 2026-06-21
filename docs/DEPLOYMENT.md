@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Practical guide to running Casual Editor in the three supported
+Practical guide to running Casual Docs in the three supported
 shapes: **single-user demo** (GitHub Pages), **collab Docker
 image** (Docker Hub), and **local dev** (docker-compose).
 
@@ -45,7 +45,7 @@ the host you run it on.
 | Outbound network from clients | WS connect to your host | wss/ws on `:8080` |
 | (optional) Domain + TLS cert | Production hosting | Let's Encrypt is fine |
 
-No DB. No object store. No queue. Casual Editor is intentionally
+No DB. No object store. No queue. Casual Docs is intentionally
 **stateless** — the in-memory `Y.Doc` is the only live state, and
 it's dropped when the last client of a room disconnects. Document
 persistence is delegated to a `host.Integration` (inline for the
@@ -262,7 +262,7 @@ query / path. Most LB setups support cookie or path-based sticky
 sessions; a coordinator (Redis / consul) for cross-pod presence is
 deferred (M2).
 
-**Vertical scale is the simple path.** Casual Editor sessions are
+**Vertical scale is the simple path.** Casual Docs sessions are
 cheap (one `Y.Doc` per active doc, frames are forwarded
 unparsed). A single 1-vCPU / 512 MB pod handles dozens of
 small-doc rooms.
@@ -271,7 +271,7 @@ small-doc rooms.
 
 ## Persistence
 
-Casual Editor is stateless. When everyone leaves a room, the doc is
+Casual Docs is stateless. When everyone leaves a room, the doc is
 dropped from memory. Two implications:
 
 1. **The original upload bytes are kept** in the in-memory inline

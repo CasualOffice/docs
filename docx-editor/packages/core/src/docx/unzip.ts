@@ -117,7 +117,7 @@ function classifyNonDocxInput(buffer: ArrayBuffer): Error | null {
   ) {
     return new Error(
       'This file is a legacy Word `.doc` (binary) document, not a `.docx` ' +
-        '(OOXML) archive. Casual Editor does not open `.doc`; save it as ' +
+        '(OOXML) archive. Casual Docs does not open `.doc`; save it as ' +
         '`.docx` in Microsoft Word, LibreOffice, or Pages first.'
     );
   }

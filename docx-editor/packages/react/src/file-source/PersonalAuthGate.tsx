@@ -61,8 +61,8 @@ export interface PersonalAuthGateProps {
   onAuthenticated?: (user: UserWire) => void;
   /**
    * Heading shown above the form. Override per-deploy to brand the
-   * login surface ("Sign in to Acme Casual Editor"). Default is a
-   * neutral "Sign in to Casual Editor".
+   * login surface ("Sign in to Acme Casual Docs"). Default is a
+   * neutral "Sign in to Casual Docs".
    */
   heading?: string;
   /**
@@ -225,7 +225,7 @@ export function PersonalAuthGate({
   authClient,
   baseUrl,
   onAuthenticated,
-  heading = 'Sign in to Casual Editor',
+  heading = 'Sign in to Casual Docs',
   initialMode = 'login',
 }: PersonalAuthGateProps) {
   const { state, login, signup, logout } = usePersonalAuth({

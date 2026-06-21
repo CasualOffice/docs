@@ -1,16 +1,16 @@
 <p align="center">
   <a href="https://docs.casualoffice.org/">
-    <img src="../assets/logo.svg" alt="Casual Editor" width="80" height="80" />
+    <img src="../assets/logo.svg" alt="Casual Docs" width="80" height="80" />
   </a>
 </p>
 
-<h2 align="center">Casual Editor — editor package</h2>
+<h2 align="center">Casual Docs — editor package</h2>
 
 <p align="center">
   Built on <a href="https://github.com/eigenpal/docx-editor">eigenpal/docx-editor</a> (MIT).
 </p>
 
-This directory holds the browser editor codebase for Casual Editor.
+This directory holds the browser editor codebase for Casual Docs.
 Everything project-wide (architecture, deployment, backend plan) lives
 in the **[outer README](../README.md)** — start there.
 

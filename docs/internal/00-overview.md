@@ -84,7 +84,7 @@ This shifts the durability story entirely to the host. We become a pure realtime
 
 ### Current state (cross-project audit)
 
-| | Casual Editor (this repo) | Casual Sheets |
+| | Casual Docs (this repo) | Casual Sheets |
 |---|---|---|
 | **Released version** | unreleased (M1 backend + client-push snapshot shipped) | **v0.1.0** — first version-bumped release |
 | **Editor base** | Fork of `eigenpal/docx-editor` (MIT) + custom layout-painter | Univer OSS 0.24.x (Apache-2.0) + custom Office-style chrome |
@@ -147,4 +147,4 @@ Pivot completed 2026-05-16; the project is well past it. Phase C (Personal auth)
 
 **Infrastructure:**
 - CI + GitHub Pages deploy live at [doc.schnsrw.live](https://doc.schnsrw.live/).
-- Casual Editor branding throughout (logo, favicon, README, demo page).
+- Casual Docs branding throughout (logo, favicon, README, demo page).

@@ -1,4 +1,4 @@
-// Package main is the entry point for the Casual Editor backend
+// Package main is the entry point for the Casual Docs backend
 // y-websocket gateway.
 //
 // Listens on `:8080` by default (override with GATEWAY_ADDR env)

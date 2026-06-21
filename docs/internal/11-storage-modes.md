@@ -1,7 +1,7 @@
 # 11 — Storage modes
 
 How users open, save, and find their `.docx` files across the three
-ways Casual Editor is deployed.
+ways Casual Docs is deployed.
 
 This is the design contract. Mirrors the structure of sheet's
 [`docs/STORAGE_MODES.md`](../../../sheet/docs/STORAGE_MODES.md) so

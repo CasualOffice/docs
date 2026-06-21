@@ -1,6 +1,6 @@
 # Round-trip Fidelity
 
-How we make sure a `.docx` opened and saved by Casual Editor stays byte-faithful to Microsoft Word's representation.
+How we make sure a `.docx` opened and saved by Casual Docs stays byte-faithful to Microsoft Word's representation.
 
 For deeper internals, see [`internal/01-fidelity-gaps.md`](./internal/01-fidelity-gaps.md) and [`internal/03-gap-matrix.md`](./internal/03-gap-matrix.md).
 

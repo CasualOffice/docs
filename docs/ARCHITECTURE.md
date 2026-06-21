@@ -1,6 +1,6 @@
 # Architecture
 
-System design for Casual Editor. For deployment notes, see [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+System design for Casual Docs. For deployment notes, see [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ---
 

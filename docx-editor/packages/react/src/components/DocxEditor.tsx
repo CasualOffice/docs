@@ -9200,7 +9200,7 @@ body { background: white; }
                     },
                     {
                       id: 'help.about',
-                      label: 'About Casual Editor',
+                      label: 'About Casual Docs',
                       path: 'Help',
                       run: handleShowAbout,
                     },

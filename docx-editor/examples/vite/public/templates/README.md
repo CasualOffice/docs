@@ -1,6 +1,6 @@
 # Home-page templates
 
-`.docx` files + PNG thumbnails that back the Casual Editor home-page
+`.docx` files + PNG thumbnails that back the Casual Docs home-page
 template gallery (`examples/vite/src/Home.tsx`).
 
 ## Two-step pipeline

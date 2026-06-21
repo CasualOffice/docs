@@ -1,5 +1,5 @@
 # docs.casualoffice.org — open to search engines + AI crawlers.
-# The app is the live demo for Casual Editor, an open-source web .docx
+# The app is the live demo for Casual Docs, an open-source web .docx
 # editor. Indexing helps users + assistants discover it.
 # Matches the policy declared on the canonical landing site
 # (https://casualoffice.org/robots.txt).

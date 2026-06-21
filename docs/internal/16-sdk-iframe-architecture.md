@@ -105,7 +105,7 @@ Identical surface for `<CasualSheets>` from `@casualoffice/sheets/sheets`. Both 
 
 ### Behavioural details
 
-- Mount: wrapper picks `embedBasePath`, builds the iframe URL with `?fileId=…&docId=…&viewMode=…&token=…`. Renders `<iframe sandbox="allow-scripts allow-same-origin allow-downloads allow-modals" src={url} title="Casual Editor" />` (default size: fills parent; host CSS or wrapper props can resize).
+- Mount: wrapper picks `embedBasePath`, builds the iframe URL with `?fileId=…&docId=…&viewMode=…&token=…`. Renders `<iframe sandbox="allow-scripts allow-same-origin allow-downloads allow-modals" src={url} title="Casual Docs" />` (default size: fills parent; host CSS or wrapper props can resize).
 - `viewMode="preview"` URL: `embedBasePath + '/?viewMode=preview&...'`. Editor's embed-runtime renders the document with header / toolbar / side panel hidden; user can scroll and select but not edit.
 - `viewMode="editor"` URL: same path + `?viewMode=editor`. Full chrome.
 - Live toggle: changing the `viewMode` prop sends `casual.command.set.viewmode` instead of re-creating the iframe, so the document state survives.
@@ -131,7 +131,7 @@ The iframe loads a tiny same-origin HTML page (`embed.html`) whose only job is t
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Casual Editor (embed)</title>
+    <title>Casual Docs (embed)</title>
     <link rel="stylesheet" href="./embed-runtime.css" />
   </head>
   <body>
@@ -237,7 +237,7 @@ After SDK v1.1 (docx) + v0.5 (sheet) publish:
 3. Strip `CasualDocEditor.tsx` and `CasualSheetWorkspace.tsx` to one-liners that just render `<CasualEditor>` / `<CasualSheets>` with `viewMode` plumbed.
 4. Add the `/file/:fileId` route (`?mode=editor` flips). Kind dispatch sits in one switch — docs/sheets go through the SDK; PDF / image / video / audio keep their current primitives.
 5. Preview modal's stage just becomes `<CasualEditor viewMode="preview">` or `<CasualSheets viewMode="preview">` per kind.
-6. "Open in Casual Editor" button: `navigate('/file/' + fileId + '?mode=editor')`.
+6. "Open in Casual Docs" button: `navigate('/file/' + fileId + '?mode=editor')`.
 
 Result: Drive's net diff after the migration is a **subtractive** PR — fewer files, simpler vite config, no SDK chunk shim, no demo-mode editor isolation problems.
 

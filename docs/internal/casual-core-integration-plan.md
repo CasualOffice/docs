@@ -1,6 +1,6 @@
 # Casual Core Integration Plan
 
-Plan for using `@casualoffice/core` (the Rust+WASM document engine in `~/Desktop/melp/rdrive/core/`) inside Casual Editor.
+Plan for using `@casualoffice/core` (the Rust+WASM document engine in `~/Desktop/melp/rdrive/core/`) inside Casual Docs.
 
 Two phases:
 - **Phase A** — use it as a peripheral bytes converter (ODT/MD/TXT only). **Shipped** — code is in the built dist.

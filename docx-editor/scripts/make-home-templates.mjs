@@ -1,9 +1,9 @@
 /**
- * Generate the Casual Editor home-page templates as real .docx files.
+ * Generate the Casual Docs home-page templates as real .docx files.
  *
  * Outputs go to examples/vite/public/templates/, plus the showcase
  * sample to examples/vite/public/sample.docx (replacing the upstream
- * 'Welcome to DOCX JS Editor' branding with a Casual Editor flavour).
+ * 'Welcome to DOCX JS Editor' branding with a Casual Docs flavour).
  *
  * Each template is built from a tiny JS DSL (h/p/r/bullet) that
  * lowers to WordprocessingML, then bundled into a minimal .docx via
@@ -236,7 +236,7 @@ async function writeDocx(outPath, body) {
 // ---------- templates ----------
 
 const SAMPLE_BODY = [
-  h('Welcome to Casual Editor', 1),
+  h('Welcome to Casual Docs', 1),
   p([
     r(
       'A casual, real-time collaborative .docx editor — built for the browser. Open Word documents, edit them in place, and save them back as .docx.'
@@ -619,7 +619,7 @@ const PRESS_BODY = [
   p([r('Contact: press@example.com · (555) 901-2030', { color: '64748B' })]),
   p([r('')]),
   p(
-    [r('Casual Editor Launches Real-Time .docx Collaboration in the Browser', { bold: true, sz: 36 })],
+    [r('Casual Docs Launches Real-Time .docx Collaboration in the Browser', { bold: true, sz: 36 })],
     { align: 'center' }
   ),
   p([
@@ -634,12 +634,12 @@ const PRESS_BODY = [
   p([
     r('SAN FRANCISCO — March 5, 2026', { bold: true }),
     r(
-      ' — Casual Editor today released the first public preview of its real-time collaborative .docx editor. The web-based tool lets multiple users edit the same Microsoft Word document simultaneously, with full round-trip fidelity to the original OOXML format.'
+      ' — Casual Docs today released the first public preview of its real-time collaborative .docx editor. The web-based tool lets multiple users edit the same Microsoft Word document simultaneously, with full round-trip fidelity to the original OOXML format.'
     ),
   ]),
   p([
     r(
-      'Unlike traditional document services, Casual Editor delegates persistence entirely to the host. The runtime keeps document state in memory only for the duration of an active editing session, then snapshots back to the host on the last disconnect. There is no database, no on-disk update log, and no vendor lock-in.'
+      'Unlike traditional document services, Casual Docs delegates persistence entirely to the host. The runtime keeps document state in memory only for the duration of an active editing session, then snapshots back to the host on the last disconnect. There is no database, no on-disk update log, and no vendor lock-in.'
     ),
   ]),
   p([
@@ -649,13 +649,13 @@ const PRESS_BODY = [
   h('Availability', 2),
   p([
     r(
-      'Casual Editor is available immediately as a hosted demo at doc.schnsrw.live and as a Docker image bundling the editor with the real-time gateway. The project is MIT-licensed and developed openly on GitHub.'
+      'Casual Docs is available immediately as a hosted demo at doc.schnsrw.live and as a Docker image bundling the editor with the real-time gateway. The project is MIT-licensed and developed openly on GitHub.'
     ),
   ]),
-  h('About Casual Editor', 2),
+  h('About Casual Docs', 2),
   p([
     r(
-      'Casual Editor is an open-source initiative focused on bringing Microsoft Word fidelity to the web. The project builds on the eigenpal/docx-editor codebase and ships under the MIT license.'
+      'Casual Docs is an open-source initiative focused on bringing Microsoft Word fidelity to the web. The project builds on the eigenpal/docx-editor codebase and ships under the MIT license.'
     ),
   ]),
   p([r('# # #', { color: '64748B' })], { align: 'center' }),
@@ -812,7 +812,7 @@ const SYLLABUS_BODY = [
 
 // ---------- run ----------
 
-console.log('Writing Casual Editor templates:');
+console.log('Writing Casual Docs templates:');
 await writeDocx(join(PUBLIC_DIR, 'sample.docx'), SAMPLE_BODY);
 await writeDocx(join(TEMPLATE_DIR, 'resume.docx'), RESUME_BODY);
 await writeDocx(join(TEMPLATE_DIR, 'cover-letter.docx'), COVER_LETTER_BODY);

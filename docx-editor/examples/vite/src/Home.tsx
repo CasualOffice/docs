@@ -696,7 +696,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
       <header style={{ ...styles.topBar, ...(isMobile && mobile.topBar) }}>
         <div style={styles.brandRow}>
           <img src="/logo.svg" alt="" style={styles.brandLogo} aria-hidden="true" />
-          <div style={styles.brandName}>Casual Editor</div>
+          <div style={styles.brandName}>Casual Docs</div>
         </div>
         <div style={styles.topRight}>
           <a
@@ -728,7 +728,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
       />
 
       <section style={{ ...styles.hero, ...(isMobile && mobile.hero) }}>
-        <div style={styles.heroEyebrow}>Casual Editor</div>
+        <div style={styles.heroEyebrow}>Casual Docs</div>
         <h1 style={{ ...styles.heroTitle, ...(isMobile && mobile.heroTitle) }}>
           Start something today.
         </h1>

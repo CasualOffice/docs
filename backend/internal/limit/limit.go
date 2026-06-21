@@ -1,5 +1,5 @@
 // Package limit implements a per-IP token-bucket HTTP middleware
-// for the Casual Editor gateway.
+// for the Casual Docs gateway.
 //
 // Design:
 //

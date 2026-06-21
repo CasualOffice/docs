@@ -1,6 +1,6 @@
 # 13 — Iframe embedding protocol
 
-How a host page embeds the Casual Editor in an iframe and talks to
+How a host page embeds the Casual Docs in an iframe and talks to
 it without coupling either side to the other's internals.
 
 This is the design contract — uniform across `casual-docs` (.docx)

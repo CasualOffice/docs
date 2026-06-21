@@ -1,5 +1,5 @@
 /**
- * Smoke tests for the home-page template gallery (Casual Editor
+ * Smoke tests for the home-page template gallery (Casual Docs
  * landing view). The 200+ existing e2e specs assume direct editor
  * mount, so they rely on `?e2e=1` skipping the home page — this
  * suite pins that contract from both directions.

@@ -1,4 +1,4 @@
-// Casual Editor — Go backend.
+// Casual Docs — Go backend.
 //
 // Stateless y-websocket gateway + room manager + WOPI client.
 // See ../docs/05-backend-design.md for the design and lifecycle.

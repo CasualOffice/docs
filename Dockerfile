@@ -1,4 +1,4 @@
-# Casual Editor — bundled image.
+# Casual Docs — bundled image.
 #
 # Single container that serves the Go gateway (WS broker + REST upload/
 # download) AND the built editor SPA from the same origin. Users:

@@ -3,7 +3,7 @@
 Status: **Approved for build, P1 in progress.** Last updated 2026-06-01.
 
 Browser-only, on-device writing aid (grammar / tone / summarize) bolted
-onto Casual Editor without compromising existing UX. All inference runs
+onto Casual Docs without compromising existing UX. All inference runs
 in a Web Worker against transformers.js. Models load on user opt-in and
 are cached in the browser. No backend, no API keys, no telemetry.
 

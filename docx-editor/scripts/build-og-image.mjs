@@ -121,7 +121,7 @@ const html = /* html */ `
         <path d="M9 9h7M9 13h7M9 17h5" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
       </svg>
     </span>
-    <span class="brand">Casual Editor</span>
+    <span class="brand">Casual Docs</span>
     <span class="domain">doc.schnsrw.live</span>
   </div>
 

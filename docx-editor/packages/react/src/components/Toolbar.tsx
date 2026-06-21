@@ -1105,7 +1105,7 @@ export function Toolbar({
               ? [
                   {
                     icon: 'info',
-                    label: 'About Casual Editor',
+                    label: 'About Casual Docs',
                     onClick: onShowAbout,
                   } as MenuEntry,
                 ]

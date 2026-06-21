@@ -1,4 +1,4 @@
-# Casual Editor — Improvement Tracker
+# Casual Docs — Improvement Tracker
 
 Single source of truth for outstanding doc-editor issues. Started 2026-05-25 from a four-axis audit (fidelity, UI/UX, collab/backend, code health). Mirrors the issue-list shape of [`03-gap-matrix.md`](./03-gap-matrix.md) but covers behavioural / UX / infra gaps, not just OOXML fidelity.
 
@@ -135,7 +135,7 @@ Every item has a citation. P0/P1/P2/P3 are severity. ⬜ pending · 🔵 in prog
 ### F1 — Version-history side panel (Sheets parity)
 
 **Status:** scaffolding starts this session.
-**Why:** Sheets ships a `HistoryPanel` + `useLocalHistory` hook that captures every committed mutation, surfaces a timestamp + author feed in a side rail, and offers one-click revert. Casual Editor has no equivalent — users have undo/redo only.
+**Why:** Sheets ships a `HistoryPanel` + `useLocalHistory` hook that captures every committed mutation, surfaces a timestamp + author feed in a side rail, and offers one-click revert. Casual Docs has no equivalent — users have undo/redo only.
 
 **Design:**
 
