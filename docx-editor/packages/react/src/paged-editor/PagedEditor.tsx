@@ -310,6 +310,9 @@ export interface PagedEditorProps {
    *  scroll out from under the marker as you drag. A ref (not a prop
    *  value) so toggling it mid-drag doesn't re-render the editor. */
   marginDraggingRef?: React.RefObject<boolean>;
+  /** Open the contextual Format panel for the selected image (the
+   *  overlay's "Format" chip calls this). */
+  onOpenImageProperties?: () => void;
   /** Whether comments sidebar is open (shifts document left). */
   commentsSidebarOpen?: boolean;
   /** Sidebar overlay rendered inside the scroll container (scrolls with document). */
@@ -1381,6 +1384,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onFormat,
       onZoomChange,
       marginDraggingRef,
+      onOpenImageProperties,
       commentsSidebarOpen = false,
       sidebarOverlay,
       scrollContainerRef: scrollContainerRefProp,
@@ -4399,6 +4403,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             onDragStart={handleImageDragStart}
             onDragEnd={handleImageDragEnd}
             onContextMenu={handlePagesContextMenu}
+            onOpenProperties={onOpenImageProperties}
           />
 
           {/* Table quick action insert button */}
