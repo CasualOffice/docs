@@ -78,6 +78,10 @@ services:
     environment:
       VITE_COLLAB_ENABLED: "true"
       VITE_BACKEND: "http://localhost:8080"
+      # Collab CRDT runs on the shared collab server (Hocuspocus), a
+      # separate service from the REST gateway above. REST/share-link
+      # stays on :8080; the Y.Doc sync goes to the collab server.
+      VITE_COLLAB_BACKEND: "ws://localhost:1234/yjs"
     ports:
       - "5173:5173"
     volumes:
