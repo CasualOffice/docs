@@ -49,6 +49,41 @@ test.describe('Vertical ruler — sits beside the page and stays draggable', () 
     expect(after.y).toBeGreaterThan(before.y + 20);
   });
 
+  test('dragging a margin marker does not scroll the viewport', async ({ page }) => {
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.loadDocxFile('fixtures/example-with-image.docx');
+    await page.waitForSelector('.layout-page', { timeout: 30000 });
+
+    const scrollTop = () =>
+      page.evaluate(() => {
+        let n: HTMLElement | null = document.querySelector('.layout-page');
+        while (n) {
+          if (/(auto|scroll)/.test(getComputedStyle(n).overflowY)) return n.scrollTop;
+          n = n.parentElement;
+        }
+        return -1;
+      });
+
+    const marker = page.locator('.docx-ruler-marker-topMargin').first();
+    const mb = await marker.boundingBox();
+    if (!mb) throw new Error('marker not measurable');
+
+    const before = await scrollTop();
+    // Drag the top-margin marker down: the page reflows, but the viewport must
+    // hold still (regression: it used to chase the reflow and scroll +120px).
+    await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2);
+    await page.mouse.down();
+    for (const dy of [10, 20, 30, 40]) {
+      await page.mouse.move(mb.x + mb.width / 2, mb.y + mb.height / 2 + dy, { steps: 3 });
+      await page.waitForTimeout(80);
+    }
+    const during = await scrollTop();
+    await page.mouse.up();
+
+    expect(Math.abs(during - before)).toBeLessThan(12);
+  });
+
   test('stays aligned with the page top across zoom levels', async ({ page }) => {
     const editor = new EditorPage(page);
     await editor.goto();

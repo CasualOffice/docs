@@ -303,6 +303,13 @@ export interface PagedEditorProps {
   /** Emit the new zoom value after a phone pinch-zoom gesture. The
    *  host (DocxEditor) is expected to feed it back via the `zoom` prop. */
   onZoomChange?: (zoom: number) => void;
+  /** True while a ruler margin marker is being dragged. When set, the
+   *  scroll-restore after the reflow freezes the exact scroll position
+   *  instead of re-anchoring to content — otherwise the margin change
+   *  reflows the page and the viewport chases it, so the page appears to
+   *  scroll out from under the marker as you drag. A ref (not a prop
+   *  value) so toggling it mid-drag doesn't re-render the editor. */
+  marginDraggingRef?: React.RefObject<boolean>;
   /** Whether comments sidebar is open (shifts document left). */
   commentsSidebarOpen?: boolean;
   /** Sidebar overlay rendered inside the scroll container (scrolls with document). */
@@ -1373,6 +1380,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       selectionFormatting,
       onFormat,
       onZoomChange,
+      marginDraggingRef,
       commentsSidebarOpen = false,
       sidebarOverlay,
       scrollContainerRef: scrollContainerRefProp,
@@ -1412,6 +1420,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       scrollTopSnapshot: number | null;
       domAnchorPmStart: number | null;
       domAnchorOffsetInScroller: number;
+      /** When set, restore the exact captured scrollTop and skip the
+       *  ratio/DOM-anchor logic (used during ruler margin drags). */
+      freeze?: boolean;
     } | null>(null);
     const pendingIncrementalScrollSnapshotWrittenAtRef = useRef(0);
     const hiddenPMRef = useRef<HiddenProseMirrorRef>(null);
@@ -1947,19 +1958,25 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             }
 
             if (scrollParent?.isConnected) {
+              // While a ruler margin marker is being dragged, freeze the exact
+              // pre-reflow scroll position. The margin change reflows the whole
+              // page; the ratio/DOM-anchor restore would chase the moved content
+              // and scroll the viewport out from under the marker.
+              const freeze = marginDraggingRef?.current === true;
               let ratioForRestore = scrollRestoreRatioPre;
               if (renderPagesKind === 'incremental') {
                 const maxPost = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight);
                 ratioForRestore = scrollParent.scrollTop / maxPost;
               }
               const scrollTopSnapshot =
-                renderPagesKind === 'incremental' ? scrollParent.scrollTop : null;
+                renderPagesKind === 'incremental' || freeze ? scrollParent.scrollTop : null;
               pendingScrollRestoreRef.current = {
                 renderKind: renderPagesKind,
                 ratio: ratioForRestore,
                 scrollTopSnapshot,
                 domAnchorPmStart,
                 domAnchorOffsetInScroller,
+                freeze,
               };
               if (renderPagesKind === 'incremental' && scrollTopSnapshot != null) {
                 pendingIncrementalScrollSnapshotWrittenAtRef.current = performance.now();
@@ -2048,8 +2065,14 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         getScrollContainer() ?? (pagesEl ? findVerticalScrollParentOrRoot(pagesEl) : null);
       if (!pagesEl || !scrollParent?.isConnected) return;
 
-      const { renderKind, ratio, scrollTopSnapshot, domAnchorPmStart, domAnchorOffsetInScroller } =
-        pending;
+      const {
+        renderKind,
+        ratio,
+        scrollTopSnapshot,
+        domAnchorPmStart,
+        domAnchorOffsetInScroller,
+        freeze,
+      } = pending;
 
       const applyRatio = () => {
         const maxAfter = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight);
@@ -2057,7 +2080,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       };
 
       const applyIncrementalSnapshot = (): boolean => {
-        if (renderKind !== 'incremental' || scrollTopSnapshot == null) return false;
+        // `freeze` (ruler drag) restores the exact scrollTop regardless of
+        // renderKind so the page holds still under the dragged marker.
+        if ((renderKind !== 'incremental' && !freeze) || scrollTopSnapshot == null) return false;
         const maxAfter = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight);
         scrollParent.scrollTop = Math.min(Math.max(0, scrollTopSnapshot), maxAfter);
         return true;

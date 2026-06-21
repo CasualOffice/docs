@@ -1961,6 +1961,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const docxInputRef = useRef<HTMLInputElement>(null);
   const editorContentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // True while a ruler margin marker is being dragged. Threaded to PagedEditor
+  // so its post-reflow scroll-restore freezes the viewport instead of chasing
+  // the moved content (which made the page scroll out from under the marker).
+  const marginDraggingRef = useRef(false);
   const toolbarWrapperRef = useRef<HTMLDivElement>(null);
   const toolbarRoRef = useRef<ResizeObserver | null>(null);
   const [toolbarHeight, setToolbarHeight] = useState(0);
@@ -7667,6 +7671,9 @@ body { background: white; }
                           onFirstLineIndentChange={handleFirstLineIndentChange}
                           tabStops={state.paragraphTabs}
                           onTabStopRemove={handleTabStopRemove}
+                          onDragStateChange={(d) => {
+                            marginDraggingRef.current = d;
+                          }}
                         />
                       </div>
                     )}
@@ -7766,6 +7773,9 @@ body { background: white; }
                                   editable={!readOnly}
                                   onTopMarginChange={handleTopMarginChange}
                                   onBottomMarginChange={handleBottomMarginChange}
+                                  onDragStateChange={(d) => {
+                                    marginDraggingRef.current = d;
+                                  }}
                                 />
                               </div>
                             </div>
@@ -7802,6 +7812,7 @@ body { background: white; }
                           hfEditMode={hfEditPosition}
                           onBodyClick={handleBodyClick}
                           zoom={state.zoom}
+                          marginDraggingRef={marginDraggingRef}
                           wordCompat={wordCompat}
                           showFormattingMarks={showFormattingMarks}
                           readOnly={readOnly}
