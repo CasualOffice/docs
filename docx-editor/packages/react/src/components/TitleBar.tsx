@@ -8,7 +8,7 @@
  * - TitleBarRight: right-aligned actions slot
  */
 
-import React, { useCallback, Children, isValidElement } from 'react';
+import React, { useCallback, useState, Children, isValidElement } from 'react';
 import type { ReactNode } from 'react';
 import { MenuDropdown, SubMenuItem } from './ui/MenuDropdown';
 import type { MenuEntry } from './ui/MenuDropdown';
@@ -74,26 +74,41 @@ export function DocumentName({ value, onChange, placeholder, editable = true }: 
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t('titleBar.untitled');
   const displayName = stripExtension(value) ?? '';
+  const [focused, setFocused] = useState(false);
 
   if (!editable) {
     return (
-      <span className="text-base font-normal text-[color:var(--doc-text-on-surface,#1f2937)] px-2 py-0 min-w-[100px] max-w-[300px] truncate leading-tight">
+      <span className="text-base font-normal text-[color:var(--doc-text-on-surface,#1f2937)] px-2 py-0 min-w-[100px] max-w-[360px] truncate leading-tight">
         {displayName || resolvedPlaceholder}
       </span>
     );
   }
+  // Google Docs-style auto-sizing title field. An invisible sizer mirrors the
+  // text so the field hugs short names and grows up to the max width for long
+  // ones; past the cap the input scrolls horizontally. The ellipsis ("…") is a
+  // CSS affordance only when the field is *not* focused — while editing or
+  // renaming, the full name is always shown (and remains the real value), so a
+  // truncated display never gets mistaken for a truncated name.
+  const sizerText = displayName || resolvedPlaceholder;
   return (
-    <input
-      type="text"
-      value={displayName}
-      onChange={(e) => {
-        const raw = e.target.value;
-        onChange?.(raw.endsWith('.docx') ? raw : raw + '.docx');
-      }}
-      placeholder={resolvedPlaceholder}
-      className="text-base font-normal text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent border-0 outline-none px-2 py-0 rounded hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-surface,white)] focus:ring-1 focus:ring-slate-300 min-w-[100px] max-w-[300px] truncate leading-tight"
-      aria-label={t('titleBar.documentNameAriaLabel')}
-    />
+    <span className="relative inline-flex items-center min-w-[100px] max-w-[360px] leading-tight">
+      <span aria-hidden className="invisible whitespace-pre px-2 text-base font-normal">
+        {sizerText || ' '}
+      </span>
+      <input
+        type="text"
+        value={displayName}
+        onChange={(e) => {
+          const raw = e.target.value;
+          onChange?.(raw.endsWith('.docx') ? raw : raw + '.docx');
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder={resolvedPlaceholder}
+        className={`absolute inset-0 w-full text-base font-normal text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent border-0 outline-none px-2 py-0 rounded hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-surface,white)] focus:ring-1 focus:ring-slate-300 leading-tight ${focused ? '' : 'truncate'}`}
+        aria-label={t('titleBar.documentNameAriaLabel')}
+      />
+    </span>
   );
 }
 
