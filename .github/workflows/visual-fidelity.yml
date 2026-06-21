@@ -48,6 +48,9 @@ jobs:
         working-directory: docx-editor
     steps:
       - uses: actions/checkout@v6
+        with:
+          # @schnsrw/design-system tokens (submodule) are inlined by the CSS build.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

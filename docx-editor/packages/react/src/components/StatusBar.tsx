@@ -49,7 +49,7 @@ const barStyle: CSSProperties = {
   gap: 16,
   padding: '4px 12px',
   borderTop: '1px solid var(--doc-border, #e0e0e0)',
-  background: 'var(--doc-surface, #fafafa)',
+  background: 'var(--doc-chrome, #eef1f5)',
   color: 'var(--doc-text-on-surface-muted, #5f6368)',
   fontSize: 12,
   height: 28,

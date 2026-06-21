@@ -86,6 +86,10 @@
      with the suite chrome strip. */
   --doc-bg: var(--color-surface-strip);
 
+  /* Chrome strips (title bar, toolbar, status bar) — one consistent suite
+     grey so only the page + floating panels read as white cards. */
+  --doc-chrome: var(--color-surface-strip);
+
   /* Primary action color — DS accent (cyan under [data-app='docs']). */
   --doc-primary: var(--color-accent);
   --doc-primary-hover: var(--color-accent-hover);

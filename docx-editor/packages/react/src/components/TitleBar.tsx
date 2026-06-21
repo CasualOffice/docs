@@ -1146,7 +1146,7 @@ export function TitleBar({ children }: TitleBarProps) {
 
   return (
     <div
-      className="flex items-stretch bg-[color:var(--doc-surface,white)] text-[color:var(--doc-text-on-surface,#1f2937)] pt-2 pb-1"
+      className="flex items-stretch bg-[color:var(--doc-chrome,#eef1f5)] text-[color:var(--doc-text-on-surface,#1f2937)] pt-2 pb-1"
       onMouseDown={handleMouseDown}
       data-testid="title-bar"
     >

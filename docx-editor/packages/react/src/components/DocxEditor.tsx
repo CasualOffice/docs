@@ -203,8 +203,6 @@ const CitationsDialog = lazy(() =>
   import('./dialogs/CitationsDialog').then((m) => ({ default: m.CitationsDialog }))
 );
 import { MaterialSymbol } from './ui/Icons';
-import { RightDockPanel } from './RightDockPanel';
-import { PanelState } from './ui/PanelState';
 import { Tooltip } from './ui/Tooltip';
 import {
   TextContextMenu,
@@ -1631,10 +1629,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // variable. Updated every render in an effect below.
   const commentsCountRef = useRef(0);
   const handleToggleComments = useCallback(() => {
-    // Always flip the panel — the empty-state RightDockPanel below
-    // handles the no-comments case so the rail icon's behavior is
-    // consistent: it opens or closes a visible surface, never a toast.
-    setShowCommentsSidebar((v) => !v);
+    // Comments use the anchored-cards approach: each thread renders as a
+    // card floating next to its commented text (UnifiedSidebar), not a
+    // solid docked panel. On an empty doc there are no anchors to show, so
+    // surface a toast hint instead of an empty panel.
+    setShowCommentsSidebar((v) => {
+      const next = !v;
+      if (next && commentsCountRef.current === 0) {
+        toast.info('No comments yet. Select text and click "Add comment" to start a thread.');
+      }
+      return next;
+    });
     setExpandedSidebarItem(null);
     setShowVersionHistory(false);
   }, []);
@@ -7633,9 +7638,10 @@ body { background: white; }
                   }}
                 />
 
-                {/* Below-toolbar horizontal row: scroll container + right-edge
-                    PanelRail. The rail sits inside this wrapper so it spans
-                    only the editor body's height, not the toolbar's. */}
+                {/* Below-toolbar horizontal row: scroll container + the floating
+                    PanelRail. position:relative anchors the rail's absolute
+                    positioning so it floats over the top-right of the editor
+                    body (not the toolbar) without taking flex space. */}
                 <div
                   style={{
                     display: 'flex',
@@ -7643,6 +7649,7 @@ body { background: white; }
                     minHeight: 0,
                     minWidth: 0,
                     flexDirection: 'row',
+                    position: 'relative',
                   }}
                 >
                   {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
@@ -8177,32 +8184,11 @@ body { background: white; }
                     />
                   )}
 
-                  {/* Comments empty-state panel — the rail icon's toggle
-                      should always reveal a visible surface, even when
-                      no comments exist. The audit caught the previous
-                      behavior: clicking the icon flashed a toast at the
-                      bottom and the user never saw a panel. The
-                      existing UnifiedSidebar only paints margin cards
-                      next to each anchored comment, so on an empty
-                      doc nothing was visible. This panel fills that
-                      gap. When `comments.length` rises above zero the
-                      margin-cards take over and this empty state goes
-                      away naturally. */}
-                  {showCommentsSidebar && comments.length === 0 && (
-                    <RightDockPanel
-                      title="Comments"
-                      icon={<MaterialSymbol name="comment" size={18} />}
-                      testId="comments-panel"
-                      ariaLabel="Comments"
-                      onClose={() => setShowCommentsSidebar(false)}
-                    >
-                      <PanelState
-                        kind="empty"
-                        message="No comments yet."
-                        hint='Select text in the document and click "Add comment" to start a thread.'
-                      />
-                    </RightDockPanel>
-                  )}
+                  {/* Comments use the anchored-cards approach (UnifiedSidebar
+                      paints a floating card next to each commented span).
+                      There is intentionally no solid docked comments panel —
+                      the empty-doc case is handled by a toast hint in
+                      handleToggleComments. */}
 
                   {/* AI right-side panels — laid out as flex siblings of
                       the scroll container so they share the exact same
