@@ -5462,6 +5462,52 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [getActiveEditorView, focusActiveEditor]
   );
 
+  // Insert a new, editable text box (or a styled "callout" variant) at
+  // the cursor. The textBox node is block-level with `(paragraph|table)+`
+  // content, so we seed it with one empty paragraph and drop the caret
+  // inside so the user can type immediately.
+  const handleInsertTextBox = useCallback(
+    (variant: 'plain' | 'callout' = 'plain') => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const { schema } = view.state;
+      const textBoxType = schema.nodes.textBox;
+      const paragraphType = schema.nodes.paragraph;
+      if (!textBoxType || !paragraphType) return;
+
+      const attrs =
+        variant === 'callout'
+          ? {
+              width: 260,
+              displayMode: 'block' as const,
+              fillColor: '#eff6ff',
+              outlineColor: '#3b82f6',
+              outlineWidth: 1,
+              outlineStyle: 'solid',
+            }
+          : { width: 240, displayMode: 'block' as const };
+
+      const node =
+        textBoxType.createAndFill(attrs, paragraphType.create()) ??
+        textBoxType.create(attrs, paragraphType.create());
+      const tr = view.state.tr.replaceSelectionWith(node);
+      // Place the caret inside the new text box's first paragraph. After
+      // replaceSelectionWith, the node sits where the selection was; its
+      // content starts 2 positions in (textBox open + paragraph open).
+      const insertedAt = tr.selection.from - node.nodeSize;
+      const inside = insertedAt + 2;
+      try {
+        tr.setSelection(TextSelection.create(tr.doc, inside));
+      } catch {
+        // Fall back to the default post-insert selection if the math is
+        // off for an unusual schema configuration.
+      }
+      view.dispatch(tr.scrollIntoView());
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
   const handleInsertCitation = useCallback(
     (formatted: string, url?: string) => {
       const view = getActiveEditorView();
@@ -7585,6 +7631,7 @@ body { background: white; }
                       spellcheckEnabled={spellOn}
                       onOpenCitations={handleOpenCitations}
                       onInsertShape={handleInsertShape}
+                      onInsertTextBox={handleInsertTextBox}
                       onSetColorTheme={handleSetColorTheme}
                       colorTheme={colorTheme}
                       isDirty={isDirty}
@@ -9200,6 +9247,18 @@ body { background: white; }
                       label: 'Shape · Arrow',
                       path: 'Insert',
                       run: () => handleInsertShape('arrow'),
+                    },
+                    {
+                      id: 'insert.textbox',
+                      label: 'Text box',
+                      path: 'Insert',
+                      run: () => handleInsertTextBox('plain'),
+                    },
+                    {
+                      id: 'insert.callout',
+                      label: 'Callout',
+                      path: 'Insert',
+                      run: () => handleInsertTextBox('callout'),
                     },
 
                     {

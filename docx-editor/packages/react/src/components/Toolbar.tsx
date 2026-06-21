@@ -361,6 +361,8 @@ export interface ToolbarProps {
   onOpenCitations?: () => void;
   /** Insert → Shape — inserts a default SVG of the chosen primitive (C2 v0). */
   onInsertShape?: (type: 'rectangle' | 'ellipse' | 'line' | 'arrow') => void;
+  /** Insert → Text box / Callout — inserts an editable text box at the cursor. */
+  onInsertTextBox?: (variant: 'plain' | 'callout') => void;
   /** File → "Email as attachment" — download + open mailto (F2). */
   onEmailAsAttachment?: () => void;
   /** View → Show formatting marks — toggles ¶ / → / ↵ overlay (F6). */
