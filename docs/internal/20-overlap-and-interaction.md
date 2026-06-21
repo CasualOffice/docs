@@ -93,17 +93,16 @@ Corpus mean 43.8 → **52.7**. B1 (logo overlap), B2 (hazard overlap), and the
 multi-column page count all solved.
 
 ### Remaining for pixel-faithful
-- **medical-incident-form body drift (33.1)** — ROOT-CAUSED (not table rows; rows
-  match the reference within the validated Wingdings tolerance). The driver is
-  the **header-margin path with a negative `w:pgMar` top** (`w:top="-270"` =
-  −13.5pt): `getMargins`/`extendHeader` in `PagedEditor.tsx` sets
-  `effectiveMargins.top = headerDistance + headerContentHeight`, and our
-  `headerContentHeight` for `header1.xml` is ~25–32pt larger than LibreOffice's,
-  starting the body ~22–32pt low on every page → content cascades (page count
-  still 4=4 but offset by ~1 section). In LibreOffice a negative top margin lets
-  the header OVERLAP the body rather than fully displacing it. **Next step:** a
-  header-focused fix to `headerContentHeight`/overlap behavior — high regression
-  risk (shared by SDS 16pp + Form025U + the 39 round-trip fixtures), needs full
-  VF + round-trip guards.
+- **medical-incident-form body drift (33.1)** — header-margin part **FIXED (PR #19)**:
+  the doc has `<w:pgMar w:top="-270">` (−13.5pt) and the header-extension fully
+  displaced the body (`effectiveMargins.top = headerDistance + headerContentHeight`),
+  ignoring the negative margin. `computeExtendedTopMargin` adds a `min(marginTop,0)`
+  overlap-pull (no-op for positive-margin docs), so the header now overlaps the
+  body per Word — body top recovered ~13.5pt. medical 33.1→33.6, SDS/Form025U
+  unchanged. **Remaining medical gap (the bulk of its low score):** font-metric
+  row-height — the editor wraps some left-column label cells to MORE lines than
+  LibreOffice, making cells taller and cascading ~1 row/page (p3/p4 block-corr
+  ≈0). Separate, higher-risk (font substitution / line-wrap metrics) — tracked
+  for a focused metrics pass, NOT the header path.
 - **B4** (SDS subtitle Y) — recheck since B1 landed.
 - **Address text-frame cramp** (SDS p1, incremental — separate behind-doc frame).
