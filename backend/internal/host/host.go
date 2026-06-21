@@ -146,6 +146,17 @@ type Locker interface {
 	RefreshLock(ctx context.Context, docID, lockID, authToken string) error
 }
 
+// RevisionStore is an optional host capability: it returns the .docx
+// bytes of a specific historical revision so the editor can restore a
+// past version. Hosts that retain per-revision bytes implement it;
+// callers type-assert for it (like Locker). Hosts that only keep
+// revision metadata, or where the host owns versioning (e.g. WOPI),
+// omit it — the gateway then surfaces 501 for the restore-download
+// route. Returns ErrNotFound when the doc or version is unknown.
+type RevisionStore interface {
+	FetchRevision(docID string, version uint64) ([]byte, error)
+}
+
 // Sentinel errors. Implementations either return these directly
 // or wrap an HTTP-status-coded error that callers can match via
 // errors.Is.

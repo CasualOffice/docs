@@ -82,6 +82,10 @@ export interface TextBoxAttrs {
    */
   posAlignH?: string;
   posAlignV?: string;
+  /** Original OOXML envelope for verbatim re-emission on save. */
+  rawXml?: string;
+  /** Dedupe key for shapes sharing one source envelope. */
+  envelopeKey?: string;
 }
 
 export const TextBoxExtension = createNodeExtension({
@@ -115,6 +119,10 @@ export const TextBoxExtension = createNodeExtension({
       posRelFromV: { default: null },
       posAlignH: { default: null },
       posAlignV: { default: null },
+      // Original OOXML envelope (VML/DrawingML), carried through PM + Yjs so a
+      // from-PM rebuild re-emits the drawing verbatim instead of dropping it.
+      rawXml: { default: null },
+      envelopeKey: { default: null },
     },
     parseDOM: [
       {

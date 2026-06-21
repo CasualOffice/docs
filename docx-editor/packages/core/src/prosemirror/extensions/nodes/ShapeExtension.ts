@@ -64,6 +64,10 @@ export interface ShapeAttrs {
   glowColor?: string;
   /** Glow radius in pixels */
   glowRadius?: number;
+  /** Original OOXML envelope (VML/DrawingML) for verbatim re-emission on save. */
+  rawXml?: string;
+  /** Dedupe key for shapes sharing one source envelope. */
+  envelopeKey?: string;
 }
 
 /**
@@ -161,6 +165,12 @@ export const ShapeExtension = createNodeExtension({
       shadowOffsetY: { default: null },
       glowColor: { default: null },
       glowRadius: { default: null },
+      // The shape's original OOXML envelope (VML/DrawingML), carried through
+      // PM + Yjs so a save/edit/peer/snapshot re-emits the drawing verbatim
+      // instead of dropping it on a from-PM rebuild. `envelopeKey` dedupes
+      // shapes that share one source envelope (serializer emits it once).
+      rawXml: { default: null },
+      envelopeKey: { default: null },
     },
     parseDOM: [
       {

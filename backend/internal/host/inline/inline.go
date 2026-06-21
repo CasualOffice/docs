@@ -50,13 +50,13 @@ type entry struct {
 	// save cycles doesn't grow unbounded. Powers GET
 	// /api/docs/{id}/history (Stream A1 of the parity pipeline).
 	//
-	// NOTE: this is metadata only — we do NOT retain the per-revision
-	// bytes (that needs the M2 serializer worker + per-revision blob
-	// storage). So the history endpoint can show "saved at <when>,
-	// <size>" but content-revert to an arbitrary past revision is a
-	// future capability. The editor's local useEditHistory still
-	// owns in-session undo/revert.
+	// Powers GET /api/docs/{id}/history.
 	revisions []RevisionMeta
+	// revBytes retains the .docx bytes per revision version so the
+	// editor can restore a past version (host.RevisionStore). Pruned
+	// in lockstep with `revisions` (same maxRevisions window). Keyed
+	// by RevisionMeta.Version.
+	revBytes map[uint64][]byte
 }
 
 // RevisionMeta is a type alias for the shared host.RevisionMeta so
@@ -117,6 +117,9 @@ func (s *Store) Store(fileName string, contents []byte) (string, error) {
 		revisions: []RevisionMeta{
 			{Version: 1, SavedAt: now, SizeBytes: len(contents)},
 		},
+		revBytes: map[uint64][]byte{
+			1: append([]byte(nil), contents...),
+		},
 	}
 	return docID, nil
 }
@@ -160,13 +163,39 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 		SavedAt:   now,
 		SizeBytes: len(contents),
 	})
+	if e.revBytes == nil {
+		e.revBytes = make(map[uint64][]byte)
+	}
+	e.revBytes[e.version] = append([]byte(nil), contents...)
 	// Roll off the oldest revisions past the cap. Keep the tail
 	// (most-recent maxRevisions) so the history always shows the
-	// latest saves.
+	// latest saves; drop the matching per-revision bytes too.
 	if len(e.revisions) > maxRevisions {
+		drop := e.revisions[:len(e.revisions)-maxRevisions]
+		for _, r := range drop {
+			delete(e.revBytes, r.Version)
+		}
 		e.revisions = e.revisions[len(e.revisions)-maxRevisions:]
 	}
 	return nil
+}
+
+// FetchRevision implements host.RevisionStore: returns the .docx bytes
+// of a specific past revision so the editor can restore it. Returns
+// host.ErrNotFound if the doc or version is unknown (e.g. rolled off
+// past the maxRevisions window).
+func (s *Store) FetchRevision(docID string, version uint64) ([]byte, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e, ok := s.docs[docID]
+	if !ok {
+		return nil, host.ErrNotFound
+	}
+	b, ok := e.revBytes[version]
+	if !ok {
+		return nil, host.ErrNotFound
+	}
+	return append([]byte(nil), b...), nil // copy for caller
 }
 
 // History returns a copy of the revision-metadata log for docID,

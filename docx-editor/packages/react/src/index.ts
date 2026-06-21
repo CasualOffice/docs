@@ -956,6 +956,11 @@ export {
   type VersionHistoryPanelProps,
 } from './components/sidebar/VersionHistoryPanel';
 export {
+  fetchServerVersions,
+  downloadServerVersion,
+  type ServerVersionBackend,
+} from './version-history/server-source';
+export {
   useEditHistory,
   type EditHistoryEntry,
   type UseEditHistoryOptions,

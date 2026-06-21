@@ -49,9 +49,13 @@ describe('co-editing fidelity — envelope loss across the CRDT/PM boundary (aud
     const outNoSeed = serializeDocument(rebuiltNoSeed);
     const outWithSeed = serializeDocument(rebuiltWithSeed);
 
-    // The loss: the envelope is gone from a from-PM rebuild — and holding the
-    // seed model does NOT save it, because the body is rebuilt from PM.
-    expect(outNoSeed).not.toContain(ENVELOPE);
-    expect(outWithSeed).not.toContain(ENVELOPE);
+    // FIXED: the drawing envelope now rides through the PM document (carried on
+    // the shape/textBox node attrs in `toProseDoc`, restored in `fromProseDoc`),
+    // so a from-PM rebuild re-emits it verbatim — with OR without the seed. This
+    // is what makes drawings survive a structural edit, a collab peer joining
+    // from the Y.Doc, and a server-side snapshot. This file is now the
+    // regression guard for that.
+    expect(outNoSeed).toContain(ENVELOPE);
+    expect(outWithSeed).toContain(ENVELOPE);
   });
 });

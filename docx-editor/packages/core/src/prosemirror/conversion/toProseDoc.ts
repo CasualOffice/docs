@@ -1935,6 +1935,11 @@ function convertShape(shape: Shape): PMNode {
     posRelFromV: posV?.relativeTo ?? null,
     posAlignH: posH?.alignment ?? null,
     posAlignV: posV?.alignment ?? null,
+    // Carry the original OOXML envelope so a from-PM rebuild (structural edit,
+    // collab peer, server snapshot) re-emits the drawing verbatim rather than
+    // dropping it. Survives Yjs intact (verified).
+    rawXml: shape.rawXml ?? null,
+    envelopeKey: shape.envelopeKey ?? null,
   });
 }
 
@@ -1995,6 +2000,10 @@ function extractTextBoxesFromParagraph(paragraph: Paragraph): TextBox[] {
                   ? shape.textBody.content
                   : [{ type: 'paragraph', content: [] }],
               margins: shape.textBody.margins,
+              // Carry the original OOXML envelope so a from-PM rebuild re-emits
+              // this drawing verbatim instead of dropping it (collab/snapshot).
+              rawXml: shape.rawXml,
+              envelopeKey: shape.envelopeKey,
             });
           }
         }
@@ -2084,6 +2093,10 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
       posRelFromV: posV?.relativeTo ?? null,
       posAlignH: posH?.alignment ?? null,
       posAlignV: posV?.alignment ?? null,
+      // Original OOXML envelope — re-emitted verbatim on a from-PM rebuild so
+      // the drawing survives structural edits / collab peers / server snapshots.
+      rawXml: textBox.rawXml ?? null,
+      envelopeKey: textBox.envelopeKey ?? null,
     },
     contentNodes
   );
