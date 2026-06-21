@@ -191,6 +191,7 @@ const tableSpec: NodeSpec = {
     columnWidths: { default: null },
     floating: { default: null },
     cellMargins: { default: null },
+    resolvedCellMargins: { default: null },
     look: { default: null },
     _originalFormatting: { default: null },
   },

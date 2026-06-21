@@ -1350,9 +1350,15 @@ function convertTable(node: PMNode, startPos: number, options: ToFlowBlocksOptio
   let offset = startPos + 1; // +1 for opening tag
 
   // Read the table-level <w:tblCellMar> default cell margins (twips). Cells
-  // cascade to this when their own w:tcMar is absent or explicit-zero. PM
-  // stores it as `cellMargins: { top, bottom, left, right }` in twips.
-  const tableCellMargins = node.attrs.cellMargins as
+  // cascade to this when their own w:tcMar is absent or explicit-zero.
+  //
+  // Prefer `resolvedCellMargins` — the per-side cascade result (inline →
+  // table style → default table style). The bare `cellMargins` attr mirrors
+  // the verbatim inline tblCellMar for round-trip and may omit sides the
+  // source left to inheritance (e.g. a top/bottom-only tblCellMar); using it
+  // directly would zero the unspecified left/right and let cell text run to
+  // the cell edge. `resolvedCellMargins` carries the inherited sides.
+  const tableCellMargins = (node.attrs.resolvedCellMargins ?? node.attrs.cellMargins) as
     | { top?: number; bottom?: number; left?: number; right?: number }
     | undefined;
 
