@@ -643,6 +643,38 @@ function convertTable(
       }
     : undefined;
 
+  // Render-only resolved margins. The `cellMargins` attr above stays the
+  // verbatim inline <w:tblCellMar> so round-trip serialization re-emits
+  // exactly what the source had. But the cascade is PER-SIDE for LAYOUT:
+  // a table whose inline tblCellMar specifies only top/bottom (a common
+  // authoring pattern, e.g. medical-incident-form) must still inherit
+  // left/right from the table style / default table style — Word does NOT
+  // treat the unspecified sides as zero. We resolve each side independently
+  // here and stash it in a non-serialized attr the layout bridge prefers;
+  // this is what keeps the label column's left text inset (~108 twips)
+  // matching LibreOffice instead of letting text run to the cell edge
+  // (wider text area → drifted wrap points → taller rows → page drift).
+  const cellMarginSources = [
+    table.formatting?.cellMargins,
+    tableStyle?.tblPr?.cellMargins,
+    defaultTableStyle?.tblPr?.cellMargins,
+  ];
+  const resolveCellMarginSide = (side: 'top' | 'bottom' | 'left' | 'right') => {
+    for (const source of cellMarginSources) {
+      const measurement = source?.[side];
+      if (measurement?.value != null) return measurement.value;
+    }
+    return undefined;
+  };
+  const resolvedCellMarginsAttr = cellMarginSources.some((source) => source != null)
+    ? {
+        top: resolveCellMarginSide('top'),
+        bottom: resolveCellMarginSide('bottom'),
+        left: resolveCellMarginSide('left'),
+        right: resolveCellMarginSide('right'),
+      }
+    : undefined;
+
   const attrs: TableAttrs = {
     styleId: table.formatting?.styleId,
     width: table.formatting?.width?.value,
@@ -651,6 +683,7 @@ function convertTable(
     columnWidths: columnWidths,
     floating: table.formatting?.floating,
     cellMargins: cellMarginsAttr,
+    resolvedCellMargins: resolvedCellMarginsAttr,
     look: table.formatting?.look,
     _originalFormatting: table.formatting || undefined,
   };

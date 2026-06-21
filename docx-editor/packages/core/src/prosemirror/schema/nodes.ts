@@ -235,6 +235,15 @@ export interface TableAttrs {
   floating?: FloatingTableProperties;
   /** Default cell margins for the table (w:tblCellMar), in twips */
   cellMargins?: { top?: number; bottom?: number; left?: number; right?: number };
+  /**
+   * Per-side-resolved cell margins for LAYOUT only (twips). Unlike
+   * `cellMargins` — which mirrors the verbatim inline w:tblCellMar for
+   * lossless round-trip — this resolves each side independently through the
+   * inline → table-style → default-table-style cascade (§17.4.41). A table
+   * whose inline tblCellMar sets only top/bottom still inherits left/right
+   * here, matching Word/LibreOffice text insets. Never serialized.
+   */
+  resolvedCellMargins?: { top?: number; bottom?: number; left?: number; right?: number };
   /** Table look flags for conditional formatting (w:tblLook) */
   look?: TableLook;
   /** Original table formatting from DOCX for lossless round-trip serialization */
