@@ -51,6 +51,8 @@ import {
 } from './DocumentOutline';
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
+import { PropertiesPanel, type PropertiesTargetKind } from './sidebar/PropertiesPanel';
+import { ImagePropertiesSection } from './sidebar/ImagePropertiesSection';
 import { useEditHistory } from '../hooks/useEditHistory';
 import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
 import { downloadServerVersion, type ServerVersionBackend } from '../version-history/server-source';
@@ -1654,6 +1656,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Comments + version-history are mutually exclusive — opening one
   // closes the other so the right rail doesn't double-stack panels.
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
   const editHistory = useEditHistory({ author: 'You' });
 
   // Shared toggle handlers — used by both the toolbar buttons and the
@@ -2378,11 +2381,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // `handleToggleVersionHistory`'s historical behaviour — those two
   // share the right-margin slot).
   const openRightPanel = useCallback(
-    (which: 'writer' | 'chat' | 'history' | 'aiSuggestion' | 'none') => {
+    (which: 'writer' | 'chat' | 'history' | 'properties' | 'aiSuggestion' | 'none') => {
       setShowWritingAssistant(which === 'writer');
       setShowChatPanel(which === 'chat');
       setShowVersionHistory(which === 'history');
-      if (which === 'history') {
+      setShowProperties(which === 'properties');
+      if (which === 'history' || which === 'properties') {
         setShowCommentsSidebar(false);
         setExpandedSidebarItem(null);
       }
@@ -8323,6 +8327,43 @@ body { background: white; }
                     />
                   )}
 
+                  {showProperties &&
+                    (() => {
+                      // Contextual Format panel: shows the selected object's
+                      // properties. Kind derived from the live PM selection.
+                      const propsKind: PropertiesTargetKind | null = state.pmImageContext
+                        ? 'image'
+                        : state.pmTableContext?.isInTable
+                          ? 'table'
+                          : null;
+                      // OVERLAY, never push: unlike the flex-sibling panels,
+                      // the Format panel floats over the right desk margin so
+                      // toggling it mid-edit causes ZERO document reflow (no
+                      // canvas shift). It's a manual toggle (rail button), never
+                      // auto-opened on selection.
+                      return (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 25,
+                            boxShadow: '-4px 0 16px rgba(0,0,0,0.08)',
+                          }}
+                        >
+                          <PropertiesPanel kind={propsKind} onClose={() => openRightPanel('none')}>
+                            {propsKind === 'image' && state.pmImageContext && (
+                              <ImagePropertiesSection
+                                wrapType={state.pmImageContext.wrapType}
+                                onSetWrap={handleImageWrapType}
+                              />
+                            )}
+                          </PropertiesPanel>
+                        </div>
+                      );
+                    })()}
+
                   {/* Comments use the anchored-cards approach (UnifiedSidebar
                       paints a floating card next to each commented span).
                       There is intentionally no solid docked comments panel —
@@ -8358,6 +8399,10 @@ body { background: white; }
                       onToggleComments={handleToggleComments}
                       onToggleHistory={() =>
                         openRightPanel(showVersionHistory ? 'none' : 'history')
+                      }
+                      propertiesVisible={showProperties}
+                      onToggleProperties={() =>
+                        openRightPanel(showProperties ? 'none' : 'properties')
                       }
                       // Writer + chat rail toggles unwired — LLM
                       // gating. Restore: writerVisible={showWritingAssistant}
