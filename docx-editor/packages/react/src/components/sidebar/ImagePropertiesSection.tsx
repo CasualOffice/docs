@@ -151,35 +151,134 @@ const sizeLabel: CSSProperties = {
   color: 'var(--doc-text-muted)',
 };
 
+export type ImageTransform = 'rotateCW' | 'rotateCCW' | 'flipH' | 'flipV';
+
 export interface ImagePropertiesSectionProps {
   /** Current wrap mode of the selected image. */
   wrapType: string;
   /** Current rendered width/height in px (drives the editable inputs). */
   width?: number | null;
   height?: number | null;
+  /** Current border attrs (drive the border controls). */
+  borderWidth?: number | null;
+  borderColor?: string | null;
+  /** Current alt text. */
+  alt?: string | null;
   /** Apply a wrap mode (host wires this to setImageWrapType). */
   onSetWrap: (value: string) => void;
   /** Apply an explicit width/height (host wires this to setNodeMarkup). */
   onSetSize?: (width: number, height: number) => void;
+  /** Rotate/flip the image (host wires this to handleImageTransform). */
+  onTransform?: (action: ImageTransform) => void;
+  /** Set border width/color/style (host wires this to setNodeMarkup). */
+  onSetBorder?: (
+    borderWidth: number | null,
+    borderColor: string | null,
+    borderStyle: string | null
+  ) => void;
+  /** Set alt text (host wires this to setNodeMarkup). */
+  onSetAlt?: (alt: string) => void;
 }
+
+const BORDER_PRESETS: { label: string; width: number | null }[] = [
+  { label: 'None', width: null },
+  { label: 'Thin', width: 1 },
+  { label: 'Medium', width: 2 },
+  { label: 'Thick', width: 4 },
+];
+
+const ARRANGE: { action: ImageTransform; label: string; icon: JSX.Element }[] = [
+  {
+    action: 'rotateCCW',
+    label: 'Rotate left',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M7.11 8.53 5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z" />
+      </svg>
+    ),
+  },
+  {
+    action: 'rotateCW',
+    label: 'Rotate right',
+    icon: (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        style={{ transform: 'scaleX(-1)' }}
+      >
+        <path d="M7.11 8.53 5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z" />
+      </svg>
+    ),
+  },
+  {
+    action: 'flipH',
+    label: 'Flip horizontal',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3v18" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2 2" />
+        <path d="M10 6 4 12l6 6V6zM14 6v12l6-6-6-6z" fill="currentColor" opacity="0.85" />
+      </svg>
+    ),
+  },
+  {
+    action: 'flipV',
+    label: 'Flip vertical',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 12h18" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2 2" />
+        <path d="M6 10 12 4l6 6H6zM6 14h12l-6 6-6-6z" fill="currentColor" opacity="0.85" />
+      </svg>
+    ),
+  },
+];
+
+const arrangeBtn: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 40,
+  height: 36,
+  border: '1px solid var(--doc-border, #dadce0)',
+  borderRadius: 8,
+  background: 'transparent',
+  color: 'var(--doc-text, #202124)',
+  cursor: 'pointer',
+};
 
 export function ImagePropertiesSection({
   wrapType,
   width,
   height,
+  borderWidth,
+  borderColor,
+  alt,
   onSetWrap,
   onSetSize,
+  onTransform,
+  onSetBorder,
+  onSetAlt,
 }: ImagePropertiesSectionProps) {
   // Local, editable copies so typing doesn't fight the live node attrs. They
   // re-sync whenever the selected image (its size) changes underneath.
   const [w, setW] = useState<string>(width != null ? String(Math.round(width)) : '');
   const [h, setH] = useState<string>(height != null ? String(Math.round(height)) : '');
   const [lockAspect, setLockAspect] = useState(true);
+  const [color, setColor] = useState<string>(borderColor || '#000000');
+  const [altText, setAltText] = useState<string>(alt || '');
 
   useEffect(() => {
     setW(width != null ? String(Math.round(width)) : '');
     setH(height != null ? String(Math.round(height)) : '');
   }, [width, height]);
+  useEffect(() => {
+    setColor(borderColor || '#000000');
+  }, [borderColor]);
+  useEffect(() => {
+    setAltText(alt || '');
+  }, [alt]);
 
   const aspect = width && height ? width / height : null;
 
@@ -283,6 +382,127 @@ export function ImagePropertiesSection({
             />
             Lock aspect ratio
           </label>
+        </>
+      )}
+
+      {onTransform && (
+        <>
+          <div style={GROUP_HEADER}>Arrange</div>
+          <div
+            style={{ display: 'flex', gap: 6, padding: '0 16px 4px' }}
+            role="group"
+            aria-label="Arrange"
+          >
+            {ARRANGE.map((a) => (
+              <button
+                key={a.action}
+                type="button"
+                title={a.label}
+                aria-label={a.label}
+                style={arrangeBtn}
+                data-testid={`properties-image-${a.action}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onTransform(a.action);
+                }}
+              >
+                {a.icon}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {onSetBorder && (
+        <>
+          <div style={GROUP_HEADER}>Border</div>
+          <div
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 16px 6px' }}
+            role="group"
+            aria-label="Border width"
+          >
+            {BORDER_PRESETS.map((b) => {
+              const active = (borderWidth ?? null) === b.width;
+              return (
+                <button
+                  key={b.label}
+                  type="button"
+                  style={{
+                    ...arrangeBtn,
+                    width: 'auto',
+                    padding: '0 12px',
+                    fontSize: 12.5,
+                    color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text, #202124)',
+                    background: active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
+                    borderColor: active
+                      ? 'var(--doc-primary, #1a73e8)'
+                      : 'var(--doc-border, #dadce0)',
+                  }}
+                  data-testid={`properties-image-border-${b.label.toLowerCase()}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onSetBorder(
+                      b.width,
+                      b.width == null ? null : color,
+                      b.width == null ? null : 'solid'
+                    );
+                  }}
+                >
+                  {b.label}
+                </button>
+              );
+            })}
+          </div>
+          <label style={{ ...SIZE_ROW, ...sizeLabel, paddingBottom: 14 }}>
+            Color
+            <input
+              type="color"
+              value={color}
+              data-testid="properties-image-border-color"
+              style={{
+                marginLeft: 8,
+                width: 36,
+                height: 26,
+                padding: 0,
+                border: '1px solid var(--doc-border, #dadce0)',
+                borderRadius: 6,
+                background: 'none',
+                cursor: 'pointer',
+              }}
+              onChange={(e) => {
+                setColor(e.target.value);
+                // Apply immediately if a border is already on; else just stage.
+                if (borderWidth) onSetBorder(borderWidth, e.target.value, 'solid');
+              }}
+            />
+          </label>
+        </>
+      )}
+
+      {onSetAlt && (
+        <>
+          <div style={GROUP_HEADER}>Alt text</div>
+          <div style={{ padding: '0 16px 16px' }}>
+            <textarea
+              value={altText}
+              data-testid="properties-image-alt"
+              placeholder="Describe this image"
+              rows={2}
+              style={{
+                width: '100%',
+                resize: 'vertical',
+                padding: '6px 8px',
+                fontSize: 13,
+                border: '1px solid var(--doc-border, #dadce0)',
+                borderRadius: 6,
+                background: 'var(--doc-surface, #fff)',
+                color: 'var(--doc-text, #202124)',
+                boxSizing: 'border-box',
+              }}
+              onChange={(e) => setAltText(e.target.value)}
+              onBlur={() => onSetAlt(altText)}
+            />
+          </div>
         </>
       )}
     </div>
