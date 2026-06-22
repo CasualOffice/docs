@@ -875,6 +875,10 @@ interface EditorState {
     borderStyle: string | null;
     width: number | null;
     height: number | null;
+    distTop: number | null;
+    distBottom: number | null;
+    distLeft: number | null;
+    distRight: number | null;
   } | null;
   pmTextBoxContext: {
     pos: number;
@@ -2989,6 +2993,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             borderStyle: (selectedNode.attrs.borderStyle as string) ?? null,
             width: (selectedNode.attrs.width as number) ?? null,
             height: (selectedNode.attrs.height as number) ?? null,
+            distTop: (selectedNode.attrs.distTop as number) ?? null,
+            distBottom: (selectedNode.attrs.distBottom as number) ?? null,
+            distLeft: (selectedNode.attrs.distLeft as number) ?? null,
+            distRight: (selectedNode.attrs.distRight as number) ?? null,
           };
         }
       }
@@ -3845,6 +3853,24 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Handle shape insertion
   // Handle image wrap type change
+  // Re-select the image as a NODE selection after a Format-panel edit. A plain
+  // text selection at `pos` would NOT rebuild pmImageContext, so the panel
+  // would fall back to its empty "select an object" state — this keeps it on
+  // the image (the "keep selection through edits" behaviour).
+  const reselectImageNode = useCallback(
+    (pos: number) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      try {
+        const sel = NodeSelection.create(view.state.doc, pos);
+        view.dispatch(view.state.tr.setSelection(sel));
+      } catch {
+        // pos no longer points at a selectable node; ignore.
+      }
+    },
+    [getActiveEditorView]
+  );
+
   const handleImageWrapType = useCallback(
     (toolbarValue: string) => {
       const view = getActiveEditorView();
@@ -3873,29 +3899,18 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
 
       setImageWrapType(pos, target, opts)(view.state, view.dispatch);
+      // Keep the image node-selected so the Format panel stays on it (and the
+      // distance-from-text controls appear for the new wrap mode).
+      reselectImageNode(pos);
       focusActiveEditor();
     },
-    [getActiveEditorView, focusActiveEditor, state.pmImageContext, state.zoom]
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, state.zoom, reselectImageNode]
   );
 
   // Re-select the image as a NODE selection after a Format-panel edit. A plain
   // text selection at `pos` would NOT rebuild pmImageContext, so the panel
   // would fall back to its empty "select an object" state — this keeps it on
   // the image (the "keep selection through edits" follow-up).
-  const reselectImageNode = useCallback(
-    (pos: number) => {
-      const view = getActiveEditorView();
-      if (!view) return;
-      try {
-        const sel = NodeSelection.create(view.state.doc, pos);
-        view.dispatch(view.state.tr.setSelection(sel));
-      } catch {
-        // pos no longer points at a selectable node; ignore.
-      }
-    },
-    [getActiveEditorView]
-  );
-
   // Set explicit image width/height from the Format panel's size inputs.
   // Same node-markup path the resize handles use, so the painted pages and
   // round-trip stay consistent. Re-selects the image so the panel keeps it.
@@ -3939,6 +3954,24 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         borderColor,
         borderStyle,
       });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // Set a single distance-from-text margin (px) on the selected image. Drives
+  // the wrap spacing the layout engine already honors for floating images.
+  const handleImageSetDist = useCallback(
+    (side: 'distTop' | 'distBottom' | 'distLeft' | 'distRight', value: number) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const v = Math.max(0, Math.min(200, Math.round(value)));
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, [side]: v });
       view.dispatch(tr);
       reselectImageNode(pos);
       focusActiveEditor();
@@ -8550,11 +8583,16 @@ body { background: white; }
                               borderWidth={state.pmImageContext.borderWidth}
                               borderColor={state.pmImageContext.borderColor}
                               alt={state.pmImageContext.alt}
+                              distTop={state.pmImageContext.distTop}
+                              distBottom={state.pmImageContext.distBottom}
+                              distLeft={state.pmImageContext.distLeft}
+                              distRight={state.pmImageContext.distRight}
                               onSetWrap={handleImageWrapType}
                               onSetSize={handleImageSetSize}
                               onTransform={handleImageTransform}
                               onSetBorder={handleImageSetBorder}
                               onSetAlt={handleImageSetAlt}
+                              onSetDist={handleImageSetDist}
                             />
                           )}
                           {propsKind === 'table' && (
