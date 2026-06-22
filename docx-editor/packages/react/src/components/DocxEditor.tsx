@@ -520,6 +520,11 @@ export interface DocxEditorProps {
     set: (id: number, text: string) => void;
     observe: (cb: (id: number, text: string) => void) => () => void;
   };
+  /** Collab transport for core document properties (File → Properties). */
+  propsSync?: {
+    set: (edits: Record<string, string>) => void;
+    observe: (cb: (props: Record<string, string>) => void) => () => void;
+  };
   /**
    * Starting offset for comment/tracked-change IDs. Default 0.
    *
@@ -1592,6 +1597,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     externalContent = false,
     footnoteSync,
     endnoteSync,
+    propsSync,
     commentIdBase,
     onEditorViewReady,
     onRenderedDomContextReady,
@@ -1711,6 +1717,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // document in handleSave so they persist regardless of doc-object identity.
   const footnoteEditsRef = useRef<Map<number, string>>(new Map());
   const endnoteEditsRef = useRef<Map<number, string>>(new Map());
+  // Pending core-property edits, applied to the save document in handleSave.
+  const propsEditsRef = useRef<Record<string, string>>({});
   const editHistory = useEditHistory({ author: 'You' });
 
   // Shared toggle handlers — used by both the toolbar buttons and the
@@ -4152,6 +4160,34 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [footnoteSync, endnoteSync, applyNoteEditToModel]
   );
 
+  // Apply core-property edits to the live + save docs. Runs for local and remote
+  // (collab) edits so every peer's model carries them and any peer's snapshot
+  // writes them through applyCorePropertiesToXml.
+  const applyPropsToModel = useCallback((edits: Record<string, string>) => {
+    const apply = (pkg: import('@eigenpal/docx-core/types/document').DocxPackage | undefined) => {
+      if (pkg) pkg.properties = { ...(pkg.properties ?? {}), ...edits };
+    };
+    apply(history.state?.package);
+    apply(agentRef.current?.getDocument()?.package);
+    propsEditsRef.current = { ...propsEditsRef.current, ...edits };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Commit a File → Properties edit. In collab, route through the shared map so
+  // peers receive it; the observer applies it everywhere. Single-user direct.
+  const handleApplyFileProperties = useCallback(
+    (edits: Record<string, string>) => {
+      if (propsSync) propsSync.set(edits);
+      else applyPropsToModel(edits);
+    },
+    [propsSync, applyPropsToModel]
+  );
+
+  useEffect(() => {
+    if (!propsSync) return;
+    return propsSync.observe((props) => applyPropsToModel(props));
+  }, [propsSync, applyPropsToModel]);
+
   // Apply remote (and own) note edits broadcast over the shared maps.
   useEffect(() => {
     const unsubs: Array<() => void> = [];
@@ -6298,6 +6334,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             }
           }
         }
+        // Apply pending core-property edits to the save doc (collab peers may
+        // have set these via the observer; ensure the saver writes them).
+        if (Object.keys(propsEditsRef.current).length > 0) {
+          agentDoc.package.properties = {
+            ...(agentDoc.package.properties ?? {}),
+            ...propsEditsRef.current,
+          };
+        }
 
         // Inject commentRangeStart/End for reply comments that share the parent's range.
         // Pages/Word require every comment (including replies) to have range markers in document.xml.
@@ -6335,7 +6379,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                 // footnotes.xml/endnotes.xml), so the paraId-keyed selective path
                 // can't see them — force a full repack so the override runs.
                 footnoteEditsRef.current.size > 0 ||
-                endnoteEditsRef.current.size > 0,
+                endnoteEditsRef.current.size > 0 ||
+                Object.keys(propsEditsRef.current).length > 0,
             },
           };
         }
@@ -9372,16 +9417,7 @@ body { background: white; }
                   fileName={documentName}
                   sizeBytes={loadedSizeRef.current ?? undefined}
                   current={history.state?.package?.properties}
-                  onApply={(edits) => {
-                    // Push edits onto the current package so the next save
-                    // writes them through `applyCorePropertiesToXml`. The
-                    // edits land on the live `Document` so the dialog can
-                    // re-open against the new values without a save.
-                    const pkg = history.state?.package;
-                    if (!pkg) return;
-                    const next = { ...(pkg.properties ?? {}), ...edits };
-                    pkg.properties = next;
-                  }}
+                  onApply={(edits) => handleApplyFileProperties(edits as Record<string, string>)}
                 />
               )}
               {showWordCount && (

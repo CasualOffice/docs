@@ -54,6 +54,7 @@ import type { Comment } from '@eigenpal/docx-core/types/content';
 import {
   useCollab,
   makeFootnoteSync,
+  makePropsSync,
   type CollabPeer,
   type CollabState,
   type CollabStatus,
@@ -237,6 +238,10 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
       () => (collabState ? makeFootnoteSync(collabState.endnotesMap) : undefined),
       [collabState]
     );
+    const propsSync = useMemo(
+      () => (collabState ? makePropsSync(collabState.propsMap) : undefined),
+      [collabState]
+    );
 
     // Comment threads ride a shared `comments` Y.Map (highlight marks sync via
     // ySyncPlugin, but the thread content doesn't). In collab we drive
@@ -311,6 +316,7 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
         externalPlugins={collabState ? collabState.plugins : undefined}
         footnoteSync={footnoteSync}
         endnoteSync={endnoteSync}
+        propsSync={propsSync}
         comments={collabState ? collabComments : undefined}
         onCommentsChange={collabState ? handleCommentsChange : undefined}
         author={author}

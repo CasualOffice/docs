@@ -69,6 +69,8 @@ export interface CollabState {
   footnotesMap: Y.Map<string>;
   /** Shared endnote-text edits (endnote id → plain text). Mirror of footnotes. */
   endnotesMap: Y.Map<string>;
+  /** Shared core document properties (field name → value), File → Properties. */
+  propsMap: Y.Map<string>;
   /**
    * Shared comment threads (comment id → Comment JSON), in the same Y.Doc as
    * the body. Comment highlight marks ride ySyncPlugin, but the thread content
@@ -106,6 +108,37 @@ export function makeFootnoteSync(map: Y.Map<string>): FootnoteSync {
   };
 }
 
+/** Transport for document-properties edits (field → value). */
+export interface PropsSync {
+  set: (edits: Record<string, string>) => void;
+  observe: (cb: (props: Record<string, string>) => void) => () => void;
+}
+
+/** Build a {@link PropsSync} over a `props` Y.Map (one entry per field). */
+export function makePropsSync(map: Y.Map<string>): PropsSync {
+  return {
+    set: (edits) => {
+      const doc = map.doc;
+      const apply = () => {
+        for (const [k, v] of Object.entries(edits)) map.set(k, v);
+      };
+      if (doc) doc.transact(apply);
+      else apply();
+    },
+    observe: (cb) => {
+      const handler = () => {
+        const obj: Record<string, string> = {};
+        map.forEach((v, k) => {
+          obj[k] = v;
+        });
+        cb(obj);
+      };
+      map.observe(handler);
+      return () => map.unobserve(handler);
+    },
+  };
+}
+
 export interface UseCollabOptions {
   /** Per-doc room identifier — typically the docID. */
   room: string;
@@ -128,7 +161,7 @@ export interface UseCollabOptions {
  * loader doesn't overwrite the Yjs-populated PM state.
  */
 export function useCollab({ room, backend, user, token }: UseCollabOptions): CollabState {
-  const { ydoc, provider, plugins, metaMap, footnotesMap, endnotesMap, commentsMap } =
+  const { ydoc, provider, plugins, metaMap, footnotesMap, endnotesMap, propsMap, commentsMap } =
     useMemo(() => {
       const ydoc = new Y.Doc();
       // Hocuspocus carries the document name in the handshake (`name`),
@@ -158,12 +191,16 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
       // (string) → current plain text.
       const footnotesMap = ydoc.getMap<string>('footnotes');
       const endnotesMap = ydoc.getMap<string>('endnotes');
+      // Core document properties (title / subject / creator / keywords /
+      // description) edited via File → Properties. Not in the PM tree; keyed by
+      // field name → value so two peers editing different fields merge.
+      const propsMap = ydoc.getMap<string>('props');
       // Comment threads (text / replies / resolved) live in React state, not the
       // PM tree, so the highlight marks sync but the thread content wouldn't.
       // A shared map keyed by comment id (string) → Comment JSON gives them the
       // same realtime sync. Replies are separate Comment entries (parentId).
       const commentsMap = ydoc.getMap<unknown>('comments');
-      return { ydoc, provider, plugins, metaMap, footnotesMap, endnotesMap, commentsMap };
+      return { ydoc, provider, plugins, metaMap, footnotesMap, endnotesMap, propsMap, commentsMap };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [room, backend, token]);
 
@@ -227,6 +264,7 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
     metaMap,
     footnotesMap,
     endnotesMap,
+    propsMap,
     commentsMap,
   };
 }

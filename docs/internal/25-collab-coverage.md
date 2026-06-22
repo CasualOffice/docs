@@ -26,7 +26,7 @@ any peer's snapshot carries them. All this session's Format-panel work is here:
 | **Footnote text** | `package.footnotes` | ✅ **synced** via the `footnotes` Y.Map + `makeFootnoteSync` (PR #65) | done |
 | **Comment threads** (text, author, replies, resolved) | React `comments` state / controlled `comments` prop | ✅ **synced** via the `comments` Y.Map (keyed by id) + `collab/commentSync`; CasualEditor drives DocxEditor's controlled `comments` + `onCommentsChange`. Replies are separate entries (parentId); add/reply/resolve/delete + concurrent adds proven by a two-peer test. | done |
 | **Endnote text** | `package.endnotes` | ✅ **rendered + editable + synced**: endnotes now paint at document end (`EndnoteSection` — they were never displayed before), double-click → edit → surgical `endnotes.xml` regen on save; synced via the `endnotes` Y.Map (reuses `makeFootnoteSync`). Mirrors footnotes end-to-end. | done |
-| **Document properties** (title/author/…) | `package.properties` | ⚪ not synced; low-frequency | minor; a `props` Y.Map later if needed |
+| **Document properties** (title/subject/creator/…) | `package.properties` | ✅ **synced** via the `props` Y.Map (field → value) + `makePropsSync`; File → Properties edits route through `propsSync`, observer applies to every peer; written on save via `applyCorePropertiesToXml`. Two peers editing different fields merge. | done |
 | **Header/footer text** | parsed parts; edited via double-click → PM region | mostly PM (synced); the part wiring needs a spot check | verify, then wire if any out-of-PM bits |
 
 ## The pattern (for any future out-of-PM surface)
@@ -38,7 +38,6 @@ any peer's snapshot carries them. All this session's Format-panel work is here:
 4. Prove it with a two-`Y.Doc` unit test (no server needed).
 
 ## Verdict
-Everything is collab-safe: Format-panel edits are PM-node edits (synced),
-footnotes synced, comment threads synced, and **endnotes rendered + editable +
-synced**. The only remaining future item is **doc-properties sync** (low-
-frequency, a `props` Y.Map when wanted) — same pattern.
+**Complete.** Every editable surface — body/images/tables/text-boxes/shapes (PM
+nodes), footnotes, comment threads, endnotes, and document properties — syncs
+over the shared Y.Doc. No out-of-PM editable surface remains unsynced.
