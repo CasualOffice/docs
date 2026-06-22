@@ -34,7 +34,7 @@ import type { Document } from '../types/document';
 import type { BlockContent, HeaderFooter, Image, Hyperlink } from '../types/content';
 import { serializeDocument } from './serializer/documentSerializer';
 import { serializeHeaderFooter } from './serializer/headerFooterSerializer';
-import { replaceFootnotesInXml } from './serializer/footnoteSerializer';
+import { replaceFootnotesInXml, replaceEndnotesInXml } from './serializer/footnoteSerializer';
 import {
   serializeCommentsWithInfo,
   serializeCommentsExtended,
@@ -500,6 +500,17 @@ export async function repackDocx(doc: Document, options: RepackOptions = {}): Pr
         });
       }
     }
+    const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter((e) => e.edited);
+    if (editedEndnotes.length > 0) {
+      const enFile = originalZip.file('word/endnotes.xml');
+      if (enFile) {
+        const newEnXml = replaceEndnotesInXml(await enFile.async('text'), editedEndnotes);
+        newZip.file('word/endnotes.xml', newEnXml, {
+          compression: 'DEFLATE',
+          compressionOptions: { level: compressionLevel },
+        });
+      }
+    }
   }
 
   // Update docProps/core.xml. Two independent inputs are applied:
@@ -608,6 +619,17 @@ export async function repackDocxFromRaw(
       if (fnFile) {
         const newFnXml = replaceFootnotesInXml(await fnFile.async('text'), editedFootnotes);
         newZip.file('word/footnotes.xml', newFnXml, {
+          compression: 'DEFLATE',
+          compressionOptions: { level: compressionLevel },
+        });
+      }
+    }
+    const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter((e) => e.edited);
+    if (editedEndnotes.length > 0) {
+      const enFile = rawContent.originalZip.file('word/endnotes.xml');
+      if (enFile) {
+        const newEnXml = replaceEndnotesInXml(await enFile.async('text'), editedEndnotes);
+        newZip.file('word/endnotes.xml', newEnXml, {
           compression: 'DEFLATE',
           compressionOptions: { level: compressionLevel },
         });

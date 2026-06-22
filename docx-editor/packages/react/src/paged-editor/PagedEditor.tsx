@@ -37,6 +37,7 @@ import { SelectionOverlay } from './SelectionOverlay';
 import { MobileFormatBar } from '../components/ui/MobileFormatBar';
 import { usePinchZoom } from '../components/hooks/usePinchZoom';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
+import { EndnoteSection } from './EndnoteSection';
 import { DecorationLayer } from './DecorationLayer';
 import { spellcheckPluginKey } from '@eigenpal/docx-core/prosemirror/extensions';
 import { getTableContext } from '@eigenpal/docx-core/prosemirror';
@@ -357,6 +358,8 @@ export interface PagedEditorProps {
   onResizeTextBox?: (width: number, height: number) => void;
   /** Open the footnote text editor for the footnote double-clicked at page bottom. */
   onEditFootnote?: (footnoteId: number) => void;
+  /** Open the endnote text editor for the endnote double-clicked at document end. */
+  onEditEndnote?: (endnoteId: number) => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
   onAnchorPositionsChange?: (positions: Map<string, number>) => void;
   /**
@@ -1399,6 +1402,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onOpenProperties,
       onResizeTextBox,
       onEditFootnote,
+      onEditEndnote,
       onAnchorPositionsChange,
       onTotalPagesChange,
       resolvedCommentIds,
@@ -4488,6 +4492,16 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             onContextMenu={handlePagesContextMenu}
             aria-hidden="true" // Visual only, PM provides semantic content
           />
+
+          {/* Endnotes — rendered after the last page (the layout-painter has no
+              endnote area). Double-click an entry to edit it. */}
+          {document?.package?.endnotes && document.package.endnotes.length > 0 && (
+            <EndnoteSection
+              endnotes={document.package.endnotes}
+              width={layout?.pages[0]?.size.w}
+              onEditEndnote={onEditEndnote}
+            />
+          )}
 
           {/* Selection overlay */}
           <SelectionOverlay

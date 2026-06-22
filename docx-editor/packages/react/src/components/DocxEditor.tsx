@@ -264,7 +264,13 @@ import { Toaster, toast } from 'sonner';
 import { getBuiltinTableStyle, type TableStylePreset } from './ui/TableStyleGallery';
 import { DocumentAgent } from '@eigenpal/docx-core/agent';
 import { DefaultLoadingIndicator, DefaultPlaceholder, ParseError } from './DocxEditorHelpers';
-import { parseDocx, getFootnoteText, setFootnotePlainText } from '@eigenpal/docx-core/docx';
+import {
+  parseDocx,
+  getFootnoteText,
+  setFootnotePlainText,
+  getEndnoteText,
+  setEndnotePlainText,
+} from '@eigenpal/docx-core/docx';
 import { findBodyPmAnchors } from '@eigenpal/docx-core/layout-bridge';
 import { type DocxInput } from '@eigenpal/docx-core/utils';
 import { onFontsLoaded, loadDocumentFonts } from '@eigenpal/docx-core/utils';
@@ -506,6 +512,11 @@ export interface DocxEditorProps {
    * uniformly. Omit for single-user (edits apply directly).
    */
   footnoteSync?: {
+    set: (id: number, text: string) => void;
+    observe: (cb: (id: number, text: string) => void) => () => void;
+  };
+  /** Collab transport for endnote-text edits (mirror of `footnoteSync`). */
+  endnoteSync?: {
     set: (id: number, text: string) => void;
     observe: (cb: (id: number, text: string) => void) => () => void;
   };
@@ -1580,6 +1591,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     externalPlugins,
     externalContent = false,
     footnoteSync,
+    endnoteSync,
     commentIdBase,
     onEditorViewReady,
     onRenderedDomContextReady,
@@ -1690,10 +1702,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showProperties, setShowProperties] = useState(false);
   // Footnote text editor (opened by double-clicking a footnote at page bottom).
-  const [footnoteEdit, setFootnoteEdit] = useState<{ id: number; text: string } | null>(null);
-  // Pending footnote text edits (id → new text), applied to the save document
-  // in handleSave so they persist regardless of doc-object identity.
+  const [noteEdit, setNoteEdit] = useState<{
+    kind: 'footnote' | 'endnote';
+    id: number;
+    text: string;
+  } | null>(null);
+  // Pending footnote/endnote text edits (id → new text), applied to the save
+  // document in handleSave so they persist regardless of doc-object identity.
   const footnoteEditsRef = useRef<Map<number, string>>(new Map());
+  const endnoteEditsRef = useRef<Map<number, string>>(new Map());
   const editHistory = useEditHistory({ author: 'You' });
 
   // Shared toggle handlers — used by both the toolbar buttons and the
@@ -4070,43 +4087,47 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [updateTextBoxAttrs]
   );
 
-  // Open the footnote editor with the current text of the double-clicked note.
-  // Footnotes live on the document package (history.state), NOT the PM doc.
+  // Open the note editor with the current text of the double-clicked note.
+  // Footnotes/endnotes live on the document package (history.state), NOT the PM doc.
   const handleEditFootnote = useCallback(
     (footnoteId: number) => {
       const fn = history.state?.package?.footnotes?.find((f) => f.id === footnoteId);
-      setFootnoteEdit({ id: footnoteId, text: fn ? getFootnoteText(fn) : '' });
+      setNoteEdit({ kind: 'footnote', id: footnoteId, text: fn ? getFootnoteText(fn) : '' });
+    },
+    [history]
+  );
+  const handleEditEndnote = useCallback(
+    (endnoteId: number) => {
+      const en = history.state?.package?.endnotes?.find((e) => e.id === endnoteId);
+      setNoteEdit({ kind: 'endnote', id: endnoteId, text: en ? getEndnoteText(en) : '' });
     },
     [history]
   );
 
-  // Apply a footnote text edit to BOTH the render doc (history.state — repainted
-  // via relayout) and the save doc (agentRef — read by handleSave). Marking the
-  // footnote `edited` makes the save path regenerate ONLY its text in
-  // footnotes.xml; every untouched footnote stays verbatim. This runs for BOTH
-  // local edits and remote (collab) edits observed off the shared map, so every
-  // peer's model — and therefore any peer's snapshot — carries the change.
-  const applyFootnoteEditToModel = useCallback(
-    (footnoteId: number, text: string) => {
-      const apply = (
-        pkg: { footnotes?: import('@eigenpal/docx-core/types').Footnote[] } | undefined
-      ) => {
-        const fn = pkg?.footnotes?.find((f) => f.id === footnoteId);
-        if (fn) {
-          setFootnotePlainText(fn, text);
-          fn.edited = true;
+  // Apply a footnote/endnote text edit to BOTH the render doc (history.state)
+  // and the save doc (agentRef). Marking the note `edited` makes the save path
+  // regenerate ONLY its text in footnotes.xml/endnotes.xml; untouched notes stay
+  // verbatim. Runs for local AND remote (collab) edits, so every peer's model —
+  // and any peer's snapshot — carries the change.
+  const applyNoteEditToModel = useCallback(
+    (kind: 'footnote' | 'endnote', noteId: number, text: string) => {
+      const editsRef = kind === 'footnote' ? footnoteEditsRef : endnoteEditsRef;
+      const apply = (pkg: import('@eigenpal/docx-core/types/document').DocxPackage | undefined) => {
+        const list = kind === 'footnote' ? pkg?.footnotes : pkg?.endnotes;
+        const note = list?.find((n) => n.id === noteId);
+        if (note) {
+          if (kind === 'footnote') setFootnotePlainText(note as never, text);
+          else setEndnotePlainText(note as never, text);
+          note.edited = true;
         }
       };
-      apply(history.state?.package); // render doc model (for the next relayout)
-      apply(agentRef.current?.getDocument()?.package); // save doc (best-effort)
-      footnoteEditsRef.current.set(footnoteId, text); // re-applied at save time
-      // Instant visual feedback: patch the painted footnote text span(s). The
-      // canonical model is updated above and persisted on save; this avoids a
-      // confusing "nothing changed" until the next reload.
+      apply(history.state?.package);
+      apply(agentRef.current?.getDocument()?.package);
+      editsRef.current.set(noteId, text);
+      // Instant visual feedback: patch the painted note text span(s).
+      const cls = kind === 'footnote' ? 'layout-footnote' : 'layout-endnote';
       document
-        .querySelectorAll(
-          `.layout-footnote[data-footnote-id="${footnoteId}"] .layout-footnote-text`
-        )
+        .querySelectorAll(`.${cls}[data-${kind}-id="${noteId}"] .${cls}-text`)
         .forEach((el) => {
           (el as HTMLElement).textContent = ' ' + text;
         });
@@ -4114,31 +4135,42 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history]
   );
 
-  // Commit an edit from the editor dialog. In collab, route through the shared
-  // footnote map so peers receive it; the observer below applies it to every
-  // peer's model (including ours). Single-user applies directly.
-  const handleApplyFootnoteEdit = useCallback(
-    (footnoteId: number, text: string) => {
-      if (footnoteSync) {
-        footnoteSync.set(footnoteId, text);
+  // Commit an edit from the dialog. In collab, route through the shared map so
+  // peers receive it; the observer applies it to every peer's model (including
+  // ours). Single-user applies directly.
+  const handleApplyNoteEdit = useCallback(
+    (kind: 'footnote' | 'endnote', noteId: number, text: string) => {
+      const noteSync = kind === 'footnote' ? footnoteSync : endnoteSync;
+      if (noteSync) {
+        noteSync.set(noteId, text);
       } else {
-        applyFootnoteEditToModel(footnoteId, text);
+        applyNoteEditToModel(kind, noteId, text);
         pagedEditorRef.current?.relayout();
       }
-      setFootnoteEdit(null);
+      setNoteEdit(null);
     },
-    [footnoteSync, applyFootnoteEditToModel]
+    [footnoteSync, endnoteSync, applyNoteEditToModel]
   );
 
-  // Apply remote (and own) footnote edits broadcast over the shared map.
+  // Apply remote (and own) note edits broadcast over the shared maps.
   useEffect(() => {
-    if (!footnoteSync) return;
-    const unsubscribe = footnoteSync.observe((id, text) => {
-      applyFootnoteEditToModel(id, text);
-      pagedEditorRef.current?.relayout();
-    });
-    return unsubscribe;
-  }, [footnoteSync, applyFootnoteEditToModel]);
+    const unsubs: Array<() => void> = [];
+    if (footnoteSync)
+      unsubs.push(
+        footnoteSync.observe((id, text) => {
+          applyNoteEditToModel('footnote', id, text);
+          pagedEditorRef.current?.relayout();
+        })
+      );
+    if (endnoteSync)
+      unsubs.push(
+        endnoteSync.observe((id, text) => {
+          applyNoteEditToModel('endnote', id, text);
+          pagedEditorRef.current?.relayout();
+        })
+      );
+    return () => unsubs.forEach((u) => u());
+  }, [footnoteSync, endnoteSync, applyNoteEditToModel]);
 
   // Handle image transform (rotate/flip)
   const handleImageTransform = useCallback(
@@ -6257,6 +6289,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             }
           }
         }
+        if (endnoteEditsRef.current.size > 0 && agentDoc.package.endnotes) {
+          for (const [id, text] of endnoteEditsRef.current) {
+            const en = agentDoc.package.endnotes.find((e) => e.id === id);
+            if (en) {
+              setEndnotePlainText(en, text);
+              en.edited = true;
+            }
+          }
+        }
 
         // Inject commentRangeStart/End for reply comments that share the parent's range.
         // Pages/Word require every comment (including replies) to have range markers in document.xml.
@@ -6290,10 +6331,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               hasUntrackedChanges:
                 hasUntrackedChanges(editorState) ||
                 hasNonParagraphBlockChanges(editorState) ||
-                // Footnote edits live outside the PM doc (in footnotes.xml), so
-                // the paraId-keyed selective path can't see them — force a full
-                // repack so the footnotes.xml override in rezip runs.
-                footnoteEditsRef.current.size > 0,
+                // Footnote/endnote edits live outside the PM doc (in
+                // footnotes.xml/endnotes.xml), so the paraId-keyed selective path
+                // can't see them — force a full repack so the override runs.
+                footnoteEditsRef.current.size > 0 ||
+                endnoteEditsRef.current.size > 0,
             },
           };
         }
@@ -8432,6 +8474,7 @@ body { background: white; }
                           onOpenProperties={() => openRightPanel('properties')}
                           onResizeTextBox={handleTextBoxSetSize}
                           onEditFootnote={handleEditFootnote}
+                          onEditEndnote={handleEditEndnote}
                           commentsSidebarOpen={sidebarOpen}
                           onAnchorPositionsChange={setAnchorPositions}
                           onTotalPagesChange={(totalPages) => {
@@ -9273,11 +9316,12 @@ body { background: white; }
                   onApply={handleApplyImagePosition}
                 />
               )}
-              {footnoteEdit && (
+              {noteEdit && (
                 <FootnoteEditDialog
-                  initialText={footnoteEdit.text}
-                  onCancel={() => setFootnoteEdit(null)}
-                  onApply={(t) => handleApplyFootnoteEdit(footnoteEdit.id, t)}
+                  initialText={noteEdit.text}
+                  title={noteEdit.kind === 'endnote' ? 'Edit endnote' : 'Edit footnote'}
+                  onCancel={() => setNoteEdit(null)}
+                  onApply={(t) => handleApplyNoteEdit(noteEdit.kind, noteEdit.id, t)}
                 />
               )}
 

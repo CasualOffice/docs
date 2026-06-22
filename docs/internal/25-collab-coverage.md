@@ -25,7 +25,7 @@ any peer's snapshot carries them. All this session's Format-panel work is here:
 | **File name / meta** | `meta` Y.Map | ✅ synced | — (already wired) |
 | **Footnote text** | `package.footnotes` | ✅ **synced** via the `footnotes` Y.Map + `makeFootnoteSync` (PR #65) | done |
 | **Comment threads** (text, author, replies, resolved) | React `comments` state / controlled `comments` prop | ✅ **synced** via the `comments` Y.Map (keyed by id) + `collab/commentSync`; CasualEditor drives DocxEditor's controlled `comments` + `onCommentsChange`. Replies are separate entries (parentId); add/reply/resolve/delete + concurrent adds proven by a two-peer test. | done |
-| **Endnote text** | `package.endnotes` | ⚪ not editable yet (render-only) | when endnote editing is added, mirror the footnote `endnotes` Y.Map pattern |
+| **Endnote text** | `package.endnotes` | ✅ **rendered + editable + synced**: endnotes now paint at document end (`EndnoteSection` — they were never displayed before), double-click → edit → surgical `endnotes.xml` regen on save; synced via the `endnotes` Y.Map (reuses `makeFootnoteSync`). Mirrors footnotes end-to-end. | done |
 | **Document properties** (title/author/…) | `package.properties` | ⚪ not synced; low-frequency | minor; a `props` Y.Map later if needed |
 | **Header/footer text** | parsed parts; edited via double-click → PM region | mostly PM (synced); the part wiring needs a spot check | verify, then wire if any out-of-PM bits |
 
@@ -38,7 +38,7 @@ any peer's snapshot carries them. All this session's Format-panel work is here:
 4. Prove it with a two-`Y.Doc` unit test (no server needed).
 
 ## Verdict
-Everything built this session is collab-safe: the Format-panel edits are PM-node
-edits (synced), footnotes are synced, and **comment threads are now synced**. No
-known out-of-PM editable surface remains unsynced. Endnote editing (not built
-yet) and doc properties are the only future items, and each mirrors this pattern.
+Everything is collab-safe: Format-panel edits are PM-node edits (synced),
+footnotes synced, comment threads synced, and **endnotes rendered + editable +
+synced**. The only remaining future item is **doc-properties sync** (low-
+frequency, a `props` Y.Map when wanted) — same pattern.
