@@ -218,6 +218,36 @@ test('Format panel: textbox chip → section (resize + fill apply)', async ({ pa
   expect(wAfter).toBeLessThan(wBefore);
 });
 
+test('Textbox: on-canvas corner handles resize the box', async ({ page }) => {
+  const editor = new EditorPage(page);
+  await editor.goto();
+  await editor.waitForReady();
+  await editor.loadDocxFile('fixtures/textbox-test.docx');
+  await page.waitForTimeout(1500);
+
+  const box = page.locator('[data-testid="docx-editor"] .layout-textbox').first();
+  await box.click({ position: { x: 24, y: 12 } });
+  await page.waitForTimeout(400);
+
+  // handles appear while the caret is in the box
+  const se = page.locator('[data-testid="textbox-resize-se"]');
+  await expect(se).toBeVisible();
+
+  const wBefore = (await box.boundingBox())?.width ?? 0;
+  const hb = await se.boundingBox();
+  // drag the SE handle inward to shrink the box
+  await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + hb!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb!.x - 120, hb!.y, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+
+  const wAfter =
+    (await page.locator('[data-testid="docx-editor"] .layout-textbox').first().boundingBox())
+      ?.width ?? 0;
+  expect(wAfter).toBeLessThan(wBefore - 30);
+});
+
 test('Format panel: textbox "No fill" removes a pre-filled background', async ({ page }) => {
   const editor = new EditorPage(page);
   await editor.goto();
