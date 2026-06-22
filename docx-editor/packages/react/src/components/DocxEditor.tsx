@@ -8311,6 +8311,7 @@ body { background: white; }
                           onHyperlinkClick={handleHyperlinkClick}
                           onContextMenu={handleContextMenu}
                           onOpenProperties={() => openRightPanel('properties')}
+                          onResizeTextBox={handleTextBoxSetSize}
                           commentsSidebarOpen={sidebarOpen}
                           onAnchorPositionsChange={setAnchorPositions}
                           onTotalPagesChange={(totalPages) => {
