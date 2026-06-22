@@ -63,6 +63,9 @@ export interface ImageSelectionOverlayProps {
    *  paged-editor's contextmenu handler never fires for it — the parent wires
    *  this prop to route through to the same image-context-menu opener. */
   onContextMenu?: (e: React.MouseEvent) => void;
+  /** Open the Format panel for this image. Renders the on-object "Format"
+   *  chip at the selection's top-right corner when provided. */
+  onOpenProperties?: () => void;
 }
 
 // =============================================================================
@@ -170,6 +173,7 @@ export function ImageSelectionOverlay({
   onDragStart,
   onDragEnd,
   onContextMenu,
+  onOpenProperties,
 }: ImageSelectionOverlayProps): React.ReactElement | null {
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -492,6 +496,57 @@ export function ImageSelectionOverlay({
         style={{ left: left - HANDLE_HALF, top: top + height - HANDLE_HALF }}
         onMouseDown={handleResizeStart}
       />
+
+      {/* On-object "Format" chip — top-right corner of the selection.
+          Opens the contextual Format panel for this image. Hidden while
+          actively resizing/dragging so it doesn't fight the gesture. */}
+      {onOpenProperties && !isResizing && !isDragging && (
+        <button
+          type="button"
+          data-testid="image-format-chip"
+          aria-label="Format image"
+          title="Format"
+          onMouseDown={(e) => {
+            // Don't let the mousedown reach the image body (would start a drag)
+            // or the hidden PM view (would move the caret).
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenProperties();
+          }}
+          style={{
+            position: 'absolute',
+            left: left + width - 4,
+            top: top - 14,
+            transform: 'translateX(-100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            height: 26,
+            padding: '0 10px',
+            fontSize: 12,
+            fontWeight: 600,
+            lineHeight: '26px',
+            color: '#fff',
+            background: ACCENT_COLOR,
+            border: 'none',
+            borderRadius: 13,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            zIndex: 21,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+          </svg>
+          Format
+        </button>
+      )}
 
       {/* Dimension indicator during resize */}
       {isResizing && (

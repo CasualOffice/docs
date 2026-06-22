@@ -1,8 +1,34 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { copyFileSync, existsSync } from 'fs';
 
 const monorepoRoot = path.resolve(__dirname, '../..');
+
+// GitHub Pages has no SPA rewrite: a hard refresh on a deep client route
+// (e.g. /document/<id>) hits Pages' own 404 because there's no file there.
+// Emitting a 404.html that is a byte-for-byte copy of index.html makes Pages
+// serve the SPA shell for any unmatched path; the client router then reads
+// the preserved URL and renders the right route. (The Docker/gateway deploy
+// already does this server-side via staticHandler's index.html fallback —
+// this brings the Pages demo to parity.)
+function spaFallback404(): Plugin {
+  let outDir = 'dist';
+  return {
+    name: 'spa-fallback-404',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const index = path.join(outDir, 'index.html');
+      const notFound = path.join(outDir, '404.html');
+      if (existsSync(index)) {
+        copyFileSync(index, notFound);
+      }
+    },
+  };
+}
 
 async function fetchGitHubStars(): Promise<number | null> {
   try {
@@ -16,7 +42,7 @@ async function fetchGitHubStars(): Promise<number | null> {
 export default defineConfig(async () => {
   const stars = await fetchGitHubStars();
   return {
-    plugins: [react()],
+    plugins: [react(), spaFallback404()],
     root: __dirname,
     resolve: {
       // Force a single React + React-DOM copy across the workspace. After
