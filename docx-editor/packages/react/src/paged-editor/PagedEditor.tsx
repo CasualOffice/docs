@@ -353,6 +353,8 @@ export interface PagedEditorProps {
    *  (image or table). Wired to the on-object "Format" chip. The host
    *  derives the panel's kind from its own selection context. */
   onOpenProperties?: () => void;
+  /** Apply a new text box size (node px) from an on-canvas resize-handle drag. */
+  onResizeTextBox?: (width: number, height: number) => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
   onAnchorPositionsChange?: (positions: Map<string, number>) => void;
   /**
@@ -1392,6 +1394,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onHyperlinkClick,
       onContextMenu,
       onOpenProperties,
+      onResizeTextBox,
       onAnchorPositionsChange,
       onTotalPagesChange,
       resolvedCommentIds,
@@ -1499,7 +1502,16 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // of the text box whose content range contains the caret, else null. The
     // painted `.layout-textbox` carries data-pm-start/end so detection is a
     // pure DOM range test (no PM walk needed here).
-    const [textBoxChipPos, setTextBoxChipPos] = useState<{ x: number; y: number } | null>(null);
+    const [textBoxChipPos, setTextBoxChipPos] = useState<{
+      x: number;
+      y: number;
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+    } | null>(null);
+    // Live drag preview rect during a textbox resize (viewport-relative px).
+    const [textBoxResize, setTextBoxResize] = useState<{ w: number; h: number } | null>(null);
 
     /** Build ImageSelectionInfo from a DOM element with data-pm-start */
     const buildImageSelectionInfo = useCallback(
@@ -2387,7 +2399,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         {
           const pagesEl = pagesContainerRef.current;
           const viewportEl = pagesEl?.parentElement;
-          let nextTb: { x: number; y: number } | null = null;
+          let nextTb: typeof textBoxChipPos = null;
           if (pagesEl && viewportEl) {
             const boxes = pagesEl.querySelectorAll('.layout-textbox[data-pm-start]');
             for (const el of Array.from(boxes)) {
@@ -2397,14 +2409,29 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               if (!Number.isNaN(s) && !Number.isNaN(e) && from >= s && from < e) {
                 const r = htmlEl.getBoundingClientRect();
                 const v = viewportEl.getBoundingClientRect();
-                nextTb = { x: r.right - v.left, y: r.top - v.top };
+                nextTb = {
+                  x: r.right - v.left,
+                  y: r.top - v.top,
+                  left: r.left - v.left,
+                  top: r.top - v.top,
+                  width: r.width,
+                  height: r.height,
+                };
                 break;
               }
             }
           }
           setTextBoxChipPos((prev) => {
             if (prev === nextTb) return prev;
-            if (prev && nextTb && prev.x === nextTb.x && prev.y === nextTb.y) return prev;
+            if (
+              prev &&
+              nextTb &&
+              prev.left === nextTb.left &&
+              prev.top === nextTb.top &&
+              prev.width === nextTb.width &&
+              prev.height === nextTb.height
+            )
+              return prev;
             return nextTb;
           });
         }
@@ -4595,6 +4622,93 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               Format
             </button>
           )}
+
+          {/* Text box resize handles — border outline + 4 corner grips. Drag a
+              corner to resize the box (resize-only; no move). Mirrors the image
+              overlay. The new size is converted from screen px to node px via
+              the live zoom and applied through onResizeTextBox. */}
+          {onResizeTextBox &&
+            textBoxChipPos &&
+            isFocused &&
+            (() => {
+              const box = textBoxResize
+                ? { ...textBoxChipPos, width: textBoxResize.w, height: textBoxResize.h }
+                : textBoxChipPos;
+              const startResize = (corner: 'nw' | 'ne' | 'se' | 'sw', e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const sx = e.clientX;
+                const sy = e.clientY;
+                const sw = textBoxChipPos.width;
+                const sh = textBoxChipPos.height;
+                const signX = corner.includes('w') ? -1 : 1;
+                const signY = corner.includes('n') ? -1 : 1;
+                let fw = sw;
+                let fh = sh;
+                const move = (me: MouseEvent) => {
+                  fw = Math.max(40, sw + (me.clientX - sx) * signX);
+                  fh = Math.max(24, sh + (me.clientY - sy) * signY);
+                  setTextBoxResize({ w: fw, h: fh });
+                };
+                const up = () => {
+                  window.removeEventListener('mousemove', move);
+                  window.removeEventListener('mouseup', up);
+                  setTextBoxResize(null);
+                  // screen px -> node px via zoom
+                  onResizeTextBox(Math.round(fw / zoom), Math.round(fh / zoom));
+                };
+                window.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', up);
+              };
+              const HS = 9;
+              const corners: Array<['nw' | 'ne' | 'se' | 'sw', number, number, string]> = [
+                ['nw', box.left, box.top, 'nwse-resize'],
+                ['ne', box.left + box.width, box.top, 'nesw-resize'],
+                ['se', box.left + box.width, box.top + box.height, 'nwse-resize'],
+                ['sw', box.left, box.top + box.height, 'nesw-resize'],
+              ];
+              return (
+                <>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: box.left,
+                      top: box.top,
+                      width: box.width,
+                      height: box.height,
+                      // Subtle while editing text inside; the corner grips carry
+                      // the resize affordance without a heavy frame.
+                      border: textBoxResize
+                        ? '1.5px solid #2563eb'
+                        : '1px dashed rgba(37,99,235,0.45)',
+                      pointerEvents: 'none',
+                      zIndex: 199,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  {corners.map(([c, cx, cy, cursor]) => (
+                    <div
+                      key={c}
+                      data-testid={`textbox-resize-${c}`}
+                      onMouseDown={(e) => startResize(c, e)}
+                      style={{
+                        position: 'absolute',
+                        left: cx - HS / 2,
+                        top: cy - HS / 2,
+                        width: HS,
+                        height: HS,
+                        background: '#fff',
+                        border: '1.5px solid #2563eb',
+                        borderRadius: 2,
+                        cursor,
+                        pointerEvents: 'auto',
+                        zIndex: 200,
+                      }}
+                    />
+                  ))}
+                </>
+              );
+            })()}
 
           {/* Table quick action insert button */}
           {tableInsertButton && (
