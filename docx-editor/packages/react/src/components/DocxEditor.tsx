@@ -53,6 +53,7 @@ import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
 import { PropertiesPanel, type PropertiesTargetKind } from './sidebar/PropertiesPanel';
 import { ImagePropertiesSection } from './sidebar/ImagePropertiesSection';
+import { TablePropertiesSection } from './sidebar/TablePropertiesSection';
 import { useEditHistory } from '../hooks/useEditHistory';
 import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
 import { downloadServerVersion, type ServerVersionBackend } from '../version-history/server-source';
@@ -870,6 +871,8 @@ interface EditorState {
     borderWidth: number | null;
     borderColor: string | null;
     borderStyle: string | null;
+    width: number | null;
+    height: number | null;
   } | null;
 }
 
@@ -1677,10 +1680,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (next && commentsCountRef.current === 0) {
         toast.info('No comments yet. Select text and click "Add comment" to start a thread.');
       }
+      // One right-side surface at a time: opening comments closes the rest.
+      if (next) {
+        setShowVersionHistory(false);
+        setShowProperties(false);
+        setShowOutline(false);
+      }
       return next;
     });
     setExpandedSidebarItem(null);
-    setShowVersionHistory(false);
   }, []);
   const handleToggleVersionHistory = useCallback(() => {
     setShowVersionHistory((v) => {
@@ -1688,6 +1696,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (next) {
         setShowCommentsSidebar(false);
         setExpandedSidebarItem(null);
+        setShowProperties(false);
+        setShowOutline(false);
       }
       return next;
     });
@@ -2386,9 +2396,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       setShowChatPanel(which === 'chat');
       setShowVersionHistory(which === 'history');
       setShowProperties(which === 'properties');
-      if (which === 'history' || which === 'properties') {
+      // Only ONE right-side surface is ever open: outline (TOC), comments,
+      // properties, history. Opening any of the docked panels closes the
+      // others (outline included — it was previously left open alongside).
+      if (which !== 'none') {
         setShowCommentsSidebar(false);
         setExpandedSidebarItem(null);
+        setShowOutline(false);
       }
       if (which !== 'aiSuggestion') setAiSuggestion(null);
     },
@@ -2962,6 +2976,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             borderWidth: (selectedNode.attrs.borderWidth as number) ?? null,
             borderColor: (selectedNode.attrs.borderColor as string) ?? null,
             borderStyle: (selectedNode.attrs.borderStyle as string) ?? null,
+            width: (selectedNode.attrs.width as number) ?? null,
+            height: (selectedNode.attrs.height as number) ?? null,
           };
         }
       }
@@ -3702,6 +3718,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         if (view) {
           setHeadingInfos(collectHeadings(view.state.doc));
         }
+        // One right-side surface at a time: opening the outline closes the rest.
+        setShowCommentsSidebar(false);
+        setExpandedSidebarItem(null);
+        setShowVersionHistory(false);
+        setShowProperties(false);
       }
       return !prev;
     });
@@ -3806,6 +3827,30 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       focusActiveEditor();
     },
     [getActiveEditorView, focusActiveEditor, state.pmImageContext, state.zoom]
+  );
+
+  // Set explicit image width/height from the Format panel's size inputs.
+  // Same node-markup path the resize handles use, so the painted pages and
+  // round-trip stay consistent. Re-selects the image so the panel keeps it.
+  const handleImageSetSize = useCallback(
+    (width: number, height: number) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const w = Math.max(8, Math.min(2000, Math.round(width)));
+      const h = Math.max(8, Math.min(2000, Math.round(height)));
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        width: w,
+        height: h,
+      });
+      view.dispatch(tr);
+      pagedEditorRef.current?.setSelection(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext]
   );
 
   // Handle image transform (rotate/flip)
@@ -8078,6 +8123,7 @@ body { background: white; }
                           pluginOverlays={pluginOverlays}
                           onHyperlinkClick={handleHyperlinkClick}
                           onContextMenu={handleContextMenu}
+                          onOpenProperties={() => openRightPanel('properties')}
                           commentsSidebarOpen={sidebarOpen}
                           onAnchorPositionsChange={setAnchorPositions}
                           onTotalPagesChange={(totalPages) => {
@@ -8343,8 +8389,14 @@ body { background: white; }
                           {propsKind === 'image' && state.pmImageContext && (
                             <ImagePropertiesSection
                               wrapType={state.pmImageContext.wrapType}
+                              width={state.pmImageContext.width}
+                              height={state.pmImageContext.height}
                               onSetWrap={handleImageWrapType}
+                              onSetSize={handleImageSetSize}
                             />
+                          )}
+                          {propsKind === 'table' && (
+                            <TablePropertiesSection onAction={handleTableAction} />
                           )}
                         </PropertiesPanel>
                       );

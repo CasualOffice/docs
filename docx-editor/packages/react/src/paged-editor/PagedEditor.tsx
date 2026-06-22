@@ -39,6 +39,7 @@ import { usePinchZoom } from '../components/hooks/usePinchZoom';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { DecorationLayer } from './DecorationLayer';
 import { spellcheckPluginKey } from '@eigenpal/docx-core/prosemirror/extensions';
+import { getTableContext } from '@eigenpal/docx-core/prosemirror';
 
 // Layout engine
 import {
@@ -348,6 +349,10 @@ export interface PagedEditorProps {
      */
     spellcheck?: { from: number; to: number; word: string } | null;
   }) => void;
+  /** Open the contextual Format panel for the currently-selected object
+   *  (image or table). Wired to the on-object "Format" chip. The host
+   *  derives the panel's kind from its own selection context. */
+  onOpenProperties?: () => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
   onAnchorPositionsChange?: (positions: Map<string, number>) => void;
   /**
@@ -1386,6 +1391,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       scrollContainerRef: scrollContainerRefProp,
       onHyperlinkClick,
       onContextMenu,
+      onOpenProperties,
       onAnchorPositionsChange,
       onTotalPagesChange,
       resolvedCommentIds,
@@ -1483,6 +1489,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // Image selection state
     const [selectedImageInfo, setSelectedImageInfo] = useState<ImageSelectionInfo | null>(null);
     const isImageInteractingRef = useRef(false);
+
+    // Table "Format" chip — overlay-relative {x,y} of the top-right corner of
+    // the table containing the caret, or null when the caret isn't in a table.
+    // Mirrors the image chip; opens the same Format panel via onOpenProperties.
+    const [tableChipPos, setTableChipPos] = useState<{ x: number; y: number } | null>(null);
 
     /** Build ImageSelectionInfo from a DOM element with data-pm-start */
     const buildImageSelectionInfo = useCallback(
@@ -2321,6 +2332,48 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               }
             }
           }
+        }
+
+        // Table "Format" chip — anchor to the painted table containing the
+        // caret (top-right corner), mirroring the image chip. Cleared when the
+        // caret leaves any table. getTableContext is the authoritative
+        // in-table test; the DOM lookup only locates the painted box.
+        {
+          const pagesEl = pagesContainerRef.current;
+          const viewportEl = pagesEl?.parentElement;
+          let nextChip: { x: number; y: number } | null = null;
+          if (pagesEl && viewportEl) {
+            let inTable = false;
+            try {
+              inTable = getTableContext(state).isInTable;
+            } catch {
+              inTable = false;
+            }
+            if (inTable) {
+              // Painted cell enclosing the caret = greatest data-pm-start <= from.
+              const cells = pagesEl.querySelectorAll('.layout-table-cell[data-pm-start]');
+              let bestCell: HTMLElement | null = null;
+              let bestStart = -1;
+              for (const c of Array.from(cells)) {
+                const s = Number((c as HTMLElement).dataset.pmStart);
+                if (!Number.isNaN(s) && s <= from && s > bestStart) {
+                  bestStart = s;
+                  bestCell = c as HTMLElement;
+                }
+              }
+              const tableEl = bestCell?.closest('.layout-table') as HTMLElement | null;
+              if (tableEl) {
+                const tRect = tableEl.getBoundingClientRect();
+                const vRect = viewportEl.getBoundingClientRect();
+                nextChip = { x: tRect.right - vRect.left, y: tRect.top - vRect.top };
+              }
+            }
+          }
+          setTableChipPos((prev) => {
+            if (prev === nextChip) return prev;
+            if (prev && nextChip && prev.x === nextChip.x && prev.y === nextChip.y) return prev;
+            return nextChip;
+          });
         }
 
         if (!layout || blocks.length === 0) return;
@@ -4399,7 +4452,62 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             onDragStart={handleImageDragStart}
             onDragEnd={handleImageDragEnd}
             onContextMenu={handlePagesContextMenu}
+            onOpenProperties={onOpenProperties}
           />
+
+          {/* Table "Format" chip — top-right of the table containing the
+              caret. Opens the same contextual Format panel as the image chip
+              (host derives table vs image from its selection context). */}
+          {onOpenProperties && tableChipPos && isFocused && (
+            <button
+              type="button"
+              data-testid="table-format-chip"
+              aria-label="Format table"
+              title="Format"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenProperties();
+              }}
+              style={{
+                position: 'absolute',
+                left: tableChipPos.x,
+                top: tableChipPos.y - 14,
+                transform: 'translateX(-100%)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                height: 26,
+                padding: '0 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: '26px',
+                color: '#fff',
+                background: '#2563eb',
+                border: 'none',
+                borderRadius: 13,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                cursor: 'pointer',
+                zIndex: 201,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+              </svg>
+              Format
+            </button>
+          )}
 
           {/* Table quick action insert button */}
           {tableInsertButton && (
