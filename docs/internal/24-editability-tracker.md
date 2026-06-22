@@ -29,7 +29,7 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 | Pri | Item | Impact | Notes / fix direction |
 | --- | --- | --- | --- |
 | P3 | ⬜ **Textbox click-to-select-as-node** (Word border-select) | Low — deletion already works | `Ctrl+A`→Delete already removes a box; **Backspace in an empty box now deletes it** too (✅, BaseKeymapExtension). Remaining nicety: click the box border to select the whole node (for move/resize); not blocking. |
-| P2 | ⬜ **Textbox move / resize** | Med | No drag/resize handles for textbox (only images have them). Add an overlay like `ImageSelectionOverlay`. |
+| P2 | 🟡 **Textbox move / resize** | Med | ✅ **Resize** + fill + outline now editable via the **Format panel** (textbox section), opened by the on-object Format chip while the caret is in the box (#57) — resize-by-number, no drag overlay, sidesteps the anchored-position blocker below. Remaining: drag/resize **handles** overlay (like images) + **move** (gated on anchored-position). |
 | P2 | ⬜ **Anchored position honored by layout** | High (shared) | Floating images + textboxes + shapes store `posOffsetH/V` but the layout engine ignores them (reverted `d8b85d1`). Drag-move updates attrs but a re-layout can reset. Needs hybrid cursor-advance + wrap-exclusion zones. |
 | P2 | ⬜ **Shape (rawXml) safety** | Med | rawXml shapes are preserve-only; editing silently rebuilds → loses VML. Make click-selectable + safely deletable; block in-place edit or patch only the textBody. |
 | P3 | ⬜ **Header/footer caret feedback** | Low | Double-click-to-edit works; caret not painted on the page-behind during edit. |
