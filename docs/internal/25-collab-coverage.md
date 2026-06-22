@@ -24,7 +24,7 @@ any peer's snapshot carries them. All this session's Format-panel work is here:
 | --- | --- | --- | --- |
 | **File name / meta** | `meta` Y.Map | ✅ synced | — (already wired) |
 | **Footnote text** | `package.footnotes` | ✅ **synced** via the `footnotes` Y.Map + `makeFootnoteSync` (PR #65) | done |
-| **Comment threads** (text, author, replies, resolved) | React `comments` state / controlled `comments` prop | ❌ **NOT synced** — the highlight mark syncs but the thread content does not, so a peer sees a highlight with no comment. **Real gap.** | Wire a `comments` Y.Array in `useCollab`; reconcile with DocxEditor's existing controlled `comments` + `onCommentsChange` API. Concurrency (replies/resolve) needs per-item modelling. Sizeable — own focused effort. |
+| **Comment threads** (text, author, replies, resolved) | React `comments` state / controlled `comments` prop | ✅ **synced** via the `comments` Y.Map (keyed by id) + `collab/commentSync`; CasualEditor drives DocxEditor's controlled `comments` + `onCommentsChange`. Replies are separate entries (parentId); add/reply/resolve/delete + concurrent adds proven by a two-peer test. | done |
 | **Endnote text** | `package.endnotes` | ⚪ not editable yet (render-only) | when endnote editing is added, mirror the footnote `endnotes` Y.Map pattern |
 | **Document properties** (title/author/…) | `package.properties` | ⚪ not synced; low-frequency | minor; a `props` Y.Map later if needed |
 | **Header/footer text** | parsed parts; edited via double-click → PM region | mostly PM (synced); the part wiring needs a spot check | verify, then wire if any out-of-PM bits |
@@ -39,5 +39,6 @@ any peer's snapshot carries them. All this session's Format-panel work is here:
 
 ## Verdict
 Everything built this session is collab-safe: the Format-panel edits are PM-node
-edits (synced), and footnotes are now synced. The one **real** remaining gap is
-**comment-thread sync** — same class of fix, but a sizeable feature on its own.
+edits (synced), footnotes are synced, and **comment threads are now synced**. No
+known out-of-PM editable surface remains unsynced. Endnote editing (not built
+yet) and doc properties are the only future items, and each mirrors this pattern.

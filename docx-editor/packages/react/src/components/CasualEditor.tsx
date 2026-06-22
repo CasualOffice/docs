@@ -37,6 +37,7 @@
 
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -48,6 +49,7 @@ import {
 import { DocxEditor, type DocxEditorProps, type DocxEditorRef } from './DocxEditor';
 import { createEmptyDocument } from '@eigenpal/docx-core/utils';
 import type { Document } from '@eigenpal/docx-core/types/document';
+import type { Comment } from '@eigenpal/docx-core/types/content';
 
 import {
   useCollab,
@@ -56,6 +58,7 @@ import {
   type CollabState,
   type CollabStatus,
 } from '../collab/useCollab';
+import { commentsFromMap, observeComments, writeCommentsToMap } from '../collab/commentSync';
 import {
   useFileSourceAutoSave,
   type UseFileSourceAutoSaveReturn,
@@ -231,6 +234,25 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
       [collabState]
     );
 
+    // Comment threads ride a shared `comments` Y.Map (highlight marks sync via
+    // ySyncPlugin, but the thread content doesn't). In collab we drive
+    // DocxEditor's CONTROLLED comments from the map: observe → setState; the
+    // editor's onCommentsChange reconciles back into the map (the observer is
+    // the single source of truth, so local writes round-trip through it too).
+    const [collabComments, setCollabComments] = useState<Comment[]>([]);
+    useEffect(() => {
+      if (!collabState) return;
+      const map = collabState.commentsMap;
+      setCollabComments(commentsFromMap(map));
+      return observeComments(map, setCollabComments);
+    }, [collabState]);
+    const handleCommentsChange = useCallback(
+      (next: Comment[]) => {
+        if (collabState) writeCommentsToMap(collabState.commentsMap, next);
+      },
+      [collabState]
+    );
+
     // ---------------------------------------------------------------
     // Autosave — opt-in via autosave={true}
     // ---------------------------------------------------------------
@@ -284,6 +306,8 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
         externalContent={!!collabState}
         externalPlugins={collabState ? collabState.plugins : undefined}
         footnoteSync={footnoteSync}
+        comments={collabState ? collabComments : undefined}
+        onCommentsChange={collabState ? handleCommentsChange : undefined}
         author={author}
         onSave={onSave}
         onSelectionChange={onSelectionChange}
