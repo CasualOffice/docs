@@ -1495,6 +1495,12 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // Mirrors the image chip; opens the same Format panel via onOpenProperties.
     const [tableChipPos, setTableChipPos] = useState<{ x: number; y: number } | null>(null);
 
+    // Text box "Format" chip — overlay-relative {x,y} of the top-right corner
+    // of the text box whose content range contains the caret, else null. The
+    // painted `.layout-textbox` carries data-pm-start/end so detection is a
+    // pure DOM range test (no PM walk needed here).
+    const [textBoxChipPos, setTextBoxChipPos] = useState<{ x: number; y: number } | null>(null);
+
     /** Build ImageSelectionInfo from a DOM element with data-pm-start */
     const buildImageSelectionInfo = useCallback(
       (el: HTMLElement, pmPos: number): ImageSelectionInfo => {
@@ -2373,6 +2379,33 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             if (prev === nextChip) return prev;
             if (prev && nextChip && prev.x === nextChip.x && prev.y === nextChip.y) return prev;
             return nextChip;
+          });
+        }
+
+        // Text box "Format" chip — anchor to the painted text box whose
+        // [data-pm-start, data-pm-end) range contains the caret.
+        {
+          const pagesEl = pagesContainerRef.current;
+          const viewportEl = pagesEl?.parentElement;
+          let nextTb: { x: number; y: number } | null = null;
+          if (pagesEl && viewportEl) {
+            const boxes = pagesEl.querySelectorAll('.layout-textbox[data-pm-start]');
+            for (const el of Array.from(boxes)) {
+              const htmlEl = el as HTMLElement;
+              const s = Number(htmlEl.dataset.pmStart);
+              const e = Number(htmlEl.dataset.pmEnd);
+              if (!Number.isNaN(s) && !Number.isNaN(e) && from >= s && from < e) {
+                const r = htmlEl.getBoundingClientRect();
+                const v = viewportEl.getBoundingClientRect();
+                nextTb = { x: r.right - v.left, y: r.top - v.top };
+                break;
+              }
+            }
+          }
+          setTextBoxChipPos((prev) => {
+            if (prev === nextTb) return prev;
+            if (prev && nextTb && prev.x === nextTb.x && prev.y === nextTb.y) return prev;
+            return nextTb;
           });
         }
 
@@ -4477,6 +4510,60 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                 position: 'absolute',
                 left: tableChipPos.x,
                 top: tableChipPos.y - 14,
+                transform: 'translateX(-100%)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                height: 26,
+                padding: '0 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: '26px',
+                color: '#fff',
+                background: '#2563eb',
+                border: 'none',
+                borderRadius: 13,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                cursor: 'pointer',
+                zIndex: 201,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+              </svg>
+              Format
+            </button>
+          )}
+
+          {/* Text box "Format" chip — top-right of the box containing the
+              caret. Opens the same contextual Format panel (host derives the
+              textbox kind from its selection context). */}
+          {onOpenProperties && textBoxChipPos && isFocused && (
+            <button
+              type="button"
+              data-testid="textbox-format-chip"
+              aria-label="Format text box"
+              title="Format"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenProperties();
+              }}
+              style={{
+                position: 'absolute',
+                left: textBoxChipPos.x,
+                top: textBoxChipPos.y - 14,
                 transform: 'translateX(-100%)',
                 display: 'inline-flex',
                 alignItems: 'center',

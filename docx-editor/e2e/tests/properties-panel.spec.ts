@@ -145,6 +145,75 @@ test('Format panel: table chip → table section (not empty), delete row applies
   expect(cellsAfter).toBeLessThan(cellsBefore);
 });
 
+test('Format panel: textbox chip → section (resize + fill apply)', async ({ page }) => {
+  const editor = new EditorPage(page);
+  await editor.goto();
+  await editor.waitForReady();
+  await editor.loadDocxFile('fixtures/textbox-test.docx');
+  await page.waitForTimeout(1500);
+
+  const box = page.locator('[data-testid="docx-editor"] .layout-textbox').first();
+  await box.click({ position: { x: 24, y: 12 } });
+  await page.waitForTimeout(400);
+
+  // chip appears for the caret-in-textbox; panel not auto-opened
+  await expect(page.locator('[data-testid="textbox-format-chip"]')).toBeVisible();
+  expect(await page.locator(PANEL).count()).toBe(0);
+
+  await page.locator('[data-testid="textbox-format-chip"]').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator(PANEL)).toBeVisible();
+  await expect(page.locator('[data-testid="properties-textbox-section"]')).toBeVisible();
+
+  // outline applies: "Thick" gives the painted box a visible border width
+  await page.locator('[data-testid="properties-textbox-outline-thick"]').click();
+  await page.waitForTimeout(500);
+  const borderW = await page
+    .locator('[data-testid="docx-editor"] .layout-textbox')
+    .first()
+    .evaluate((el) => parseFloat(getComputedStyle(el as HTMLElement).borderTopWidth || '0'));
+  expect(borderW).toBeGreaterThanOrEqual(3);
+
+  // resize applies: width input drives the painted box width
+  const wBefore =
+    (await page.locator('[data-testid="docx-editor"] .layout-textbox').first().boundingBox())
+      ?.width ?? 0;
+  await page.locator('[data-testid="properties-textbox-width"]').fill('120');
+  await page.locator('[data-testid="properties-textbox-width"]').press('Enter');
+  await page.waitForTimeout(500);
+  const wAfter =
+    (await page.locator('[data-testid="docx-editor"] .layout-textbox').first().boundingBox())
+      ?.width ?? 0;
+  expect(wAfter).toBeLessThan(wBefore);
+});
+
+test('Format panel: textbox "No fill" removes a pre-filled background', async ({ page }) => {
+  const editor = new EditorPage(page);
+  await editor.goto();
+  await editor.waitForReady();
+  await editor.loadDocxFile('fixtures/textbox-test.docx');
+  await page.waitForTimeout(1500);
+
+  // The blue info box (2nd) has a fill; clicking "No fill" must clear it.
+  const blue = page.locator('[data-testid="docx-editor"] .layout-textbox').nth(1);
+  await blue.click({ position: { x: 24, y: 12 } });
+  await page.waitForTimeout(400);
+  await page.locator('[data-testid="textbox-format-chip"]').click();
+  await page.waitForTimeout(400);
+
+  const bgBefore = await page
+    .locator('[data-testid="docx-editor"] .layout-textbox')
+    .nth(1)
+    .evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
+  await page.locator('[data-testid="properties-textbox-fill-none"]').click();
+  await page.waitForTimeout(500);
+  const bgAfter = await page
+    .locator('[data-testid="docx-editor"] .layout-textbox')
+    .nth(1)
+    .evaluate((el) => getComputedStyle(el as HTMLElement).backgroundColor);
+  expect(bgAfter).not.toBe(bgBefore);
+});
+
 test('Format panel: only one right-side surface open at a time', async ({ page }) => {
   const editor = new EditorPage(page);
   await editor.goto();

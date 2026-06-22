@@ -54,6 +54,7 @@ import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
 import { PropertiesPanel, type PropertiesTargetKind } from './sidebar/PropertiesPanel';
 import { ImagePropertiesSection } from './sidebar/ImagePropertiesSection';
 import { TablePropertiesSection } from './sidebar/TablePropertiesSection';
+import { TextBoxPropertiesSection } from './sidebar/TextBoxPropertiesSection';
 import { useEditHistory } from '../hooks/useEditHistory';
 import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
 import { downloadServerVersion, type ServerVersionBackend } from '../version-history/server-source';
@@ -875,6 +876,14 @@ interface EditorState {
     width: number | null;
     height: number | null;
   } | null;
+  pmTextBoxContext: {
+    pos: number;
+    width: number | null;
+    height: number | null;
+    fillColor: string | null;
+    outlineWidth: number | null;
+    outlineColor: string | null;
+  } | null;
 }
 
 // ============================================================================
@@ -1584,6 +1593,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     paragraphTabs: null,
     pmTableContext: null,
     pmImageContext: null,
+    pmTextBoxContext: null,
   });
 
   // Table properties dialog state
@@ -2983,6 +2993,42 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
 
+      // Check if the caret is inside (or the selection is) a text box. Walk the
+      // ancestor chain so a caret in the box's text still surfaces the box —
+      // textboxes are edited by clicking inside (caret model), like tables.
+      let pmTextBoxCtx: typeof state.pmTextBoxContext = null;
+      if (view) {
+        const sel = view.state.selection;
+        const selNode = (
+          sel as { node?: { type: { name: string }; attrs: Record<string, unknown> } }
+        ).node;
+        let tbNode: { attrs: Record<string, unknown> } | null = null;
+        let tbPos = -1;
+        if (selNode?.type.name === 'textBox') {
+          tbNode = selNode;
+          tbPos = sel.from;
+        } else {
+          const $from = sel.$from;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === 'textBox') {
+              tbNode = $from.node(d);
+              tbPos = $from.before(d);
+              break;
+            }
+          }
+        }
+        if (tbNode && tbPos >= 0) {
+          pmTextBoxCtx = {
+            pos: tbPos,
+            width: (tbNode.attrs.width as number) ?? null,
+            height: (tbNode.attrs.height as number) ?? null,
+            fillColor: (tbNode.attrs.fillColor as string) ?? null,
+            outlineWidth: (tbNode.attrs.outlineWidth as number) ?? null,
+            outlineColor: (tbNode.attrs.outlineColor as string) ?? null,
+          };
+        }
+      }
+
       if (!selectionState) {
         setFloatingCommentBtn(null);
         setState((prev) => ({
@@ -2990,6 +3036,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           selectionFormatting: {},
           pmTableContext: pmTableCtx,
           pmImageContext: pmImageCtx,
+          pmTextBoxContext: pmTextBoxCtx,
         }));
         return;
       }
@@ -3073,6 +3120,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         paragraphTabs: paragraphFormatting.tabs ?? null,
         pmTableContext: pmTableCtx,
         pmImageContext: pmImageCtx,
+        pmTextBoxContext: pmTextBoxCtx,
       }));
 
       // Update floating comment button position
@@ -3915,6 +3963,46 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       focusActiveEditor();
     },
     [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // --- Text box Format-panel handlers ---------------------------------------
+  // All go through setNodeMarkup on the textBox node (reliable + round-trips);
+  // the painter re-renders at the new size/fill/outline. We keep the caret
+  // inside the box (setSelection at pos+1) so the panel stays open on it.
+  const updateTextBoxAttrs = useCallback(
+    (patch: Record<string, unknown>) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmTextBoxContext) return;
+      const pos = state.pmTextBoxContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'textBox') return;
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...patch });
+      view.dispatch(tr);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmTextBoxContext]
+  );
+  const handleTextBoxSetSize = useCallback(
+    (width: number, height: number | null) => {
+      updateTextBoxAttrs({
+        width: Math.max(24, Math.min(2000, Math.round(width))),
+        height: height == null ? null : Math.max(16, Math.min(2000, Math.round(height))),
+      });
+    },
+    [updateTextBoxAttrs]
+  );
+  const handleTextBoxSetFill = useCallback(
+    (fillColor: string | null) => updateTextBoxAttrs({ fillColor }),
+    [updateTextBoxAttrs]
+  );
+  const handleTextBoxSetOutline = useCallback(
+    (outlineWidth: number | null, outlineColor: string | null) =>
+      updateTextBoxAttrs({
+        outlineWidth,
+        outlineColor: outlineWidth == null ? null : outlineColor,
+        outlineStyle: outlineWidth == null ? null : 'solid',
+      }),
+    [updateTextBoxAttrs]
   );
 
   // Handle image transform (rotate/flip)
@@ -8447,9 +8535,11 @@ body { background: white; }
                       // never overlaps it. Kind derived from the live selection.
                       const propsKind: PropertiesTargetKind | null = state.pmImageContext
                         ? 'image'
-                        : state.pmTableContext?.isInTable
-                          ? 'table'
-                          : null;
+                        : state.pmTextBoxContext
+                          ? 'textbox'
+                          : state.pmTableContext?.isInTable
+                            ? 'table'
+                            : null;
                       return (
                         <PropertiesPanel kind={propsKind} onClose={() => openRightPanel('none')}>
                           {propsKind === 'image' && state.pmImageContext && (
@@ -8469,6 +8559,18 @@ body { background: white; }
                           )}
                           {propsKind === 'table' && (
                             <TablePropertiesSection onAction={handleTableAction} />
+                          )}
+                          {propsKind === 'textbox' && state.pmTextBoxContext && (
+                            <TextBoxPropertiesSection
+                              width={state.pmTextBoxContext.width}
+                              height={state.pmTextBoxContext.height}
+                              fillColor={state.pmTextBoxContext.fillColor}
+                              outlineWidth={state.pmTextBoxContext.outlineWidth}
+                              outlineColor={state.pmTextBoxContext.outlineColor}
+                              onSetSize={handleTextBoxSetSize}
+                              onSetFill={handleTextBoxSetFill}
+                              onSetOutline={handleTextBoxSetOutline}
+                            />
                           )}
                         </PropertiesPanel>
                       );
