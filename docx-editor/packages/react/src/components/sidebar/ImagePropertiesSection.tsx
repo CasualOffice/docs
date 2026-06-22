@@ -93,6 +93,17 @@ const WRAP_OPTIONS: WrapOption[] = [
       </svg>
     ),
   },
+  {
+    value: 'topAndBottom',
+    label: 'Top & bottom',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 5h18M3 8h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <rect x="6" y="10.5" width="12" height="4" rx="1" fill="currentColor" />
+        <path d="M3 17h18M3 20h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
 const GROUP_HEADER: CSSProperties = {
@@ -106,7 +117,7 @@ const GROUP_HEADER: CSSProperties = {
 
 const TILE_GRID: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(5, 1fr)',
+  gridTemplateColumns: 'repeat(3, 1fr)',
   gap: 6,
   padding: '0 12px',
 };
@@ -178,7 +189,17 @@ export interface ImagePropertiesSectionProps {
   ) => void;
   /** Set alt text (host wires this to setNodeMarkup). */
   onSetAlt?: (alt: string) => void;
+  /** Current distance-from-text margins (px) for wrapped images. */
+  distTop?: number | null;
+  distBottom?: number | null;
+  distLeft?: number | null;
+  distRight?: number | null;
+  /** Set distance-from-text margins (host wires this to setNodeMarkup). */
+  onSetDist?: (side: 'distTop' | 'distBottom' | 'distLeft' | 'distRight', value: number) => void;
 }
+
+// Distance-from-text only applies to text-wrapping floats.
+const WRAPS_TEXT = new Set(['squareLeft', 'squareRight', 'topAndBottom']);
 
 const BORDER_PRESETS: { label: string; width: number | null }[] = [
   { label: 'None', width: null },
@@ -260,6 +281,11 @@ export function ImagePropertiesSection({
   onTransform,
   onSetBorder,
   onSetAlt,
+  distTop,
+  distBottom,
+  distLeft,
+  distRight,
+  onSetDist,
 }: ImagePropertiesSectionProps) {
   // Local, editable copies so typing doesn't fight the live node attrs. They
   // re-sync whenever the selected image (its size) changes underneath.
@@ -382,6 +408,52 @@ export function ImagePropertiesSection({
             />
             Lock aspect ratio
           </label>
+        </>
+      )}
+
+      {onSetDist && WRAPS_TEXT.has(wrapType) && (
+        <>
+          <div style={GROUP_HEADER}>Distance from text</div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px 12px',
+              padding: '0 16px 14px',
+            }}
+            data-testid="properties-image-dist"
+          >
+            {(
+              [
+                ['distTop', 'Top', distTop],
+                ['distBottom', 'Bottom', distBottom],
+                ['distLeft', 'Left', distLeft],
+                ['distRight', 'Right', distRight],
+              ] as const
+            ).map(([side, label, val]) => (
+              <label
+                key={side}
+                style={{ ...sizeLabel, display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {label}
+                <input
+                  style={{ ...sizeInput, width: 56 }}
+                  type="number"
+                  min={0}
+                  max={200}
+                  defaultValue={val != null ? Math.round(val) : 0}
+                  data-testid={`properties-image-${side}`}
+                  onBlur={(e) => onSetDist(side, Number(e.target.value) || 0)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      onSetDist(side, Number((e.target as HTMLInputElement).value) || 0);
+                    }
+                  }}
+                />
+              </label>
+            ))}
+          </div>
         </>
       )}
 

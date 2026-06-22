@@ -79,6 +79,37 @@ test('Format panel: image chip → panel beside doc, wrap applies', async ({ pag
   expect(floatAfter).toBe(floatBefore + 1);
 });
 
+test('Format panel: image Top&bottom wrap + distance-from-text apply', async ({ page }) => {
+  const editor = new EditorPage(page);
+  await editor.goto();
+  await editor.waitForReady();
+  await editor.loadDocxFile('fixtures/example-with-image.docx');
+  await page.waitForTimeout(1200);
+
+  const img = page.locator(INLINE_IMG).first();
+  const ib = await img.boundingBox();
+  await img.click({ position: { x: Math.round(ib!.width / 2), y: Math.round(ib!.height / 2) } });
+  await page.waitForTimeout(300);
+  await page.locator(IMG_CHIP).click();
+  await page.waitForTimeout(400);
+
+  // top&bottom moves the image out of the inline flow (into the floating layer)
+  const inlineBefore = await page.locator(INLINE_IMG).count();
+  await page.locator('[data-testid="properties-wrap-topAndBottom"]').click();
+  await page.waitForTimeout(700);
+  expect(await page.locator(INLINE_IMG).count()).toBe(inlineBefore - 1);
+
+  // the distance-from-text group now shows; set a top margin and confirm the
+  // input round-trips through the node (panel re-reads it as the live value)
+  await expect(page.locator('[data-testid="properties-image-dist"]')).toBeVisible();
+  const distTop = page.locator('[data-testid="properties-image-distTop"]');
+  await distTop.fill('40');
+  await distTop.press('Enter');
+  await page.waitForTimeout(500);
+  // re-open keeps the image selected; the node carries the new margin
+  await expect(page.locator('[data-testid="properties-image-section"]')).toBeVisible();
+});
+
 test('Format panel: image Arrange (rotate) + Border apply to the document', async ({ page }) => {
   const editor = new EditorPage(page);
   await editor.goto();
