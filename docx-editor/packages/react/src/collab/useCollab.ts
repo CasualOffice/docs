@@ -60,6 +60,41 @@ export interface CollabState {
    * Yjs propagates to all others.
    */
   metaMap: Y.Map<unknown>;
+  /**
+   * Shared footnote-text edits (footnote id → plain text), in the same Y.Doc
+   * as the body. Footnotes aren't in the ProseMirror tree, so this is how
+   * footnote edits sync across peers. Hosts pass a small adapter built from
+   * this map to `<DocxEditor footnoteSync={...} />`.
+   */
+  footnotesMap: Y.Map<string>;
+}
+
+/** A transport for footnote-text edits (id → text), backed by a shared map. */
+export interface FootnoteSync {
+  set: (id: number, text: string) => void;
+  observe: (cb: (id: number, text: string) => void) => () => void;
+}
+
+/**
+ * Build a {@link FootnoteSync} over a `footnotes` Y.Map. `set` writes the new
+ * text (which Yjs syncs to peers); `observe` fires the callback for every
+ * changed key — local AND remote — so each peer applies edits to its own model
+ * uniformly. Pure of React so it can be unit-tested with two synced Y.Docs.
+ */
+export function makeFootnoteSync(map: Y.Map<string>): FootnoteSync {
+  return {
+    set: (id, text) => map.set(String(id), text),
+    observe: (cb) => {
+      const handler = (event: Y.YMapEvent<string>) => {
+        event.changes.keys.forEach((_change, key) => {
+          const text = map.get(key);
+          if (text !== undefined) cb(Number(key), text);
+        });
+      };
+      map.observe(handler);
+      return () => map.unobserve(handler);
+    },
+  };
 }
 
 export interface UseCollabOptions {
@@ -84,7 +119,7 @@ export interface UseCollabOptions {
  * loader doesn't overwrite the Yjs-populated PM state.
  */
 export function useCollab({ room, backend, user, token }: UseCollabOptions): CollabState {
-  const { ydoc, provider, plugins, metaMap } = useMemo(() => {
+  const { ydoc, provider, plugins, metaMap, footnotesMap } = useMemo(() => {
     const ydoc = new Y.Doc();
     // Hocuspocus carries the document name in the handshake (`name`),
     // not the URL path — so `backend` is the bare ws endpoint. A
@@ -106,7 +141,13 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
       yUndoPlugin(),
     ];
     const metaMap = ydoc.getMap('meta');
-    return { ydoc, provider, plugins, metaMap };
+    // Footnote text edits don't live in the ProseMirror document (footnotes are
+    // a separate part of the .docx), so they don't travel over ySyncPlugin.
+    // A dedicated shared map in the SAME Y.Doc gives them the same realtime
+    // sync + offline resilience as the body content. Keyed by footnote id
+    // (string) → current plain text.
+    const footnotesMap = ydoc.getMap<string>('footnotes');
+    return { ydoc, provider, plugins, metaMap, footnotesMap };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, backend, token]);
 
@@ -162,5 +203,5 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
     };
   }, [provider, ydoc]);
 
-  return { plugins, status, peers, awareness: provider.awareness, metaMap };
+  return { plugins, status, peers, awareness: provider.awareness, metaMap, footnotesMap };
 }
