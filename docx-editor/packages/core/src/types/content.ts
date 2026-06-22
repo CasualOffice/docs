@@ -1428,6 +1428,8 @@ export interface Endnote {
    * the body — paragraphs and tables. See note on `Footnote.content`.
    */
   content: (Paragraph | Table)[];
+  /** Set true on edit; the save path regenerates only this endnote's text. */
+  edited?: boolean;
 }
 
 // ============================================================================

@@ -67,6 +67,8 @@ export interface CollabState {
    * this map to `<DocxEditor footnoteSync={...} />`.
    */
   footnotesMap: Y.Map<string>;
+  /** Shared endnote-text edits (endnote id → plain text). Mirror of footnotes. */
+  endnotesMap: Y.Map<string>;
   /**
    * Shared comment threads (comment id → Comment JSON), in the same Y.Doc as
    * the body. Comment highlight marks ride ySyncPlugin, but the thread content
@@ -126,42 +128,44 @@ export interface UseCollabOptions {
  * loader doesn't overwrite the Yjs-populated PM state.
  */
 export function useCollab({ room, backend, user, token }: UseCollabOptions): CollabState {
-  const { ydoc, provider, plugins, metaMap, footnotesMap, commentsMap } = useMemo(() => {
-    const ydoc = new Y.Doc();
-    // Hocuspocus carries the document name in the handshake (`name`),
-    // not the URL path — so `backend` is the bare ws endpoint. A
-    // truthy token lets the handshake complete past an onAuthenticate
-    // hook even for anonymous sessions.
-    const provider = new HocuspocusProvider({
-      url: backend,
-      name: room,
-      document: ydoc,
-      token: token ?? 'anon',
-    });
-    const fragment = ydoc.getXmlFragment('prosemirror');
-    // Hocuspocus creates awareness by default; guard the type union so
-    // the cursor plugin is only wired when it's actually present.
-    const awareness = provider.awareness;
-    const plugins = [
-      ySyncPlugin(fragment),
-      ...(awareness ? [yCursorPlugin(awareness)] : []),
-      yUndoPlugin(),
-    ];
-    const metaMap = ydoc.getMap('meta');
-    // Footnote text edits don't live in the ProseMirror document (footnotes are
-    // a separate part of the .docx), so they don't travel over ySyncPlugin.
-    // A dedicated shared map in the SAME Y.Doc gives them the same realtime
-    // sync + offline resilience as the body content. Keyed by footnote id
-    // (string) → current plain text.
-    const footnotesMap = ydoc.getMap<string>('footnotes');
-    // Comment threads (text / replies / resolved) live in React state, not the
-    // PM tree, so the highlight marks sync but the thread content wouldn't.
-    // A shared map keyed by comment id (string) → Comment JSON gives them the
-    // same realtime sync. Replies are separate Comment entries (parentId).
-    const commentsMap = ydoc.getMap<unknown>('comments');
-    return { ydoc, provider, plugins, metaMap, footnotesMap, commentsMap };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room, backend, token]);
+  const { ydoc, provider, plugins, metaMap, footnotesMap, endnotesMap, commentsMap } =
+    useMemo(() => {
+      const ydoc = new Y.Doc();
+      // Hocuspocus carries the document name in the handshake (`name`),
+      // not the URL path — so `backend` is the bare ws endpoint. A
+      // truthy token lets the handshake complete past an onAuthenticate
+      // hook even for anonymous sessions.
+      const provider = new HocuspocusProvider({
+        url: backend,
+        name: room,
+        document: ydoc,
+        token: token ?? 'anon',
+      });
+      const fragment = ydoc.getXmlFragment('prosemirror');
+      // Hocuspocus creates awareness by default; guard the type union so
+      // the cursor plugin is only wired when it's actually present.
+      const awareness = provider.awareness;
+      const plugins = [
+        ySyncPlugin(fragment),
+        ...(awareness ? [yCursorPlugin(awareness)] : []),
+        yUndoPlugin(),
+      ];
+      const metaMap = ydoc.getMap('meta');
+      // Footnote text edits don't live in the ProseMirror document (footnotes are
+      // a separate part of the .docx), so they don't travel over ySyncPlugin.
+      // A dedicated shared map in the SAME Y.Doc gives them the same realtime
+      // sync + offline resilience as the body content. Keyed by footnote id
+      // (string) → current plain text.
+      const footnotesMap = ydoc.getMap<string>('footnotes');
+      const endnotesMap = ydoc.getMap<string>('endnotes');
+      // Comment threads (text / replies / resolved) live in React state, not the
+      // PM tree, so the highlight marks sync but the thread content wouldn't.
+      // A shared map keyed by comment id (string) → Comment JSON gives them the
+      // same realtime sync. Replies are separate Comment entries (parentId).
+      const commentsMap = ydoc.getMap<unknown>('comments');
+      return { ydoc, provider, plugins, metaMap, footnotesMap, endnotesMap, commentsMap };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [room, backend, token]);
 
   const [status, setStatus] = useState<CollabStatus>('connecting');
   const [peers, setPeers] = useState<CollabPeer[]>([]);
@@ -222,6 +226,7 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
     awareness: provider.awareness,
     metaMap,
     footnotesMap,
+    endnotesMap,
     commentsMap,
   };
 }

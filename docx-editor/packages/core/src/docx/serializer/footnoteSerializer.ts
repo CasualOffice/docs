@@ -14,8 +14,8 @@
  * were actually edited. Untouched documents keep footnotes.xml verbatim, so
  * the round-trip-fidelity guarantee is preserved.
  */
-import type { Footnote } from '../../types/content';
-import { getFootnoteText } from '../footnoteParser';
+import type { Endnote, Footnote } from '../../types/content';
+import { getEndnoteText, getFootnoteText } from '../footnoteParser';
 import { escapeXml } from './xmlUtils';
 
 /**
@@ -50,13 +50,26 @@ function setBodyText(bodyXml: string, text: string): string {
  * exact. The new text is the footnote model's current plain text.
  */
 export function replaceFootnotesInXml(originalXml: string, edited: Footnote[]): string {
+  return replaceNotesInXml(originalXml, edited, 'footnote', getFootnoteText);
+}
+
+/** Endnote sibling of {@link replaceFootnotesInXml} (operates on `<w:endnote>`). */
+export function replaceEndnotesInXml(originalXml: string, edited: Endnote[]): string {
+  return replaceNotesInXml(originalXml, edited, 'endnote', getEndnoteText);
+}
+
+/** Shared text-surgery for footnotes/endnotes — identical except the element. */
+function replaceNotesInXml<T extends { id: number }>(
+  originalXml: string,
+  edited: T[],
+  tag: 'footnote' | 'endnote',
+  getText: (n: T) => string
+): string {
   let xml = originalXml;
-  for (const fn of edited) {
-    const re = new RegExp(
-      `(<w:footnote\\b[^>]*\\bw:id="${fn.id}"[^>]*>)([\\s\\S]*?)(</w:footnote>)`
-    );
+  for (const note of edited) {
+    const re = new RegExp(`(<w:${tag}\\b[^>]*\\bw:id="${note.id}"[^>]*>)([\\s\\S]*?)(</w:${tag}>)`);
     xml = xml.replace(re, (_m, open: string, body: string, close: string) => {
-      return open + setBodyText(body, getFootnoteText(fn)) + close;
+      return open + setBodyText(body, getText(note)) + close;
     });
   }
   return xml;
@@ -68,6 +81,16 @@ export function replaceFootnotesInXml(originalXml: string, edited: Footnote[]): 
  * marker run is kept, the body collapses to a single text run.
  */
 export function setFootnotePlainText(fn: Footnote, text: string): void {
+  setNotePlainText(fn, text);
+}
+
+/** Endnote sibling of {@link setFootnotePlainText}. */
+export function setEndnotePlainText(en: Endnote, text: string): void {
+  setNotePlainText(en, text);
+}
+
+function setNotePlainText(note: Footnote | Endnote, text: string): void {
+  const fn = note;
   const para = fn.content.find((b) => b.type === 'paragraph');
   if (!para || para.type !== 'paragraph') {
     fn.content = [

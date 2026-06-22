@@ -62,9 +62,16 @@ export interface FootnoteEditDialogProps {
   initialText: string;
   onApply: (text: string) => void;
   onCancel: () => void;
+  /** Dialog heading — defaults to "Edit footnote"; pass "Edit endnote" for endnotes. */
+  title?: string;
 }
 
-export function FootnoteEditDialog({ initialText, onApply, onCancel }: FootnoteEditDialogProps) {
+export function FootnoteEditDialog({
+  initialText,
+  onApply,
+  onCancel,
+  title = 'Edit footnote',
+}: FootnoteEditDialogProps) {
   const [text, setText] = useState(initialText);
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -76,7 +83,7 @@ export function FootnoteEditDialog({ initialText, onApply, onCancel }: FootnoteE
   return (
     <div style={OVERLAY} data-testid="footnote-edit-dialog" onMouseDown={onCancel}>
       <div style={CARD} onMouseDown={(e) => e.stopPropagation()}>
-        <div style={TITLE}>Edit footnote</div>
+        <div style={TITLE}>{title}</div>
         <textarea
           ref={ref}
           style={TEXTAREA}

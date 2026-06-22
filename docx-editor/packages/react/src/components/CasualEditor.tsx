@@ -233,6 +233,10 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
       () => (collabState ? makeFootnoteSync(collabState.footnotesMap) : undefined),
       [collabState]
     );
+    const endnoteSync = useMemo(
+      () => (collabState ? makeFootnoteSync(collabState.endnotesMap) : undefined),
+      [collabState]
+    );
 
     // Comment threads ride a shared `comments` Y.Map (highlight marks sync via
     // ySyncPlugin, but the thread content doesn't). In collab we drive
@@ -306,6 +310,7 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
         externalContent={!!collabState}
         externalPlugins={collabState ? collabState.plugins : undefined}
         footnoteSync={footnoteSync}
+        endnoteSync={endnoteSync}
         comments={collabState ? collabComments : undefined}
         onCommentsChange={collabState ? handleCommentsChange : undefined}
         author={author}
