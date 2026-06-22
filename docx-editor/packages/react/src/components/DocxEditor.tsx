@@ -498,6 +498,18 @@ export interface DocxEditorProps {
    */
   externalContent?: boolean;
   /**
+   * Collab transport for footnote-text edits. Footnotes aren't in the
+   * ProseMirror document, so they don't ride ySyncPlugin; the host wires this
+   * to a shared map (e.g. the `footnotes` Y.Map from `useCollab`) so footnote
+   * edits sync across peers and survive any peer's snapshot. When provided,
+   * footnote edits route through it; the observer applies local + remote edits
+   * uniformly. Omit for single-user (edits apply directly).
+   */
+  footnoteSync?: {
+    set: (id: number, text: string) => void;
+    observe: (cb: (id: number, text: string) => void) => () => void;
+  };
+  /**
    * Starting offset for comment/tracked-change IDs. Default 0.
    *
    * Comments and tracked-change revisions share a single numeric ID space
@@ -1567,6 +1579,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onCommentsChange,
     externalPlugins,
     externalContent = false,
+    footnoteSync,
     commentIdBase,
     onEditorViewReady,
     onRenderedDomContextReady,
@@ -4061,25 +4074,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Footnotes live on the document package (history.state), NOT the PM doc.
   const handleEditFootnote = useCallback(
     (footnoteId: number) => {
-      // Footnotes are NOT part of the Yjs-synced PM document, so an edit here
-      // wouldn't propagate to collaborators and could be lost on another peer's
-      // snapshot. Disable footnote editing in collaborative sessions until
-      // footnotes are modelled in the shared CRDT.
-      if (externalContent) {
-        toast.info('Footnote editing isn’t available in collaborative sessions yet.');
-        return;
-      }
       const fn = history.state?.package?.footnotes?.find((f) => f.id === footnoteId);
       setFootnoteEdit({ id: footnoteId, text: fn ? getFootnoteText(fn) : '' });
     },
-    [history, externalContent]
+    [history]
   );
 
   // Apply a footnote text edit to BOTH the render doc (history.state — repainted
   // via relayout) and the save doc (agentRef — read by handleSave). Marking the
   // footnote `edited` makes the save path regenerate ONLY its text in
-  // footnotes.xml; every untouched footnote stays verbatim.
-  const handleApplyFootnoteEdit = useCallback(
+  // footnotes.xml; every untouched footnote stays verbatim. This runs for BOTH
+  // local edits and remote (collab) edits observed off the shared map, so every
+  // peer's model — and therefore any peer's snapshot — carries the change.
+  const applyFootnoteEditToModel = useCallback(
     (footnoteId: number, text: string) => {
       const apply = (
         pkg: { footnotes?: import('@eigenpal/docx-core/types').Footnote[] } | undefined
@@ -4103,10 +4110,35 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         .forEach((el) => {
           (el as HTMLElement).textContent = ' ' + text;
         });
-      setFootnoteEdit(null);
     },
     [history]
   );
+
+  // Commit an edit from the editor dialog. In collab, route through the shared
+  // footnote map so peers receive it; the observer below applies it to every
+  // peer's model (including ours). Single-user applies directly.
+  const handleApplyFootnoteEdit = useCallback(
+    (footnoteId: number, text: string) => {
+      if (footnoteSync) {
+        footnoteSync.set(footnoteId, text);
+      } else {
+        applyFootnoteEditToModel(footnoteId, text);
+        pagedEditorRef.current?.relayout();
+      }
+      setFootnoteEdit(null);
+    },
+    [footnoteSync, applyFootnoteEditToModel]
+  );
+
+  // Apply remote (and own) footnote edits broadcast over the shared map.
+  useEffect(() => {
+    if (!footnoteSync) return;
+    const unsubscribe = footnoteSync.observe((id, text) => {
+      applyFootnoteEditToModel(id, text);
+      pagedEditorRef.current?.relayout();
+    });
+    return unsubscribe;
+  }, [footnoteSync, applyFootnoteEditToModel]);
 
   // Handle image transform (rotate/flip)
   const handleImageTransform = useCallback(

@@ -39,6 +39,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -50,6 +51,7 @@ import type { Document } from '@eigenpal/docx-core/types/document';
 
 import {
   useCollab,
+  makeFootnoteSync,
   type CollabPeer,
   type CollabState,
   type CollabStatus,
@@ -221,6 +223,14 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
       if (collabState && onCollabState) onCollabState(collabState);
     }, [collabState, onCollabState]);
 
+    // Adapter so footnote edits ride the shared `footnotes` Y.Map (footnotes
+    // aren't in the PM tree, so they don't travel over ySyncPlugin). Memoised on
+    // collabState so the editor's observer subscribes once per session.
+    const footnoteSync = useMemo(
+      () => (collabState ? makeFootnoteSync(collabState.footnotesMap) : undefined),
+      [collabState]
+    );
+
     // ---------------------------------------------------------------
     // Autosave — opt-in via autosave={true}
     // ---------------------------------------------------------------
@@ -273,6 +283,7 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
         document={collabState ? blankDoc() : undefined}
         externalContent={!!collabState}
         externalPlugins={collabState ? collabState.plugins : undefined}
+        footnoteSync={footnoteSync}
         author={author}
         onSave={onSave}
         onSelectionChange={onSelectionChange}
