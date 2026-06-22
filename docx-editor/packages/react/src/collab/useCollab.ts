@@ -67,6 +67,13 @@ export interface CollabState {
    * this map to `<DocxEditor footnoteSync={...} />`.
    */
   footnotesMap: Y.Map<string>;
+  /**
+   * Shared comment threads (comment id → Comment JSON), in the same Y.Doc as
+   * the body. Comment highlight marks ride ySyncPlugin, but the thread content
+   * doesn't — this map carries it. Hosts wire it to DocxEditor's controlled
+   * `comments` + `onCommentsChange` via the helpers in `collab/commentSync`.
+   */
+  commentsMap: Y.Map<unknown>;
 }
 
 /** A transport for footnote-text edits (id → text), backed by a shared map. */
@@ -119,7 +126,7 @@ export interface UseCollabOptions {
  * loader doesn't overwrite the Yjs-populated PM state.
  */
 export function useCollab({ room, backend, user, token }: UseCollabOptions): CollabState {
-  const { ydoc, provider, plugins, metaMap, footnotesMap } = useMemo(() => {
+  const { ydoc, provider, plugins, metaMap, footnotesMap, commentsMap } = useMemo(() => {
     const ydoc = new Y.Doc();
     // Hocuspocus carries the document name in the handshake (`name`),
     // not the URL path — so `backend` is the bare ws endpoint. A
@@ -147,7 +154,12 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
     // sync + offline resilience as the body content. Keyed by footnote id
     // (string) → current plain text.
     const footnotesMap = ydoc.getMap<string>('footnotes');
-    return { ydoc, provider, plugins, metaMap, footnotesMap };
+    // Comment threads (text / replies / resolved) live in React state, not the
+    // PM tree, so the highlight marks sync but the thread content wouldn't.
+    // A shared map keyed by comment id (string) → Comment JSON gives them the
+    // same realtime sync. Replies are separate Comment entries (parentId).
+    const commentsMap = ydoc.getMap<unknown>('comments');
+    return { ydoc, provider, plugins, metaMap, footnotesMap, commentsMap };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, backend, token]);
 
@@ -203,5 +215,13 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
     };
   }, [provider, ydoc]);
 
-  return { plugins, status, peers, awareness: provider.awareness, metaMap, footnotesMap };
+  return {
+    plugins,
+    status,
+    peers,
+    awareness: provider.awareness,
+    metaMap,
+    footnotesMap,
+    commentsMap,
+  };
 }
