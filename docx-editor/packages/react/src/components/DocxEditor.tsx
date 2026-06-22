@@ -4009,7 +4009,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const pos = state.pmTextBoxContext.pos;
       const node = view.state.doc.nodeAt(pos);
       if (!node || node.type.name !== 'textBox') return;
-      const tr = view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...patch });
+      // CRITICAL: an imported box carries its original OOXML envelope in
+      // `rawXml`; the serializer re-emits that verbatim and skips the model
+      // (the rawXml invariant in fromProseDoc). So a fill/size/outline edit
+      // would render but be silently dropped on save. Clearing rawXml/
+      // envelopeKey on edit switches the box to model-based emission so the
+      // change actually persists. The model serializer is complete for the
+      // box's geometry/fill/outline/text; only original VML/custom-geometry
+      // /effects are dropped, which is the expected trade-off for editing.
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        ...patch,
+        rawXml: null,
+        envelopeKey: null,
+      });
       view.dispatch(tr);
       focusActiveEditor();
     },
