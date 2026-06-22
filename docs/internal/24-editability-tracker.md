@@ -35,7 +35,8 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 | P3 | ⬜ **Header/footer caret feedback** | Low | Double-click-to-edit works; caret not painted on the page-behind during edit. |
 | P3 | ⬜ **Footnote click-to-edit** | Low-Med | Clicking footnote text falls through to body (not in `page.fragments`). |
 | P3 | ⬜ **Floating image in table cell — click** | Low | `findImageElement` matches `layout-page-floating-image` but not `layout-cell-floating-image`. |
-| P3 | ⬜ **Image UI: dist-margins / rotate-flip / border / topAndBottom wrap** | Low | Attrs exist + round-trip; no UI to edit. |
+| P3 | 🟡 **Image UI: rotate-flip / border / size** | Low | ✅ rotate/flip + border + editable W×H + alt text now in the **Format panel** image section, opened via the on-object Format chip (#55/#56). Border previously round-tripped but never **painted** — now wired through the flow-block → renderParagraph/renderImage (render-only, no serializer change). Remaining: dist-margins UI + `topAndBottom` wrap tile. |
+| — | **Format panel (image+table) shipped** | — | On-object Format chip → contextual panel (flex sibling, no overlap). Image = Google-Docs icon picker (wrap/size/arrange/border/alt); table = grouped Rows/Cols/Cells/Table ops. One right-side surface at a time. Complete image+table e2e. (#55, #56) |
 | P3 | ⬜ **Cell-range selection polish / col-resize width constraint** | Low | Multi-cell selection lacks anchor styling; col-resize can breach fixed table width. |
 
 ## Insertion (user's main ask: "only there, can't create")
