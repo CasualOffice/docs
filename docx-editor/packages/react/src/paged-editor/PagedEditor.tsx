@@ -355,6 +355,8 @@ export interface PagedEditorProps {
   onOpenProperties?: () => void;
   /** Apply a new text box size (node px) from an on-canvas resize-handle drag. */
   onResizeTextBox?: (width: number, height: number) => void;
+  /** Open the footnote text editor for the footnote double-clicked at page bottom. */
+  onEditFootnote?: (footnoteId: number) => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
   onAnchorPositionsChange?: (positions: Map<string, number>) => void;
   /**
@@ -1325,6 +1327,7 @@ function buildFootnoteRenderItems(
       items.push({
         displayNumber: String(displayNum),
         text,
+        id: fn.id,
       });
     }
 
@@ -1395,6 +1398,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onContextMenu,
       onOpenProperties,
       onResizeTextBox,
+      onEditFootnote,
       onAnchorPositionsChange,
       onTotalPagesChange,
       resolvedCommentIds,
@@ -1468,6 +1472,27 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     onReadyRef.current = onReady;
     onRenderedDomContextReadyRef.current = onRenderedDomContextReady;
     documentRef.current = document;
+    const onEditFootnoteRef = useRef(onEditFootnote);
+    onEditFootnoteRef.current = onEditFootnote;
+    // Double-click a painted footnote at page bottom → open its text editor.
+    useEffect(() => {
+      const el = pagesContainerRef.current;
+      if (!el) return;
+      const onDbl = (e: MouseEvent) => {
+        const fnEl = (e.target as HTMLElement | null)?.closest(
+          '.layout-footnote[data-footnote-id]'
+        ) as HTMLElement | null;
+        if (!fnEl) return;
+        const id = Number(fnEl.dataset.footnoteId);
+        if (!Number.isNaN(id)) {
+          e.preventDefault();
+          e.stopPropagation();
+          onEditFootnoteRef.current?.(id);
+        }
+      };
+      el.addEventListener('dblclick', onDbl);
+      return () => el.removeEventListener('dblclick', onDbl);
+    }, []);
 
     // State
     const [layout, setLayout] = useState<Layout | null>(null);

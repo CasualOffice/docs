@@ -105,6 +105,7 @@ import { useHyperlinkDialog, type HyperlinkData } from './dialogs/useHyperlinkDi
 import type { ImagePositionData } from './dialogs/ImagePositionDialog';
 import type { BordersAndShadingValue } from './dialogs/BordersAndShadingDialog';
 import type { ImagePropertiesData } from './dialogs/ImagePropertiesDialog';
+import { FootnoteEditDialog } from './FootnoteEditDialog';
 import {
   InlineHeaderFooterEditor,
   type InlineHeaderFooterEditorRef,
@@ -263,7 +264,7 @@ import { Toaster, toast } from 'sonner';
 import { getBuiltinTableStyle, type TableStylePreset } from './ui/TableStyleGallery';
 import { DocumentAgent } from '@eigenpal/docx-core/agent';
 import { DefaultLoadingIndicator, DefaultPlaceholder, ParseError } from './DocxEditorHelpers';
-import { parseDocx } from '@eigenpal/docx-core/docx';
+import { parseDocx, getFootnoteText, setFootnotePlainText } from '@eigenpal/docx-core/docx';
 import { findBodyPmAnchors } from '@eigenpal/docx-core/layout-bridge';
 import { type DocxInput } from '@eigenpal/docx-core/utils';
 import { onFontsLoaded, loadDocumentFonts } from '@eigenpal/docx-core/utils';
@@ -1675,6 +1676,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // closes the other so the right rail doesn't double-stack panels.
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showProperties, setShowProperties] = useState(false);
+  // Footnote text editor (opened by double-clicking a footnote at page bottom).
+  const [footnoteEdit, setFootnoteEdit] = useState<{ id: number; text: string } | null>(null);
+  // Pending footnote text edits (id → new text), applied to the save document
+  // in handleSave so they persist regardless of doc-object identity.
+  const footnoteEditsRef = useRef<Map<number, string>>(new Map());
   const editHistory = useEditHistory({ author: 'You' });
 
   // Shared toggle handlers — used by both the toolbar buttons and the
@@ -4051,6 +4057,57 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [updateTextBoxAttrs]
   );
 
+  // Open the footnote editor with the current text of the double-clicked note.
+  // Footnotes live on the document package (history.state), NOT the PM doc.
+  const handleEditFootnote = useCallback(
+    (footnoteId: number) => {
+      // Footnotes are NOT part of the Yjs-synced PM document, so an edit here
+      // wouldn't propagate to collaborators and could be lost on another peer's
+      // snapshot. Disable footnote editing in collaborative sessions until
+      // footnotes are modelled in the shared CRDT.
+      if (externalContent) {
+        toast.info('Footnote editing isn’t available in collaborative sessions yet.');
+        return;
+      }
+      const fn = history.state?.package?.footnotes?.find((f) => f.id === footnoteId);
+      setFootnoteEdit({ id: footnoteId, text: fn ? getFootnoteText(fn) : '' });
+    },
+    [history, externalContent]
+  );
+
+  // Apply a footnote text edit to BOTH the render doc (history.state — repainted
+  // via relayout) and the save doc (agentRef — read by handleSave). Marking the
+  // footnote `edited` makes the save path regenerate ONLY its text in
+  // footnotes.xml; every untouched footnote stays verbatim.
+  const handleApplyFootnoteEdit = useCallback(
+    (footnoteId: number, text: string) => {
+      const apply = (
+        pkg: { footnotes?: import('@eigenpal/docx-core/types').Footnote[] } | undefined
+      ) => {
+        const fn = pkg?.footnotes?.find((f) => f.id === footnoteId);
+        if (fn) {
+          setFootnotePlainText(fn, text);
+          fn.edited = true;
+        }
+      };
+      apply(history.state?.package); // render doc model (for the next relayout)
+      apply(agentRef.current?.getDocument()?.package); // save doc (best-effort)
+      footnoteEditsRef.current.set(footnoteId, text); // re-applied at save time
+      // Instant visual feedback: patch the painted footnote text span(s). The
+      // canonical model is updated above and persisted on save; this avoids a
+      // confusing "nothing changed" until the next reload.
+      document
+        .querySelectorAll(
+          `.layout-footnote[data-footnote-id="${footnoteId}"] .layout-footnote-text`
+        )
+        .forEach((el) => {
+          (el as HTMLElement).textContent = ' ' + text;
+        });
+      setFootnoteEdit(null);
+    },
+    [history]
+  );
+
   // Handle image transform (rotate/flip)
   const handleImageTransform = useCallback(
     (action: 'rotateCW' | 'rotateCCW' | 'flipH' | 'flipV') => {
@@ -6157,6 +6214,18 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         // Sync React comments state (including new replies) back to the document model
         agentDoc.package.document.comments = comments;
 
+        // Apply pending footnote text edits to the save document so they persist
+        // (the surgical footnotes.xml regeneration in rezip keys off `edited`).
+        if (footnoteEditsRef.current.size > 0 && agentDoc.package.footnotes) {
+          for (const [id, text] of footnoteEditsRef.current) {
+            const fn = agentDoc.package.footnotes.find((f) => f.id === id);
+            if (fn) {
+              setFootnotePlainText(fn, text);
+              fn.edited = true;
+            }
+          }
+        }
+
         // Inject commentRangeStart/End for reply comments that share the parent's range.
         // Pages/Word require every comment (including replies) to have range markers in document.xml.
         injectReplyRangeMarkers(agentDoc.package.document.content, comments);
@@ -6187,7 +6256,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               changedParaIds: getChangedParagraphIds(editorState),
               structuralChange: hasStructuralChanges(editorState) || hasInjectedReplies,
               hasUntrackedChanges:
-                hasUntrackedChanges(editorState) || hasNonParagraphBlockChanges(editorState),
+                hasUntrackedChanges(editorState) ||
+                hasNonParagraphBlockChanges(editorState) ||
+                // Footnote edits live outside the PM doc (in footnotes.xml), so
+                // the paraId-keyed selective path can't see them — force a full
+                // repack so the footnotes.xml override in rezip runs.
+                footnoteEditsRef.current.size > 0,
             },
           };
         }
@@ -8325,6 +8399,7 @@ body { background: white; }
                           onContextMenu={handleContextMenu}
                           onOpenProperties={() => openRightPanel('properties')}
                           onResizeTextBox={handleTextBoxSetSize}
+                          onEditFootnote={handleEditFootnote}
                           commentsSidebarOpen={sidebarOpen}
                           onAnchorPositionsChange={setAnchorPositions}
                           onTotalPagesChange={(totalPages) => {
@@ -9166,6 +9241,14 @@ body { background: white; }
                   onApply={handleApplyImagePosition}
                 />
               )}
+              {footnoteEdit && (
+                <FootnoteEditDialog
+                  initialText={footnoteEdit.text}
+                  onCancel={() => setFootnoteEdit(null)}
+                  onApply={(t) => handleApplyFootnoteEdit(footnoteEdit.id, t)}
+                />
+              )}
+
               {imagePropsOpen && (
                 <ImagePropertiesDialog
                   isOpen={imagePropsOpen}

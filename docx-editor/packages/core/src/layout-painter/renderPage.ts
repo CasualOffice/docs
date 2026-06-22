@@ -194,6 +194,8 @@ export interface FootnoteRenderItem {
   displayNumber: string;
   /** Plain text content */
   text: string;
+  /** Footnote id (anchors click-to-edit). */
+  id?: number;
 }
 
 /**
@@ -1216,6 +1218,8 @@ function renderFootnoteArea(
     fnEl.style.lineHeight = '1.3';
     fnEl.style.marginBottom = '4px';
     fnEl.style.color = '#000';
+    fnEl.className = 'layout-footnote';
+    if (fn.id !== undefined) fnEl.dataset.footnoteId = String(fn.id);
 
     const sup = doc.createElement('sup');
     sup.textContent = fn.displayNumber;
@@ -1223,8 +1227,15 @@ function renderFootnoteArea(
     sup.style.marginRight = '2px';
     fnEl.appendChild(sup);
 
-    const textNode = doc.createTextNode(' ' + fn.text);
-    fnEl.appendChild(textNode);
+    // Text in its own span so click-to-edit can target it (and show a hint).
+    const textSpan = doc.createElement('span');
+    textSpan.className = 'layout-footnote-text';
+    textSpan.textContent = ' ' + fn.text;
+    if (fn.id !== undefined) {
+      fnEl.style.cursor = 'text';
+      fnEl.title = 'Double-click to edit footnote';
+    }
+    fnEl.appendChild(textSpan);
 
     container.appendChild(fnEl);
   }
