@@ -1406,6 +1406,12 @@ export interface Footnote {
    * (toProseDoc → toFlowBlocks) can render them uniformly.
    */
   content: (Paragraph | Table)[];
+  /**
+   * Set true when the user edits this footnote's text. The save path then
+   * regenerates ONLY this footnote's `<w:t>` text inside the original
+   * footnotes.xml (surgical, opt-in); untouched footnotes stay verbatim.
+   */
+  edited?: boolean;
 }
 
 /**
