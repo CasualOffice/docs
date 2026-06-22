@@ -17,7 +17,7 @@ import { RightDockPanel } from '../RightDockPanel';
 import { MaterialSymbol } from '../ui/Icons';
 import { PanelState } from '../ui/PanelState';
 
-export type PropertiesTargetKind = 'image' | 'table' | 'shape';
+export type PropertiesTargetKind = 'image' | 'table' | 'shape' | 'textbox';
 
 export interface PropertiesPanelProps {
   /** The kind of object currently selected, or null when none is. */
