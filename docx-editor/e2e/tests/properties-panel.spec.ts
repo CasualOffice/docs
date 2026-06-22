@@ -79,6 +79,41 @@ test('Format panel: image chip → panel beside doc, wrap applies', async ({ pag
   expect(floatAfter).toBe(floatBefore + 1);
 });
 
+test('Format panel: image Arrange (rotate) + Border apply to the document', async ({ page }) => {
+  const editor = new EditorPage(page);
+  await editor.goto();
+  await editor.waitForReady();
+  await editor.loadDocxFile('fixtures/example-with-image.docx');
+  await page.waitForTimeout(1200);
+
+  const img = page.locator(INLINE_IMG).first();
+  const ib = await img.boundingBox();
+  await img.click({ position: { x: Math.round(ib!.width / 2), y: Math.round(ib!.height / 2) } });
+  await page.waitForTimeout(300);
+  await page.locator(IMG_CHIP).click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('[data-testid="properties-image-section"]')).toBeVisible();
+
+  const paintedImg = () => page.locator(INLINE_IMG).first();
+
+  // Rotate right → a rotate() transform appears on the painted image.
+  await page.locator('[data-testid="properties-image-rotateCW"]').click();
+  await page.waitForTimeout(500);
+  const transform = await paintedImg().evaluate(
+    (el) => (el as HTMLElement).style.transform || getComputedStyle(el).transform
+  );
+  expect(transform).not.toBe('');
+  expect(transform.toLowerCase()).toContain('rotate');
+
+  // Border "Medium" → painted image gains a visible border width.
+  await page.locator('[data-testid="properties-image-border-medium"]').click();
+  await page.waitForTimeout(500);
+  const borderW = await paintedImg().evaluate((el) =>
+    parseFloat(getComputedStyle(el as HTMLElement).borderTopWidth || '0')
+  );
+  expect(borderW).toBeGreaterThan(0);
+});
+
 test('Format panel: table chip → table section (not empty), delete row applies', async ({
   page,
 }) => {

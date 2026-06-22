@@ -595,6 +595,13 @@ export function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement 
     // happens to match, but be explicit so future transforms can't drift.
     img.style.transformOrigin = 'center center';
   }
+  // Picture border (set via the Format panel; round-trips on the image node).
+  if (run.borderWidth && run.borderWidth > 0) {
+    img.style.border = `${run.borderWidth}px ${run.borderStyle || 'solid'} ${
+      run.borderColor || '#000000'
+    }`;
+    img.style.boxSizing = 'border-box';
+  }
   if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
 
   const deg = rotationDegrees(run.transform);
@@ -688,6 +695,13 @@ function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
   if (run.transform) {
     img.style.transform = run.transform;
     img.style.transformOrigin = 'center center';
+  }
+  // Picture border (set via the Format panel; round-trips on the image node).
+  if (run.borderWidth && run.borderWidth > 0) {
+    img.style.border = `${run.borderWidth}px ${run.borderStyle || 'solid'} ${
+      run.borderColor || '#000000'
+    }`;
+    img.style.boxSizing = 'border-box';
   }
   if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
 

@@ -156,6 +156,10 @@ export type ImageRun = {
   alt?: string;
   /** CSS transform string (rotation, flip) */
   transform?: string;
+  /** Picture border (round-trips via image node attrs; painted by renderImage) */
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: string;
   /** Position for floating/anchored images */
   position?: ImageRunPosition;
   /** Wrap type from DOCX (inline, square, tight, through, topAndBottom, etc.) */
@@ -435,6 +439,10 @@ export type ImageBlock = {
   alt?: string;
   /** CSS transform string (rotation, flip) */
   transform?: string;
+  /** Picture border (round-trips via image node attrs; painted by renderImage) */
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: string;
   anchor?: {
     isAnchored?: boolean;
     offsetH?: number;

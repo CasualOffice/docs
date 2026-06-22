@@ -69,6 +69,7 @@ import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
+import { NodeSelection } from 'prosemirror-state';
 import type { Mark as PMMark } from 'prosemirror-model';
 import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
@@ -3829,6 +3830,24 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [getActiveEditorView, focusActiveEditor, state.pmImageContext, state.zoom]
   );
 
+  // Re-select the image as a NODE selection after a Format-panel edit. A plain
+  // text selection at `pos` would NOT rebuild pmImageContext, so the panel
+  // would fall back to its empty "select an object" state — this keeps it on
+  // the image (the "keep selection through edits" follow-up).
+  const reselectImageNode = useCallback(
+    (pos: number) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      try {
+        const sel = NodeSelection.create(view.state.doc, pos);
+        view.dispatch(view.state.tr.setSelection(sel));
+      } catch {
+        // pos no longer points at a selectable node; ignore.
+      }
+    },
+    [getActiveEditorView]
+  );
+
   // Set explicit image width/height from the Format panel's size inputs.
   // Same node-markup path the resize handles use, so the painted pages and
   // round-trip stay consistent. Re-selects the image so the panel keeps it.
@@ -3847,10 +3866,55 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         height: h,
       });
       view.dispatch(tr);
-      pagedEditorRef.current?.setSelection(pos);
+      reselectImageNode(pos);
       focusActiveEditor();
     },
-    [getActiveEditorView, focusActiveEditor, state.pmImageContext]
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // Re-select the image as a NODE selection after a Format-panel edit. A plain
+  // text selection at `pos` would NOT rebuild pmImageContext, so the panel
+  // would fall back to its empty "select an object" state — this keeps it on
+  // the image (the "keep selection through edits" follow-up).
+  // Set image border (width/color/style) from the Format panel. Same node
+  // attrs the image-properties dialog uses, so the two stay consistent.
+  const handleImageSetBorder = useCallback(
+    (borderWidth: number | null, borderColor: string | null, borderStyle: string | null) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        borderWidth,
+        borderColor,
+        borderStyle,
+      });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // Set image alt text (accessibility) from the Format panel.
+  const handleImageSetAlt = useCallback(
+    (alt: string) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        alt: alt.trim() ? alt : null,
+      });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
   );
 
   // Handle image transform (rotate/flip)
@@ -3898,9 +3962,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         transform: newTransform,
       });
       view.dispatch(tr.scrollIntoView());
+      // Keep the image selected so the Format panel stays on it after the edit.
+      reselectImageNode(pos);
       focusActiveEditor();
     },
-    [getActiveEditorView, focusActiveEditor, state.pmImageContext]
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
   );
 
   // Apply image position changes
@@ -8391,8 +8457,14 @@ body { background: white; }
                               wrapType={state.pmImageContext.wrapType}
                               width={state.pmImageContext.width}
                               height={state.pmImageContext.height}
+                              borderWidth={state.pmImageContext.borderWidth}
+                              borderColor={state.pmImageContext.borderColor}
+                              alt={state.pmImageContext.alt}
                               onSetWrap={handleImageWrapType}
                               onSetSize={handleImageSetSize}
+                              onTransform={handleImageTransform}
+                              onSetBorder={handleImageSetBorder}
+                              onSetAlt={handleImageSetAlt}
                             />
                           )}
                           {propsKind === 'table' && (

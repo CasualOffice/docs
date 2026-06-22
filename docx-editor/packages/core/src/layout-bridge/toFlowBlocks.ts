@@ -688,6 +688,9 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
         height: constrained.height,
         alt: attrs.alt as string | undefined,
         transform: attrs.transform as string | undefined,
+        borderWidth: attrs.borderWidth as number | undefined,
+        borderColor: attrs.borderColor as string | undefined,
+        borderStyle: attrs.borderStyle as string | undefined,
         // Preserve wrap attributes for proper rendering
         wrapType: attrs.wrapType as string | undefined,
         displayMode: attrs.displayMode as 'inline' | 'block' | 'float' | undefined,
@@ -790,6 +793,9 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
             height: sdtConstrained.height,
             alt: attrs.alt as string | undefined,
             transform: attrs.transform as string | undefined,
+            borderWidth: attrs.borderWidth as number | undefined,
+            borderColor: attrs.borderColor as string | undefined,
+            borderStyle: attrs.borderStyle as string | undefined,
             wrapType: attrs.wrapType as string | undefined,
             displayMode: attrs.displayMode as 'inline' | 'block' | 'float' | undefined,
             cssFloat: attrs.cssFloat as 'left' | 'right' | 'none' | undefined,
@@ -1490,6 +1496,9 @@ function convertImage(node: PMNode, startPos: number, pageContentHeight?: number
     height: constrained.height,
     alt: attrs.alt as string | undefined,
     transform: attrs.transform as string | undefined,
+    borderWidth: attrs.borderWidth as number | undefined,
+    borderColor: attrs.borderColor as string | undefined,
+    borderStyle: attrs.borderStyle as string | undefined,
     anchor: shouldAnchor
       ? {
           isAnchored: true,
