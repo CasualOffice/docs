@@ -38,7 +38,7 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 | P3 | ✅ **Floating image in table cell — click** | Low | Fixed: added `layout-cell-floating-image` to `findImageElement`'s container classes (it already carries `data-pm-start` via `renderFloatingImagesLayer`). e2e proves it selects (fails without the fix). |
 | P3 | ✅ **Image UI: rotate-flip / border / size / wrap / margins** | Low | ✅ rotate/flip + border + editable W×H + alt + **dist-margins + `topAndBottom` wrap tile** (#58) now in the **Format panel** image section. Border painted via the flow-block → renderParagraph/renderImage. |
 | — | **Format panel (image+table) shipped** | — | On-object Format chip → contextual panel (flex sibling, no overlap). Image = Google-Docs icon picker (wrap/size/arrange/border/alt); table = grouped Rows/Cols/Cells/Table ops. One right-side surface at a time. Complete image+table e2e. (#55, #56) |
-| P3 | ⬜ **Cell-range selection polish / col-resize width constraint** | Low | Multi-cell selection lacks anchor styling; col-resize can breach fixed table width. |
+| P3 | ✅ **Cell-range selection polish / col-resize width constraint** | Low | **Stale — both already done + e2e-covered** (verified 2026-06-23). Multi-cell selection DOES paint a Google-blue outline + 15% tint (`.layout-table-cell-selected`, applied in PagedEditor `updateSelectionOverlay`); `table-merge-split.spec.ts` exercises it. Col-resize is width-PRESERVING — the drag adds `+delta` to the left column and `−delta` to the right (PagedEditor ~3358), so the table total is constant; `table-column-resize.spec.ts` covers it. No breach. |
 
 ## Insertion (user's main ask: "only there, can't create")
 | Pri | Item | Impact | Notes |
