@@ -65,7 +65,11 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
     googleFont: 'Carlito',
     category: 'sans-serif',
     fallbackStack: ['Calibri', 'Carlito', 'Arial', 'Helvetica', 'sans-serif'],
-    singleLineRatio: 1.2207, // 2500/2048
+    // Carlito (LibreOffice's Calibri substitute) has OS/2 win/typo/hhea tables
+    // that all give 2500/2048 = 1.2207, but LibreOffice's per-line layout
+    // accumulates ~1.4% tighter. A VF sweep of the representative corpus peaks
+    // at 1.205 (87.2 mean vs 83.0 at 1.2207); sharp falloff either side.
+    singleLineRatio: 1.205, // calibrated to LibreOffice render (Carlito OS/2 = 2500/2048 = 1.2207)
   },
   cambria: {
     googleFont: 'Caladea',
