@@ -43,11 +43,18 @@ The features that close the gap with Google Docs / OnlyOffice for `.docx` workfl
    accept/reject sidebar + accept-all/reject-all, Yjs-synced marks. Full-flow e2e in
    `track-changes-flow.spec.ts`. Remaining *polish*: `<w:pPrChange>` paragraph-format-change
    display, per-author color coding, prev/next-change navigation, general round-trip fixture.
-2. **Named version history** — ✅ **ALREADY SHIPPED** (audited 2026-06-24). IDB-backed
+2. **Named version history** — ✅ **SHIPPED** (audited 2026-06-24). IDB-backed
    `version-history/` module: **auto** snapshots (~10-min idle while dirty) + **manual named**
    snapshots (`saveNamedVersion`), restore, rename, collab-aware author attribution, and a
    `ServerVersionBackend` for host-side revisions. `VersionHistoryPanel` in the right rail.
    e2e: `version-history.spec.ts` + `version-history-audit.spec.ts`.
+   - **"Show changes" UX reworked to the Google-Docs model** (PR #87, 2026-06-24): clicking a
+     version opens a full-fidelity read-only preview over the canvas with the changes-vs-previous
+     overlaid inline (insertion/deletion marks, per-author colour via the layout-painter), a
+     "Show changes" toggle, and an in-banner "Restore this version". Replaces the old monospace
+     `<pre>` diff box. Diff core `versionDiff.ts` (unit-tested) + `version-preview.spec.ts`.
+   - **Pending — panel-layout polish** (PR2): kebab (⋮) menu per row, per-author colour dots,
+     pinned current-version row, "named versions only" filter (matches the competitive research).
 3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — ⬜ **the one
    genuinely-unbuilt Phase-A item.** Focusing a paragraph locks it for peers (Yjs awareness);
    others see it locked / read-only. Prevents distant concurrent reflow on long docs; *also*
