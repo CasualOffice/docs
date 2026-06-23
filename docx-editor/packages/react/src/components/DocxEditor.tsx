@@ -8473,7 +8473,13 @@ body { background: white; }
                                 }}
                               >
                                 <VerticalRuler
-                                  sectionProps={initialSectionProperties}
+                                  // Live section props (NOT initialSectionProperties):
+                                  // margin drags write to finalSectionProperties, and the
+                                  // horizontal ruler reads the same. initialSectionProperties
+                                  // resolves to sections[0].properties for docs that have a
+                                  // section, which the drag never updates — so the top/bottom
+                                  // margin marker stayed pinned while the page reflowed.
+                                  sectionProps={finalSectionProperties ?? initialSectionProperties}
                                   zoom={state.zoom}
                                   unit={rulerUnit}
                                   editable={!readOnly}
