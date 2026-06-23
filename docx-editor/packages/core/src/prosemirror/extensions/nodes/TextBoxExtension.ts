@@ -53,19 +53,19 @@ export interface TextBoxAttrs {
    * converts EMU → px in `convertTextBox` and `fromProseDoc` reverses
    * it on save.
    *
-   * ⚠️ ROUND-TRIP ONLY — NOT YET HONORED BY THE LAYOUT ENGINE.
+   * HONORED BY THE LAYOUT ENGINE via `layoutAnchoredTextBox`, which
+   * resolves the full `relativeFrom` band math (page/margin/column/
+   * paragraph) through `resolveAnchorX/Y` and places the box WITHOUT
+   * reserving in-flow space (behind-doc clusters reserve once via
+   * `reservesBehindDocBand`). The Format-panel "Position X/Y" control
+   * writes posOffsetH/V as `margin`-relative offsets through these attrs.
    *
-   * The first attempt to wire these into `layoutTextBox` (commit
-   * `d8b85d1`, reverted in `d4ceebf`) made anchored shapes float as
-   * overlays that didn't advance the cursor — which shifted body
-   * text up on real-world fixtures (medical-incident-form went from
-   * 4 pages to 3) and made the drawings non-participating elements.
-   *
-   * The data lives here so the parse + save round-trip preserves it
-   * (no data loss on edit-and-save). The actual layout work needs a
-   * hybrid approach: keep the cursor advancing by shape height OR
-   * implement proper text-wrap exclusion zones. See gap-matrix →
-   * `anchored-shape-position-lost`.
+   * History: the first attempt wired these into `layoutTextBox` directly
+   * (commit `d8b85d1`, reverted in `d4ceebf`) and floated EVERY imported
+   * shape as an overlay that didn't advance the cursor — shifting body
+   * text on real-world fixtures (medical-incident-form 4→3 pages). The
+   * working approach is the dedicated anchored path above, which only
+   * floats genuinely-anchored boxes and keeps in-flow boxes in flow.
    */
   posOffsetH?: number;
   posOffsetV?: number;

@@ -1707,11 +1707,11 @@ function convertPMTextBox(node: PMNode): Paragraph {
   }
 
   // Round-trip anchor position so a save-then-reload preserves the
-  // shape's posOffset / relativeFrom / alignment. The layout engine
-  // doesn't yet honor these (gap-matrix → anchored-shape-position-
-  // lost) but the data needs to survive editing — otherwise every
-  // save degrades anchored shapes to inline-flow, even if the user
-  // never touched them.
+  // shape's posOffset / relativeFrom / alignment. These are honored at
+  // layout time (`layoutAnchoredTextBox`) AND must survive editing —
+  // otherwise every save would degrade anchored shapes to inline-flow,
+  // even if the user never touched them. The Format-panel Position X/Y
+  // control writes margin-relative offsets through this same path.
   if (
     attrs.posOffsetH != null ||
     attrs.posOffsetV != null ||

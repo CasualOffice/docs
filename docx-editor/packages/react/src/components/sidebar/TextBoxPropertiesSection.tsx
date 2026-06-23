@@ -71,9 +71,14 @@ export interface TextBoxPropertiesSectionProps {
   fillColor?: string | null;
   outlineWidth?: number | null;
   outlineColor?: string | null;
+  /** Current horizontal/vertical offset (px) from the content-area top-left. */
+  posOffsetH?: number | null;
+  posOffsetV?: number | null;
   onSetSize: (width: number, height: number | null) => void;
   onSetFill: (fillColor: string | null) => void;
   onSetOutline: (outlineWidth: number | null, outlineColor: string | null) => void;
+  /** Anchor the box at (x, y) px from the content-area top-left (margin-relative). */
+  onSetPosition?: (x: number, y: number) => void;
 }
 
 export function TextBoxPropertiesSection({
@@ -82,19 +87,26 @@ export function TextBoxPropertiesSection({
   fillColor,
   outlineWidth,
   outlineColor,
+  posOffsetH,
+  posOffsetV,
   onSetSize,
   onSetFill,
   onSetOutline,
+  onSetPosition,
 }: TextBoxPropertiesSectionProps) {
   const [w, setW] = useState(width != null ? String(Math.round(width)) : '');
   const [h, setH] = useState(height != null ? String(Math.round(height)) : '');
   const [fill, setFill] = useState(fillColor || '#ffffff');
   const [stroke, setStroke] = useState(outlineColor || '#000000');
+  const [px, setPx] = useState(posOffsetH != null ? String(Math.round(posOffsetH)) : '');
+  const [py, setPy] = useState(posOffsetV != null ? String(Math.round(posOffsetV)) : '');
 
   useEffect(() => setW(width != null ? String(Math.round(width)) : ''), [width]);
   useEffect(() => setH(height != null ? String(Math.round(height)) : ''), [height]);
   useEffect(() => setFill(fillColor || '#ffffff'), [fillColor]);
   useEffect(() => setStroke(outlineColor || '#000000'), [outlineColor]);
+  useEffect(() => setPx(posOffsetH != null ? String(Math.round(posOffsetH)) : ''), [posOffsetH]);
+  useEffect(() => setPy(posOffsetV != null ? String(Math.round(posOffsetV)) : ''), [posOffsetV]);
 
   const commitSize = () => {
     const nw = Number(w);
@@ -106,6 +118,20 @@ export function TextBoxPropertiesSection({
     if (e.key === 'Enter') {
       e.preventDefault();
       commitSize();
+    }
+  };
+
+  const commitPosition = () => {
+    if (!onSetPosition) return;
+    const nx = Number(px);
+    const ny = Number(py);
+    if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+    onSetPosition(Math.max(0, Math.round(nx)), Math.max(0, Math.round(ny)));
+  };
+  const onPosKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPosition();
     }
   };
 
@@ -143,6 +169,44 @@ export function TextBoxPropertiesSection({
           />
         </label>
       </div>
+
+      {onSetPosition && (
+        <>
+          <div style={GROUP_HEADER}>Position</div>
+          <div style={ROW} data-testid="properties-textbox-position">
+            <label style={{ color: 'inherit' }}>
+              X
+              <input
+                style={{ ...numInput, marginLeft: 6 }}
+                type="number"
+                min={0}
+                max={2000}
+                value={px}
+                placeholder="auto"
+                data-testid="properties-textbox-pos-x"
+                onChange={(e) => setPx(e.target.value)}
+                onBlur={commitPosition}
+                onKeyDown={onPosKey}
+              />
+            </label>
+            <label style={{ color: 'inherit' }}>
+              Y
+              <input
+                style={{ ...numInput, marginLeft: 6 }}
+                type="number"
+                min={0}
+                max={2000}
+                value={py}
+                placeholder="auto"
+                data-testid="properties-textbox-pos-y"
+                onChange={(e) => setPy(e.target.value)}
+                onBlur={commitPosition}
+                onKeyDown={onPosKey}
+              />
+            </label>
+          </div>
+        </>
+      )}
 
       <div style={GROUP_HEADER}>Fill</div>
       <div style={ROW}>
