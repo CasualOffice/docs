@@ -49,6 +49,17 @@ export interface VersionHistoryPanelProps {
    *  the live editor. The host (DocxEditor) implements this against
    *  its EditorView — keeps the panel UI-only. */
   onRestoreSnapshot?: (data: unknown) => void;
+  /** Open the in-canvas preview for a version. The host renders a
+   *  read-only view of `data` with the changes-vs-`previousData` diff
+   *  overlaid (Google-Docs model). Local snapshots carry their `data`
+   *  in the list, so the panel passes it straight through. */
+  onPreviewVersion?: (req: {
+    name: string;
+    savedAt: number;
+    author?: string;
+    data: unknown;
+    previousData: unknown | null;
+  }) => void;
   /** Called when the user clicks the close (X) button in the panel
    *  header. The host (DocxEditor) flips the panel-open flag. */
   onClose?: () => void;
@@ -266,6 +277,7 @@ export function VersionHistoryPanel({
   docId = null,
   saveNamedVersion,
   onRestoreSnapshot,
+  onPreviewVersion,
   onClose,
   title = 'Version history',
   emptyHint = 'No edits yet. Type into the document to start recording.',
@@ -316,6 +328,7 @@ export function VersionHistoryPanel({
           docId={docId}
           saveNamedVersion={saveNamedVersion}
           onRestoreSnapshot={onRestoreSnapshot}
+          onPreviewVersion={onPreviewVersion}
           serverBackend={serverBackend}
           onRestoreServerVersion={onRestoreServerVersion}
         />
@@ -392,12 +405,20 @@ function VersionsTab({
   docId,
   saveNamedVersion,
   onRestoreSnapshot,
+  onPreviewVersion,
   serverBackend,
   onRestoreServerVersion,
 }: {
   docId: string | null;
   saveNamedVersion?: (name: string) => Promise<number | null>;
   onRestoreSnapshot?: (data: unknown) => void;
+  onPreviewVersion?: (req: {
+    name: string;
+    savedAt: number;
+    author?: string;
+    data: unknown;
+    previousData: unknown | null;
+  }) => void;
   serverBackend?: ServerVersionBackend;
   onRestoreServerVersion?: (version: number) => void;
 }) {
@@ -464,6 +485,23 @@ function VersionsTab({
     await deleteVersion(snap.id);
   }, []);
 
+  // Open the in-canvas preview. Local snapshots carry their `data`; the
+  // previous (older) snapshot is the diff baseline. Server-backed
+  // revisions hold no inline data, so they have no preview (Restore
+  // downloads them instead).
+  const handlePreview = useCallback(
+    (snap: VersionSnapshot, previousSnap?: VersionSnapshot) => {
+      if (!onPreviewVersion || snap.serverVersion != null || snap.data == null) return;
+      onPreviewVersion({
+        name: snap.name,
+        savedAt: snap.savedAt,
+        data: snap.data,
+        previousData: previousSnap?.data ?? null,
+      });
+    },
+    [onPreviewVersion]
+  );
+
   if (!docId) {
     return <PanelState kind="empty" message="Open a document to see its version history." />;
   }
@@ -497,17 +535,23 @@ function VersionsTab({
             <li key={label} style={GROUP_STYLE}>
               <div style={GROUP_HEADER_STYLE}>{label}</div>
               <ol style={LIST_STYLE} role="list">
-                {items.map((snap) => (
-                  <VersionRow
-                    key={snap.id}
-                    snap={snap}
-                    previousSnap={snap.id != null ? previousById.get(snap.id) : undefined}
-                    now={now}
-                    onRestore={() => handleRestore(snap)}
-                    onRename={snap.serverVersion != null ? undefined : () => handleRename(snap)}
-                    onDelete={snap.serverVersion != null ? undefined : () => handleDelete(snap)}
-                  />
-                ))}
+                {items.map((snap) => {
+                  const previousSnap = snap.id != null ? previousById.get(snap.id) : undefined;
+                  const canPreview =
+                    !!onPreviewVersion && snap.serverVersion == null && snap.data != null;
+                  return (
+                    <VersionRow
+                      key={snap.id}
+                      snap={snap}
+                      previousSnap={previousSnap}
+                      now={now}
+                      onRestore={() => handleRestore(snap)}
+                      onPreview={canPreview ? () => handlePreview(snap, previousSnap) : undefined}
+                      onRename={snap.serverVersion != null ? undefined : () => handleRename(snap)}
+                      onDelete={snap.serverVersion != null ? undefined : () => handleDelete(snap)}
+                    />
+                  );
+                })}
               </ol>
             </li>
           ))}
@@ -522,6 +566,7 @@ function VersionRow({
   previousSnap,
   now,
   onRestore,
+  onPreview,
   onRename,
   onDelete,
 }: {
@@ -531,35 +576,50 @@ function VersionRow({
   previousSnap?: VersionSnapshot;
   now: number;
   onRestore: () => void;
+  /** Open the in-canvas preview (Google-Docs model). Undefined for
+   *  server-backed revisions, which carry no inline data to render. */
+  onPreview?: () => void;
   /** Omitted for server-backed (host-owned) revisions — they aren't
    *  renamed/deleted from the client. */
   onRename?: () => void;
   onDelete?: () => void;
 }) {
-  const [showDiff, setShowDiff] = useState(false);
-
-  // LCS word diff is O(N*M). Only compute on expand, then memoise
-  // against the snapshot pair so toggle hide/show keeps the value.
-  const diff = useMemo(() => {
-    if (!showDiff || !previousSnap) return null;
-    const before = extractText(previousSnap.data).slice(0, DIFF_TRUNCATE_LIMIT);
-    const after = extractText(snap.data).slice(0, DIFF_TRUNCATE_LIMIT);
-    return diffWords(before, after);
-  }, [showDiff, previousSnap, snap]);
-
   // +/- word stats render at all times so the user can see the
-  // magnitude of the change without expanding the diff. Matches the
-  // Activity tab's row affordance.
+  // magnitude of the change at a glance. Cheap LCS over the two
+  // snapshots' plain text — memoised against the snapshot pair.
   const stats = useMemo(() => {
     if (!previousSnap) return null;
     const before = extractText(previousSnap.data).slice(0, DIFF_TRUNCATE_LIMIT);
     const after = extractText(snap.data).slice(0, DIFF_TRUNCATE_LIMIT);
-    const segments = diffWords(before, after);
-    return diffStats(segments);
+    return diffStats(diffWords(before, after));
   }, [previousSnap, snap]);
 
+  // The whole row is a click target that opens the full-canvas preview
+  // (with the changes-since-previous overlaid) — the Google-Docs
+  // interaction. Falls back to a plain <li> for server revisions.
+  const interactive = !!onPreview;
+
   return (
-    <li style={ENTRY_STYLE} data-testid="version-history-version-row">
+    <li
+      style={{
+        ...ENTRY_STYLE,
+        cursor: interactive ? 'pointer' : 'default',
+      }}
+      data-testid="version-history-version-row"
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? onPreview : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onPreview?.();
+              }
+            }
+          : undefined
+      }
+    >
       <div style={ENTRY_HEAD_STYLE}>
         <span style={AUTHOR_STYLE}>{snap.name}</span>
         {snap.kind === 'manual' && (
@@ -588,7 +648,24 @@ function VersionRow({
           <span>word{stats.added + stats.removed === 1 ? '' : 's'}</span>
         </div>
       )}
-      <div style={ENTRY_ACTIONS_STYLE}>
+      {/* Action buttons stop click propagation so they don't also open
+          the preview. */}
+      <div
+        style={ENTRY_ACTIONS_STYLE}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        role="presentation"
+      >
+        {onPreview && (
+          <button
+            type="button"
+            onClick={onPreview}
+            style={SHOW_DIFF_BTN_STYLE}
+            data-testid="version-history-version-toggle-diff"
+          >
+            Show changes
+          </button>
+        )}
         <button
           type="button"
           onClick={onRestore}
@@ -597,17 +674,6 @@ function VersionRow({
         >
           Restore
         </button>
-        {previousSnap && (
-          <button
-            type="button"
-            onClick={() => setShowDiff((v) => !v)}
-            style={SHOW_DIFF_BTN_STYLE}
-            aria-expanded={showDiff}
-            data-testid="version-history-version-toggle-diff"
-          >
-            {showDiff ? 'Hide changes' : 'Show changes'}
-          </button>
-        )}
         {onRename && (
           <button type="button" onClick={onRename} style={SHOW_DIFF_BTN_STYLE}>
             Rename
@@ -623,25 +689,6 @@ function VersionRow({
           </button>
         )}
       </div>
-      {showDiff && diff && (
-        <pre style={DIFF_BOX_STYLE} data-testid="version-history-version-diff">
-          {diff.map((seg, i) => {
-            if (seg.op === 'keep') return <span key={i}>{seg.text}</span>;
-            if (seg.op === 'add') {
-              return (
-                <ins key={i} style={DIFF_ADD_STYLE}>
-                  {seg.text}
-                </ins>
-              );
-            }
-            return (
-              <del key={i} style={DIFF_REMOVE_STYLE}>
-                {seg.text}
-              </del>
-            );
-          })}
-        </pre>
-      )}
     </li>
   );
 }
