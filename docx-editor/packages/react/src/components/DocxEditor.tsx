@@ -916,6 +916,8 @@ interface EditorState {
     fillColor: string | null;
     outlineWidth: number | null;
     outlineColor: string | null;
+    posOffsetH: number | null;
+    posOffsetV: number | null;
   } | null;
 }
 
@@ -3077,6 +3079,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             fillColor: (tbNode.attrs.fillColor as string) ?? null,
             outlineWidth: (tbNode.attrs.outlineWidth as number) ?? null,
             outlineColor: (tbNode.attrs.outlineColor as string) ?? null,
+            posOffsetH: (tbNode.attrs.posOffsetH as number) ?? null,
+            posOffsetV: (tbNode.attrs.posOffsetV as number) ?? null,
           };
         }
       }
@@ -4083,6 +4087,23 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   );
   const handleTextBoxSetFill = useCallback(
     (fillColor: string | null) => updateTextBoxAttrs({ fillColor }),
+    [updateTextBoxAttrs]
+  );
+  const handleTextBoxSetPosition = useCallback(
+    (x: number, y: number) => {
+      // Anchor the box at (x, y) px from the content-area top-left. `margin`
+      // relativeFrom = the content area (page minus margins), so resolveAnchorX/Y
+      // place it at exactly the offset. Clearing the align attrs lets the offset
+      // win (align would otherwise override posOffset in anchorGeometry).
+      updateTextBoxAttrs({
+        posOffsetH: Math.max(0, Math.round(x)),
+        posOffsetV: Math.max(0, Math.round(y)),
+        posRelFromH: 'margin',
+        posRelFromV: 'margin',
+        posAlignH: null,
+        posAlignV: null,
+      });
+    },
     [updateTextBoxAttrs]
   );
   const handleTextBoxSetOutline = useCallback(
@@ -8814,9 +8835,12 @@ body { background: white; }
                               fillColor={state.pmTextBoxContext.fillColor}
                               outlineWidth={state.pmTextBoxContext.outlineWidth}
                               outlineColor={state.pmTextBoxContext.outlineColor}
+                              posOffsetH={state.pmTextBoxContext.posOffsetH}
+                              posOffsetV={state.pmTextBoxContext.posOffsetV}
                               onSetSize={handleTextBoxSetSize}
                               onSetFill={handleTextBoxSetFill}
                               onSetOutline={handleTextBoxSetOutline}
+                              onSetPosition={handleTextBoxSetPosition}
                             />
                           )}
                         </PropertiesPanel>
