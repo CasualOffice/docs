@@ -61,7 +61,14 @@ const ROOT_STYLE: CSSProperties = {
   borderRadius: 'var(--radius-lg)',
   boxShadow: 'var(--shadow-2)',
   color: 'var(--doc-text-on-surface)',
-  animation: 'docPanelSlideIn var(--doc-anim-slow) both',
+  // `backwards`, NOT `both`: `both` retains the `to` keyframe's
+  // `transform: translateX(0)` at rest, which makes this panel the
+  // containing block for any `position: fixed` descendant (e.g. the
+  // version-row kebab menu) AND clips it via `overflow: hidden` — so the
+  // menu opened off-screen / invisible. `backwards` reverts to the base
+  // style (no transform) once the slide-in ends, and is visually
+  // identical (opacity 1, translateX 0 ≡ none).
+  animation: 'docPanelSlideIn var(--doc-anim-slow) backwards',
   overflow: 'hidden',
   minHeight: 0,
 };

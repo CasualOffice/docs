@@ -6,7 +6,7 @@
  * overflow-x-auto container.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
 interface UseFixedDropdownOptions {
@@ -30,25 +30,24 @@ export function useFixedDropdown({
 }: UseFixedDropdownOptions): UseFixedDropdownReturn {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number } | null>(null);
 
-  // Calculate position when opening
-  useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
+  // Position the moment the dropdown mounts, BEFORE the browser paints
+  // (useLayoutEffect), so it never flashes at the top-left origin. Right
+  // alignment anchors the dropdown's right edge to the trigger's right
+  // edge via the CSS `right` offset — no width measurement, so no second
+  // frame / rAF is needed (the old rAF caused a one-frame (0,0) flash).
+  useLayoutEffect(() => {
+    if (!isOpen || !containerRef.current) {
+      setPos(null);
+      return;
+    }
     const rect = containerRef.current.getBoundingClientRect();
+    const top = rect.bottom + 4;
     if (align === 'right') {
-      // We need the dropdown width to right-align, but it's not rendered yet.
-      // Use a rAF to measure after first paint.
-      requestAnimationFrame(() => {
-        if (dropdownRef.current) {
-          const dropRect = dropdownRef.current.getBoundingClientRect();
-          setPos({ top: rect.bottom + 4, left: rect.right - dropRect.width });
-        } else {
-          setPos({ top: rect.bottom + 4, left: rect.left });
-        }
-      });
+      setPos({ top, right: Math.max(0, window.innerWidth - rect.right) });
     } else {
-      setPos({ top: rect.bottom + 4, left: rect.left });
+      setPos({ top, left: rect.left });
     }
   }, [isOpen, align]);
 
@@ -114,9 +113,12 @@ export function useFixedDropdown({
 
   const dropdownStyle: CSSProperties = {
     position: 'fixed',
-    top: pos.top,
-    left: pos.left,
+    top: pos?.top ?? 0,
+    ...(pos?.right != null ? { right: pos.right } : { left: pos?.left ?? 0 }),
     zIndex: 10000,
+    // Until positioned (first layout tick), keep it out of sight so it
+    // never paints at the origin.
+    visibility: pos ? 'visible' : 'hidden',
   };
 
   return { containerRef, dropdownRef, dropdownStyle, handleMouseDown };
