@@ -146,10 +146,31 @@ the ~30px without regressing the validated checkbox rows or other fixtures. Row-
 math: `PagedEditor.tsx` `max(content+padding+border, trHeight_px)`; twips→px in
 `toFlowBlocks.ts`. Stays deferred.
 
-**Open lever for the stress (Arial-dominant SDS) corpus:** the SDS fixtures are ~1400
-Arial runs + Microsoft JhengHei (CJK), neither yet calibrated — Arial is still at the raw
-OS/2 1.1172. Calibrating Arial (same method as Calibri) is the most promising next lift
-for real-world, and also touches representative.
+**Arial calibration — tried, NULL result (definitive).** Swept Arial `singleLineRatio`
+1.10–1.12 (+ an extreme 2.0 probe): real-world stayed 53.1 ±0.2 (run-to-run noise),
+representative dead flat at 87.2, sds-real-world 60.4 at every value. **Root cause why the
+Carlito win didn't replicate:** the Arial-heavy SDS docs pin most line heights with
+**`w:lineRule="exact"`** (fixed twip values) which BYPASS `singleLineRatio` entirely (the
+`exact` branch in `measureParagraph.ts`) — 301 `exact` vs 127 `auto` paragraphs in the SDS
+fixtures; `medical-incident-form` has 6 Arial runs, `Form025U` has zero. So per-font
+line-height has almost no leverage here. Reverted (no change). Round-trip 927/927.
+
+### Conclusion — safe per-font VF levers are exhausted (diminishing returns)
+
+The representative (everyday-document) corpus is solved: **87.2 local / 87.6 CI**, CI floor
+locked at 0.80. The **stress corpus (~53) is NOT addressable by safe per-font calibration** —
+its residual is two structural things, both confirmed this pass:
+1. **Author-fixed `lineRule="exact"` layout** (SDS) — line heights don't derive from font
+   metrics, so calibration can't move them.
+2. **Diffuse cumulative table-row over-height** (forms) — ~2–3px/row across 50-row tables,
+   no safe single knob (largest repeated contributor is the *validated* dingbat checkbox
+   rows; #11).
+
+Closing the stress corpus would need a deeper, riskier effort — reproducing LibreOffice's
+exact-line box model and/or a measured table-row-height correction — against the §0
+non-negotiables. Per §3's exit criterion this is **clear diminishing returns**: stop here,
+keep the representative gain, and revisit the stress corpus only as a dedicated, separately-
+scoped project (it's the user's CJK-SDS use case, so worth a future focused pass).
 
 ## 4. Non-negotiables
 
