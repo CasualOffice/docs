@@ -2811,6 +2811,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         'layout-block-image',
         'layout-image',
         'layout-page-floating-image',
+        // Floating images anchored inside a table cell paint via the same
+        // renderFloatingImagesLayer helper (so they carry data-pm-start), but
+        // were missing here — clicking one fell through and couldn't select it.
+        'layout-cell-floating-image',
       ];
       const isImageContainer = (el: HTMLElement) =>
         !!el.dataset.pmStart && IMAGE_CONTAINER_CLASSES.some((c) => el.classList.contains(c));
