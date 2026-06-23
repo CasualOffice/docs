@@ -37,10 +37,14 @@ regression; metrics changes revert-by-default unless they net positive).
 
 ### Phase A — Collaboration parity (highest competitive value)
 The features that close the gap with Google Docs / OnlyOffice for `.docx` workflows.
-1. **Suggestions / track-changes with Word interop** — suggestions ⇄ Word tracked
-   changes round-trip. The single biggest collaboration feature for `.docx` users.
+1. **Suggestions / track-changes with Word interop** — ✅ **CORE ALREADY SHIPPED** (audited
+   2026-06-24). Suggesting mode (toolbar dropdown + Ctrl+Shift+E), insertion/deletion marks
+   rendered on the painted page, `<w:ins>`/`<w:del>`/`<w:delText>` OOXML round-trip,
+   accept/reject sidebar + accept-all/reject-all, Yjs-synced marks. Full-flow e2e in
+   `track-changes-flow.spec.ts`. Remaining *polish*: `<w:pPrChange>` paragraph-format-change
+   display, per-author color coding, prev/next-change navigation, general round-trip fixture.
 2. **Named version history** — milestone snapshots on the Yjs history; "named versions"
-   filter. Cheap on the CRDT, high perceived value.
+   filter. Cheap on the CRDT, high perceived value. (Next biggest Phase-A item to build.)
 3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — prevents
    distant concurrent reflow on long docs; *also* mitigates the large-doc drift in Phase B.
 
