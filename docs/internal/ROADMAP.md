@@ -53,8 +53,10 @@ The features that close the gap with Google Docs / OnlyOffice for `.docx` workfl
      overlaid inline (insertion/deletion marks, per-author colour via the layout-painter), a
      "Show changes" toggle, and an in-banner "Restore this version". Replaces the old monospace
      `<pre>` diff box. Diff core `versionDiff.ts` (unit-tested) + `version-preview.spec.ts`.
-   - **Pending — panel-layout polish** (PR2): kebab (⋮) menu per row, per-author colour dots,
-     pinned current-version row, "named versions only" filter (matches the competitive research).
+   - **Panel-layout polish** (folded into PR #87): pinned "Current version" row, per-row kebab
+     (⋮) menu (Restore / Rename / Delete), "Only named versions" filter, row hover affordance.
+     Per-author colour dots deferred — local snapshots carry no author field yet (would need a
+     `VersionSnapshot.author` store change). e2e: `version-panel-layout.spec.ts`.
 3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — ⬜ **the one
    genuinely-unbuilt Phase-A item.** Focusing a paragraph locks it for peers (Yjs awareness);
    others see it locked / read-only. Prevents distant concurrent reflow on long docs; *also*

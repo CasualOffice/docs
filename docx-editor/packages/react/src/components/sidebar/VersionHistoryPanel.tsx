@@ -25,6 +25,7 @@ import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { PanelState } from '../ui/PanelState';
 import { Tooltip } from '../ui/Tooltip';
 import { RightDockPanel } from '../RightDockPanel';
+import { useFixedDropdown } from '../ui/useFixedDropdown';
 import type { EditHistoryEntry, UseEditHistoryReturn } from '../../hooks/useEditHistory';
 import { diffStats, diffWords, extractText } from '../../hooks/wordDiff';
 import { useLiveVersionList } from '../../version-history/useLiveVersionList';
@@ -60,6 +61,12 @@ export interface VersionHistoryPanelProps {
     data: unknown;
     previousData: unknown | null;
   }) => void;
+  /** Return from a version preview to the live document (the pinned
+   *  "Current version" row). No-op when nothing is being previewed. */
+  onShowCurrent?: () => void;
+  /** True while a past version is being previewed — drives the active
+   *  highlight on the "Current version" row. */
+  isPreviewing?: boolean;
   /** Called when the user clicks the close (X) button in the panel
    *  header. The host (DocxEditor) flips the panel-open flag. */
   onClose?: () => void;
@@ -257,6 +264,68 @@ const SHOW_DIFF_BTN_STYLE: CSSProperties = {
   cursor: 'pointer',
 };
 
+const NAMED_FILTER_STYLE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '0 16px 8px',
+  fontSize: 12,
+  color: 'var(--doc-text-muted)',
+  cursor: 'pointer',
+};
+
+const KEBAB_BTN_STYLE: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 28,
+  height: 28,
+  border: 'none',
+  borderRadius: 4,
+  background: 'transparent',
+  color: 'var(--doc-text-muted)',
+  cursor: 'pointer',
+};
+
+const KEBAB_MENU_STYLE: CSSProperties = {
+  minWidth: 168,
+  padding: '4px 0',
+  background: 'var(--doc-surface, #fff)',
+  border: '1px solid var(--doc-border, #e0e0e0)',
+  borderRadius: 8,
+  boxShadow: 'var(--doc-shadow-lg, 0 4px 16px rgba(0,0,0,0.16))',
+};
+
+const KEBAB_ITEM_STYLE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '8px 14px',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--doc-text)',
+  fontSize: 13,
+  textAlign: 'left',
+  cursor: 'pointer',
+};
+
+const CURRENT_ROW_STYLE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '12px 16px',
+  border: 'none',
+  borderBottom: '1px solid var(--doc-border-light, #f0eee9)',
+  background: 'transparent',
+  fontSize: 13,
+  fontWeight: 600,
+  color: 'var(--doc-text)',
+  cursor: 'pointer',
+  textAlign: 'left',
+};
+
 const DIFF_TRUNCATE_LIMIT = 50_000; // chars per side — safety for huge docs
 
 function relativeTime(time: number, now: number): string {
@@ -278,6 +347,8 @@ export function VersionHistoryPanel({
   saveNamedVersion,
   onRestoreSnapshot,
   onPreviewVersion,
+  onShowCurrent,
+  isPreviewing = false,
   onClose,
   title = 'Version history',
   emptyHint = 'No edits yet. Type into the document to start recording.',
@@ -329,6 +400,8 @@ export function VersionHistoryPanel({
           saveNamedVersion={saveNamedVersion}
           onRestoreSnapshot={onRestoreSnapshot}
           onPreviewVersion={onPreviewVersion}
+          onShowCurrent={onShowCurrent}
+          isPreviewing={isPreviewing}
           serverBackend={serverBackend}
           onRestoreServerVersion={onRestoreServerVersion}
         />
@@ -406,6 +479,8 @@ function VersionsTab({
   saveNamedVersion,
   onRestoreSnapshot,
   onPreviewVersion,
+  onShowCurrent,
+  isPreviewing = false,
   serverBackend,
   onRestoreServerVersion,
 }: {
@@ -419,11 +494,22 @@ function VersionsTab({
     data: unknown;
     previousData: unknown | null;
   }) => void;
+  onShowCurrent?: () => void;
+  isPreviewing?: boolean;
   serverBackend?: ServerVersionBackend;
   onRestoreServerVersion?: (version: number) => void;
 }) {
   const list = useLiveVersionList(docId, serverBackend);
-  const groups = useMemo(() => groupByDay(list), [list]);
+  // "Only named versions" filter (Google-Docs pattern) — narrows the
+  // list to manual milestones. Diffs still compare against the true
+  // previous version from the FULL list, so a named version previews
+  // against whatever immediately preceded it (auto or named).
+  const [namedOnly, setNamedOnly] = useState(false);
+  const visible = useMemo(
+    () => (namedOnly ? list.filter((s) => s.kind === 'manual') : list),
+    [list, namedOnly]
+  );
+  const groups = useMemo(() => groupByDay(visible), [visible]);
   const now = Date.now();
   // Chronological neighbor for diffing: the list is newest-first, so
   // each row's "previous version" is the entry one slot later in the
@@ -511,7 +597,7 @@ function VersionsTab({
       <div style={SUBHEADER_STYLE}>
         <span>Versions</span>
         <span style={COUNT_STYLE} data-testid="version-history-versions-count">
-          {list.length}
+          {visible.length}
         </span>
         {saveNamedVersion && !serverBackend && (
           <button
@@ -524,6 +610,19 @@ function VersionsTab({
           </button>
         )}
       </div>
+      {/* "Only named versions" filter — matches Google Docs. Hidden until
+          there is at least one auto snapshot to filter out. */}
+      {list.some((s) => s.kind !== 'manual') && (
+        <label style={NAMED_FILTER_STYLE}>
+          <input
+            type="checkbox"
+            checked={namedOnly}
+            onChange={(e) => setNamedOnly(e.target.checked)}
+            data-testid="version-history-named-only"
+          />
+          Only named versions
+        </label>
+      )}
       {list.length === 0 ? (
         <PanelState
           kind="empty"
@@ -531,6 +630,18 @@ function VersionsTab({
         />
       ) : (
         <ol style={LIST_STYLE} role="list">
+          {/* Pinned "Current version" — the live document. Clicking it
+              exits any preview. Active (highlighted) when not previewing. */}
+          {onShowCurrent && (
+            <li style={GROUP_STYLE}>
+              <CurrentVersionRow active={!isPreviewing} onClick={onShowCurrent} />
+            </li>
+          )}
+          {namedOnly && visible.length === 0 && (
+            <li style={{ ...ENTRY_STYLE, color: 'var(--doc-text-muted)', fontSize: 12 }}>
+              No named versions yet. Use “Save version…” to bookmark one.
+            </li>
+          )}
           {groups.map(({ label, items }) => (
             <li key={label} style={GROUP_STYLE}>
               <div style={GROUP_HEADER_STYLE}>{label}</div>
@@ -598,16 +709,29 @@ function VersionRow({
   // (with the changes-since-previous overlaid) — the Google-Docs
   // interaction. Falls back to a plain <li> for server revisions.
   const interactive = !!onPreview;
+  const [hover, setHover] = useState(false);
+
+  // Per-row actions are consolidated into a kebab (⋮) menu so the row
+  // stays clean and scannable (Google-Docs pattern). Restore is always
+  // present; Rename / Delete only for client-owned local snapshots.
+  const menuItems: KebabItem[] = [
+    { icon: 'history', label: 'Restore this version', onClick: onRestore },
+    ...(onRename ? [{ icon: 'edit_note', label: 'Rename', onClick: onRename }] : []),
+    ...(onDelete ? [{ icon: 'delete', label: 'Delete', onClick: onDelete, danger: true }] : []),
+  ];
 
   return (
     <li
       style={{
         ...ENTRY_STYLE,
         cursor: interactive ? 'pointer' : 'default',
+        background: hover && interactive ? 'var(--doc-surface-hover, #f5f7fa)' : 'transparent',
       }}
       data-testid="version-history-version-row"
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       onClick={interactive ? onPreview : undefined}
       onKeyDown={
         interactive
@@ -636,6 +760,15 @@ function VersionRow({
             </span>
           </Tooltip>
         </span>
+        {/* Kebab stops propagation so opening the menu doesn't also fire
+            the row's preview click. */}
+        <span
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <RowKebabMenu items={menuItems} />
+        </span>
       </div>
       {typeof snap.size === 'number' && snap.size > 0 && (
         <div style={SIZE_STYLE}>{formatSize(snap.size)}</div>
@@ -648,48 +781,87 @@ function VersionRow({
           <span>word{stats.added + stats.removed === 1 ? '' : 's'}</span>
         </div>
       )}
-      {/* Action buttons stop click propagation so they don't also open
-          the preview. */}
-      <div
-        style={ENTRY_ACTIONS_STYLE}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        role="presentation"
-      >
-        {onPreview && (
-          <button
-            type="button"
-            onClick={onPreview}
-            style={SHOW_DIFF_BTN_STYLE}
-            data-testid="version-history-version-toggle-diff"
-          >
-            Show changes
-          </button>
-        )}
+    </li>
+  );
+}
+
+/* ============================================================
+   Current-version row + per-row kebab menu.
+   ============================================================ */
+
+function CurrentVersionRow({ active, onClick }: { active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid="version-history-current-row"
+      aria-current={active ? 'true' : 'false'}
+      style={{
+        ...CURRENT_ROW_STYLE,
+        background: active ? 'var(--doc-primary-subtle, #e8f0fe)' : 'transparent',
+        color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text)',
+      }}
+    >
+      <span>Current version</span>
+      {active && <MaterialSymbol name="check" size={16} style={{ marginLeft: 'auto' }} />}
+    </button>
+  );
+}
+
+interface KebabItem {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}
+
+function RowKebabMenu({ items }: { items: KebabItem[] }) {
+  const [open, setOpen] = useState(false);
+  const { containerRef, dropdownRef, dropdownStyle, handleMouseDown } = useFixedDropdown({
+    isOpen: open,
+    onClose: () => setOpen(false),
+    align: 'right',
+  });
+
+  return (
+    <span ref={containerRef} style={{ display: 'inline-flex' }}>
+      <Tooltip content="More actions">
         <button
           type="button"
-          onClick={onRestore}
-          style={REVERT_BUTTON_STYLE}
-          data-testid="version-history-restore"
+          onMouseDown={handleMouseDown}
+          onClick={() => setOpen((v) => !v)}
+          style={KEBAB_BTN_STYLE}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="Version actions"
+          data-testid="version-history-row-menu"
         >
-          Restore
+          <MaterialSymbol name="more_vert" size={18} />
         </button>
-        {onRename && (
-          <button type="button" onClick={onRename} style={SHOW_DIFF_BTN_STYLE}>
-            Rename
-          </button>
-        )}
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            style={{ ...SHOW_DIFF_BTN_STYLE, color: '#b91c1c' }}
-          >
-            Delete
-          </button>
-        )}
-      </div>
-    </li>
+      </Tooltip>
+      {open && (
+        <div ref={dropdownRef} style={{ ...dropdownStyle, ...KEBAB_MENU_STYLE }} role="menu">
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+              style={{
+                ...KEBAB_ITEM_STYLE,
+                color: item.danger ? '#b91c1c' : 'var(--doc-text)',
+              }}
+            >
+              <MaterialSymbol name={item.icon} size={16} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
   );
 }
 

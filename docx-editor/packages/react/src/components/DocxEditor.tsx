@@ -8991,6 +8991,8 @@ body { background: white; }
                       saveNamedVersion={versionCapture.saveNamedVersion}
                       onRestoreSnapshot={handleRestoreSnapshot}
                       onPreviewVersion={handlePreviewVersion}
+                      onShowCurrent={handleClosePreview}
+                      isPreviewing={versionPreview != null}
                       serverBackend={versionBackend}
                       onRestoreServerVersion={handleRestoreServerVersion}
                       onClose={() => setShowVersionHistory(false)}
