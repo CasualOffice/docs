@@ -154,6 +154,36 @@ export function MarkdownEditor({
     [onRenameFile]
   );
 
+  // Download the current source as its file. The visible CodeMirror state is
+  // the source of truth (it mirrors the shared Y.Text in collab mode), so read
+  // straight from the view to avoid a stale React-state snapshot.
+  const handleDownload = useCallback(() => {
+    const text = viewRef.current?.state.doc.toString() ?? docText;
+    const mime = kind === 'markdown' ? 'text/markdown' : 'text/plain';
+    const blob = new Blob([text], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || (kind === 'markdown' ? 'document.md' : 'document.txt');
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [docText, fileName, kind]);
+
+  // Cmd/Ctrl+S saves (downloads) instead of triggering the browser's
+  // save-page dialog — the Google-Docs-style expectation.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleDownload();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleDownload]);
+
   const showSource = mode === 'source' || mode === 'split';
   const showPreview = supportsPreview && (mode === 'preview' || mode === 'split');
 
@@ -191,27 +221,47 @@ export function MarkdownEditor({
           />
         </div>
 
-        {supportsPreview && (
-          <div style={styles.toggle} role="group" aria-label="View mode">
-            {(['source', 'split', 'preview'] as MarkdownViewMode[]).map((m) => {
-              const active = mode === m;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  aria-pressed={active}
-                  title={MODE_LABEL[m]}
-                  data-testid={`markdown-view-${m}`}
-                  style={{ ...styles.toggleButton, ...(active ? styles.toggleButtonActive : {}) }}
-                >
-                  <span style={styles.toggleIcon}>{ICONS[m]}</span>
-                  <span>{MODE_LABEL[m]}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div style={styles.barRight}>
+          {supportsPreview && (
+            <div style={styles.toggle} role="group" aria-label="View mode">
+              {(['source', 'split', 'preview'] as MarkdownViewMode[]).map((m) => {
+                const active = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    aria-pressed={active}
+                    title={MODE_LABEL[m]}
+                    data-testid={`markdown-view-${m}`}
+                    style={{ ...styles.toggleButton, ...(active ? styles.toggleButtonActive : {}) }}
+                  >
+                    <span style={styles.toggleIcon}>{ICONS[m]}</span>
+                    <span>{MODE_LABEL[m]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleDownload}
+            style={styles.downloadButton}
+            title="Download"
+            data-testid="markdown-download"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Download</span>
+          </button>
+        </div>
       </header>
 
       <div style={styles.body}>
@@ -257,6 +307,20 @@ const styles: Record<string, React.CSSProperties> = {
     flex: '0 0 auto',
   },
   barLeft: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
+  barRight: { display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto' },
+  downloadButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    border: '1px solid #e2e8f0',
+    borderRadius: 8,
+    padding: '6px 12px',
+    fontSize: 13,
+    fontWeight: 500,
+    color: '#334155',
+    background: '#ffffff',
+    cursor: 'pointer',
+  },
   iconButton: {
     display: 'inline-flex',
     alignItems: 'center',

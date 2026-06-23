@@ -99,3 +99,25 @@ test('editing the source updates the preview live', async ({ page }) => {
 
   await expect(preview.locator('h1').first()).toHaveText('Live Edit Heading');
 });
+
+test('Download saves the edited source back to a .md file', async ({ page }) => {
+  await openMarkdown(page);
+
+  // Edit, then download — the saved file must reflect the live edit.
+  const content = page.getByTestId('markdown-source').locator('.cm-content');
+  await content.click();
+  await page.keyboard.press('ControlOrMeta+Home');
+  await page.keyboard.type('# Saved Heading\n\n');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByTestId('markdown-download').click();
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toBe('casual-sample.md');
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  const saved = Buffer.concat(chunks).toString('utf-8');
+  expect(saved).toContain('# Saved Heading');
+  expect(saved).toContain('# Markdown Fixture Title');
+});
