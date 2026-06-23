@@ -17,6 +17,9 @@ import {
   PersonalAuthGate,
   UserMenu,
   useFileSourceAutoSave,
+  isForeignFormat,
+  convertToDocx,
+  formatFromFilename,
   type AutoSaveEditorRef,
   type FileSource,
 } from '@casualoffice/docs';
@@ -627,10 +630,24 @@ export function App() {
       try {
         suppressSeedDocumentRef.current = true;
         setStatus('Loading…');
-        const buffer = await file.arrayBuffer();
+        const raw = await file.arrayBuffer();
+        // Non-DOCX uploads (.odt / .md / .txt) are converted to the DOCX model
+        // via the WASM worker before the editor loads them — mirrors the
+        // editor's File → Open path so the Home picker isn't DOCX-only.
+        let buffer: ArrayBuffer = raw;
+        const fmt = formatFromFilename(file.name);
+        if (fmt && isForeignFormat(fmt)) {
+          setStatus('Converting…');
+          const out = await convertToDocx(new Uint8Array(raw), fmt);
+          buffer = out.buffer.slice(
+            out.byteOffset,
+            out.byteOffset + out.byteLength
+          ) as ArrayBuffer;
+        }
+        const cleanName = file.name.replace(/\.(odt|md|markdown|txt)$/i, '.docx');
         setCurrentDocument(null);
         setDocumentBuffer(buffer);
-        setFileName(file.name);
+        setFileName(cleanName);
         setStatus('');
         if (!legacyForcedEditor) navigate('/document/new');
         setView('editor');
