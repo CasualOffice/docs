@@ -44,11 +44,7 @@ import { FocusModeBar } from './FocusModeBar';
 import { useStatPrefs } from './statbar-prefs';
 import { READABILITY_PLUGIN_KEY, readabilityPlugin } from '../lib/quality/readabilityPlugin';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
-import {
-  DocumentOutline,
-  OUTLINE_BUTTON_RESERVED_SPACE,
-  OUTLINE_RESERVED_SPACE,
-} from './DocumentOutline';
+import { DocumentOutline, OUTLINE_RESERVED_SPACE } from './DocumentOutline';
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
 import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
 import { PropertiesPanel, type PropertiesTargetKind } from './sidebar/PropertiesPanel';
@@ -1579,7 +1575,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     placeholder,
     loadingIndicator,
     showOutline: showOutlineProp = false,
-    showOutlineButton = true,
+    // showOutlineButton is a vestigial prop (the outline now lives in the
+    // right-edge PanelRail); kept on the props type for API compatibility but no
+    // longer consumed here.
     fontFamilies,
     showPrintButton = true,
     printOptions: _printOptions,
@@ -7945,11 +7943,15 @@ body { background: white; }
   const sidebarOpen = showCommentsSidebar || allSidebarItems.length > 0;
   // Reserve 2× the left-edge allowance so the centered page clears whatever
   // outline UI is showing, without forcing a shift on wide viewports.
-  const outlineLeftAllowance = showOutline
-    ? OUTLINE_RESERVED_SPACE
-    : showOutlineButton
-      ? OUTLINE_BUTTON_RESERVED_SPACE
-      : 20;
+  // Google-Docs-style centering: the page centers in the FULL window at every
+  // width; the ruler + outline BUTTON are overlays in the page's left gutter, so
+  // they don't reserve flow space and may scroll off-screen-left when the window
+  // is too narrow to fit the page. Only the expanded outline PANEL is a real
+  // left panel, so only it reserves a (symmetric, to keep the page centered)
+  // lane. Previously the outline-button case reserved a 2×button-space lane,
+  // which pushed the page into a left "lane" at medium widths and jammed the
+  // ruler against the window's left corner instead of centering.
+  const outlineLeftAllowance = showOutline ? OUTLINE_RESERVED_SPACE : 0;
   const minLayoutWidth =
     2 * outlineLeftAllowance + DEFAULT_PAGE_WIDTH + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0);
 
