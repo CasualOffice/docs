@@ -147,6 +147,17 @@ export {
   type UseCollabOptions,
 } from './collab/useCollab';
 
+// Strict / paragraph-lock co-editing — opt-in collab mode. The plugin is
+// wired automatically by `useCollab`; hosts toggle it on the editor view
+// with `setStrictCoEditing` and reflect state with `isStrictCoEditingEnabled`.
+export {
+  setStrictCoEditing,
+  isStrictCoEditingEnabled,
+  peerLocks,
+  strictCoEditingKey,
+  type PeerLock,
+} from './collab/strictCoEditing';
+
 // Recent files (host-facing — call `recordRecentFile` on doc open,
 // surface `listRecentFiles` on a "Home" / "Open" screen).
 export {
