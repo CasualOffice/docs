@@ -118,6 +118,39 @@ table-row-metrics work — its own worst-case floor, separate from the
 representative overall — and a Phase-3 line-height calibration could push the
 representative *above* 87.6 (risky shared change; only if warranted).
 
+## Results — 2026-06-23/24 calibration pass
+
+Ran a parallel-worktree VF sweep (one agent per lever; each gated: keep iff the
+target corpus rises, `representative` stays ≥87, 927 core tests incl. 39 round-trip
+fixtures green; render-only ⇒ round-trip-safe by construction).
+
+**Shipped (PR #80):**
+- **Calibri/Carlito `singleLineRatio` 1.2207 → 1.205.** OS/2 = 2500/2048 = 1.2207, but
+  LibreOffice's per-line layout runs ~1.4% tighter; the representative sweep peaks
+  sharply at 1.205.
+- **Empty-paragraph height floor uses the font's own single-line ratio, not a flat
+  1.15.** A flat floor over-inflated narrow serif fonts (Times/Liberation ≈ 1.107) that
+  dense forms stack dozens of. Empty and one-line paras in the same font now match.
+- **Representative VF 82.8 → 87.2 (local).** Real-world 52.8 → 53.1 (Form025U +1.3).
+
+**`medical-incident-form` (33.5) — diagnosed, NO safe fix (confirms the deferred
+table-row drift, #11):** the p3/p4 block/row-corr collapse to ~0 is **diffuse cumulative
+over-height**, not one bad row. Each of ~50 table rows (the doc is one 50-row table,
+`trHeight` with default `hRule="atLeast"`, no `cantSplit`) grows ~2–3px taller than
+LibreOffice; by the `IMMEDIATE ACTIONS` header the editor is ~30px lower — just enough
+that a 103px body row spills p2→p3, after which every section is one row off (cols stay
+aligned, hence high col-corr). Discrete-bug suspects ruled out: dingbat checkbox rows are
+within ~3px (the validated `singleLineRatio=3.3` is correct — do NOT reduce), cell
+padding/`tblCellMar` correct, rows wrap identically. No single render-only knob closes
+the ~30px without regressing the validated checkbox rows or other fixtures. Row-height
+math: `PagedEditor.tsx` `max(content+padding+border, trHeight_px)`; twips→px in
+`toFlowBlocks.ts`. Stays deferred.
+
+**Open lever for the stress (Arial-dominant SDS) corpus:** the SDS fixtures are ~1400
+Arial runs + Microsoft JhengHei (CJK), neither yet calibrated — Arial is still at the raw
+OS/2 1.1172. Calibrating Arial (same method as Calibri) is the most promising next lift
+for real-world, and also touches representative.
+
 ## 4. Non-negotiables
 
 - No change ships if the Phase-1 gate is red.
