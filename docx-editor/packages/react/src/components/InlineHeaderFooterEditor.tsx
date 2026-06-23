@@ -371,7 +371,11 @@ export const InlineHeaderFooterEditor = forwardRef<
         </div>
       )}
 
-      {/* ProseMirror editor area */}
+      {/* ProseMirror editor area. Opaque page-colored background so the body
+          content BEHIND the overlay doesn't bleed through — a complex header
+          (e.g. an SDS letterhead with many positioned boxes) grows tall and the
+          overlay extends over the body region; a transparent overlay let the
+          grayed body text show through and read as "broken". */}
       <div
         ref={editorContainerRef}
         className="hf-editor-pm prosemirror-editor"
@@ -379,6 +383,7 @@ export const InlineHeaderFooterEditor = forwardRef<
           minHeight: 40,
           outline: 'none',
           fontSize: `${defaultFontSizePt}pt`,
+          background: 'var(--doc-surface, #ffffff)',
         }}
       />
 
