@@ -1699,6 +1699,7 @@ export function renderPage(
 
     const headerEl = doc.createElement('div');
     headerEl.className = PAGE_CLASS_NAMES.header;
+    headerEl.title = 'Double-click to edit header';
     headerEl.style.position = 'absolute';
     headerEl.style.top = `${headerDistance + headerVisualTop}px`;
     headerEl.style.left = `${page.margins.left}px`;
@@ -1751,6 +1752,7 @@ export function renderPage(
 
     const footerEl = doc.createElement('div');
     footerEl.className = PAGE_CLASS_NAMES.footer;
+    footerEl.title = 'Double-click to edit footer';
     footerEl.style.position = 'absolute';
     footerEl.style.top = `${page.size.h - footerDistance - actualFooterHeight}px`;
     footerEl.style.left = `${page.margins.left}px`;
