@@ -1626,6 +1626,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // DecorationLayer's resync so plugins like yCursorPlugin (which update
     // decorations on awareness pings — non-doc transactions) propagate.
     const [transactionVersion, setTransactionVersion] = useState(0);
+    // Bumped when the page viewport reflows (e.g. the Format panel opens and
+    // shifts the page) so the image selection overlay re-anchors to its <img>.
+    const [overlayReanchorTick, setOverlayReanchorTick] = useState(0);
 
     // Compute page size and margins
     const pageSize = useMemo(() => getPageSize(sectionProperties), [sectionProperties]);
@@ -2609,6 +2612,50 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       [layout, blocks, measures, getCaretFromDom, zoom]
       // NOTE: onSelectionChange removed from dependencies - accessed via ref to prevent infinite loops
     );
+
+    // Re-anchor on-canvas selection chrome (the text-box "Format" chip + blue
+    // box + resize handles) when the page reflows WITHOUT a PM transaction —
+    // most notably when the Format panel opens as a flex sibling and shrinks the
+    // page column. `updateSelectionOverlay` only re-runs on PM selection/doc
+    // changes, so without this the text-box box stayed at the old coordinates
+    // and the user had to close + reopen the panel to realign it. A
+    // ResizeObserver on the pages viewport (the coordinate frame the chip is
+    // measured against) catches the reflow and recomputes. (Images self-heal via
+    // ImageSelectionOverlay's own ResizeObserver.)
+    useEffect(() => {
+      const viewportEl = pagesContainerRef.current?.parentElement;
+      if (!viewportEl || typeof ResizeObserver === 'undefined') return;
+      let raf = 0;
+      const ro = new ResizeObserver(() => {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          const view = hiddenPMRef.current?.getView();
+          if (view) updateSelectionOverlay(view.state);
+          // The reflow re-renders the painted pages, REPLACING the <img> node —
+          // so the image overlay's stored element ref is now detached (its
+          // getBoundingClientRect() returns 0 and the box jumps off-screen).
+          // Re-find the live image for the selection's PM position and rebuild
+          // the selection info so the overlay tracks the new node. Then bump the
+          // tick so the overlay recomputes against it.
+          setSelectedImageInfo((prev) => {
+            if (!prev || prev.element.isConnected) return prev;
+            const root = pagesContainerRef.current;
+            if (!root) return prev;
+            const holder = root.querySelector(`[data-pm-start="${prev.pmPos}"]`);
+            const live = (
+              holder?.tagName === 'IMG' ? holder : (holder?.querySelector('img') ?? holder)
+            ) as HTMLElement | null;
+            return live ? buildImageSelectionInfo(live, prev.pmPos) : prev;
+          });
+          setOverlayReanchorTick((t) => t + 1);
+        });
+      });
+      ro.observe(viewportEl);
+      return () => {
+        ro.disconnect();
+        cancelAnimationFrame(raf);
+      };
+    }, [updateSelectionOverlay, buildImageSelectionInfo]);
 
     // =========================================================================
     // Event Handlers
@@ -4547,6 +4594,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           <ImageSelectionOverlay
             imageInfo={selectedImageInfo}
             zoom={zoom}
+            panelOpen={commentsSidebarOpen}
+            reanchorTick={overlayReanchorTick}
             isFocused={isFocused}
             onResize={handleImageResize}
             onResizeStart={handleImageResizeStart}

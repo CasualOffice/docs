@@ -34,6 +34,14 @@ export interface ImageSelectionOverlayProps {
   imageInfo: ImageSelectionInfo | null;
   /** Zoom level */
   zoom: number;
+  /** True while a right-side panel (Format / comments) is open and has shifted
+   *  the page via a CSS transform. Toggling it re-anchors the overlay across the
+   *  0.2s shift transition (no scroll/resize event fires for a transform). */
+  panelOpen?: boolean;
+  /** Monotonic counter bumped by the host when the page viewport reflows
+   *  (Format panel open/close). Each change forces the overlay to re-anchor to
+   *  its <img>, since such reflows fire no scroll/resize event the overlay sees. */
+  reanchorTick?: number;
   /** Whether the editor is focused */
   isFocused: boolean;
   /** Callback when image is resized */
@@ -165,6 +173,8 @@ function calculateNewDimensions(
 export function ImageSelectionOverlay({
   imageInfo,
   zoom,
+  panelOpen,
+  reanchorTick,
   isFocused,
   onResize,
   onResizeStart,
@@ -239,6 +249,23 @@ export function ImageSelectionOverlay({
   useEffect(() => {
     updatePosition();
   }, [updatePosition]);
+
+  // Opening/closing a right panel shifts the page via a CSS transform with a
+  // ~0.2s transition. No scroll/resize event fires, so without this the blue
+  // box detached from the image until the panel was toggled again. Track the
+  // image through the whole transition with a short rAF loop so the box glides
+  // with it and lands aligned.
+  useEffect(() => {
+    if (!imageInfo) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = () => {
+      updatePosition();
+      if (performance.now() - start < 320) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [panelOpen, reanchorTick, imageInfo, updatePosition]);
 
   // Also update on scroll/resize
   useEffect(() => {
