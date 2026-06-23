@@ -221,6 +221,18 @@ export { setSpellAssetUrls } from './lib/spellcheck/service';
 // to the library, which can't bake the path in (tsup can't resolve
 // `new URL('./writer.worker.ts', import.meta.url)`).
 export { setWriterWorkerUrl } from './lib/writer/controller';
+
+// Foreign-format conversion (.odt / .md / .txt ⇄ .docx) via the WASM worker.
+// Exported so hosts opening files (Home/landing pickers) can convert non-DOCX
+// uploads to the DOCX model before handing them to the editor.
+export {
+  isForeignFormat,
+  convertToDocx,
+  formatFromFilename,
+  exportDocxAs,
+  type Format,
+  type ForeignFormat,
+} from './lib/format-converter';
 // AgentChat exports removed: the source file (./components/AgentChat) imported
 // from the AGPL @eigenpal/docx-editor-agents package and was dropped in this
 // fork's AGPL purge. See docs/agpl-removal.md.
