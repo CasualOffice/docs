@@ -1,0 +1,163 @@
+/*
+ * Typography for the markdown preview pane. The app ships a CSS reset
+ * (Tailwind preflight) that strips heading sizes and list bullets, so the
+ * preview needs its own scoped styles to read like a real markdown render
+ * (GitHub-ish). All selectors are scoped under `.markdown-preview-body` so
+ * they never leak into the rest of the app.
+ */
+
+.markdown-preview-body {
+  color: #1f2328;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  word-wrap: break-word;
+}
+
+.markdown-preview-body > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-preview-body h1,
+.markdown-preview-body h2,
+.markdown-preview-body h3,
+.markdown-preview-body h4,
+.markdown-preview-body h5,
+.markdown-preview-body h6 {
+  margin: 24px 0 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-preview-body h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #d1d9e0;
+}
+
+.markdown-preview-body h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #d1d9e0;
+}
+
+.markdown-preview-body h3 {
+  font-size: 1.25em;
+}
+.markdown-preview-body h4 {
+  font-size: 1em;
+}
+.markdown-preview-body h5 {
+  font-size: 0.875em;
+}
+.markdown-preview-body h6 {
+  font-size: 0.85em;
+  color: #59636e;
+}
+
+.markdown-preview-body p,
+.markdown-preview-body blockquote,
+.markdown-preview-body ul,
+.markdown-preview-body ol,
+.markdown-preview-body table,
+.markdown-preview-body pre {
+  margin: 0 0 16px;
+}
+
+.markdown-preview-body ul,
+.markdown-preview-body ol {
+  padding-left: 2em;
+}
+
+.markdown-preview-body ul {
+  list-style: disc;
+}
+.markdown-preview-body ol {
+  list-style: decimal;
+}
+.markdown-preview-body li {
+  margin: 0.25em 0;
+}
+.markdown-preview-body li > ul,
+.markdown-preview-body li > ol {
+  margin: 0.25em 0;
+}
+
+.markdown-preview-body ul.contains-task-list {
+  list-style: none;
+  padding-left: 1.2em;
+}
+
+.markdown-preview-body a {
+  color: #0969da;
+  text-decoration: none;
+}
+.markdown-preview-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-preview-body strong {
+  font-weight: 600;
+}
+.markdown-preview-body em {
+  font-style: italic;
+}
+
+.markdown-preview-body code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background: rgba(129, 139, 152, 0.15);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+.markdown-preview-body pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background: #f6f8fa;
+  border-radius: 8px;
+}
+
+.markdown-preview-body pre code {
+  padding: 0;
+  background: transparent;
+  font-size: 100%;
+}
+
+.markdown-preview-body blockquote {
+  padding: 0 1em;
+  color: #59636e;
+  border-left: 0.25em solid #d1d9e0;
+}
+
+.markdown-preview-body table {
+  border-collapse: collapse;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+}
+
+.markdown-preview-body th,
+.markdown-preview-body td {
+  padding: 6px 13px;
+  border: 1px solid #d1d9e0;
+}
+
+.markdown-preview-body tr:nth-child(2n) {
+  background: #f6f8fa;
+}
+
+.markdown-preview-body img {
+  max-width: 100%;
+}
+
+.markdown-preview-body hr {
+  height: 0.25em;
+  margin: 24px 0;
+  background: #d1d9e0;
+  border: 0;
+}
