@@ -69,7 +69,7 @@ This shifts the durability story entirely to the host. We become a pure realtime
 
 - Bundle size and TTFI on the editor — benchmark after first integration test.
 - **Server-side snapshot-on-drain fallback** — M2 snapshot shipped via client-side push (`DocxEditorRef.save()` + `useFileSourceAutoSave`, `d24deaa`); the earlier Bun-worker-pool plan was explicitly dropped to keep Bun out of the production image. The only open piece is a server-side serializer for the rare case where no client is around to push a final save (deprioritised; tracked in [`18-server-snapshot-design.md`](18-server-snapshot-design.md)).
-- **Real-world visual fidelity** — round-trip is pristine (39/39); the live focus is rendering correctly on real documents (`sds-anti-t-zh`, `medical-incident-form`, `Form025U`). Tracked authoritatively in [`19-content-drops-and-inconsistencies.md`](19-content-drops-and-inconsistencies.md) (content drops) and [`20-overlap-and-interaction.md`](20-overlap-and-interaction.md) (overlap/interaction).
+- **Real-world visual fidelity** — round-trip is pristine (39/39); the live focus is rendering correctly on real documents (`sds-anti-t-zh`, `medical-incident-form`, `Form025U`). Tracked authoritatively in [`19-content-drops-and-inconsistencies.md`](archive/19-content-drops-and-inconsistencies.md) (content drops) and [`20-overlap-and-interaction.md`](archive/20-overlap-and-interaction.md) (overlap/interaction).
 
 ## What this is not
 
@@ -130,7 +130,7 @@ This block is informational — concrete dependencies for any given Document mil
 
 ## Status (2026-06-21)
 
-Pivot completed 2026-05-16; the project is well past it. Phase C (Personal auth) and Phase D (WOPI) both shipped end-to-end; M2 snapshot ships via client-side push. AGPL code purged from the fork; statelessness preserved (no DB). The editor fork is **inlined** (no separate `.git/`). Recent work: PRs #10–#16, focused on real-world visual fidelity (`sds-anti-t-zh`, `medical-incident-form`, `Form025U`), tracked in [`19-content-drops-and-inconsistencies.md`](19-content-drops-and-inconsistencies.md) and [`20-overlap-and-interaction.md`](20-overlap-and-interaction.md). Go toolchain pinned to 1.25.
+Pivot completed 2026-05-16; the project is well past it. Phase C (Personal auth) and Phase D (WOPI) both shipped end-to-end; M2 snapshot ships via client-side push. AGPL code purged from the fork; statelessness preserved (no DB). The editor fork is **inlined** (no separate `.git/`). Recent work: PRs #10–#16, focused on real-world visual fidelity (`sds-anti-t-zh`, `medical-incident-form`, `Form025U`), tracked in [`19-content-drops-and-inconsistencies.md`](archive/19-content-drops-and-inconsistencies.md) and [`20-overlap-and-interaction.md`](archive/20-overlap-and-interaction.md). Go toolchain pinned to 1.25.
 
 **Editor side:**
 - Round-trip audit harness — eliminated ~2,400 dropped tags across 16+ commits.
