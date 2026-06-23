@@ -118,6 +118,60 @@ table-row-metrics work — its own worst-case floor, separate from the
 representative overall — and a Phase-3 line-height calibration could push the
 representative *above* 87.6 (risky shared change; only if warranted).
 
+## Results — 2026-06-23/24 calibration pass
+
+Ran a parallel-worktree VF sweep (one agent per lever; each gated: keep iff the
+target corpus rises, `representative` stays ≥87, 927 core tests incl. 39 round-trip
+fixtures green; render-only ⇒ round-trip-safe by construction).
+
+**Shipped (PR #80):**
+- **Calibri/Carlito `singleLineRatio` 1.2207 → 1.205.** OS/2 = 2500/2048 = 1.2207, but
+  LibreOffice's per-line layout runs ~1.4% tighter; the representative sweep peaks
+  sharply at 1.205.
+- **Empty-paragraph height floor uses the font's own single-line ratio, not a flat
+  1.15.** A flat floor over-inflated narrow serif fonts (Times/Liberation ≈ 1.107) that
+  dense forms stack dozens of. Empty and one-line paras in the same font now match.
+- **Representative VF 82.8 → 87.2 (local).** Real-world 52.8 → 53.1 (Form025U +1.3).
+
+**`medical-incident-form` (33.5) — diagnosed, NO safe fix (confirms the deferred
+table-row drift, #11):** the p3/p4 block/row-corr collapse to ~0 is **diffuse cumulative
+over-height**, not one bad row. Each of ~50 table rows (the doc is one 50-row table,
+`trHeight` with default `hRule="atLeast"`, no `cantSplit`) grows ~2–3px taller than
+LibreOffice; by the `IMMEDIATE ACTIONS` header the editor is ~30px lower — just enough
+that a 103px body row spills p2→p3, after which every section is one row off (cols stay
+aligned, hence high col-corr). Discrete-bug suspects ruled out: dingbat checkbox rows are
+within ~3px (the validated `singleLineRatio=3.3` is correct — do NOT reduce), cell
+padding/`tblCellMar` correct, rows wrap identically. No single render-only knob closes
+the ~30px without regressing the validated checkbox rows or other fixtures. Row-height
+math: `PagedEditor.tsx` `max(content+padding+border, trHeight_px)`; twips→px in
+`toFlowBlocks.ts`. Stays deferred.
+
+**Arial calibration — tried, NULL result (definitive).** Swept Arial `singleLineRatio`
+1.10–1.12 (+ an extreme 2.0 probe): real-world stayed 53.1 ±0.2 (run-to-run noise),
+representative dead flat at 87.2, sds-real-world 60.4 at every value. **Root cause why the
+Carlito win didn't replicate:** the Arial-heavy SDS docs pin most line heights with
+**`w:lineRule="exact"`** (fixed twip values) which BYPASS `singleLineRatio` entirely (the
+`exact` branch in `measureParagraph.ts`) — 301 `exact` vs 127 `auto` paragraphs in the SDS
+fixtures; `medical-incident-form` has 6 Arial runs, `Form025U` has zero. So per-font
+line-height has almost no leverage here. Reverted (no change). Round-trip 927/927.
+
+### Conclusion — safe per-font VF levers are exhausted (diminishing returns)
+
+The representative (everyday-document) corpus is solved: **87.2 local / 87.6 CI**, CI floor
+locked at 0.80. The **stress corpus (~53) is NOT addressable by safe per-font calibration** —
+its residual is two structural things, both confirmed this pass:
+1. **Author-fixed `lineRule="exact"` layout** (SDS) — line heights don't derive from font
+   metrics, so calibration can't move them.
+2. **Diffuse cumulative table-row over-height** (forms) — ~2–3px/row across 50-row tables,
+   no safe single knob (largest repeated contributor is the *validated* dingbat checkbox
+   rows; #11).
+
+Closing the stress corpus would need a deeper, riskier effort — reproducing LibreOffice's
+exact-line box model and/or a measured table-row-height correction — against the §0
+non-negotiables. Per §3's exit criterion this is **clear diminishing returns**: stop here,
+keep the representative gain, and revisit the stress corpus only as a dedicated, separately-
+scoped project (it's the user's CJK-SDS use case, so worth a future focused pass).
+
 ## 4. Non-negotiables
 
 - No change ships if the Phase-1 gate is red.
