@@ -43,10 +43,22 @@ The features that close the gap with Google Docs / OnlyOffice for `.docx` workfl
    accept/reject sidebar + accept-all/reject-all, Yjs-synced marks. Full-flow e2e in
    `track-changes-flow.spec.ts`. Remaining *polish*: `<w:pPrChange>` paragraph-format-change
    display, per-author color coding, prev/next-change navigation, general round-trip fixture.
-2. **Named version history** — milestone snapshots on the Yjs history; "named versions"
-   filter. Cheap on the CRDT, high perceived value. (Next biggest Phase-A item to build.)
-3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — prevents
-   distant concurrent reflow on long docs; *also* mitigates the large-doc drift in Phase B.
+2. **Named version history** — ✅ **ALREADY SHIPPED** (audited 2026-06-24). IDB-backed
+   `version-history/` module: **auto** snapshots (~10-min idle while dirty) + **manual named**
+   snapshots (`saveNamedVersion`), restore, rename, collab-aware author attribution, and a
+   `ServerVersionBackend` for host-side revisions. `VersionHistoryPanel` in the right rail.
+   e2e: `version-history.spec.ts` + `version-history-audit.spec.ts`.
+3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — ⬜ **the one
+   genuinely-unbuilt Phase-A item.** Focusing a paragraph locks it for peers (Yjs awareness);
+   others see it locked / read-only. Prevents distant concurrent reflow on long docs; *also*
+   mitigates the large-doc drift in Phase B. Collab-only, so verify with a 2-Y.Doc convergence
+   test at the data layer (multi-peer UI e2e is impractical without a live server).
+
+**Reality check (2026-06-24 audit):** the editor is far more complete than a from-scratch
+roadmap implies — Phase A #1 and #2 were already built; only #3 (Strict mode) remains. The
+near-term "build" backlog across the project is small (Strict mode, Phase B extreme-corpus
+fidelity, Phase D breadth); most "to-do" features turn out to need *verification + e2e
+coverage*, not implementation. Audit before building.
 
 ### Phase B — Extreme-corpus visual fidelity (dedicated, riskier)
 The CJK-SDS / dense-form corpus (~53) — the user's real-world documents. Per-font
