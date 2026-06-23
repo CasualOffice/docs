@@ -5,7 +5,7 @@
  * Shows Cut, Copy, Paste, and other text editing options.
  */
 
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import defaultLocale from '../../i18n/en.json';
@@ -609,30 +609,53 @@ export const TextContextMenu: React.FC<TextContextMenuProps> = ({
     }
   }, [isOpen]);
 
-  // Position menu to stay within viewport
+  // Measure the actual rendered size so the viewport clamp is exact — the
+  // per-item estimate is wrong with separators/long items, which let the menu
+  // spill below the window and gain an internal scrollbar. useLayoutEffect runs
+  // before paint, so the corrected position lands without a flicker.
+  const [measured, setMeasured] = useState<{ w: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setMeasured(null);
+      return;
+    }
+    const el = menuRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setMeasured((prev) =>
+        prev && Math.abs(prev.h - r.height) < 1 && Math.abs(prev.w - r.width) < 1
+          ? prev
+          : { w: r.width, h: r.height }
+      );
+    }
+  }, [isOpen, menuItems.length]);
+
+  // Position menu to stay within the viewport, and never let it grow past the
+  // window — a too-tall menu caps to the available height and scrolls internally
+  // instead of spilling below the window edge.
   const getMenuStyle = useCallback((): React.CSSProperties => {
-    const menuWidth = 220;
-    const menuHeight = menuItems.length * 36 + 16;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const MARGIN = 10;
+    const maxH = Math.max(120, vh - 2 * MARGIN);
+    const menuWidth = measured?.w ?? 220;
+    const menuHeight = Math.min(measured?.h ?? menuItems.length * 36 + 16, maxH);
 
     let x = position.x;
     let y = position.y;
-
-    if (typeof window !== 'undefined') {
-      if (x + menuWidth > window.innerWidth) {
-        x = window.innerWidth - menuWidth - 10;
-      }
-      if (y + menuHeight > window.innerHeight) {
-        y = window.innerHeight - menuHeight - 10;
-      }
-      if (x < 10) x = 10;
-      if (y < 10) y = 10;
-    }
+    if (x + menuWidth > vw) x = vw - menuWidth - MARGIN;
+    if (y + menuHeight > vh) y = vh - menuHeight - MARGIN;
+    if (x < MARGIN) x = MARGIN;
+    if (y < MARGIN) y = MARGIN;
 
     return {
       position: 'fixed',
       top: y,
       left: x,
-      minWidth: menuWidth,
+      minWidth: 220,
+      maxHeight: maxH,
+      overflowY: 'auto',
+      overflowX: 'hidden',
       background: 'var(--doc-surface, white)',
       color: 'var(--doc-text-on-surface, #1f2937)',
       border: '1px solid var(--doc-border-light)',
@@ -640,9 +663,8 @@ export const TextContextMenu: React.FC<TextContextMenuProps> = ({
       boxShadow: 'var(--doc-shadow, 0 2px 10px rgba(0, 0, 0, 0.15))',
       zIndex: Z_INDEX.contextMenu,
       padding: '4px 0',
-      overflow: 'hidden',
     };
-  }, [position, menuItems.length]);
+  }, [position, menuItems.length, measured]);
 
   const handleItemClick = (item: TextContextMenuItem) => {
     if (item.disabled) return;
