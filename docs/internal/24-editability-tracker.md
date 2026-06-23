@@ -29,13 +29,13 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 | Pri | Item | Impact | Notes / fix direction |
 | --- | --- | --- | --- |
 | P3 | ⬜ **Textbox click-to-select-as-node** (Word border-select) | Low — deletion already works | `Ctrl+A`→Delete already removes a box; **Backspace in an empty box now deletes it** too (✅, BaseKeymapExtension). Remaining nicety: click the box border to select the whole node (for move/resize); not blocking. |
-| P2 | 🟡 **Textbox move / resize** | Med | ✅ **Resize** + fill + outline now editable via the **Format panel** (textbox section), opened by the on-object Format chip while the caret is in the box (#57) — resize-by-number, no drag overlay, sidesteps the anchored-position blocker below. Remaining: drag/resize **handles** overlay (like images) + **move** (gated on anchored-position). |
+| P2 | 🟡 **Textbox move / resize** | Med | ✅ Resize via the **Format panel** (#57) **and ✅ on-canvas drag-resize handles** (#60) — 4 corner grips while the caret is in the box, screen-px → node px via zoom. Remaining only: **move** (gated on anchored-position below). |
 | P2 | ⬜ **Anchored position honored by layout** | High (shared) | Floating images + textboxes + shapes store `posOffsetH/V` but the layout engine ignores them (reverted `d8b85d1`). Drag-move updates attrs but a re-layout can reset. Needs hybrid cursor-advance + wrap-exclusion zones. |
 | P2 | ✅ **Shape / text-box edit persistence (rawXml-on-edit)** | Med | **Finding:** imported shapes (DrawingML/VML rects) all render as `textBox` nodes — there is no pure `shape`-node paint path in practice. Both `textBox` and `shape` nodes carry the **rawXml invariant** (fromProseDoc re-emits the original OOXML verbatim and skips the model when `rawXml` is set), so the Format-panel fill/size/outline edits (#57/#59) were **silently dropped on save** for any imported box. Fixed: `updateTextBoxAttrs` now clears `rawXml`/`envelopeKey` on edit → model-based emission persists the change. Round-trip e2e proves it (thick outline survives save→reload; reverts to thin without the fix). Untouched boxes keep `rawXml` (921 core round-trip tests still green). Trade-off: editing a box drops its original VML/custom-geometry/effects — expected. This makes shapes editable since shapes ARE text boxes. |
 | P3 | ⬜ **Header/footer caret feedback** | Low | Double-click-to-edit works; caret not painted on the page-behind during edit. |
-| P2 | ⬜ **Footnote text editing** (re-scoped from "click routing") | Med · **save-core** | **Investigated (2 read-only passes).** Not a click-routing tweak — footnotes are **not** in the editable PM doc and `word/footnotes.xml` is copied **verbatim** on save (`rezip.ts`), so edits are silently dropped. Footnote content IS rich in the model (`package.footnotes: Footnote[]`, `content: (Paragraph\|Table)[]`, `footnoteParser.ts`), just never serialized back. **Plan (de-risked, ~8 files / 3 layers):** (1) new `footnoteSerializer` reusing `serializeParagraph`; (2) **surgical per-footnote replacement** — regenerate only the edited footnote's `<w:footnote w:id=N>` block in the original XML, leaving separators / namespaces / `footnotePr` / unedited footnotes byte-identical; (3) **opt-in** — regeneration fires only when a footnote was actually edited, so unedited docs (all 39 round-trip fixtures) are untouched and cannot regress; (4) render `.layout-footnote-area` entries with `data-footnote-id` → click opens a small plain-text editor → mutate `package.footnotes[i]` + flag → thread the modified `footnotes.xml` through `toBuffer`→`rezip`. Touches React UI + headless `toBuffer` + core serializer/rezip — the round-trip-critical path; needs the 39-fixture suite as a guard at every step. **Deliberately deferred to a dedicated focused effort** rather than rushed. Fixtures with footnotes: `demo.docx`, `EP_ZMVZ_MULTI_v4.docx`, `Form025U.docx`, `generic-render-regression.docx`. |
-| P3 | ⬜ **Floating image in table cell — click** | Low | `findImageElement` matches `layout-page-floating-image` but not `layout-cell-floating-image`. |
-| P3 | 🟡 **Image UI: rotate-flip / border / size** | Low | ✅ rotate/flip + border + editable W×H + alt text now in the **Format panel** image section, opened via the on-object Format chip (#55/#56). Border previously round-tripped but never **painted** — now wired through the flow-block → renderParagraph/renderImage (render-only, no serializer change). Remaining: dist-margins UI + `topAndBottom` wrap tile. |
+| P2 | ✅ **Footnote + endnote text editing** | Med · **save-core** | ✅ **Done** (#65/#66/#68). Footnotes paint at page bottom, endnotes at document end (`EndnoteSection` — endnotes were never displayed before); double-click → small editor. **Surgical text-only replacement** in the original footnotes.xml/endnotes.xml — only the edited note's `<w:t>` changes; markers/separators/namespaces/untouched notes stay byte-identical. **Opt-in** regeneration (untouched docs verbatim → 39-fixture round-trip pristine). Round-trip e2e proves persistence (proven to fail without the fix). **Collab-synced** via `footnotes`/`endnotes` Y.Maps. |
+| P3 | ✅ **Floating image in table cell — click** | Low | Fixed: added `layout-cell-floating-image` to `findImageElement`'s container classes (it already carries `data-pm-start` via `renderFloatingImagesLayer`). e2e proves it selects (fails without the fix). |
+| P3 | ✅ **Image UI: rotate-flip / border / size / wrap / margins** | Low | ✅ rotate/flip + border + editable W×H + alt + **dist-margins + `topAndBottom` wrap tile** (#58) now in the **Format panel** image section. Border painted via the flow-block → renderParagraph/renderImage. |
 | — | **Format panel (image+table) shipped** | — | On-object Format chip → contextual panel (flex sibling, no overlap). Image = Google-Docs icon picker (wrap/size/arrange/border/alt); table = grouped Rows/Cols/Cells/Table ops. One right-side surface at a time. Complete image+table e2e. (#55, #56) |
 | P3 | ⬜ **Cell-range selection polish / col-resize width constraint** | Low | Multi-cell selection lacks anchor styling; col-resize can breach fixed table width. |
 
@@ -49,8 +49,22 @@ resize). Treat every row as **verified by Playwright probe**, not by reading cod
 ## Polish / debt
 | Item | Notes |
 | --- | --- |
-| ⬜ Text box menu icon | Used `shapes` as a placeholder for Text box/Callout; pick a proper icon (e.g. `format_shapes`) once confirmed in the iconMap. |
+| ✅ Text box menu icon | Already resolved — Text box uses `edit_note`, Callout `chat_bubble_outline`; `shapes` is correctly the Shape submenu icon. |
 | ⬜ Inline-image-resize for pasted/inserted images | Same fix as P1 inline resize. |
+
+## Collab
+All out-of-PM editable surfaces now sync over the shared Y.Doc — footnotes,
+endnotes, comment threads, document properties (#65–#69). See
+`docs/internal/25-collab-coverage.md`. PM-node edits (Format-panel image/table/
+text-box/shape) sync via ySyncPlugin. **No editable surface remains unsynced.**
+
+## Remaining (open)
+- **P2 — Anchored position honored by layout** (the `posOffsetH/V` row above): the
+  one HIGH-impact open item; unblocks **move** for textboxes/images/shapes. Was
+  reverted once (`d8b85d1`); needs hybrid cursor-advance + wrap-exclusion zones.
+- Low/polish: textbox click-to-select-as-node, header/footer caret feedback,
+  cell-range selection polish / col-resize constraint, native DrawingML shape +
+  recolor, inline-image-resize for pasted images.
 
 ## Verification rule
 Every fix lands with a Playwright e2e that drives the real UI (menu/click/drag) and
