@@ -24,6 +24,8 @@ import {
   type FileSource,
 } from '@casualoffice/docs';
 import { Home } from './Home';
+import { MarkdownEditor } from './markdown/MarkdownEditor';
+import { MarkdownCollabApp } from './markdown/MarkdownCollabApp';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
 import { navigate, useRoute } from './router';
@@ -389,6 +391,14 @@ export function App() {
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
   const [status, setStatus] = useState<string>('');
+  // Plain-text / markdown documents (.md / .markdown / .txt) open in the
+  // dedicated source+preview editor, not the DOCX surface — they're never
+  // flattened to DOCX. Null when a DOCX-family doc is open.
+  const [textDoc, setTextDoc] = useState<{
+    text: string;
+    fileName: string;
+    kind: 'markdown' | 'text';
+  } | null>(null);
 
   // Browser tab title = the open file's name (Google-Docs style), not the
   // app name. On the home screen, fall back to the product name.
@@ -447,7 +457,12 @@ export function App() {
       const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       backend = `${proto}//${window.location.host}/yjs`;
     }
-    return { room, backend };
+    // `?kind=text` (or `markdown`) opens the collaborative source/markdown
+    // editor instead of the DOCX surface for this room. Default is DOCX.
+    const kindParam = params.get('kind');
+    const kind: 'docx' | 'markdown' | 'text' =
+      kindParam === 'text' ? 'text' : kindParam === 'markdown' ? 'markdown' : 'docx';
+    return { room, backend, kind };
   }, []);
 
   // Backend HTTP base — used for the upload (POST /api/docs) in
@@ -630,21 +645,34 @@ export function App() {
       try {
         suppressSeedDocumentRef.current = true;
         setStatus('Loading…');
-        const raw = await file.arrayBuffer();
-        // Non-DOCX uploads (.odt / .md / .txt) are converted to the DOCX model
-        // via the WASM worker before the editor loads them — mirrors the
-        // editor's File → Open path so the Home picker isn't DOCX-only.
-        let buffer: ArrayBuffer = raw;
         const fmt = formatFromFilename(file.name);
+
+        // .md / .markdown / .txt open as plain text in the source+preview
+        // editor — not converted to DOCX. Markdown gets the live preview;
+        // .txt is source-only.
+        if (fmt === 'md' || fmt === 'txt') {
+          const text = await file.text();
+          setDocumentBuffer(null);
+          setCurrentDocument(null);
+          setTextDoc({ text, fileName: file.name, kind: fmt === 'md' ? 'markdown' : 'text' });
+          setStatus('');
+          if (!legacyForcedEditor) navigate('/document/new');
+          setView('editor');
+          return;
+        }
+
+        const raw = await file.arrayBuffer();
+        // Other non-DOCX uploads (.odt) are converted to the DOCX model via
+        // the WASM worker before the editor loads them — mirrors the editor's
+        // File → Open path so the Home picker isn't DOCX-only.
+        let buffer: ArrayBuffer = raw;
         if (fmt && isForeignFormat(fmt)) {
           setStatus('Converting…');
           const out = await convertToDocx(new Uint8Array(raw), fmt);
-          buffer = out.buffer.slice(
-            out.byteOffset,
-            out.byteOffset + out.byteLength
-          ) as ArrayBuffer;
+          buffer = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
         }
-        const cleanName = file.name.replace(/\.(odt|md|markdown|txt)$/i, '.docx');
+        const cleanName = file.name.replace(/\.odt$/i, '.docx');
+        setTextDoc(null);
         setCurrentDocument(null);
         setDocumentBuffer(buffer);
         setFileName(cleanName);
@@ -715,6 +743,7 @@ export function App() {
     if (!ok) return;
     setCurrentDocument(null);
     setDocumentBuffer(null);
+    setTextDoc(null);
     setFileName('Untitled.docx');
     setStatus('');
     suppressSeedDocumentRef.current = false;
@@ -801,6 +830,19 @@ export function App() {
   // (everyone shares one source of truth — the gateway). Rendered
   // by a child component so useCollab is always called when its
   // mounting condition is true.
+  if (collabParams && collabParams.kind !== 'docx') {
+    return (
+      <MarkdownCollabApp
+        room={collabParams.room}
+        backend={collabParams.backend}
+        user={localUser}
+        kind={collabParams.kind}
+        onBack={handleGoHome}
+        renderLogo={renderLogo}
+      />
+    );
+  }
+
   if (collabParams) {
     return (
       <CollabApp
@@ -822,6 +864,19 @@ export function App() {
 
   if (view === 'home') {
     return <Home onSelectTemplate={handleSelectTemplate} onOpenFile={handleOpenFromHome} />;
+  }
+
+  if (textDoc) {
+    return (
+      <MarkdownEditor
+        initialText={textDoc.text}
+        fileName={textDoc.fileName}
+        kind={textDoc.kind}
+        onRenameFile={(name) => setTextDoc((d) => (d ? { ...d, fileName: name } : d))}
+        onBack={handleGoHome}
+        renderLogo={renderLogo}
+      />
+    );
   }
 
   return (

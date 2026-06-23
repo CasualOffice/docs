@@ -898,7 +898,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
       <input
         ref={fileInputRef}
         type="file"
-        accept=".docx,.odt"
+        accept=".docx,.odt,.md,.markdown,.txt"
         style={styles.hiddenInput}
         onChange={handleFileChange}
         data-testid="home-file-input"
