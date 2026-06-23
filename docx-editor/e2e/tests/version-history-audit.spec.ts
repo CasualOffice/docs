@@ -87,15 +87,21 @@ test.describe('Version history visual audit', () => {
       fullPage: false,
     });
 
-    // State 6: expand the newer version's diff against the previous one.
-    await page
-      .locator('[data-testid="version-history-version-toggle-diff"]')
-      .first()
-      .click();
-    await page.waitForSelector('[data-testid="version-history-version-diff"]');
-    await page.waitForTimeout(200);
+    // State 6: click the newer version row → full-canvas preview with
+    // changes-vs-previous overlaid (insertions underlined, per author).
+    await page.locator('[data-testid="version-history-version-row"]').first().click();
+    await page.waitForSelector('[data-testid="version-preview-overlay"]');
+    await page.waitForTimeout(400);
     await page.screenshot({
-      path: 'screenshots/audit/vh-6-version-diff.png',
+      path: 'screenshots/audit/vh-6-preview-changes.png',
+      fullPage: false,
+    });
+
+    // State 7: toggle "Show changes" off → clean read-only snapshot.
+    await page.getByTestId('version-preview-show-changes').uncheck();
+    await page.waitForTimeout(400);
+    await page.screenshot({
+      path: 'screenshots/audit/vh-7-preview-clean.png',
       fullPage: false,
     });
   });

@@ -287,8 +287,9 @@ import {
   setSuggestionMode,
 } from '@eigenpal/docx-core/prosemirror/plugins';
 
-// Conversion (for HF inline editor save)
-import { proseDocToBlocks } from '@eigenpal/docx-core/prosemirror/conversion';
+// Conversion (for HF inline editor save + version-history preview)
+import { proseDocToBlocks, fromProseDoc } from '@eigenpal/docx-core/prosemirror/conversion';
+import { buildVersionDiffDoc } from '../version-history/versionDiff';
 
 // ProseMirror editor
 import {
@@ -1706,6 +1707,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Comments + version-history are mutually exclusive — opening one
   // closes the other so the right rail doesn't double-stack panels.
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  // Version preview — when set, a read-only render of the selected
+  // version covers the canvas (Google-Docs model). `previewShowChanges`
+  // toggles the inline insertion/deletion overlay vs a clean snapshot.
+  // The live editor + its Yjs/undo state are untouched: the preview is a
+  // separate read-only editor, so nothing is broadcast to peers.
+  const [versionPreview, setVersionPreview] = useState<{
+    name: string;
+    savedAt: number;
+    author?: string;
+    data: unknown;
+    previousData: unknown | null;
+  } | null>(null);
+  const [previewShowChanges, setPreviewShowChanges] = useState(true);
   const [showProperties, setShowProperties] = useState(false);
   // Footnote text editor (opened by double-clicking a footnote at page bottom).
   const [noteEdit, setNoteEdit] = useState<{
@@ -2065,6 +2079,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Refs
   const pagedEditorRef = useRef<PagedEditorRef>(null);
+  const previewEditorRef = useRef<PagedEditorRef>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const hfEditorRef = useRef<InlineHeaderFooterEditorRef>(null);
   const agentRef = useRef<DocumentAgent | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2139,6 +2155,51 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     },
     [bodyView]
   );
+
+  // Open the in-canvas preview for a version. Carries the already-
+  // resolved PM JSON (local snapshots hold their `data` in the list) and
+  // the previous version's JSON for the show-changes diff.
+  const handlePreviewVersion = useCallback(
+    (req: {
+      name: string;
+      savedAt: number;
+      author?: string;
+      data: unknown;
+      previousData: unknown | null;
+    }) => {
+      setPreviewShowChanges(true);
+      setVersionPreview(req);
+    },
+    []
+  );
+  const handleClosePreview = useCallback(() => setVersionPreview(null), []);
+  const handleRestoreFromPreview = useCallback(() => {
+    if (versionPreview) handleRestoreSnapshot(versionPreview.data);
+    setVersionPreview(null);
+  }, [versionPreview, handleRestoreSnapshot]);
+
+  // Build the read-only preview Document: annotate the version's doc with
+  // insertion/deletion marks (when Show changes is on), then convert to a
+  // Document inheriting the live doc's sections/headers/footers so the
+  // preview paints with the same page chrome. Built with the live schema
+  // so `nodeFromJSON` resolves the same node/mark types.
+  const previewDocument = useMemo(() => {
+    if (!versionPreview) return null;
+    const schema = bodyView?.state.schema;
+    if (!schema) return null;
+    try {
+      const node = previewShowChanges
+        ? buildVersionDiffDoc(versionPreview.previousData, versionPreview.data, schema, {
+            author: versionPreview.author,
+            date: new Date(versionPreview.savedAt).toISOString(),
+          }).doc
+        : schema.nodeFromJSON(versionPreview.data);
+      return fromProseDoc(node, history.state ?? undefined);
+    } catch (err) {
+      console.warn('[version-preview] failed to build preview doc', err);
+      return null;
+    }
+  }, [versionPreview, previewShowChanges, bodyView, history.state]);
 
   // Long-sentence highlighter — Hemingway-style amber + yellow inline
   // decorations for sentences > 25/35 words. Attached once on view
@@ -8278,7 +8339,7 @@ body { background: white; }
                       visible during vertical scroll. min-width keeps the ruler
                       and the page area on the same horizontal axis when the
                       viewport is too narrow to fit page + outline + sidebar. */}
-                    {showRulerEffective && (
+                    {showRulerEffective && !versionPreview && (
                       <div
                         className="flex justify-center py-1 flex-shrink-0 bg-doc-bg"
                         style={{
@@ -8664,6 +8725,149 @@ body { background: white; }
                           }
                         />
 
+                        {/* Version preview overlay (Google-Docs model) — a
+                            read-only render of the selected version covering
+                            the live canvas. Separate editor instance: the
+                            live doc, its Yjs sync, and its undo stack are
+                            untouched, so nothing is broadcast to peers. */}
+                        {versionPreview && (
+                          <div
+                            data-testid="version-preview-overlay"
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              zIndex: Z_INDEX.versionPreview,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              background: 'var(--doc-canvas-bg, #f1f3f4)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                padding: '8px 16px',
+                                background: 'var(--doc-surface, #fff)',
+                                borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+                                boxShadow: 'var(--doc-shadow, 0 1px 3px rgba(0,0,0,0.08))',
+                              }}
+                            >
+                              <Tooltip content="Back to editing">
+                                <button
+                                  type="button"
+                                  onClick={handleClosePreview}
+                                  data-testid="version-preview-back"
+                                  aria-label="Back to editing"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '4px 10px',
+                                    border: '1px solid var(--doc-border)',
+                                    borderRadius: 4,
+                                    background: 'transparent',
+                                    color: 'var(--doc-text)',
+                                    fontSize: 13,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <MaterialSymbol name="arrow_back" size={16} />
+                                  Back
+                                </button>
+                              </Tooltip>
+                              <span style={{ fontSize: 13, color: 'var(--doc-text-muted)' }}>
+                                Viewing{' '}
+                                <strong style={{ color: 'var(--doc-text)' }}>
+                                  {versionPreview.name}
+                                </strong>
+                                {' · '}
+                                {new Date(versionPreview.savedAt).toLocaleString()}
+                              </span>
+                              <label
+                                style={{
+                                  marginLeft: 'auto',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  fontSize: 13,
+                                  color: 'var(--doc-text)',
+                                  cursor: versionPreview.previousData ? 'pointer' : 'not-allowed',
+                                  opacity: versionPreview.previousData ? 1 : 0.5,
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={previewShowChanges}
+                                  disabled={!versionPreview.previousData}
+                                  onChange={(e) => setPreviewShowChanges(e.target.checked)}
+                                  data-testid="version-preview-show-changes"
+                                />
+                                Show changes
+                              </label>
+                              <button
+                                type="button"
+                                onClick={handleRestoreFromPreview}
+                                data-testid="version-preview-restore"
+                                style={{
+                                  padding: '6px 14px',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  background: 'var(--doc-primary, #1a73e8)',
+                                  color: '#fff',
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Restore this version
+                              </button>
+                            </div>
+                            <div
+                              ref={previewScrollRef}
+                              style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
+                            >
+                              {previewDocument ? (
+                                <PagedEditor
+                                  // Remount on version / show-changes change:
+                                  // the preview doc keeps the live doc's
+                                  // metadata identity, so PagedEditor's
+                                  // same-identity guard would otherwise skip
+                                  // the swap and keep painting the old marks.
+                                  key={`${versionPreview.savedAt}-${previewShowChanges}`}
+                                  ref={previewEditorRef}
+                                  document={previewDocument}
+                                  styles={previewDocument.package.styles}
+                                  theme={previewDocument.package.theme || theme}
+                                  sectionProperties={initialSectionProperties}
+                                  finalSectionProperties={finalSectionProperties}
+                                  headerContent={headerContent}
+                                  footerContent={footerContent}
+                                  firstPageHeaderContent={firstPageHeaderContent}
+                                  firstPageFooterContent={firstPageFooterContent}
+                                  zoom={state.zoom}
+                                  wordCompat={wordCompat}
+                                  readOnly
+                                  extensionManager={extensionManager}
+                                  contentLabel="Version preview"
+                                  scrollContainerRef={previewScrollRef}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    padding: 40,
+                                    textAlign: 'center',
+                                    color: 'var(--doc-text-muted)',
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Preview unavailable for this version.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Floating "add comment" button — appears on right edge of page at selection */}
                         {floatingCommentBtn != null && !isAddingComment && !readOnly && (
                           <Tooltip content="Add comment" side="bottom" delayMs={300}>
@@ -8786,6 +8990,9 @@ body { background: white; }
                       docId={documentName?.trim() || 'Untitled'}
                       saveNamedVersion={versionCapture.saveNamedVersion}
                       onRestoreSnapshot={handleRestoreSnapshot}
+                      onPreviewVersion={handlePreviewVersion}
+                      onShowCurrent={handleClosePreview}
+                      isPreviewing={versionPreview != null}
                       serverBackend={versionBackend}
                       onRestoreServerVersion={handleRestoreServerVersion}
                       onClose={() => setShowVersionHistory(false)}
