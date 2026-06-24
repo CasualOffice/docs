@@ -6640,6 +6640,15 @@ body { background: white; }
     try {
       const buffer = await handleSave();
       if (!buffer) return;
+      // When a parent supplied `onSave`, it owns persistence — `handleSave`
+      // has already passed it the buffer. A browser blob download on top
+      // of that would drop a duplicate file into ~/Downloads on every Save
+      // inside the Tauri shell — exactly the "save creates new files" bug.
+      // Mark clean and let the host surface its own save status.
+      if (onSave) {
+        markDirty(false);
+        return;
+      }
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
@@ -6656,7 +6665,7 @@ body { background: white; }
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName, markDirty]);
+  }, [handleSave, documentName, markDirty, onSave]);
 
   // Autosave to IndexedDB (sheet parity). A periodic interval polls the
   // dirty flag every 30s; if dirty, it serializes and writes the buffer.
@@ -6794,7 +6803,9 @@ body { background: white; }
   }, []);
 
   // Keep the global-keydown handler in sync with the latest file-op
-  // callbacks without recreating the listener.
+  // callbacks without recreating the listener. `save` → handleDownloadDocument,
+  // which respects the `onSave` prop, so in Tauri-shell mode Ctrl/Cmd-S
+  // routes through the bridge (overwrite in place, no blob download).
   useEffect(() => {
     shortcutActionsRef.current = {
       save: handleDownloadDocument,

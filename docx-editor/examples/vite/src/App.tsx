@@ -373,6 +373,14 @@ export function App() {
   const suppressSeedDocumentRef = useRef(false);
   const [view, setView] = useState<'home' | 'editor'>(getInitialView);
 
+  // Desktop (Tauri shell) feature flag. The host injects
+  // `window.__deskApp__` before the app boots. Desktop is OFFLINE-first:
+  // collaboration is intentionally disabled there (no Share, no presence,
+  // no WS) — see `collabParams` / `collabEnabled` below. Editor features
+  // like version history are NOT gated and work the same as on the web.
+  const isDesktop =
+    typeof window !== 'undefined' && window.__deskApp__?.isDesktop === true;
+
   // URL → view sync. Phase 1 IA mirror: pathname is the source of
   // truth for which surface is rendered, so browser back / refresh /
   // bookmark all converge. The legacy `?e2e=1` / `?skipHome=1` flags
@@ -438,6 +446,8 @@ export function App() {
   // WS path via `?room=…` alone. Falls back to ws://localhost:8080
   // for local dev.
   const collabParams = useMemo(() => {
+    // Desktop is offline-first — never enter a collab room there.
+    if (isDesktop) return null;
     const params = new URLSearchParams(window.location.search);
     const room = params.get('room');
     if (!room) return null;
@@ -463,7 +473,7 @@ export function App() {
     const kind: 'docx' | 'markdown' | 'text' =
       kindParam === 'text' ? 'text' : kindParam === 'markdown' ? 'markdown' : 'docx';
     return { room, backend, kind };
-  }, []);
+  }, [isDesktop]);
 
   // Backend HTTP base — used for the upload (POST /api/docs) in
   // the Share dialog and the seed-download fetch in CollabApp.
@@ -519,9 +529,11 @@ export function App() {
   // the disabled case prevents the user from hitting a dead /api/docs
   // POST and having no idea why.
   const collabEnabled = useMemo(() => {
+    // Desktop disables collaboration entirely regardless of the env flag.
+    if (isDesktop) return false;
     const raw = (import.meta as { env?: Record<string, string> }).env?.VITE_COLLAB_ENABLED;
     return raw === 'true' || raw === '1';
-  }, []);
+  }, [isDesktop]);
 
   // Under `?e2e=1`, expose the editor ref on window so Playwright can
   // call addComment/getComments/findInDocument programmatically. Off by
@@ -587,6 +599,35 @@ export function App() {
   // (e.g. ?e2e=1 / ?skipHome=1). Home view lets the user pick a
   // template instead — no need for a placeholder doc.
   useEffect(() => {
+    // Inside deskApp (Tauri shell), the host injects `window.__deskApp__`
+    // with the file path the user opened. Skip the web demo's seed logic
+    // and read straight from disk. If filePath is null (blank window),
+    // start with an empty document.
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (bridge?.isDesktop) {
+      if (bridge.filePath) {
+        const name = bridge.filePath.split(/[\\/]/).pop() || 'Untitled.docx';
+        bridge
+          .loadDocument()
+          .then((buffer) => {
+            setDocumentBuffer(buffer);
+            setFileName(name);
+          })
+          .catch((err) => {
+            console.error('deskApp loadDocument failed', err);
+            setCurrentDocument(createEmptyDocument());
+            setFileName(name);
+            setStatus(`Could not open file: ${err}`);
+          });
+      } else {
+        setCurrentDocument(createEmptyDocument());
+        setFileName('Untitled.docx');
+      }
+      return;
+    }
+
+    // Web-only path: template gallery is the initial entry, so only seed a
+    // blank doc when we land straight in the editor (?e2e=1 / ?skipHome=1).
     if (suppressSeedDocumentRef.current) return;
     if (view !== 'editor') return;
     setCurrentDocument(createEmptyDocument());
@@ -697,29 +738,86 @@ export function App() {
 
   const handleSave = useCallback(async () => {
     if (!editorRef.current) return;
-
     try {
-      setStatus('Saving...');
+      setStatus('Saving…');
       const buffer = await editorRef.current.save();
-      if (buffer) {
-        const blob = new Blob([buffer], {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName || 'document.docx';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setStatus('Saved!');
-        setTimeout(() => setStatus(''), 2000);
+      if (!buffer) return;
+      const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+      if (bridge?.isDesktop) {
+        const written = await bridge.save(buffer);
+        const name = written.split(/[\\/]/).pop();
+        if (name) setFileName(name);
+        setStatus('Saved');
+        setTimeout(() => setStatus(''), 1500);
+        return;
       }
-    } catch {
+      // Web fallback: browser download.
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'document.docx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStatus('Saved!');
+      setTimeout(() => setStatus(''), 2000);
+    } catch (err) {
+      console.error('save failed', err);
       setStatus('Save failed');
     }
   }, [fileName]);
+
+  const handleSaveAs = useCallback(async () => {
+    if (!editorRef.current) return;
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (!bridge?.isDesktop) {
+      // No native Save As on web — fall through to Save (which downloads).
+      return handleSave();
+    }
+    try {
+      setStatus('Saving…');
+      const buffer = await editorRef.current.save();
+      if (!buffer) return;
+      const written = await bridge.saveAs(fileName || 'Untitled.docx', buffer);
+      if (written) {
+        const name = written.split(/[\\/]/).pop();
+        if (name) setFileName(name);
+        setStatus('Saved');
+        setTimeout(() => setStatus(''), 1500);
+      } else {
+        setStatus('');
+      }
+    } catch (err) {
+      console.error('saveAs failed', err);
+      setStatus('Save As failed');
+    }
+  }, [fileName, handleSave]);
+
+  // Local-user profile shown in the title bar (replaces the Share
+  // button slot when running inside Casual Office). Fetched once on
+  // mount via the bridge — read-only here; edits live in the launcher.
+  const [deskProfile, setDeskProfile] = useState<{
+    name: string;
+    avatar_hue: number;
+    timezone: string | null;
+    email: string | null;
+    avatar_path: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!isDesktop) return;
+    const bridge = window.__deskApp__;
+    if (!bridge?.getProfile) return;
+    let cancelled = false;
+    bridge
+      .getProfile()
+      .then((p) => { if (!cancelled) setDeskProfile(p); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [isDesktop]);
 
   const handleError = useCallback((error: Error) => {
     console.error('Editor error:', error);
@@ -811,7 +909,10 @@ export function App() {
   const renderTitleBarRight = useCallback(
     () => (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {collabEnabled && (
+        {/* Collab Share is gated by collabEnabled AND not in desktop
+            mode (Casual Office is single-user). Open / Save / New live in
+            the File menu, driven by <DocxEditor>'s internal handlers. */}
+        {collabEnabled && !isDesktop && (
           <button
             style={{ ...styles.button, background: '#2563eb', color: '#fff', border: 'none' }}
             onClick={() => setShareOpen(true)}
@@ -819,10 +920,53 @@ export function App() {
             Share
           </button>
         )}
+        {/* Local-user chip in place of Share when running in Casual
+            Office. Click is informational; profile edits live in the
+            launcher window's Settings panel. */}
+        {isDesktop && deskProfile && (
+          <div
+            title={deskProfile.name}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 10px 4px 4px',
+              borderRadius: '999px',
+              border: '1px solid #e2e8f0',
+              fontSize: '12px',
+              fontWeight: 500,
+              color: '#334155',
+              userSelect: 'none',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-grid',
+                placeItems: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: `hsl(${deskProfile.avatar_hue}, 55%, 50%)`,
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 600,
+              }}
+              aria-hidden="true"
+            >
+              {deskProfile.name
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((p) => p[0]?.toUpperCase() ?? '')
+                .join('') || '?'}
+            </span>
+            <span>{deskProfile.name.split(/\s+/)[0]}</span>
+          </div>
+        )}
         {status && <span style={styles.status}>{status}</span>}
       </div>
     ),
-    [status, collabEnabled]
+    [status, collabEnabled, isDesktop, deskProfile]
   );
 
   // Collab mode is a hard fork: the editor binds to a Y.Doc fed by
@@ -901,6 +1045,31 @@ export function App() {
           onNew={handleNewDocument}
           renderLogo={renderLogo}
           renderTitleBarRight={renderTitleBarRight}
+          onSave={async (buffer) => {
+            // Tauri shell: route every Save (toolbar button, File→Save,
+            // Ctrl+S) through the bridge so it overwrites the bound
+            // filesystem path instead of producing a phantom download.
+            // Web mode: DocxEditor falls back to its own blob-download
+            // path because no onSave handler is registered here.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const bridge = typeof window !== 'undefined' ? (window as any).__deskApp__ : undefined;
+            if (!bridge?.isDesktop) return;
+            setStatus('Saving…');
+            try {
+              const written = await bridge.save(buffer);
+              if (typeof written === 'string') {
+                const name = written.split(/[\\/]/).pop();
+                if (name) setFileName(name);
+              }
+              setStatus('Saved');
+              setTimeout(() => setStatus(''), 1500);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('desktop save failed', err);
+              setStatus('Save failed');
+              setTimeout(() => setStatus(''), 2500);
+            }
+          }}
         />
       </main>
       <ShareDialog

@@ -1,5 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 import path from 'path';
 import { copyFileSync, existsSync } from 'fs';
 
@@ -87,7 +89,36 @@ export default defineConfig(async () => {
       ],
     },
     css: {
-      postcss: path.join(monorepoRoot, 'postcss.config.js'),
+      // Vite 8 + rolldown's default CSS transformer is `lightningcss`,
+      // which bypasses postcss entirely. That means Tailwind never
+      // runs and `@tailwind utilities;` ships unprocessed → toolbar
+      // loses all flex/gap/items-center classes → ribbon collapses to
+      // a vertical stack. Force the legacy `postcss` transformer.
+      transformer: 'postcss',
+      postcss: {
+        plugins: [
+          // Tailwind v3 resolves the `content` globs in its config
+          // relative to process.cwd(), not to the config file's
+          // location. When Vite invokes this from `examples/vite/`,
+          // the config's `'./packages/react/src/**/*.{ts,tsx}'`
+          // glob resolves to `examples/vite/packages/...` (no
+          // matches) and no utility classes are generated. Pass
+          // `content` directly with absolute paths so the toolbar's
+          // `className="flex items-center gap-2"` etc. actually
+          // produce CSS rules.
+          tailwindcss({
+            config: path.join(monorepoRoot, 'tailwind.config.js'),
+            content: {
+              files: [
+                path.join(monorepoRoot, 'packages/react/src/**/*.{ts,tsx}'),
+                path.join(monorepoRoot, 'examples/**/*.{ts,tsx}'),
+              ],
+            },
+            safelist: [{ pattern: /.*/ }],
+          }),
+          autoprefixer(),
+        ],
+      },
     },
     define: {
       __ENABLE_FRAMEWORK_SWITCHER__: JSON.stringify(
