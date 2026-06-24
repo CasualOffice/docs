@@ -4,61 +4,63 @@
 
 Solo / personal project named **Casual Editor**. The path contains `melp/` as a folder name only — **not** a company or product. Do not call this project "melp" or imply organizational context.
 
-A casual, real-time collaborative `.docx` editor, built on a local fork of `eigenpal/docx-editor` (MIT, React + ProseMirror with OOXML-preserving model) with a custom Go backend providing the Yjs CRDT sync, presence, and `.docx` snapshots. Document persistence is delegated to a pluggable host integration (inline for v0; WOPI / JWT-API later).
+A casual, real-time collaborative `.docx` editor, built on a local fork of `eigenpal/docx-editor` (MIT, React + ProseMirror with OOXML-preserving model). Real-time sync, presence, and snapshots are provided by the shared **Node** collab server **`CasualOffice/collab`** (Hocuspocus + Yjs on Fastify — a format-agnostic server also powering Casual Sheets), which the editor reaches through `HocuspocusProvider`. Document persistence is delegated to a pluggable host integration (WOPI / JWT-API). _A legacy in-repo Go y-websocket gateway lives under `backend/` (predates the collab server, still built by CI) — it is superseded; **new sync / presence / persistence work goes to the Node collab server, not `backend/`.**_
 
-## Architecture (locked)
+## Architecture
 
 ```
 Browser
    ├─ <DocxEditor> (our fork of eigenpal/docx-editor, MIT, in docx-editor/)
    │      schema: ProseMirror, layout: their layout-painter (preserves OOXML)
-   ├─ y-prosemirror ySyncPlugin
-   └─ Y.Doc  ⇄  y-websocket transport
+   ├─ y-prosemirror ySyncPlugin + yCursorPlugin (presence)
+   └─ Y.Doc  ⇄  HocuspocusProvider (y-websocket protocol over WS)
                        │
                        ▼
-   Go backend (this repo, backend/) — STATELESS
-   ├─ WS gateway speaking y-websocket protocol (backend/internal/yws)
-   ├─ Room manager (backend/internal/room) — one in-memory Y.Doc per
-   │  live session, dropped when last client disconnects
-   ├─ host.Integration interface (backend/internal/host) with concrete
-   │  inline impl (backend/internal/host/inline) for v0
-   ├─ REST upload/download for the v0 share-link flow
-   └─ Snapshot worker → host on room drain (Y.Doc → .docx)
+   Collab server — Node / TypeScript (CasualOffice/collab, SEPARATE repo) — STATELESS
+   ├─ Hocuspocus WS server on Fastify — one in-memory Y.Doc per live room,
+   │  dropped when the last client disconnects
+   ├─ Auth + WOPI + pluggable storage hooks
+   └─ Snapshot / versioning on room drain (Y.Doc → .docx)
                        │
                        ▼
    Storage host (external, pluggable)
-   - v0: inline (in-process map) — share-link self-contained model
-   - v1+: WOPI host (GetFile / PutFile) or JWT-secured REST API
+   - WOPI host (GetFile / PutFile) or JWT-secured REST API
 ```
 
-**Stateless invariant:** the backend has no DB and no on-disk update log. Document persistence is owned by the host. The backend's only state is the in-memory Y.Doc for currently-active sessions — gone when all clients disconnect, gone again on process restart (clients re-upload via /api/docs or the host re-seeds).
+**Stateless invariant:** the collab server has no DB and no on-disk update log. Document persistence is owned by the host. Its only state is the in-memory Y.Doc for currently-active sessions — gone when all clients disconnect, gone again on process restart (the host re-seeds).
 
 ## Working rules for Claude in this repo
 
 1. **Never write technical claims about external systems from memory.** Read the actual source first; cite file paths.
 2. **The editor is a fork we modify.** When filling fidelity gaps in the editor (text-box rendering is the known weak spot): write a Playwright test reproducing the gap, fix in the right place per `docx-editor/CLAUDE.md`'s "Key File Map", open a PR upstream. Fork-and-diverge only if upstream rejects or stalls.
 3. **Yjs + `y-prosemirror` is the chosen CRDT.** Do not propose Automerge/Loro/custom alternatives without explicit user direction.
-4. **MIT only on the editor side.** The AGPL `@eigenpal/docx-editor-agents` package and everything that depended on it has been removed from our fork. Do not reintroduce. (The Go backend is Apache-2.0; fine.)
+4. **MIT only on the editor side.** The AGPL `@eigenpal/docx-editor-agents` package and everything that depended on it has been removed from our fork. Do not reintroduce. (The Node `CasualOffice/collab` server is permissive; fine.)
 5. **Editor toolchain is Bun.** `bun install`, `bun run dev` (localhost:5173), `bun run build`, `bun run typecheck`. Tests via `npx playwright test`. Bun is installed locally (1.3.x) so verify-before-ship works.
-6. **Backend language is Go.** Don't suggest Node or Rust. Module: `github.com/schnsrw/docx/backend`. `go vet ./... && go test -race ./...` from `backend/`.
-7. **No live document model on the server.** Y.Doc updates in, updates out. Snapshots produced by an offloaded worker on room drain.
-8. **Default new editor-side code to the fork** (`docx-editor/`); default new sync/persistence/auth code to `backend/`.
+6. **The collab server is Node, not Go.** Real-time sync/presence/snapshots are owned by the shared **Node/TypeScript** server `CasualOffice/collab` (Hocuspocus + Yjs on Fastify) — a SEPARATE repo. Do not describe the backend as Go. (The in-repo `backend/` Go gateway is legacy/superseded; don't extend it.)
+7. **No live document model on the server.** Y.Doc updates in, updates out. Snapshots produced on room drain.
+8. **Default new editor-side code to the fork** (`docx-editor/`); new sync / presence / persistence work goes to the **`CasualOffice/collab`** Node server, NOT the legacy `backend/`.
 9. **Don't install software via `curl | bash` from a remote URL without explicit user consent.** Use Homebrew, npm, or other reviewable package managers; ask the user which install method they prefer before running.
 10. **Docs are first-class.** When a doc-tracked fact changes (status block, fidelity score, working set, milestone state), update the relevant doc in the same commit or right after. Stale docs poison every future session that opens them.
 
 ## Where things live
 
 - `docx-editor/` — working fork of `eigenpal/docx-editor`. **Inlined into this repo** (no separate `.git/`; tracked as part of the outer repo per the `.gitignore`). AGPL `agent-use` package and dependents purged. Push to `git@github.com:schnsrw/docx.git`.
-- `backend/` — Go y-websocket gateway. Module `github.com/schnsrw/docx/backend`. Entry point `cmd/gateway/main.go`. Internal packages: `room`, `yws`, `host` (with `inline` impl).
+- **Collab server** — the **Node/TypeScript** `CasualOffice/collab` repo (Hocuspocus + Yjs on Fastify): real-time sync, presence, auth, WOPI, snapshots/versioning. The editor connects via `HocuspocusProvider` (`docx-editor/packages/react/src/collab/useCollab.ts`). This is THE backend for collaboration.
+- `backend/` — **legacy** in-repo Go y-websocket gateway, superseded by `CasualOffice/collab`. Still builds in CI; do not extend it. (Removal pending a decision.)
 - `docs/` — outer (architecture, deployment, co-editing, roundtrip) — sustained-reading docs that mirror what's on the site.
 - `docs/internal/` — engineering notes (overview, fidelity gaps, gap matrix, pipeline, backend design, CI recovery, etc.).
-- `docker-compose.yml` — local dev stack. **No DB** — service is stateless; storage delegated. Backend service + editor SPA bundled into one image.
+- `docker-compose.yml` — local dev stack. **No DB** — stateless; storage delegated. (Collaboration is served by the Node `CasualOffice/collab` server, run separately.)
 
 ## Status (2026-06-08)
 
+> **Backend note:** the collaboration/sync backend is the **Node** `CasualOffice/collab`
+> server (Hocuspocus + Yjs on Fastify). The `backend/` (Go) entries below + in the Phase
+> records are the **legacy in-repo gateway** that predates and is superseded by it —
+> historical, not the current sync path.
+
 - **Editor fork** — **39 of 39 fixtures round-trip pristine**; the ≥ 90 % desktop-ship floor is cleared. VML cluster closed via raw-XML envelope capture (`302c210`). Remaining gaps are visual (floating-image-wrap, table-overlap-text), not round-trip.
 - **Home page** — Template gallery (14 templates × 4 categories, LibreOffice PNG previews). Recent-files strip shipped. Auto-reopen banner shipped (`2988b89`) — "Reopen `<name>`?" above the landing when the most-recently-opened doc is < 7 days old; sessionStorage-sticky dismissal.
-- **Backend** — Go gateway in `backend/`. M1 inline share-link surface (`/api/docs`, `/doc/{id}` WS). Per-IP rate limiting + `MAX_ROOMS` cap.
+- **Collab server** — Node `CasualOffice/collab` (Hocuspocus + Yjs + Fastify): realtime sync, presence, auth, WOPI, snapshots/versioning. _(Legacy: the in-repo Go gateway under `backend/` — M1 inline share-link `/api/docs`, `/doc/{id}` WS, per-IP rate limiting + `MAX_ROOMS` — superseded.)_
 - **CI** — green. Go toolchain pinned to 1.25 (`ec9a2e7`, recovered from a stealth Phase-C-Batch-1 regression).
 - **Live deploys** — single-user demo at https://doc.schnsrw.live/.
 

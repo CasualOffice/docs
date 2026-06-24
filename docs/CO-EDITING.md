@@ -15,13 +15,14 @@ Y.Doc ⇄ ySyncPlugin ⇄ ProseMirror
   └──── y-websocket ───────┘
               │
               ▼
-       Go gateway
-       (per-docId room)
+   Node collab server
+   (Hocuspocus + Yjs, CasualOffice/collab)
+   per-docId room
 ```
 
 - Each open document maps to a single `Y.Doc` shared by all peers in the room.
 - `y-prosemirror`'s `ySyncPlugin` keeps the Y.Doc and ProseMirror state coherent in both directions — local edits become Y.Doc updates; remote Y.Doc updates become PM transactions.
-- Updates travel over the [y-websocket protocol](https://github.com/yjs/y-websocket) — a binary message format the gateway forwards verbatim.
+- Updates travel over the [y-websocket protocol](https://github.com/yjs/y-websocket) — a binary message format the server forwards verbatim.
 
 The gateway never interprets CRDT contents. It is a **pure relay** that fans incoming WS frames out to every other peer in the same room.
 
@@ -74,8 +75,14 @@ This belt-and-suspenders design means a malicious client editing the bundle stil
 
 ---
 
-## Why y-websocket (and not Hocuspocus)
+## The collab server: Hocuspocus (Node)
 
-The y-websocket protocol is a small, frozen binary format. Implementing it in Go is straightforward and lets the gateway stay dependency-free — no Node runtime, no JS dependencies, no library version drift.
+Real-time sync, presence, auth, and snapshots are served by the shared **Node/TypeScript**
+collab server **`CasualOffice/collab`** — [Hocuspocus](https://tiptap.dev/hocuspocus) + Yjs on
+Fastify, a format-agnostic server shared with Casual Sheets. The editor connects to it with
+`HocuspocusProvider` (`docx-editor/packages/react/src/collab/useCollab.ts`), still speaking the
+y-websocket protocol on the wire.
 
-We get the y-protocol benefits (efficient sync, awareness, partial updates) without inheriting Hocuspocus's extension model, which is designed for a Node deployment topology we don't need.
+Hocuspocus gives us a maintained extension model (auth hooks, WOPI, pluggable storage,
+snapshots/versioning) and one server reused across products. (An earlier in-repo **Go**
+y-websocket gateway under `backend/` predates this and is superseded — historical only.)
