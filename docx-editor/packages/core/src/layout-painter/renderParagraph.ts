@@ -333,12 +333,45 @@ function applyPmPositions(element: HTMLElement, pmStart?: number, pmEnd?: number
 /**
  * Render a text run
  */
+/**
+ * Parse a MathML string into a live `<math>` element using the HTML
+ * parser (which handles MathML foreign content natively). Returns null in
+ * environments without `<template>`/parsing or when the result isn't math.
+ */
+function parseMathmlElement(mathml: string, doc: Document): Element | null {
+  try {
+    const tmpl = doc.createElement('template') as HTMLTemplateElement;
+    if (!('content' in tmpl)) return null;
+    tmpl.innerHTML = mathml;
+    const el = tmpl.content.firstElementChild;
+    return el && el.localName.toLowerCase() === 'math' ? el : null;
+  } catch {
+    return null;
+  }
+}
+
 function renderTextRun(run: TextRun, doc: Document, resolvedCommentIds?: Set<number>): HTMLElement {
   const span = doc.createElement('span');
   span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.text}`;
 
   applyRunStyles(span, run, resolvedCommentIds);
   applyPmPositions(span, run.pmStart, run.pmEnd);
+
+  // Equation run — render native MathML (converted from the stored OMML)
+  // instead of the italic-text fallback. Falls back to text if the MathML
+  // can't be parsed in this environment.
+  if (run.mathml) {
+    const mathEl = parseMathmlElement(run.mathml, doc);
+    if (mathEl) {
+      span.classList.add('docx-math');
+      // Let MathML use the browser's math font, not the fallback italic.
+      span.style.fontStyle = 'normal';
+      span.style.fontFamily = '';
+      span.appendChild(mathEl);
+      return span;
+    }
+    // else fall through to the plain-text fallback below.
+  }
 
   // Handle hyperlinks
   if (run.hyperlink) {

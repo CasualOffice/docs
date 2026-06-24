@@ -111,6 +111,11 @@ export type HyperlinkInfo = {
 export type TextRun = RunFormatting & {
   kind: 'text';
   text: string;
+  /** MathML for an equation run (converted from the stored OMML). When
+   *  set, the painter renders native `<math>` instead of `text`; `text`
+   *  stays the plain-text fallback and is what the engine MEASURES, so
+   *  line layout is unchanged from the text-only fallback. */
+  mathml?: string;
   /** Hyperlink information if this run is a link. */
   hyperlink?: HyperlinkInfo;
   /** Absolute ProseMirror position (inclusive) of first character. */

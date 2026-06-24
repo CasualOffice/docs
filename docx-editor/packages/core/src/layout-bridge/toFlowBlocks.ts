@@ -41,6 +41,7 @@ import type { Theme, SectionProperties, NumberFormat } from '../types/document';
 import { resolveColor, resolveColorToHex, resolveHighlightToCss } from '../utils/colorResolver';
 import { pointsToPixels, halfPointsToPixels, halfPointsToPoints } from '../utils/units';
 import { convertBulletToUnicode } from '../docx/documentParser';
+import { ommlToMathml } from '../docx/ommlToMathml';
 
 /**
  * Options for the conversion.
@@ -735,11 +736,17 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       };
       runs.push(run);
     } else if (child.type.name === 'math') {
-      // Math node — render as plain text fallback in layout
+      // Math node — convert the stored OMML to MathML so the painter can
+      // render real math; `text` stays the plain-text fallback (and is
+      // what the engine measures, so line layout is unchanged).
       const text = (child.attrs.plainText as string) || '[equation]';
+      const ommlXml = (child.attrs.ommlXml as string) || '';
+      const display = (child.attrs.display as string) === 'block' ? 'block' : 'inline';
+      const mathml = ommlXml ? (ommlToMathml(ommlXml, { display }) ?? undefined) : undefined;
       const run: TextRun = {
         kind: 'text',
         text,
+        mathml,
         italic: true,
         fontFamily: 'Cambria Math',
         pmStart: childPos,
