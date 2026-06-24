@@ -56,6 +56,13 @@ declare global {
        * user cancelled the dialog.
        */
       saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null>;
+      /**
+       * Dismiss the cold-start boot overlay the bootstrap paints before React
+       * mounts (top-level desktop windows only). Fades it out then removes it.
+       * Idempotent and safe to call from both the document-load success and
+       * error paths; a no-op when no overlay is present (iframe/web mode).
+       */
+      dismissBoot?(): void;
       /** Returns the local user's profile so the editor can render a
        *  user chip instead of the collab Share button. Read-only;
        *  edits go through Casual Office's Settings panel. */
