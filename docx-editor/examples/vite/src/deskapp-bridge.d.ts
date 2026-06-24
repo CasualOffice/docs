@@ -21,10 +21,29 @@ declare global {
        */
       filePath: string | null;
       /**
+       * Kind of file the window was opened with, inferred from the path's
+       * extension. `.md`/`.markdown` → 'markdown', `.txt` → 'text',
+       * everything else → 'docx'. Drives whether the app opens the DOCX
+       * surface or the source/markdown editor.
+       */
+      fileKind?: 'docx' | 'markdown' | 'text';
+      /**
+       * Launcher-driven colour theme for this window. Parsed from the
+       * `&theme=` URL param and kept in sync via the `deskapp://theme`
+       * Tauri event. The bootstrap also dispatches a `deskapp:theme`
+       * window CustomEvent whenever this changes.
+       */
+      themeMode?: 'system' | 'light' | 'dark';
+      /**
        * Read the document at `path` (or the bound `filePath` if omitted)
        * and return its bytes. Throws if no path is available.
        */
       loadDocument(path?: string): Promise<ArrayBuffer>;
+      /**
+       * Read the bound file (or `path`) as UTF-8 text, skipping the DOCX
+       * zip/magic-byte gate. Used for `.txt`/`.md`/`.markdown` documents.
+       */
+      loadText?(path?: string): Promise<string>;
       /**
        * Write `bytes` back to the bound `filePath`. Falls through to
        * `saveAs("untitled", bytes)` when filePath is null.

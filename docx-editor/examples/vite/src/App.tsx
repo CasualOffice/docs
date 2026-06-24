@@ -45,7 +45,15 @@ import { navigate, useRoute } from './router';
 function isLegacyForcedEditor(): boolean {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
-  return params.get('e2e') === '1' || params.get('skipHome') === '1';
+  // `desk=1` is the Tauri desktop shell: the launcher window already IS the
+  // home screen, so the editor must boot straight into the document and never
+  // flash its own web home/dashboard. Treat it like skipHome — forces
+  // view='editor' on mount and suppresses the navigate('/home') routing.
+  return (
+    params.get('e2e') === '1' ||
+    params.get('skipHome') === '1' ||
+    params.get('desk') === '1'
+  );
 }
 
 function getInitialView(): 'home' | 'editor' {
@@ -407,6 +415,43 @@ export function App() {
     kind: 'markdown' | 'text';
   } | null>(null);
 
+  // Launcher-driven colour theme (desktop only). The bootstrap centralises
+  // all desktop theme logic: it parses `&theme=`, applies the page-level
+  // `data-theme` hint, listens to the `deskapp://theme` Tauri event, and
+  // re-broadcasts every change as a `deskapp:theme` window CustomEvent. Here
+  // we just mirror that mode into React state so the rendered tree (and any
+  // theme-aware child) follows the launcher live. On the web this stays
+  // 'system' and nothing dispatches the event.
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(
+    () =>
+      (typeof window !== 'undefined' && window.__deskApp__?.themeMode) || 'system'
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onTheme = (e: Event) => {
+      const detail = (e as CustomEvent<{ mode?: 'light' | 'dark' | 'system' }>).detail;
+      if (detail?.mode) setThemeMode(detail.mode);
+    };
+    window.addEventListener('deskapp:theme', onTheme as EventListener);
+    return () => window.removeEventListener('deskapp:theme', onTheme as EventListener);
+  }, []);
+  // Keep the page-level `data-theme` in sync with the launcher's choice for
+  // the surfaces that DON'T mount <DocxEditor> (Home, the markdown/text
+  // editor) — DocxEditor owns its own theme effect, so this is a redundant
+  // safety net for it but the *only* driver when those other surfaces are up.
+  // `system` resolves through matchMedia, mirroring the bootstrap.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const resolve = (m: 'light' | 'dark' | 'system'): 'light' | 'dark' => {
+      if (m === 'light' || m === 'dark') return m;
+      return typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+    };
+    document.documentElement.setAttribute('data-theme', resolve(themeMode));
+  }, [themeMode]);
+
   // Browser tab title = the open file's name (Google-Docs style), not the
   // app name. On the home screen, fall back to the product name.
   useEffect(() => {
@@ -606,6 +651,28 @@ export function App() {
     if (bridge?.isDesktop) {
       if (bridge.filePath) {
         const name = bridge.filePath.split(/[\\/]/).pop() || 'Untitled.docx';
+        // .md / .markdown / .txt route to the source/markdown editor (same
+        // surface as the web Home picker), NOT the DOCX zip parser. The
+        // shell now hands these files to this editor; the bridge inferred
+        // the kind from the path extension and exposes loadText() so we can
+        // read them as plain UTF-8 without tripping the .docx PK check.
+        const kind = bridge.fileKind ?? 'docx';
+        if ((kind === 'markdown' || kind === 'text') && bridge.loadText) {
+          bridge
+            .loadText()
+            .then((text) => {
+              setDocumentBuffer(null);
+              setCurrentDocument(null);
+              setTextDoc({ text, fileName: name, kind });
+            })
+            .catch((err) => {
+              console.error('deskApp loadText failed', err);
+              setCurrentDocument(createEmptyDocument());
+              setFileName(name);
+              setStatus(`Could not open file: ${err}`);
+            });
+          return;
+        }
         bridge
           .loadDocument()
           .then((buffer) => {
