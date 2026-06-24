@@ -110,8 +110,8 @@ export async function chooseFileSource(opts: ChooseFileSourceOptions = {}): Prom
     opts.fetchImpl ?? (((input, init) => fetch(input, init)) as typeof fetch);
 
   // 1. WOPI probe — the URL alone is enough to pick this branch.
-  //    The token's validity is the gateway's problem; if it's bad,
-  //    the eventual /api/docs/{id}/download call will surface a
+  //    The token's validity is collab's problem; if it's bad, the
+  //    eventual /wopi/files/{id}/contents call will surface a
   //    403 / 401 and the editor's error boundary takes over.
   const wopi = opts.wopiContext ?? extractWopiContext();
   if (wopi) {

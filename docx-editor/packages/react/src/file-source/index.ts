@@ -38,7 +38,12 @@ export {
   type AutoSaveStatus as FileSourceAutoSaveStatus,
 } from './useFileSourceAutoSave';
 export { AutosaveStatus, type AutosaveStatusProps } from './AutosaveStatus';
-export { WopiFileSource, WopiNotSupportedError, type WopiFileSourceOptions } from './wopi';
+export {
+  WopiFileSource,
+  WopiNotSupportedError,
+  WopiSaveConflictError,
+  type WopiFileSourceOptions,
+} from './wopi';
 export {
   chooseFileSource,
   extractWopiContext,

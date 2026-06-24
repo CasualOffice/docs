@@ -178,6 +178,7 @@ export {
   PersonalFileSourceError,
   WopiFileSource,
   WopiNotSupportedError,
+  WopiSaveConflictError,
   AuthClient,
   PersonalAuthGate,
   PersonalAuthGateModal,
