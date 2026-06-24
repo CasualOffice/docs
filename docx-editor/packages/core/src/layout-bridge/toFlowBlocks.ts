@@ -742,7 +742,11 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       const text = (child.attrs.plainText as string) || '[equation]';
       const ommlXml = (child.attrs.ommlXml as string) || '';
       const display = (child.attrs.display as string) === 'block' ? 'block' : 'inline';
-      const mathml = ommlXml ? (ommlToMathml(ommlXml, { display }) ?? undefined) : undefined;
+      // Authored equations carry MathML directly; Word-imported ones derive
+      // it from the preserved OMML.
+      const authoredMathml = (child.attrs.mathml as string) || '';
+      const mathml =
+        authoredMathml || (ommlXml ? (ommlToMathml(ommlXml, { display }) ?? undefined) : undefined);
       const run: TextRun = {
         kind: 'text',
         text,

@@ -23,6 +23,12 @@ export const MathExtension = createNodeExtension({
       ommlXml: { default: '' },
       /** Plain text representation for fallback display */
       plainText: { default: '' },
+      /** LaTeX source — the canonical, re-editable form for equations
+       *  AUTHORED in the editor (Word-imported ones keep ommlXml only). */
+      latex: { default: '' },
+      /** MathML — the rendered form. Authored equations carry it so the
+       *  painter draws real math and the saver derives OMML from it. */
+      mathml: { default: '' },
     },
     parseDOM: [
       {
@@ -33,15 +39,19 @@ export const MathExtension = createNodeExtension({
             display: el.dataset.display || 'inline',
             ommlXml: el.dataset.ommlXml || '',
             plainText: el.textContent || '',
+            latex: el.dataset.latex || '',
+            mathml: el.dataset.mathml || '',
           };
         },
       },
     ],
     toDOM(node) {
-      const { display, ommlXml, plainText } = node.attrs as {
+      const { display, ommlXml, plainText, latex, mathml } = node.attrs as {
         display: string;
         ommlXml: string;
         plainText: string;
+        latex: string;
+        mathml: string;
       };
 
       const text = plainText || '[equation]';
@@ -52,6 +62,8 @@ export const MathExtension = createNodeExtension({
           class: `docx-math docx-math-${display}`,
           'data-display': display,
           'data-omml-xml': ommlXml,
+          ...(latex ? { 'data-latex': latex } : {}),
+          ...(mathml ? { 'data-mathml': mathml } : {}),
           style:
             'font-style: italic; font-family: "Cambria Math", "Latin Modern Math", serif; ' +
             'background: rgba(200,200,255,0.1); padding: 0 2px; border-radius: 2px;',

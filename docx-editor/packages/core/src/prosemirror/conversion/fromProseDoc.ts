@@ -12,6 +12,7 @@
 
 import type { Node as PMNode, Mark } from 'prosemirror-model';
 import { pixelsToEmu } from '../../docx/imageParser';
+import { mathmlToOmml } from '../../docx/mathmlToOmml';
 import type {
   Document,
   DocumentBody,
@@ -752,12 +753,23 @@ function createMathFromNode(node: PMNode): MathEquation {
     display: string;
     ommlXml: string;
     plainText: string;
+    mathml?: string;
   };
+  const display = (attrs.display as 'inline' | 'block') || 'inline';
+
+  // Authored equations carry MathML but no OMML until they're saved —
+  // derive native OMML from the MathML so they round-trip into the .docx
+  // as real math (not lost, not an image). Word-imported equations keep
+  // their original preserved OMML.
+  let ommlXml = attrs.ommlXml;
+  if (!ommlXml && attrs.mathml) {
+    ommlXml = mathmlToOmml(attrs.mathml, { display }) ?? '';
+  }
 
   return {
     type: 'mathEquation',
-    display: (attrs.display as 'inline' | 'block') || 'inline',
-    ommlXml: attrs.ommlXml,
+    display,
+    ommlXml,
     plainText: attrs.plainText || undefined,
   };
 }
