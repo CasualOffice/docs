@@ -23,8 +23,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
-import { ySyncPlugin, yCursorPlugin, yUndoPlugin } from 'y-prosemirror';
+import { ySyncPlugin, yCursorPlugin, yUndoPlugin, ySyncPluginKey } from 'y-prosemirror';
 import type { Plugin } from 'prosemirror-state';
+import { createStrictCoEditingPlugin } from './strictCoEditing';
+import { peerLocksFromAwareness, subscribeAwareness } from './peerLocks';
 
 export type CollabStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -180,7 +182,19 @@ export function useCollab({ room, backend, user, token }: UseCollabOptions): Col
       const awareness = provider.awareness;
       const plugins = [
         ySyncPlugin(fragment),
-        ...(awareness ? [yCursorPlugin(awareness)] : []),
+        ...(awareness
+          ? [
+              yCursorPlugin(awareness),
+              // Strict / paragraph-lock co-editing (opt-in; off by default).
+              // Locks are derived from peers' cursor awareness; only LOCAL
+              // edits are gated — remote Yjs sync transactions pass through.
+              createStrictCoEditingPlugin({
+                getLocks: peerLocksFromAwareness(awareness),
+                subscribeToLockChanges: subscribeAwareness(awareness),
+                isRemoteTransaction: (tr) => tr.getMeta(ySyncPluginKey) != null,
+              }),
+            ]
+          : []),
         yUndoPlugin(),
       ];
       const metaMap = ydoc.getMap('meta');

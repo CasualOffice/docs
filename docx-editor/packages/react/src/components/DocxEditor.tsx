@@ -290,6 +290,11 @@ import {
 // Conversion (for HF inline editor save + version-history preview)
 import { proseDocToBlocks, fromProseDoc } from '@eigenpal/docx-core/prosemirror/conversion';
 import { buildVersionDiffDoc } from '../version-history/versionDiff';
+import {
+  setStrictCoEditing,
+  isStrictCoEditingEnabled,
+  strictCoEditingKey,
+} from '../collab/strictCoEditing';
 
 // ProseMirror editor
 import {
@@ -1720,6 +1725,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     previousData: unknown | null;
   } | null>(null);
   const [previewShowChanges, setPreviewShowChanges] = useState(true);
+  // Strict / paragraph-lock co-editing (collab-only). `available` is true
+  // when the collab session wired the plugin into the body view;
+  // `enabled` mirrors the plugin's on/off so the View-menu label is right.
+  const [strictCoEditAvailable, setStrictCoEditAvailable] = useState(false);
+  const [strictCoEditEnabled, setStrictCoEditEnabled] = useState(false);
   const [showProperties, setShowProperties] = useState(false);
   // Footnote text editor (opened by double-clicking a footnote at page bottom).
   const [noteEdit, setNoteEdit] = useState<{
@@ -2177,6 +2187,27 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (versionPreview) handleRestoreSnapshot(versionPreview.data);
     setVersionPreview(null);
   }, [versionPreview, handleRestoreSnapshot]);
+
+  // Detect whether the collab session wired the Strict co-editing plugin
+  // into the body view (only then does the View-menu toggle appear).
+  useEffect(() => {
+    if (!isBodyPmReady) {
+      setStrictCoEditAvailable(false);
+      return;
+    }
+    const view = pagedEditorRef.current?.getView();
+    const ps = view ? strictCoEditingKey.getState(view.state) : undefined;
+    setStrictCoEditAvailable(!!ps);
+    setStrictCoEditEnabled(ps?.enabled ?? false);
+  }, [isBodyPmReady]);
+
+  const handleToggleStrictCoEditing = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const next = !isStrictCoEditingEnabled(view.state);
+    setStrictCoEditing(next)(view.state, view.dispatch);
+    setStrictCoEditEnabled(next);
+  }, []);
 
   // Build the read-only preview Document: annotate the version's doc with
   // insertion/deletion marks (when Show changes is on), then convert to a
@@ -10012,6 +10043,20 @@ body { background: white; }
                       path: 'View',
                       run: () => handleSetColorTheme('dark'),
                     },
+                    // Strict co-editing — only when a collab session wired the
+                    // plugin. Mirrors OnlyOffice's Fast/Strict co-editing mode.
+                    ...(strictCoEditAvailable
+                      ? [
+                          {
+                            id: 'view.strictCoEditing',
+                            label: strictCoEditEnabled
+                              ? 'Strict co-editing: on'
+                              : 'Strict co-editing: off',
+                            path: 'View',
+                            run: handleToggleStrictCoEditing,
+                          },
+                        ]
+                      : []),
 
                     {
                       id: 'insert.pageBreak',
