@@ -155,6 +155,145 @@ if (
   (document.head || document.documentElement).appendChild(style);
 }
 
+/**
+ * Cold-start boot overlay (top-level desktop windows only).
+ *
+ * The Tauri shell opens this editor in a fresh webview; there's a ~1–2 s gap
+ * between the window painting and the editor's first canvas frame, during
+ * which the user stares at a blank page (white even in dark mode, since the
+ * editor hasn't applied its theme yet). We paint a themed full-window overlay
+ * SYNCHRONOUSLY here — before React mounts — so the wait reads as "opening"
+ * rather than "broken". App.tsx calls `window.__deskApp__.dismissBoot()` from
+ * the document-load effect's success AND error paths; an 8 s safety timer
+ * guarantees the overlay can never get stuck even if the editor never signals.
+ */
+let dismissBoot: () => void = () => undefined;
+(function installBootOverlay() {
+  try {
+    if (!isDesktop) return;
+    if (typeof document === 'undefined') return;
+    if (window.parent !== window) return; // top-level Tauri windows only
+    if (document.getElementById('__deskapp_boot__')) return;
+
+    // Resolve the theme the bootstrap will apply, mirroring setupDeskTheme so
+    // the overlay never flashes white in dark mode. Prefer the page-level hint
+    // if it's already been written; otherwise derive it from the URL param +
+    // matchMedia exactly as the theme plumbing does.
+    const VALID = new Set(['system', 'light', 'dark']);
+    const rawMode = url.searchParams.get('theme');
+    const mode = rawMode && VALID.has(rawMode) ? rawMode : 'system';
+    const prefersDark =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const hinted = document.documentElement.dataset.theme;
+    const resolved: 'light' | 'dark' =
+      hinted === 'dark' || hinted === 'light'
+        ? hinted
+        : mode === 'dark' || (mode === 'system' && prefersDark)
+          ? 'dark'
+          : 'light';
+
+    const isDark = resolved === 'dark';
+    const bg = isDark ? '#1f1f1f' : '#ffffff';
+    const fg = isDark ? '#e8eaed' : '#3c4043';
+    const spinnerTrack = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)';
+    const spinnerHead = isDark ? '#8ab4f8' : '#1a73e8';
+    const label = url.searchParams.get('file') ? 'Opening…' : 'New document…';
+
+    // Keyframes are injected once; scoped IDs keep us from colliding with the
+    // editor's own styles.
+    const style = document.createElement('style');
+    style.id = '__deskapp_boot_style__';
+    style.textContent =
+      '@keyframes __deskapp_boot_spin__{to{transform:rotate(360deg)}}';
+    (document.head || document.documentElement).appendChild(style);
+
+    const overlay = document.createElement('div');
+    overlay.id = '__deskapp_boot__';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:2147483647',
+      'display:flex',
+      'flex-direction:column',
+      'align-items:center',
+      'justify-content:center',
+      'gap:18px',
+      `background:${bg}`,
+      `color:${fg}`,
+      "font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",
+      'opacity:1',
+      'transition:opacity 240ms ease',
+    ].join(';');
+
+    // Brand mark — same /logo.svg the title bar and favicon use. If it fails
+    // to load (offline-build path mismatch) we just show the spinner + label.
+    const mark = document.createElement('img');
+    mark.src = './logo.svg';
+    mark.width = 40;
+    mark.height = 40;
+    mark.alt = '';
+    mark.setAttribute('aria-hidden', 'true');
+    mark.style.cssText = 'display:block;width:40px;height:40px';
+    mark.onerror = () => mark.remove();
+
+    const spinner = document.createElement('div');
+    spinner.style.cssText = [
+      'width:28px',
+      'height:28px',
+      'border-radius:50%',
+      `border:3px solid ${spinnerTrack}`,
+      `border-top-color:${spinnerHead}`,
+      'animation:__deskapp_boot_spin__ 0.8s linear infinite',
+    ].join(';');
+
+    const text = document.createElement('div');
+    text.textContent = label;
+    text.style.cssText = 'font-size:13px;letter-spacing:0.01em;opacity:0.85';
+
+    overlay.appendChild(mark);
+    overlay.appendChild(spinner);
+    overlay.appendChild(text);
+    (document.body || document.documentElement).appendChild(overlay);
+
+    let dismissed = false;
+    let safetyTimer: ReturnType<typeof setTimeout> | undefined;
+    dismissBoot = () => {
+      if (dismissed) return; // idempotent
+      dismissed = true;
+      if (safetyTimer) clearTimeout(safetyTimer);
+      try {
+        // Stop intercepting clicks the instant we start fading so the editor
+        // underneath is interactive even during the 240 ms transition.
+        overlay.style.pointerEvents = 'none';
+        overlay.style.opacity = '0';
+        const cleanup = () => {
+          overlay.remove();
+          style.remove();
+        };
+        overlay.addEventListener('transitionend', cleanup, { once: true });
+        // Fallback in case transitionend never fires (display:none ancestor,
+        // reduced-motion, etc.).
+        setTimeout(cleanup, 400);
+      } catch {
+        try {
+          overlay.remove();
+          style.remove();
+        } catch {
+          /* best-effort */
+        }
+      }
+    };
+
+    // Safety net: never let the overlay strand the user if the editor fails
+    // to signal ready (e.g. a load error before App.tsx wires up).
+    safetyTimer = setTimeout(() => dismissBoot(), 8000);
+  } catch {
+    /* boot overlay is cosmetic — must never break editor boot */
+  }
+})();
+
 if (isDesktop) {
   const isTopLevel = window.parent === window;
   let filePath = url.searchParams.get('file');
@@ -455,6 +594,11 @@ if (isDesktop) {
   }
 
   if (bridge) {
+    // Expose the boot-overlay dismiss so App.tsx can hide the cold-start
+    // splash once the document has actually loaded into the editor. Idempotent
+    // and a no-op in iframe / web mode (the overlay only paints top-level).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (bridge as any).dismissBoot = dismissBoot;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__deskApp__ = bridge;
 
