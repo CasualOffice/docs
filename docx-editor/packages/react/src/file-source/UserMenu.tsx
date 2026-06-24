@@ -52,13 +52,18 @@ export function UserMenu({ className, onLogout, authClient, testId = 'user-menu'
   const [signingOut, setSigningOut] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   // Locally-overridden displayName so the trigger updates the moment
-  // the profile dialog saves, without waiting for the gate to
-  // re-probe /auth/me. Falls back to the context's user.displayName
-  // when no override exists.
+  // the profile dialog saves. The context user only carries the
+  // username (collab's PublicUser has no displayName); the friendly
+  // name lives in the profile and is only known once the dialog loads
+  // or saves it. Until then we fall back to the username.
   const [displayNameOverride, setDisplayNameOverride] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const effectiveDisplayName = displayNameOverride ?? user.displayName;
+  const effectiveDisplayName = displayNameOverride || user.username;
+  // Show the @handle as a secondary line only when a friendly display
+  // name is set — otherwise the primary line already IS the username.
+  const secondaryHandle =
+    displayNameOverride && displayNameOverride !== user.username ? `@${user.username}` : null;
 
   // Close on outside click — mousedown so the dropdown closes before
   // any other click handler fires.
@@ -100,14 +105,14 @@ export function UserMenu({ className, onLogout, authClient, testId = 'user-menu'
     }
   };
 
-  const initials = displayInitials(effectiveDisplayName || user.email);
+  const initials = displayInitials(effectiveDisplayName);
 
   const handleOpenProfile = () => {
     setOpen(false);
     setProfileOpen(true);
   };
   const handleProfileSaved = (profile: ProfileWire) => {
-    setDisplayNameOverride(profile.displayName);
+    setDisplayNameOverride(profile.displayName ?? null);
   };
 
   return (
@@ -124,7 +129,7 @@ export function UserMenu({ className, onLogout, authClient, testId = 'user-menu'
         <span style={initialsStyle} aria-hidden="true">
           {initials}
         </span>
-        <span style={triggerLabelStyle}>{effectiveDisplayName || user.email}</span>
+        <span style={triggerLabelStyle}>{effectiveDisplayName}</span>
         <svg
           width="14"
           height="14"
@@ -140,8 +145,8 @@ export function UserMenu({ className, onLogout, authClient, testId = 'user-menu'
       {open && (
         <div role="menu" style={dropdownStyle} data-testid={`${testId}-dropdown`}>
           <div style={dropdownHeaderStyle}>
-            <div style={dropdownNameStyle}>{effectiveDisplayName || user.email}</div>
-            {effectiveDisplayName && <div style={dropdownEmailStyle}>{user.email}</div>}
+            <div style={dropdownNameStyle}>{effectiveDisplayName}</div>
+            {secondaryHandle && <div style={dropdownEmailStyle}>{secondaryHandle}</div>}
           </div>
           <div style={dropdownDividerStyle} />
           <button

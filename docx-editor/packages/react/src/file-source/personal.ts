@@ -1,36 +1,36 @@
 /**
  * PersonalFileSource — the FileSource implementation for Mode 3
- * (Standalone). Talks to the Casual gateway over cookie-authenticated
- * REST.
+ * (Standalone). Talks to the collab server over cookie-authenticated
+ * REST (CasualOffice/collab `files/personal-files-routes.ts`).
  *
- * Wire shape — keep these in sync with the route handlers in
- * backend/internal/auth/personal/routes.go:
+ * Wire shape — keep these in sync with the collab route handlers:
  *
- *   GET    /auth/me                  → UserWire | 401
- *   GET    /files                    → FileSummaryWire[]
- *   POST   /files                    → FileSummaryWire (201)
- *   GET    /files/{docId}            → .docx bytes + ETag header
- *   PUT    /files/{docId}/contents   → FileSummaryWire
- *   PATCH  /files/{docId}            → { fileName }
- *   DELETE /files/{docId}            → 204
+ *   GET    /files            → { files: FileSummaryWire[] }
+ *   POST   /files            → { file } (201) — multipart (`file` part)
+ *   GET    /files/{id}        → .docx bytes + `etag` header
+ *   POST   /files/{id}        → { file } — raw bytes + `If-Match` header
+ *   PATCH  /files/{id}        → 204 — body { name }
+ *   DELETE /files/{id}        → 204
+ *   GET    /auth/profile      → { user, profile }
+ *   PATCH  /auth/profile      → { profile }
  *
- * The session cookie is set by /auth/signup or /auth/login and is
- * sent automatically via `credentials: 'include'`. The PersonalAuthGate
- * (Batch 3 — app side) is responsible for showing a login modal when
- * /auth/me returns 401; this class is constructed only after that
- * gate resolves.
+ * The session cookie (`cs_session`) is set by /auth/signup or
+ * /auth/login and rides along via `credentials: 'include'`. The
+ * PersonalAuthGate shows a login modal when /auth/me returns 401; this
+ * class is constructed only after that gate resolves.
  */
 
 import { RecentObserver, readLastOpened, writeLastOpened } from './local-prefs';
 import type { FileEntry, FileSource } from './types';
 import type { ErrorWire, FileSummaryWire, ProfilePatchWire, ProfileWire, UserWire } from './wire';
 
+const OCTET_STREAM = 'application/octet-stream';
+
 export interface PersonalFileSourceOptions {
   /**
-   * Origin of the gateway. Defaults to "" (same-origin) which is the
-   * production deploy shape — editor SPA + gateway served from one
-   * Docker image. Local-dev with Vite on :5173 should set this to
-   * `http://localhost:8080`.
+   * Origin of the collab server. Defaults to "" (same-origin) which is
+   * the production deploy shape — editor SPA + collab served from one
+   * image. Local dev with Vite on :5173 points at the collab origin.
    */
   baseUrl?: string;
   /**
@@ -39,7 +39,7 @@ export interface PersonalFileSourceOptions {
    * state. The personal source does not re-issue /auth/me on every
    * call — that's the gate's job.
    */
-  user: Pick<UserWire, 'userId' | 'displayName'>;
+  user: Pick<UserWire, 'id' | 'username'>;
   /**
    * Override for fetch. Tests inject a mock here; production passes
    * nothing and the global fetch is used.
@@ -78,16 +78,16 @@ export class PersonalFileSource implements FileSource {
     // throw "Illegal invocation" when fetch is called with anything
     // but window / undefined as the receiver.
     this.fetchImpl = opts.fetchImpl ?? (((input, init) => fetch(input, init)) as typeof fetch);
-    this.label = opts.user.displayName || 'My files';
+    this.label = opts.user.username || 'My files';
     // Scoped per (kind, userId) so the recent-files cache survives
     // user-switching on the same browser without leaking.
-    this.scope = `personal.${opts.user.userId}`;
+    this.scope = `personal.${opts.user.id}`;
   }
 
   async list(): Promise<FileEntry[]> {
     const res = await this.req('/files');
-    const summaries = (await res.json()) as FileSummaryWire[];
-    const entries = summaries.map(summaryToEntry);
+    const body = (await res.json()) as { files: FileSummaryWire[] };
+    const entries = (body.files ?? []).map(summaryToEntry);
     this.recent.set(entries);
     return entries;
   }
@@ -110,36 +110,42 @@ export class PersonalFileSource implements FileSource {
     bytes: ArrayBuffer,
     opts?: { etag?: string; name?: string }
   ): Promise<{ id: string; etag: string }> {
-    // First save mints a docId via POST /files; subsequent saves
-    // overwrite via PUT /files/{id}/contents. The HTTP method choice
-    // is the differentiator — the body shape (raw bytes +
-    // X-File-Name) is identical so the multipart code path can be
-    // shared in a future revision.
-    const url = id === null ? '/files' : `/files/${encodeURIComponent(id)}/contents`;
-    const method = id === null ? 'POST' : 'PUT';
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/octet-stream',
-    };
-    if (opts?.name) {
-      headers['X-File-Name'] = encodeRfc2047(opts.name);
+    // First save mints an id via a multipart POST /files (the `file`
+    // part carries the bytes + filename). Subsequent saves overwrite
+    // via POST /files/{id} with the raw bytes and an `If-Match` header
+    // carrying the etag we hold, so a concurrent host-side change
+    // surfaces as a 412 rather than silently clobbering.
+    let res: Response;
+    if (id === null) {
+      const form = new FormData();
+      const blob = new Blob([bytes], { type: OCTET_STREAM });
+      form.append('file', blob, opts?.name || 'document.docx');
+      if (opts?.name) form.append('name', opts.name);
+      res = await this.req('/files', { method: 'POST', body: form });
+    } else {
+      const headers: Record<string, string> = { 'Content-Type': OCTET_STREAM };
+      if (opts?.etag) headers['If-Match'] = opts.etag;
+      res = await this.req(`/files/${encodeURIComponent(id)}`, {
+        method: 'POST',
+        headers,
+        body: bytes,
+      });
     }
-    const res = await this.req(url, { method, headers, body: bytes });
-    const summary = (await res.json()) as FileSummaryWire;
+    const body = (await res.json()) as { file: FileSummaryWire };
+    const summary = body.file;
     // Refresh the recent observer optimistically — callers can rely
     // on watchRecent firing without an explicit list().
     this.bumpRecent(summary);
-    return { id: summary.docId, etag: String(summary.version) };
+    return { id: summary.id, etag: summary.etag };
   }
 
   async rename(id: string, newName: string): Promise<void> {
-    const res = await this.req(`/files/${encodeURIComponent(id)}`, {
+    // collab returns 204 (no body) on a successful rename.
+    await this.req(`/files/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName: newName }),
+      body: JSON.stringify({ name: newName }),
     });
-    // Drain the body so the connection can be reused (Bun's fetch
-    // doesn't strictly require this, but it's polite).
-    await res.json().catch(() => undefined);
     // Mirror the rename into the recent observer.
     const next = this.recent.snapshot().map((e) => (e.id === id ? { ...e, name: newName } : e));
     this.recent.set(next);
@@ -170,7 +176,8 @@ export class PersonalFileSource implements FileSource {
    */
   async getProfile(): Promise<ProfileWire> {
     const res = await this.req('/auth/profile');
-    return (await res.json()) as ProfileWire;
+    const body = (await res.json()) as { profile: ProfileWire };
+    return body.profile;
   }
 
   /**
@@ -181,11 +188,12 @@ export class PersonalFileSource implements FileSource {
    */
   async updateProfile(patch: ProfilePatchWire): Promise<ProfileWire> {
     const res = await this.req('/auth/profile', {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     });
-    return (await res.json()) as ProfileWire;
+    const body = (await res.json()) as { profile: ProfileWire };
+    return body.profile;
   }
 
   // ---------------------------------------------------------------
@@ -198,15 +206,17 @@ export class PersonalFileSource implements FileSource {
       credentials: 'include',
     });
     if (!res.ok) {
-      // Try to parse the gateway's { code, message } envelope. If the
-      // body isn't JSON (e.g. an upstream proxy returned a plain HTML
-      // 502), fall back to a synthesized error.
+      // Try to parse collab's { error } envelope. If the body isn't
+      // JSON (e.g. an upstream proxy returned a plain HTML 502), fall
+      // back to a synthesized error.
       let code = 'http_' + res.status;
       let message = res.statusText;
       try {
         const body = (await res.clone().json()) as ErrorWire;
-        if (body?.code) code = body.code;
-        if (body?.message) message = body.message;
+        if (body?.error) {
+          code = body.error;
+          message = body.error;
+        }
       } catch {
         // Non-JSON error body — keep the synthesized envelope.
       }
@@ -224,30 +234,20 @@ export class PersonalFileSource implements FileSource {
 
 function summaryToEntry(s: FileSummaryWire): FileEntry {
   return {
-    id: s.docId,
-    name: s.fileName,
+    id: s.id,
+    name: s.name,
     size: s.size,
-    modifiedAt: Date.parse(s.savedAt) || 0,
+    // collab returns modifiedAt as ms-since-epoch already.
+    modifiedAt: s.modifiedAt || 0,
     source: 'personal',
-    meta: { version: s.version },
+    meta: { version: s.etag },
   };
 }
 
 /**
- * RFC 2047 encoder for the X-File-Name header. The gateway reads this
- * verbatim into Content-Disposition; non-ASCII names need encoding so
- * a HTTP/1.1 proxy doesn't mangle them.
- */
-function encodeRfc2047(name: string): string {
-  // Fast path: pure ASCII names go through as-is.
-  if (/^[\x20-\x7e]+$/.test(name)) return name;
-  const encoded = btoa(unescape(encodeURIComponent(name)));
-  return `=?UTF-8?B?${encoded}?=`;
-}
-
-/**
- * Pulls the filename out of a Content-Disposition header. Handles the
- * RFC 5987 `filename*=UTF-8''…` form the gateway emits.
+ * Pulls the filename out of a Content-Disposition header. Handles both
+ * the RFC 5987 `filename*=UTF-8''…` form and collab's
+ * `filename="<percent-encoded>"` form.
  */
 function parseFilenameFromContentDisposition(cd: string | null): string | null {
   if (!cd) return null;
@@ -260,5 +260,11 @@ function parseFilenameFromContentDisposition(cd: string | null): string | null {
     }
   }
   const plain = /filename="([^"]+)"/i.exec(cd);
-  return plain ? plain[1] : null;
+  if (!plain) return null;
+  // collab percent-encodes the name into the quoted form; decode it.
+  try {
+    return decodeURIComponent(plain[1]);
+  } catch {
+    return plain[1];
+  }
 }

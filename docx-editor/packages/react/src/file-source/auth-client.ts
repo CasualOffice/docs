@@ -5,12 +5,12 @@
  * is constructed: the file source is only valid once `/auth/me`
  * returns 200.
  *
- * Wire shape mirrors backend/internal/auth/personal/routes.go:
+ * Wire shape mirrors CasualOffice/collab `auth/personal-routes.ts`:
  *
- *   POST /auth/signup  → 201 User, sets session cookie
- *   POST /auth/login   → 200 User, sets session cookie
+ *   POST /auth/signup  → 201 { user }, sets cs_session cookie
+ *   POST /auth/login   → 200 { user }, sets cs_session cookie
  *   POST /auth/logout  → 204
- *   GET  /auth/me      → 200 User | 401
+ *   GET  /auth/me      → 200 { user } | 401 | 503 (personal mode off)
  *
  * All requests use `credentials: 'include'` so the cookie set by
  * signup/login rides along on subsequent calls.
@@ -34,15 +34,14 @@ export interface AuthClientOptions {
 }
 
 /**
- * Credentials passed into login / signup. The signup-only
- * `displayName` is optional — the backend falls back to the email
- * prefix when empty.
+ * Credentials passed into login / signup. collab authenticates by
+ * `username` (not email — email is an optional profile field set
+ * later). The display name is edited post-signup via the profile
+ * dialog, so there's no signup-time displayName.
  */
 export interface AuthCredentials {
-  email: string;
+  username: string;
   password: string;
-  /** Signup only — ignored by login. */
-  displayName?: string;
 }
 
 export class AuthClient {
@@ -70,13 +69,17 @@ export class AuthClient {
     const res = await this.fetchImpl(this.baseUrl + '/auth/me', {
       credentials: 'include',
     });
-    if (res.status === 401) {
+    // 401 = no live session; 503 = personal mode isn't enabled on this
+    // deploy at all. Both mean "no signed-in user here" — the gate
+    // shows login on 401, and a 503 deploy never mounts the gate.
+    if (res.status === 401 || res.status === 503) {
       return null;
     }
     if (!res.ok) {
       throw await this.errorFrom(res);
     }
-    return (await res.json()) as UserWire;
+    const body = (await res.json()) as { user: UserWire };
+    return body.user;
   }
 
   /**
@@ -110,18 +113,19 @@ export class AuthClient {
     if (!res.ok) {
       throw await this.errorFrom(res);
     }
-    return (await res.json()) as ProfileWire;
+    const body = (await res.json()) as { profile: ProfileWire };
+    return body.profile;
   }
 
   /**
-   * PUT /auth/profile. Fields omitted from `patch` are left
-   * unchanged; explicit empty strings clear the field server-side.
-   * Returns the freshly-merged view so the caller can render the
-   * post-update state without a follow-up GET.
+   * PATCH /auth/profile. Fields omitted from `patch` are left
+   * unchanged; null clears displayName / email. Returns the freshly
+   * merged profile so the caller can render the post-update state
+   * without a follow-up GET.
    */
   async updateProfile(patch: ProfilePatchWire): Promise<ProfileWire> {
     const res = await this.fetchImpl(this.baseUrl + '/auth/profile', {
-      method: 'PUT',
+      method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
@@ -129,7 +133,8 @@ export class AuthClient {
     if (!res.ok) {
       throw await this.errorFrom(res);
     }
-    return (await res.json()) as ProfileWire;
+    const body = (await res.json()) as { profile: ProfileWire };
+    return body.profile;
   }
 
   /**
@@ -159,22 +164,24 @@ export class AuthClient {
     if (!res.ok) {
       throw await this.errorFrom(res);
     }
-    return (await res.json()) as UserWire;
+    const body = (await res.json()) as { user: UserWire };
+    return body.user;
   }
 
   /**
-   * Parses the backend's `{ code, message }` envelope into a
-   * PersonalFileSourceError. Falls back to a synthesized envelope
-   * when the response body isn't the expected JSON shape (e.g. a
-   * 502 from an upstream proxy).
+   * Parses collab's `{ error }` envelope into a PersonalFileSourceError.
+   * Falls back to a synthesized envelope when the response body isn't
+   * the expected JSON shape (e.g. a 502 from an upstream proxy).
    */
   private async errorFrom(res: Response): Promise<PersonalFileSourceError> {
     let code = 'http_' + res.status;
     let message = res.statusText;
     try {
       const body = (await res.clone().json()) as ErrorWire;
-      if (body?.code) code = body.code;
-      if (body?.message) message = body.message;
+      if (body?.error) {
+        code = body.error;
+        message = body.error;
+      }
     } catch {
       // Non-JSON error — keep synthesized envelope.
     }

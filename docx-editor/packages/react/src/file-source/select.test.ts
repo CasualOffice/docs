@@ -5,9 +5,10 @@ import { PersonalFileSource } from './personal';
 import { chooseFileSource, extractWopiContext } from './select';
 import { WopiFileSource } from './wopi';
 
-function userJson(body: { userId: string; displayName: string }) {
+function userJson(body: { id: number; username: string }) {
+  // collab wraps /auth/me as { user }.
   return new Response(
-    JSON.stringify({ ...body, email: 'x@y', createdAt: '2026-01-01T00:00:00Z' }),
+    JSON.stringify({ user: { ...body, isAdmin: false, createdAt: 1_700_000_000_000 } }),
     {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -26,7 +27,7 @@ describe('chooseFileSource', () => {
     let asked = '';
     const fetchImpl = (async (input: RequestInfo | URL) => {
       asked = typeof input === 'string' ? input : input.toString();
-      return userJson({ userId: 'user_42', displayName: 'Forty-Two' });
+      return userJson({ id: 42, username: 'forty-two' });
     }) as unknown as typeof fetch;
 
     const source = await chooseFileSource({
@@ -36,7 +37,7 @@ describe('chooseFileSource', () => {
     });
     expect(asked).toBe('http://gateway.test/auth/me');
     expect(source).toBeInstanceOf(PersonalFileSource);
-    expect(source.label).toBe('Forty-Two');
+    expect(source.label).toBe('forty-two');
   });
 
   it('falls back to BrowserFileSource when /auth/me returns 401', async () => {

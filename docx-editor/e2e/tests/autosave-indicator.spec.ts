@@ -12,15 +12,12 @@ import { expect, test } from '@playwright/test';
 
 async function mockAuthAlwaysSignedIn(page: import('@playwright/test').Page) {
   await page.route('**/auth/me', async (route) => {
+    // collab wraps /auth/me as { user } with a numeric id + username.
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        userId: 'user_42',
-        email: 'alex@example.com',
-        displayName: 'Alex',
-        isAdmin: false,
-        createdAt: '2026-01-01T00:00:00Z',
+        user: { id: 42, username: 'alex', isAdmin: false, createdAt: 1_700_000_000_000 },
       }),
     });
   });
