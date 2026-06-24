@@ -2,14 +2,14 @@
  * ProfileSettingsDialog — edit the signed-in user's extended profile.
  *
  * Loads the current profile from GET /auth/profile on open, lets the
- * user edit displayName + timezone + locale, posts the changes via
- * PUT /auth/profile, closes on success. Cancel discards.
+ * user edit displayName + timezone + language, posts the changes via
+ * PATCH /auth/profile, closes on success. Cancel discards.
  *
- * Backend-side identity routing: displayName lands on the SQLite
- * users table (so /auth/me reflects the update on next probe); the
- * other fields land in the .profile.json sidecar. The web client
- * doesn't need to think about that split — a single PUT carries the
- * full patch.
+ * collab stores `displayName` / `email` / `timezone` as first-class
+ * profile columns and everything else (here: `locale`) in the
+ * free-form `preferences` JSON blob. The dialog reads/writes
+ * `preferences.locale` and merges it back so other preference keys
+ * are preserved.
  *
  * Reuses the editor's Dialog shell so visual + motion language match
  * every other modal.
@@ -78,7 +78,7 @@ export function ProfileSettingsDialog({
         setLoad({ status: 'loaded', profile });
         setDisplayName(profile.displayName ?? '');
         setTimezone(profile.timezone ?? '');
-        setLocale(profile.locale ?? '');
+        setLocale(localeOf(profile));
       } catch (err) {
         if (cancelled) return;
         setLoad({
@@ -98,10 +98,13 @@ export function ProfileSettingsDialog({
     setSaving(true);
     setSaveError(null);
     try {
+      // Merge locale into the existing preferences blob so we don't
+      // clobber any other keys collab is round-tripping for us.
+      const basePrefs = load.status === 'loaded' ? load.profile.preferences : {};
       const next = await client.updateProfile({
         displayName: displayName.trim(),
         timezone: timezone.trim(),
-        locale: locale.trim(),
+        preferences: { ...basePrefs, locale: locale.trim() },
       });
       onSaved?.(next);
       onClose();
@@ -216,11 +219,19 @@ export function ProfileSettingsDialog({
 // Helpers + styles
 // ---------------------------------------------------------------
 
+/** Reads the BCP-47 language tag out of collab's free-form preferences. */
+function localeOf(profile: ProfileWire): string {
+  const v = profile.preferences?.locale;
+  return typeof v === 'string' ? v : '';
+}
+
 function humanReadable(err: PersonalFileSourceError): string {
+  // collab PATCH /auth/profile → 409 'conflict-or-invalid', 401
+  // 'unauthenticated'.
   switch (err.code) {
-    case 'display_name':
-      return 'Display name cannot be empty.';
-    case 'not_authenticated':
+    case 'conflict-or-invalid':
+      return 'That display name or email is invalid or already in use.';
+    case 'unauthenticated':
       return 'Your session has expired. Sign in again.';
     default:
       return err.message || 'Could not save. Please try again.';

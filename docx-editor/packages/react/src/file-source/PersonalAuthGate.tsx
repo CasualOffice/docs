@@ -9,12 +9,12 @@
  *
  *   - Single dialog, no dismiss (no backdrop click, no Esc) — Mode 3
  *     requires auth before anything else renders.
- *   - Email + password fields, autocomplete hints set so password
- *     managers can fill cleanly.
- *   - Login ↔ Signup toggle below the form. Signup mode adds an
- *     optional displayName.
- *   - Inline error rendering — server's `{code, message}` envelope
- *     becomes a human-readable string above the submit button.
+ *   - Username + password fields, autocomplete hints set so password
+ *     managers can fill cleanly. (collab authenticates by username; the
+ *     display name is set later via the profile dialog.)
+ *   - Login ↔ Signup toggle below the form.
+ *   - Inline error rendering — collab's `{ error }` envelope becomes a
+ *     human-readable string above the submit button.
  *   - Submit on Enter via standard <form> behavior.
  *
  * The gate constructs its own AuthClient by default; tests or
@@ -93,8 +93,8 @@ export interface UsePersonalAuthOptions {
 
 export interface UsePersonalAuthReturn {
   state: AuthState;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName?: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  signup: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -153,9 +153,9 @@ export function usePersonalAuth(opts: UsePersonalAuthOptions = {}): UsePersonalA
   }, [client]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (username: string, password: string) => {
       try {
-        const user = await client.login({ email, password });
+        const user = await client.login({ username, password });
         setState({ status: 'authed', user });
         onAuthRef.current?.(user);
       } catch (err) {
@@ -168,9 +168,9 @@ export function usePersonalAuth(opts: UsePersonalAuthOptions = {}): UsePersonalA
   );
 
   const signup = useCallback(
-    async (email: string, password: string, displayName?: string) => {
+    async (username: string, password: string) => {
       try {
-        const user = await client.signup({ email, password, displayName });
+        const user = await client.signup({ username, password });
         setState({ status: 'authed', user });
         onAuthRef.current?.(user);
       } catch (err) {
@@ -252,9 +252,9 @@ export function PersonalAuthGate({
       initialMode={initialMode}
       onSubmit={async (mode, creds) => {
         if (mode === 'login') {
-          await login(creds.email, creds.password);
+          await login(creds.username, creds.password);
         } else {
-          await signup(creds.email, creds.password, creds.displayName);
+          await signup(creds.username, creds.password);
         }
       }}
       submitError={state.status === 'unauthed' ? state.error : null}
@@ -279,7 +279,7 @@ interface PersonalAuthGateModalProps {
    */
   onSubmit: (
     mode: 'login' | 'signup',
-    creds: { email: string; password: string; displayName?: string }
+    creds: { username: string; password: string }
   ) => Promise<void>;
   submitError: PersonalFileSourceError | null;
   /** True during the initial /auth/me probe — disables Sign in. */
@@ -295,9 +295,8 @@ export function PersonalAuthGateModal({
   loading,
 }: PersonalAuthGateModalProps) {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
 
@@ -307,9 +306,8 @@ export function PersonalAuthGateModal({
     setSubmitting(true);
     try {
       await onSubmit(mode, {
-        email: email.trim(),
+        username: username.trim(),
         password,
-        displayName: displayName.trim() || undefined,
       });
     } catch {
       // Error rendered via submitError prop; no extra handling here.
@@ -334,9 +332,9 @@ export function PersonalAuthGateModal({
         <button
           type="submit"
           form="personal-auth-form"
-          disabled={submitting || loading || !email || !password}
+          disabled={submitting || loading || !username || !password}
           data-testid="personal-auth-submit"
-          style={primaryButtonStyle(submitting || loading || !email || !password)}
+          style={primaryButtonStyle(submitting || loading || !username || !password)}
         >
           {submitting
             ? mode === 'login'
@@ -367,15 +365,18 @@ export function PersonalAuthGateModal({
         style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
       >
         <label style={labelStyle}>
-          <span style={labelTextStyle}>Email</span>
+          <span style={labelTextStyle}>Username</span>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             autoFocus
             required
-            data-testid="personal-auth-email"
+            data-testid="personal-auth-username"
             style={inputStyle}
           />
         </label>
@@ -392,19 +393,6 @@ export function PersonalAuthGateModal({
             style={inputStyle}
           />
         </label>
-        {mode === 'signup' && (
-          <label style={labelStyle}>
-            <span style={labelTextStyle}>Display name (optional)</span>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              autoComplete="name"
-              data-testid="personal-auth-displayname"
-              style={inputStyle}
-            />
-          </label>
-        )}
         {mode === 'login' && (
           <div style={forgotWrapStyle}>
             <button
@@ -421,7 +409,7 @@ export function PersonalAuthGateModal({
                 Mode 3 doesn’t do email recovery — there’s no SMTP server on a single-node deploy.
                 Ask the operator to ssh into the container and run:
                 <pre style={forgotCodeStyle}>
-                  casual-docs reset-password {email || '<your-email>'}
+                  casual-docs reset-password {username || '<your-username>'}
                 </pre>
                 They’ll set a new password for you to sign in with.
               </div>
@@ -430,7 +418,7 @@ export function PersonalAuthGateModal({
         )}
         {submitError && (
           <div data-testid="personal-auth-error" style={errorStyle}>
-            {humanReadable(submitError, mode)}
+            {humanReadable(submitError)}
           </div>
         )}
       </form>
@@ -442,18 +430,25 @@ export function PersonalAuthGateModal({
 // Helpers
 // ---------------------------------------------------------------
 
-function humanReadable(err: PersonalFileSourceError, mode: 'login' | 'signup'): string {
+function humanReadable(err: PersonalFileSourceError): string {
+  // Codes mirror collab's `{ error }` envelope (auth/personal-routes.ts +
+  // the createUser / verifyLogin reasons in auth/personal.ts).
   switch (err.code) {
-    case 'invalid_credentials':
-      return 'That email and password don’t match an account.';
-    case 'email_taken':
-      return 'An account with that email already exists. Try signing in.';
-    case 'invalid_email':
-      return 'That doesn’t look like a valid email address.';
-    case 'weak_password':
+    case 'invalid-credentials':
+      return 'That username and password don’t match an account.';
+    case 'username-taken':
+      return 'That username is already taken. Try signing in.';
+    case 'invalid-username':
+      return 'That username isn’t allowed. Use letters, numbers, dot, dash or underscore.';
+    case 'weak-password':
       return 'Password must be at least 8 characters.';
-    case 'not_authenticated':
-      return mode === 'login' ? 'Please sign in to continue.' : 'Could not create the account.';
+    case 'signup-closed':
+      return 'Sign-ups are closed on this server. Ask the operator for an account.';
+    case 'personal-mode-disabled':
+    case 'mode-disabled':
+      return 'Accounts aren’t enabled on this server.';
+    case 'bad-body':
+      return 'Please enter a username and password.';
     default:
       return err.message || 'Something went wrong. Please try again.';
   }

@@ -1,44 +1,48 @@
 /**
  * PersonalAuthGate end-to-end: drives the React modal at
  * /examples/vite/src/App.tsx in `?e2e=auth-gate` mode against a
- * mocked Casual gateway.
+ * mocked collab server.
  *
- * The Casual gateway isn't running during the Playwright suite —
+ * The collab server isn't running during the Playwright suite —
  * `page.route()` intercepts every /auth/* request and replies with a
- * fixture matching the real backend's JSON envelope shape (see
- * backend/internal/auth/personal/routes.go).
+ * fixture matching collab's JSON envelope shape (see
+ * CasualOffice/collab src/auth/personal-routes.ts): users wrap as
+ * `{ user }`, profiles as `{ user, profile }` / `{ profile }`, errors
+ * as `{ error }`. collab authenticates by username, not email.
  *
  * Each scenario tests one flow:
  *   - login happy path → modal hides, signed-in surface renders
  *   - login wrong password → inline error
  *   - login → toggle to signup → create account → modal hides
  *   - signup weak password → inline error
- *   - email already signed in (/auth/me 200 first) → modal never renders
+ *   - already signed in (/auth/me 200 first) → modal never renders
  */
 import { expect, test } from '@playwright/test';
 
 interface AuthState {
   /** Mocked /auth/me result. Starts unauth'd; flips to signed-in after login/signup. */
   signedIn: boolean;
-  user: { userId: string; email: string; displayName: string; isAdmin: boolean; createdAt: string };
+  user: { id: number; username: string; isAdmin: boolean; createdAt: number };
 }
 
 const DEFAULT_USER = {
-  userId: 'user_42',
-  email: 'alex@example.com',
-  displayName: 'Alex',
+  id: 42,
+  username: 'alex',
   isAdmin: false,
-  createdAt: '2026-01-01T00:00:00Z',
+  createdAt: 1_700_000_000_000,
 };
 
-async function mockAuth(page: import('@playwright/test').Page, opts?: {
-  /** Initial signed-in state. Default false (gate opens immediately). */
-  signedInAtBoot?: boolean;
-  /** Override the password the login mock accepts. Default 'passw0rd!'. */
-  goodPassword?: string;
-  /** Override the email the signup mock rejects as taken. Default null. */
-  takenEmail?: string;
-}) {
+async function mockAuth(
+  page: import('@playwright/test').Page,
+  opts?: {
+    /** Initial signed-in state. Default false (gate opens immediately). */
+    signedInAtBoot?: boolean;
+    /** Override the password the login mock accepts. Default 'passw0rd!'. */
+    goodPassword?: string;
+    /** Override the username the signup mock rejects as taken. Default null. */
+    takenUsername?: string;
+  }
+) {
   const state: AuthState = {
     signedIn: opts?.signedInAtBoot ?? false,
     user: { ...DEFAULT_USER },
@@ -47,12 +51,16 @@ async function mockAuth(page: import('@playwright/test').Page, opts?: {
 
   await page.route('**/auth/me', async (route) => {
     if (state.signedIn) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(state.user) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ user: state.user }),
+      });
     } else {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
-        body: JSON.stringify({ code: 'not_authenticated', message: 'no session' }),
+        body: JSON.stringify({ error: 'unauthenticated' }),
       });
     }
   });
@@ -63,22 +71,26 @@ async function mockAuth(page: import('@playwright/test').Page, opts?: {
       await route.fulfill({
         status: 401,
         contentType: 'application/json',
-        body: JSON.stringify({ code: 'invalid_credentials', message: 'no match' }),
+        body: JSON.stringify({ error: 'invalid-credentials' }),
       });
       return;
     }
     state.signedIn = true;
-    state.user.email = body.email;
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(state.user) });
+    state.user.username = body.username;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ user: state.user }),
+    });
   });
 
   await page.route('**/auth/signup', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
-    if (opts?.takenEmail && body.email === opts.takenEmail) {
+    if (opts?.takenUsername && body.username === opts.takenUsername) {
       await route.fulfill({
         status: 409,
         contentType: 'application/json',
-        body: JSON.stringify({ code: 'email_taken', message: 'already' }),
+        body: JSON.stringify({ error: 'username-taken' }),
       });
       return;
     }
@@ -86,14 +98,17 @@ async function mockAuth(page: import('@playwright/test').Page, opts?: {
       await route.fulfill({
         status: 400,
         contentType: 'application/json',
-        body: JSON.stringify({ code: 'weak_password', message: 'too short' }),
+        body: JSON.stringify({ error: 'weak-password' }),
       });
       return;
     }
     state.signedIn = true;
-    state.user.email = body.email;
-    if (body.displayName) state.user.displayName = body.displayName;
-    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(state.user) });
+    state.user.username = body.username;
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ user: state.user }),
+    });
   });
 }
 
@@ -102,7 +117,7 @@ test.describe('PersonalAuthGate', () => {
     await mockAuth(page);
     await page.goto('/?e2e=auth-gate');
     await expect(page.getByTestId('personal-auth-gate')).toBeVisible();
-    await expect(page.getByTestId('personal-auth-email')).toBeVisible();
+    await expect(page.getByTestId('personal-auth-username')).toBeVisible();
     await expect(page.getByTestId('personal-auth-password')).toBeVisible();
     // Submit disabled until both fields are filled.
     await expect(page.getByTestId('personal-auth-submit')).toBeDisabled();
@@ -111,7 +126,7 @@ test.describe('PersonalAuthGate', () => {
   test('login happy path → modal hides + signed-in content renders', async ({ page }) => {
     await mockAuth(page);
     await page.goto('/?e2e=auth-gate');
-    await page.getByTestId('personal-auth-email').fill('alex@example.com');
+    await page.getByTestId('personal-auth-username').fill('alex');
     await page.getByTestId('personal-auth-password').fill('passw0rd!');
     await page.getByTestId('personal-auth-submit').click();
     await expect(page.getByTestId('signed-in-content')).toBeVisible();
@@ -121,7 +136,7 @@ test.describe('PersonalAuthGate', () => {
   test('login wrong password → inline error, modal stays open', async ({ page }) => {
     await mockAuth(page);
     await page.goto('/?e2e=auth-gate');
-    await page.getByTestId('personal-auth-email').fill('alex@example.com');
+    await page.getByTestId('personal-auth-username').fill('alex');
     await page.getByTestId('personal-auth-password').fill('wrongpass');
     await page.getByTestId('personal-auth-submit').click();
     await expect(page.getByTestId('personal-auth-error')).toContainText(/don.t match/i);
@@ -134,9 +149,8 @@ test.describe('PersonalAuthGate', () => {
     await page.getByTestId('personal-auth-toggle').click();
     // Submit button label flips after toggle.
     await expect(page.getByTestId('personal-auth-submit')).toContainText(/create account/i);
-    await page.getByTestId('personal-auth-email').fill('new@example.com');
+    await page.getByTestId('personal-auth-username').fill('newuser');
     await page.getByTestId('personal-auth-password').fill('passw0rd!');
-    await page.getByTestId('personal-auth-displayname').fill('New User');
     await page.getByTestId('personal-auth-submit').click();
     await expect(page.getByTestId('signed-in-content')).toBeVisible();
   });
@@ -145,18 +159,15 @@ test.describe('PersonalAuthGate', () => {
     await mockAuth(page);
     await page.goto('/?e2e=auth-gate');
     await page.getByTestId('personal-auth-toggle').click();
-    await page.getByTestId('personal-auth-email').fill('new@example.com');
-    // 8+ chars satisfies the HTML5 minLength so we POST and the
-    // server-side check kicks in. Here we fake "weak" via 9 chars
-    // that the mock treats as too short by forcing a 400.
+    await page.getByTestId('personal-auth-username').fill('newuser');
+    // 8 chars satisfies the HTML5 minLength so we POST; the mock below
+    // forces the server-side weak-password rejection.
     await page.getByTestId('personal-auth-password').fill('passw0rd');
-    // Override the mock to reject this length: set up a fresh route
-    // that always returns weak_password.
     await page.route('**/auth/signup', async (route) => {
       await route.fulfill({
         status: 400,
         contentType: 'application/json',
-        body: JSON.stringify({ code: 'weak_password', message: 'too short' }),
+        body: JSON.stringify({ error: 'weak-password' }),
       });
     });
     await page.getByTestId('personal-auth-submit').click();
@@ -170,11 +181,11 @@ test.describe('PersonalAuthGate', () => {
     await expect(page.getByTestId('personal-auth-gate')).toBeHidden();
   });
 
-  test('UserMenu — shows displayName and toggles dropdown', async ({ page }) => {
+  test('UserMenu — shows the username and toggles dropdown', async ({ page }) => {
     await mockAuth(page, { signedInAtBoot: true });
     await page.goto('/?e2e=auth-gate');
     await expect(page.getByTestId('user-menu')).toBeVisible();
-    await expect(page.getByTestId('user-menu')).toContainText('Alex');
+    await expect(page.getByTestId('user-menu')).toContainText('alex');
     // Dropdown is hidden until the trigger is clicked.
     await expect(page.getByTestId('user-menu-dropdown')).toBeHidden();
     await page.getByTestId('user-menu').click();
@@ -185,8 +196,6 @@ test.describe('PersonalAuthGate', () => {
   test('sign-out → /auth/logout fires + modal returns', async ({ page }) => {
     let logoutCalled = false;
     await mockAuth(page, { signedInAtBoot: true });
-    // Wire the logout mock — flips the shared state back to
-    // unauth'd so the gate re-renders the modal.
     await page.route('**/auth/logout', async (route) => {
       logoutCalled = true;
       // Re-route /auth/me to 401 so the gate's next probe sees the
@@ -195,7 +204,7 @@ test.describe('PersonalAuthGate', () => {
         await subroute.fulfill({
           status: 401,
           contentType: 'application/json',
-          body: JSON.stringify({ code: 'not_authenticated', message: 'no session' }),
+          body: JSON.stringify({ error: 'unauthenticated' }),
         });
       });
       await route.fulfill({ status: 204 });
@@ -217,13 +226,13 @@ test.describe('PersonalAuthGate', () => {
     await mockAuth(page, { signedInAtBoot: true });
 
     let profileGets = 0;
-    let putBody: Record<string, unknown> | null = null;
-    const profileState = {
-      userId: 'user_42',
-      email: 'alex@example.com',
+    let patchBody: Record<string, unknown> | null = null;
+    const profile = {
       displayName: 'Alex',
+      email: 'alex@example.com',
       timezone: 'America/Los_Angeles',
-      locale: 'en-US',
+      hasAvatar: false,
+      preferences: { locale: 'en-US' } as Record<string, unknown>,
     };
     await page.route('**/auth/profile', async (route) => {
       const req = route.request();
@@ -232,15 +241,15 @@ test.describe('PersonalAuthGate', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(profileState),
+          body: JSON.stringify({ user: DEFAULT_USER, profile }),
         });
-      } else if (req.method() === 'PUT') {
-        putBody = JSON.parse(req.postData() ?? '{}');
-        Object.assign(profileState, putBody);
+      } else if (req.method() === 'PATCH') {
+        patchBody = JSON.parse(req.postData() ?? '{}');
+        Object.assign(profile, patchBody);
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(profileState),
+          body: JSON.stringify({ profile }),
         });
       } else {
         await route.fallback();
@@ -262,12 +271,13 @@ test.describe('PersonalAuthGate', () => {
     await page.getByTestId('profile-settings-timezone').fill('UTC');
     await page.getByTestId('profile-settings-save').click();
 
-    // Dialog closes + PUT carried the patch + UserMenu updated.
+    // Dialog closes + PATCH carried the patch (locale preserved in
+    // preferences) + UserMenu updated.
     await expect(page.getByTestId('profile-settings')).toBeHidden();
-    expect(putBody).toEqual({
+    expect(patchBody).toEqual({
       displayName: 'Alex Tomato',
       timezone: 'UTC',
-      locale: 'en-US',
+      preferences: { locale: 'en-US' },
     });
     await expect(page.getByTestId('user-menu')).toContainText('Alex Tomato');
   });
@@ -280,14 +290,18 @@ test.describe('PersonalAuthGate', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            userId: 'u',
-            email: 'alex@example.com',
-            displayName: 'Alex',
-            timezone: 'UTC',
+            user: DEFAULT_USER,
+            profile: {
+              displayName: 'Alex',
+              email: 'alex@example.com',
+              timezone: 'UTC',
+              hasAvatar: false,
+              preferences: {},
+            },
           }),
         });
       } else {
-        // PUT should never fire from this test.
+        // PATCH should never fire from this test.
         await route.fulfill({ status: 500, body: 'should not be called' });
       }
     });
@@ -297,8 +311,8 @@ test.describe('PersonalAuthGate', () => {
     await page.getByTestId('profile-settings-displayname').fill('changed-but-cancelled');
     await page.getByTestId('profile-settings-cancel').click();
     await expect(page.getByTestId('profile-settings')).toBeHidden();
-    // UserMenu still shows the original name.
-    await expect(page.getByTestId('user-menu')).toContainText('Alex');
+    // UserMenu still shows the original identity.
+    await expect(page.getByTestId('user-menu')).toContainText('alex');
   });
 
   test('forgot-password — link visible in login mode, reveals CLI instructions', async ({
@@ -310,18 +324,16 @@ test.describe('PersonalAuthGate', () => {
     await expect(page.getByTestId('personal-auth-forgot-toggle')).toBeVisible();
     // Panel is hidden until the link is clicked.
     await expect(page.getByTestId('personal-auth-forgot-panel')).toBeHidden();
-    // Pre-filling email so the rendered command shows the user's address.
-    await page.getByTestId('personal-auth-email').fill('alex@example.com');
+    // Pre-filling username so the rendered command shows the account.
+    await page.getByTestId('personal-auth-username').fill('alex');
     await page.getByTestId('personal-auth-forgot-toggle').click();
     const panel = page.getByTestId('personal-auth-forgot-panel');
     await expect(panel).toBeVisible();
     await expect(panel).toContainText('casual-docs reset-password');
-    await expect(panel).toContainText('alex@example.com');
+    await expect(panel).toContainText('alex');
   });
 
-  test('forgot-password — link hidden in signup mode + collapses on toggle', async ({
-    page,
-  }) => {
+  test('forgot-password — link hidden in signup mode + collapses on toggle', async ({ page }) => {
     await mockAuth(page);
     await page.goto('/?e2e=auth-gate');
     await page.getByTestId('personal-auth-forgot-toggle').click();

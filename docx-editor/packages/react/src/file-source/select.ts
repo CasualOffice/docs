@@ -128,10 +128,10 @@ export async function chooseFileSource(opts: ChooseFileSourceOptions = {}): Prom
   try {
     const res = await fetchImpl(baseUrl + '/auth/me', { credentials: 'include' });
     if (res.ok) {
-      const user = (await res.json()) as UserWire;
+      const body = (await res.json()) as { user: UserWire };
       return new PersonalFileSource({
         baseUrl,
-        user: { userId: user.userId, displayName: user.displayName },
+        user: { id: body.user.id, username: body.user.username },
         fetchImpl,
       });
     }

@@ -28,8 +28,8 @@ function makeHarness() {
       respond = fn;
     },
     source: new PersonalFileSource({
-      baseUrl: 'http://gateway.test',
-      user: { userId: 'user_abc', displayName: 'Alex' },
+      baseUrl: 'http://collab.test',
+      user: { id: 7, username: 'alex' },
       fetchImpl: fetchImpl as unknown as typeof fetch,
     }),
   };
@@ -40,6 +40,18 @@ function jsonRes(status: number, body: unknown, headers?: Record<string, string>
     status,
     headers: { 'Content-Type': 'application/json', ...(headers ?? {}) },
   });
+}
+
+function file(over: Partial<FileSummaryWire>): FileSummaryWire {
+  return {
+    id: 'doc_a',
+    name: 'Report.docx',
+    size: 1024,
+    etag: 'v4',
+    createdAt: 1_700_000_000_000,
+    modifiedAt: 1_700_000_500_000,
+    ...over,
+  };
 }
 
 beforeEach(() => {
@@ -71,35 +83,35 @@ afterEach(() => {
 });
 
 describe('PersonalFileSource', () => {
-  it('exposes a personal kind + the display-name label', () => {
+  it('exposes a personal kind + the username label', () => {
     const { source } = makeHarness();
     expect(source.kind).toBe('personal');
-    expect(source.label).toBe('Alex');
+    expect(source.label).toBe('alex');
   });
 
-  it('list() maps FileSummaryWire[] into FileEntry[]', async () => {
+  it('list() unwraps { files } into FileEntry[]', async () => {
     const h = makeHarness();
-    const summaries: FileSummaryWire[] = [
-      {
-        docId: 'doc_a',
-        fileName: 'Report.docx',
-        version: 4,
-        savedAt: '2026-05-01T12:00:00Z',
+    const files: FileSummaryWire[] = [
+      file({
+        id: 'doc_a',
+        name: 'Report.docx',
+        etag: 'v4',
         size: 1024,
-      },
-      {
-        docId: 'doc_b',
-        fileName: 'Notes.docx',
-        version: 1,
-        savedAt: '2026-05-02T09:00:00Z',
+        modifiedAt: 1_700_000_000_000,
+      }),
+      file({
+        id: 'doc_b',
+        name: 'Notes.docx',
+        etag: 'v1',
         size: 99,
-      },
+        modifiedAt: 1_700_000_900_000,
+      }),
     ];
-    h.setRespond(() => jsonRes(200, summaries));
+    h.setRespond(() => jsonRes(200, { files }));
 
     const entries = await h.source.list();
     expect(h.calls).toHaveLength(1);
-    expect(h.calls[0].url).toBe('http://gateway.test/files');
+    expect(h.calls[0].url).toBe('http://collab.test/files');
     expect(h.calls[0].init?.credentials).toBe('include');
     expect(entries).toHaveLength(2);
     expect(entries[0]).toMatchObject({
@@ -108,12 +120,13 @@ describe('PersonalFileSource', () => {
       size: 1024,
       source: 'personal',
     });
-    expect(entries[0].modifiedAt).toBe(Date.parse('2026-05-01T12:00:00Z'));
-    // Provenance preserved.
-    expect((entries[0].meta as { version: number }).version).toBe(4);
+    // modifiedAt is already ms-since-epoch — passed through, not parsed.
+    expect(entries[0].modifiedAt).toBe(1_700_000_000_000);
+    // Provenance preserved (etag → meta.version).
+    expect((entries[0].meta as { version: string }).version).toBe('v4');
   });
 
-  it('open() streams .docx bytes and the ETag header', async () => {
+  it('open() streams .docx bytes and the etag header', async () => {
     const h = makeHarness();
     const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xab, 0xcd]);
     h.setRespond(() => {
@@ -121,68 +134,60 @@ describe('PersonalFileSource', () => {
         status: 200,
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'Content-Disposition': "attachment; filename*=UTF-8''Report.docx",
-          ETag: '4',
+          'Content-Disposition': 'attachment; filename="Report.docx"',
+          etag: 'v4',
         },
       });
     });
 
     const result = await h.source.open('doc_a');
-    expect(h.calls[0].url).toBe('http://gateway.test/files/doc_a');
+    expect(h.calls[0].url).toBe('http://collab.test/files/doc_a');
     expect(result.name).toBe('Report.docx');
-    expect(result.etag).toBe('4');
+    expect(result.etag).toBe('v4');
     expect(new Uint8Array(result.bytes)).toEqual(bytes);
   });
 
-  it('save() with id=null POSTs to /files and returns the minted id', async () => {
+  it('save() with id=null multipart-POSTs to /files and returns the minted id', async () => {
     const h = makeHarness();
-    const summary: FileSummaryWire = {
-      docId: 'doc_new',
-      fileName: 'Draft.docx',
-      version: 1,
-      savedAt: '2026-05-03T00:00:00Z',
-      size: 6,
-    };
-    h.setRespond(() => jsonRes(201, summary));
+    h.setRespond(() =>
+      jsonRes(201, { file: file({ id: 'doc_new', name: 'Draft.docx', etag: 'v1' }) })
+    );
 
     const result = await h.source.save(null, new Uint8Array([1, 2, 3, 4, 5, 6]).buffer, {
       name: 'Draft.docx',
     });
-    expect(h.calls[0].url).toBe('http://gateway.test/files');
+    expect(h.calls[0].url).toBe('http://collab.test/files');
     expect(h.calls[0].init?.method).toBe('POST');
-    expect((h.calls[0].init?.headers as Record<string, string>)['X-File-Name']).toBe('Draft.docx');
+    const form = h.calls[0].init?.body as FormData;
+    expect(form).toBeInstanceOf(FormData);
+    expect((form.get('file') as File).name).toBe('Draft.docx');
+    expect(form.get('name')).toBe('Draft.docx');
+    // Must NOT set Content-Type — the browser adds the multipart boundary.
+    expect(
+      (h.calls[0].init?.headers as Record<string, string> | undefined)?.['Content-Type']
+    ).toBeUndefined();
     expect(result.id).toBe('doc_new');
-    expect(result.etag).toBe('1');
+    expect(result.etag).toBe('v1');
   });
 
-  it('save() with an existing id PUTs to /files/:id/contents', async () => {
+  it('save() with an existing id POSTs raw bytes to /files/:id with If-Match', async () => {
     const h = makeHarness();
-    const summary: FileSummaryWire = {
-      docId: 'doc_a',
-      fileName: 'Report.docx',
-      version: 5,
-      savedAt: '2026-05-04T00:00:00Z',
-      size: 7,
-    };
-    h.setRespond(() => jsonRes(200, summary));
+    h.setRespond(() => jsonRes(200, { file: file({ id: 'doc_a', etag: 'v5' }) }));
 
-    const result = await h.source.save('doc_a', new Uint8Array([1, 2, 3, 4, 5, 6, 7]).buffer);
-    expect(h.calls[0].url).toBe('http://gateway.test/files/doc_a/contents');
-    expect(h.calls[0].init?.method).toBe('PUT');
-    expect(result.etag).toBe('5');
+    const result = await h.source.save('doc_a', new Uint8Array([1, 2, 3, 4, 5, 6, 7]).buffer, {
+      etag: 'v4',
+    });
+    expect(h.calls[0].url).toBe('http://collab.test/files/doc_a');
+    expect(h.calls[0].init?.method).toBe('POST');
+    const headers = h.calls[0].init?.headers as Record<string, string>;
+    expect(headers['Content-Type']).toBe('application/octet-stream');
+    expect(headers['If-Match']).toBe('v4');
+    expect(result.etag).toBe('v5');
   });
 
-  it('rename() PATCHes and updates the recent observer', async () => {
+  it('rename() PATCHes { name } (204) and updates the recent observer', async () => {
     const h = makeHarness();
-    // Seed the recent list first via list().
-    const summary: FileSummaryWire = {
-      docId: 'doc_a',
-      fileName: 'old.docx',
-      version: 1,
-      savedAt: '2026-05-01T00:00:00Z',
-      size: 1,
-    };
-    h.setRespond(() => jsonRes(200, [summary]));
+    h.setRespond(() => jsonRes(200, { files: [file({ id: 'doc_a', name: 'old.docx' })] }));
     await h.source.list();
 
     let observed: { id: string; name: string }[] = [];
@@ -190,20 +195,23 @@ describe('PersonalFileSource', () => {
       observed = entries.map((e) => ({ id: e.id, name: e.name }));
     });
 
-    h.setRespond(() => jsonRes(200, { fileName: 'new.docx' }));
+    h.setRespond(() => new Response(null, { status: 204 }));
     await h.source.rename('doc_a', 'new.docx');
-    expect(h.calls.at(-1)?.url).toBe('http://gateway.test/files/doc_a');
+    expect(h.calls.at(-1)?.url).toBe('http://collab.test/files/doc_a');
     expect(h.calls.at(-1)?.init?.method).toBe('PATCH');
+    expect(JSON.parse((h.calls.at(-1)?.init?.body as string) ?? '{}')).toEqual({
+      name: 'new.docx',
+    });
     expect(observed).toEqual([{ id: 'doc_a', name: 'new.docx' }]);
   });
 
   it('delete() DELETEs and removes the entry from the observer', async () => {
     const h = makeHarness();
-    const summaries: FileSummaryWire[] = [
-      { docId: 'doc_a', fileName: 'a.docx', version: 1, savedAt: '2026-05-01T00:00:00Z', size: 1 },
-      { docId: 'doc_b', fileName: 'b.docx', version: 1, savedAt: '2026-05-01T00:00:00Z', size: 1 },
-    ];
-    h.setRespond(() => jsonRes(200, summaries));
+    h.setRespond(() =>
+      jsonRes(200, {
+        files: [file({ id: 'doc_a', name: 'a.docx' }), file({ id: 'doc_b', name: 'b.docx' })],
+      })
+    );
     await h.source.list();
 
     let observed: string[] = [];
@@ -217,9 +225,9 @@ describe('PersonalFileSource', () => {
     expect(observed).toEqual(['doc_b']);
   });
 
-  it('throws PersonalFileSourceError with the gateway code on 4xx', async () => {
+  it('throws PersonalFileSourceError with the collab error code on 4xx', async () => {
     const h = makeHarness();
-    h.setRespond(() => jsonRes(404, { code: 'not_found', message: 'no such doc' }));
+    h.setRespond(() => jsonRes(404, { error: 'not-found' }));
     try {
       await h.source.open('missing');
       throw new Error('expected open() to throw');
@@ -227,64 +235,68 @@ describe('PersonalFileSource', () => {
       expect(err).toBeInstanceOf(PersonalFileSourceError);
       const e = err as PersonalFileSourceError;
       expect(e.status).toBe(404);
-      expect(e.code).toBe('not_found');
+      expect(e.code).toBe('not-found');
     }
   });
 
-  it('getProfile() GETs /auth/profile and returns the merged view', async () => {
+  it('getProfile() GETs /auth/profile and unwraps { profile }', async () => {
     const h = makeHarness();
     h.setRespond(() =>
       jsonRes(200, {
-        userId: 'user_abc',
-        email: 'a@example.com',
-        displayName: 'Alex',
-        timezone: 'America/Los_Angeles',
-        prefs: { showRulers: true },
+        user: { id: 7, username: 'alex', isAdmin: false, createdAt: 1 },
+        profile: {
+          displayName: 'Alex',
+          email: 'a@example.com',
+          timezone: 'America/Los_Angeles',
+          hasAvatar: false,
+          preferences: { showRulers: true },
+        },
       })
     );
     const profile = await h.source.getProfile();
-    expect(h.calls[0].url).toBe('http://gateway.test/auth/profile');
+    expect(h.calls[0].url).toBe('http://collab.test/auth/profile');
     expect(h.calls[0].init?.method).toBeUndefined(); // default GET
     expect(profile.displayName).toBe('Alex');
     expect(profile.timezone).toBe('America/Los_Angeles');
-    expect((profile.prefs as { showRulers: boolean })?.showRulers).toBe(true);
+    expect((profile.preferences as { showRulers: boolean })?.showRulers).toBe(true);
   });
 
-  it('updateProfile() PUTs the patch and returns the refreshed view', async () => {
+  it('updateProfile() PATCHes the patch and unwraps { profile }', async () => {
     const h = makeHarness();
     h.setRespond(() =>
       jsonRes(200, {
-        userId: 'user_abc',
-        email: 'a@example.com',
-        displayName: 'Alex Updated',
-        locale: 'de-DE',
+        profile: {
+          displayName: 'Alex Updated',
+          email: 'a@example.com',
+          timezone: 'UTC',
+          hasAvatar: false,
+          preferences: { locale: 'de-DE' },
+        },
       })
     );
     const profile = await h.source.updateProfile({
       displayName: 'Alex Updated',
-      locale: 'de-DE',
+      preferences: { locale: 'de-DE' },
     });
-    expect(h.calls[0].url).toBe('http://gateway.test/auth/profile');
-    expect(h.calls[0].init?.method).toBe('PUT');
+    expect(h.calls[0].url).toBe('http://collab.test/auth/profile');
+    expect(h.calls[0].init?.method).toBe('PATCH');
     const body = JSON.parse((h.calls[0].init?.body as string) ?? '{}');
-    expect(body).toEqual({ displayName: 'Alex Updated', locale: 'de-DE' });
+    expect(body).toEqual({ displayName: 'Alex Updated', preferences: { locale: 'de-DE' } });
     expect(profile.displayName).toBe('Alex Updated');
-    expect(profile.locale).toBe('de-DE');
+    expect((profile.preferences as { locale: string }).locale).toBe('de-DE');
   });
 
-  it('updateProfile() surfaces 400 errors with the gateway code', async () => {
+  it('updateProfile() surfaces 409 errors with the collab code', async () => {
     const h = makeHarness();
-    h.setRespond(() =>
-      jsonRes(400, { code: 'display_name', message: 'display name cannot be empty' })
-    );
+    h.setRespond(() => jsonRes(409, { error: 'conflict-or-invalid' }));
     try {
       await h.source.updateProfile({ displayName: '   ' });
       throw new Error('expected updateProfile to throw');
     } catch (err) {
       expect(err).toBeInstanceOf(PersonalFileSourceError);
       const e = err as PersonalFileSourceError;
-      expect(e.status).toBe(400);
-      expect(e.code).toBe('display_name');
+      expect(e.status).toBe(409);
+      expect(e.code).toBe('conflict-or-invalid');
     }
   });
 
