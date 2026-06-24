@@ -671,7 +671,11 @@ export function App() {
               setCurrentDocument(createEmptyDocument());
               setFileName(name);
               setStatus(`Could not open file: ${err}`);
-            });
+            })
+            // The document is now in the editor view (or we surfaced a load
+            // error) — drop the cold-start splash either way so it can never
+            // stick. Idempotent; no-op on web.
+            .finally(() => window.__deskApp__?.dismissBoot?.());
           return;
         }
         bridge
@@ -685,10 +689,15 @@ export function App() {
             setCurrentDocument(createEmptyDocument());
             setFileName(name);
             setStatus(`Could not open file: ${err}`);
-          });
+          })
+          // Dismiss the boot splash on both success and load-error paths.
+          .finally(() => window.__deskApp__?.dismissBoot?.());
       } else {
         setCurrentDocument(createEmptyDocument());
         setFileName('Untitled.docx');
+        // Blank/untitled window — nothing to load, so the editor is ready as
+        // soon as the empty doc is set. Drop the splash.
+        window.__deskApp__?.dismissBoot?.();
       }
       return;
     }
@@ -902,6 +911,20 @@ export function App() {
   // every PM transaction, and a stray click that discards work is
   // worse than one extra modal.
   const handleGoHome = useCallback(() => {
+    // Desktop (Casual Office) mode: the editor has no web home to go back to —
+    // the launcher window IS the home screen. So the title-bar logo acts as
+    // "back to launcher": bring that window forward and leave this document
+    // window exactly as it is (no confirm, no navigation, no state reset).
+    if (isDesktop) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const core = (window as any).__TAURI__?.core;
+        core?.invoke?.('focus_launcher_window').catch(() => undefined);
+      } catch {
+        /* best-effort — never break the editor on a missing/old shell */
+      }
+      return;
+    }
     const ok = window.confirm(
       'Leave this document and return to the home page?\n\nUnsaved changes will be lost.'
     );
@@ -915,7 +938,7 @@ export function App() {
     // Drives both the URL and the view; the route effect flips view='home'.
     if (!legacyForcedEditor) navigate('/home');
     setView('home');
-  }, [legacyForcedEditor]);
+  }, [isDesktop, legacyForcedEditor]);
 
   // Clickable variant of the title-bar logo. Sources the branded
   // `/logo.svg` from the demo's `public/` so the title-bar mark, the
@@ -923,12 +946,16 @@ export function App() {
   // exact same SVG — no more drift between hand-coded inline icons
   // and the branded asset.
   const renderLogo = useCallback(
-    () => (
+    () => {
+      // In Casual Office the logo brings the launcher window forward rather
+      // than navigating to a (nonexistent) web home, so label it accordingly.
+      const logoLabel = isDesktop ? 'Back to Casual Office' : 'Return to home';
+      return (
       <button
         type="button"
         onClick={handleGoHome}
-        title="Return to home"
-        aria-label="Return to home"
+        title={logoLabel}
+        aria-label={logoLabel}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -966,8 +993,9 @@ export function App() {
           aria-hidden="true"
         />
       </button>
-    ),
-    [handleGoHome]
+      );
+    },
+    [handleGoHome, isDesktop]
   );
 
   // Top-right area: just Share (Google Docs pattern). Open / Save / New
