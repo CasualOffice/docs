@@ -46,6 +46,11 @@ export default defineConfig(async () => {
   return {
     plugins: [react(), spaFallback404()],
     root: __dirname,
+    // katex is a transitive dep of the source-linked @casualoffice/docs
+    // workspace package — pre-bundle it so vite doesn't serve its ESM raw.
+    optimizeDeps: {
+      include: ['katex'],
+    },
     resolve: {
       // Force a single React + React-DOM copy across the workspace. After
       // examples/vite was added to the bun workspaces array, bun installed

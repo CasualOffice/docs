@@ -127,6 +127,15 @@ function convertNode(el: XmlElement): string {
         .join('');
       return `<m:m>${body}</m:m>`;
     }
+    case 'semantics': {
+      // KaTeX wraps the presentation MathML in <semantics> alongside an
+      // <annotation> carrying the LaTeX source — convert the presentation
+      // child, drop the annotation.
+      const pres = kids(el).find((c) => local(c.name) !== 'annotation');
+      return pres ? convertNode(pres) : '';
+    }
+    case 'annotation':
+      return '';
     case 'math':
       return convertChildren(el);
     default:

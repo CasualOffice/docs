@@ -69,6 +69,20 @@ describe('mathmlToOmml', () => {
     expect(omml).toContain('&lt;');
   });
 
+  test('unwraps KaTeX <semantics>/<annotation> wrapper', () => {
+    // KaTeX wraps presentation MathML in <semantics> with a LaTeX
+    // <annotation> sibling — the converter must use the presentation child
+    // and drop the annotation.
+    const katexLike = math(
+      '<semantics><mrow><mfrac><mi>a</mi><mi>b</mi></mfrac></mrow><annotation encoding="application/x-tex">\\frac{a}{b}</annotation></semantics>'
+    );
+    const omml = mathmlToOmml(katexLike)!;
+    expect(omml).toContain('<m:f>');
+    expect(omml).toContain('<m:t>a</m:t>');
+    expect(omml).not.toContain('x-tex');
+    expect(omml).not.toContain('frac{a}{b}');
+  });
+
   // The two converters are inverses for the common structures: an authored
   // equation (MathML) → OMML → back to MathML preserves the structure.
   test('round-trips structure through ommlToMathml', () => {
