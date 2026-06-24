@@ -18,6 +18,143 @@
 const url = new URL(window.location.href);
 const isDesktop = url.searchParams.get('desk') === '1';
 
+/**
+ * Desktop theme plumbing. The launcher owns the user's light/dark/system
+ * choice; it appends `&theme=<system|light|dark>` to this window's URL and
+ * fires a Tauri event `deskapp://theme` with `{ theme }` whenever the choice
+ * changes at runtime. We centralise all of that here so the React app only
+ * has to listen for one DOM CustomEvent (`deskapp:theme`).
+ *
+ * What this does, top-level desktop windows only:
+ *  - parses `theme` from the URL (default 'system') and stashes it on
+ *    `window.__deskApp__.themeMode`;
+ *  - sets a page-level hint immediately (`<html data-theme>` +
+ *    `style.colorScheme`) so the first paint matches before React mounts;
+ *  - dispatches a `window` CustomEvent `'deskapp:theme'` with
+ *    `detail:{ mode, resolved }` on init and on every change;
+ *  - subscribes to the Tauri `deskapp://theme` event for live launcher
+ *    changes, and to matchMedia when mode === 'system'.
+ *
+ * Everything is wrapped defensively: a missing/old shell, web/iframe mode,
+ * or an absent matchMedia must never throw and must be a no-op.
+ */
+function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
+  try {
+    if (!isDesktop) return;
+    if (window.parent !== window) return; // top-level Tauri windows only
+    if (typeof document === 'undefined') return;
+
+    const VALID = new Set(['system', 'light', 'dark']);
+    const rawMode = url.searchParams.get('theme');
+    let mode: 'system' | 'light' | 'dark' =
+      rawMode && VALID.has(rawMode) ? (rawMode as 'system' | 'light' | 'dark') : 'system';
+
+    const mql =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)')
+        : null;
+
+    const resolve = (m: 'system' | 'light' | 'dark'): 'light' | 'dark' => {
+      if (m === 'light' || m === 'dark') return m;
+      return mql?.matches ? 'dark' : 'light';
+    };
+
+    let lastResolved: 'light' | 'dark' | null = null;
+    let lastMode: 'system' | 'light' | 'dark' | null = null;
+
+    const apply = () => {
+      const resolved = resolve(mode);
+      // Page-level hint for an instant, flash-free first paint. The
+      // DocxEditor reads `data-theme` (and seeds from this localStorage key
+      // on mount), so writing both makes the editor adopt the launcher's
+      // choice without a dedicated prop. `system` maps to the editor's
+      // 'auto' bucket.
+      try {
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.style.colorScheme = resolved;
+        window.localStorage.setItem(
+          'casual-editor:color-theme',
+          mode === 'system' ? 'auto' : mode,
+        );
+      } catch {
+        /* dataset / localStorage may be unavailable; hint is best-effort */
+      }
+      // Mirror onto the bridge so App.tsx can read the initial mode.
+      try {
+        const b = getBridge();
+        if (b) b.themeMode = mode;
+      } catch {
+        /* best-effort */
+      }
+      // Only fire when something actually changed (mode OR resolved system
+      // value) so we don't spam listeners on redundant matchMedia ticks.
+      if (mode === lastMode && resolved === lastResolved) return;
+      lastMode = mode;
+      lastResolved = resolved;
+      try {
+        window.dispatchEvent(
+          new CustomEvent('deskapp:theme', { detail: { mode, resolved } }),
+        );
+      } catch {
+        /* CustomEvent unsupported — nothing more we can do */
+      }
+    };
+
+    // Initial application + first dispatch.
+    apply();
+
+    // Live launcher changes over the Tauri event bus.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tauriEvent = (window as any).__TAURI__?.event;
+      if (tauriEvent?.listen) {
+        void tauriEvent.listen(
+          'deskapp://theme',
+          (e: { payload?: { theme?: string } }) => {
+            const next = e?.payload?.theme;
+            if (next && VALID.has(next)) {
+              mode = next as 'system' | 'light' | 'dark';
+              apply();
+            }
+          },
+        );
+      }
+    } catch {
+      /* no Tauri event bus (web/iframe) — launcher live-sync just won't run */
+    }
+
+    // When following the system, re-dispatch on OS theme flips.
+    if (mql) {
+      const onSystemChange = () => {
+        if (mode === 'system') apply();
+      };
+      if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
+      else if (mql.addListener) mql.addListener(onSystemChange); // older WebKit
+    }
+  } catch {
+    /* theme plumbing must never break editor boot */
+  }
+}
+
+// Offline fonts (desktop only). The web build loads 'Material Symbols Outlined'
+// from the Google Fonts CDN; the Tauri app has no network, so we declare the
+// icon font from a locally-bundled woff2 instead. The file is served by the
+// desktop shell at `./fonts/` (relative to the editor's `--base` mount under
+// /docx/), NOT shipped in the web bundle. Body text already uses system fonts,
+// so only the icon font needs bundling. Mirrors the sheets bootstrap.
+if (
+  typeof window !== 'undefined' &&
+  isDesktop &&
+  !document.getElementById('__deskapp_fonts__')
+) {
+  const css = `
+@font-face{font-family:'Material Symbols Outlined';font-style:normal;font-weight:100 700;font-display:block;src:local('Material Symbols Outlined'),url('./fonts/material-symbols-outlined.woff2') format('woff2');}`;
+  const style = document.createElement('style');
+  style.id = '__deskapp_fonts__';
+  style.textContent = css;
+  (document.head || document.documentElement).appendChild(style);
+}
+
 if (isDesktop) {
   const isTopLevel = window.parent === window;
   let filePath = url.searchParams.get('file');
@@ -27,11 +164,25 @@ if (isDesktop) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__TAURI__?.core;
 
+  // File kind inferred from the opened path's extension. The shell now also
+  // routes .txt/.md/.markdown into this editor; those open as plain text /
+  // markdown in the source+preview surface instead of going through the
+  // DOCX zip parser. 'docx' covers everything else (.docx/.odt/…).
+  const fileKindFor = (p: string | null): 'docx' | 'markdown' | 'text' => {
+    const ext = (p ?? '').split('.').pop()?.toLowerCase() ?? '';
+    if (ext === 'md' || ext === 'markdown') return 'markdown';
+    if (ext === 'txt') return 'text';
+    return 'docx';
+  };
+
   let bridge:
     | {
         isDesktop: true;
         filePath: string | null;
+        fileKind: 'docx' | 'markdown' | 'text';
+        themeMode?: 'system' | 'light' | 'dark';
         loadDocument(p?: string): Promise<ArrayBuffer>;
+        loadText?(p?: string): Promise<string>;
         save(bytes: ArrayBuffer): Promise<string | null>;
         saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
       }
@@ -60,8 +211,11 @@ if (isDesktop) {
      * Write a buffer to disk in 1 MB chunks. Mirrors loadDocument's
      * chunked-read pattern — each Tauri IPC call stays well below
      * the JSON-number-array truncation threshold so big files round-
-     * trip correctly. The temp-file + atomic-rename pattern is a
-     * future improvement; today we truncate-then-overwrite in place.
+     * trip correctly. The Rust side writes chunks to a temp file and
+     * only swaps it into place on `commit_save_document` (atomic
+     * rename), so a half-written file never clobbers the original.
+     * Any chunk OR the commit throwing propagates so the editor
+     * reports a failed save — never swallow it here.
      */
     async function chunkedWrite(path: string, buf: ArrayBuffer) {
       await inv('begin_save_document', { path });
@@ -75,6 +229,8 @@ if (isDesktop) {
           bytes: Array.from(slice),
         });
       }
+      // Atomic commit: swaps the temp file into the target path.
+      await inv('commit_save_document', { path });
     }
 
     async function updateWindowTitleFromPath(newPath: string) {
@@ -88,31 +244,79 @@ if (isDesktop) {
         /* best-effort */
       }
     }
+
+    // Best-effort dirty tracking for the Rust close-guard. We track the
+    // current dirty state in a module-local boolean so we only fire the
+    // transition (clean→dirty / dirty→clean) once and never spam IPC.
+    // The Rust `set_window_dirty` command infers the window from the
+    // caller. All calls are best-effort and must never throw.
+    let isDirty = false;
+    function setWindowDirty(dirty: boolean) {
+      if (dirty === isDirty) return;
+      isDirty = dirty;
+      try {
+        void inv('set_window_dirty', { dirty }).catch(() => undefined);
+      } catch {
+        /* best-effort */
+      }
+    }
+    // Mark dirty on any user edit. Capture phase so we see the event even
+    // if the editor stops propagation. Heuristic: any input = dirty.
+    const markDirty = () => setWindowDirty(true);
+    document.addEventListener('input', markDirty, true);
+    document.addEventListener('beforeinput', markDirty, true);
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        // Only printable / editing keys imply a content change; ignore
+        // pure navigation / modifier chords so we don't flag dirty on
+        // Ctrl+S, arrow keys, etc.
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
+          markDirty();
+        }
+      },
+      true,
+    );
+
+    // Chunked read in 1 MB slices to avoid IPC payload truncation for big
+    // files (the default JSON number-array path silently drops the file's
+    // tail past a few MB, breaking JSZip's EOCD lookup). Shared by the DOCX
+    // and the text/markdown load paths.
+    async function readAllBytes(path: string): Promise<Uint8Array> {
+      const total = (await inv('document_size', { path })) as number;
+      const CHUNK = 1 << 20;
+      const out = new Uint8Array(total);
+      let offset = 0;
+      while (offset < total) {
+        const length = Math.min(CHUNK, total - offset);
+        const chunk = asArrayBuffer(
+          await inv('read_document_chunk', { path, offset, length }),
+        );
+        out.set(new Uint8Array(chunk), offset);
+        offset += chunk.byteLength;
+        if (chunk.byteLength === 0) break;
+      }
+      return out;
+    }
+
     bridge = {
       isDesktop: true,
       get filePath() { return filePath; },
       // @ts-expect-error setter on getter via Object.defineProperty pattern
       set filePath(v: string | null) { filePath = v; },
+      get fileKind() { return fileKindFor(filePath); },
+      async loadText(p?: string): Promise<string> {
+        const path = p ?? filePath;
+        if (!path) throw new Error('no file path bound to this window');
+        const bytes = await readAllBytes(path);
+        // .txt / .md are decoded as UTF-8 text — no zip/magic-byte gate.
+        return new TextDecoder('utf-8').decode(bytes);
+      },
       async loadDocument(p?: string): Promise<ArrayBuffer> {
         const path = p ?? filePath;
         if (!path) throw new Error('no file path bound to this window');
-        // Chunked read in 1 MB slices to avoid IPC payload truncation
-        // for big files (the default JSON number-array path silently
-        // drops the file's tail past a few MB, breaking JSZip's EOCD
-        // lookup).
-        const total = (await inv('document_size', { path })) as number;
-        const CHUNK = 1 << 20;
-        const out = new Uint8Array(total);
-        let offset = 0;
-        while (offset < total) {
-          const length = Math.min(CHUNK, total - offset);
-          const chunk = asArrayBuffer(
-            await inv('read_document_chunk', { path, offset, length }),
-          );
-          out.set(new Uint8Array(chunk), offset);
-          offset += chunk.byteLength;
-          if (chunk.byteLength === 0) break;
-        }
+        const out = await readAllBytes(path);
         // Magic-byte sniff: a .docx is just a renamed zip and must start
         // with the local-file-header signature PK. Anything
         // else — an OLE compound file (encrypted .docx or legacy .doc
@@ -142,7 +346,13 @@ if (isDesktop) {
       },
       async save(bytes: ArrayBuffer): Promise<string | null> {
         if (filePath) {
-          await chunkedWrite(filePath, bytes);
+          try {
+            await chunkedWrite(filePath, bytes);
+          } catch (err) {
+            console.error('[deskApp] save failed for', filePath, err);
+            throw err;
+          }
+          setWindowDirty(false);
           return filePath;
         }
         return bridge!.saveAs('Untitled.docx', bytes);
@@ -150,7 +360,12 @@ if (isDesktop) {
       async saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null> {
         const newPath = (await inv('pick_save_path', { suggestedName })) as string | null;
         if (!newPath) return null;
-        await chunkedWrite(newPath, bytes);
+        try {
+          await chunkedWrite(newPath, bytes);
+        } catch (err) {
+          console.error('[deskApp] saveAs failed for', newPath, err);
+          throw err;
+        }
         // Bookkeeping that save_document_as used to do for us.
         try {
           await inv('add_recent_file', { path: newPath });
@@ -158,6 +373,7 @@ if (isDesktop) {
           /* recents persistence is best-effort */
         }
         filePath = newPath;
+        setWindowDirty(false);
         await updateWindowTitleFromPath(newPath);
         return newPath;
       },
@@ -208,9 +424,17 @@ if (isDesktop) {
     bridge = {
       isDesktop: true,
       filePath,
+      get fileKind() { return fileKindFor(filePath); },
       async loadDocument(p?: string): Promise<ArrayBuffer> {
         const bytes = await request<number[]>('loadDocument', { path: p ?? filePath });
         return new Uint8Array(bytes).buffer;
+      },
+      async loadText(p?: string): Promise<string> {
+        // Reuse the same byte-fetch channel; decode client-side. The
+        // launcher's `loadDocument` handler returns raw file bytes, so a
+        // .txt/.md round-trips fine without a dedicated host command.
+        const bytes = await request<number[]>('loadDocument', { path: p ?? filePath });
+        return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
       },
       async save(bytes: ArrayBuffer): Promise<string | null> {
         const written = await request<string | null>('save', {
@@ -233,6 +457,11 @@ if (isDesktop) {
   if (bridge) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__deskApp__ = bridge;
+
+    // Theme plumbing — top-level desktop windows only (guarded inside).
+    // Seeds the page-level light/dark hint + bridge.themeMode and keeps
+    // them in sync with the launcher's `deskapp://theme` events.
+    setupDeskTheme(() => bridge as unknown as Record<string, unknown>);
 
     // Ctrl/Cmd-H — focus the launcher window. Convention: H for "Home".
     // Works only in top-level mode (we have direct __TAURI__.core
