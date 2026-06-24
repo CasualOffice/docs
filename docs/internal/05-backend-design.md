@@ -1,5 +1,14 @@
 # 05 — Backend design: y-websocket gateway in Go
 
+> **Legacy / historical.** This document describes the in-repo **Go**
+> y-websocket gateway under `backend/`. That gateway is **superseded** by the
+> shared **Node/TypeScript** `@casualoffice/collab` server (Hocuspocus + Yjs on
+> Fastify), which now owns real-time sync, presence, and snapshots. The Go
+> gateway still builds in CI but receives no new sync/persistence work. For the
+> current backend see [23-collab-server-migration](23-collab-server-migration.md)
+> and [`ARCHITECTURE.md`](../ARCHITECTURE.md). The design below is kept as a
+> record of the legacy gateway.
+
 > Resolves the open backend questions from `00-overview.md`.
 > Originally written before any Go code existed, to lock the design
 > so future work didn't re-derive these decisions.

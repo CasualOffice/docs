@@ -8,6 +8,14 @@ If you're new to the project, start with §[Quickstart](#quickstart).
 For production hosting (TLS, reverse proxy, scale), jump to
 §[Production hosting](#production-hosting).
 
+> **Backend note.** Where this guide describes the **Go** gateway / `backend/`
+> image, that is the legacy in-repo gateway, now **superseded** by the shared
+> **Node/TypeScript** `@casualoffice/collab` server (Hocuspocus + Yjs on Fastify).
+> The deployment shapes still apply; the collab service is run from the separate
+> `@casualoffice/collab` repo. See
+> [internal/23-collab-server-migration](internal/23-collab-server-migration.md)
+> and [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
 ---
 
 ## Quickstart
