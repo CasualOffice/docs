@@ -5,6 +5,14 @@ content drops, no divergence, low edit latency on large docs, fast sync for new
 peers, and version history. "Everything in place." This is the design + sequenced
 plan. Grounded in the current code, not from memory.
 
+> **Backend note.** This doc analyzes the legacy in-repo **Go** gateway
+> (`backend/`), which is **superseded** by the shared **Node/TypeScript**
+> `@casualoffice/collab` server (Hocuspocus + Yjs on Fastify). The consistency,
+> large-doc-latency, server-snapshot, and versioning concerns below remain valid
+> design drivers, but the implementation target is now the collab server, not
+> `backend/`. See [23-collab-server-migration](23-collab-server-migration.md) and
+> [`ARCHITECTURE.md`](../ARCHITECTURE.md).
+
 ## Where we are (verified)
 
 - **Edit transport is already incremental.** Editing flows PM transaction → Yjs

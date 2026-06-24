@@ -2,7 +2,17 @@
 
 ## Goal
 
-A real-time collaborative `.docx` editor service. Browser-side: a fork of `eigenpal/docx-editor` (MIT, React + ProseMirror with OOXML-preserving model). Backend: a **stateless** Go service providing Yjs-CRDT sync, presence, and snapshot generation. Document persistence is delegated to a pluggable host integration (inline for v0; WOPI / JWT-API later).
+A real-time collaborative `.docx` editor service. Browser-side: a fork of `eigenpal/docx-editor` (MIT, React + ProseMirror with OOXML-preserving model). Backend: the shared **Node/TypeScript** collab server **`@casualoffice/collab`** (Hocuspocus + Yjs on Fastify, Apache-2.0) — a stateless, format-agnostic server, also powering Casual Sheets, that holds one authoritative `Y.Doc` per room and produces snapshots/versioning. Document persistence is a pluggable host backend (`memory` / `local` / `s3` / `postgres` / WOPI).
+
+> **Backend note (current).** Real-time sync/presence/snapshots are owned by the Node
+> `@casualoffice/collab` server (Hocuspocus + Yjs on Fastify); the editor connects via
+> `HocuspocusProvider` (`packages/react/src/collab/useCollab.ts`). A legacy in-repo **Go**
+> y-websocket gateway under `backend/` predates this and is **superseded** — it still builds
+> in CI but new sync/persistence work goes to the collab server, not `backend/`. The
+> "Architecture (committed)", "Decisions (locked, 2026-05-16)", "Resolved questions", and the
+> Go-specific milestone rows **below are a historical record of that legacy gateway**. For the
+> current backend see [23-collab-server-migration](23-collab-server-migration.md) and
+> [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ## Why this shape
 
@@ -88,7 +98,7 @@ This shifts the durability story entirely to the host. We become a pure realtime
 |---|---|---|
 | **Released version** | unreleased (M1 backend + client-push snapshot shipped) | **v0.1.0** — first version-bumped release |
 | **Editor base** | Fork of `eigenpal/docx-editor` (MIT) + custom layout-painter | Univer OSS 0.24.x (Apache-2.0) + custom Office-style chrome |
-| **CRDT** | Yjs + `y-prosemirror`, own Go y-websocket gateway | Yjs + Hocuspocus (Node) |
+| **CRDT** | Yjs + `y-prosemirror`, shared Node `@casualoffice/collab` (Hocuspocus + Yjs) | Yjs + Hocuspocus (Node) — same server |
 | **Persistence** | `host.Integration` interface; `inline` + per-user `personal` (Phase C) + `wopi` (Phase D) all shipped | Same interface shape; **4 backends shipped** — `memory` · `local` · `s3` (AWS/MinIO/R2/B2) · `postgres` |
 | **WOPI / JWT** | **Shipped** (Phase D) — WOPI client, JWKS JWT verifier, embed redirect, `WopiFileSource`, `host.Locker` Lock/Unlock/RefreshLock; Personal auth (Phase C) JWT/session shipped too | **Shipped** — CheckFileInfo / GetFile / PutFile + JWT claims (role / permissions / features / per-file lateral guard) |
 | **Admin panel** | `casual-docs` CLI + `/admin/users` routes (Phase C Batch 5) | Shipped — `/admin`, env-gated, 7 sections (branding · storage · networking · room limits · auth · webhooks · base path) |

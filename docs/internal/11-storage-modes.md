@@ -9,6 +9,14 @@ the two products stay legible side-by-side; the differences sit in
 the language stack (Go gateway vs Bun/Fastify) and the file format
 (`.docx` vs `.xlsx`), not the deployment story.
 
+> **Backend note.** References below to a **Go gateway** describe the legacy
+> in-repo `backend/`, now **superseded** by the shared **Node/TypeScript**
+> `@casualoffice/collab` server (Hocuspocus + Yjs on Fastify). The three storage
+> modes and the `host.Integration` contract carry over unchanged; only the server
+> that hosts them differs. See
+> [23-collab-server-migration](23-collab-server-migration.md) and
+> [`ARCHITECTURE.md`](../ARCHITECTURE.md).
+
 ---
 
 ## The three modes
