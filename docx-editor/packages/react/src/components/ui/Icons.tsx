@@ -911,6 +911,14 @@ export function IconHistory(props: IconProps) {
   );
 }
 
+export function IconStar(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M480-272 314-172q-15 9-32-3t-13-30l44-189-147-127q-14-12-8.5-30t24.5-20l194-17 75-179q7-17 26.5-17t26.5 17l75 179 194 17q19 2 24.5 20t-8.5 30L654-394l44 189q4 18-13 30t-32 3L480-272Z" />
+    </SvgIcon>
+  );
+}
+
 export function IconLightMode(props: IconProps) {
   return (
     <SvgIcon {...props}>
@@ -1066,6 +1074,7 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   info: IconInfo,
   bug_report: IconBugReport,
   history: IconHistory,
+  star: IconStar,
   // Theme toggle (title bar)
   light_mode: IconLightMode,
   dark_mode: IconDarkMode,
