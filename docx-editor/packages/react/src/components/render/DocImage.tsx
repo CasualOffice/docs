@@ -160,8 +160,7 @@ export function DocImage({
             : image.title || image.alt || 'Image'
         }
       >
-        [{label}]
-        {image.filename && <br />}
+        [{label}]{image.filename && <br />}
         {image.filename && <small>{image.filename}</small>}
       </span>
     );

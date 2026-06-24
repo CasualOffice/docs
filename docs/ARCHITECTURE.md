@@ -40,7 +40,7 @@ System design for Casual Editor. For deployment notes, see [`DEPLOYMENT.md`](./D
                                    │ WebSocket  /doc/:docId
                                    │ HTTP       /api/docs
                                    ▼
-┌──────────────────────────── Go gateway (backend/) ───────────────────────────┐
+┌─── LEGACY Go gateway (backend/) — superseded by the Node CasualOffice/collab ─┐
 │                                                                              │
 │  REST + static                                                               │
 │  ├─ GET  /                            editor SPA bundle                      │
@@ -135,14 +135,14 @@ backend/
 
 ## Key decisions
 
-| Decision | Value | Why |
-|---|---|---|
-| Editor model | OOXML-preserving ProseMirror schema | Round-trip fidelity matters more than schema purity |
-| Layout | Custom layout-painter, separate from `toDOM` | Word-style pagination, headers/footers, section breaks |
-| CRDT | Yjs + `y-prosemirror` | Documented integration, mature, fast convergence |
-| Transport | y-websocket protocol | Standard for Yjs over WS — works with Hocuspocus, custom servers, etc. |
-| Backend language | Go | IO-bound workload, mature WS ecosystem |
-| Backend state | None on disk; in-memory Y.Doc per active room | Stateless = trivial to scale + restart cleanly |
-| Persistence | Delegated to host integration | inline / WOPI / JWT-API — keeps the gateway storage-agnostic |
-| Editor toolchain | Bun | Fast install, fast test, native TS |
-| Test runner | Playwright (Chromium) | 836 e2e tests on the editor, plus `go test -race ./...` on the backend; both gate every push |
+| Decision         | Value                                         | Why                                                                                          |
+| ---------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Editor model     | OOXML-preserving ProseMirror schema           | Round-trip fidelity matters more than schema purity                                          |
+| Layout           | Custom layout-painter, separate from `toDOM`  | Word-style pagination, headers/footers, section breaks                                       |
+| CRDT             | Yjs + `y-prosemirror`                         | Documented integration, mature, fast convergence                                             |
+| Transport        | y-websocket protocol                          | Standard for Yjs over WS — works with Hocuspocus, custom servers, etc.                       |
+| Backend language | Go                                            | IO-bound workload, mature WS ecosystem                                                       |
+| Backend state    | None on disk; in-memory Y.Doc per active room | Stateless = trivial to scale + restart cleanly                                               |
+| Persistence      | Delegated to host integration                 | inline / WOPI / JWT-API — keeps the gateway storage-agnostic                                 |
+| Editor toolchain | Bun                                           | Fast install, fast test, native TS                                                           |
+| Test runner      | Playwright (Chromium)                         | 836 e2e tests on the editor, plus `go test -race ./...` on the backend; both gate every push |
