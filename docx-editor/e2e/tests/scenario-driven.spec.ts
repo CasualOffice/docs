@@ -114,6 +114,10 @@ test.describe('Formatting Suite', () => {
 
 test.describe('Keyboard Shortcuts Suite', () => {
   test('run all shortcut scenarios', async ({ page }) => {
+    // Each shortcut scenario does a full page nav (goto + waitForReady + newDocument).
+    // On a 2-vCPU CI runner under load, 5 scenarios × ~8 s = 40 s — safely above the
+    // 30 s default.  Give it 90 s so the test never races the outer timeout.
+    test.setTimeout(90_000);
     const scenarioTest = createScenarioTest(page);
 
     // Collect all scenarios tagged with 'shortcut'

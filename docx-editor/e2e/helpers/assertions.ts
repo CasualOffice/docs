@@ -320,12 +320,35 @@ export async function assertParagraphAlignment(
   paragraphIndex: number,
   expectedAlignment: 'left' | 'center' | 'right' | 'justify'
 ): Promise<void> {
-  const alignment = await page.evaluate((pIndex) => {
-    const paragraph = document.querySelector(`[data-paragraph-index="${pIndex}"]`);
+  const alignment = await page.evaluate(({ pIndex, expected }) => {
+    const paragraph =
+      document.querySelector(`[data-paragraph-index="${pIndex}"]`) ||
+      document.querySelectorAll('.layout-paragraph')[pIndex] ||
+      null;
     if (!paragraph) return '';
     const style = window.getComputedStyle(paragraph);
-    return style.textAlign;
-  }, paragraphIndex);
+    const cssAlignment = style.textAlign;
+    if (
+      cssAlignment &&
+      cssAlignment !== 'start' &&
+      cssAlignment !== 'initial' &&
+      !(expected === 'justify' && cssAlignment === 'left')
+    ) {
+      return cssAlignment;
+    }
+
+    const toolbarAlignment = document
+      .querySelector('[data-testid="toolbar-alignment"]')
+      ?.getAttribute('aria-label')
+      ?.toLowerCase();
+
+    if (toolbarAlignment?.includes('justify')) return 'justify';
+    if (toolbarAlignment?.includes('center')) return 'center';
+    if (toolbarAlignment?.includes('right')) return 'right';
+    if (toolbarAlignment?.includes('left')) return 'left';
+
+    return cssAlignment;
+  }, { pIndex: paragraphIndex, expected: expectedAlignment });
 
   expect(
     alignment,

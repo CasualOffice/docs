@@ -17,7 +17,14 @@
  * when they do not contribute to flow height.
  */
 
-import type { FlowBlock, ImageRun, Measure, PageMargins, TableBlock } from '../layout-engine/types';
+import type {
+  FlowBlock,
+  ImageRun,
+  Measure,
+  PageMargins,
+  TableBlock,
+  TextBoxBlock,
+} from '../layout-engine/types';
 import type { HeaderFooter, StyleDefinitions, Theme } from '../types/document';
 import type { HeaderFooterContent } from '../layout-painter/renderPage';
 import { headerFooterToProseDoc } from '../prosemirror/conversion/toProseDoc';
@@ -204,6 +211,48 @@ export function resolveHeaderFooterVisualTop(
   return paragraphY;
 }
 
+/** True when a header/footer textbox is floated by an anchor (don't stack it). */
+function isAnchoredTextBox(block: TextBoxBlock): boolean {
+  const a = block.anchor;
+  return (
+    !!a && (a.offsetH != null || a.offsetV != null || a.relFromH != null || a.relFromV != null)
+  );
+}
+
+/**
+ * Header/footer flow-Y of an anchored textbox's top, mirroring
+ * `resolveHeaderFooterVisualTop` for images. Anchor offsets are already pixels.
+ */
+export function resolveHeaderFooterTextBoxTop(
+  anchor: NonNullable<TextBoxBlock['anchor']>,
+  flowHeight: number,
+  metrics: HeaderFooterMetrics
+): number {
+  const flowTop =
+    metrics.section === 'header'
+      ? (metrics.margins.header ?? 48)
+      : metrics.pageSize.h - (metrics.margins.footer ?? 48) - flowHeight;
+  const offsetPx = anchor.offsetV;
+  if (anchor.relFromV === 'page' && offsetPx != null) return offsetPx - flowTop;
+  if (anchor.relFromV === 'margin' && offsetPx != null)
+    return metrics.margins.top + offsetPx - flowTop;
+  return offsetPx ?? 0;
+}
+
+/** Header/footer flow-X (content-area-relative) of an anchored textbox. */
+export function resolveHeaderFooterTextBoxLeft(
+  anchor: NonNullable<TextBoxBlock['anchor']>,
+  metrics: HeaderFooterMetrics
+): number {
+  const offsetPx = anchor.offsetH;
+  if (offsetPx == null) return 0;
+  // Header content box is inset by margins.left, so a page-relative offset
+  // becomes content-relative by subtracting the left margin; margin/column
+  // relative offsets are already content-relative.
+  if (anchor.relFromH === 'page') return offsetPx - metrics.margins.left;
+  return offsetPx;
+}
+
 export function calculateHeaderFooterVisualBounds(
   blocks: FlowBlock[],
   measures: Measure[],
@@ -244,10 +293,24 @@ export function calculateHeaderFooterVisualBounds(
       visualBottom = Math.max(visualBottom, blockBottomY);
       cursorY = blockBottomY;
     } else if (block.kind === 'textBox' && measure.kind === 'textBox') {
-      const blockBottomY = cursorY + measure.height;
-      visualTop = Math.min(visualTop, cursorY);
-      visualBottom = Math.max(visualBottom, blockBottomY);
-      cursorY = blockBottomY;
+      if (isAnchoredTextBox(block as TextBoxBlock)) {
+        // Floated (anchored) — contributes its ABSOLUTE extent to the bounds
+        // but does NOT take flow space. Stacking these (the old behavior) summed
+        // all heights, inflating the header so the top margin expanded and the
+        // body was pushed onto extra pages.
+        const top = resolveHeaderFooterTextBoxTop(
+          (block as TextBoxBlock).anchor!,
+          flowHeight,
+          metrics
+        );
+        visualTop = Math.min(visualTop, top);
+        visualBottom = Math.max(visualBottom, top + measure.height);
+      } else {
+        const blockBottomY = cursorY + measure.height;
+        visualTop = Math.min(visualTop, cursorY);
+        visualBottom = Math.max(visualBottom, blockBottomY);
+        cursorY = blockBottomY;
+      }
     }
   }
 

@@ -70,6 +70,9 @@ export {
   type FilePropertiesValue,
 } from './FilePropertiesDialog';
 
+// Tools → Word count dialog (Ctrl+Shift+C)
+export { WordCountDialog, type WordCountDialogProps, type WordCountStats } from './WordCountDialog';
+
 // Keyboard Shortcuts dialog for showing all shortcuts
 export {
   KeyboardShortcutsDialog,

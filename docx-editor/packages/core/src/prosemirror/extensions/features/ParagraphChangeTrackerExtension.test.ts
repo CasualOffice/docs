@@ -10,12 +10,15 @@ import {
   getChangedParagraphIds,
   hasStructuralChanges,
   hasUntrackedChanges,
+  getChangedBlockTypes,
+  hasNonParagraphBlockChanges,
   clearTrackedChanges,
   ParagraphChangeTrackerExtension,
 } from './ParagraphChangeTrackerExtension';
 import { ExtensionManager } from '../ExtensionManager';
 
-// Minimal schema with paraId support
+// Minimal schema with paraId support plus a non-paragraph block node
+// (`image`) used by the block-type tracking tests.
 const schema = new Schema({
   nodes: {
     doc: { content: 'block+' },
@@ -27,6 +30,12 @@ const schema = new Schema({
         textId: { default: null },
       },
       toDOM: () => ['p', 0],
+    },
+    image: {
+      group: 'block',
+      atom: true,
+      attrs: { src: { default: '' } },
+      toDOM: () => ['img'],
     },
     text: { group: 'inline' },
   },
@@ -302,6 +311,56 @@ describe('ParagraphChangeTrackerExtension', () => {
       const changed = getChangedParagraphIds(state);
       expect(changed.has('P1')).toBe(false);
       expect(changed.has('P2')).toBe(true);
+    });
+  });
+
+  describe('non-paragraph block tracking (drawings / images / tables)', () => {
+    test('inserting an image block surfaces in changedBlockTypes', () => {
+      let state = createState([{ text: 'Hello', paraId: 'P1' }]);
+      // Insert an image block at the start of the doc so the
+      // transaction touches a block-level non-paragraph node.
+      const imgNode = schema.node('image', { src: 'a.png' });
+      const tr = state.tr.insert(0, imgNode);
+      state = state.apply(tr);
+
+      expect(getChangedBlockTypes(state).has('image')).toBe(true);
+      expect(hasNonParagraphBlockChanges(state)).toBe(true);
+      // Structural-change is also true because the paragraph count
+      // changed surroundings (image is a sibling block).
+      expect(hasStructuralChanges(state)).toBe(false);
+    });
+
+    test('deleting an image block surfaces in changedBlockTypes', () => {
+      const initialDoc = schema.node('doc', null, [
+        schema.node('image', { src: 'a.png' }),
+        schema.node('paragraph', { paraId: 'P1' }, [schema.text('After')]),
+      ]);
+      let state = EditorState.create({ doc: initialDoc, plugins: [plugin] });
+      const imgEnd = initialDoc.firstChild!.nodeSize;
+      state = state.apply(state.tr.delete(0, imgEnd));
+
+      expect(getChangedBlockTypes(state).has('image')).toBe(true);
+      expect(hasNonParagraphBlockChanges(state)).toBe(true);
+    });
+
+    test('plain text edit does NOT register a non-paragraph block change', () => {
+      let state = createState([{ text: 'Hello', paraId: 'P1' }]);
+      state = typeText(state, 'X', 1);
+
+      expect(hasNonParagraphBlockChanges(state)).toBe(false);
+      expect(getChangedBlockTypes(state).size).toBe(0);
+      expect(getChangedParagraphIds(state).has('P1')).toBe(true);
+    });
+
+    test('clearTrackedChanges resets changedBlockTypes', () => {
+      let state = createState([{ text: 'Hello', paraId: 'P1' }]);
+      const imgNode = schema.node('image', { src: 'a.png' });
+      state = state.apply(state.tr.insert(0, imgNode));
+      expect(hasNonParagraphBlockChanges(state)).toBe(true);
+
+      state = state.apply(clearTrackedChanges(state));
+      expect(hasNonParagraphBlockChanges(state)).toBe(false);
+      expect(getChangedBlockTypes(state).size).toBe(0);
     });
   });
 

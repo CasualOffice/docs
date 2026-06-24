@@ -50,7 +50,9 @@ jobs:
       run:
         working-directory: docx-editor
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -62,6 +64,10 @@ jobs:
 
       - name: Install LibreOffice
         run: |
+          # Drop Microsoft's pre-configured apt repos first — they intermittently
+          # 403 and would fail `apt-get update` (exit 100). LibreOffice comes
+          # from the stock Ubuntu archives, so they're not needed.
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure* 2>/dev/null || true
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libreoffice
           soffice --version
@@ -86,7 +92,7 @@ jobs:
 
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fidelity-compare-report
           path: docx-editor/fidelity-compare-report.md

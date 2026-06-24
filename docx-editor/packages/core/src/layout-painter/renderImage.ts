@@ -180,6 +180,15 @@ export function renderImageFragment(
     imgEl.style.transform = block.transform;
   }
 
+  // Picture border (set via the Format panel; round-trips on the image node).
+  // Painted on the container so it frames the image box, not the rotated img.
+  if (block.borderWidth && block.borderWidth > 0) {
+    containerEl.style.border = `${block.borderWidth}px ${block.borderStyle || 'solid'} ${
+      block.borderColor || '#000000'
+    }`;
+    containerEl.style.boxSizing = 'border-box';
+  }
+
   // Prevent dragging
   imgEl.draggable = false;
 

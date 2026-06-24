@@ -18,7 +18,9 @@
     "dismiss": "סגירה",
     "change": "שינוי",
     "px": "px",
-    "closeDialog": "סגור חלון"
+    "closeDialog": "סגור חלון",
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "סרגל כלים לעיצוב",
@@ -40,7 +42,54 @@
     "open": "פתיחה",
     "openShortcut": "Ctrl+O",
     "save": "שמירה",
-    "saveShortcut": "Ctrl+S"
+    "saveShortcut": "Ctrl+S",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null,
+    "paragraph": null,
+    "bordersAndShading": null,
+    "customSpacing": null,
+    "footnote": null,
+    "horizontalLine": null,
+    "specialCharacters": null,
+    "keyboardShortcuts": null,
+    "searchMenus": null,
+    "makeCopy": null,
+    "preferences": null,
+    "tools": null,
+    "watermark": null,
+    "accessibility": null,
+    "buildingBlocks": null,
+    "showFormattingMarks": null,
+    "wordCount": null,
+    "convertToTable": null,
+    "emailAsAttachment": null,
+    "convertToText": null,
+    "dictionary": null,
+    "translate": null,
+    "explore": null,
+    "citations": null,
+    "shape": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null,
+    "showOutline": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +125,11 @@
     "subscriptShortcut": "כתב תחתי",
     "imageProperties": "מאפייני תמונה",
     "imagePropertiesShortcut": "מאפייני תמונה",
-    "clearFormatting": "נקה עיצוב"
+    "clearFormatting": "נקה עיצוב",
+    "allCaps": null,
+    "smallCaps": null,
+    "addComment": null,
+    "paintFormat": null
   },
   "alignment": {
     "alignLeft": "יישור לשמאל",
@@ -203,7 +256,8 @@
       "replaceAllTitle": "החלף את כל התוצאות",
       "matchCase": "התאמה לאותיות רישיות",
       "wholeWords": "חיפוש לפי מילה שלמה",
-      "toggleReplace": "+ החלף"
+      "toggleReplace": "+ החלף",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "ערוך קישור",
@@ -346,7 +400,9 @@
         "a5": "A5 (5.83\" × 8.27\")",
         "b5": "B5 (6.93\" × 9.84\")",
         "executive": "Executive (7.25\" × 10.5\")"
-      }
+      },
+      "pageColor": null,
+      "pageColorReset": null
     },
     "tableProperties": {
       "title": "מאפייני טבלה",
@@ -366,7 +422,9 @@
         "left": "שמאל",
         "center": "מרכז",
         "right": "ימין"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "הדבקה מיוחדת",
@@ -502,11 +560,114 @@
         "resetZoom": "אפס זום",
         "resetZoomDescription": "אפס את הזום ל־100%",
         "keyboardShortcuts": "קיצורי מקלדת",
-        "keyboardShortcutsDescription": "הצג את חלון העזרה"
+        "keyboardShortcutsDescription": "הצג את חלון העזרה",
+        "bulletList": null,
+        "bulletListDescription": null,
+        "commandPalette": null,
+        "commandPaletteDescription": null,
+        "cycleMode": null,
+        "cycleModeDescription": null,
+        "dictionary": null,
+        "dictionaryDescription": null,
+        "startComment": null,
+        "startCommentDescription": null,
+        "wordCount": null,
+        "wordCountDescription": null,
+        "documentOutline": null,
+        "documentOutlineDescription": null,
+        "pageBreak": null,
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "לא נמצאו קיצורים עבור \"{query}\"",
       "pressEscToClose": "לחץ {key} כדי לסגור",
       "or": "או"
+    },
+    "bookmarks": {
+      "goTo": null,
+      "noBookmarks": null,
+      "title": null,
+      "addPlaceholder": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
+    },
+    "bordersShading": {
+      "color": null,
+      "colorHex": null,
+      "fill": null,
+      "fillColor": null,
+      "fillHex": null,
+      "lineStyle": null,
+      "noFill": null,
+      "pattern": null,
+      "patternClear": null,
+      "patternSolid": null,
+      "presetBox": null,
+      "presetNone": null,
+      "setting": null,
+      "side": {
+        "bottom": null,
+        "left": null,
+        "right": null,
+        "top": null
+      },
+      "sides": null,
+      "style": null,
+      "styleDashed": null,
+      "styleDotted": null,
+      "styleDouble": null,
+      "styleSingle": null,
+      "styleThick": null,
+      "styleTriple": null,
+      "tabBorders": null,
+      "tabShading": null,
+      "title": null,
+      "widthPt": null
+    },
+    "customSpacing": {
+      "afterPt": null,
+      "atPt": null,
+      "beforePt": null,
+      "contextualSpacing": null,
+      "keepLines": null,
+      "keepNext": null,
+      "lineSpacing": null,
+      "multipleOf": null,
+      "pageBreakBefore": null,
+      "pagination": null,
+      "paragraphSpacing": null,
+      "rule": null,
+      "rule_atLeast": null,
+      "rule_auto": null,
+      "rule_exact": null,
+      "title": null,
+      "widowControl": null
+    },
+    "wordCount": {
+      "characters": null,
+      "charactersNoSpaces": null,
+      "pages": null,
+      "paragraphs": null,
+      "title": null,
+      "words": null,
+      "readingTime": null
     }
   },
   "comments": {
@@ -517,14 +678,19 @@
     "unknown": "לא ידוע",
     "addComment": "הוסף תגובה...",
     "replyPlaceholder": "השב או הוסף אחרים עם @",
-    "replyCount": "{count, plural, one {תגובה אחת} other {# תגובות}}"
+    "replyCount": "{count, plural, one {תגובה אחת} other {# תגובות}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "לא ידוע",
     "replaced": "הוחלף",
     "with": "עם",
     "added": "נוסף",
-    "deleted": "נמחק"
+    "deleted": "נמחק",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "תפריט פעולות AI",
@@ -561,7 +727,9 @@
     "closeAriaLabel": "סגור מתווה",
     "closeTitle": "סגור מתווה",
     "title": "מתווה",
-    "noHeadings": "לא נמצאו כותרות. הוסף כותרות למסמך כדי לראות אותן כאן."
+    "noHeadings": "לא נמצאו כותרות. הוסף כותרות למסמך כדי לראות אותן כאן.",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "סרגל הערות"
@@ -664,7 +832,11 @@
     "alignTableCenter": "יישר טבלה למרכז",
     "alignTableRight": "יישר טבלה לימין",
     "tableOptionsMenu": "תפריט אפשרויות טבלה",
-    "tableOptions": "אפשרויות טבלה"
+    "tableOptions": "אפשרויות טבלה",
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "טרנספורמציה",
@@ -723,7 +895,8 @@
     "failedToParse": "שגיאה בפתיחת המסמך",
     "linkRemoved": "הקישור הוסר",
     "linkCopied": "הקישור הועתק ללוח",
-    "failedToSave": "שגיאה בשמירת המסמך"
+    "failedToSave": "שגיאה בשמירת המסמך",
+    "contentLabel": null
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "טקסט לתצוגה",
@@ -739,7 +912,9 @@
     "insertPageNumber": "הוסף מספר עמוד נוכחי",
     "insertTotalPages": "הוסף סך כל העמודים",
     "remove": "הסר {label}",
-    "closeEditing": "סגור עריכת {label}"
+    "closeEditing": "סגור עריכת {label}",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "מיקום תמונה",
@@ -788,5 +963,18 @@
   },
   "viewer": {
     "pageIndicator": "{current} מתוך {total}"
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
+  },
+  "suggestingBanner": {
+    "body": null,
+    "switchToEditing": null,
+    "title": null
   }
 }

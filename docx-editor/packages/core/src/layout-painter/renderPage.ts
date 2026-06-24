@@ -30,6 +30,11 @@ import { renderParagraphFragment } from './renderParagraph';
 import { renderTableFragment } from './renderTable';
 import { renderImageFragment, applyImageVisualAttrs, hasImageVisualAttrs } from './renderImage';
 import { renderTextBoxFragment } from './renderTextBox';
+import {
+  resolveAnchorX,
+  resolveAnchorY,
+  type AnchorGeometry,
+} from '../layout-engine/anchorGeometry';
 import type { BlockLookup } from './index';
 import type { BorderSpec } from '../types/document';
 import { borderToStyle } from '../utils/formatToStyle';
@@ -37,7 +42,7 @@ import type { Theme } from '../types/document';
 import { measureParagraph, type FloatingImageZone } from '../layout-bridge/measuring';
 import { resolveFontFamily } from '../utils/fontResolver';
 import { isFloatingWrapType, isWrapNone, wrapsAroundText } from '../docx/wrapTypes';
-import { pointsToPixels } from '../utils/units';
+import { pointsToPixels, twipsToPixels } from '../utils/units';
 
 /**
  * Page-level floating image that has been extracted from paragraphs.
@@ -154,6 +159,15 @@ export interface RenderContext {
    * fact (#379).
    */
   positioning?: 'absolute' | 'flow';
+  /**
+   * Word-compat opt-in (#395): when true, table renderers may apply
+   * Word-specific rendering quirks that don't follow ECMA-376 strictly.
+   * Currently used by renderTable.ts to extend the firstRow's bottom
+   * border under the last body row when no explicit lastRow/tblBorders
+   * border exists — matches Word Online's behavior; LibreOffice / Google
+   * Docs do not draw this line. Default off.
+   */
+  wordCompat?: boolean;
 }
 
 /**
@@ -180,6 +194,8 @@ export interface FootnoteRenderItem {
   displayNumber: string;
   /** Plain text content */
   text: string;
+  /** Footnote id (anchors click-to-edit). */
+  id?: number;
 }
 
 /**
@@ -222,12 +238,46 @@ export interface RenderPageOptions {
     offsetFrom?: 'page' | 'text';
     zOrder?: 'front' | 'back';
   };
+  /**
+   * OOXML line numbering from section properties (`w:lnNumType`). When set,
+   * a left-margin gutter of line numbers is painted next to each body text
+   * line per ECMA-376 §17.6.10.
+   *
+   * `start` is the number of the first line (default 1); `countBy` prints a
+   * number only every Nth line (default 1 = every line); `distance` is the
+   * gap from the text to the numbers in twips (default ≈ 0.25").
+   *
+   * Numbering currently restarts on each page. True cross-page `continuous`
+   * numbering needs the paginator to thread a per-page starting line index,
+   * which isn't available at the painter level yet.
+   */
+  lineNumbers?: {
+    start?: number;
+    countBy?: number;
+    distance?: number;
+    restart?: 'continuous' | 'newPage' | 'newSection';
+  };
   /** Theme for resolving border colors. */
   theme?: Theme | null;
   /** Footnotes to render at the bottom of this page. */
   footnoteArea?: FootnoteRenderItem[];
   /** Comment IDs that are resolved — skip highlight for these */
   resolvedCommentIds?: Set<number>;
+  /** Word-compat (#395). See PainterOptions.wordCompat. */
+  wordCompat?: boolean;
+  /**
+   * Document-wide text watermark — drawn as a rotated overlay behind the
+   * page's flow content. Promoted from `DocumentBody.watermark` by the host;
+   * see PagedEditor.tsx for the wiring. `pointer-events: none` so it never
+   * blocks clicks; `user-select: none` so it never lands in selections.
+   */
+  watermark?: {
+    text: string;
+    color?: string;
+    opacity?: number;
+    fontSize?: number;
+    rotation?: number;
+  };
 }
 
 export interface HeaderFooterLayoutInfo {
@@ -258,6 +308,13 @@ function applyPageStyles(
   element.style.height = `${height}px`;
   element.style.backgroundColor = options.backgroundColor ?? '#ffffff';
   element.style.overflow = 'hidden';
+  // Establish a stacking context on the page so behind-doc objects (anchored
+  // shapes / text-boxes painted at z-index:-1, e.g. "behind text" VML frames)
+  // stay contained within the page and render ABOVE its background. Without it,
+  // no ancestor forms a stacking context, so a z-index:-1 child escapes to the
+  // root's negative layer and paints behind the page's opaque background —
+  // making real behind-doc content (not just watermarks) silently vanish.
+  element.style.isolation = 'isolate';
 
   // Page-level default (11pt Calibri). Must use the same chain as canvas
   // measurement in measureContainer.ts, otherwise unbreakable runs that lack
@@ -479,6 +536,38 @@ function applyHeaderFooterFloatHorizontalPosition(
     }
   }
 
+  // Margin-anchored: mirrors resolveHeaderFooterFloatTop's vertical
+  // 'margin' branch (lines 432-447). Mathematically reduces to
+  // `emuToPixels(h.posOffset)` for the current data shape because the
+  // HF construction sites all set `flowLeft = page.margins.left`, but
+  // we keep the explicit form to (a) match the vertical-axis function's
+  // structure and (b) stay correct if a future HF layout decouples
+  // flowLeft from margins.left.
+  if (h.relativeTo === 'margin') {
+    const marginLeft = layout.margins.left;
+    const marginWidth = layout.pageWidth - layout.margins.left - layout.margins.right;
+    if (h.posOffset !== undefined) {
+      img.style.left = `${marginLeft + emuToPixels(h.posOffset) - layout.flowLeft}px`;
+      return;
+    }
+    if (align === 'right') {
+      img.style.left = `${marginLeft + marginWidth - floatImg.width - layout.flowLeft}px`;
+      return;
+    }
+    if (align === 'center') {
+      img.style.left = `${marginLeft + (marginWidth - floatImg.width) / 2 - layout.flowLeft}px`;
+      return;
+    }
+    if (align === 'left') {
+      img.style.left = `${marginLeft - layout.flowLeft}px`;
+      return;
+    }
+  }
+
+  // Fallback for column / character / *Margin anchor types — uncommon
+  // in headers/footers. Treats posOffset as container-relative; an
+  // explicit branch would require knowing the column/anchor-paragraph
+  // origin which the HF context doesn't carry. Better than no output.
   if (h.posOffset !== undefined) {
     img.style.left = `${emuToPixels(h.posOffset)}px`;
     return;
@@ -630,146 +719,32 @@ function extractFloatingImagesFromParagraph(
     // `*Margin` and `character` / `line` variants we fall back to the
     // content-area frame, which matches Word's render for single-column
     // body documents.
+    const geom: AnchorGeometry = {
+      pageWidth: geometry?.pageWidth ?? 0,
+      pageHeight: geometry?.pageHeight ?? 0,
+      marginLeft: geometry?.marginLeft ?? 0,
+      marginTop: geometry?.marginTop ?? 0,
+      contentWidth,
+      contentHeight: geometry?.contentHeight ?? 0,
+    };
+
     let side: 'left' | 'right' = 'left';
     let x = 0;
-
     if (position?.horizontal) {
-      const h = position.horizontal;
-      // ECMA-376 §20.4.3.2 (ST_RelFromH). Same translation pattern as the
-      // vertical axis: pick a band origin (`baseX`) and a band width. For
-      // body text the painter's content origin is `marginLeft` from the page
-      // edge, so `relativeFrom="page"` is just `-marginLeft`.
-      const pageWidth = geometry?.pageWidth ?? 0;
-      const marginLeft = geometry?.marginLeft ?? 0;
-      const baseX = (() => {
-        switch (h.relativeTo) {
-          case 'page':
-          case 'leftMargin':
-            return -marginLeft;
-          case 'rightMargin':
-            return contentWidth;
-          case 'character':
-          case 'column':
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return 0;
-        }
-      })();
-      const bandWidth = (() => {
-        switch (h.relativeTo) {
-          case 'page':
-            return pageWidth;
-          case 'leftMargin':
-          case 'rightMargin':
-            return marginLeft;
-          case 'character':
-            return 0;
-          case 'column':
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return contentWidth;
-        }
-      })();
-      if (h.align === 'right') {
-        side = 'right';
-        x = bandWidth ? baseX + bandWidth - imgRun.width : 0;
-      } else if (h.align === 'left') {
-        side = 'left';
-        x = baseX;
-      } else if (h.align === 'center') {
-        side = 'left';
-        x = bandWidth ? baseX + (bandWidth - imgRun.width) / 2 : 0;
-      } else if (h.posOffset !== undefined) {
-        x = baseX + emuToPixels(h.posOffset);
-        side = x > contentWidth / 2 ? 'right' : 'left';
-      } else {
-        // Bare positionH (no align, no offset) — anchor at band origin.
-        x = baseX;
-      }
+      const r = resolveAnchorX(position.horizontal, imgRun.width, geom);
+      x = r.x;
+      side = r.side;
     } else if (imgRun.cssFloat === 'right') {
       side = 'right';
       x = contentWidth - imgRun.width;
     }
 
-    // Determine vertical position. The OOXML attribute can be either an
-    // explicit `posOffset` (EMUs from the relativeFrom origin) or a symbolic
-    // `align` (top / center / bottom). When neither is present, fall back
-    // to the paragraph anchor — that's Word's default for `wp:anchor` with
-    // a bare `<wp:positionV>`.
-    //
-    // `relativeFrom` decides which anchor coordinate offset/align is
-    // computed against. We translate every variant into the painter's
-    // coordinate space (content-area top = 0).
+    // Vertical position: paragraph/line bands stay in flow; page/margin bands
+    // resolve against the painter's content-area coordinate space. See
+    // `resolveAnchorY` (ported from this code) for the full ST_RelFromV map.
     let y = 0;
-
     if (position?.vertical) {
-      const v = position.vertical;
-      const pageHeight = geometry?.pageHeight ?? 0;
-      const marginTop = geometry?.marginTop ?? 0;
-      const contentHeight = geometry?.contentHeight ?? 0;
-      // ECMA-376 §20.4.3.1 (ST_RelFromV) — translate the OOXML anchor band
-      // into the painter's coordinate space (content-area top = 0). `topMargin`
-      // is the strip ABOVE the content area (negative offset); `bottomMargin`
-      // is BELOW (`contentHeight`). `margin` is the content area itself.
-      // `insideMargin`/`outsideMargin` are mirror-margins for facing pages —
-      // we approximate as `margin`, which matches single-sided layouts.
-      const baseY = (() => {
-        switch (v.relativeTo) {
-          case 'paragraph':
-          case 'line':
-            return fragmentY;
-          case 'page':
-            return -marginTop;
-          case 'topMargin':
-            return -marginTop;
-          case 'bottomMargin':
-            return contentHeight;
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return 0;
-        }
-      })();
-      // The "band height" within which align="center"/"bottom" is computed.
-      // page → page height; topMargin → marginTop; bottomMargin → bottom margin
-      // (which we don't track separately, fall back to marginTop ≈ symmetric
-      // pages); paragraph/line → no band (fall back to paragraph anchor).
-      const bandHeight = (() => {
-        switch (v.relativeTo) {
-          case 'page':
-            return pageHeight;
-          case 'topMargin':
-          case 'bottomMargin':
-            return marginTop;
-          case 'paragraph':
-          case 'line':
-            return 0;
-          case 'margin':
-          case 'insideMargin':
-          case 'outsideMargin':
-          default:
-            return contentHeight;
-        }
-      })();
-      if (v.align === 'top') {
-        y = baseY;
-      } else if (v.align === 'center') {
-        y = bandHeight ? baseY + (bandHeight - imgRun.height) / 2 : fragmentY;
-      } else if (v.align === 'bottom') {
-        y = bandHeight ? baseY + bandHeight - imgRun.height : fragmentY;
-      } else if (v.posOffset !== undefined) {
-        y = baseY + emuToPixels(v.posOffset);
-      } else {
-        // Bare positionV (no align, no offset). For paragraph/line bands the
-        // image stays in flow; for any other band, the spec means "anchor at
-        // the band origin", which is `baseY`.
-        y = v.relativeTo === 'paragraph' || v.relativeTo === 'line' ? fragmentY : baseY;
-      }
+      y = resolveAnchorY(position.vertical, imgRun.height, fragmentY, geom);
     } else {
       // No positionV at all — default to paragraph anchor.
       y = fragmentY;
@@ -941,6 +916,13 @@ export function renderFloatingImagesLayer(
     img.src = floatImg.src;
     img.style.width = `${floatImg.width}px`;
     img.style.height = `${floatImg.height}px`;
+    // Override the global `img { max-width: 100% }` reset: a floating image is
+    // sized to its explicit anchor extent (and to the user's resize), so it must
+    // honor that width even when it exceeds the container. Without this the width
+    // is capped to the container while the height is not, distorting the image
+    // (e.g. resizing a wide logo larger stretched it vertically).
+    img.style.maxWidth = 'none';
+    img.style.maxHeight = 'none';
     img.style.display = 'block';
     if (floatImg.alt) img.alt = floatImg.alt;
     if (floatImg.transform) {
@@ -1136,13 +1118,35 @@ function renderHeaderFooterContent(
       // inside `<w:hdr>` rendered nothing.
       const tbBlock = block as TextBoxBlock;
       const tbMeasure = measure as TextBoxMeasure;
+      const a = tbBlock.anchor;
+      const anchored =
+        !!a && (a.offsetH != null || a.offsetV != null || a.relFromH != null || a.relFromV != null);
+
+      // Anchored (floating) header/footer textboxes are positioned absolutely
+      // from their page/margin offset — mapped into the header content box,
+      // which is inset by margins.left with its flow-top at layout.flowTop — and
+      // do NOT take flow space. In-flow stacking (the old behavior) both
+      // mispositioned them (all at left:0) and inflated the header height,
+      // pushing the body onto extra pages.
+      let tbLeft = 0;
+      let tbTop = cursorY;
+      if (anchored) {
+        const offH = a!.offsetH ?? 0;
+        const offV = a!.offsetV ?? 0;
+        tbLeft = a!.relFromH === 'page' ? offH - layout.margins.left : offH;
+        if (a!.relFromV === 'page') tbTop = offV - layout.flowTop;
+        else if (a!.relFromV === 'margin') tbTop = layout.margins.top + offV - layout.flowTop;
+        else tbTop = offV;
+      }
+
       const syntheticFragment: TextBoxFragment = {
         kind: 'textBox',
         blockId: tbBlock.id,
-        x: 0,
-        y: cursorY,
+        x: tbLeft,
+        y: tbTop,
         width: tbMeasure.width,
         height: tbMeasure.height,
+        isAnchored: anchored || undefined,
       };
       const fragEl = renderTextBoxFragment(
         syntheticFragment,
@@ -1151,10 +1155,10 @@ function renderHeaderFooterContent(
         { ...context, positioning: 'absolute' },
         { document: doc }
       );
-      fragEl.style.top = `${cursorY}px`;
-      fragEl.style.left = '0';
+      fragEl.style.top = `${tbTop}px`;
+      fragEl.style.left = `${tbLeft}px`;
       containerEl.appendChild(fragEl);
-      cursorY += tbMeasure.height;
+      if (!anchored) cursorY += tbMeasure.height;
     }
   }
 
@@ -1214,6 +1218,8 @@ function renderFootnoteArea(
     fnEl.style.lineHeight = '1.3';
     fnEl.style.marginBottom = '4px';
     fnEl.style.color = '#000';
+    fnEl.className = 'layout-footnote';
+    if (fn.id !== undefined) fnEl.dataset.footnoteId = String(fn.id);
 
     const sup = doc.createElement('sup');
     sup.textContent = fn.displayNumber;
@@ -1221,13 +1227,112 @@ function renderFootnoteArea(
     sup.style.marginRight = '2px';
     fnEl.appendChild(sup);
 
-    const textNode = doc.createTextNode(' ' + fn.text);
-    fnEl.appendChild(textNode);
+    // Text in its own span so click-to-edit can target it (and show a hint).
+    const textSpan = doc.createElement('span');
+    textSpan.className = 'layout-footnote-text';
+    textSpan.textContent = ' ' + fn.text;
+    if (fn.id !== undefined) {
+      fnEl.style.cursor = 'text';
+      fnEl.title = 'Double-click to edit footnote';
+    }
+    fnEl.appendChild(textSpan);
 
     container.appendChild(fnEl);
   }
 
   return container;
+}
+
+/**
+ * Default distance (twips) from the line-number gutter to the body text when
+ * `w:lnNumType/@w:distance` is omitted. Word uses ~0.25" ≈ 360 twips; we keep a
+ * small fixed gap so the numbers sit just outside the content area.
+ */
+const DEFAULT_LINE_NUMBER_DISTANCE_TWIPS = 180;
+
+/**
+ * Paint the left-margin line-number gutter for a page (`w:lnNumType`,
+ * ECMA-376 §17.6.10). Walks each body paragraph fragment in document order,
+ * tracking a running line counter, and emits a number in the left margin
+ * aligned to the vertical centre of every Nth line (`countBy`).
+ *
+ * Coordinates are content-area-relative (the gutter is appended to the page's
+ * content element). The numbers are positioned to the LEFT of the content box
+ * via a negative `left`, separated by `distance`.
+ *
+ * Limitation: the counter restarts on each page. Continuous cross-page
+ * numbering would need the paginator to assign each page a starting line
+ * index, which isn't surfaced to the painter — see `RenderPageOptions.lineNumbers`.
+ *
+ * @internal
+ */
+function renderLineNumberGutter(
+  page: Page,
+  options: RenderPageOptions,
+  doc: Document
+): HTMLElement | null {
+  const ln = options.lineNumbers;
+  if (!ln || !options.blockLookup) return null;
+
+  const start = ln.start ?? 1;
+  const countBy = ln.countBy && ln.countBy > 0 ? ln.countBy : 1;
+  const distancePx = twipsToPixels(ln.distance ?? DEFAULT_LINE_NUMBER_DISTANCE_TWIPS);
+
+  const gutter = doc.createElement('div');
+  gutter.className = 'layout-line-numbers';
+  gutter.style.position = 'absolute';
+  gutter.style.top = '0';
+  gutter.style.left = '0';
+  gutter.style.right = '0';
+  gutter.style.bottom = '0';
+  gutter.style.pointerEvents = 'none';
+  gutter.style.userSelect = 'none';
+  gutter.setAttribute('aria-hidden', 'true');
+
+  // 1-based running line number across the page's body paragraphs.
+  let lineCounter = 0;
+  let emitted = 0;
+
+  for (const fragment of page.fragments) {
+    if (fragment.kind !== 'paragraph') continue;
+    const blockData = options.blockLookup.get(String(fragment.blockId));
+    if (blockData?.block.kind !== 'paragraph' || blockData.measure.kind !== 'paragraph') continue;
+
+    const measure = blockData.measure as ParagraphMeasure;
+    // Fragment Y is page-relative; convert to content-area-relative.
+    let lineTop = fragment.y - page.margins.top;
+
+    for (let i = fragment.fromLine; i < fragment.toLine && i < measure.lines.length; i++) {
+      const line = measure.lines[i];
+      lineCounter += 1;
+      const displayNumber = start - 1 + lineCounter;
+
+      // Print only every Nth line (countBy); the first line (1) always prints
+      // when countBy is 1, matching Word's gutter cadence.
+      if (displayNumber % countBy === 0) {
+        const numberEl = doc.createElement('div');
+        numberEl.className = 'layout-line-number';
+        numberEl.textContent = String(displayNumber);
+        numberEl.style.position = 'absolute';
+        // Right-align the number against the inner edge of the left margin so
+        // it reads `… 5 |text`, then push it out by `distance`.
+        numberEl.style.right = `calc(100% + ${distancePx}px)`;
+        numberEl.style.top = `${lineTop}px`;
+        numberEl.style.height = `${line.lineHeight}px`;
+        numberEl.style.lineHeight = `${line.lineHeight}px`;
+        numberEl.style.whiteSpace = 'nowrap';
+        numberEl.style.fontSize = '9px';
+        numberEl.style.color = '#000';
+        numberEl.style.textAlign = 'right';
+        gutter.appendChild(numberEl);
+        emitted += 1;
+      }
+
+      lineTop += line.lineHeight;
+    }
+  }
+
+  return emitted > 0 ? gutter : null;
 }
 
 /**
@@ -1251,6 +1356,44 @@ export function renderPage(
   pageEl.dataset.pageNumber = String(page.number);
 
   applyPageStyles(pageEl, page.size.w, page.size.h, options);
+
+  // Watermark — drawn behind the content. Append before the content area so
+  // it naturally sits at the lowest z-index within the page; pointer-events
+  // and user-select disabled so it can't intercept clicks or selections.
+  if (options.watermark?.text) {
+    const wm = options.watermark;
+    const wmEl = doc.createElement('div');
+    wmEl.className = 'layout-page-watermark';
+    wmEl.setAttribute('aria-hidden', 'true');
+    Object.assign(wmEl.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      userSelect: 'none',
+      overflow: 'hidden',
+      zIndex: '0',
+    });
+    const text = doc.createElement('span');
+    text.textContent = wm.text;
+    Object.assign(text.style, {
+      color: `#${wm.color ?? '808080'}`,
+      opacity: String(wm.opacity ?? 0.5),
+      fontSize: `${wm.fontSize ?? 96}px`,
+      fontWeight: '700',
+      whiteSpace: 'nowrap',
+      transform: `rotate(${wm.rotation ?? -45}deg)`,
+      transformOrigin: 'center center',
+    });
+    wmEl.appendChild(text);
+    pageEl.appendChild(wmEl);
+  }
+
   const pageBorderEl = renderPageBorderOverlay(page, options, doc);
   if (pageBorderEl && options.pageBorders?.zOrder === 'back') {
     pageEl.appendChild(pageBorderEl);
@@ -1530,6 +1673,14 @@ export function renderPage(
     contentEl.appendChild(fnAreaEl);
   }
 
+  // Line-number gutter (w:lnNumType) — painted in the left margin alongside
+  // body text. Appended to the content area so its coordinates are
+  // content-area-relative; the numbers themselves spill into the left margin.
+  const lineNumberGutter = renderLineNumberGutter(page, options, doc);
+  if (lineNumberGutter) {
+    contentEl.appendChild(lineNumberGutter);
+  }
+
   pageEl.appendChild(contentEl);
 
   // Render header area (always rendered for hover hint / double-click target)
@@ -1548,6 +1699,7 @@ export function renderPage(
 
     const headerEl = doc.createElement('div');
     headerEl.className = PAGE_CLASS_NAMES.header;
+    headerEl.title = 'Double-click to edit header';
     headerEl.style.position = 'absolute';
     headerEl.style.top = `${headerDistance + headerVisualTop}px`;
     headerEl.style.left = `${page.margins.left}px`;
@@ -1600,6 +1752,7 @@ export function renderPage(
 
     const footerEl = doc.createElement('div');
     footerEl.className = PAGE_CLASS_NAMES.footer;
+    footerEl.title = 'Double-click to edit footer';
     footerEl.style.position = 'absolute';
     footerEl.style.top = `${page.size.h - footerDistance - actualFooterHeight}px`;
     footerEl.style.left = `${page.margins.left}px`;
@@ -1662,6 +1815,7 @@ function buildPageRenderArgs(
     totalPages,
     section: 'body',
     resolvedCommentIds: options.resolvedCommentIds,
+    wordCompat: options.wordCompat,
   };
   const pageOptions: RenderPageOptions = { ...options };
   // Per-page header/footer selection when titlePg is enabled
@@ -1792,6 +1946,11 @@ function computeOptionsHash(options: RenderPageOptions): string {
   // Page border changes
   if (options.pageBorders) {
     parts.push(`pb:${JSON.stringify(options.pageBorders)}`);
+  }
+
+  // Line numbering changes
+  if (options.lineNumbers) {
+    parts.push(`ln:${JSON.stringify(options.lineNumbers)}`);
   }
 
   // Header/footer distances
@@ -2182,4 +2341,71 @@ function depopulatePageShell(
 
   shell.innerHTML = '';
   data.rendered = false;
+}
+
+/**
+ * Force-render all virtualized page shells so that cloneNode(true) captures
+ * every page's content — not just the pages near the viewport.
+ *
+ * Call this immediately before cloning the `.paged-editor__pages` container
+ * for print/PDF export (issue #141). For documents with fewer than
+ * VIRTUALIZATION_THRESHOLD pages, all pages are already rendered eagerly and
+ * this is a no-op.
+ *
+ * After the clone is done, call `restoreVirtualization()` in a
+ * `requestAnimationFrame` to free the temporarily-rendered pages.
+ */
+export function forceRenderAllPages(container: HTMLElement): void {
+  const pc = container as PageContainer;
+  const state = pc.__pageRenderState;
+  if (!state) return; // Not virtualized — all pages already rendered.
+
+  const { pageDataMap, totalPages, currentOptions } = state;
+  for (const [shell, data] of pageDataMap) {
+    if (!data.rendered) {
+      populatePageShell(shell, pageDataMap, totalPages, currentOptions);
+    }
+  }
+}
+
+/**
+ * Restore memory-efficient virtualization after a print/PDF clone.
+ *
+ * Depopulates pages whose index is farther from the viewport center than
+ * VIRTUALIZATION_BUFFER + 1. Pages within the buffer stay rendered so the
+ * editor remains responsive immediately after print completes.
+ *
+ * This is a best-effort cleanup; skipping it is safe (just wastes RAM until
+ * the next IntersectionObserver tick depopulates far pages automatically).
+ */
+export function restoreVirtualization(container: HTMLElement): void {
+  const pc = container as PageContainer;
+  const state = pc.__pageRenderState;
+  if (!state) return;
+
+  const { pageDataMap } = state;
+
+  // Find the currently-visible center page by looking for a rendered shell
+  // near the scroll mid-point.
+  const scrollable = container.parentElement ?? container;
+  const viewportTop = scrollable.scrollTop;
+  const viewportBottom = viewportTop + scrollable.clientHeight;
+  const viewportMid = (viewportTop + viewportBottom) / 2;
+
+  let nearestIdx = 0;
+  let nearestDist = Infinity;
+  for (const [shell, data] of pageDataMap) {
+    const shellMid = shell.offsetTop + shell.offsetHeight / 2;
+    const dist = Math.abs(shellMid - viewportMid);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestIdx = data.index;
+    }
+  }
+
+  for (const [shell, data] of pageDataMap) {
+    if (Math.abs(data.index - nearestIdx) > VIRTUALIZATION_BUFFER + 1) {
+      depopulatePageShell(shell, pageDataMap);
+    }
+  }
 }

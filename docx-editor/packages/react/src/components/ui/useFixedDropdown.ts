@@ -6,7 +6,7 @@
  * overflow-x-auto container.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
 interface UseFixedDropdownOptions {
@@ -30,25 +30,24 @@ export function useFixedDropdown({
 }: UseFixedDropdownOptions): UseFixedDropdownReturn {
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number } | null>(null);
 
-  // Calculate position when opening
-  useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
+  // Position the moment the dropdown mounts, BEFORE the browser paints
+  // (useLayoutEffect), so it never flashes at the top-left origin. Right
+  // alignment anchors the dropdown's right edge to the trigger's right
+  // edge via the CSS `right` offset — no width measurement, so no second
+  // frame / rAF is needed (the old rAF caused a one-frame (0,0) flash).
+  useLayoutEffect(() => {
+    if (!isOpen || !containerRef.current) {
+      setPos(null);
+      return;
+    }
     const rect = containerRef.current.getBoundingClientRect();
+    const top = rect.bottom + 4;
     if (align === 'right') {
-      // We need the dropdown width to right-align, but it's not rendered yet.
-      // Use a rAF to measure after first paint.
-      requestAnimationFrame(() => {
-        if (dropdownRef.current) {
-          const dropRect = dropdownRef.current.getBoundingClientRect();
-          setPos({ top: rect.bottom + 4, left: rect.right - dropRect.width });
-        } else {
-          setPos({ top: rect.bottom + 4, left: rect.left });
-        }
-      });
+      setPos({ top, right: Math.max(0, window.innerWidth - rect.right) });
     } else {
-      setPos({ top: rect.bottom + 4, left: rect.left });
+      setPos({ top, left: rect.left });
     }
   }, [isOpen, align]);
 
@@ -72,7 +71,29 @@ export function useFixedDropdown({
       if (e.key === 'Escape') onClose();
     };
 
-    const handleScroll = () => onClose();
+    // Close when something *outside* the dropdown scrolls — the trigger
+    // moves so the fixed-position dropdown desyncs. Scrolling *inside* the
+    // dropdown (its own overflow:auto listbox, e.g. font-size 8…72) must
+    // not close it; otherwise Playwright's "scroll the option into view
+    // before click" detaches the option mid-click. Listen in capture so we
+    // still see scrolls on overflow ancestors, but ignore events whose
+    // target is the dropdown itself.
+    //
+    // We also ignore scrolls within a brief grace window after open
+    // (the trigger's scrollIntoView, focus-driven scroll into the
+    // table cell, and any PM-driven layout scroll happen synchronously
+    // around the open click). Those scrolls would otherwise close the
+    // dropdown the moment it appears — caught by tables.spec failing
+    // with "element was detached from the DOM" mid-click on the menu
+    // item in CI.
+    const openedAt = Date.now();
+    const SCROLL_GRACE_MS = 200;
+    const handleScroll = (e: Event) => {
+      if (Date.now() - openedAt < SCROLL_GRACE_MS) return;
+      const target = e.target as Node | null;
+      if (target && dropdownRef.current?.contains(target)) return;
+      onClose();
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
@@ -92,9 +113,12 @@ export function useFixedDropdown({
 
   const dropdownStyle: CSSProperties = {
     position: 'fixed',
-    top: pos.top,
-    left: pos.left,
+    top: pos?.top ?? 0,
+    ...(pos?.right != null ? { right: pos.right } : { left: pos?.left ?? 0 }),
     zIndex: 10000,
+    // Until positioned (first layout tick), keep it out of sight so it
+    // never paints at the origin.
+    visibility: pos ? 'visible' : 'hidden',
   };
 
   return { containerRef, dropdownRef, dropdownStyle, handleMouseDown };

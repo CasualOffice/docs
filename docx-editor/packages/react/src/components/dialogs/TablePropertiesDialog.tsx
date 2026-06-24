@@ -9,6 +9,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 // ============================================================================
 // TYPES
@@ -18,6 +19,10 @@ export interface TableProperties {
   width?: number | null;
   widthType?: string | null;
   justification?: 'left' | 'center' | 'right' | null;
+  /** Banded rows = inverse of OOXML `w:noHBand` on `w:tblLook`. */
+  bandedRows?: boolean;
+  /** Banded columns = inverse of OOXML `w:noVBand` on `w:tblLook`. */
+  bandedColumns?: boolean;
 }
 
 export interface TablePropertiesDialogProps {
@@ -28,6 +33,14 @@ export interface TablePropertiesDialogProps {
     width?: number;
     widthType?: string;
     justification?: string;
+    look?: {
+      firstRow?: boolean;
+      lastRow?: boolean;
+      firstColumn?: boolean;
+      lastColumn?: boolean;
+      noHBand?: boolean;
+      noVBand?: boolean;
+    } | null;
   };
 }
 
@@ -49,13 +62,13 @@ const overlayStyle: CSSProperties = {
 };
 
 const dialogStyle: CSSProperties = {
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   borderRadius: 8,
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-  minWidth: 360,
+  minWidth: 'min(360px, calc(100vw - 32px))',
   maxWidth: 440,
   width: '100%',
-  margin: 20,
+  margin: 'clamp(8px, 2.5vw, 20px)',
 };
 
 const headerStyle: CSSProperties = {
@@ -85,6 +98,8 @@ const labelStyle: CSSProperties = {
 };
 
 const inputStyle: CSSProperties = {
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text-on-surface)',
   flex: 1,
   padding: '6px 8px',
   border: '1px solid var(--doc-border)',
@@ -105,6 +120,8 @@ const footerStyle: CSSProperties = {
 };
 
 const btnStyle: CSSProperties = {
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text-on-surface)',
   padding: '6px 16px',
   fontSize: 13,
   border: '1px solid var(--doc-border)',
@@ -126,12 +143,19 @@ export function TablePropertiesDialog({
   const [width, setWidth] = useState<number>(currentProps?.width || 0);
   const [widthType, setWidthType] = useState<string>(currentProps?.widthType || 'auto');
   const [justification, setJustification] = useState<string>(currentProps?.justification || 'left');
+  // Banded rows / columns are stored inverted on the table look attr
+  // (noHBand=true means NO horizontal banding). Read with the inverse
+  // so the checkbox sense is positive ("yes, alternate row shading").
+  const [bandedRows, setBandedRows] = useState<boolean>(!currentProps?.look?.noHBand);
+  const [bandedColumns, setBandedColumns] = useState<boolean>(!currentProps?.look?.noVBand);
 
   useEffect(() => {
     if (isOpen) {
       setWidth(currentProps?.width || 0);
       setWidthType(currentProps?.widthType || 'auto');
       setJustification(currentProps?.justification || 'left');
+      setBandedRows(!currentProps?.look?.noHBand);
+      setBandedColumns(!currentProps?.look?.noVBand);
     }
   }, [isOpen, currentProps]);
 
@@ -145,9 +169,11 @@ export function TablePropertiesDialog({
       props.widthType = widthType;
     }
     props.justification = justification as 'left' | 'center' | 'right';
+    props.bandedRows = bandedRows;
+    props.bandedColumns = bandedColumns;
     onApply(props);
     onClose();
-  }, [width, widthType, justification, onApply, onClose]);
+  }, [width, widthType, justification, bandedRows, bandedColumns, onApply, onClose]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -161,82 +187,122 @@ export function TablePropertiesDialog({
 
   return (
     <div style={overlayStyle} onClick={onClose} onKeyDown={handleKeyDown}>
-      <div
-        style={dialogStyle}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label={t('dialogs.tableProperties.title')}
-      >
-        <div style={headerStyle}>{t('dialogs.tableProperties.title')}</div>
+      <FocusTrap>
+        <div
+          style={dialogStyle}
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('dialogs.tableProperties.title')}
+        >
+          <div style={headerStyle}>{t('dialogs.tableProperties.title')}</div>
 
-        <div style={bodyStyle}>
-          {/* Width type */}
-          <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.tableProperties.widthType')}</label>
-            <select
-              style={selectStyle}
-              value={widthType}
-              onChange={(e) => setWidthType(e.target.value)}
-            >
-              <option value="auto">{t('dialogs.tableProperties.widthTypes.auto')}</option>
-              <option value="dxa">{t('dialogs.tableProperties.widthTypes.fixed')}</option>
-              <option value="pct">{t('dialogs.tableProperties.widthTypes.percentage')}</option>
-            </select>
-          </div>
-
-          {/* Width value */}
-          {widthType !== 'auto' && (
+          <div style={bodyStyle}>
+            {/* Width type */}
             <div style={rowStyle}>
-              <label style={labelStyle}>{t('dialogs.tableProperties.widthLabel')}</label>
-              <input
-                type="number"
-                style={inputStyle}
-                min={0}
-                step={widthType === 'pct' ? 5 : 100}
-                value={width}
-                onChange={(e) => setWidth(Number(e.target.value) || 0)}
-              />
-              <span style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
-                {widthType === 'pct'
-                  ? t('dialogs.tableProperties.units.fiftiethsPercent')
-                  : t('dialogs.tableProperties.units.twips')}
-              </span>
+              <label htmlFor="table-props-width-type" style={labelStyle}>
+                {t('dialogs.tableProperties.widthType')}
+              </label>
+              <select
+                id="table-props-width-type"
+                style={selectStyle}
+                value={widthType}
+                onChange={(e) => setWidthType(e.target.value)}
+              >
+                <option value="auto">{t('dialogs.tableProperties.widthTypes.auto')}</option>
+                <option value="dxa">{t('dialogs.tableProperties.widthTypes.fixed')}</option>
+                <option value="pct">{t('dialogs.tableProperties.widthTypes.percentage')}</option>
+              </select>
             </div>
-          )}
 
-          {/* Alignment */}
-          <div style={rowStyle}>
-            <label style={labelStyle}>{t('dialogs.tableProperties.alignmentLabel')}</label>
-            <select
-              style={selectStyle}
-              value={justification}
-              onChange={(e) => setJustification(e.target.value)}
+            {/* Width value */}
+            {widthType !== 'auto' && (
+              <div style={rowStyle}>
+                <label htmlFor="table-props-width" style={labelStyle}>
+                  {t('dialogs.tableProperties.widthLabel')}
+                </label>
+                <input
+                  id="table-props-width"
+                  type="number"
+                  style={inputStyle}
+                  min={0}
+                  step={widthType === 'pct' ? 5 : 100}
+                  value={width}
+                  onChange={(e) => setWidth(Number(e.target.value) || 0)}
+                />
+                <span style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
+                  {widthType === 'pct'
+                    ? t('dialogs.tableProperties.units.fiftiethsPercent')
+                    : t('dialogs.tableProperties.units.twips')}
+                </span>
+              </div>
+            )}
+
+            {/* Alignment */}
+            <div style={rowStyle}>
+              <label htmlFor="table-props-alignment" style={labelStyle}>
+                {t('dialogs.tableProperties.alignmentLabel')}
+              </label>
+              <select
+                id="table-props-alignment"
+                style={selectStyle}
+                value={justification}
+                onChange={(e) => setJustification(e.target.value)}
+              >
+                <option value="left">{t('dialogs.tableProperties.alignOptions.left')}</option>
+                <option value="center">{t('dialogs.tableProperties.alignOptions.center')}</option>
+                <option value="right">{t('dialogs.tableProperties.alignOptions.right')}</option>
+              </select>
+            </div>
+
+            {/* Banded rows / columns — inverted senses of OOXML
+                noHBand / noVBand. Renders as plain checkboxes since
+                the values are independent booleans (matches Word's
+                Table Design "Banded Rows" / "Banded Columns" check
+                marks). */}
+            <div style={rowStyle}>
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  data-testid="table-props-banded-rows"
+                  checked={bandedRows}
+                  onChange={(e) => setBandedRows(e.target.checked)}
+                />
+                {t('dialogs.tableProperties.bandedRows')}
+              </label>
+            </div>
+            <div style={rowStyle}>
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  data-testid="table-props-banded-columns"
+                  checked={bandedColumns}
+                  onChange={(e) => setBandedColumns(e.target.checked)}
+                />
+                {t('dialogs.tableProperties.bandedColumns')}
+              </label>
+            </div>
+          </div>
+
+          <div style={footerStyle}>
+            <button type="button" style={btnStyle} onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              style={{
+                ...btnStyle,
+                backgroundColor: 'var(--doc-primary)',
+                color: 'white',
+                borderColor: 'var(--doc-primary)',
+              }}
+              onClick={handleApply}
             >
-              <option value="left">{t('dialogs.tableProperties.alignOptions.left')}</option>
-              <option value="center">{t('dialogs.tableProperties.alignOptions.center')}</option>
-              <option value="right">{t('dialogs.tableProperties.alignOptions.right')}</option>
-            </select>
+              {t('common.apply')}
+            </button>
           </div>
         </div>
-
-        <div style={footerStyle}>
-          <button type="button" style={btnStyle} onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            style={{
-              ...btnStyle,
-              backgroundColor: 'var(--doc-primary)',
-              color: 'white',
-              borderColor: 'var(--doc-primary)',
-            }}
-            onClick={handleApply}
-          >
-            {t('common.apply')}
-          </button>
-        </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }

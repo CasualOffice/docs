@@ -1,0 +1,773 @@
+# 09 — Feature-Parity Pipeline (vs. Google Docs / Word)
+
+Target: feature parity with **Google Docs UI/UX**, falling back to Word
+when Word covers something Docs does not. UX rule: when in doubt, do
+exactly what Google Docs does — placement, naming, keyboard shortcut,
+icon. Industry-standard polish (tooltips, focus rings, keyboard
+coverage, animation tier) is non-negotiable and tracked as cross-cutting
+work (Stream X below).
+
+Pipeline doc, not a release plan. Streams run in parallel; items inside
+a stream are roughly ordered by user-impact. Pull from the top.
+
+Status legend:
+- ✅ ships today
+- 🟡 partial / has gaps
+- ❌ missing
+
+---
+
+## Inventory snapshot (2026-05-28)
+
+What ships today, grouped the way Google Docs groups it.
+
+### Panels / sidebars
+
+| Panel                       | Status | Notes                                                          |
+| --------------------------- | ------ | -------------------------------------------------------------- |
+| Comments                    | ✅     | `UnifiedSidebar` + `CommentCard` + `AddCommentCard`            |
+| Suggesting / Track changes  | ✅     | `TrackedChangeCard` in unified sidebar, `Mod+Shift+E` shortcut |
+| Document outline (headings) | ✅     | `DocumentOutline.tsx`                                          |
+| Version history             | 🟡     | `VersionHistoryPanel` exists; local-only (no peer entries)     |
+| Explore / Research          | ✅     | Wikipedia v0; see A3                                            |
+| Dictionary / Define         | ✅     | see A4                                                          |
+| Word count                  | 🟡     | status-bar live count; no dedicated panel                      |
+| Translate                   | 🟡     | selection translate shipped; see A5                            |
+| Citations                   | 🟡     | v0 manager shipped; see A6                                     |
+| Find & replace              | ✅     | non-modal dialog (intentional)                                 |
+
+### Editing surfaces
+
+| Surface           | Status | Notes                                                                                                  |
+| ----------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| Toolbar           | ✅     | rich; tooltips present                                                                                 |
+| Menubar           | ✅     | File / Edit / View / Insert / Format / Tools / Help via `MenuDropdown` (now ARIA-correct popup-menu)   |
+| Floating selection toolbar | ✅ | desktop selection chip (B/I/U/S) via `MobileFormatBar` `variant='desktop'`; see C1                     |
+| Right-click context menu | 🟡 | exists; needs Docs-parity coverage audit (lookup, define, link, comment, suggest)                       |
+| Table toolbar / dropdown | 🟡 | live surface is `TableMoreDropdown` (in `FormattingBar`); distribute rows/cols (B3) + pin header (B4) shipped; sort still missing (B5) |
+| Drawing canvas    | 🟡     | basic shapes shipped; full vector canvas deferred (see C2)                                             |
+| Equation editor   | ❌     | —                                                                                                      |
+| Voice typing      | ✅     | `useVoiceTyping` (Web Speech API); Edit-menu entry gated on browser support; see D6                    |
+| Spell-check underlines | ❌| browser spellcheck only; no in-editor squiggles                                                        |
+
+### Dialogs already shipped
+
+`AboutDialog`, `BookmarksDialog`, `BordersAndShadingDialog`,
+`CharacterSpacingDialog`, `CommandPaletteDialog`, `CustomSpacingDialog`,
+`FilePropertiesDialog`, `FindReplaceDialog`, `FootnotePropertiesDialog`,
+`HyperlinkDialog`, `ImagePositionDialog`, `ImagePropertiesDialog`,
+`InsertImageDialog`, `InsertSymbolDialog`, `InsertTableDialog`,
+`KeyboardShortcutsDialog`, `PageSetupDialog`, `PasteSpecialDialog`,
+`SplitCellDialog`, `TablePropertiesDialog`.
+
+That's solid baseline coverage. Most parity gaps are *panels* and
+*smart-engine* features, not basic dialogs.
+
+---
+
+## Stream A — Side panels (right rail)
+
+Goal: every Google Docs right-rail panel exists, opens from the same
+place (right-edge icon strip), uses our existing `UnifiedSidebar` shell
+where the item-anchored model fits.
+
+### A1 — Version history → cross-peer entries 🟡 (foundation shipped)
+
+Today: `VersionHistoryPanel` reads `useEditHistory`, captures local
+transactions only. Reverting works locally.
+
+**Shipped (backend foundation):**
+- `inline.Store` now keeps a per-doc revision-metadata log
+  (`RevisionMeta`: version, savedAt, sizeBytes, optional author),
+  appended on creation + every Snapshot, capped at 100 (oldest
+  rolls off). `Store.History(docID)` returns a defensive copy.
+- `GET /api/docs/{id}/history` serves the log as a JSON array.
+  Read-only, unrated. 404 on unknown doc, 405 on non-GET.
+- Tests: 5 inline-store + 4 handler; all race-clean.
+
+**Still deferred (blocked on M2 serializer worker):**
+- Per-revision *content* storage — the inline store keeps only the
+  latest bytes, so content-revert to an arbitrary past revision
+  can't work until the Y.Doc → .docx worker produces + stores
+  per-revision blobs. The history endpoint is metadata-only by
+  design.
+- Author attribution — inline is anonymous; `RevisionMeta.Author`
+  is wired but unset until an authenticated host populates it.
+- `VersionHistoryPanel` collab mode — will fetch the endpoint and
+  render a read-only server timeline once there's content behind
+  each revision worth reverting to. Local `useEditHistory` revert
+  stays the in-session path.
+
+Why staged this way: building collab revert UI on top of a
+snapshot pipeline that doesn't retain per-revision content would
+be a hollow feature. The metadata log + endpoint are the real,
+testable substrate M2 builds on.
+
+### A2 — Headings outline → click-to-navigate ✅
+
+All four behaviors now present:
+- Live updates: parent re-supplies headings on every PM change.
+- Active highlight: blue-tinted background + left bar + bold weight
+  on the heading whose section the cursor is in. Computed in
+  DocxEditor from the live selection + heading positions, passed
+  as `activeIndex` prop.
+- Click → `scrollToPosition` + `setSelection` + focus (unchanged).
+- Collapsible sub-headings: chevron next to each parent, click
+  toggles. Hidden-by-collapse rows are filtered out of render.
+  Clicking a heading whose ancestor is collapsed auto-expands
+  the ancestor first so the active state stays visible.
+
+### A3 — Explore / Research panel ✅ (Wikipedia v0)
+
+Tools → Explore opens a dialog that hits Wikipedia's REST summary
+endpoint (`/api/rest_v1/page/summary/<title>`) for the selection or
+a typed query. Renders the page title + extract paragraph + an
+"Open in Wikipedia ↗" external link + a "Cite this" button. Cite
+inserts a hyperlink at the cursor (title as display text, page URL
+as href) via the existing `insertHyperlink` command — no need to
+touch the footnote subsystem. Loading / not-found / error states
+route through `PanelState` (its fifth adopter). Disambiguation
+responses are folded into the "not-found" branch so the user
+retries with a more specific term. Image search is deliberately
+skipped per the parity note. e2e in `explore-dialog.spec.ts` mocks
+the endpoint.
+
+### A4 — Dictionary panel ✅
+
+Tools → Dictionary + `Ctrl/Cmd+Shift+Y` (Google Docs binding) opens a
+lookup dialog. Seeds the input from the current selection's first
+whitespace-token, so highlighting "hello world" pre-fills "hello".
+The lookup hits `api.dictionaryapi.dev` (free, no API key) and the
+result lists every meaning's part-of-speech + the first definition.
+Loading and error states route through `PanelState` so they match
+the rest of the editor's chrome (PanelState's third adopter after
+VersionHistoryPanel and DocumentOutline). e2e in
+`dictionary-dialog.spec.ts` mocks the endpoint so the run is
+deterministic offline.
+
+### A5 — Translate document 🟡 (selection translate shipped)
+
+Tools → Translate opens a two-column dialog: source and target
+language pickers at the top, original text on the left, translated
+text on the right, swap button between the pickers, Copy button
+under the translation. Seeds the original from the editor selection;
+hits `api.mymemory.translated.net` (free, no API key) and shows the
+result. Loading / error states route through `PanelState` (the
+helper's fourth adopter). Whole-document translate is the future
+follow-up that needs a paid provider — out of scope until then.
+e2e in `translate-dialog.spec.ts` mocks the endpoint.
+
+### A6 — Citations panel 🟡 (v0 manager shipped)
+
+Tools → Citations opens a local-only citation manager. Two regions:
+add-form (author, title, year, URL — first two required) on top, a
+list of saved entries on the bottom with a shared APA/MLA/Chicago
+radio chooser. Each row has Insert (drops the formatted text at the
+cursor and wraps the URL substring in a hyperlink mark) and Delete.
+Storage is `localStorage` (`docx-editor-citations`) — same pattern
+as Building Blocks; the `.docx` bibliography-field round-trip is
+the future follow-up the original parity note named ("queue last").
+e2e in `citations-dialog.spec.ts`, unit tests cover the storage CRUD
++ all three format strings.
+
+### A7 — Word-count panel ✅
+
+Dialog shipped (`WordCountDialog`) with five rows: pages, words,
+characters, characters excluding spaces, paragraphs. Triggered
+via Edit → Word count or `Ctrl+Shift+C` (Google Docs binding).
+Computation lives in DocxEditor's existing wordCount memo,
+extended to also produce characters-with-spaces + paragraph
+count from the per-paragraph text walk.
+
+---
+
+## Stream B — Tables (configuration + editing)
+
+Tables are the user's named priority. Today: `TableOptionsDropdown`,
+`TablePropertiesDialog`, `SplitCellDialog`, `InsertTableDialog`,
+`TableGridPicker`, `TableBorderPicker`, `TableBorderWidthPicker`,
+`TableMergeButton`, `TableMoreDropdown`, `TableInsertButtons`.
+
+Substantial. Gaps are mostly polish + a few real missing actions.
+
+### B1 — Hover-handle row/column insertion ✅
+
+Hovering a table row/column boundary shows a floating "+" button
+(`detectTableInsertHover` in the layout-painter →
+`handlePagesMouseMove`/`handleTableInsertClick` in `PagedEditor`), which
+inserts a row below / column to the right at that boundary. Has
+flicker-guard (delayed hide) and is suppressed during drag/resize.
+
+### B2 — Drag-to-resize columns + rows ✅
+
+Confirmed working for both axes. The layout-painter renders resize
+handles (`layout-table-resize-handle` for columns, `-row-resize-handle`
+for rows, plus a right-edge handle) in `renderTable.ts`; drag is handled
+in `PagedEditor.tsx` (`isResizingColumnRef`/`isResizingRowRef`/
+`isResizingRightEdgeRef`), persisting widths/heights to the PM table
+node attrs.
+
+### B3 — Distribute rows / columns evenly ✅
+
+Both shipped. `distributeColumns` was already present; `distributeRows`
+added in this batch as a mirror command (averages explicit row heights
+or falls back to the 360-twip default when no row has a height set
+yet). Wired into both `TableMoreDropdown` and `TableOptionsDropdown`
+right above the existing columns entry, plus dispatch in
+`DocxEditor.tsx`. No tests added — `distributeColumns` has no test
+either and inventing a scaffold for this one would set a new bar.
+
+### B4 — Pin table header row ✅
+
+`toggleHeaderRow` flips the cursor row's `isHeader` attr, which
+serializes to `<w:tblHeader/>` and round-trips both ways
+(`tableParser.ts` ↔ `tableSerializer.ts`). The layout-painter repeats
+header rows on continuation fragments (`renderTable.ts`,
+`data-repeatedHeader`), so the pin is visible on multi-page tables —
+not just in the exported .docx. Surfaced in the live table bar via
+`TableMoreDropdown` ("Pin header row" → `push_pin` icon + ✓ when the
+current row is pinned, driven by `TableContextInfo.currentRowIsHeader`).
+Tested in `e2e/tests/tables.spec.ts` → "Table Pin Header Row".
+
+Gotcha for future sessions: `TableOptionsDropdown` also has a Pin item
+but is exported-only and **not mounted** anywhere — `TableMoreDropdown`
+(inside `FormattingBar`) is the shipped surface.
+
+### B5 — Sort table ✅
+
+`sortTable(asc|desc)` reorders the table's data rows by the text of the
+cell in the cursor's column; leading header rows (`isHeader`) stay
+pinned. Numeric columns sort numerically, everything else by
+`localeCompare`. Pure reorder of `tableRow` nodes via `replaceWith` — the
+serializer is untouched (we never restructure). Surfaced in
+`TableMoreDropdown` as "Sort by column {n} (A → Z)" / "(Z → A)" — the
+label names the target column (the cursor's, 1-based) so it's clear
+*which* column drives the sort, matching the Sheets pattern. Tested in
+`tables.spec.ts` → "Table Sort" (asc + desc).
+
+### B6 — Cell vertical alignment ✅
+
+Per-cell top/middle/bottom is fully wired: `setCellVerticalAlign`
+command (`TableExtension.ts`) sets the cell node's `verticalAlign` attr,
+the three align buttons live in `TableMoreDropdown`, and it round-trips
+via `<w:vAlign>` (`tableParser` ↔ serializer) and renders in
+`renderTable.ts`.
+
+### B7 — Cell background color (quick picker) ✅
+
+`TableCellFillPicker` (one-click `format_color_fill` swatch + "none"
+option) ships in the `FormattingBar` table group, shown whenever the
+cursor is in a table. Dispatches `cellFillColor` → `setCellFillColor`,
+and reflects the current cell's `cellBackgroundColor`. The fuller
+control still lives in `BordersAndShadingDialog`.
+
+### B8 — Convert text → table / table → text ✅
+
+Insert → "Convert selection to table" turns the currently-selected
+paragraphs into a table. Delimiter is auto-detected: tab → comma →
+"one cell per paragraph", which covers the paste-from-CSV headline
+case without forcing a dialog. Short rows are zero-padded; trailing /
+leading blank paragraphs are stripped; a trailing empty paragraph is
+inserted after the table so the cursor has somewhere to land.
+
+The reverse direction — Insert → "Convert table to text" — appears
+only while the caret is inside a table (gated on
+`state.pmTableContext?.isInTable`). It replaces the table with one
+paragraph per row, cells joined by `\t`, giving a round-trip-friendly
+default that pairs with the forward conversion's tab delimiter.
+Both directions share `packages/react/src/utils/convertTextToTable.ts`.
+e2e in `convert-to-table.spec.ts` and `convert-table-roundtrip.spec.ts`.
+
+### B9 — Auto-fit (contents / window) ✅
+
+Both modes ship in the table More menu, alongside Distribute rows /
+columns:
+
+- **Auto-fit to contents** (`autoFitContents`): clears explicit widths
+  so the browser auto-sizes columns to their content.
+- **Auto-fit to window** (`autoFitWindow`): forces all columns to equal
+  width summing to the page content area (Word's default 9360 twips
+  for Letter + 1″ margins). Section-aware width sourcing can come
+  later.
+
+Both mirror the `distributeColumns` plumbing pattern (registered command
+→ wrapper → barrel → `TableAction` → `DocxEditor` dispatch →
+`TableMoreDropdown` item). e2e verifies columns become equal-width after
+applying Auto-fit to window.
+
+---
+
+## Stream C — Insert menu / objects
+
+### C1 — Floating selection toolbar ✅
+
+Shipped via `MobileFormatBar` extended with a `variant: 'mobile' |
+'desktop'` prop. The existing mobile chip stays unchanged; a
+smaller (28×28 button, 34px tall) desktop chip now appears above
+any non-collapsed selection on non-phone viewports, with B / I /
+U / S quick-format buttons. PagedEditor renders both variants
+simultaneously; the component's internal viewport gate decides
+which one is visible. Distinct `data-testid` per variant so the
+existing "no mobile-bar on desktop" assertion still passes;
+added a sibling "desktop-bar appears + Bold toggles" test.
+
+Word/Notion have this; Google Docs intentionally doesn't (Docs
+relies on the always-visible top toolbar instead). Shipping the
+desktop variant for users coming from Word; behind no flag, but
+the prop is opt-in so embedders can `variant="mobile"` to match
+Docs exactly if they prefer.
+
+### C2 — Inline drawing 🟡 (basic shapes shipped)
+
+Insert → Shape submenu drops a default-styled SVG primitive
+(rectangle, ellipse, line, arrow) at the cursor as an inline image.
+SVG is generated by `packages/react/src/utils/shapes.ts`, encoded
+as a `data:image/svg+xml;utf8` URL, and inserted into a regular
+image node — so resize handles and the image-properties dialog
+work without further plumbing. The full Google-Docs-style drawing
+canvas (freehand, shape resize during draw, in-shape text) is the
+deferred upgrade; this lands the headline action so users can
+sketch out diagrams without leaving the editor. e2e in
+`insert-shape.spec.ts`, unit tests in `shapes.test.ts`.
+
+(Side benefit: `SubMenuItem` in `MenuDropdown` now carries
+`role="menuitem"` — the existing X3 focus-ring rule covers it for
+free, and assistive tech announces submenu items correctly.)
+
+### C3 — Equation editor ❌
+
+Docs has a math-symbol palette + simple inline equation. Backed by
+OMML in .docx. Defer to v2; user demand is low for non-academic doc
+flows.
+
+### C4 — Chart ❌
+
+Docs has charts backed by Sheets. Without Sheets integration this is
+just "insert image" with extra steps. Defer.
+
+### C5 — Watermark 🟡 (dialog + rendering shipped; round-trip pending)
+
+Insert → "Watermark…" opens a minimal dialog (text input + Apply /
+Remove / Cancel). Apply writes into a new `DocumentBody.watermark` slot;
+the painter draws a rotated overlay (gray, opacity 0.5, rotation -45°)
+behind the page's flow content on every page. `pointer-events: none`
+and `user-select: none` so it never blocks clicks or lands in
+selections. Mirrors the page-color flow (commit `c186c4a`): doc-level
+attribute promoted by `PagedEditor` into `RenderPageOptions`, then
+rendered inside `renderPage`. e2e in `watermark.spec.ts`.
+
+**Updated 2026-05-30:** the dialog now exposes color (HTML5 color
+picker), opacity (10–100% slider), font size (48–144px slider), and
+rotation (-90 to 90° slider) — every knob the painter already reads.
+Defaults still match Word (gray, 50%, 96px, -45°); applying a value
+that matches a default is omitted from the persisted watermark so
+future default changes don't get pinned. e2e in
+`watermark-knobs.spec.ts` asserts the dialog values land on the
+rendered overlay's inline styles.
+
+**Pending:** round-trip — parse VML watermarks (`<v:shape>` /
+`<v:textpath>`) from default-header XML on load, write VML on save. Word
+has many watermark shape variants; a focused round-trip pass needs its
+own fixture set. Image watermarks are deferred entirely.
+
+### C6 — Building blocks / Quick parts ✅
+
+Insert → Building blocks dialog (`BuildingBlocksDialog`) saves the
+current PM selection as a named snippet and re-inserts it later.
+Storage is `localStorage` (`packages/react/src/utils/buildingBlocks.ts`)
+keyed by `docx-editor-building-blocks`; content round-trips arbitrary
+schema content via `Slice.toJSON` / `Slice.fromJSON`, not just plain
+text. The dialog has two regions — a save-current-selection form
+(disabled when the editor selection is empty) and the saved-blocks list
+with per-row Insert / Delete. The homepage template gallery still
+serves whole-document templates; Building blocks complements it for
+in-document snippets.
+
+### C7 — Page break / column break / section break menu ✅ (column break deferred)
+
+Insert menu has **page break** (`onInsertPageBreak`, `PageBreakExtension`)
+and a **section-break** submenu with all four types — next-page,
+continuous, even-page, odd-page (`onInsertSectionBreak`). The only gap is
+a *dedicated* column break; `continuous` covers the multi-column case, so
+a standalone column-break item is deferred (low demand).
+
+---
+
+## Stream D — Tools menu / smart engines
+
+This is where industry-standard polish lives. Most of these have
+shipped (D1/D2/D5/D6/D7/D8 ✅); D3/D4 remain deferred.
+
+### D1 — Smart quotes engine ✅
+
+Shipped as `SmartQuotesExtension`. Handles " / ' (opening vs
+closing via prev-char heuristic), -- → em dash, ... → ellipsis.
+Plugin uses `handleTextInput` for single-transaction
+replacements so a single Ctrl+Z reverts. On by default;
+opt out via `createStarterKit({ disable: ['smartQuotes'] })`.
+8/8 unit tests. The Tools → Preferences toggle (D7) is the
+next user-facing surface for this.
+
+### D2 — Autocorrect / autocomplete ✅
+
+Shipped as `AutocorrectExtension` — two substitution classes via
+`handleTextInput`, each a single transaction so one Ctrl+Z reverts:
+
+- Symbol sequences fired on the completing char: `(c)`/`(C)` → ©,
+  `(r)`/`(R)` → ®, `(tm)`/`(TM)` → ™, `-->`/`->` → →, `<--`/`<-` → ←.
+- Common-typo dictionary fired on a word-boundary char (space/tab):
+  25 highest-value misspellings (`teh`→`the`, `recieve`→`receive`,
+  `seperate`→`separate`, …), with the leading letter's case preserved
+  (`Teh` → `The`).
+
+On by default; opt out via `createStarterKit({ disable: ['autocorrect'] })`.
+Per-rule disable is *not* shipped — that lands with the Tools →
+Preferences dialog (D7). A full spell-correct engine stays out of
+scope (D3/D4). 11 unit tests in `AutocorrectExtension.test.ts`.
+
+### D3 — Spell-check (in-editor squiggles) ❌
+
+Browser-level squiggles work if `spellcheck="true"` is set on the PM
+contentDOM. Verify they appear; if not, that's the lowest-effort win
+here. True in-editor dictionary (Hunspell wasm) is deferrable.
+
+### D4 — Grammar check ❌
+
+Way beyond scope without an LLM endpoint or paid API. Defer.
+
+### D5 — Word count dialog ✅
+
+A7 ships the dialog (see above) — wired through both Edit menu and
+the Tools menu (the Google Docs location). `⌘⇧C` shortcut works
+either way. e2e in `word-count-tools.spec.ts`.
+
+### D6 — Voice typing ✅
+
+`useVoiceTyping` hook wraps `webkitSpeechRecognition` /
+`SpeechRecognition` with a continuous + interimResults config that
+auto-restarts on the engine's natural `end` event so a single
+session survives mid-sentence pauses. `VoiceTypingIndicator`
+floats top-right with a pulsing red mic + "Speak now…" preview +
+Stop button. Edit menu entry is gated on `voiceTyping.supported`
+so unsupported browsers (Firefox) don't see a dead item. No
+global shortcut yet — Ctrl+Shift+S is already labeled as the AI
+summarize hint in `getActionShortcut`; can wire later if we
+demote the AI hint.
+
+### D7 — Preferences dialog ✅
+
+A new Tools menu (matches Google Docs placement, between Insert and
+Help) opens "Preferences…", a centered modal with two toggles —
+**Use smart quotes** and **Autocorrect**. Backed by a module-level
+`editorPreferences` singleton (`packages/core/.../editorPreferences.ts`)
+that the SmartQuotes and Autocorrect extensions consult inside
+`handleTextInput`, so flipping a toggle takes effect on the next
+keystroke without rebuilding the editor. The React layer hydrates the
+singleton from `localStorage` on mount and persists on change. Tested
+in `preferences-dialog.spec.ts` (menu, dialog, *runtime effect*:
+toggling smart quotes off leaves typed `"` straight).
+
+### D8 — Accessibility checker ✅
+
+Tools → "Accessibility…" opens a read-only summary of issues found in
+the current PM document, surfaced by `checkAccessibility` (a pure walk
+in `core/utils/accessibilityCheck.ts`):
+
+- **Missing alt text** on `image` nodes (null or empty/whitespace).
+- **Heading-order jumps** — flagged when a heading is more than one
+  level deeper than the previous heading in document order (e.g. H1 →
+  H3 skipping H2). Going shallower is fine — that's a normal section
+  close.
+
+Each row has a "Go to" button that moves the caret to the offending PM
+position via `TextSelection.near`. Empty state ("No accessibility issues
+found.") shipped. 10 unit tests cover the analyzer; e2e covers the menu
++ dialog + empty state.
+
+---
+
+## Stream E — Comments / Suggesting polish
+
+The cards exist; the workflow polish doesn't.
+
+### E1 — @-mention in comments ✅
+
+Two surfaces:
+
+- `AddCommentCard` watches the cursor; when it's right after a `@`
+  that's at the start of a word, a small dropdown lists matching
+  authors. Arrow keys + Enter/Tab pick one; click also works.
+  Escape closes the dropdown. Email-style `user@host` doesn't
+  trigger.
+
+- `CommentCard` runs the rendered comment text through
+  `renderCommentText` which chips any `@Name` that matches a known
+  author (case-insensitive, longest-name-first so "Jane Doe" wins
+  over "Jane"). Unknown `@strings` stay plain.
+
+Author list: `currentAuthor` + distinct authors from existing
+comments + tracked changes. No live presence-graph (single-user
+mode), so historical authors are the best signal.
+
+Tests: 9 unit tests for `renderCommentText` covering boundary,
+email-guard, longest-match, case-insensitivity, empty list.
+
+### E2 — Comment resolution → resolved view ✅
+
+`useCommentSidebarItems` carries a `showResolved` flag; resolved
+(`done`) comments are filtered out of the active list and collapse to a
+`ResolvedCommentMarker` unless `showResolved` is on, with
+`onCommentResolve`/`onCommentUnresolve` callbacks. The host owns the
+toggle state (no in-editor menu surface for it yet).
+
+### E3 — Suggesting mode banner ✅
+
+`SuggestingModeBanner` renders a thin Google-Docs-style yellow stripe
+(`#fef7e0` background, `#fde293` rule) between the toolbar and the
+pages whenever `editingMode === 'suggesting'`. Left side: bold
+"Suggesting" + a one-line explanation. Right side: a "Switch to
+editing" button that flips the mode back. `role="status"` +
+`aria-live="polite"` so assistive tech announces the mode change
+without interrupting. e2e in `suggesting-mode-banner.spec.ts`.
+
+### E4 — Accept/reject all suggestions ✅
+
+The suggesting sidebar header has a tracked-changes toolbar (prev / next
+/ **Accept all** / **Reject all**, `done_all` / `block` icons) wired to
+the `acceptAllChanges` / `rejectAllChanges` commands via
+`handleAcceptAllChanges` / `handleRejectAllChanges`. Per-change
+accept/reject stays on each card. (`data-testid` accept-all/reject-all.)
+
+### E5 — Comment shortcuts ✅
+
+`Ctrl+Alt+M` (Cmd+Option+M on macOS) now starts a new comment on the
+current selection, matching Google Docs. Wired in DocxEditor's global
+keydown handler via `shortcutActionsRef.startComment` →
+`handleStartAddComment` (uses `e.code === 'KeyM'` since Option remaps the
+M key on macOS). Tested in `comments-sidebar.spec.ts`.
+
+---
+
+## Stream F — File / Edit / View / Help menus
+
+### F1 — Make a copy ✅
+
+File → "Make a copy" (`content_copy` icon, between Save and Print) downloads
+the current content as `Copy of {name}.docx` via `handleMakeCopy` (reuses the
+save/serialize path; leaves the doc's dirty flag untouched since the original
+is unchanged). Wired through `onMakeCopy` on `ToolbarProps` → `MenuBar`.
+Tested in `file-make-a-copy.spec.ts` (item visible + download filename),
+visually verified.
+
+### F2 — Email as attachment ✅
+
+File → "Email as attachment…" triggers the same save/serialize path
+as File → Save, downloads the `.docx`, then opens a `mailto:` draft
+with subject = document title and body = a one-line "Attached:
+…" note explaining that the browser can't auto-attach (security)
+and instructing the user to drag the just-downloaded file into the
+email window. A success toast nudges the same. The "honest version"
+the parity note called for. e2e in `email-as-attachment.spec.ts`.
+
+### F3 — Page setup parity ✅ (apply-to scope deferred)
+
+`PageSetupDialog` covers page size (Letter / A4 / Legal / A3 / A5 / B5 /
+Executive / custom), orientation (swaps W/H), per-edge margins, and
+paper color. The one missing Word control is **apply-to scope** (whole
+doc vs. this-point-forward / per-section) — deferred until multi-section
+layout work lands; today it applies document-wide.
+
+### F4 — Print preview / Print ✅
+
+Confirmed: File → Print and `Ctrl+P` call `window.print()` (with a
+popup-blocked fallback), and `@media print` rules in `PrintPreview`
+control the printed layout. Uses the browser's native print dialog —
+no custom in-app preview modal (by design).
+
+### F5 — View → Pageless mode ❌
+
+Docs' Pageless mode = single continuous canvas. Big effort; our
+layout-painter is page-anchored by design. Defer indefinitely or punt
+to "Use desktop Word for pageless."
+
+### F6 — View → Show non-printing characters ✅
+
+View menu has "Show non-printing characters" — checkmark indicates
+state. Implemented as a CSS-only overlay: `paged-editor--show-marks`
+class on the pages container drives `::before` / `::after`
+pseudo-elements that render `¶` after the last visual line of every
+paragraph, `→` over tab runs, and `↵` over explicit line breaks. The
+glyphs are appended via CSS so they never enter selections, the
+clipboard, or the saved `.docx`. Color is `--doc-primary` at 35%
+opacity — visible but recessive. State persists in localStorage
+(`docx-editor-show-marks`). Space dots (·) are deliberately skipped —
+addressing individual spaces in text runs needs DOM mutation, and
+Word treats space dots as a separate toggle anyway. e2e in
+`show-formatting-marks.spec.ts`.
+
+### F7 — Help → search the menus ✅
+
+Help → "Search the menus" (the Google Docs label, top of the Help menu)
+opens the `CommandPaletteDialog`, which is also bound to `Ctrl/Cmd+Shift+P`.
+Wired via an `onOpenCommandPalette` prop on `ToolbarProps` →
+`EditorToolbar` context → `MenuBar` (the menubar Help dropdown in
+`TitleBar.tsx`). Tested in `help-menu.spec.ts`. (Text-only item — no
+`search` glyph in `iconMap`; left without an icon rather than shipping a
+guessed SVG path.)
+
+### F8 — Help → keyboard shortcuts ✅
+
+`KeyboardShortcutsDialog` is now mounted in `DocxEditor` (lazy), opened
+by `Ctrl/Cmd+/` (Google Docs binding) and by Help → "Keyboard shortcuts"
+(via the same `onOpenKeyboardShortcuts` → `MenuBar` path as F7). Tested
+in `help-menu.spec.ts`.
+
+---
+
+## Stream X — Cross-cutting polish (always-on)
+
+Not a feature stream — a quality bar applied to every other stream.
+
+### X1 — Tooltip coverage audit 🟡
+
+Today Tooltip is imported from `Toolbar.tsx`, `DocxEditor.tsx`,
+`TableInsertButtons`, `TableGridPicker`, `TableBorderWidthPicker`,
+`TableMoreDropdown`, `IconGridDropdown`, `TableMergeButton`,
+`TableOptionsDropdown`, `TableBorderPicker`, `AlignmentButtons`,
+plus (this batch) `TitleBar` (theme toggle), `StatusBar` (zoom
+buttons), `DocumentOutline` (close button).
+
+Remaining: every dialog's icon-only close/reset/help button.
+`MenuDropdown` triggers stay tooltip-less per Docs convention
+(menubar items have visible text labels). When the right-rail icon
+strip (X7) lands, every strip toggle gets a `Tooltip`.
+
+Rule going forward: any icon-only button gets a `Tooltip`. Buttons
+with visible text labels don't need one *unless* there's a keyboard
+shortcut to surface — then the tooltip shows the label with a
+shortcut chip Docs-style.
+
+### X2 — Keyboard-shortcut chip in tooltips ✅
+
+`ToolbarButton` already renders `<kbd>` chips inside the Tooltip
+when `shortcut` is passed (see `Toolbar.tsx:440-454`). The pattern
+is in place; consumers just need to pass the `shortcut` prop. New
+non-toolbar buttons should follow the same convention — if a chip
+in the Tooltip popup is needed outside `ToolbarButton`, lift the
+`tooltipContent` builder out of `Toolbar.tsx` into a shared helper
+rather than duplicating the JSX.
+
+### X3 — Focus-ring consistency ✅
+
+The shared `Button` primitive rings via Tailwind (`focus-visible:ring-2`).
+A scoped rule in `styles/editor.css` gives **menu items**
+(`[role="menuitem"]` etc. in the menubar / dropdowns / table menu) a
+keyboard focus ring — they're raw inline-styled `<button>`s that had none.
+The Toolbar's heading-style / character-spacing / section-break / field
+submenu items now carry `role="menuitem"` too, so they pick up the same
+rule for free. A new `.ep-focus-ring` opt-in utility lets non-menu raw
+buttons (the table hover-insert "+" being the first adopter) take the
+same outline without risk of double-rings. Verified in
+`help-menu.spec.ts` (asserts `outline` on the focused item).
+
+### X4 — Animation tier ✅
+
+Three CSS custom properties on `.ep-root` standardize the editor's
+animation timings: `--doc-anim-fast` (100ms), `--doc-anim-base` (150ms),
+`--doc-anim-slow` (200ms) — all on the Material-standard easing curve
+`cubic-bezier(0.4, 0, 0.2, 1)`. The five `transition: … 0.15s` rules in
+`editor.css` (table resize handles, padding outline, comment edge
+opacity) now read from `--doc-anim-base`. New `@keyframes ep-fade-in`
+and `ep-scale-in` paired with the `.ep-dialog-overlay` /
+`.ep-dialog-shell` classes give every lazy dialog (About / Preferences /
+Watermark / Accessibility / Building blocks) a coherent open animation
+that respects `prefers-reduced-motion`. Components that haven't migrated
+yet keep their old inline transitions — the token is opt-in.
+
+### X5 — Empty / loading / error states 🟡
+
+Shared `PanelState` component (`components/ui/PanelState.tsx`) covers
+the three rest-states every side panel ends up needing: `empty`,
+`loading` (with an `ep-spin` keyframe-driven 800ms spinner),
+`error` (with an optional `Retry` button). Centered layout, muted
+copy, opt-in icon — quiet on purpose. ARIA roles auto-pick
+(`status` for empty/loading, `alert` for error; `aria-live="polite"`
+on loading).
+
+Adopters so far: `VersionHistoryPanel` (empty), `DocumentOutline`
+(empty), `DictionaryDialog` (loading + error + retry — the first
+non-empty-state adopter). Comments sidebar already returns `null`
+when empty (no inline chrome to migrate). Remaining panels (agent)
+and any future right-rail panels should adopt the helper rather than
+re-inventing the chrome, which leaves this 🟡 until they migrate.
+
+### X6 — i18n
+
+Every new string goes through `t()` per `docx-editor/CLAUDE.md`. CI
+catches missing keys via `bun run i18n:validate`. Mentioning here
+because parity work will generate dozens of new strings.
+
+### X7 — Right-rail icon strip 🟡 (v0 shipped)
+
+`PanelRail` (`packages/react/src/components/PanelRail.tsx`) is the
+always-visible 36px activity bar on the right edge. v0 ships three
+toggles — Outline, Comments, Version history — each with a pressed
+state and a left-edge accent marker matching VSCode / Office
+activity-bar conventions. Mutual exclusion between Comments and
+Version history lives in two shared callbacks
+(`handleToggleComments` / `handleToggleVersionHistory`) used by both
+the toolbar buttons and the rail.
+
+Sheet reference: `services/sheet/apps/web/src/shell/PanelRail.tsx`
+(sheet's rail has five toggles — Tables, Charts, Outline, Comments,
+History — because sheet has those panel surfaces; doc's three v0
+buttons line up with the panels doc actually has today). Adding more
+entries lands as those surfaces ship. e2e in `panel-rail.spec.ts`.
+
+---
+
+## Execution rhythm
+
+Per item:
+
+1. Pick the highest-priority `❌` or `🟡` from one stream.
+2. Build the user-facing feature behind a feature flag *if* it touches
+   the schema; otherwise ship it directly.
+3. Add Playwright test(s) per `docx-editor/CLAUDE.md` "Test File
+   Mapping" — extend the existing file for the feature area.
+4. Run targeted Playwright (`--grep`) + `bun run typecheck`; full suite
+   only at end of a batch.
+5. Update this doc's status legend in the same commit.
+6. Commit per `docx-editor/CLAUDE.md` "PR Title and Description
+   Style".
+7. If the change is upstreamable (a fork-level improvement, not a
+   gateway integration), open the PR to `eigenpal/docx-editor` per
+   the working-rules in the outer CLAUDE.md.
+
+### What to pull first (recommended order)
+
+The original recommended queue (X1, B3, B4, C1, D1, A7, A2, E1, D6, A1) has
+been worked through — every item on it is now ✅ or foundation-shipped. The
+remaining open items in the streams above are the small set still marked
+❌ / 🟡: in-editor spell-check + grammar (D3/D4), equation/chart (C3/C4),
+pageless mode (F5), and the polish 🟡s (X1/X5/X7). Pull the highest
+user-impact 🟡 from whichever stream the current focus touches.
+
+Note: the project's active priority is now real-world **visual fidelity**,
+not feature parity — feature parity has largely landed. Fidelity work is
+tracked authoritatively in `19-content-drops-and-inconsistencies.md` and
+`20-overlap-and-interaction.md`, not here.
+
+---
+
+## What this pipeline doesn't cover
+
+- **Performance** — tracked in `08-improvement-tracker.md`.
+- **Fidelity / round-trip + visual gaps** — the active trackers are
+  `19-content-drops-and-inconsistencies.md` (content drops) and
+  `20-overlap-and-interaction.md` (overlap / interaction). The older
+  `01-fidelity-gaps.md` + `03-gap-matrix.md` predate the real-world
+  visual-fidelity focus.
+- **Backend / collab infra** — tracked in `05-backend-design.md`.
+- **Tauri desktop binary** — paused per user direction; resumes when
+  fidelity + parity cross a user-decided bar.

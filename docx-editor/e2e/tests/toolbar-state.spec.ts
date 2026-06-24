@@ -18,6 +18,7 @@ test.describe('Bold Detection', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -69,28 +70,14 @@ test.describe('Bold Detection', () => {
     await editor.selectText('bold');
     await editor.applyBold();
 
-    // Position cursor at start of 'bold'
-    await page.evaluate(() => {
-      const walker = document.createTreeWalker(
-        document.querySelector('.ProseMirror')!,
-        NodeFilter.SHOW_TEXT,
-        null
-      );
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        if (node.textContent?.includes('bold')) {
-          const range = document.createRange();
-          range.setStart(node, node.textContent.indexOf('bold'));
-          range.collapse(true);
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-          (document.querySelector('.ProseMirror') as HTMLElement)?.focus();
-          break;
-        }
-      }
-    });
-
+    // Collapse selection to its start — that's the position at the
+    // boundary right before the bold range. DOM-level setStart/focus
+    // doesn't reliably round-trip through ProseMirror's selection
+    // sync (the hidden PM is off-screen, and PM's `selectionchange`
+    // listener doesn't always observe programmatic ranges set on a
+    // detached layout). ArrowLeft from a non-empty selection
+    // dispatches a real PM transaction that collapses to from.
+    await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(100);
 
     const boldButton = page.locator('[data-testid="toolbar-bold"]');
@@ -180,6 +167,7 @@ test.describe('Italic Detection', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -263,6 +251,7 @@ test.describe('Underline Detection', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -310,6 +299,7 @@ test.describe('Combined Formatting Detection', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -415,6 +405,7 @@ test.describe('Partial Selection Detection', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -506,6 +497,7 @@ test.describe('Style Detection at Cursor', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -540,11 +532,11 @@ test.describe('Style Detection at Cursor', () => {
 
     await page.waitForTimeout(100);
 
-    // Check if style picker shows Heading 1
-    const stylePicker = page.locator('select[aria-label="Select paragraph style"]');
-    const styleValue = await stylePicker.inputValue();
-    // Should contain 'Heading' or 'H1' or similar
-    expect(styleValue?.toLowerCase()).toMatch(/heading|h1/i);
+    // StylePicker is a Radix combobox now (not native <select>) — read
+    // its displayed text instead of `inputValue()`.
+    const styleTrigger = page.getByRole('combobox', { name: 'Select paragraph style' });
+    const styleValue = (await styleTrigger.textContent()) ?? '';
+    expect(styleValue.toLowerCase()).toMatch(/heading|h1/i);
   });
 
   test('cursor in normal paragraph shows normal style', async ({ page }) => {
@@ -578,9 +570,9 @@ test.describe('Style Detection at Cursor', () => {
 
     await page.waitForTimeout(100);
 
-    const stylePicker = page.locator('select[aria-label="Select paragraph style"]');
-    const styleValue = await stylePicker.inputValue();
-    expect(styleValue?.toLowerCase()).toMatch(/normal|body|paragraph/i);
+    const styleTrigger = page.getByRole('combobox', { name: 'Select paragraph style' });
+    const styleValue = (await styleTrigger.textContent()) ?? '';
+    expect(styleValue.toLowerCase()).toMatch(/normal|body|paragraph/i);
   });
 });
 
@@ -591,6 +583,7 @@ test.describe('Alignment Detection at Cursor', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -675,6 +668,7 @@ test.describe('List Detection at Cursor', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -708,7 +702,7 @@ test.describe('List Detection at Cursor', () => {
 
     await page.waitForTimeout(100);
 
-    const bulletButton = page.locator('[aria-label="Bullet List"]');
+    const bulletButton = page.locator('[aria-label^="Bullet List"]');
     const isActive = await bulletButton.evaluate((el) => {
       return el.getAttribute('aria-pressed') === 'true' || el.classList.contains('active');
     });
@@ -745,7 +739,7 @@ test.describe('List Detection at Cursor', () => {
 
     await page.waitForTimeout(100);
 
-    const numberedButton = page.locator('[aria-label="Numbered List"]');
+    const numberedButton = page.locator('[aria-label^="Numbered List"]');
     const isActive = await numberedButton.evaluate((el) => {
       return el.getAttribute('aria-pressed') === 'true' || el.classList.contains('active');
     });
@@ -783,8 +777,8 @@ test.describe('List Detection at Cursor', () => {
 
     await page.waitForTimeout(100);
 
-    const bulletButton = page.locator('[aria-label="Bullet List"]');
-    const numberedButton = page.locator('[aria-label="Numbered List"]');
+    const bulletButton = page.locator('[aria-label^="Bullet List"]');
+    const numberedButton = page.locator('[aria-label^="Numbered List"]');
 
     const bulletActive = await bulletButton.evaluate((el) => {
       return el.getAttribute('aria-pressed') === 'true' || el.classList.contains('active');
@@ -805,6 +799,7 @@ test.describe('Font Detection at Cursor', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 
@@ -839,10 +834,10 @@ test.describe('Font Detection at Cursor', () => {
 
     await page.waitForTimeout(100);
 
-    // Check font picker shows Georgia
-    const fontPicker = page.locator('select[aria-label="Select font family"]');
-    const fontValue = await fontPicker.inputValue();
-    expect(fontValue?.toLowerCase()).toContain('georgia');
+    // FontPicker is a Radix combobox — read displayed text not inputValue().
+    const fontTrigger = page.getByRole('combobox', { name: 'Select font family' });
+    const fontValue = (await fontTrigger.textContent()) ?? '';
+    expect(fontValue.toLowerCase()).toContain('georgia');
   });
 });
 
@@ -853,6 +848,7 @@ test.describe('Edge Cases for Detection', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
+    await editor.newDocument();
     await editor.focus();
   });
 

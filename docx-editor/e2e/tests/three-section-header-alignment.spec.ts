@@ -27,7 +27,31 @@ test.describe('3-section header tab-stop alignment', () => {
     await editor.goto();
     await editor.waitForReady();
     await editor.loadDocxFile('fixtures/three-section-header.docx');
-    await page.waitForTimeout(600);
+    // A fixed sleep races layout + font-loading on slow CI, skewing the
+    // bounding-rect measurements below. Instead wait until the visible
+    // header has painted all three canary words, then for fonts to settle
+    // so glyph metrics are final.
+    await page.waitForFunction(
+      () => {
+        const header = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '[class*="layout-page-header"], .layout-page-header'
+          )
+        ).find((el) => !el.closest('.paged-editor__hidden-pm'));
+        if (!header) return false;
+        const found = new Set(
+          Array.from(header.querySelectorAll('*'))
+            .map((el) => el.textContent?.trim())
+            .filter((t) => t === 'LEFT' || t === 'CENTER' || t === 'RIGHT')
+        );
+        return found.size === 3;
+      },
+      undefined,
+      { timeout: 10000 }
+    );
+    await page.evaluate(async () => {
+      await (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts?.ready;
+    });
 
     const data = await page.evaluate(() => {
       // Find the visible (not hidden-PM) header element.

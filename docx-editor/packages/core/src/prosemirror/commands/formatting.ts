@@ -80,6 +80,117 @@ export function setUnderlineStyle(style: string, color?: TextColorAttrs): Comman
   return cmds.setUnderlineStyle(style, color);
 }
 
+// Character styling — smallCaps, allCaps, characterSpacing
+// These marks have no dedicated commands in the extension yet; drive them via
+// the generic toggleMark / createSetMarkCommand / createRemoveMarkCommand helpers.
+import {
+  toggleMark,
+  createSetMarkCommand,
+  createRemoveMarkCommand,
+} from '../extensions/marks/markUtils';
+
+export const toggleSmallCaps: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['smallCaps'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+export const toggleAllCaps: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['allCaps'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+/**
+ * Toggle the `hidden` mark (w:vanish in OOXML) on the selection.
+ * Hidden text remains in the document — visible in the editor as
+ * dimmed + dotted-underline per HiddenExtension.toDOM — but is
+ * conditionally suppressed by Word on print/export.
+ */
+export const toggleHidden: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['hidden'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+// Text effects — emboss / imprint / textShadow / textOutline. Each
+// wraps the matching schema mark provided by TextEffectsExtensions.ts.
+// The visual effect is CSS-driven (text-shadow, text-stroke); OOXML
+// round-trip is handled by the existing parser/serializer pair.
+
+export const toggleEmboss: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['emboss'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+export const toggleImprint: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['imprint'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+export const toggleTextShadow: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['textShadow'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+export const toggleTextOutline: Command = (state, dispatch, view) => {
+  const markType = state.schema.marks['textOutline'];
+  if (!markType) return false;
+  return toggleMark(markType)(state, dispatch, view);
+};
+
+/** Set character spacing (letter-spacing) in twips. Pass 0 to remove. */
+export function setCharacterSpacing(spacingTwips: number): Command {
+  return (state, dispatch, view) => {
+    const markType = state.schema.marks['characterSpacing'];
+    if (!markType) return false;
+    if (spacingTwips === 0) {
+      return createRemoveMarkCommand(markType)(state, dispatch, view);
+    }
+    return createSetMarkCommand(markType, { spacing: spacingTwips })(state, dispatch, view);
+  };
+}
+
+/**
+ * Set all four character-spacing mark attrs in a single transaction
+ * (spacing/position/scale/kerning). Used by the Character Spacing dialog
+ * so toggling one field doesn't clobber the others. Pass null for any
+ * field to clear it; if every field is null the mark is removed.
+ */
+export interface CharacterAttrs {
+  /** twips, w:spacing */
+  spacing: number | null;
+  /** half-points, w:position */
+  position: number | null;
+  /** percentage, w:w */
+  scale: number | null;
+  /** half-points, w:kern */
+  kerning: number | null;
+}
+
+export function setCharacterAttrs(attrs: CharacterAttrs): Command {
+  return (state, dispatch, view) => {
+    const markType = state.schema.marks['characterSpacing'];
+    if (!markType) return false;
+    const allEmpty =
+      attrs.spacing == null &&
+      attrs.position == null &&
+      attrs.scale == null &&
+      attrs.kerning == null;
+    if (allEmpty) {
+      return createRemoveMarkCommand(markType)(state, dispatch, view);
+    }
+    return createSetMarkCommand(markType, attrs as unknown as Record<string, unknown>)(
+      state,
+      dispatch,
+      view
+    );
+  };
+}
+
 // Hyperlink commands
 export function setHyperlink(href: string, tooltip?: string): Command {
   return cmds.setHyperlink(href, tooltip);

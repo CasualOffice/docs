@@ -13,28 +13,6 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 
 | Tag | Total dropped | Fixtures affected |
 |-----|---------------|-------------------|
-| `w:fldChar` | 6 | 1 |
-| `w:rPr` | 6 | 1 |
-| `w:pBdr` | 5 | 1 |
-| `w:spacing` | 5 | 1 |
-| `w:ind` | 5 | 1 |
-| `w:start` | 4 | 2 |
-| `w:end` | 4 | 2 |
-| `w:pgNumType` | 4 | 4 |
-| `w:rStyle` | 4 | 1 |
-| `w:formProt` | 2 | 2 |
-| `w:textDirection` | 2 | 2 |
-| `wp14:sizeRelH` | 2 | 1 |
-| `wp14:pctWidth` | 2 | 1 |
-| `wp14:sizeRelV` | 2 | 1 |
-| `wp14:pctHeight` | 2 | 1 |
-| `w:highlight` | 2 | 1 |
-| `w:bookmarkEnd` | 1 | 1 |
-| `w:bdr` | 1 | 1 |
-| `w:delInstrText` | 1 | 1 |
-| `w:instrText` | 1 | 1 |
-| `w:footnotePr` | 1 | 1 |
-| `w:endnotePr` | 1 | 1 |
 
 ## Per-fixture detail
 
@@ -46,12 +24,14 @@ No round-trip drops.
 
 No round-trip drops.
 
+### page-color
+
+No round-trip drops.
+
 ### medical-incident-form
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:bookmarkEnd` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### table-indent
 
@@ -68,13 +48,7 @@ No round-trip drops.
 ### docx-editor-numbering
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:start` | 2 | 0 |
-| `w:end` | 2 | 0 |
-| `w:pgNumType` | 1 | 0 |
-| `w:formProt` | 1 | 0 |
-| `w:textDirection` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### drawingml-shape
 
@@ -100,12 +74,14 @@ No round-trip drops.
 
 No round-trip drops.
 
+### drawing-fidelity
+
+No round-trip drops.
+
 ### demo
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:bdr` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### theme-color-auto
 
@@ -125,10 +101,7 @@ No round-trip drops.
 
 ### border-overlay-layout-demo
 
-
-| Tag | In | Out |
-|-----|----|-----|
-| `w:pgNumType` | 1 | 0 |
+No round-trip drops.
 
 ### three-section-header
 
@@ -146,19 +119,14 @@ No round-trip drops.
 
 No round-trip drops.
 
+### table-column-resize
+
+No round-trip drops.
+
 ### issue-319-sections
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:fldChar` | 6 | 0 |
-| `w:rStyle` | 4 | 0 |
-| `wp14:sizeRelH` | 2 | 0 |
-| `wp14:pctWidth` | 2 | 0 |
-| `wp14:sizeRelV` | 2 | 0 |
-| `wp14:pctHeight` | 2 | 0 |
-| `w:delInstrText` | 1 | 0 |
-| `w:instrText` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### generic-render-regression
 
@@ -177,15 +145,13 @@ No tags vanished on round-trip.
 ### issue-387-font-theme-override
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:start` | 2 | 0 |
-| `w:end` | 2 | 0 |
-| `w:pgNumType` | 1 | 0 |
-| `w:formProt` | 1 | 0 |
-| `w:textDirection` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### template-with-hf-rule
+
+No round-trip drops.
+
+### table-overlap
 
 No round-trip drops.
 
@@ -195,21 +161,16 @@ No round-trip drops.
 
 ### titlePg-header-footer
 
-
-| Tag | In | Out |
-|-----|----|-----|
-| `w:rPr` | 6 | 0 |
-| `w:pBdr` | 5 | 0 |
-| `w:spacing` | 5 | 0 |
-| `w:ind` | 5 | 0 |
-| `w:highlight` | 2 | 0 |
-| `w:footnotePr` | 1 | 0 |
-| `w:endnotePr` | 1 | 0 |
+No round-trip drops.
 
 ### generic-header-footer-horizontal-regression
 
 
 No tags vanished on round-trip.
+
+### word-compat-closing-border
+
+No round-trip drops.
 
 ### float-wrap-comprehensive-test
 
@@ -222,9 +183,7 @@ No round-trip drops.
 ### sds-real-world
 
 
-| Tag | In | Out |
-|-----|----|-----|
-| `w:pgNumType` | 1 | 0 |
+No tags vanished on round-trip.
 
 ### Form025U
 

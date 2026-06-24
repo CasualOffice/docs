@@ -18,7 +18,9 @@
     "dismiss": "Dispensar",
     "change": "Alterar",
     "px": "px",
-    "closeDialog": "Fechar diálogo"
+    "closeDialog": "Fechar diálogo",
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "Barra de formatação",
@@ -40,7 +42,54 @@
     "open": "Abrir",
     "openShortcut": "Ctrl+O",
     "save": "Salvar",
-    "saveShortcut": "Ctrl+S"
+    "saveShortcut": "Ctrl+S",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null,
+    "paragraph": null,
+    "bordersAndShading": null,
+    "customSpacing": null,
+    "footnote": null,
+    "horizontalLine": null,
+    "specialCharacters": null,
+    "keyboardShortcuts": null,
+    "searchMenus": null,
+    "makeCopy": null,
+    "preferences": null,
+    "tools": null,
+    "watermark": null,
+    "accessibility": null,
+    "buildingBlocks": null,
+    "showFormattingMarks": null,
+    "wordCount": null,
+    "convertToTable": null,
+    "emailAsAttachment": null,
+    "convertToText": null,
+    "dictionary": null,
+    "translate": null,
+    "explore": null,
+    "citations": null,
+    "shape": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null,
+    "showOutline": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +125,11 @@
     "subscriptShortcut": "Subscrito (Ctrl+=)",
     "imageProperties": "Propriedades da imagem",
     "imagePropertiesShortcut": "Propriedades da imagem (texto alternativo, borda)...",
-    "clearFormatting": "Limpar formatação"
+    "clearFormatting": "Limpar formatação",
+    "allCaps": null,
+    "smallCaps": null,
+    "addComment": null,
+    "paintFormat": null
   },
   "alignment": {
     "alignLeft": "Alinhar à esquerda",
@@ -203,7 +256,8 @@
       "replaceAllTitle": "Substituir todas as ocorrências",
       "matchCase": "Diferenciar maiúsculas e minúsculas",
       "wholeWords": "Palavras inteiras",
-      "toggleReplace": "+ Substituir"
+      "toggleReplace": "+ Substituir",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "Editar hiperlink",
@@ -346,7 +400,9 @@
         "a5": "A5 (5,83\" × 8,27\")",
         "b5": "B5 (6,93\" × 9,84\")",
         "executive": "Executivo (7,25\" × 10,5\")"
-      }
+      },
+      "pageColor": null,
+      "pageColorReset": null
     },
     "tableProperties": {
       "title": "Propriedades da tabela",
@@ -366,7 +422,9 @@
         "left": "Esquerda",
         "center": "Centro",
         "right": "Direita"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "Colar especial",
@@ -502,11 +560,114 @@
         "resetZoom": "Redefinir zoom",
         "resetZoomDescription": "Redefinir zoom para 100%",
         "keyboardShortcuts": "Atalhos de teclado",
-        "keyboardShortcutsDescription": "Mostrar esta caixa de diálogo de ajuda"
+        "keyboardShortcutsDescription": "Mostrar esta caixa de diálogo de ajuda",
+        "bulletList": null,
+        "bulletListDescription": null,
+        "commandPalette": null,
+        "commandPaletteDescription": null,
+        "cycleMode": null,
+        "cycleModeDescription": null,
+        "dictionary": null,
+        "dictionaryDescription": null,
+        "startComment": null,
+        "startCommentDescription": null,
+        "wordCount": null,
+        "wordCountDescription": null,
+        "documentOutline": null,
+        "documentOutlineDescription": null,
+        "pageBreak": null,
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "Nenhum atalho encontrado para \"{query}\"",
       "pressEscToClose": "Pressione {key} para fechar",
       "or": "ou"
+    },
+    "bookmarks": {
+      "goTo": null,
+      "noBookmarks": null,
+      "title": null,
+      "addPlaceholder": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
+    },
+    "bordersShading": {
+      "color": null,
+      "colorHex": null,
+      "fill": null,
+      "fillColor": null,
+      "fillHex": null,
+      "lineStyle": null,
+      "noFill": null,
+      "pattern": null,
+      "patternClear": null,
+      "patternSolid": null,
+      "presetBox": null,
+      "presetNone": null,
+      "setting": null,
+      "side": {
+        "bottom": null,
+        "left": null,
+        "right": null,
+        "top": null
+      },
+      "sides": null,
+      "style": null,
+      "styleDashed": null,
+      "styleDotted": null,
+      "styleDouble": null,
+      "styleSingle": null,
+      "styleThick": null,
+      "styleTriple": null,
+      "tabBorders": null,
+      "tabShading": null,
+      "title": null,
+      "widthPt": null
+    },
+    "customSpacing": {
+      "afterPt": null,
+      "atPt": null,
+      "beforePt": null,
+      "contextualSpacing": null,
+      "keepLines": null,
+      "keepNext": null,
+      "lineSpacing": null,
+      "multipleOf": null,
+      "pageBreakBefore": null,
+      "pagination": null,
+      "paragraphSpacing": null,
+      "rule": null,
+      "rule_atLeast": null,
+      "rule_auto": null,
+      "rule_exact": null,
+      "title": null,
+      "widowControl": null
+    },
+    "wordCount": {
+      "characters": null,
+      "charactersNoSpaces": null,
+      "pages": null,
+      "paragraphs": null,
+      "title": null,
+      "words": null,
+      "readingTime": null
     }
   },
   "comments": {
@@ -517,14 +678,19 @@
     "unknown": "Desconhecido",
     "addComment": "Adicionar um comentário...",
     "replyPlaceholder": "Responda ou adicione outros com @",
-    "replyCount": "{count, plural, one {# resposta} other {# respostas}}"
+    "replyCount": "{count, plural, one {# resposta} other {# respostas}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "Desconhecido",
     "replaced": "Substituído",
     "with": "por",
     "added": "Adicionado",
-    "deleted": "Excluído"
+    "deleted": "Excluído",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "Menu de ações de IA",
@@ -561,7 +727,9 @@
     "closeAriaLabel": "Fechar estrutura",
     "closeTitle": "Fechar estrutura",
     "title": "Estrutura",
-    "noHeadings": "Nenhum cabeçalho encontrado. Adicione cabeçalhos ao seu documento para vê-los aqui."
+    "noHeadings": "Nenhum cabeçalho encontrado. Adicione cabeçalhos ao seu documento para vê-los aqui.",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "Barra lateral de anotações"
@@ -664,7 +832,11 @@
     "alignTableCenter": "Centralizar tabela",
     "alignTableRight": "Alinhar tabela à direita",
     "tableOptionsMenu": "Menu de opções da tabela",
-    "tableOptions": "Opções da tabela"
+    "tableOptions": "Opções da tabela",
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "Transformar",
@@ -723,7 +895,8 @@
     "failedToParse": "Falha ao analisar documento",
     "linkRemoved": "Link removido",
     "linkCopied": "Link copiado para a área de transferência",
-    "failedToSave": "Falha ao salvar documento"
+    "failedToSave": "Falha ao salvar documento",
+    "contentLabel": null
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "Texto de exibição",
@@ -739,7 +912,9 @@
     "insertPageNumber": "Inserir número da página atual",
     "insertTotalPages": "Inserir contagem total de páginas",
     "remove": "Remover {label}",
-    "closeEditing": "Fechar edição de {label}"
+    "closeEditing": "Fechar edição de {label}",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "Espaço reservado para imagem",
@@ -788,5 +963,18 @@
   },
   "viewer": {
     "pageIndicator": "{current} de {total}"
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
+  },
+  "suggestingBanner": {
+    "body": null,
+    "switchToEditing": null,
+    "title": null
   }
 }

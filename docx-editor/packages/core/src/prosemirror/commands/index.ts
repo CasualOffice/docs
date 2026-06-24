@@ -12,6 +12,16 @@ export {
   toggleStrike,
   toggleSuperscript,
   toggleSubscript,
+  toggleSmallCaps,
+  toggleAllCaps,
+  toggleHidden,
+  toggleEmboss,
+  toggleImprint,
+  toggleTextShadow,
+  toggleTextOutline,
+  setCharacterSpacing,
+  setCharacterAttrs,
+  type CharacterAttrs,
   setTextColor,
   clearTextColor,
   setHighlight,
@@ -37,6 +47,7 @@ export {
 
 // Paragraph formatting
 export {
+  setParagraphAttrs,
   setAlignment,
   alignLeft,
   alignCenter,
@@ -69,6 +80,11 @@ export {
   getStyleId,
   setRtl,
   setLtr,
+  insertSectionBreak,
+  insertFootnote,
+  insertEndnote,
+  insertHorizontalRule,
+  removeSectionBreak,
 } from './paragraph';
 export type { ResolvedStyleAttrs } from './paragraph';
 
@@ -102,7 +118,10 @@ export {
   setRowHeight,
   toggleHeaderRow,
   distributeColumns,
+  distributeRows,
   autoFitContents,
+  autoFitWindow,
+  sortTable,
   setTableProperties,
   applyTableStyle,
   setCellFillColor,
@@ -113,6 +132,9 @@ export type { TableContextInfo, BorderPreset } from './table';
 
 // Page break
 export { insertPageBreak } from './pageBreak';
+export { insertField } from './field';
+export type { InsertableFieldType } from './field';
+export { restartListNumbering, continueListNumbering } from './listNumbering';
 
 // Image commands
 export { setImageWrapType } from './image';

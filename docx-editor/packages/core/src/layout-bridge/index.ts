@@ -112,4 +112,5 @@ export {
   findBodyEmptyRuns,
   findBodyPmAnchors,
   findBodyPmAnchor,
+  findHeaderFooterPmAnchor,
 } from './findBodyPmSpans';

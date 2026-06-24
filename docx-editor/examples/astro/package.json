@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^4.2.1",
-    "@eigenpal/docx-js-editor": "^0.0.7",
+    "@casualoffice/docs": "workspace:*",
     "astro": "^5.8.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

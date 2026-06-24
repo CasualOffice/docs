@@ -9,6 +9,7 @@
 package room
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ func TestNewManagerStartsEmpty(t *testing.T) {
 
 func TestJoinAllocatesRoom(t *testing.T) {
 	m := NewManager()
-	r, c := m.Join("doc-1")
+	r, c , _ := m.Join(context.Background(), "doc-1", "")
 	if r == nil {
 		t.Fatalf("Join should return a non-nil room")
 	}
@@ -43,8 +44,8 @@ func TestJoinAllocatesRoom(t *testing.T) {
 
 func TestRepeatedJoinReusesRoom(t *testing.T) {
 	m := NewManager()
-	rA, _ := m.Join("doc-1")
-	rB, _ := m.Join("doc-1")
+	rA, _ , _ := m.Join(context.Background(), "doc-1", "")
+	rB, _ , _ := m.Join(context.Background(), "doc-1", "")
 	if rA != rB {
 		t.Fatalf("second Join should return the same Room instance")
 	}
@@ -58,7 +59,7 @@ func TestRepeatedJoinReusesRoom(t *testing.T) {
 
 func TestLeaveDropsRoomOnZero(t *testing.T) {
 	m := NewManager()
-	r, c := m.Join("doc-1")
+	r, c , _ := m.Join(context.Background(), "doc-1", "")
 	m.Leave(r, c)
 	if m.Count() != 0 {
 		t.Fatalf("Leave on the last client should reclaim the room; Count() = %d", m.Count())
@@ -67,8 +68,8 @@ func TestLeaveDropsRoomOnZero(t *testing.T) {
 
 func TestLeaveKeepsRoomWithRemainingClients(t *testing.T) {
 	m := NewManager()
-	r, c1 := m.Join("doc-1")
-	_, _ = m.Join("doc-1")
+	r, c1 , _ := m.Join(context.Background(), "doc-1", "")
+	_, _, _ = m.Join(context.Background(), "doc-1", "")
 	m.Leave(r, c1)
 	if m.Count() != 1 {
 		t.Fatalf("Leave with another client still connected should keep the room; Count() = %d", m.Count())
@@ -94,7 +95,7 @@ func TestConcurrentJoinLeaveSafe(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r, c := m.Join("hot-room")
+			r, c , _ := m.Join(context.Background(), "hot-room", "")
 			m.Leave(r, c)
 		}()
 	}
@@ -106,8 +107,8 @@ func TestConcurrentJoinLeaveSafe(t *testing.T) {
 
 func TestClientIDsAreUnique(t *testing.T) {
 	m := NewManager()
-	_, a := m.Join("doc-1")
-	_, b := m.Join("doc-1")
+	_, a , _ := m.Join(context.Background(), "doc-1", "")
+	_, b , _ := m.Join(context.Background(), "doc-1", "")
 	if a.ID() == b.ID() {
 		t.Fatalf("two clients in the same room share id %d", a.ID())
 	}
@@ -131,9 +132,9 @@ func drainOne(t *testing.T, c *Client, wait time.Duration) []byte {
 
 func TestBroadcastFansOutToPeers(t *testing.T) {
 	m := NewManager()
-	_, a := m.Join("doc-1")
-	r, b := m.Join("doc-1")
-	_, c := m.Join("doc-1")
+	_, a , _ := m.Join(context.Background(), "doc-1", "")
+	r, b , _ := m.Join(context.Background(), "doc-1", "")
+	_, c , _ := m.Join(context.Background(), "doc-1", "")
 
 	frame := []byte{2, 0xff, 0xee} // MessageUpdate + arbitrary payload
 	r.Broadcast(a, frame)
@@ -158,8 +159,8 @@ func TestBroadcastFansOutToPeers(t *testing.T) {
 
 func TestBroadcastWithNilSenderReachesEveryone(t *testing.T) {
 	m := NewManager()
-	r, a := m.Join("doc-1")
-	_, b := m.Join("doc-1")
+	r, a , _ := m.Join(context.Background(), "doc-1", "")
+	_, b , _ := m.Join(context.Background(), "doc-1", "")
 
 	r.Broadcast(nil, []byte("server-originated"))
 
@@ -176,8 +177,8 @@ func TestBroadcastDropsForSlowClient(t *testing.T) {
 	// broadcast path. Verifies the non-blocking select default
 	// in Broadcast.
 	m := NewManager()
-	r, slow := m.Join("doc-1")
-	_, fast := m.Join("doc-1")
+	r, slow , _ := m.Join(context.Background(), "doc-1", "")
+	_, fast , _ := m.Join(context.Background(), "doc-1", "")
 
 	// Sender that is not in the room — picks a placeholder
 	// sender so neither slow nor fast is excluded.
@@ -209,7 +210,7 @@ func TestBroadcastDropsForSlowClient(t *testing.T) {
 
 func TestRemoveClientClosesSendChannel(t *testing.T) {
 	m := NewManager()
-	r, c := m.Join("doc-1")
+	r, c , _ := m.Join(context.Background(), "doc-1", "")
 	r.RemoveClient(c)
 	// Reading from a closed channel returns zero + ok=false.
 	select {
@@ -222,13 +223,129 @@ func TestRemoveClientClosesSendChannel(t *testing.T) {
 	}
 }
 
+func TestBroadcastIncrementsDropCounter(t *testing.T) {
+	// Regression: the drop counter must increment on every dropped
+	// frame so operators can detect persistently-slow clients via
+	// the warn-on-power-of-two log signal. Without it, drops are
+	// invisible.
+	m := NewManager()
+	r, slow , _ := m.Join(context.Background(), "doc-1", "")
+	sender := &Client{Send: make(chan []byte, 1)}
+
+	for i := 0; i < outboundQueue; i++ {
+		slow.Send <- []byte{byte(i)}
+	}
+	if got := slow.drops.Load(); got != 0 {
+		t.Fatalf("drops should be 0 before any drop; got %d", got)
+	}
+
+	r.Broadcast(sender, []byte("dropped-1"))
+	r.Broadcast(sender, []byte("dropped-2"))
+	r.Broadcast(sender, []byte("dropped-3"))
+
+	if got := slow.drops.Load(); got != 3 {
+		t.Fatalf("drops after 3 dropped frames = %d; want 3", got)
+	}
+}
+
+func TestJoinLeaveRaceNeverOrphansRooms(t *testing.T) {
+	// Regression for the Manager.Join vs Manager.Leave race: if
+	// Join released m.mu before AddClient, a concurrent Leave on
+	// the same docID could observe Clients()==0, delete the room
+	// from the registry, fire the drain, and then Join's new
+	// client would end up on an orphaned (off-registry) room.
+	// Holding m.mu through AddClient closes the window.
+	//
+	// We don't try to deterministically trigger the race; instead
+	// we hammer Join+Leave on the same docID under load and assert
+	// the manager always reaches a consistent terminal state.
+	const iters = 200
+	m := NewManager()
+	var wg sync.WaitGroup
+	for i := 0; i < iters; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, c , _ := m.Join(context.Background(), "doc-race", "")
+			r.RemoveClient(c)
+			m.Leave(r, c)
+		}()
+	}
+	wg.Wait()
+
+	// Every Join was paired with a Leave; the manager must be
+	// empty (no orphaned rooms left in the registry).
+	if got := m.Count(); got != 0 {
+		t.Fatalf("manager should be empty after paired Join/Leave; got %d rooms", got)
+	}
+}
+
 func TestLookupReturnsActiveRoom(t *testing.T) {
 	m := NewManager()
 	if m.Lookup("not-there") != nil {
 		t.Fatalf("Lookup on unknown docID should return nil")
 	}
-	r, _ := m.Join("doc-1")
+	r, _ , _ := m.Join(context.Background(), "doc-1", "")
 	if m.Lookup("doc-1") != r {
 		t.Fatalf("Lookup should return the same Room instance Join created")
+	}
+}
+
+func TestMaxRoomsCap_RejectsNewDocAtCap(t *testing.T) {
+	// Cap of 2. Three distinct docIds — third should be refused.
+	m := NewManager(WithMaxRooms(2))
+	if _, _, err := m.Join(context.Background(), "a", ""); err != nil {
+		t.Fatalf("first room should join: %v", err)
+	}
+	if _, _, err := m.Join(context.Background(), "b", ""); err != nil {
+		t.Fatalf("second room should join: %v", err)
+	}
+	if _, _, err := m.Join(context.Background(), "c", ""); err != ErrCapacityFull {
+		t.Fatalf("third new docID should hit cap; got err=%v", err)
+	}
+}
+
+func TestMaxRoomsCap_JoiningExistingDocBypassesCap(t *testing.T) {
+	// Cap of 1. Two clients on the SAME docId — both should succeed
+	// because joiners don't count against the cap.
+	m := NewManager(WithMaxRooms(1))
+	if _, _, err := m.Join(context.Background(), "a", ""); err != nil {
+		t.Fatalf("first client should join: %v", err)
+	}
+	// Second client on the same doc — must NOT hit the cap.
+	if _, _, err := m.Join(context.Background(), "a", ""); err != nil {
+		t.Fatalf("second client on existing doc should join: %v", err)
+	}
+	// A NEW docId still hits the cap, though.
+	if _, _, err := m.Join(context.Background(), "b", ""); err != ErrCapacityFull {
+		t.Fatalf("new docId at cap should be refused; got err=%v", err)
+	}
+}
+
+func TestMaxRoomsCap_FreedSlotAcceptsNewDoc(t *testing.T) {
+	// Fill the cap, drain one room, then verify a new docId is accepted.
+	m := NewManager(WithMaxRooms(2))
+	rA, cA, _ := m.Join(context.Background(), "a", "")
+	_, _, _ = m.Join(context.Background(), "b", "")
+	// Confirm we're at cap.
+	if _, _, err := m.Join(context.Background(), "c", ""); err != ErrCapacityFull {
+		t.Fatalf("expected cap-full before drain")
+	}
+	// Drain "a" — leaving with the last client drops the room.
+	m.Leave(rA, cA)
+	// Now "c" should succeed.
+	if _, _, err := m.Join(context.Background(), "c", ""); err != nil {
+		t.Fatalf("freed slot should accept new doc: %v", err)
+	}
+}
+
+func TestMaxRoomsCap_ZeroDisabled(t *testing.T) {
+	// MaxRooms 0 == unbounded. Default behaviour.
+	m := NewManager(WithMaxRooms(0))
+	for i := 0; i < 50; i++ {
+		ip := string(rune('A' + i))
+		if _, _, err := m.Join(context.Background(), ip, ""); err != nil {
+			t.Fatalf("disabled cap should not refuse joins; got %v at %d", err, i)
+		}
 	}
 }

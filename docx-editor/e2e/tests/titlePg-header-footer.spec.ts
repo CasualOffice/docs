@@ -9,7 +9,7 @@ test.describe('titlePg Header/Footer Per-Page Rendering', () => {
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number="1"]');
     await page.waitForTimeout(1500);
@@ -28,7 +28,7 @@ test.describe('titlePg Header/Footer Per-Page Rendering', () => {
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number="1"]');
     await page.waitForTimeout(1500);
@@ -46,7 +46,7 @@ test.describe('titlePg Header/Footer Per-Page Rendering', () => {
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number="1"]');
     await page.waitForTimeout(1500);

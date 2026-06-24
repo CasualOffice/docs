@@ -112,7 +112,7 @@ const BUTTON_STYLE: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 
@@ -255,7 +255,7 @@ export function ListButtons({
         <ListButton
           active={isBulletList}
           disabled={disabled}
-          title={t('lists.bulletList')}
+          title={`${t('lists.bulletList')} (⌘⇧8)`}
           onClick={onBulletList}
           style={getButtonStyle()}
         >
@@ -265,7 +265,7 @@ export function ListButtons({
         <ListButton
           active={isNumberedList}
           disabled={disabled}
-          title={t('lists.numberedList')}
+          title={`${t('lists.numberedList')} (⌘⇧7)`}
           onClick={onNumberedList}
           style={getButtonStyle()}
         >
@@ -281,7 +281,7 @@ export function ListButtons({
             <ListButton
               active={false}
               disabled={disabled || !canOutdent}
-              title={t('lists.decreaseIndent')}
+              title={`${t('lists.decreaseIndent')} (⌘[)`}
               onClick={onOutdent}
               style={getButtonStyle()}
             >
@@ -291,7 +291,7 @@ export function ListButtons({
             <ListButton
               active={false}
               disabled={disabled}
-              title={t('lists.increaseIndent')}
+              title={`${t('lists.increaseIndent')} (⌘])`}
               onClick={onIndent}
               style={getButtonStyle()}
             >

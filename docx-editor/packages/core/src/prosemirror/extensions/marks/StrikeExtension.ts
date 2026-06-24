@@ -31,6 +31,9 @@ export const StrikeExtension = createMarkExtension({
       commands: {
         toggleStrike: () => toggleMark(ctx.schema.marks.strike),
       },
+      keyboardShortcuts: {
+        'Mod-Shift-x': toggleMark(ctx.schema.marks.strike),
+      },
     };
   },
 });

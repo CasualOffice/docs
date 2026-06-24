@@ -355,7 +355,7 @@ function StylePreview({
         border: isSelected ? '2px solid var(--doc-primary)' : '2px solid transparent',
         borderRadius: 3,
         cursor: 'pointer',
-        background: 'var(--doc-bg)',
+        background: 'var(--doc-surface)',
       }}
     >
       {cells}
@@ -450,7 +450,7 @@ export function TableStyleGallery({
           border: '1px solid var(--doc-border)',
           borderRadius: 4,
           cursor: 'pointer',
-          backgroundColor: hoveredBtn ? 'var(--doc-bg-hover)' : 'var(--doc-bg)',
+          backgroundColor: hoveredBtn ? 'var(--doc-bg-hover)' : 'var(--doc-surface)',
           fontSize: 12,
           color: 'var(--doc-text)',
         }}
@@ -467,7 +467,7 @@ export function TableStyleGallery({
             top: '100%',
             left: 0,
             zIndex: 1000,
-            backgroundColor: 'var(--doc-bg)',
+            backgroundColor: 'var(--doc-surface)',
             border: '1px solid var(--doc-border)',
             borderRadius: 6,
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',

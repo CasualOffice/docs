@@ -127,7 +127,7 @@ const MENU_ITEMS: MenuItem[] = [
 
 const baseDropdownStyles: CSSProperties = {
   position: 'fixed',
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   border: '1px solid var(--doc-border)',
   borderRadius: 8,
   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
@@ -150,7 +150,7 @@ const menuItemStyles: CSSProperties = {
   backgroundColor: 'transparent',
   width: '100%',
   textAlign: 'left',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
 };
 
 const separatorStyles: CSSProperties = {
@@ -200,27 +200,31 @@ function VerticalAlignRow({ onAction }: { onAction: (action: TableAction) => voi
         {t('tableAdvanced.verticalAlignment')}
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
-        {VALIGN_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            title={t(opt.labelKey)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 28,
-              border: '1px solid var(--doc-border)',
-              borderRadius: 4,
-              backgroundColor: 'transparent',
-              cursor: 'pointer',
-            }}
-            onClick={() => onAction({ type: 'cellVerticalAlign', align: opt.value })}
-          >
-            <MaterialSymbol name={opt.icon} size={16} />
-          </button>
-        ))}
+        {VALIGN_OPTIONS.map((opt) => {
+          const label = t(opt.labelKey);
+          return (
+            <Tooltip key={opt.value} content={label}>
+              <button
+                type="button"
+                aria-label={label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 32,
+                  height: 28,
+                  border: '1px solid var(--doc-border)',
+                  borderRadius: 4,
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                }}
+                onClick={() => onAction({ type: 'cellVerticalAlign', align: opt.value })}
+              >
+                <MaterialSymbol name={opt.icon} size={16} />
+              </button>
+            </Tooltip>
+          );
+        })}
       </div>
     </div>
   );
@@ -573,6 +577,27 @@ function HeaderRowRow({ onAction }: { onAction: (action: TableAction) => void })
 // DISTRIBUTE / AUTO-FIT SUBCOMPONENTS
 // ============================================================================
 
+function DistributeRowsRow({ onAction }: { onAction: (action: TableAction) => void }) {
+  const { t } = useTranslation();
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  return (
+    <button
+      type="button"
+      style={{
+        ...menuItemStyles,
+        backgroundColor: hoveredItem === 'main' ? 'var(--doc-bg-hover)' : 'transparent',
+      }}
+      onMouseEnter={() => setHoveredItem('main')}
+      onMouseLeave={() => setHoveredItem(null)}
+      onClick={() => onAction({ type: 'distributeRows' })}
+    >
+      <MaterialSymbol name="table_rows" size={18} />
+      <span style={{ flex: 1 }}>{t('tableAdvanced.distributeRows')}</span>
+    </button>
+  );
+}
+
 function DistributeColumnsRow({ onAction }: { onAction: (action: TableAction) => void }) {
   const { t } = useTranslation();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -658,20 +683,21 @@ function TableAlignmentRow({
   const makeButton = (value: 'left' | 'center' | 'right', icon: string, label: string) => {
     const isActive = justification === value;
     return (
-      <button
-        type="button"
-        style={{
-          ...alignmentButtonStyles,
-          backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
-          borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
-          color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
-        }}
-        onClick={() => onAction({ type: 'tableProperties', props: { justification: value } })}
-        title={label}
-        aria-label={label}
-      >
-        <MaterialSymbol name={icon} size={18} />
-      </button>
+      <Tooltip content={label}>
+        <button
+          type="button"
+          style={{
+            ...alignmentButtonStyles,
+            backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
+            borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
+            color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
+          }}
+          onClick={() => onAction({ type: 'tableProperties', props: { justification: value } })}
+          aria-label={label}
+        >
+          <MaterialSymbol name={icon} size={18} />
+        </button>
+      </Tooltip>
     );
   };
 
@@ -781,8 +807,8 @@ export function TableOptionsDropdown({
       variant="ghost"
       size="icon-sm"
       className={cn(
-        'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80',
-        isOpen && 'bg-slate-100',
+        'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
+        isOpen && 'bg-[color:var(--doc-bg-hover)]',
         disabled && 'opacity-30 cursor-not-allowed',
         className
       )}
@@ -876,6 +902,7 @@ export function TableOptionsDropdown({
           <NoWrapRow onAction={handleAction} />
           <RowHeightRow onAction={handleAction} />
           <HeaderRowRow onAction={handleAction} />
+          <DistributeRowsRow onAction={handleAction} />
           <DistributeColumnsRow onAction={handleAction} />
           <AutoFitRow onAction={handleAction} />
           <TableAlignmentRow onAction={handleAction} justification={currentJustification} />

@@ -33,6 +33,9 @@ export interface VerticalRulerProps {
   onBottomMarginChange?: (marginTwips: number) => void;
   /** Unit to display (inches or cm) */
   unit?: 'inch' | 'cm';
+  /** Fired with `true` when a margin marker drag starts and `false` when it
+   *  ends, so the host can freeze the editor scroll position during the drag. */
+  onDragStateChange?: (dragging: boolean) => void;
   /** Additional CSS class name */
   className?: string;
   /** Additional inline styles */
@@ -69,6 +72,7 @@ export function VerticalRuler({
   onTopMarginChange,
   onBottomMarginChange,
   unit = 'inch',
+  onDragStateChange,
   className = '',
   style,
 }: VerticalRulerProps): React.ReactElement {
@@ -76,6 +80,17 @@ export function VerticalRuler({
   const [dragging, setDragging] = useState<MarkerType | null>(null);
   const [hoveredMarker, setHoveredMarker] = useState<MarkerType | null>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
+  // Anchor captured at drag-start. The new margin is computed as
+  // `startMargin + (pointer delta in twips)` against this fixed anchor, so
+  // re-laying the page mid-drag can't shift the reference and make the marker
+  // oscillate. `marker` is stored here (not read from React state) so the
+  // mousemove handler can stay referentially stable — see handleDrag.
+  const dragAnchorRef = useRef<{
+    marker: MarkerType;
+    startClientY: number;
+    startTopMarginTwips: number;
+    startBottomMarginTwips: number;
+  } | null>(null);
 
   // Get page dimensions
   const pageHeightTwips = sectionProps?.pageHeight ?? DEFAULT_PAGE_HEIGHT_TWIPS;
@@ -87,52 +102,87 @@ export function VerticalRuler({
   const topMarginPx = twipsToPixels(topMarginTwips) * zoom;
   const bottomMarginPx = twipsToPixels(bottomMarginTwips) * zoom;
 
+  // Live values the mousemove handler needs, mirrored into a ref so handleDrag
+  // can be referentially STABLE (empty deps). If handleDrag depended on the
+  // live margins, it would be recreated on every drag step and the useEffect
+  // would remove+re-add the mousemove listener every frame — dropping events
+  // and making the marker jitter/"shake".
+  const liveRef = useRef({
+    zoom,
+    pageHeightTwips,
+    topMarginTwips,
+    bottomMarginTwips,
+    onTopMarginChange,
+    onBottomMarginChange,
+  });
+  liveRef.current = {
+    zoom,
+    pageHeightTwips,
+    topMarginTwips,
+    bottomMarginTwips,
+    onTopMarginChange,
+    onBottomMarginChange,
+  };
+
   // Handle drag start
   const handleDragStart = useCallback(
     (e: React.MouseEvent, marker: MarkerType) => {
       if (!editable) return;
       e.preventDefault();
+      dragAnchorRef.current = {
+        marker,
+        startClientY: e.clientY,
+        startTopMarginTwips: topMarginTwips,
+        startBottomMarginTwips: bottomMarginTwips,
+      };
       setDragging(marker);
+      onDragStateChange?.(true);
     },
-    [editable]
+    [editable, topMarginTwips, bottomMarginTwips, onDragStateChange]
   );
 
-  // Handle drag
-  const handleDrag = useCallback(
-    (e: MouseEvent) => {
-      if (!dragging || !rulerRef.current) return;
-
-      const rect = rulerRef.current.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-
-      const positionTwips = pixelsToTwips(y / zoom);
-
-      if (dragging === 'topMargin') {
-        const maxMargin = pageHeightTwips - bottomMarginTwips - 720;
-        const newMargin = Math.max(0, Math.min(positionTwips, maxMargin));
-        onTopMarginChange?.(Math.round(newMargin));
-      } else if (dragging === 'bottomMargin') {
-        const fromBottom = pageHeightTwips - positionTwips;
-        const maxMargin = pageHeightTwips - topMarginTwips - 720;
-        const newMargin = Math.max(0, Math.min(fromBottom, maxMargin));
-        onBottomMarginChange?.(Math.round(newMargin));
-      }
-    },
-    [
-      dragging,
+  // Handle drag. Referentially stable (reads everything from refs) so the
+  // mousemove listener is attached exactly once per drag.
+  const handleDrag = useCallback((e: MouseEvent) => {
+    const anchor = dragAnchorRef.current;
+    if (!anchor) return;
+    const {
       zoom,
       pageHeightTwips,
       topMarginTwips,
       bottomMarginTwips,
       onTopMarginChange,
       onBottomMarginChange,
-    ]
-  );
+    } = liveRef.current;
+
+    // Pointer delta only. We deliberately do NOT fold in the scroller's
+    // scrollTop change: dragging the margin reflows the page and auto-scrolls
+    // to keep the caret in view, and reading that auto-scroll as additional
+    // drag created a feedback loop — the margin ran straight to its clamp and
+    // the marker got stuck (one direction wouldn't move).
+    const dyPx = e.clientY - anchor.startClientY;
+    const dyTwips = pixelsToTwips(dyPx / zoom);
+
+    if (anchor.marker === 'topMargin') {
+      // Dragging down (positive dy) → larger top margin.
+      const maxMargin = pageHeightTwips - bottomMarginTwips - 720;
+      const newMargin = Math.max(0, Math.min(anchor.startTopMarginTwips + dyTwips, maxMargin));
+      onTopMarginChange?.(Math.round(newMargin));
+    } else {
+      // Dragging down (positive dy) → smaller bottom margin (the content
+      // area's bottom edge follows the pin down).
+      const maxMargin = pageHeightTwips - topMarginTwips - 720;
+      const newMargin = Math.max(0, Math.min(anchor.startBottomMarginTwips - dyTwips, maxMargin));
+      onBottomMarginChange?.(Math.round(newMargin));
+    }
+  }, []);
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
     setDragging(null);
-  }, []);
+    dragAnchorRef.current = null;
+    onDragStateChange?.(false);
+  }, [onDragStateChange]);
 
   // Add/remove document event listeners
   useEffect(() => {
@@ -165,9 +215,11 @@ export function VerticalRuler({
       ref={rulerRef}
       className={`docx-vertical-ruler ${className}`}
       style={rulerStyle}
-      role="slider"
+      // A GROUP of margin sliders, not a slider itself — role="slider" here
+      // lacked aria-valuenow and nested the focusable markers inside an
+      // interactive control (nested-interactive).
+      role="group"
       aria-label={t('ruler.vertical')}
-      aria-orientation="vertical"
     >
       {/* Tick marks */}
       <div
@@ -195,6 +247,7 @@ export function VerticalRuler({
         onMouseEnter={() => setHoveredMarker('topMargin')}
         onMouseLeave={() => setHoveredMarker(null)}
         onMouseDown={(e) => handleDragStart(e, 'topMargin')}
+        maxPx={pageHeightPx}
       />
 
       {/* Bottom margin marker */}
@@ -207,6 +260,7 @@ export function VerticalRuler({
         onMouseEnter={() => setHoveredMarker('bottomMargin')}
         onMouseLeave={() => setHoveredMarker(null)}
         onMouseDown={(e) => handleDragStart(e, 'bottomMargin')}
+        maxPx={pageHeightPx}
       />
     </div>
   );
@@ -260,6 +314,8 @@ interface VerticalMarginMarkerProps {
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onMouseDown: (e: React.MouseEvent) => void;
+  /** Ruler height in px — the slider's aria-valuemax (aria-valuenow = position). */
+  maxPx: number;
 }
 
 function VerticalMarginMarker({
@@ -271,6 +327,7 @@ function VerticalMarginMarker({
   onMouseEnter,
   onMouseLeave,
   onMouseDown,
+  maxPx,
 }: VerticalMarginMarkerProps): React.ReactElement {
   const { t } = useTranslation();
   const color = isDragging ? MARKER_ACTIVE_COLOR : isHovered ? MARKER_HOVER_COLOR : MARKER_COLOR;
@@ -295,7 +352,7 @@ function VerticalMarginMarker({
     borderTop: '5px solid transparent',
     borderBottom: '5px solid transparent',
     borderRight: `8px solid ${color}`,
-    transition: 'border-right-color 0.1s',
+    transition: 'border-right-color var(--doc-anim-fast)',
   };
 
   return (
@@ -308,6 +365,9 @@ function VerticalMarginMarker({
       role="slider"
       aria-label={type === 'topMargin' ? t('ruler.topMargin') : t('ruler.bottomMargin')}
       aria-orientation="vertical"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(maxPx)}
+      aria-valuenow={Math.round(Math.min(Math.max(position, 0), maxPx))}
       tabIndex={editable ? 0 : -1}
     >
       <div style={triangleStyle} />

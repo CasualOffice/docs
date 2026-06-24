@@ -121,22 +121,30 @@ export function findAllMatches(
 
   const matches: Array<{ start: number; end: number }> = [];
 
-  let searchFor = searchText;
-  if (!options.matchCase) {
-    searchFor = searchText.toLowerCase();
-  }
-
+  // Honor `options.useRegex` — when set, the search string is the
+  // regex source verbatim. When unset, every regex metacharacter is
+  // escaped so `1.cat` matches only the literal three-char run.
+  // The matchCase lowercasing was incorrect in the old code path:
+  // /pattern/gi handles case-insensitivity natively, and lowercasing
+  // the source corrupted regex tokens (`\D` → `\d`). The
+  // case-folding is driven by the regex flags instead.
   const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let pattern: string = options.useRegex ? searchText : escapeRegex(searchText);
 
-  let pattern: string;
   if (options.matchWholeWord) {
-    pattern = `\\b${escapeRegex(searchFor)}\\b`;
-  } else {
-    pattern = escapeRegex(searchFor);
+    pattern = `\\b${pattern}\\b`;
   }
 
   const flags = options.matchCase ? 'g' : 'gi';
-  const regex = new RegExp(pattern, flags);
+  let regex: RegExp;
+  try {
+    regex = new RegExp(pattern, flags);
+  } catch {
+    // Invalid regex (e.g. unclosed bracket) → no matches rather than
+    // throwing past the dialog. Matches `createSearchPattern`'s
+    // existing failure mode so the dialog stays responsive.
+    return [];
+  }
 
   let match: RegExpExecArray | null;
   while ((match = regex.exec(content)) !== null) {

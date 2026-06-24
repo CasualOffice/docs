@@ -9,6 +9,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { AIAction, AgentResponse } from '@eigenpal/docx-core/types/agentApi';
 import { getActionLabel } from '@eigenpal/docx-core/types/agentApi';
 import { useTranslation } from '../i18n';
+import { Tooltip } from './ui/Tooltip';
 
 // ============================================================================
 // TYPES
@@ -225,14 +226,14 @@ const DiffView: React.FC<DiffViewProps> = ({ original, modified }) => {
           case 'removed':
             style = {
               textDecoration: 'line-through',
-              color: '#d32f2f',
-              backgroundColor: '#ffebee',
+              color: 'var(--doc-error)',
+              backgroundColor: 'var(--doc-error-bg)',
             };
             break;
           case 'added':
             style = {
-              color: '#2e7d32',
-              backgroundColor: '#e8f5e9',
+              color: 'var(--doc-success)',
+              backgroundColor: 'var(--doc-success-bg)',
             };
             break;
           default:
@@ -335,7 +336,7 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
     width: '400px',
     maxWidth: '90vw',
     maxHeight: '80vh',
-    background: 'white',
+    background: 'var(--doc-surface, white)',
     border: '1px solid var(--doc-border-light)',
     borderRadius: '8px',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
@@ -404,7 +405,7 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
                   padding: '8px 16px',
                   border: '1px solid var(--doc-border-light)',
                   borderRadius: '4px',
-                  background: 'white',
+                  background: 'var(--doc-surface, white)',
                   cursor: 'pointer',
                   fontSize: '13px',
                 }}
@@ -453,21 +454,23 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
         <div style={{ fontWeight: 500, fontSize: '14px', color: 'var(--doc-text)' }}>
           {t('responsePreview.result', { action: getActionLabel(action) })}
         </div>
-        <button
-          type="button"
-          onClick={onReject}
-          style={{
-            display: 'flex',
-            padding: '4px',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            color: 'var(--doc-text-muted)',
-          }}
-          title={t('responsePreview.closeEsc')}
-        >
-          <XIcon />
-        </button>
+        <Tooltip content={t('responsePreview.closeEsc')}>
+          <button
+            type="button"
+            onClick={onReject}
+            aria-label={t('responsePreview.closeEsc')}
+            style={{
+              display: 'flex',
+              padding: '4px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--doc-text-muted)',
+            }}
+          >
+            <XIcon />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Content */}
@@ -531,9 +534,9 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
             <div
               style={{
                 padding: '8px 12px',
-                background: '#e8f5e9',
+                background: 'var(--doc-success-bg)',
                 borderRadius: '4px',
-                color: '#2e7d32',
+                color: 'var(--doc-success)',
                 fontSize: '13px',
               }}
             >
@@ -583,7 +586,7 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
                 padding: '6px 12px',
                 border: '1px solid var(--doc-border-light)',
                 borderRadius: '4px',
-                background: 'white',
+                background: 'var(--doc-surface, white)',
                 cursor: 'pointer',
                 fontSize: '12px',
                 color: 'var(--doc-text-muted)',
@@ -601,7 +604,7 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
                 padding: '6px 12px',
                 border: '1px solid var(--doc-border-light)',
                 borderRadius: '4px',
-                background: 'white',
+                background: 'var(--doc-surface, white)',
                 cursor: 'pointer',
                 fontSize: '12px',
                 color: 'var(--doc-text-muted)',
@@ -622,7 +625,7 @@ export const ResponsePreview: React.FC<ResponsePreviewProps> = ({
               padding: '8px 16px',
               border: '1px solid var(--doc-border-light)',
               borderRadius: '4px',
-              background: 'white',
+              background: 'var(--doc-surface, white)',
               cursor: 'pointer',
               fontSize: '13px',
               color: 'var(--doc-text-muted)',

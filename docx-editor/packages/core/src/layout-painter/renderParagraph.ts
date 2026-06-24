@@ -29,6 +29,7 @@ import {
   type TabStop as TabCalcStop,
 } from '../prosemirror/utils/tabCalculator';
 import { resolveFontFamily } from '../utils/fontResolver';
+import { colorForAuthor } from '../utils/changeAuthorColor';
 
 /**
  * CSS class names for paragraph rendering
@@ -243,10 +244,15 @@ function applyRunStyles(
     }
   }
 
-  // Tracked insertion styling — light green background with dashed border
+  // Per-author color ("by author", Word/Google-Docs style); null → no author,
+  // fall back to the classic green-insert / red-delete styling.
+  const changeColor = run.isInsertion || run.isDeletion ? colorForAuthor(run.changeAuthor) : null;
+
+  // Tracked insertion — light author-tint background + dashed underline in the
+  // author's color (default green when anonymous). Decoration = underline.
   if (run.isInsertion) {
-    element.style.backgroundColor = 'rgba(52, 168, 83, 0.08)';
-    element.style.borderBottom = '2px dashed #2e7d32';
+    element.style.backgroundColor = changeColor?.bg ?? 'rgba(52, 168, 83, 0.08)';
+    element.style.borderBottom = `2px dashed ${changeColor?.solid ?? '#2e7d32'}`;
     element.style.paddingBottom = '1px';
     element.classList.add('docx-insertion');
     if (run.changeAuthor) element.dataset.changeAuthor = run.changeAuthor;
@@ -254,12 +260,14 @@ function applyRunStyles(
     if (run.changeRevisionId != null) element.dataset.revisionId = String(run.changeRevisionId);
   }
 
-  // Tracked deletion styling — light red background with strikethrough
+  // Tracked deletion — light author-tint background + strikethrough in the
+  // author's color (default red when anonymous). Decoration = strikethrough.
   if (run.isDeletion) {
-    element.style.backgroundColor = 'rgba(211, 47, 47, 0.08)';
-    element.style.color = '#c62828';
+    const del = changeColor?.solid ?? '#c62828';
+    element.style.backgroundColor = changeColor?.bg ?? 'rgba(211, 47, 47, 0.08)';
+    element.style.color = del;
     if (!decorations.includes('line-through')) decorations.push('line-through');
-    element.style.textDecorationColor = '#c62828';
+    element.style.textDecorationColor = del;
     element.classList.add('docx-deletion');
     if (run.changeAuthor) element.dataset.changeAuthor = run.changeAuthor;
     if (run.changeDate) element.dataset.changeDate = run.changeDate;
@@ -595,6 +603,13 @@ export function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement 
     // happens to match, but be explicit so future transforms can't drift.
     img.style.transformOrigin = 'center center';
   }
+  // Picture border (set via the Format panel; round-trips on the image node).
+  if (run.borderWidth && run.borderWidth > 0) {
+    img.style.border = `${run.borderWidth}px ${run.borderStyle || 'solid'} ${
+      run.borderColor || '#000000'
+    }`;
+    img.style.boxSizing = 'border-box';
+  }
   if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
 
   const deg = rotationDegrees(run.transform);
@@ -688,6 +703,13 @@ function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
   if (run.transform) {
     img.style.transform = run.transform;
     img.style.transformOrigin = 'center center';
+  }
+  // Picture border (set via the Format panel; round-trips on the image node).
+  if (run.borderWidth && run.borderWidth > 0) {
+    img.style.border = `${run.borderWidth}px ${run.borderStyle || 'solid'} ${
+      run.borderColor || '#000000'
+    }`;
+    img.style.boxSizing = 'border-box';
   }
   if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
 

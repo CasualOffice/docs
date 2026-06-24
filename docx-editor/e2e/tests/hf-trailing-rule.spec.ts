@@ -10,7 +10,7 @@ test('header trailing empty paragraph with pBdr.bottom renders the horizontal ru
   await editor.goto();
   await editor.waitForReady();
 
-  await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+  await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
   await page.waitForSelector('.paged-editor__pages');
   await page.waitForSelector('[data-page-number]');
   await page.waitForFunction(
@@ -32,10 +32,14 @@ test('header trailing empty paragraph with pBdr.bottom renders the horizontal ru
       const paragraphs = h.querySelectorAll<HTMLElement>('.layout-paragraph');
       const data: (typeof results)[number]['paragraphs'] = [];
       paragraphs.forEach((p) => {
+        // Borders live on the .layout-paragraph-border child overlay, not on
+        // the .layout-paragraph element itself (see renderParagraph.ts —
+        // borderBox is an absolutely positioned child). Read from there.
+        const borderBox = p.querySelector<HTMLElement>('.layout-paragraph-border');
         data.push({
           rect: p.getBoundingClientRect(),
           runs: p.querySelectorAll('[data-pm-start]').length,
-          borderBottom: getComputedStyle(p).borderBottomWidth,
+          borderBottom: borderBox ? getComputedStyle(borderBox).borderBottomWidth : '0px',
         });
       });
       results.push({ pageHeaderRect: h.getBoundingClientRect(), paragraphs: data });

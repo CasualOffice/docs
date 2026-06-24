@@ -91,15 +91,33 @@ const DIALOG_OVERLAY_STYLE: CSSProperties = {
   pointerEvents: 'none',
 };
 
+/* ============================================================
+   FindReplaceDialog is a NON-MODAL floating panel — the editor
+   stays interactive while it's open. Premium pass keeps that
+   contract intact while bringing the chrome in line with the
+   modal Dialog shell:
+     - 12px corner radius (matches the modal shell's 14px family)
+     - Three-layer shadow (ambient + edge + landing)
+     - Hairline --doc-border-light outline
+     - Soft scale-in motion (200ms, same curve as the modal shell)
+     - Refined header typography (-0.005em letterspaced)
+     - Close X is a stroked SVG (not a glyph)
+   ============================================================ */
+
 const DIALOG_CONTENT_STYLE: CSSProperties = {
-  backgroundColor: 'white',
-  borderRadius: '4px',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-  minWidth: '360px',
-  maxWidth: '440px',
+  backgroundColor: 'var(--doc-surface, white)',
+  borderRadius: '12px',
+  boxShadow:
+    '0 1px 1px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.08), 0 24px 64px rgba(15, 23, 42, 0.18)',
+  border: '1px solid var(--doc-border-light)',
+  minWidth: 'min(380px, calc(100vw - 32px))',
+  maxWidth: '460px',
   width: '100%',
-  margin: '60px 20px 20px 20px',
+  margin:
+    'clamp(40px, 8vw, 60px) clamp(8px, 2.5vw, 20px) clamp(8px, 2.5vw, 20px) clamp(8px, 2.5vw, 20px)',
   pointerEvents: 'auto',
+  animation: 'docFindReplaceIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both',
+  overflow: 'hidden',
 };
 
 const DIALOG_HEADER_STYLE: CSSProperties = {
@@ -107,10 +125,8 @@ const DIALOG_HEADER_STYLE: CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: '12px 16px',
-  borderBottom: '1px solid var(--doc-border)',
-  backgroundColor: 'var(--doc-bg-subtle)',
-  borderTopLeftRadius: '4px',
-  borderTopRightRadius: '4px',
+  borderBottom: '1px solid var(--doc-border-light)',
+  backgroundColor: 'var(--doc-surface-muted)',
 };
 
 const DIALOG_TITLE_STYLE: CSSProperties = {
@@ -118,20 +134,27 @@ const DIALOG_TITLE_STYLE: CSSProperties = {
   fontSize: '14px',
   fontWeight: 600,
   color: 'var(--doc-text)',
+  letterSpacing: '-0.005em',
 };
 
 const CLOSE_BUTTON_STYLE: CSSProperties = {
-  background: 'none',
+  background: 'transparent',
   border: 'none',
-  fontSize: '18px',
   cursor: 'pointer',
   color: 'var(--doc-text-muted)',
-  padding: '2px 6px',
+  padding: 6,
   lineHeight: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 6,
+  marginRight: -6,
+  transition:
+    'background 80ms cubic-bezier(0.4, 0, 0.2, 1), color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const DIALOG_BODY_STYLE: CSSProperties = {
-  padding: '16px',
+  padding: '14px 16px 12px',
 };
 
 const ROW_STYLE: CSSProperties = {
@@ -150,18 +173,22 @@ const LABEL_STYLE: CSSProperties = {
 
 const INPUT_STYLE: CSSProperties = {
   flex: 1,
-  padding: '8px 10px',
-  border: '1px solid var(--doc-border-input)',
-  borderRadius: '3px',
+  padding: '7px 10px',
+  border: '1px solid var(--doc-border)',
+  borderRadius: '6px',
   fontSize: '13px',
   boxSizing: 'border-box',
   outline: 'none',
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text)',
+  transition:
+    'border-color 80ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const INPUT_FOCUS_STYLE: CSSProperties = {
   ...INPUT_STYLE,
-  borderColor: 'var(--doc-link)',
-  boxShadow: '0 0 0 2px rgba(5, 99, 193, 0.1)',
+  borderColor: 'var(--doc-primary)',
+  boxShadow: '0 0 0 3px rgba(26, 115, 232, 0.16)',
 };
 
 const BUTTON_CONTAINER_STYLE: CSSProperties = {
@@ -173,37 +200,43 @@ const BUTTON_CONTAINER_STYLE: CSSProperties = {
 
 const BUTTON_BASE_STYLE: CSSProperties = {
   padding: '6px 12px',
-  borderRadius: '3px',
-  fontSize: '12px',
+  borderRadius: '6px',
+  fontSize: '12.5px',
   fontWeight: 500,
   cursor: 'pointer',
-  border: '1px solid var(--doc-border-input)',
-  backgroundColor: 'var(--doc-bg-input)',
+  border: '1px solid var(--doc-border)',
+  backgroundColor: 'var(--doc-surface)',
   color: 'var(--doc-text)',
   minWidth: '80px',
   textAlign: 'center',
+  transition:
+    'background 80ms cubic-bezier(0.4, 0, 0.2, 1), border-color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const BUTTON_DISABLED_STYLE: CSSProperties = {
   ...BUTTON_BASE_STYLE,
-  backgroundColor: 'var(--doc-bg-hover)',
-  color: 'var(--doc-text-placeholder)',
+  backgroundColor: 'var(--doc-surface-muted)',
+  color: 'var(--doc-text-subtle)',
   cursor: 'not-allowed',
 };
 
 const NAV_BUTTON_STYLE: CSSProperties = {
-  padding: '6px 10px',
-  borderRadius: '3px',
-  fontSize: '14px',
+  padding: '6px 8px',
+  borderRadius: '6px',
   cursor: 'pointer',
-  border: '1px solid var(--doc-border-input)',
-  backgroundColor: 'var(--doc-bg-input)',
-  color: 'var(--doc-text)',
+  border: '1px solid var(--doc-border)',
+  backgroundColor: 'var(--doc-surface)',
+  color: 'var(--doc-text-muted)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition:
+    'background 80ms cubic-bezier(0.4, 0, 0.2, 1), color 80ms cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const NAV_BUTTON_DISABLED_STYLE: CSSProperties = {
   ...NAV_BUTTON_STYLE,
-  color: 'var(--doc-border-input)',
+  color: 'var(--doc-text-subtle)',
   cursor: 'not-allowed',
 };
 
@@ -308,6 +341,11 @@ export function FindReplaceDialog({
   const [showReplace, setShowReplace] = useState(replaceMode);
   const [matchCase, setMatchCase] = useState(false);
   const [matchWholeWord, setMatchWholeWord] = useState(false);
+  // Phase 1.5 U7 — exposes the existing `useRegex` flag in
+  // `FindOptions` (already handled by findReplaceUtils.ts:93-103).
+  // Matches Word's "Use wildcards" and VS Code's "Use Regular
+  // Expression" checkboxes.
+  const [useRegex, setUseRegex] = useState(false);
   const [result, setResult] = useState<FindResult | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [replaceFocused, setReplaceFocused] = useState(false);
@@ -337,7 +375,11 @@ export function FindReplaceDialog({
       }, 100);
 
       if (initialSearchText) {
-        const searchResult = onFind(initialSearchText, { matchCase, matchWholeWord });
+        const searchResult = onFind(initialSearchText, {
+          matchCase,
+          matchWholeWord,
+          useRegex,
+        });
         setResult(searchResult);
         if (searchResult?.matches && onHighlightMatches) {
           onHighlightMatches(searchResult.matches);
@@ -359,7 +401,7 @@ export function FindReplaceDialog({
       return;
     }
 
-    const searchResult = onFind(searchText, { matchCase, matchWholeWord });
+    const searchResult = onFind(searchText, { matchCase, matchWholeWord, useRegex });
     setResult(searchResult);
 
     if (searchResult?.matches && onHighlightMatches) {
@@ -367,13 +409,21 @@ export function FindReplaceDialog({
     } else if (onClearHighlights) {
       onClearHighlights();
     }
-  }, [searchText, matchCase, matchWholeWord, onFind, onHighlightMatches, onClearHighlights]);
+  }, [
+    searchText,
+    matchCase,
+    matchWholeWord,
+    useRegex,
+    onFind,
+    onHighlightMatches,
+    onClearHighlights,
+  ]);
 
   useEffect(() => {
     if (isOpen && searchText.trim()) {
       performSearch();
     }
-  }, [matchCase, matchWholeWord]);
+  }, [matchCase, matchWholeWord, useRegex]);
 
   const handleSearchChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setSearchText(e.target.value);
@@ -458,7 +508,7 @@ export function FindReplaceDialog({
 
     const success = onReplace(replaceText);
     if (success) {
-      const newResult = onFind(searchText, { matchCase, matchWholeWord });
+      const newResult = onFind(searchText, { matchCase, matchWholeWord, useRegex });
       setResult(newResult);
       if (newResult?.matches && onHighlightMatches) {
         onHighlightMatches(newResult.matches);
@@ -470,6 +520,7 @@ export function FindReplaceDialog({
     searchText,
     matchCase,
     matchWholeWord,
+    useRegex,
     onReplace,
     onFind,
     onHighlightMatches,
@@ -478,7 +529,7 @@ export function FindReplaceDialog({
   const handleReplaceAll = useCallback(() => {
     if (!searchText.trim()) return;
 
-    const count = onReplaceAll(searchText, replaceText, { matchCase, matchWholeWord });
+    const count = onReplaceAll(searchText, replaceText, { matchCase, matchWholeWord, useRegex });
     if (count > 0) {
       setResult({
         matches: [],
@@ -489,7 +540,15 @@ export function FindReplaceDialog({
         onClearHighlights();
       }
     }
-  }, [searchText, replaceText, matchCase, matchWholeWord, onReplaceAll, onClearHighlights]);
+  }, [
+    searchText,
+    replaceText,
+    matchCase,
+    matchWholeWord,
+    useRegex,
+    onReplaceAll,
+    onClearHighlights,
+  ]);
 
   const toggleReplaceMode = useCallback(() => {
     setShowReplace((prev) => {
@@ -538,6 +597,15 @@ export function FindReplaceDialog({
         aria-modal="false"
         aria-labelledby="find-replace-dialog-title"
       >
+        {/* Local keyframe for the soft entry motion. Co-located so the
+            shared stylesheet doesn't need to know about a per-dialog
+            animation. */}
+        <style>{`
+          @keyframes docFindReplaceIn {
+            from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+        `}</style>
         {/* Header */}
         <div className="docx-find-replace-dialog-header" style={DIALOG_HEADER_STYLE}>
           <h2 id="find-replace-dialog-title" style={DIALOG_TITLE_STYLE}>
@@ -552,7 +620,20 @@ export function FindReplaceDialog({
             onClick={onClose}
             aria-label={t('common.closeDialog')}
           >
-            &times;
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6L6 18" />
+              <path d="M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -690,6 +771,20 @@ export function FindReplaceDialog({
                 onChange={(e) => setMatchWholeWord(e.target.checked)}
               />
               {t('dialogs.findReplace.wholeWords')}
+            </label>
+            <label
+              className="docx-find-replace-dialog-option"
+              style={CHECKBOX_LABEL_STYLE}
+              data-testid="find-replace-use-regex-label"
+            >
+              <input
+                type="checkbox"
+                style={CHECKBOX_STYLE}
+                checked={useRegex}
+                onChange={(e) => setUseRegex(e.target.checked)}
+                data-testid="find-replace-use-regex"
+              />
+              {t('dialogs.findReplace.useRegex')}
             </label>
             {!showReplace && (
               <button

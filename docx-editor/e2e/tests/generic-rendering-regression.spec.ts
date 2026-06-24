@@ -99,7 +99,7 @@ test.describe('Generic Rendering Regression', () => {
     await editor.waitForReady();
 
     await page
-      .locator('input[type="file"][accept=".docx"]')
+      .locator('input[type="file"][accept*=".docx"]')
       .setInputFiles(`e2e/${GENERIC_FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');

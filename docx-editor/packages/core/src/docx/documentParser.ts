@@ -24,7 +24,8 @@ import type {
 } from '../types/document';
 import type { StyleMap } from './styleParser';
 import type { NumberingMap } from './numberingParser';
-import { parseXml, findChild, getChildElements, type XmlElement } from './xmlParser';
+import { parseXml, findChild, getChildElements, getAttribute, type XmlElement } from './xmlParser';
+import type { ThemeColorSlot } from '../types/document';
 import { parseParagraph, getParagraphText } from './paragraphParser';
 import { parseTable } from './tableParser';
 import { parseSectionProperties, getDefaultSectionProperties } from './sectionParser';
@@ -402,6 +403,29 @@ export function parseDocumentBody(
   const finalSectPr = findChild(bodyEl, 'w', 'sectPr');
   if (finalSectPr) {
     result.finalSectionProperties = parseSectionProperties(finalSectPr, rels);
+  }
+
+  // Parse doc-level `<w:background>` (sibling of w:body, per OOXML
+  // §17.2.1). This is Word's canonical "Page color" location — Google
+  // Docs' Page color setting saves here too. The painter promotes
+  // `body.background.color` to the rendered page background when the
+  // host hasn't overridden `PainterOptions.pageBackground`.
+  const backgroundEl = findChild(documentEl, 'w', 'background');
+  if (backgroundEl) {
+    const bg: NonNullable<DocumentBody['background']> = {};
+    const colorVal = getAttribute(backgroundEl, 'w', 'color');
+    if (colorVal && colorVal !== 'auto') {
+      bg.color = { rgb: colorVal };
+    }
+    const themeColor = getAttribute(backgroundEl, 'w', 'themeColor');
+    if (themeColor) bg.themeColor = themeColor as ThemeColorSlot;
+    const themeTint = getAttribute(backgroundEl, 'w', 'themeTint');
+    if (themeTint) bg.themeTint = themeTint;
+    const themeShade = getAttribute(backgroundEl, 'w', 'themeShade');
+    if (themeShade) bg.themeShade = themeShade;
+    // Even an empty-but-present element counts — preserves the slot
+    // for round-trip and signals "background exists" downstream.
+    result.background = bg;
   }
 
   // Build sections from content

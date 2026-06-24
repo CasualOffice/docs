@@ -1,5 +1,464 @@
 # @eigenpal/docx-js-editor
 
+## 1.1.7
+
+### Patch Changes
+
+- Toolbar polish: tighter color-strip indicator under font-color / highlight / border buttons (was 16×4 px overlapping the icon, now 18×3 px sitting cleanly below with a 1 px breathing gap). Matches Google Docs' visual rhythm and clears the "chunky highlight strip" feedback from the 2026-06-17 demo walkthrough.
+
+## 1.1.6
+
+### Patch Changes
+
+- embed-runtime: forward DocxEditor parse / load errors to the host via `transport.sendError(parse_failed)` so hosts can swap the iframe for a friendly fallback instead of letting the SDK's own red error UI surface to end users.
+
+## 1.1.5
+
+### Patch Changes
+
+- embed-runtime: bundle the tailwind-compiled editor CSS (dist/styles.css) into dist/embed/embed-runtime.css so the iframe's `<link rel="stylesheet">` serves the full editor stylesheet. Without this, every toolbar button stacked vertically with no layout and the canvas painted unstyled.
+
+## 1.1.4
+
+### Patch Changes
+
+- embed-runtime: hide all chrome (toolbar, menubar, panel rail, status bar, ruler, zoom) and lock read-only in preview mode; toggle on viewMode commands.
+
+## 1.1.3
+
+### Patch Changes
+
+- embed-runtime calls `transport.sendReady()` after `sendHello()`. The
+  host (CasualEditorIframe) only sends its hello inside `onEditorReady`;
+  without an eager `casual.ready` from the iframe, the handshake
+  deadlocked and bytes never loaded.
+
+## 1.1.2
+
+### Patch Changes
+
+- Add `platform: 'browser'` to the embed-runtime tsup config so esbuild
+  picks the browser variant of dual-target deps. 1.1.1 bundled deps but
+  still grabbed `import { ... } from 'crypto'` from the Node fork of
+  nanoid, which the browser can't resolve. Runtime now lands clean.
+
+## 1.1.1
+
+### Patch Changes
+
+- Bundle React + ProseMirror + all deps into the embed-runtime instead
+  of leaving them as external imports. The previous build expected the
+  consumer to provide an importmap; consumers like Casual Drive that
+  embed via `<iframe src="…/embed.html">` had no way to do that, and
+  the bare `import 'react'` failed at runtime in the browser.
+
+  The runtime now ships ~2.8MB self-contained (cached after first load).
+
+## 1.1.0
+
+### Minor Changes
+
+- c702b94: Ship the SDK iframe-delivery architecture (Phase 1 of doc 16).
+
+  The existing `<CasualEditor>` direct-mount stays — no breaking change.
+  Adds a new `<CasualEditorIframe>` component that renders the editor
+  inside a same-origin iframe instead of co-mounting it into the host's
+  React tree. CSS isolation, React-runtime isolation, and the
+  `React.Activity` init-crash workaround all go away when consumers
+  switch from direct-mount to iframe.
+
+  ### What the consumer-facing API looks like
+
+  ```tsx
+  import { CasualEditorIframe } from '@casualoffice/docs';
+
+  <CasualEditorIframe
+    fileSource={driveFileSource}
+    docId={file.id}
+    viewMode="preview"           // or "editor"
+    embedBasePath="/embed/docs"   // defaults to /embed/docs
+    onSelectionChanged={…}
+    onError={…}
+  />;
+  ```
+
+  No iframe, no postMessage, no `EmbedTransport` wiring in the consumer.
+  The wrapper owns all of that internally.
+
+  ### Build artifacts
+
+  Three new files in `dist/embed/`:
+  - `embed-runtime.mjs` — self-contained ESM bundle that boots the editor
+    inside the iframe.
+  - `embed-runtime.css` — sibling stylesheet.
+  - `embed.html` — minimal HTML document the iframe loads.
+
+  Consumers copy these into their public dir at `embedBasePath` (default
+  `/embed/docs`). A Vite plugin (`@casualoffice/docs/vite-plugin`)
+  that does the copy ships in v1.1.x; for v1.1.0 the contract is a
+  two-line postinstall script:
+
+  ```sh
+  mkdir -p web/public/embed/docs
+  cp node_modules/@casualoffice/docs/dist/embed/* web/public/embed/docs/
+  ```
+
+  ### Wire protocol additions
+  - `casual.command.set.viewmode` — live preview ↔ editor toggle.
+  - `casual.error` — editor → host fatal-error signal.
+
+  Both are documented in `docs/internal/13-iframe-protocol.md` (extended)
+  and `docs/internal/16-sdk-iframe-architecture.md` (new design doc).
+
+  ### What's not in this minor
+  - The full ref API (`flushSave`, `getSelection`, `signing.start`) — ships
+    in v1.1.x once Drive proves the wire end-to-end.
+  - The Vite plugin — v1.1.x.
+  - The `CasualSheets` mirror — separate publish of
+    `@casualoffice/sheets@0.5.0`.
+  - Preview-mode chrome hiding inside the iframe — currently surfaced as
+    a `data-view-mode` attribute on the embed root; v1.1.x wires the
+    attribute to component-level chrome toggles.
+
+## 1.0.1
+
+### Patch Changes
+
+- Fix `format-converter.worker.ts` bundling. The published `dist/`
+  referenced `new Worker(new URL('./format-converter.worker.ts',
+import.meta.url))` but didn't ship the `.ts` source — any consumer
+  whose bundler honours the `new Worker(new URL(...), import.meta.url)`
+  pattern at build time (Vite, modern webpack with worker-plugin, esbuild's
+  bundler) errored with "Could not resolve entry module
+  .../format-converter.worker.ts" before the consumer's app could even
+  import a single editor symbol.
+
+  `tsup.config.ts` now adds `format-converter.worker` as its own entry
+  (emits `dist/format-converter.worker.mjs` + `.cjs` as siblings to the
+  main chunks) and rewrites the runtime URL in the compiled
+  `format-converter` chunk from `./format-converter.worker.ts` to
+  `./format-converter.worker.mjs` via a `renderChunk` plugin. Consumers'
+  bundlers resolve the URL correctly because the file exists in
+  `node_modules` at the path the URL points at.
+
+  Existing consumers (Casual Drive in particular) can drop the
+  Vite-transform workaround that rewrote the worker construction to a
+  no-op once they bump to this version.
+
+  See schnsrw/docx#4 for the original report.
+
+## 1.0.0
+
+### Major Changes
+
+- 56bdee8: Rename published scope from `@eigenpal/docx-js-editor` to `@casualoffice/docs`.
+
+  This fork has diverged substantially from upstream and now ships under a scope the
+  maintainer owns on npm. Imports should switch from `@eigenpal/docx-js-editor` to
+  `@casualoffice/docs` — every other export shape, type, and subpath is
+  unchanged. Workspace internals (`@eigenpal/docx-core`, `@eigenpal/docx-editor-vue`)
+  remain on the old scope; they're private and not published.
+
+## 0.6.0
+
+### Minor Changes
+
+- 26255fa: Add Tools → Explore (A3). Looks up the selection via Wikipedia's
+  free REST summary endpoint and shows the page title, extract, an
+  "Open in Wikipedia" link, and a "Cite this" button that inserts a
+  hyperlink (title → page URL) at the cursor. Loading / not-found /
+  error states route through the shared `PanelState` helper.
+- a5c9a43: Add Tools → Dictionary + `Ctrl/Cmd+Shift+Y` (A4). Looks up the
+  selected word via the free public `dictionaryapi.dev` endpoint and
+  shows every meaning's part-of-speech + first definition. Loading and
+  error states route through the shared `PanelState` helper (its first
+  non-empty-state adopter), so the dialog matches the rest of the
+  editor's chrome.
+- 6a90d59: Add Tools → Translate (A5). Two-column dialog: source / target
+  language pickers + swap, original text seeded from the selection,
+  translated text on the right, Copy button under the result. Uses
+  the free public `api.mymemory.translated.net` endpoint — no API key
+  needed for v0. Loading / error states route through `PanelState`
+  (its fourth adopter). Whole-document translate is the future follow-up
+  that needs a paid provider.
+- 5c63ffd: Add Tools → Citations (A6 v0): a local-only citation manager.
+  Add-form (author / title / year / URL) on top, list of saved
+  entries on the bottom with a shared APA / MLA / Chicago style radio.
+  Insert drops the formatted citation text at the cursor and wraps the
+  URL substring in a hyperlink mark. Storage is `localStorage` — the
+  real `.docx` bibliography-field round-trip is the future follow-up.
+- 4d568f0: Add autosave to IndexedDB + restore banner (sheet parity).
+  Snapshots the current `.docx` buffer to `casual-docs` / `autosave` /
+  `current` on a debounced 30s-idle timer when the doc is dirty. On
+  mount, if a record exists and is fresher than 24h, surfaces a
+  banner under the toolbar: "Unsaved changes from <name> (X min ago)
+  — restore them?" with Restore / Discard. Restore swaps the buffer
+  through the same `loadBuffer` path File → Open uses; Discard drops
+  the record. Mirrors `services/sheet/apps/web/src/autosave/*`.
+- 7c1357a: Add Insert → "Convert selection to table" (B8). The selected
+  paragraphs become a table, with delimiter auto-detected (tab →
+  comma → one cell per paragraph) so the paste-from-CSV flow works
+  without a dialog. Short rows are zero-padded; a trailing empty
+  paragraph is added after the table so the cursor has somewhere to
+  land next.
+- 27e6147: Close B8: Insert → "Convert table to text". Shows only when the
+  caret is inside a table; replaces the table with one paragraph per
+  row, cells joined by tab. Pairs with the forward conversion's tab
+  delimiter so users can flip between text and table without lossy
+  reformatting.
+- 98ec43b: Add Insert → Shape submenu (C2 v0): four default-styled SVG
+  primitives — Rectangle, Ellipse, Line, Arrow — dropped at the cursor
+  as inline images. The full drawing canvas is the deferred upgrade;
+  this lands the headline action so users can sketch out diagrams
+  without leaving the editor. Existing image handles + properties
+  dialog let them resize and reposition without further plumbing.
+
+  Side a11y win: `SubMenuItem` in `MenuDropdown` now carries
+  `role="menuitem"` so the existing focus-ring rule covers it for
+  free and assistive tech announces submenu items correctly.
+
+- 2fa923d: Extend the watermark dialog with the knobs the painter already
+  reads: color picker, opacity slider (10–100%), font-size slider
+  (48–144px), and rotation slider (-90 to 90°). Defaults still match
+  Word (gray, 50%, 96px, -45°) — values that match the default are
+  omitted from the persisted watermark so future default changes
+  don't get pinned by accident.
+- 1919e60: Add Insert → Building blocks (Quick parts): save the current selection
+  as a named, reusable snippet and re-insert it later via the dialog.
+  Snippets persist in `localStorage` and round-trip arbitrary editor
+  content within the schema (PM Slice JSON), not just plain text.
+- d862442: Word convention: `Cmd/Ctrl+Enter` inserts a page break at the
+  cursor. Bound in `PageBreakExtension`'s `onSchemaReady` so hosts
+  that drop the page-break node from their schema don't pick up a
+  no-op binding. Documented in the Keyboard Shortcuts dialog under
+  Editing.
+- 236cd3c: Consolidate panel toggles into the right-edge PanelRail (sheet
+  pattern). Comments + Version-history buttons are gone from the
+  formatting toolbar; the floating Outline button is gone from the
+  editor body. All three live in the rail with pressed state + the
+  existing Ctrl+Shift+H shortcut (outline), View menu entry (outline),
+  and palette entries. Less duplication, fewer accessible-name
+  collisions in tests, same affordances.
+- 1ddbe4a: Add a thin yellow banner above the editor while in Suggesting mode
+  (E3). Matches Google Docs' visual language; the right-side "Switch
+  to editing" button flips back. `role="status"` + `aria-live` keeps
+  screen-reader announcements polite.
+- 74bb1ba: Round-trip fidelity, dark theme, and ODT/MD/TXT export via `@casualoffice/core`.
+
+  **New: ODT / Markdown / plain-text export.** The toolbar's Export menu now offers ODT, Markdown, and plain-text in addition to DOCX. Conversion runs off-thread in a Web Worker bridged to the `@casualoffice/core` WASM converter — added as a new runtime dependency (`@casualoffice/core@^0.1.1`). DOCX export is unchanged and still routes through the editor's own serializer.
+
+  **New: dark theme.** Real dark mode driven by semantic surface CSS variables (`--doc-surface`, `--doc-text-on-surface`, etc.) rather than CSS inversion. View → Theme picks Light / Dark / System, and the choice persists across reloads. Every dialog, dropdown, sidebar, ribbon button, toolbar icon, status bar, and context menu was reviewed and ported off hardcoded light colors. `[data-theme="dark"]` sets `color-scheme: dark` so native form controls follow.
+
+  **New: UX.**
+  - Command palette (`⌘⇧P`) with fuzzy search over every menu action.
+  - Status bar at the page bottom: page indicator, word/character count, zoom slider, zoom shortcuts (`⌘=` / `⌘-` / `⌘0`).
+  - Hover-to-switch menu bar: opening one menu and hovering a sibling trigger immediately switches; arrow keys navigate between menus; one-click swap fixed (was previously a two-click bug from a stacking-context regression).
+  - Save status indicator in the title bar (●Unsaved / Saving…) plus a `beforeunload` guard when there are unsaved changes.
+  - Phased loading indicator on first file open: "Reading → Parsing → Building layout → Still working" with an elapsed-seconds counter after 1.5 s.
+  - File Properties dialog gets section headers (Metadata / File info).
+  - Keyboard-shortcut chips in toolbar tooltips (Bold, Italic, Underline, Strike, Link, Super/Subscript, Undo, Redo, Clear formatting, list buttons, indent/outdent).
+  - Toolbar gets an Insert Image button next to Link.
+  - View menu (zoom in/out/reset, theme picker) and full Edit / Format menus mirrored into the title bar.
+  - About dialog brand-aligned with the title bar document icon.
+  - First load opens a blank document instead of the upstream sample.
+
+  **Round-trip fidelity fixes** — every fixture in the audit suite now round-trips with zero parse-but-drop tags:
+  - Empty self-closing `<w:pBdr/>`, `<w:spacing/>`, `<w:ind/>`, `<w:rPr/>` inside `<w:pPr>` survive via a `presentEmpty` marker on `ParagraphFormatting`.
+  - Section properties `<w:pgNumType>`, `<w:formProt>`, `<w:textDirection>` parsed and serialized.
+  - `<w:footnotePr/>` and `<w:endnotePr/>` round-trip in their self-closing form when no children are populated.
+  - `<w:tblCellMar>` logical-side names (`w:start` / `w:end`) preserved instead of being coerced to `w:left` / `w:right`.
+  - Drawing percent-of-anchor hints (`wp14:sizeRelH` / `wp14:sizeRelV` with `pctWidth` / `pctHeight`) parsed into `Image.relativeSize` and re-emitted.
+  - Complex fields (`<w:fldChar>` + `<w:instrText>`) inside `<w:ins>` and `<w:del>` no longer dropped — runs stay raw inside tracked context instead of being coalesced into a `ComplexField` the surrounding filter would discard.
+  - `<w:highlight w:val="none"/>` (the explicit no-highlight override, ECMA-376 §17.18.40) round-trips instead of being stripped at serialize time.
+  - Run border `<w:bdr>` (§17.3.2.4) now modeled on `TextFormatting.border` and round-tripped.
+  - `<w:bookmarkEnd>` anchored as a direct child of `<w:tbl>` (Word does this when a range starts inside a cell and closes at the table boundary) survives via `Table.trailingBookmarks`.
+
+- 56d7d26: Add File → "Email as attachment…" (F2). Triggers the same save path
+  as Save, downloads the `.docx`, and opens a `mailto:` draft with
+  subject + body pre-filled. The browser can't auto-attach files for
+  security reasons, so the body and a toast both nudge the user to
+  drag the downloaded file into the email window.
+- a75c98d: Add View → "Show non-printing characters" (F6): toggles paragraph
+  marks (¶), tab arrows (→), and line-break arrows (↵) over the page
+  content as CSS pseudo-elements. The marks never enter selections,
+  the clipboard, or the saved .docx. State persists in localStorage
+  so the preference survives a reload.
+- c0df3b5: `Cmd/Ctrl+Shift+H` now toggles the document outline panel. The
+  floating outline button's tooltip surfaces the shortcut chip, and
+  the Keyboard Shortcuts dialog lists it under View. Mac-safe: the
+  shifted variant avoids the system-level `Cmd+Option+H` "Hide Others".
+- c186c4a: **New: page color (background) support.** Reads the doc-level `<w:background>` element (OOXML §17.2.1) — Word + Google Docs both surface this as "Page color" in their Page Setup UI. The editor now:
+  - Parses the element on load and renders pages with the declared color.
+  - Round-trips it on save (no more silent drop).
+  - Adds a **Page color** picker to the Page Setup dialog, with a **None** reset that clears the background entirely.
+
+  Doc-level background is the standard location; the section-level `<w:background>` already supported earlier still works.
+
+  API: `<PageSetupDialog>` gains optional `currentPageColor` + `onPageColorChange` props. `<DocxEditor>`'s built-in dialog wires both, so embedders get the picker for free.
+
+- 7251269: Command palette is now actually fuzzy — the docstring already
+  claimed it. Items are scored on ordered subsequence with a
+  word-boundary bonus (`+5` at start / after space / after `>`) and a
+  consecutive-match bonus (`+3`); skipped characters between matches
+  cost `-1` so a tight run beats a sprawling one. Results sort by
+  score, so `expdf` jumps straight to "Export as PDF" and `fr` ranks
+  "Find and Replace" first.
+- 3ff4cd7: Command palette gains entries for every feature added this session:
+  File · Make a copy / Email as attachment; Insert · Watermark /
+  Building blocks / Convert selection to table / Shape (Rectangle /
+  Ellipse / Line / Arrow); Tools · Word count / Dictionary / Translate /
+  Explore / Citations / Preferences / Accessibility; View · Show
+  non-printing characters. Cmd+Shift+P now actually finds them.
+- 1624ce6: Command palette now remembers your last 5 picks (per browser, via
+  `localStorage`). On open with an empty query, recently-used items
+  surface at the top in MRU order — so the second time you hunt for
+  "Word count" or "Dictionary", you press ⌘⇧P + Enter.
+- e2c665d: Add IndexedDB-backed recent files (sheet parity). On `File → Open`,
+  DocxEditor records the buffer + name + timestamp into a `recent-files`
+  store in the shared `casual-docs` DB (now v2; autosave's store moves
+  to a shared opener). Host package exports `recordRecentFile`,
+  `listRecentFiles`, `deleteRecentFile`, `formatSize`, and the
+  `RecentFile` type. The example Vite app's Home screen surfaces a
+  "Recent" section above Featured (when at least one entry exists and
+  no template filter is active) — cards re-open by synthesizing a
+  `File` from the stored buffer, so the existing `onOpenFile` path
+  doesn't need a new code path.
+
+  Retention: 10 entries (oldest evicted), 60-day stale window.
+  Mirrors `services/sheet/apps/web/src/recent-files/*`.
+
+- dc6389f: Add CasualEditor SDK wrapper, EmbedTransport for iframe delivery, and the document-signature pipeline.
+  - **CasualEditor** — composable React wrapper bundling DocxEditor + FileSource + optional collab + optional autosave. One prop (`backendUrl`) flips standalone↔collab; signing prop opens a signing session with anchored fields. Drive integrators land on this as the primary surface.
+  - **useCollab** promoted from the demo into the library. `yjs` / `y-websocket` / `y-prosemirror` ship as optional peer dependencies so standalone consumers don't pay the bundle weight.
+  - **EmbedTransport** + protocol types for iframe delivery — postMessage envelopes match `docs/internal/13-iframe-protocol.md`. Validates origin, dispatches by envelope `type`, supports request/response correlation by id.
+  - **Signing pipeline** — `SigningProvider` + `SigningPane` + `DrawnSignaturePad` / `TypedSignatureField` / `UploadedSignatureField` capture surfaces. Sequential or concurrent modes. Same payload shapes whether delivered via SDK callbacks or iframe envelopes.
+  - Crypto stays out of the editor — the host (Drive's Rust backend) owns identity attestation and audit; the editor stamps whatever bytes the signer produces.
+
+- 350f348: Document the global shortcuts wired in DocxEditor but missing from
+  the Keyboard Shortcuts dialog: Search the menus (⌘⇧P), Word count
+  (⌘⇧C), Dictionary (⌘⇧Y), Cycle editing mode (⌘⇧E), New comment
+  (⌘⌥M), Bullet list (⌘⇧L). The dialog's search field now finds
+  them, and ⌘⇧P picks up a `common: true` chip on the common list.
+- 74dcaad: Right-click the status bar to toggle which counters appear (Page
+  indicator / Word count / Character count / Reading time). Excel-style
+  checklist popover, persists in `localStorage` via a small
+  `useSyncExternalStore`-backed module. Mirrors
+  `services/sheet/apps/web/src/shell/use-statbar-prefs.ts`.
+- 5238626: View menu gains a "Show document outline" entry (⌘⇧H chip) with
+  a checkmark prefix when open. Pairs with the existing floating
+  outline button + global keyboard shortcut so the surface area
+  matches Google Docs.
+- 89c2ba2: **New: `wordCompat` prop on `<DocxEditor>`.** Opt-in switch for Word-style rendering quirks. Off by default — the renderer stays faithful to the literal OOXML, matching how LibreOffice and Google Docs draw.
+
+  When `true`, the painter emulates Word's "firstRow-only borders close the last body row" behavior (GH #395): when `<w:tblBorders>` declares only `firstRow` styling, Word also draws the firstRow's bottom border on the last cell of the last body row when that cell has no `<w:bottom>` of its own. Useful for hosts building Word-comparison UIs or side-by-side viewers.
+
+  ```tsx
+  <DocxEditor wordCompat document={doc} />
+  ```
+
+  Threads through `<DocxEditor>` → `<PagedEditor>` → `renderPages` → `RenderContext.wordCompat` — third-party `PagedEditor` users can flip the same prop.
+
+- a491ab5: Add `<PanelState>` (`@eigenpal/docx-js-editor` → `components/ui/PanelState`):
+  a shared empty / loading / error helper for side panels. Centered
+  layout, muted copy, opt-in Material Symbol icon, and an `ep-spin`
+  800ms spinner for the loading variant. ARIA roles auto-pick (status
+  vs alert; `aria-live="polite"` on loading). `VersionHistoryPanel`
+  migrated as the first adopter — its inline empty-state chrome now
+  renders through `<PanelState kind="empty" />`.
+- 86486c9: Ship `PanelRail` v0 (X7): always-visible 36px activity bar on the
+  right edge with toggles for Outline / Comments / Version history.
+  Each button shows its panel's pressed state with a left-edge accent
+  marker matching VSCode / Office activity-bar conventions. Mutual
+  exclusion between Comments and Version history is shared by both
+  the toolbar buttons and the rail via two new memoized callbacks.
+  Mirrors the sibling Casual Sheets PanelRail.
+- 57e545b: The status-bar zoom readout now opens a 50 / 75 / 100 / 125 / 150 /
+  200% presets popover instead of resetting on click. Active preset
+  shows a checkmark. ⌘0 still resets, so the old keyboard path is
+  unaffected.
+
+### Patch Changes
+
+- 72e9117: Fix: autosave was firing once per dirty rising-edge — continuous
+  typing past 30s without an explicit save never snapshotted again.
+  Switched from a `setTimeout` keyed on `isDirty` to a 30s
+  `setInterval` that polls a dirty ref, so a long editing session
+  keeps getting periodic snapshots. Also bumped the existing autosave
+  specs to open the IDB at v2 (recent-files added that store).
+- a891ab8: Clicking the PanelRail's Comments toggle on an empty doc used to
+  flip the rail button to pressed with nothing else visible
+  (UnifiedSidebar returns null when items.length === 0). Now it
+  surfaces a sonner toast — "No comments yet — select text and click
+  'Add comment'." — so the user knows where to start.
+- 7b6230a: Add Word count to the Tools menu (D5) — matches Google Docs'
+  Tools → Word count placement. The existing Edit-menu entry stays
+  in place, so both shortcuts and keyboard navigation continue to
+  work either way.
+- a9a27cf: Document the existing `Cmd/Ctrl+K` hyperlink shortcut in the
+  Keyboard Shortcuts dialog. The binding has been wired for a while
+  and the formatting-bar button already shows the chip; this just
+  closes the doc gap so the dialog's search field can find it.
+- d531a15: Surface the `⌘↵` chip on the Insert → Page break menu entry now
+  that the shortcut is bound. Existing chips on Bold / Italic / Save /
+  Word count / Dictionary / Show outline already taught users to look
+  there; this one was conspicuously absent.
+- e788570: Surface the `⌘↵` chip on the palette's "Insert page break" entry
+  and add an "Insert link" entry under Edit with the `⌘K` chip
+  (replicates the formatting-bar's link button via the existing
+  insertLink action). Pairs with the dialog documentation shipped
+  in the previous turn.
+- 269dc3f: Add `Show / Hide document outline` to the command palette so
+  ⌘⇧P → Enter (after a recent pick) toggles the outline with one
+  keystroke. Label flips with state.
+- ee1d999: Mirror PanelRail's Comments + Version-history toggles into the
+  command palette under View. Labels flip with state ("Show" / "Hide"),
+  pairing with the existing Outline entry. Cmd+Shift+P + Enter now
+  toggles those panels too — same MRU bumping as every other palette
+  action.
+- 6a74c3d: Fix: PanelRail now sits inside the below-toolbar flex row so it
+  spans only the editor body's vertical extent, not the toolbar's.
+  Previously it lived at the mainContent level alongside the toolbar
+  column, so the rail icons floated up against the title bar instead
+  of starting under the formatting bar.
+
+  Also fixes the StatusBar lint errors that CI flagged: the
+  status-bar checklist hooks now run before the `!visible` early
+  return so React sees a stable hook order regardless of visibility.
+
+- 0301b79: Add a "~N min read" estimate to the status bar, alongside word
+  count. Uses a 200-wpm prose-average baseline (the same convention
+  Medium uses) and rounds up so the user is more likely to
+  over-budget than under. Hidden on empty documents.
+- 500025f: Suggesting-mode banner's "Switch to editing" button now shows the
+  `⌘⇧E` / `Ctrl+Shift+E` chip — the mode-cycle shortcut walks
+  Editing → Suggesting → Viewing → Editing, so the same key gets the
+  user back. Surfacing the chip on the button is the same pattern
+  the toolbar / menu / shortcuts-dialog use.
+- 0dec1f6: Tooltip's `side="left"` and `"right"` were typed but never honored
+  in the position math — they silently fell through to `bottom`. The
+  PanelRail uses `side="left"` so its tooltips land outside the rail
+  column. Anchor + transform now route through one `computeAnchor()`
+  that handles all four sides.
+- dec42fa: Word count dialog now shows the reading-time estimate (`~N min`)
+  alongside the existing pages/words/characters/paragraphs rows —
+  matches what the status bar shows so the two stay in sync.
+- 8977b10: Close the X3 focus-ring gap: the table hover-insert "+" button now
+  shows a keyboard outline (via a new opt-in `.ep-focus-ring` utility
+  class), and the Toolbar's heading-style / character-spacing /
+  section-break / field submenu items gain `role="menuitem"` so they
+  pick up the existing menu-item ring rule. No double-rings — the
+  opt-in class avoids the global selectors that risked it.
+- f5073a1: Add `--doc-anim-fast` / `--doc-anim-base` / `--doc-anim-slow` CSS
+  custom properties on `.ep-root` (100 / 150 / 200ms on Material's
+  standard easing) so the editor's animation timings stop drifting
+  across components. Lazy dialogs (About, Preferences, Watermark,
+  Accessibility, Building blocks) now share an opt-in
+  `.ep-dialog-overlay` / `.ep-dialog-shell` fade + subtle scale on open,
+  respecting `prefers-reduced-motion`.
+- ef2dc9b: Migrate `DocumentOutline`'s no-headings hint to `<PanelState>` — the
+  second adopter of the X5 shared helper, replacing the inline empty-
+  state chrome with the centered / muted / ARIA-correct version.
+
 ## 0.5.1
 
 ### Patch Changes

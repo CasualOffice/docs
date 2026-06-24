@@ -4,7 +4,7 @@ import {
   type DocxEditorRef,
   PluginHost,
   createEmptyDocument,
-} from '@eigenpal/docx-js-editor';
+} from '@casualoffice/docs';
 import { wordCountPlugin } from './wordCountPlugin';
 
 export function App() {

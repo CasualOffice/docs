@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://doc.schnsrw.live/">
+  <a href="https://docs.casualoffice.org/">
     <img src="../assets/logo.svg" alt="Casual Editor" width="80" height="80" />
   </a>
 </p>
@@ -7,14 +7,12 @@
 <h2 align="center">Casual Editor — editor package</h2>
 
 <p align="center">
-  Inlined fork of <a href="https://github.com/eigenpal/docx-editor">eigenpal/docx-editor</a>.
-  MIT only. AGPL <code>@eigenpal/docx-editor-agents</code> removed.
+  Built on <a href="https://github.com/eigenpal/docx-editor">eigenpal/docx-editor</a> (MIT).
 </p>
 
 This directory holds the browser editor codebase for Casual Editor.
-Everything project-wide (architecture, roadmap, contribution rules,
-backend plan) lives in the **[outer README](../README.md)** — start
-there.
+Everything project-wide (architecture, deployment, backend plan) lives
+in the **[outer README](../README.md)** — start there.
 
 This README is just a quick map of what's inside `docx-editor/` so
 folks browsing the package itself don't have to grep around.

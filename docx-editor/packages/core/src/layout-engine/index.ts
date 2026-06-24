@@ -37,6 +37,8 @@ import {
   getMidChainIndices,
   hasPageBreakBefore,
 } from './keep-together';
+import { resolveAnchorX, resolveAnchorY, type AnchorGeometry } from './anchorGeometry';
+import { pixelsToEmu } from '../utils/units';
 
 // Default page size (US Letter in pixels at 96 DPI)
 const DEFAULT_PAGE_SIZE = { w: 816, h: 1056 };
@@ -100,27 +102,92 @@ export function collectSectionConfigs(
   return { configs, breakIndices };
 }
 
-function isEmptyParagraph(block: ParagraphBlock): boolean {
-  if (block.runs.length === 0) return true;
-  if (block.runs.length !== 1) return false;
-  const r = block.runs[0];
-  return r.kind === 'text' && ((r as { text?: string }).text ?? '') === '';
+/**
+ * Measured height a single block contributes to a column's running height.
+ * Mirrors what the per-kind layout helpers consume from the cursor (paragraph
+ * line stack, image/table/text-box box height); breaks and section markers add
+ * nothing.
+ */
+function blockFlowHeight(block: FlowBlock, measure: Measure): number {
+  switch (measure.kind) {
+    case 'paragraph':
+      return measure.totalHeight;
+    case 'image':
+      return measure.height;
+    case 'table':
+      return measure.totalHeight;
+    case 'textBox':
+      // Anchored text boxes float and don't consume column height; inline ones do.
+      return (block as TextBoxBlock).anchor ? 0 : measure.height;
+    default:
+      return 0;
+  }
 }
 
 /**
- * Word collapses style-inherited spacing on empty paragraphs (only direct
- * formatting survives). `spacingExplicit` tracks which side was set inline.
+ * Estimate the height of the multi-column region beginning at the section break
+ * `startIdx` (its tallest column), walking to the next section break.
+ *
+ * Distributes blocks across `columnCount` columns the way the paginator does:
+ * accumulate into the current column, jump to the next column on an explicit
+ * `columnBreak`, collapse adjacent paragraph spacing to the larger side. The
+ * region's height is the deepest column. Used only to decide whether a short
+ * region should be pushed whole to the next page (see
+ * `paginator.ensureColumnRegionFits`); it is an estimate, so it caps the column
+ * index at the last column and ignores in-column overflow (the paginator still
+ * owns real pagination).
+ */
+function computeColumnRegionHeight(
+  blocks: FlowBlock[],
+  measures: Measure[],
+  startIdx: number,
+  columnCount: number
+): number {
+  const colHeights = new Array<number>(columnCount).fill(0);
+  const colTrailing = new Array<number>(columnCount).fill(0);
+  let col = 0;
+  for (let i = startIdx + 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.kind === 'sectionBreak') break;
+    if (block.kind === 'pageBreak') break; // a hard page break ends the region's single-page extent
+    if (block.kind === 'columnBreak') {
+      if (col < columnCount - 1) col += 1;
+      continue;
+    }
+    const height = blockFlowHeight(block, measures[i]);
+    if (height <= 0) continue;
+    let spaceBefore = 0;
+    let spaceAfter = 0;
+    if (block.kind === 'paragraph') {
+      spaceBefore = getSpacingBefore(block as ParagraphBlock);
+      spaceAfter = getSpacingAfter(block as ParagraphBlock);
+    }
+    // Sum prev-after + this-before (Word/LibreOffice behavior), matching the
+    // paginator's addFragment — see the note there. Must stay in sync or the
+    // region-height estimate disagrees with the painted layout.
+    const effectiveBefore = spaceBefore + colTrailing[col];
+    colHeights[col] += effectiveBefore + height;
+    colTrailing[col] = spaceAfter;
+  }
+  return Math.max(0, ...colHeights);
+}
+
+/**
+ * Empty paragraphs keep their inherited before/after spacing — Word and
+ * LibreOffice both render an empty separator paragraph at full height
+ * (line + before + after). Previously we zeroed style-inherited spacing on
+ * empty paragraphs, which compressed every empty-line separator by its
+ * inherited spacing (e.g. the 6 blank lines in a business letter each lost
+ * 6pt, ~1 line of drift). The narrow "trailing empty paragraph after a
+ * table is zero-height" case (#381) is handled separately in the
+ * header/footer normalization path, not here.
  */
 function getSpacingBefore(block: ParagraphBlock): number {
-  const value = block.attrs?.spacing?.before ?? 0;
-  if (isEmptyParagraph(block) && !block.attrs?.spacingExplicit?.before) return 0;
-  return value;
+  return block.attrs?.spacing?.before ?? 0;
 }
 
 function getSpacingAfter(block: ParagraphBlock): number {
-  const value = block.attrs?.spacing?.after ?? 0;
-  if (isEmptyParagraph(block) && !block.attrs?.spacingExplicit?.after) return 0;
-  return value;
+  return block.attrs?.spacing?.after ?? 0;
 }
 
 /**
@@ -251,6 +318,16 @@ export function layoutDocument(
 
   // Process each block, tracking section break index with a counter (O(1) per break)
   let sectionIdx = 0;
+  // Top Y (page-absolute) of the most recently laid-out paragraph's first
+  // fragment. A `relFromV="paragraph"`/`"line"` anchored textbox (e.g. the
+  // letterhead "Powered by:" box, extracted by `convertParagraphWithTextBoxes`
+  // into a sibling block immediately after its source paragraph) must anchor to
+  // that paragraph's TOP — exactly like the float-image path uses the anchor
+  // paragraph's `fragment.y`. Using the post-paragraph `cursorY` instead placed
+  // the box a paragraph-height too low, flipping it below a sibling image that
+  // correctly anchored to the paragraph top. Undefined until the first
+  // paragraph lays out.
+  let lastParagraphTopY: number | undefined;
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     const measure = measures[i];
@@ -282,9 +359,23 @@ export function layoutDocument(
     }
 
     switch (block.kind) {
-      case 'paragraph':
-        layoutParagraph(block, measure as ParagraphMeasure, paginator, paginator.getContentWidth());
+      case 'paragraph': {
+        const fragsBefore = paginator.getCurrentState().page.fragments.length;
+        layoutParagraph(
+          block,
+          measure as ParagraphMeasure,
+          paginator,
+          paginator.getCurrentColumnContentWidth()
+        );
+        // Record the paragraph's first-fragment top so a following
+        // paragraph-relative anchored textbox can share the same anchor base
+        // as the float-image path (which reads `fragment.y`).
+        const fragsAfter = paginator.getCurrentState().page.fragments;
+        if (fragsAfter.length > fragsBefore) {
+          lastParagraphTopY = fragsAfter[fragsBefore].y;
+        }
         break;
+      }
 
       case 'table':
         if (block.floating) {
@@ -303,9 +394,42 @@ export function layoutDocument(
         layoutImage(block, measure as ImageMeasure, paginator);
         break;
 
-      case 'textBox':
-        layoutTextBox(block as TextBoxBlock, measure as TextBoxMeasure, paginator);
+      case 'textBox': {
+        const tb = block as TextBoxBlock;
+        // A textBox carries an `anchor` only when it came from a genuinely
+        // positioned source (DrawingML `wp:anchor` or VML `position:absolute`)
+        // — those float and must NOT reserve in-flow space (Word flows text
+        // independently). Inline textboxes (no anchor) keep the in-flow
+        // reservation, which is the d8b85d1 regression guard.
+        if (tb.anchor) {
+          // A behind-doc shape anchored relative to a PARAGRAPH (not the page —
+          // page-relative behind-doc is a watermark and must never reserve)
+          // occupies a vertical band the flow must leave empty, even though the
+          // box paints behind the text. A VML `<v:group>` expands into several
+          // sibling anchored textboxes (the SDS hazard box = border + label +
+          // value + statement), so reserve ONCE for the whole consecutive
+          // cluster — the band from the shallowest child top to the deepest
+          // child bottom — rather than per child (which would over-reserve).
+          if (reservesBehindDocBand(tb)) {
+            const cluster = collectBehindDocCluster(blocks, i);
+            for (let k = i; k <= cluster.endIndex; k++) {
+              layoutAnchoredTextBox(
+                blocks[k] as TextBoxBlock,
+                measures[k] as TextBoxMeasure,
+                paginator,
+                lastParagraphTopY
+              );
+            }
+            paginator.reserveSpace(cluster.bandHeight);
+            i = cluster.endIndex; // for-loop ++ advances past the cluster
+            break;
+          }
+          layoutAnchoredTextBox(tb, measure as TextBoxMeasure, paginator, lastParagraphTopY);
+        } else {
+          layoutTextBox(tb, measure as TextBoxMeasure, paginator);
+        }
         break;
+      }
 
       case 'pageBreak':
         paginator.forcePageBreak();
@@ -319,12 +443,19 @@ export function layoutDocument(
         // Use the NEXT section's columns; for break type, prefer next section's
         // type but fall back to current break's type (preserves explicit 'continuous')
         const nextType = sectionBreakTypes[sectionIdx + 1] ?? sectionBreakTypes[sectionIdx];
-        handleSectionBreak(
-          block as SectionBreakBlock,
-          paginator,
-          sectionConfigs[sectionIdx + 1] ?? initialConfig,
-          nextType
-        );
+        const nextConfig = sectionConfigs[sectionIdx + 1] ?? initialConfig;
+        handleSectionBreak(block as SectionBreakBlock, paginator, nextConfig, nextType);
+        // A continuous break that enters a multi-column region: keep the whole
+        // short region together rather than letting one column's overflow
+        // spill as a stray narrow strip onto the next page (the SDS
+        // label/value sections). handleSectionBreak has already set the
+        // region's start Y via updateColumns; measure the region now (we have
+        // the blocks + measures here) and push it whole if it won't fit.
+        const nextCols = nextConfig.columns;
+        if (nextType === 'continuous' && nextCols && nextCols.count > 1) {
+          const regionHeight = computeColumnRegionHeight(blocks, measures, i, nextCols.count);
+          paginator.ensureColumnRegionFits(regionHeight);
+        }
         sectionIdx++;
         break;
       }
@@ -411,6 +542,41 @@ function layoutParagraph(
         fittingLines++;
       } else {
         break;
+      }
+    }
+
+    // Widow/orphan control (OOXML §17.3.1.44 `w:widowControl`, Word default ON):
+    // keep at least two lines of a paragraph together on each side of a
+    // page/column break. Applied by default — the rare explicit `w:widowControl
+    // w:val="0"` opt-out isn't yet plumbed to the layout block.
+    if (lines.length >= 2 && fittingLines > 0) {
+      const remainingAfter = lines.length - currentLineIndex - fittingLines;
+      const st = paginator.getCurrentState();
+      const atRegionTop = st.cursorY <= st.topMargin + 0.5;
+
+      if (remainingAfter > 0 && currentLineIndex === 0 && fittingLines < 2 && !atRegionTop) {
+        // Orphan: fewer than two opening lines would sit before the break.
+        // Push the whole paragraph to the next page/column.
+        paginator.forcePageBreak();
+        continue;
+      }
+      if (remainingAfter === 1) {
+        // Widow: exactly one line would be stranded after the break.
+        const minThisSide = currentLineIndex === 0 ? 2 : 1;
+        if (fittingLines - 1 >= minThisSide) {
+          // Pull one line down so two travel together.
+          fittingLines -= 1;
+          linesHeight = 0;
+          for (let j = currentLineIndex; j < currentLineIndex + fittingLines; j++) {
+            linesHeight += lines[j].lineHeight;
+          }
+        } else if (!atRegionTop) {
+          // Reducing would orphan the opening — move the whole paragraph.
+          paginator.forcePageBreak();
+          continue;
+        }
+        // else: at region top and unsatisfiable (paragraph taller than the
+        // page) — accept rather than loop forever.
       }
     }
 
@@ -773,6 +939,137 @@ function layoutTextBox(
 
   const result = paginator.addFragment(fragment, measure.height, 0, 0);
   fragment.y = result.y;
+}
+
+/**
+ * Does this anchored textbox reserve a vertical band in the flow?
+ *
+ * True only for behind-doc shapes anchored relative to a PARAGRAPH. The
+ * paragraph-relative gate is the watermark guard: a page-relative behind-doc
+ * shape (`relFromV === 'page'`) is a watermark / page-background and must NOT
+ * push flow content. In-front floats also don't reserve (Word flows text
+ * independently). See docs/internal/20 (B2).
+ */
+function reservesBehindDocBand(block: TextBoxBlock): boolean {
+  const a = block.anchor;
+  return !!a && a.behindDoc === true && a.relFromV === 'paragraph';
+}
+
+/**
+ * Walk forward from `startIndex` over the run of CONSECUTIVE behind-doc,
+ * paragraph-anchored textbox blocks (the expanded children of one VML
+ * `<v:group>`). Returns the last index in the run and the height to reserve so
+ * the flow resumes BELOW the cluster: the deepest child bottom,
+ * `max(offsetV + height)`.
+ *
+ * Decorative hairline dividers (also behind-doc paragraph-anchored, but a lone
+ * `height≈1` rect that merely overlays an existing border) must NOT push flow,
+ * so a cluster whose tallest child is at or below a hairline threshold reserves
+ * nothing. The SDS hazard group has real text children (heights 48/50/31) and
+ * reserves ≈124px; an SDS divider (height 1) reserves 0.
+ */
+const HAIRLINE_RESERVE_FLOOR_PX = 4;
+function collectBehindDocCluster(
+  blocks: FlowBlock[],
+  startIndex: number
+): { endIndex: number; bandHeight: number } {
+  let bottom = 0;
+  let maxChildHeight = 0;
+  let endIndex = startIndex;
+  for (let k = startIndex; k < blocks.length; k++) {
+    const b = blocks[k];
+    if (b.kind !== 'textBox' || !reservesBehindDocBand(b as TextBoxBlock)) break;
+    const tb = b as TextBoxBlock;
+    const offsetV = tb.anchor?.offsetV ?? 0;
+    const height = tb.height ?? 0;
+    bottom = Math.max(bottom, offsetV + height);
+    maxChildHeight = Math.max(maxChildHeight, height);
+    endIndex = k;
+  }
+  const bandHeight = maxChildHeight > HAIRLINE_RESERVE_FLOOR_PX ? bottom : 0;
+  return { endIndex, bandHeight };
+}
+
+/**
+ * Layout an anchored (floating) text box: position absolutely from its
+ * page/margin/column anchor and push WITHOUT advancing the cursor, so body
+ * text flows independently (matching Word's wrap=none / behind-text shapes).
+ * Mirrors `layoutAnchoredImage` but resolves the full `relativeFrom` band math.
+ */
+function layoutAnchoredTextBox(
+  block: TextBoxBlock,
+  measure: TextBoxMeasure,
+  paginator: ReturnType<typeof createPaginator>,
+  anchorParagraphTop?: number
+): void {
+  if (measure.kind !== 'textBox') {
+    throw new Error(`layoutAnchoredTextBox: expected textBox measure`);
+  }
+  const state = paginator.getCurrentState();
+  const page = state.page;
+  const margins = page.margins;
+  const anchor = block.anchor!;
+
+  const contentWidth = page.size.w - margins.left - margins.right;
+  const geom: AnchorGeometry = {
+    pageWidth: page.size.w,
+    pageHeight: page.size.h,
+    marginLeft: margins.left,
+    marginTop: margins.top,
+    contentWidth,
+    contentHeight: page.size.h - margins.top - margins.bottom,
+    // Content-relative column origin (single-column ≈ 0).
+    columnX: paginator.getColumnX(state.columnIndex) - margins.left,
+    columnWidth: contentWidth,
+  };
+
+  // Block anchor offsets are PIXELS (converted in toProseDoc); resolveAnchor*
+  // expects EMU (it converts internally), so round-trip back to EMU.
+  const toEmu = (px: number | undefined) => (px != null ? pixelsToEmu(px) : undefined);
+  const hSpec = {
+    relativeTo: anchor.relFromH,
+    align: anchor.alignH,
+    posOffset: toEmu(anchor.offsetH),
+  };
+  const vSpec = {
+    relativeTo: anchor.relFromV,
+    align: anchor.alignV,
+    posOffset: toEmu(anchor.offsetV),
+  };
+
+  // resolveAnchor* work in content-area coordinates; cursorY is page-absolute.
+  // For a paragraph/line-relative anchor, the OOXML base is the TOP of the
+  // anchoring paragraph (the run the drawing lives in), NOT the flow cursor —
+  // which by now sits at that paragraph's BOTTOM. Use the recorded top of the
+  // paragraph laid out immediately before this textbox (its source paragraph,
+  // per `convertParagraphWithTextBoxes`) when available and on this page, so the
+  // box shares the float-image path's anchor base. Other anchor frames
+  // (page/margin) ignore the base, so the fallback is harmless for them.
+  const isParaRelative = anchor.relFromV === 'paragraph' || anchor.relFromV === 'line';
+  const paraTopOnThisPage =
+    anchorParagraphTop !== undefined &&
+    anchorParagraphTop >= margins.top &&
+    anchorParagraphTop <= state.cursorY;
+  const baseY =
+    isParaRelative && paraTopOnThisPage ? (anchorParagraphTop as number) : state.cursorY;
+  const contentBaseY = baseY - margins.top;
+  const { x: cx } = resolveAnchorX(hSpec, measure.width, geom);
+  const cy = resolveAnchorY(vSpec, measure.height, contentBaseY, geom);
+
+  const fragment: TextBoxFragment = {
+    kind: 'textBox',
+    blockId: block.id,
+    // applyFragmentStyles subtracts margins, so emit page-absolute coords.
+    x: margins.left + cx,
+    y: margins.top + cy,
+    width: measure.width,
+    height: measure.height,
+    pmStart: block.pmStart,
+    pmEnd: block.pmEnd,
+    isAnchored: true,
+    zIndex: anchor.behindDoc ? -1 : undefined,
+  };
+  page.fragments.push(fragment);
 }
 
 /**

@@ -5,7 +5,14 @@
  * (keep all lines together) properties that affect pagination.
  */
 
-import type { FlowBlock, ParagraphBlock, Measure, ParagraphMeasure } from './types';
+import type {
+  FlowBlock,
+  ParagraphBlock,
+  Measure,
+  ParagraphMeasure,
+  TableMeasure,
+  ImageMeasure,
+} from './types';
 
 /**
  * A chain of consecutive keepNext paragraphs.
@@ -141,15 +148,25 @@ export function calculateChainHeight(
     totalHeight += spacingAfter;
   }
 
-  // Add first line height of anchor (if any)
+  // Add the leading height of the anchor — enough that the chain stays with
+  // the START of whatever it anchors to, so a caption never separates from its
+  // content. For a paragraph that's the first line; for a table it's the first
+  // row (Word keeps a heading with at least the first table row); for an image
+  // it's the whole image (an image is atomic and can't split).
   if (chain.anchorIndex !== -1) {
     const anchorMeasure = measures[chain.anchorIndex];
     if (anchorMeasure?.kind === 'paragraph') {
       const anchorPara = anchorMeasure as ParagraphMeasure;
       if (anchorPara.lines.length > 0) {
-        // Add just the first line height
         totalHeight += anchorPara.lines[0].lineHeight;
       }
+    } else if (anchorMeasure?.kind === 'table') {
+      const anchorTable = anchorMeasure as TableMeasure;
+      if (anchorTable.rows.length > 0) {
+        totalHeight += anchorTable.rows[0].height;
+      }
+    } else if (anchorMeasure?.kind === 'image') {
+      totalHeight += (anchorMeasure as ImageMeasure).height;
     }
   }
 

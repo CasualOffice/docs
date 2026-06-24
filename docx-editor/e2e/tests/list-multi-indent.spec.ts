@@ -28,12 +28,14 @@ async function readListLevels(page: import('@playwright/test').Page): Promise<nu
     const view = handle.getEditorRef?.()?.getView?.();
     if (!view) return null;
     const out: number[] = [];
-    view.state.doc.descendants((node: { type: { name: string }; attrs: Record<string, unknown> }) => {
-      if (node.type.name === 'paragraph' && node.attrs.numPr) {
-        const numPr = node.attrs.numPr as { ilvl?: number };
-        out.push(numPr.ilvl ?? 0);
+    view.state.doc.descendants(
+      (node: { type: { name: string }; attrs: Record<string, unknown> }) => {
+        if (node.type.name === 'paragraph' && node.attrs.numPr) {
+          const numPr = node.attrs.numPr as { ilvl?: number };
+          out.push(numPr.ilvl ?? 0);
+        }
       }
-    });
+    );
     return out;
   });
 }

@@ -12,7 +12,7 @@ test('header grows after editing: typing extra lines does not produce body overl
   await editor.goto();
   await editor.waitForReady();
 
-  await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+  await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
   await page.waitForSelector('.paged-editor__pages');
   await page.waitForSelector('[data-page-number]');
   await expect(page.locator('.layout-page-header [data-from-row]')).toHaveCount(1, {
@@ -64,7 +64,7 @@ test('diagnostic: tall header (paragraphs + table + paragraphs) does not overlap
   await editor.goto();
   await editor.waitForReady();
 
-  await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+  await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
   await page.waitForSelector('.paged-editor__pages');
   await page.waitForSelector('[data-page-number]');
 

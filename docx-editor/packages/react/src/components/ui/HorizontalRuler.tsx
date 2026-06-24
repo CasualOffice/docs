@@ -35,6 +35,9 @@ export interface HorizontalRulerProps {
   onIndentLeftChange?: (indentTwips: number) => void;
   onIndentRightChange?: (indentTwips: number) => void;
   unit?: 'inch' | 'cm';
+  /** Fired with `true` when a margin/indent marker drag starts and `false`
+   *  when it ends, so the host can freeze the editor scroll during the drag. */
+  onDragStateChange?: (dragging: boolean) => void;
   className?: string;
   style?: CSSProperties;
   tabStops?: TabStop[] | null;
@@ -92,6 +95,7 @@ export function HorizontalRuler({
   onIndentLeftChange,
   onIndentRightChange,
   unit = 'inch',
+  onDragStateChange,
   className = '',
   style,
   tabStops,
@@ -103,6 +107,20 @@ export function HorizontalRuler({
   const [dragValue, setDragValue] = useState<number | null>(null);
   const [dragPositionPx, setDragPositionPx] = useState<number | null>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
+  // Anchor captured at drag-start; the new value is computed as
+  // `startValue + (pointer delta in twips)` against this fixed reference, so
+  // re-flowing the page mid-drag can't shift it and make the marker oscillate.
+  // `marker` is stored here (not read from React state) so handleDrag can stay
+  // referentially stable — see its definition. Same pattern in VerticalRuler.
+  const dragAnchorRef = useRef<{
+    marker: MarkerType;
+    startClientX: number;
+    startLeftMarginTwips: number;
+    startRightMarginTwips: number;
+    startFirstLineIndentTwips: number;
+    startLeftIndentTwips: number;
+    startRightIndentTwips: number;
+  } | null>(null);
 
   // Page dimensions
   const pageWidthTwips = sectionProps?.pageWidth ?? DEFAULT_PAGE_WIDTH_TWIPS;
@@ -126,80 +144,166 @@ export function HorizontalRuler({
   const rightIndentPosPx = pageWidthPx - rightMarginPx - indentRightPx;
   const firstLinePosPx = leftMarginPx + indentLeftPx + firstLineIndentPx;
 
+  // Live values mirrored into a ref so handleDrag is referentially STABLE
+  // (empty deps). Depending on the live margins/indents would recreate
+  // handleDrag on every drag step, churning the mousemove listener (remove +
+  // re-add every frame) which drops events and makes the marker jitter/"shake".
+  const liveRef = useRef({
+    zoom,
+    pageWidthTwips,
+    pageWidthPx,
+    leftMarginTwips,
+    leftMarginPx,
+    rightMarginTwips,
+    rightMarginPx,
+    contentTwips,
+    indentLeft,
+    indentLeftPx,
+    indentRight,
+    onLeftMarginChange,
+    onRightMarginChange,
+    onFirstLineIndentChange,
+    onIndentLeftChange,
+    onIndentRightChange,
+  });
+  liveRef.current = {
+    zoom,
+    pageWidthTwips,
+    pageWidthPx,
+    leftMarginTwips,
+    leftMarginPx,
+    rightMarginTwips,
+    rightMarginPx,
+    contentTwips,
+    indentLeft,
+    indentLeftPx,
+    indentRight,
+    onLeftMarginChange,
+    onRightMarginChange,
+    onFirstLineIndentChange,
+    onIndentLeftChange,
+    onIndentRightChange,
+  };
+
   const handleDragStart = useCallback(
     (e: React.MouseEvent, marker: MarkerType) => {
       if (!editable) return;
       e.preventDefault();
       e.stopPropagation();
+      dragAnchorRef.current = {
+        marker,
+        startClientX: e.clientX,
+        startLeftMarginTwips: leftMarginTwips,
+        startRightMarginTwips: rightMarginTwips,
+        startFirstLineIndentTwips: effectiveFirstLineIndent,
+        startLeftIndentTwips: indentLeft,
+        startRightIndentTwips: indentRight,
+      };
       setDragging(marker);
+      onDragStateChange?.(true);
     },
-    [editable]
+    [
+      editable,
+      leftMarginTwips,
+      rightMarginTwips,
+      effectiveFirstLineIndent,
+      indentLeft,
+      indentRight,
+      onDragStateChange,
+    ]
   );
 
+  // Referentially stable (reads everything from refs) so the mousemove
+  // listener is attached exactly once per drag.
   const handleDrag = useCallback(
     (e: MouseEvent) => {
-      if (!dragging || !rulerRef.current) return;
+      const anchor = dragAnchorRef.current;
+      if (!anchor) return;
+      const {
+        zoom,
+        pageWidthTwips,
+        pageWidthPx,
+        leftMarginTwips,
+        leftMarginPx,
+        rightMarginTwips,
+        rightMarginPx,
+        contentTwips,
+        indentLeft,
+        indentLeftPx,
+        indentRight,
+        onLeftMarginChange,
+        onRightMarginChange,
+        onFirstLineIndentChange,
+        onIndentLeftChange,
+        onIndentRightChange,
+      } = liveRef.current;
 
-      const rect = rulerRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      setDragPositionPx(x);
-      const positionTwips = pixelsToTwips(x / zoom);
+      // Pointer delta only — no scroll feedback (see VerticalRuler for why folding
+      // in the scroller delta created a margin-runaway/stuck feedback loop).
+      const dxPx = e.clientX - anchor.startClientX;
+      const dxTwips = pixelsToTwips(dxPx / zoom);
 
-      if (dragging === 'leftMargin') {
+      if (anchor.marker === 'leftMargin') {
+        // Drag right = larger left margin.
         const maxMargin = pageWidthTwips - rightMarginTwips - 720;
-        const rounded = Math.round(Math.max(0, Math.min(positionTwips, maxMargin)));
+        const rounded = Math.round(
+          Math.max(0, Math.min(anchor.startLeftMarginTwips + dxTwips, maxMargin))
+        );
         setDragValue(rounded);
+        // dragPositionPx kept for the value-tooltip overlay — express
+        // it as the marker's new screen position derived from the
+        // ANCHOR value, not from rect.left. The tooltip just needs a
+        // monotonic px value; absolute accuracy isn't required.
+        setDragPositionPx(twipsToPixels(rounded) * zoom);
         onLeftMarginChange?.(rounded);
-      } else if (dragging === 'rightMargin') {
-        const fromRight = pageWidthTwips - positionTwips;
+      } else if (anchor.marker === 'rightMargin') {
+        // Drag right = smaller right margin (the right edge moves
+        // right with the pin).
         const maxMargin = pageWidthTwips - leftMarginTwips - 720;
-        const rounded = Math.round(Math.max(0, Math.min(fromRight, maxMargin)));
+        const rounded = Math.round(
+          Math.max(0, Math.min(anchor.startRightMarginTwips - dxTwips, maxMargin))
+        );
         setDragValue(rounded);
+        setDragPositionPx(pageWidthPx - twipsToPixels(rounded) * zoom);
         onRightMarginChange?.(rounded);
-      } else if (dragging === 'firstLineIndent') {
-        const base = leftMarginTwips + indentLeft;
-        const indentFromBase = positionTwips - base;
+      } else if (anchor.marker === 'firstLineIndent') {
         const maxIndent = contentTwips - indentLeft - indentRight - 720;
-        const rounded = Math.round(Math.max(-indentLeft, Math.min(indentFromBase, maxIndent)));
+        const rounded = Math.round(
+          Math.max(-indentLeft, Math.min(anchor.startFirstLineIndentTwips + dxTwips, maxIndent))
+        );
         setDragValue(rounded);
+        setDragPositionPx(leftMarginPx + indentLeftPx + twipsToPixels(rounded) * zoom);
         onFirstLineIndentChange?.(rounded);
-      } else if (dragging === 'leftIndent') {
-        const indentFromMargin = positionTwips - leftMarginTwips;
+      } else if (anchor.marker === 'leftIndent') {
         const maxIndent = contentTwips - indentRight - 720;
-        const rounded = Math.round(Math.max(0, Math.min(indentFromMargin, maxIndent)));
+        const rounded = Math.round(
+          Math.max(0, Math.min(anchor.startLeftIndentTwips + dxTwips, maxIndent))
+        );
         setDragValue(rounded);
+        setDragPositionPx(leftMarginPx + twipsToPixels(rounded) * zoom);
         onIndentLeftChange?.(rounded);
-      } else if (dragging === 'rightIndent') {
-        const rightEdge = pageWidthTwips - rightMarginTwips;
-        const indentFromRight = rightEdge - positionTwips;
+      } else if (anchor.marker === 'rightIndent') {
+        // Drag right = smaller right indent.
         const maxIndent = contentTwips - indentLeft - 720;
-        const rounded = Math.round(Math.max(0, Math.min(indentFromRight, maxIndent)));
+        const rounded = Math.round(
+          Math.max(0, Math.min(anchor.startRightIndentTwips - dxTwips, maxIndent))
+        );
         setDragValue(rounded);
+        setDragPositionPx(pageWidthPx - rightMarginPx - twipsToPixels(rounded) * zoom);
         onIndentRightChange?.(rounded);
       }
     },
-    [
-      dragging,
-      zoom,
-      pageWidthTwips,
-      leftMarginTwips,
-      rightMarginTwips,
-      contentTwips,
-      indentLeft,
-      indentRight,
-      onLeftMarginChange,
-      onRightMarginChange,
-      onFirstLineIndentChange,
-      onIndentLeftChange,
-      onIndentRightChange,
-    ]
+    // Stable: all live values are read from liveRef.current.
+    []
   );
 
   const handleDragEnd = useCallback(() => {
     setDragging(null);
     setDragValue(null);
     setDragPositionPx(null);
-  }, []);
+    dragAnchorRef.current = null;
+    onDragStateChange?.(false);
+  }, [onDragStateChange]);
 
   useEffect(() => {
     if (dragging) {
@@ -228,10 +332,11 @@ export function HorizontalRuler({
         cursor: dragging ? 'ew-resize' : 'default',
         ...style,
       }}
-      role="slider"
+      // The ruler is a GROUP of margin/indent sliders, not a slider itself —
+      // role="slider" here both lacked aria-valuenow and nested the focusable
+      // indent markers inside an interactive control (nested-interactive).
+      role="group"
       aria-label={t('ruler.horizontal')}
-      aria-valuemin={0}
-      aria-valuemax={pageWidthTwips}
     >
       {/* Gray margin zones — click & drag anywhere in the gray area to adjust margin */}
       <div
@@ -288,6 +393,7 @@ export function HorizontalRuler({
           onMouseLeave={() => setHoveredMarker(null)}
           onMouseDown={(e) => handleDragStart(e, 'firstLineIndent')}
           label={t('ruler.firstLineIndent')}
+          maxPx={pageWidthPx}
         />
       )}
 
@@ -303,6 +409,7 @@ export function HorizontalRuler({
           onMouseLeave={() => setHoveredMarker(null)}
           onMouseDown={(e) => handleDragStart(e, 'leftIndent')}
           label={t('ruler.leftIndent')}
+          maxPx={pageWidthPx}
         />
       )}
 
@@ -318,6 +425,7 @@ export function HorizontalRuler({
           onMouseLeave={() => setHoveredMarker(null)}
           onMouseDown={(e) => handleDragStart(e, 'rightIndent')}
           label={t('ruler.rightIndent')}
+          maxPx={pageWidthPx}
         />
       )}
 
@@ -397,6 +505,8 @@ interface IndentTriangleProps {
   onMouseLeave: () => void;
   onMouseDown: (e: React.MouseEvent) => void;
   label: string;
+  /** Ruler width in px — the slider's aria-valuemax (aria-valuenow uses positionPx). */
+  maxPx: number;
 }
 
 function IndentTriangle({
@@ -409,6 +519,7 @@ function IndentTriangle({
   onMouseLeave,
   onMouseDown,
   label,
+  maxPx,
 }: IndentTriangleProps): React.ReactElement {
   const color = isDragging ? INDENT_ACTIVE_COLOR : isHovered ? INDENT_HOVER_COLOR : INDENT_COLOR;
   const triHeight = Math.round(TRI_SIZE * 1.6);
@@ -434,7 +545,7 @@ function IndentTriangle({
           borderLeft: `${TRI_SIZE}px solid transparent`,
           borderRight: `${TRI_SIZE}px solid transparent`,
           borderTop: `${triHeight}px solid ${color}`,
-          transition: 'border-top-color 0.1s',
+          transition: 'border-top-color var(--doc-anim-fast)',
         }
       : {
           position: 'absolute',
@@ -445,7 +556,7 @@ function IndentTriangle({
           borderLeft: `${TRI_SIZE}px solid transparent`,
           borderRight: `${TRI_SIZE}px solid transparent`,
           borderBottom: `${triHeight}px solid ${color}`,
-          transition: 'border-bottom-color 0.1s',
+          transition: 'border-bottom-color var(--doc-anim-fast)',
         };
 
   return (
@@ -458,6 +569,9 @@ function IndentTriangle({
       role="slider"
       aria-label={label}
       aria-orientation="horizontal"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(maxPx)}
+      aria-valuenow={Math.round(Math.min(Math.max(positionPx, 0), maxPx))}
       tabIndex={editable ? 0 : -1}
     >
       <div style={triangleStyle} />

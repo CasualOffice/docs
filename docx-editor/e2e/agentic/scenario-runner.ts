@@ -155,10 +155,19 @@ export class ScenarioRunner {
 
       case 'pressKey':
         await this.page.keyboard.press(args.key as string);
+        await this.page.waitForTimeout(50);
         break;
 
       case 'pressEnter':
         await this.editor.pressEnter();
+        break;
+
+      case 'pressEnd':
+        await this.editor.pressEnd();
+        break;
+
+      case 'collapseSelectionToEnd':
+        await this.editor.collapseSelectionToEnd();
         break;
 
       case 'pressShiftEnter':
@@ -279,6 +288,14 @@ export class ScenarioRunner {
 
       case 'alignJustify':
         await this.editor.alignJustify();
+        break;
+
+      case 'setLineSpacing':
+        await this.editor.setLineSpacing(args.spacing as string);
+        break;
+
+      case 'setParagraphStyle':
+        await this.editor.setParagraphStyle(args.style as string);
         break;
 
       case 'toggleBulletList':

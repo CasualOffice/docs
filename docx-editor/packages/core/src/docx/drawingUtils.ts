@@ -91,6 +91,22 @@ function applyColorModifiers(color: ColorValue, element: XmlElement): ColorValue
     }
   }
 
+  // a:lumMod / a:lumOff — DrawingML luminance modulation/offset, expressed in
+  // thousandths of a percent (e.g. val="85000" = 85%). Ubiquitous in modern
+  // Office themes for subtle gray borders/fills/text (e.g. bg1 + lumMod 85% =
+  // a light-gray rule). Stored as fractions 0-1 and applied in HSL space by
+  // the color resolver.
+  const lumMod = children.find((el) => el.name === 'a:lumMod');
+  if (lumMod) {
+    const val = getAttribute(lumMod, null, 'val');
+    if (val) color.themeLumMod = parseInt(val, 10) / 100000;
+  }
+  const lumOff = children.find((el) => el.name === 'a:lumOff');
+  if (lumOff) {
+    const val = getAttribute(lumOff, null, 'val');
+    if (val) color.themeLumOff = parseInt(val, 10) / 100000;
+  }
+
   return color;
 }
 

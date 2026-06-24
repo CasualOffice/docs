@@ -97,11 +97,41 @@ export function createPaginator(options: PaginatorOptions) {
   // (continuous section break). When advanceColumn moves to the next column,
   // it resets cursorY to this value instead of topMargin.
   let columnRegionTop = margins.top;
+  // Deepest cursorY any column in the current region reached. Column 0 usually
+  // ends lower than later columns, so when a multi-column region ends we must
+  // resume below THIS, not below the last column's (higher) cursor — otherwise
+  // the following single-column content paints over column 0.
+  let columnRegionMaxBottom = margins.top;
 
   /**
-   * Get X position for a given column index.
+   * Get the body width of a specific column. Equal columns return the uniform
+   * `columnWidth`; unequal columns (`w:equalWidth="0"`) return that column's
+   * explicit width.
+   */
+  function getColumnWidthAt(columnIndex: number): number {
+    const cw = columns.columnWidths;
+    if (cw && cw.length === columns.count) {
+      const w = cw[Math.min(columnIndex, columns.count - 1)]?.width;
+      if (typeof w === 'number' && w > 0) return w;
+    }
+    return columnWidth;
+  }
+
+  /**
+   * Get X position (page-absolute) for a given column index.
+   *
+   * Unequal columns sum the preceding columns' widths + their trailing spaces;
+   * equal columns use the uniform stride (width + gap).
    */
   function getColumnX(columnIndex: number): number {
+    const cw = columns.columnWidths;
+    if (cw && cw.length === columns.count) {
+      let x = margins.left;
+      for (let c = 0; c < columnIndex && c < cw.length; c++) {
+        x += cw[c].width + cw[c].space;
+      }
+      return x;
+    }
     return margins.left + columnIndex * (columnWidth + columns.gap);
   }
 
@@ -150,6 +180,7 @@ export function createPaginator(options: PaginatorOptions) {
 
     // Reset column region to page top on new page
     columnRegionTop = topMargin;
+    columnRegionMaxBottom = topMargin;
 
     if (options.onNewPage) {
       options.onNewPage(state);
@@ -189,6 +220,9 @@ export function createPaginator(options: PaginatorOptions) {
   function advanceColumn(state: PageState): PageState {
     // Check if there are more columns on this page
     if (state.columnIndex < columns.count - 1) {
+      // Remember how deep this column got before we jump back up to the region
+      // top for the next column.
+      columnRegionMaxBottom = Math.max(columnRegionMaxBottom, state.cursorY);
       state.columnIndex += 1;
       state.cursorY = columnRegionTop;
       state.trailingSpacing = 0;
@@ -243,9 +277,15 @@ export function createPaginator(options: PaginatorOptions) {
     spaceBefore: number = 0,
     spaceAfter: number = 0
   ): { state: PageState; x: number; y: number } {
-    // Word collapses adjacent paragraphs' spaceAfter / next.spaceBefore to
-    // the larger of the two (CSS-style margin-collapse), not the sum.
-    const effectiveSpaceBefore = Math.max(spaceBefore, getCurrentState().trailingSpacing);
+    // Word/LibreOffice ADD a paragraph's spaceBefore to the previous
+    // paragraph's spaceAfter (this is the well-known Word "extra space
+    // between paragraphs" — NOT CSS-style margin-collapse). Summing matches
+    // the reference renderer; max() compressed every body→heading transition
+    // by the smaller of the two values (e.g. a 6pt body-after lost against a
+    // 10pt heading-before), accumulating ~1 line of drift per page.
+    // Contextual-spacing suppression (same-style paragraphs) is applied
+    // upstream by zeroing the relevant side, so it still works under summing.
+    const effectiveSpaceBefore = spaceBefore + getCurrentState().trailingSpacing;
     const totalHeight = effectiveSpaceBefore + height;
 
     // Ensure we have space
@@ -293,10 +333,20 @@ export function createPaginator(options: PaginatorOptions) {
   }
 
   /**
-   * Force a column break - move to next column or new page.
+   * Force a column break - move to next column.
+   *
+   * In a multi-column layout this advances to the next column (or a new page
+   * from the last column). In a single-column layout there is no next column,
+   * so an explicit column break is a no-op for pagination — Word keeps the
+   * following content on the same page. (This differs from `advanceColumn`,
+   * which `ensureFits` calls on genuine overflow and which must still create a
+   * new page in single-column.)
    */
   function forceColumnBreak(): PageState {
     const state = getCurrentState();
+    if (columns.count <= 1) {
+      return state;
+    }
     return advanceColumn(state);
   }
 
@@ -314,13 +364,57 @@ export function createPaginator(options: PaginatorOptions) {
     const state = getCurrentState();
     state.page.columns = columns.count > 1 ? { ...columns } : undefined;
 
-    // Set column region top to current cursor position.
-    // This ensures that when advancing columns, new columns start
-    // at the same Y as where the multi-column content began (not page top).
-    columnRegionTop = state.cursorY;
+    // Start the new column region BELOW the deepest column of the region we're
+    // leaving — not just where the current column's cursor sits. When a
+    // multi-column region ends (a continuous section break dropping 2 columns
+    // back to 1), the last column usually ends higher than column 0; resuming
+    // at the current cursor would paint the next content over column 0.
+    const regionStart = Math.max(state.cursorY, columnRegionMaxBottom);
+    columnRegionTop = regionStart;
+    state.cursorY = regionStart;
+    columnRegionMaxBottom = regionStart;
 
     // Reset to column 0 for the new column layout
     state.columnIndex = 0;
+  }
+
+  /**
+   * Keep a short multi-column region together: if the whole region (its
+   * tallest column, `regionHeight`) won't fit in the space left on the current
+   * page but WOULD fit on an empty page, break to a fresh page before the
+   * region is laid out.
+   *
+   * Word/LibreOffice never split a balanced 2-column region across a page so
+   * that one column's overflow continues as a stray narrow strip at the top of
+   * the next page. Our column flow does exactly that when a region starts low
+   * on the page: column 0 fills the few remaining pixels, the column break
+   * jumps to column 1 which also overflows, and the overflow resumes in
+   * column 0 of a brand-new page — wasting the bottom of the current page and
+   * adding a page. Pushing the region whole avoids both.
+   *
+   * Only acts when the current page already has content (so we never emit a
+   * leading blank page) and the region genuinely fits on a fresh page (so an
+   * over-tall region that must split anyway isn't bounced forever). Must be
+   * called AFTER `updateColumns` set `columnRegionTop` to the region's start Y.
+   */
+  function ensureColumnRegionFits(regionHeight: number): void {
+    if (!Number.isFinite(regionHeight) || regionHeight <= 0) return;
+    if (columns.count <= 1) return;
+    const state = getCurrentState();
+    if (state.page.fragments.length === 0) return;
+
+    const available = state.contentBottom - columnRegionTop;
+    const fullColumnCapacity = state.contentBottom - state.topMargin;
+    if (regionHeight <= available) return;
+    if (regionHeight > fullColumnCapacity) return; // can't fit anywhere; let it split
+
+    const fresh = createNewPage();
+    // The fresh page resets columnRegionTop/MaxBottom to its top margin and
+    // column index to 0 in createNewPage(); re-anchor the region there.
+    columnRegionTop = fresh.topMargin;
+    columnRegionMaxBottom = fresh.topMargin;
+    fresh.columnIndex = 0;
+    fresh.page.columns = columns.count > 1 ? { ...columns } : undefined;
   }
 
   /**
@@ -384,12 +478,47 @@ export function createPaginator(options: PaginatorOptions) {
     getAvailableHeight: () => getAvailableHeight(getCurrentState()),
     /** Get content width for the active section. */
     getContentWidth,
+    /**
+     * Width a paragraph fragment should occupy in the CURRENT column.
+     *
+     * For unequal multi-column regions (`w:equalWidth="0"`) this is the active
+     * column's explicit width, so right/justified alignment and the fragment
+     * box match the column the text was measured against. For single-column
+     * and equal-column sections it returns the full content width — preserving
+     * the long-standing behavior (equal columns position via `getColumnX` and
+     * rely on pre-wrapped measure lines), so no existing fixture shifts.
+     */
+    getCurrentColumnContentWidth(): number {
+      if (
+        columns.count > 1 &&
+        columns.columnWidths &&
+        columns.columnWidths.length === columns.count
+      ) {
+        return getColumnWidthAt(getCurrentState().columnIndex);
+      }
+      return getContentWidth();
+    },
     /** Check if height fits in current column. */
     fits: (height: number) => fits(height),
     /** Ensure height fits, advancing if needed. */
     ensureFits,
     /** Add a fragment to current page. */
     addFragment,
+    /**
+     * Reserve vertical flow space WITHOUT painting a fragment. Advances the
+     * cursor by `height` so subsequent in-flow blocks start below the reserved
+     * band. Used for behind-text anchored objects (e.g. the SDS hazard box)
+     * that occupy a vertical band the flow must leave empty even though the
+     * object paints behind the text. No-op for non-positive heights.
+     */
+    reserveSpace(height: number): void {
+      if (!Number.isFinite(height) || height <= 0) return;
+      const state = ensureFits(height);
+      state.cursorY += height;
+      // The reservation is hard space; don't let it collapse into a following
+      // paragraph's spaceBefore the way trailing paragraph spacing does.
+      state.trailingSpacing = 0;
+    },
     /** Force a page break. */
     forcePageBreak,
     /** Force a column break. */
@@ -398,6 +527,8 @@ export function createPaginator(options: PaginatorOptions) {
     getColumnX,
     /** Update column layout (for section breaks). */
     updateColumns,
+    /** Keep a short multi-column region together (push it whole if it won't fit). */
+    ensureColumnRegionFits,
     /** Update page size/margins for subsequent pages. */
     updatePageLayout,
   };

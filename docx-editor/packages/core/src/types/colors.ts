@@ -37,6 +37,10 @@ export interface ColorValue {
   themeTint?: string;
   /** Shade modifier (0-255 as hex string) - makes color darker */
   themeShade?: string;
+  /** DrawingML luminance-modulation (a:lumMod), as a fraction 0-1 (e.g. 0.85). Multiplies HSL luminance. */
+  themeLumMod?: number;
+  /** DrawingML luminance-offset (a:lumOff), as a fraction 0-1 (e.g. 0.15). Adds to HSL luminance. */
+  themeLumOff?: number;
   /** Auto color - context-dependent (usually black for text) */
   auto?: boolean;
 }

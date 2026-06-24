@@ -2,6 +2,8 @@
   "_lang": "en",
   "common": {
     "cancel": "Cancel",
+    "ok": "OK",
+    "add": "Add",
     "insert": "Insert",
     "apply": "Apply",
     "close": "Close",
@@ -29,6 +31,7 @@
     "openShortcut": "Ctrl+O",
     "save": "Save",
     "saveShortcut": "Ctrl+S",
+    "makeCopy": "Make a copy",
     "print": "Print",
     "printShortcut": "Ctrl+P",
     "pageSetup": "Page setup",
@@ -37,10 +40,61 @@
     "image": "Image",
     "table": "Table",
     "pageBreak": "Page break",
+    "sectionBreak": "Section break",
+    "sectionBreakNextPage": "Next page",
+    "sectionBreakContinuous": "Continuous",
+    "sectionBreakEvenPage": "Even page",
+    "sectionBreakOddPage": "Odd page",
+    "insertField": "Field",
+    "fieldPage": "Page number",
+    "fieldNumPages": "Total pages",
+    "fieldDate": "Date",
+    "fieldTime": "Time",
+    "fieldCreateDate": "Created date",
+    "fieldSaveDate": "Last saved",
+    "fieldAuthor": "Author",
+    "fieldFileName": "File name",
+    "restartListNumbering": "Restart numbering at 1",
+    "continueListNumbering": "Continue previous numbering",
     "tableOfContents": "Table of contents",
+    "bookmarks": "Bookmarks…",
+    "characterSpacing": "Character spacing…",
+    "paragraph": "Paragraph…",
+    "customSpacing": "Custom spacing…",
+    "bordersAndShading": "Borders and Shading…",
     "symbol": "Symbol",
+    "horizontalLine": "Horizontal line",
+    "footnote": "Footnote",
+    "specialCharacters": "Special characters…",
     "help": "Help",
-    "reportIssue": "Report issue"
+    "reportIssue": "Report issue",
+    "searchMenus": "Search the menus",
+    "keyboardShortcuts": "Keyboard shortcuts",
+    "tools": "Tools",
+    "preferences": "Preferences…",
+    "watermark": "Watermark…",
+    "accessibility": "Accessibility…",
+    "buildingBlocks": "Building blocks…",
+    "showFormattingMarks": "Show non-printing characters",
+    "showOutline": "Show document outline",
+    "wordCount": "Word count",
+    "convertToTable": "Convert selection to table",
+    "convertToText": "Convert table to text",
+    "emailAsAttachment": "Email as attachment…",
+    "dictionary": "Dictionary",
+    "translate": "Translate…",
+    "explore": "Explore…",
+    "citations": "Citations…",
+    "shape": "Shape",
+    "shapeRectangle": "Rectangle",
+    "shapeEllipse": "Ellipse",
+    "shapeLine": "Line",
+    "shapeArrow": "Arrow"
+  },
+  "suggestingBanner": {
+    "title": "Suggesting",
+    "body": "Edits are recorded as tracked suggestions. Reviewers can accept or reject them.",
+    "switchToEditing": "Switch to editing"
   },
   "formattingBar": {
     "groups": {
@@ -66,10 +120,14 @@
     "underline": "Underline",
     "underlineShortcut": "Underline (Ctrl+U)",
     "strikethrough": "Strikethrough",
+    "smallCaps": "Small caps",
+    "allCaps": "All caps",
     "fontColor": "Font Color",
     "highlightColor": "Text Highlight Color",
     "insertLink": "Insert link",
     "insertLinkShortcut": "Insert link (Ctrl+K)",
+    "addComment": "Add comment",
+    "paintFormat": "Paint format",
     "superscript": "Superscript",
     "superscriptShortcut": "Superscript (Ctrl+Shift+=)",
     "subscript": "Subscript",
@@ -203,6 +261,7 @@
       "replaceAllTitle": "Replace all matches",
       "matchCase": "Match case",
       "wholeWords": "Whole words",
+      "useRegex": "Regular expression",
       "toggleReplace": "+ Replace"
     },
     "hyperlink": {
@@ -338,6 +397,8 @@
       "bottom": "Bottom",
       "left": "Left",
       "right": "Right",
+      "pageColor": "Page color",
+      "pageColorReset": "None",
       "pageSizes": {
         "letter": "Letter (8.5\" × 11\")",
         "a4": "A4 (8.27\" × 11.69\")",
@@ -366,7 +427,85 @@
         "left": "Left",
         "center": "Center",
         "right": "Right"
-      }
+      },
+      "bandedRows": "Banded rows",
+      "bandedColumns": "Banded columns"
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "addPlaceholder": "Name new bookmark…",
+      "noBookmarks": "No bookmarks yet — type a name above to add one.",
+      "goTo": "Go to"
+    },
+    "bordersShading": {
+      "title": "Borders and Shading",
+      "tabBorders": "Borders",
+      "tabShading": "Shading",
+      "setting": "Setting",
+      "presetNone": "None",
+      "presetBox": "Box",
+      "style": "Style",
+      "lineStyle": "Style",
+      "color": "Color",
+      "colorHex": "Color (hex)",
+      "widthPt": "Width",
+      "styleSingle": "Single",
+      "styleDouble": "Double",
+      "styleThick": "Thick",
+      "styleDotted": "Dotted",
+      "styleDashed": "Dashed",
+      "styleTriple": "Triple",
+      "sides": "Apply to",
+      "side": {
+        "top": "Top",
+        "bottom": "Bottom",
+        "left": "Left",
+        "right": "Right"
+      },
+      "fill": "Fill",
+      "fillColor": "Fill color",
+      "fillHex": "Fill color (hex)",
+      "noFill": "No fill",
+      "pattern": "Pattern",
+      "patternClear": "Clear (no pattern)",
+      "patternSolid": "Solid"
+    },
+    "customSpacing": {
+      "title": "Custom spacing",
+      "lineSpacing": "Line spacing",
+      "rule": "Rule",
+      "rule_auto": "Multiple",
+      "rule_atLeast": "At least",
+      "rule_exact": "Exactly",
+      "multipleOf": "Value",
+      "atPt": "At (pt)",
+      "paragraphSpacing": "Paragraph spacing",
+      "beforePt": "Before (pt)",
+      "afterPt": "After (pt)",
+      "contextualSpacing": "Don't add space between paragraphs of the same style",
+      "pagination": "Pagination",
+      "widowControl": "Widow/Orphan control",
+      "keepNext": "Keep with next",
+      "keepLines": "Keep lines together",
+      "pageBreakBefore": "Page break before"
+    },
+    "characterSpacing": {
+      "title": "Character spacing",
+      "scale": "Scale:",
+      "spacing": "Spacing:",
+      "spacingBy": "By (pt)",
+      "position": "Position:",
+      "positionBy": "By (pt)",
+      "kerning": "Kerning",
+      "kerningHint": "for fonts",
+      "kerningThreshold": "Points and above",
+      "normal": "Normal",
+      "expanded": "Expanded",
+      "condensed": "Condensed",
+      "raised": "Raised",
+      "lowered": "Lowered",
+      "preview": "Preview",
+      "previewSample": "The quick brown fox jumps over the lazy dog."
     },
     "pasteSpecial": {
       "title": "Paste Special",
@@ -410,6 +549,15 @@
         "upperAlpha": "A, B, C, ...",
         "symbols": "*, †, ‡, ..."
       }
+    },
+    "wordCount": {
+      "title": "Word count",
+      "pages": "Pages",
+      "words": "Words",
+      "characters": "Characters",
+      "charactersNoSpaces": "Characters excluding spaces",
+      "paragraphs": "Paragraphs",
+      "readingTime": "Reading time"
     },
     "keyboardShortcuts": {
       "ariaLabel": "Keyboard Shortcuts",
@@ -502,12 +650,38 @@
         "resetZoom": "Reset Zoom",
         "resetZoomDescription": "Reset zoom to 100%",
         "keyboardShortcuts": "Keyboard Shortcuts",
-        "keyboardShortcutsDescription": "Show this help dialog"
+        "keyboardShortcutsDescription": "Show this help dialog",
+        "commandPalette": "Search the menus",
+        "commandPaletteDescription": "Open the command palette",
+        "wordCount": "Word count",
+        "wordCountDescription": "Show the word count dialog",
+        "dictionary": "Dictionary",
+        "dictionaryDescription": "Look up the selected word",
+        "cycleMode": "Cycle editing mode",
+        "cycleModeDescription": "Switch between editing, suggesting, and viewing",
+        "startComment": "New comment",
+        "startCommentDescription": "Add a comment on the current selection",
+        "bulletList": "Bullet list",
+        "bulletListDescription": "Toggle a bullet list on the current paragraphs",
+        "documentOutline": "Show document outline",
+        "documentOutlineDescription": "Toggle the document outline panel",
+        "pageBreak": "Insert page break",
+        "pageBreakDescription": "Insert a page break at the cursor",
+        "hyperlink": "Insert link",
+        "hyperlinkDescription": "Insert or edit a hyperlink on the current selection"
       },
       "noResults": "No shortcuts found matching \"{query}\"",
       "pressEscToClose": "Press {key} to close",
       "or": "or"
     }
+  },
+  "voiceTyping": {
+    "menuItem": "Voice typing",
+    "listening": "Voice typing — listening",
+    "listeningHint": "Speak now…",
+    "error": "Voice typing error: {error}",
+    "stop": "Stop voice typing",
+    "unsupported": "Voice typing isn't supported in this browser"
   },
   "comments": {
     "resolved": "Resolved",
@@ -517,7 +691,8 @@
     "unknown": "Unknown",
     "addComment": "Add a comment...",
     "replyPlaceholder": "Reply or add others with @",
-    "replyCount": "{count, plural, one {# reply} other {# replies}}"
+    "replyCount": "{count, plural, one {# reply} other {# replies}}",
+    "mentionSuggestions": "Mention suggestions"
   },
   "trackedChanges": {
     "unknown": "Unknown",
@@ -561,7 +736,9 @@
     "closeAriaLabel": "Close outline",
     "closeTitle": "Close outline",
     "title": "Outline",
-    "noHeadings": "No headings found. Add headings to your document to see them here."
+    "noHeadings": "No headings found. Add headings to your document to see them here.",
+    "expand": "Expand section",
+    "collapse": "Collapse section"
   },
   "sidebar": {
     "ariaLabel": "Annotations sidebar"
@@ -658,9 +835,13 @@
     },
     "rule": "Rule",
     "height": "Height",
-    "toggleHeaderRow": "Toggle header row",
+    "toggleHeaderRow": "Pin header row",
     "distributeColumns": "Distribute columns evenly",
+    "distributeRows": "Distribute rows evenly",
     "autoFit": "Auto-fit to contents",
+    "autoFitWindow": "Auto-fit to window",
+    "sortAscending": "Sort by column {column} (A → Z)",
+    "sortDescending": "Sort by column {column} (Z → A)",
     "tableProperties": "Table properties...",
     "tableAlignment": "Table alignment",
     "alignTableLeft": "Align table left",
@@ -715,6 +896,7 @@
     "comment": "Comment"
   },
   "editor": {
+    "contentLabel": "Document content",
     "toggleCommentsSidebar": "Toggle comments sidebar",
     "showDocumentOutline": "Show document outline",
     "editing": "Editing",
@@ -727,6 +909,17 @@
     "linkRemoved": "Link removed",
     "linkCopied": "Link copied to clipboard",
     "failedToSave": "Failed to save document"
+  },
+  "trackedChanges": {
+    "previous": "Previous change",
+    "next": "Next change",
+    "acceptAll": "Accept all changes",
+    "rejectAll": "Reject all changes",
+    "unknown": "Unknown",
+    "replaced": "Replaced",
+    "with": "with",
+    "added": "Added",
+    "deleted": "Deleted"
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "Display text",
@@ -741,6 +934,8 @@
     "options": "Options",
     "insertPageNumber": "Insert current page number",
     "insertTotalPages": "Insert total page count",
+    "differentFirstPage": "Different first page",
+    "differentEvenOdd": "Different odd & even pages",
     "remove": "Remove {label}",
     "closeEditing": "Close {label} editing"
   },

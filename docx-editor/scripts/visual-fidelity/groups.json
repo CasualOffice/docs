@@ -1,0 +1,23 @@
+{
+  "real-world": [
+    "medical-incident-form",
+    "Form025U",
+    "sds-real-world",
+    "sds-anti-t-zh"
+  ],
+  "representative": [
+    "repr-cover-letter",
+    "repr-essay",
+    "repr-lab-report",
+    "repr-letter",
+    "repr-meeting-notes",
+    "repr-memo",
+    "repr-press-release",
+    "repr-project-proposal",
+    "repr-recipe",
+    "repr-resume",
+    "repr-syllabus",
+    "repr-travel-itinerary",
+    "repr-weekly-status"
+  ]
+}

@@ -1,0 +1,17 @@
+Bundled fonts — licensing & attribution
+========================================
+
+These web fonts are open-source metric-compatible substitutes for the
+proprietary Microsoft Office fonts. They are vendored (converted to woff2) from
+the set LibreOffice ships, so the editor renders deterministically without
+fetching fonts from a third-party CDN.
+
+- Carlito (≈ Calibri)        — SIL Open Font License 1.1.  © tyPoland, Łukasz Dziedzic.
+- Caladea (≈ Cambria)        — SIL Open Font License 1.1.  © Carolina Giovagnoli / Huerta Tipográfica.
+- Liberation Sans  (≈ Arial)         — SIL Open Font License 1.1. © Red Hat, Inc.
+- Liberation Serif (≈ Times New Roman)— SIL Open Font License 1.1. © Red Hat, Inc.
+- Liberation Mono  (≈ Courier New)   — SIL Open Font License 1.1. © Red Hat, Inc.
+
+Full OFL 1.1 text: https://openfontlicense.org/open-font-license-official-text/
+The OFL permits bundling and redistribution (including in commercial products);
+the fonts may not be sold by themselves and the reserved names must be retained.

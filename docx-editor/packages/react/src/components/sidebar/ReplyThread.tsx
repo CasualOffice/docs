@@ -20,7 +20,7 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
           style={{
             fontSize: 12,
             fontWeight: 500,
-            color: '#1a73e8',
+            color: 'var(--doc-primary)',
             paddingTop: 6,
             paddingBottom: 6,
             borderTop: '1px solid #e8eaed',
@@ -43,17 +43,31 @@ export function ReplyThread({ replies, isExpanded }: ReplyThreadProps) {
               {getInitials(reply.author || 'U')}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#202124' }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--doc-text-on-surface, #1f2937)',
+                }}
+              >
                 {reply.author || t('comments.unknown')}
               </div>
-              <div style={{ fontSize: 11, color: '#5f6368' }}>{formatDate(reply.date)}</div>
+              <div style={{ fontSize: 11, color: 'var(--doc-text-muted)' }}>
+                {formatDate(reply.date)}
+              </div>
             </div>
           </div>
           <div
             style={{
               fontSize: 13,
-              color: '#202124',
-              lineHeight: '20px',
+              color: 'var(--doc-text-on-surface, #1f2937)',
+              // Unitless line-height scales with font-size, so the
+              // 2-line clamp stays consistent across system fonts /
+              // OS scaling (was 'lineHeight: 20px' which forced a
+              // fixed leading that didn't match the actual line
+              // height under different fonts, producing 1.5 / 2.5
+              // visible lines instead of exactly 2).
+              lineHeight: 1.4,
               marginTop: 4,
               ...(!isExpanded
                 ? {

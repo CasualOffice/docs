@@ -25,6 +25,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -43,7 +44,31 @@ type entry struct {
 	fileName     string
 	lastAccessed time.Time
 	version      uint64
+	// revisions is the append-only metadata log for this doc: one
+	// entry on creation (version 1) and one per Snapshot. Capped at
+	// maxRevisions (oldest dropped) so a long-lived doc with many
+	// save cycles doesn't grow unbounded. Powers GET
+	// /api/docs/{id}/history (Stream A1 of the parity pipeline).
+	//
+	// Powers GET /api/docs/{id}/history.
+	revisions []RevisionMeta
+	// revBytes retains the .docx bytes per revision version so the
+	// editor can restore a past version (host.RevisionStore). Pruned
+	// in lockstep with `revisions` (same maxRevisions window). Keyed
+	// by RevisionMeta.Version.
+	revBytes map[uint64][]byte
 }
+
+// RevisionMeta is a type alias for the shared host.RevisionMeta so
+// callers (gateway handlers, tests) that reference inline.RevisionMeta
+// still compile after the type was promoted to the host package. The
+// shared type lets every backend (inline, local, future remote) emit
+// the same wire shape from History.
+type RevisionMeta = host.RevisionMeta
+
+// maxRevisions caps the per-doc revision log. 100 save cycles is far
+// past any realistic share-link session; the oldest entries roll off.
+const maxRevisions = 100
 
 // New returns an empty Store with the default capacity ceiling
 // (1000 documents). Pass `WithMaxDocs(n)` to change it.
@@ -80,14 +105,21 @@ func (s *Store) Store(fileName string, contents []byte) (string, error) {
 		return "", fmt.Errorf("inline: mint docId: %w", err)
 	}
 
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.evictIfNeededLocked()
 	s.docs[docID] = &entry{
 		contents:     append([]byte(nil), contents...), // defensive copy
 		fileName:     fileName,
-		lastAccessed: time.Now(),
+		lastAccessed: now,
 		version:      1,
+		revisions: []RevisionMeta{
+			{Version: 1, SavedAt: now, SizeBytes: len(contents)},
+		},
+		revBytes: map[uint64][]byte{
+			1: append([]byte(nil), contents...),
+		},
 	}
 	return docID, nil
 }
@@ -116,6 +148,7 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	if len(contents) == 0 {
 		return errors.New("inline: empty snapshot")
 	}
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.docs[docID]
@@ -124,6 +157,80 @@ func (s *Store) Snapshot(_ context.Context, docID, _ string, contents []byte) er
 	}
 	e.contents = append([]byte(nil), contents...)
 	e.version++
+	e.lastAccessed = now
+	e.revisions = append(e.revisions, RevisionMeta{
+		Version:   e.version,
+		SavedAt:   now,
+		SizeBytes: len(contents),
+	})
+	if e.revBytes == nil {
+		e.revBytes = make(map[uint64][]byte)
+	}
+	e.revBytes[e.version] = append([]byte(nil), contents...)
+	// Roll off the oldest revisions past the cap. Keep the tail
+	// (most-recent maxRevisions) so the history always shows the
+	// latest saves; drop the matching per-revision bytes too.
+	if len(e.revisions) > maxRevisions {
+		drop := e.revisions[:len(e.revisions)-maxRevisions]
+		for _, r := range drop {
+			delete(e.revBytes, r.Version)
+		}
+		e.revisions = e.revisions[len(e.revisions)-maxRevisions:]
+	}
+	return nil
+}
+
+// FetchRevision implements host.RevisionStore: returns the .docx bytes
+// of a specific past revision so the editor can restore it. Returns
+// host.ErrNotFound if the doc or version is unknown (e.g. rolled off
+// past the maxRevisions window).
+func (s *Store) FetchRevision(docID string, version uint64) ([]byte, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e, ok := s.docs[docID]
+	if !ok {
+		return nil, host.ErrNotFound
+	}
+	b, ok := e.revBytes[version]
+	if !ok {
+		return nil, host.ErrNotFound
+	}
+	return append([]byte(nil), b...), nil // copy for caller
+}
+
+// History returns a copy of the revision-metadata log for docID,
+// newest-last (creation first). Returns host.ErrNotFound for an
+// unknown doc. The slice is a copy — callers can't mutate the
+// store's internal log.
+func (s *Store) History(docID string) ([]RevisionMeta, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e, ok := s.docs[docID]
+	if !ok {
+		return nil, host.ErrNotFound
+	}
+	out := make([]RevisionMeta, len(e.revisions))
+	copy(out, e.revisions)
+	return out, nil
+}
+
+// Rename updates the stored fileName so a subsequent /download
+// advertises the new name in Content-Disposition. Does not bump
+// the version — the file CONTENT hasn't changed, only its
+// metadata. Used by the live-rename path: when a peer renames the
+// doc in the editor, the React layer PATCHes here so the server
+// stays in sync with the (Y.Map-synchronised) client state.
+func (s *Store) Rename(docID, newName string) error {
+	if newName == "" {
+		return errors.New("inline: empty fileName")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.docs[docID]
+	if !ok {
+		return host.ErrNotFound
+	}
+	e.fileName = newName
 	e.lastAccessed = time.Now()
 	return nil
 }
@@ -152,20 +259,33 @@ func (s *Store) Count() int {
 // evictIfNeededLocked drops the least-recently-accessed entry
 // when adding a fresh doc would exceed maxDocs. Caller must hold
 // the write lock.
+//
+// Eviction is a data-loss event in the inline backend: there is
+// no external persistence layer, so the bytes for the evicted doc
+// are gone. Log loudly so the operator can either bump maxDocs or
+// swap in a persistent host integration before the next demo.
 func (s *Store) evictIfNeededLocked() {
 	if s.maxDocs <= 0 || len(s.docs) < s.maxDocs {
 		return
 	}
 	var oldestID string
 	var oldestAt time.Time
+	var oldestSize int
 	for id, e := range s.docs {
 		if oldestID == "" || e.lastAccessed.Before(oldestAt) {
 			oldestID = id
 			oldestAt = e.lastAccessed
+			oldestSize = len(e.contents)
 		}
 	}
 	if oldestID != "" {
 		delete(s.docs, oldestID)
+		slog.Warn("inline host evicted least-recently-accessed doc — bytes lost",
+			"docID", oldestID,
+			"bytes", oldestSize,
+			"lastAccessed", oldestAt.Format(time.RFC3339),
+			"maxDocs", s.maxDocs,
+		)
 	}
 }
 

@@ -9,6 +9,10 @@ test.describe('issue #386: numbering with multiple numIds sharing one abstractNu
     await editor.goto();
     await editor.loadDocxFile('fixtures/docx-editor-numbering.docx');
 
+    // Wait for the async layout pipeline to paint every list marker before
+    // reading them. Reading immediately after load raced the re-layout on
+    // slower CI and returned [] (passed locally on faster machines).
+    await expect(page.locator('.layout-list-marker')).toHaveCount(10);
     const markers = await page.locator('.layout-list-marker').allTextContents();
     // Per ECMA-376 §17.9.18: numIds 8/9/10/11 each have <w:lvlOverride> with
     // startOverride=1 pointing to the abstract num shared with numId 4. Each

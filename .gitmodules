@@ -1,0 +1,6 @@
+[submodule "docx-editor/vendor/design-system"]
+	path = docx-editor/vendor/design-system
+	url = git@github.com:CasualOffice/design-book.git
+[submodule "collab"]
+	path = collab
+	url = git@github.com:CasualOffice/collab.git

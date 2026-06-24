@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Casual Editor (embed)</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #fff; overflow: hidden; }
+      #casual-embed-root { width: 100%; height: 100%; }
+      /* Hide the inner toolbar / panels in preview mode. v1.1.x will
+         tighten this; v1.1.0 ships the wire end-to-end. */
+      [data-view-mode="preview"] [data-toolbar],
+      [data-view-mode="preview"] [data-side-panel],
+      [data-view-mode="preview"] [data-status-bar] { display: none !important; }
+    </style>
+    <link rel="stylesheet" href="./embed-runtime.css" />
+  </head>
+  <body>
+    <div id="casual-embed-root"></div>
+    <script type="module">
+      import { mountEmbedded } from './embed-runtime.js';
+      const root = document.getElementById('casual-embed-root');
+      if (root) {
+        mountEmbedded({ root });
+      }
+    </script>
+  </body>
+</html>

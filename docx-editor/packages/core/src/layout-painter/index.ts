@@ -33,6 +33,8 @@ import {
   renderPages,
   isFloatingImageRun,
   isTextWrappingFloatingImageRun,
+  forceRenderAllPages,
+  restoreVirtualization,
   type RenderContext,
   type RenderPagesUpdateKind,
 } from './renderPage';
@@ -59,6 +61,8 @@ export {
   TEXTBOX_CLASS_NAMES,
   isFloatingImageRun,
   isTextWrappingFloatingImageRun,
+  forceRenderAllPages,
+  restoreVirtualization,
   type RenderContext,
 };
 export type { RenderPagesUpdateKind };
@@ -104,6 +108,13 @@ export interface PainterOptions {
   pageBackground?: string;
   /** Container background color */
   containerBackground?: string;
+  /**
+   * Word-compat (#395): draw the firstRow style's bottom border under the
+   * last body row of tables that declare it but have no lastRow style or
+   * tblBorders of their own. Matches Word's behavior; LibreOffice and
+   * Google Docs do not draw this line. Off by default.
+   */
+  wordCompat?: boolean;
 }
 
 /**
@@ -201,6 +212,7 @@ export class LayoutPainter {
         totalPages: this.totalPages,
         section: 'body',
         resolvedCommentIds: this.resolvedCommentIds,
+        wordCompat: this.options.wordCompat,
       };
 
       const pageEl = this.renderPageWithLookup(page, context);

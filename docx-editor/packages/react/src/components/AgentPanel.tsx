@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from '../i18n';
 import { MaterialSymbol } from './ui/Icons';
+import { Tooltip } from './ui/Tooltip';
 
 const STORAGE_KEY = 'eigenpal:docx-editor:agentPanelWidth';
 
@@ -189,7 +190,7 @@ export function AgentPanel({
         margin: closed ? '8px 0 8px 0' : '8px 8px 8px 12px',
         display: 'flex',
         flexDirection: 'column',
-        background: '#ffffff',
+        background: 'var(--doc-surface, white)',
         border: closed ? '1px solid transparent' : '1px solid #e3e3e3',
         borderRadius: 16,
         boxShadow: closed
@@ -239,10 +240,10 @@ export function AgentPanel({
           gap: 10,
           padding: '14px 16px 10px',
           flex: '0 0 auto',
-          background: '#ffffff',
+          background: 'var(--doc-surface, white)',
         }}
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', color: '#0b57d0' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--doc-primary)' }}>
           {icon ?? <MaterialSymbol name="agent-sparkle" size={22} />}
         </span>
         <span
@@ -250,7 +251,7 @@ export function AgentPanel({
             flex: 1,
             fontSize: 15,
             fontWeight: 500,
-            color: '#1f1f1f',
+            color: 'var(--doc-text)',
             letterSpacing: 0.1,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -260,33 +261,35 @@ export function AgentPanel({
           {headerTitle}
         </span>
         {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={closeLabel}
-            title={closeLabel}
-            data-testid="agent-panel-close"
-            style={{
-              border: 'none',
-              background: 'transparent',
-              padding: 6,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#444746',
-              borderRadius: 999,
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = '#f1f3f4';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-            }}
-          >
-            <MaterialSymbol name="close" size={18} />
-          </button>
+          <Tooltip content={closeLabel}>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={closeLabel}
+              data-testid="agent-panel-close"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                padding: 6,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--doc-text-muted)',
+                borderRadius: 999,
+                transition: 'background var(--doc-anim-base)',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  'var(--doc-bg-hover, #f1f3f4)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+              }}
+            >
+              <MaterialSymbol name="close" size={18} />
+            </button>
+          </Tooltip>
         )}
       </div>
 

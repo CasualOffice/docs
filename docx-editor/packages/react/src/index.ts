@@ -36,9 +36,203 @@ export {
   type DocxEditorRef,
   type EditorMode,
 } from './components/DocxEditor';
+
+// CasualEditor — composable SDK wrapper bundling DocxEditor +
+// FileSource + optional collab + optional autosave for host apps
+// (Drive, future sheet) that want the editor with minimum ceremony.
+// Advanced consumers can still use the raw DocxEditor.
+export {
+  CasualEditor,
+  type CasualEditorProps,
+  type CasualEditorRef,
+} from './components/CasualEditor';
+
+// CasualEditorIframe — iframe-mounting variant of CasualEditor.
+// Doc 16 in the parent repo. Use this for hosts that need CSS / React
+// runtime isolation (most consumers; Drive in particular). The
+// consumer copies the SDK's `dist/embed/*` into its public dir
+// (default `/embed/docs`). v1.2 will rename this to CasualEditor and
+// the existing direct-mount component → CasualEditorDirect.
+export {
+  CasualEditorIframe,
+  type CasualEditorIframeProps,
+  type CasualEditorIframeRef,
+} from './components/CasualEditorIframe';
+
+// Embed — iframe delivery surface. EmbedTransport bridges
+// postMessage to React handlers; the envelope shapes mirror
+// docs/internal/13-iframe-protocol.md.
+export {
+  EmbedTransport,
+  isCasualEnvelope,
+  type EmbedTransportHandlers,
+  type EmbedTransportOptions,
+  type CasualApp,
+  type CasualEnvelope,
+  type EditorHelloData,
+  type HostHelloData,
+  type LoadRequestData,
+  type LoadResponseData,
+  type LoadResponseDataOk,
+  type LoadResponseDataErr,
+  type SaveRequestData,
+  type SaveResponseData,
+  type SaveResponseDataOk,
+  type SaveResponseDataErr,
+  type SelectionChangedData,
+  type TelemetryEventData,
+  type LockLostData,
+  type CommandSetReadOnlyData,
+  type CommandSetThemeData,
+  type CommandSetLocaleData,
+  type SignatureRequestData,
+  type SignatureRequestAckData,
+  type SignatureFieldSignedData,
+  type SignatureCompleteData,
+  type SignatureCancelData,
+} from './embed';
+
+// Signing — document-signature pipeline. Types mirror the iframe
+// envelopes (docs/internal/13-iframe-protocol.md) so SDK and
+// iframe deliveries are interchangeable. Uniform across docs +
+// sheet (anchor discriminator differs only).
+export {
+  SigningProvider,
+  useSigning,
+  SigningPane,
+  DrawnSignaturePad,
+  TypedSignatureField,
+  UploadedSignatureField,
+  createSigningController,
+  type SigningProviderProps,
+  type SigningPaneProps,
+  type CapturedSignature,
+  type DrawnSignaturePadProps,
+  type TypedSignatureFieldProps,
+  type UploadedSignatureFieldProps,
+  type SigningController,
+  type SigningSnapshot,
+  type CancelReason,
+  type DocAnchor,
+  type SheetAnchor,
+  type SignatureAnchor,
+  type SignatureCompletePayload,
+  type SignatureField,
+  type SignatureMethod,
+  type SignatureMode,
+  type SignedFieldPayload,
+  type SigningSessionConfig,
+} from './signing';
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
 export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils';
 export { AgentPanel, type AgentPanelProps } from './components/AgentPanel';
+// Collab presence cluster (avatars + room status + Share) for the title bar's
+// `renderTitleBarRight` slot. Built from the shared design-system UI-kit.
+export {
+  PresenceCluster,
+  type PresenceClusterProps,
+  type PresencePeer,
+} from './components/PresenceCluster';
+
+// Collab — Yjs/y-websocket wiring exposed so SDK consumers (host
+// apps embedding the editor) can opt into co-edit by passing the
+// returned plugins into DocxEditor's `externalPlugins`. `yjs`,
+// `y-websocket`, `y-prosemirror` are optional peerDependencies —
+// non-collab deploys don't pay the bundle cost.
+export {
+  useCollab,
+  type CollabPeer,
+  type CollabState,
+  type CollabStatus,
+  type UseCollabOptions,
+} from './collab/useCollab';
+
+// Recent files (host-facing — call `recordRecentFile` on doc open,
+// surface `listRecentFiles` on a "Home" / "Open" screen).
+export {
+  recordRecentFile,
+  listRecentFiles,
+  deleteRecentFile,
+  formatSize,
+  type RecentFile,
+} from './utils/recent-files';
+
+// File source — pluggable storage abstraction (Browser / WOPI /
+// Personal). See docs/internal/11-storage-modes.md. Host apps call
+// `chooseFileSource()` at boot and wrap the editor tree in
+// `<FileSourceProvider>`; everything inside reads via `useFileSource()`.
+export {
+  BrowserFileSource,
+  PersonalFileSource,
+  PersonalFileSourceError,
+  WopiFileSource,
+  WopiNotSupportedError,
+  AuthClient,
+  PersonalAuthGate,
+  PersonalAuthGateModal,
+  UserMenu,
+  ProfileSettingsDialog,
+  usePersonalAuth,
+  useAuthContext,
+  useFileSourceAutoSave,
+  AutosaveStatus,
+  chooseFileSource,
+  extractWopiContext,
+  FileSourceProvider,
+  useFileSource,
+  type FileSource,
+  type FileEntry,
+  type FileSourceKind,
+  type ChooseFileSourceOptions,
+  type WopiContext,
+  type FileSourceProviderProps,
+  type PersonalFileSourceOptions,
+  type WopiFileSourceOptions,
+  type AuthClientOptions,
+  type AuthCredentials,
+  type PersonalAuthGateProps,
+  type UsePersonalAuthOptions,
+  type UsePersonalAuthReturn,
+  type AuthState,
+  type AuthContextValue,
+  type UserMenuProps,
+  type ProfileSettingsDialogProps,
+  type UseFileSourceAutoSaveOptions,
+  type UseFileSourceAutoSaveReturn,
+  type AutoSaveEditorRef,
+  type FileSourceAutoSaveStatus,
+  type AutosaveStatusProps,
+  type UserWire,
+  type FileSummaryWire,
+  type ErrorWire,
+  type ProfileWire,
+  type ProfilePatchWire,
+} from './file-source';
+
+// Spell-check asset config — host must call this with URLs for the
+// Hunspell .aff / .dic files before the Tools → Spell check toggle
+// runs (lazy-loaded). The dictionary asset files aren't bundled into
+// this lib so the consumer's bundler (Vite, webpack, etc.) handles
+// asset hashing.
+export { setSpellAssetUrls } from './lib/spellcheck/service';
+
+// Writing-assistant worker URL — same pattern as `setSpellAssetUrls`:
+// the consumer's bundler produces the worker asset URL and hands it
+// to the library, which can't bake the path in (tsup can't resolve
+// `new URL('./writer.worker.ts', import.meta.url)`).
+export { setWriterWorkerUrl } from './lib/writer/controller';
+
+// Foreign-format conversion (.odt / .md / .txt ⇄ .docx) via the WASM worker.
+// Exported so hosts opening files (Home/landing pickers) can convert non-DOCX
+// uploads to the DOCX model before handing them to the editor.
+export {
+  isForeignFormat,
+  convertToDocx,
+  formatFromFilename,
+  exportDocxAs,
+  type Format,
+  type ForeignFormat,
+} from './lib/format-converter';
 // AgentChat exports removed: the source file (./components/AgentChat) imported
 // from the AGPL @eigenpal/docx-editor-agents package and was dropped in this
 // fork's AGPL purge. See docs/agpl-removal.md.
@@ -750,3 +944,37 @@ export {
   type McpToolResult,
   type McpSession,
 } from '@eigenpal/docx-core/core-plugins';
+
+// ============================================================================
+// FOCUS TRAP — opt-in primitive for dialog focus management
+// ============================================================================
+//
+// Wraps a modal subtree so Tab / Shift+Tab cycle inside it and focus
+// restores to the previously-active element on unmount. See
+// docs/internal/08-improvement-tracker.md § F3.
+
+export { FocusTrap, type FocusTrapProps } from './components/ui/FocusTrap';
+
+// ============================================================================
+// VERSION HISTORY — opt-in side panel + ProseMirror transaction feed
+// ============================================================================
+//
+// Captures every committed transaction into a coalesced, human-readable
+// timeline with revert-to support. Mirrors Casual Sheets' HistoryPanel.
+// See docs/internal/08-improvement-tracker.md § F1.
+
+export {
+  VersionHistoryPanel,
+  type VersionHistoryPanelProps,
+} from './components/sidebar/VersionHistoryPanel';
+export {
+  fetchServerVersions,
+  downloadServerVersion,
+  type ServerVersionBackend,
+} from './version-history/server-source';
+export {
+  useEditHistory,
+  type EditHistoryEntry,
+  type UseEditHistoryOptions,
+  type UseEditHistoryReturn,
+} from './hooks/useEditHistory';

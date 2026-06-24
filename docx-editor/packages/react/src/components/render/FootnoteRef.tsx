@@ -105,7 +105,7 @@ function FootnoteTooltip({
         zIndex: 1000,
         maxWidth: '300px',
         padding: '8px 12px',
-        backgroundColor: '#fff',
+        backgroundColor: 'var(--doc-surface, white)',
         border: '1px solid #ccc',
         borderRadius: '4px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',

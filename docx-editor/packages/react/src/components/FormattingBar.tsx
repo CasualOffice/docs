@@ -25,6 +25,7 @@ import { TableBorderColorPicker } from './ui/TableBorderColorPicker';
 import { TableBorderWidthPicker } from './ui/TableBorderWidthPicker';
 import { TableCellFillPicker } from './ui/TableCellFillPicker';
 import { TableMoreDropdown } from './ui/TableMoreDropdown';
+import { TableStyleGallery } from './ui/TableStyleGallery';
 import { ImageWrapDropdown } from './ui/ImageWrapDropdown';
 import { ImageTransformDropdown } from './ui/ImageTransformDropdown';
 import type { TableAction } from './ui/TableToolbar';
@@ -106,6 +107,11 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
     onOpenImageProperties,
     tableContext,
     onTableAction,
+    onInsertImage,
+    onOpenParagraphDialog,
+    onAddComment,
+    onPaintFormat,
+    paintFormatArmed,
     inline = false,
   } = props as FormattingBarProps;
 
@@ -350,7 +356,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
       ref={barRef}
       className={cn(
         !inline &&
-          'flex items-center px-2 py-1 bg-[#f1f5f9] rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
+          'flex items-center px-2 py-1 bg-[color:var(--doc-bg-subtle,#f1f5f9)] text-[color:var(--doc-text-on-surface,#1f2937)] rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
         className
       )}
       style={inline ? { display: 'contents', ...style } : style}
@@ -365,7 +371,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         <ToolbarButton
           onClick={handleUndo}
           disabled={disabled || !canUndo}
-          title={t('formattingBar.undoShortcut')}
+          title={t('formattingBar.undo')}
+          shortcut="⌘Z"
           ariaLabel={t('formattingBar.undo')}
         >
           <MaterialSymbol name="undo" size={ICON_SIZE} />
@@ -373,11 +380,23 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         <ToolbarButton
           onClick={handleRedo}
           disabled={disabled || !canRedo}
-          title={t('formattingBar.redoShortcut')}
+          title={t('formattingBar.redo')}
+          shortcut="⌘Y"
           ariaLabel={t('formattingBar.redo')}
         >
           <MaterialSymbol name="redo" size={ICON_SIZE} />
         </ToolbarButton>
+        {onPaintFormat && !tableContext?.isInTable && (
+          <ToolbarButton
+            onClick={onPaintFormat}
+            disabled={disabled}
+            title={t('formattingBar.paintFormat')}
+            ariaLabel={t('formattingBar.paintFormat')}
+            active={!!paintFormatArmed}
+          >
+            <MaterialSymbol name="format_paint" size={ICON_SIZE} />
+          </ToolbarButton>
+        )}
       </ToolbarGroup>
 
       {/* Zoom Control */}
@@ -444,7 +463,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('bold')}
           active={currentFormatting.bold}
           disabled={disabled}
-          title={t('formattingBar.boldShortcut')}
+          title={t('formattingBar.bold')}
+          shortcut="⌘B"
           ariaLabel={t('formattingBar.bold')}
         >
           <MaterialSymbol name="format_bold" size={ICON_SIZE} />
@@ -453,7 +473,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('italic')}
           active={currentFormatting.italic}
           disabled={disabled}
-          title={t('formattingBar.italicShortcut')}
+          title={t('formattingBar.italic')}
+          shortcut="⌘I"
           ariaLabel={t('formattingBar.italic')}
         >
           <MaterialSymbol name="format_italic" size={ICON_SIZE} />
@@ -462,7 +483,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('underline')}
           active={currentFormatting.underline}
           disabled={disabled}
-          title={t('formattingBar.underlineShortcut')}
+          title={t('formattingBar.underline')}
+          shortcut="⌘U"
           ariaLabel={t('formattingBar.underline')}
         >
           <MaterialSymbol name="format_underlined" size={ICON_SIZE} />
@@ -472,9 +494,61 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           active={currentFormatting.strike}
           disabled={disabled}
           title={t('formattingBar.strikethrough')}
+          shortcut="⌘⇧X"
           ariaLabel={t('formattingBar.strikethrough')}
         >
           <MaterialSymbol name="strikethrough_s" size={ICON_SIZE} />
+        </ToolbarButton>
+        {/* Small caps / All caps — same toggle pattern as bold/italic.
+            Marks come from SmallCapsExtension / AllCapsExtension; the
+            existing Format menu already drives the same `toggleSmallCaps`
+            / `toggleAllCaps` actions. Surfacing here so doc users with
+            Word muscle memory can find them in the toolbar. */}
+        <ToolbarButton
+          onClick={() => handleFormat('toggleSmallCaps')}
+          active={currentFormatting.smallCaps}
+          disabled={disabled}
+          title={t('formattingBar.smallCaps')}
+          ariaLabel={t('formattingBar.smallCaps')}
+        >
+          {/* Text glyph instead of MaterialSymbol — `format_letter_spacing`
+              and `format_size` aren't in our iconMap (Icons.tsx ships
+              hand-picked SVGs only), so they were rendering as empty
+              <span>s. "Aa" / "AA" with mixed sizes matches Word's
+              small-caps and all-caps icons better than the Material
+              alternatives anyway. */}
+          <span
+            aria-hidden
+            style={{
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              fontSize: ICON_SIZE - 2,
+              lineHeight: 1,
+              letterSpacing: 0.5,
+            }}
+          >
+            A<span style={{ fontSize: ICON_SIZE - 6 }}>a</span>
+          </span>
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => handleFormat('toggleAllCaps')}
+          active={currentFormatting.allCaps}
+          disabled={disabled}
+          title={t('formattingBar.allCaps')}
+          ariaLabel={t('formattingBar.allCaps')}
+        >
+          <span
+            aria-hidden
+            style={{
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              fontSize: ICON_SIZE - 2,
+              lineHeight: 1,
+              letterSpacing: 0.5,
+            }}
+          >
+            AA
+          </span>
         </ToolbarButton>
         {showTextColorPicker && (
           <ColorPicker
@@ -499,11 +573,32 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         <ToolbarButton
           onClick={() => handleFormat('insertLink')}
           disabled={disabled}
-          title={t('formattingBar.insertLinkShortcut')}
+          title={t('formattingBar.insertLink')}
+          shortcut="⌘K"
           ariaLabel={t('formattingBar.insertLink')}
         >
           <MaterialSymbol name="link" size={ICON_SIZE} />
         </ToolbarButton>
+        {onInsertImage && (
+          <ToolbarButton
+            onClick={onInsertImage}
+            disabled={disabled}
+            title={t('toolbar.image')}
+            ariaLabel={t('toolbar.image')}
+          >
+            <MaterialSymbol name="image" size={ICON_SIZE} />
+          </ToolbarButton>
+        )}
+        {onAddComment && (
+          <ToolbarButton
+            onClick={onAddComment}
+            disabled={disabled}
+            title={t('formattingBar.addComment')}
+            ariaLabel={t('formattingBar.addComment')}
+          >
+            <MaterialSymbol name="add_comment" size={ICON_SIZE} />
+          </ToolbarButton>
+        )}
       </ToolbarGroup>
 
       {/* Superscript/Subscript Group */}
@@ -512,7 +607,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('superscript')}
           active={currentFormatting.superscript}
           disabled={disabled}
-          title={t('formattingBar.superscriptShortcut')}
+          title={t('formattingBar.superscript')}
+          shortcut="⌘."
           ariaLabel={t('formattingBar.superscript')}
         >
           <MaterialSymbol name="superscript" size={ICON_SIZE} />
@@ -521,7 +617,8 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           onClick={() => handleFormat('subscript')}
           active={currentFormatting.subscript}
           disabled={disabled}
-          title={t('formattingBar.subscriptShortcut')}
+          title={t('formattingBar.subscript')}
+          shortcut="⌘,"
           ariaLabel={t('formattingBar.subscript')}
         >
           <MaterialSymbol name="subscript" size={ICON_SIZE} />
@@ -560,6 +657,22 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
               value={currentFormatting.lineSpacing}
               onChange={handleLineSpacingChange}
               disabled={disabled}
+              spaceBefore={currentFormatting.spaceBefore}
+              spaceAfter={currentFormatting.spaceAfter}
+              onSpaceBeforeChange={(twips) => onFormat?.({ type: 'spaceBefore', value: twips })}
+              onSpaceAfterChange={(twips) => onFormat?.({ type: 'spaceAfter', value: twips })}
+              onOpenCustomSpacing={onOpenParagraphDialog}
+              keepNext={currentFormatting.keepNext}
+              keepLines={currentFormatting.keepLines}
+              pageBreakBefore={currentFormatting.pageBreakBefore}
+              widowControl={currentFormatting.widowControl}
+              onTogglePagination={(key) => {
+                const current = currentFormatting[key as keyof typeof currentFormatting];
+                onFormat?.({
+                  type: key,
+                  value: !current,
+                } as FormattingAction);
+              }}
             />
           )}
         </ToolbarGroup>
@@ -606,6 +719,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             theme={theme}
             value={tableContext?.cellBackgroundColor}
           />
+          <TableStyleGallery documentStyles={documentStyles} onAction={handleTableAction} />
           <TableMoreDropdown
             onAction={handleTableAction}
             disabled={disabled}
@@ -619,6 +733,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         onClick={() => handleFormat('clearFormatting')}
         disabled={disabled}
         title={t('formattingBar.clearFormatting')}
+        shortcut={'⌘\\'}
         ariaLabel={t('formattingBar.clearFormatting')}
       >
         <MaterialSymbol name="format_clear" size={ICON_SIZE} />

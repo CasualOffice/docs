@@ -288,6 +288,33 @@ export function parseSectionProperties(
   }
 
   // ============================================================================
+  // PAGE NUMBER TYPE (w:pgNumType) — ECMA-376 §17.6.12
+  // ============================================================================
+  const pgNumType = findChild(sectPr, 'w', 'pgNumType');
+  if (pgNumType) {
+    const pnt: NonNullable<SectionProperties['pageNumberType']> = {};
+    const start = parseNumericAttribute(pgNumType, 'w', 'start');
+    if (start !== undefined) pnt.start = start;
+    const fmt = getAttribute(pgNumType, 'w', 'fmt');
+    if (fmt) pnt.fmt = fmt;
+    const chapStyle = parseNumericAttribute(pgNumType, 'w', 'chapStyle');
+    if (chapStyle !== undefined) pnt.chapStyle = chapStyle;
+    const chapSep = getAttribute(pgNumType, 'w', 'chapSep');
+    if (
+      chapSep === 'hyphen' ||
+      chapSep === 'period' ||
+      chapSep === 'colon' ||
+      chapSep === 'emDash' ||
+      chapSep === 'enDash'
+    ) {
+      pnt.chapSep = chapSep;
+    }
+    if (Object.keys(pnt).length > 0) {
+      props.pageNumberType = pnt;
+    }
+  }
+
+  // ============================================================================
   // COLUMNS (w:cols)
   // ============================================================================
   const cols = findChild(sectPr, 'w', 'cols');
@@ -375,6 +402,23 @@ export function parseSectionProperties(
   const bidi = findChild(sectPr, 'w', 'bidi');
   if (bidi) {
     props.bidi = parseBooleanElement(bidi);
+  }
+
+  // ============================================================================
+  // FORM PROTECTION (w:formProt) — ECMA-376 §17.6.7
+  // ============================================================================
+  const formProt = findChild(sectPr, 'w', 'formProt');
+  if (formProt) {
+    props.formProtection = parseBooleanElement(formProt);
+  }
+
+  // ============================================================================
+  // TEXT DIRECTION (w:textDirection) — ECMA-376 §17.6.20
+  // ============================================================================
+  const textDirection = findChild(sectPr, 'w', 'textDirection');
+  if (textDirection) {
+    const val = getAttribute(textDirection, 'w', 'val');
+    if (val) props.textDirection = val;
   }
 
   // ============================================================================
@@ -523,10 +567,11 @@ export function parseSectionProperties(
   // ============================================================================
   const footnotePr = findChild(sectPr, 'w', 'footnotePr');
   if (footnotePr) {
-    const fnProps = parseFootnoteProperties(footnotePr);
-    if (Object.keys(fnProps).length > 0) {
-      props.footnotePr = fnProps;
-    }
+    // Always record the props object when the element exists — even an
+    // empty <w:footnotePr/> is meaningful (it forces Word's section
+    // footnote-numbering reset behavior). The serializer rehydrates the
+    // self-closing form.
+    props.footnotePr = parseFootnoteProperties(footnotePr);
   }
 
   // ============================================================================
@@ -534,10 +579,8 @@ export function parseSectionProperties(
   // ============================================================================
   const endnotePr = findChild(sectPr, 'w', 'endnotePr');
   if (endnotePr) {
-    const enProps = parseEndnoteProperties(endnotePr);
-    if (Object.keys(enProps).length > 0) {
-      props.endnotePr = enProps;
-    }
+    // Same as footnotePr: keep the object even when empty.
+    props.endnotePr = parseEndnoteProperties(endnotePr);
   }
 
   // ============================================================================

@@ -34,6 +34,7 @@ import type { Document } from '../types/document';
 import type { BlockContent, HeaderFooter, Image, Hyperlink } from '../types/content';
 import { serializeDocument } from './serializer/documentSerializer';
 import { serializeHeaderFooter } from './serializer/headerFooterSerializer';
+import { replaceFootnotesInXml, replaceEndnotesInXml } from './serializer/footnoteSerializer';
 import {
   serializeCommentsWithInfo,
   serializeCommentsExtended,
@@ -484,8 +485,33 @@ export async function repackDocx(doc: Document, options: RepackOptions = {}): Pr
 
   await ensureHeaderFooterParts(exportDocument, newZip, compressionLevel);
 
-  // Serialize comments
-  await serializeCommentsToZip(exportDocument, newZip, compressionLevel);
+  // Override footnotes.xml ONLY for footnotes the user edited (opt-in). Each
+  // edited footnote's text is surgically replaced inside the original XML;
+  // untouched footnotes — and every doc that never edits one — stay verbatim.
+  {
+    const editedFootnotes = (exportDocument.package?.footnotes ?? []).filter((f) => f.edited);
+    if (editedFootnotes.length > 0) {
+      const fnFile = originalZip.file('word/footnotes.xml');
+      if (fnFile) {
+        const newFnXml = replaceFootnotesInXml(await fnFile.async('text'), editedFootnotes);
+        newZip.file('word/footnotes.xml', newFnXml, {
+          compression: 'DEFLATE',
+          compressionOptions: { level: compressionLevel },
+        });
+      }
+    }
+    const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter((e) => e.edited);
+    if (editedEndnotes.length > 0) {
+      const enFile = originalZip.file('word/endnotes.xml');
+      if (enFile) {
+        const newEnXml = replaceEndnotesInXml(await enFile.async('text'), editedEndnotes);
+        newZip.file('word/endnotes.xml', newEnXml, {
+          compression: 'DEFLATE',
+          compressionOptions: { level: compressionLevel },
+        });
+      }
+    }
+  }
 
   // Update docProps/core.xml. Two independent inputs are applied:
   //   1. User-editable fields from `pkg.properties` (set by the File →
@@ -583,6 +609,33 @@ export async function repackDocxFromRaw(
   serializeHeadersFootersToZip(exportDocument, newZip, compressionLevel);
 
   await ensureHeaderFooterParts(exportDocument, newZip, compressionLevel);
+
+  // Override footnotes.xml ONLY for footnotes the user edited (opt-in; see
+  // repackDocx for the rationale). Untouched footnotes stay verbatim.
+  {
+    const editedFootnotes = (exportDocument.package?.footnotes ?? []).filter((f) => f.edited);
+    if (editedFootnotes.length > 0) {
+      const fnFile = rawContent.originalZip.file('word/footnotes.xml');
+      if (fnFile) {
+        const newFnXml = replaceFootnotesInXml(await fnFile.async('text'), editedFootnotes);
+        newZip.file('word/footnotes.xml', newFnXml, {
+          compression: 'DEFLATE',
+          compressionOptions: { level: compressionLevel },
+        });
+      }
+    }
+    const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter((e) => e.edited);
+    if (editedEndnotes.length > 0) {
+      const enFile = rawContent.originalZip.file('word/endnotes.xml');
+      if (enFile) {
+        const newEnXml = replaceEndnotesInXml(await enFile.async('text'), editedEndnotes);
+        newZip.file('word/endnotes.xml', newEnXml, {
+          compression: 'DEFLATE',
+          compressionOptions: { level: compressionLevel },
+        });
+      }
+    }
+  }
 
   // Serialize comments
   await serializeCommentsToZip(exportDocument, newZip, compressionLevel);

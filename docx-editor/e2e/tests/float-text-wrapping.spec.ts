@@ -19,7 +19,7 @@ async function loadFixture(page: Page) {
   const editor = new EditorPage(page);
   await editor.goto();
   await editor.waitForReady();
-  await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+  await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
   await page.waitForSelector('.paged-editor__pages');
   await page.waitForSelector('[data-page-number]');
   await page.waitForTimeout(2000);
@@ -299,7 +299,7 @@ test.describe('Float Text Wrapping (Issues #143 & #188)', () => {
     await editor.goto();
     await editor.waitForReady();
     await page
-      .locator('input[type="file"][accept=".docx"]')
+      .locator('input[type="file"][accept*=".docx"]')
       .setInputFiles('e2e/fixtures/generic-render-regression.docx');
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');

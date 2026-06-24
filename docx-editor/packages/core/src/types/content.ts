@@ -455,6 +455,18 @@ export interface Image {
    * the author's intent.
    */
   allowOverlap?: boolean;
+  /**
+   * Relative size metadata (wp14:sizeRelH / wp14:sizeRelV). Optional Word
+   * 2010+ extension that records the percentage-of-anchor sizing rule.
+   * The actual size in EMUs still lives on `size` (wp:extent); these
+   * fields exist purely to round-trip the wp14 hints Word emits — they
+   * don't drive layout in this renderer. Dropping them was the
+   * `wp14:sizeRel*` fixture audit miss.
+   */
+  relativeSize?: {
+    horizontal?: { relativeFrom: string; pct?: number };
+    vertical?: { relativeFrom: string; pct?: number };
+  };
   /** Hyperlink URL for clickable image */
   hlinkHref?: string;
   /**
@@ -844,6 +856,13 @@ export interface TextBox {
    * - `normAutofit` — shrink text to fit (rare; renderer treats as fixed).
    */
   autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
+  /**
+   * Original OOXML envelope (VML/DrawingML) for a text-box-bearing shape, so a
+   * from-PM rebuild re-emits the drawing verbatim. Same `rawXml`/`envelopeKey`
+   * contract as `Shape` / `Image`.
+   */
+  rawXml?: string;
+  envelopeKey?: string;
 }
 
 // ============================================================================
@@ -893,6 +912,12 @@ export interface Table {
   columnWidths?: number[];
   /** Table rows */
   rows: TableRow[];
+  /**
+   * Bookmark markers that appear as direct children of `<w:tbl>` (after all
+   * `<w:tr>` rows). Preserved verbatim for round-trip; emitted before the
+   * closing `</w:tbl>` so range positions stay anchored to the same table.
+   */
+  trailingBookmarks?: (BookmarkStart | BookmarkEnd)[];
 }
 
 // ============================================================================
@@ -1381,6 +1406,12 @@ export interface Footnote {
    * (toProseDoc → toFlowBlocks) can render them uniformly.
    */
   content: (Paragraph | Table)[];
+  /**
+   * Set true when the user edits this footnote's text. The save path then
+   * regenerates ONLY this footnote's `<w:t>` text inside the original
+   * footnotes.xml (surgical, opt-in); untouched footnotes stay verbatim.
+   */
+  edited?: boolean;
 }
 
 /**
@@ -1397,6 +1428,8 @@ export interface Endnote {
    * the body — paragraphs and tables. See note on `Footnote.content`.
    */
   content: (Paragraph | Table)[];
+  /** Set true on edit; the save path regenerates only this endnote's text. */
+  edited?: boolean;
 }
 
 // ============================================================================
@@ -1530,6 +1563,38 @@ export interface SectionProperties {
   /** Endnote properties for this section */
   endnotePr?: EndnoteProperties;
 
+  // Form protection / text direction
+  /**
+   * Form protection (w:formProt). When true the section is form-protected
+   * and only form fields are editable. Word saves an explicit `w:val="false"`
+   * inline even when the default is unprotected — round-trip the flag so
+   * that re-emits stay byte-stable.
+   */
+  formProtection?: boolean;
+  /**
+   * Section text direction (w:textDirection). Values from ECMA-376
+   * §17.18.93 — e.g. `lrTb` (default), `tbRl`, `btLr`. Independent of
+   * the paragraph-level RTL flag.
+   */
+  textDirection?: string;
+
+  // Page numbering
+  /** Page numbering settings (w:pgNumType) — ECMA-376 §17.6.12 */
+  pageNumberType?: {
+    /** Starting page number (w:start) */
+    start?: number;
+    /**
+     * Numbering format (w:fmt). Common: 'decimal', 'lowerLetter',
+     * 'upperLetter', 'lowerRoman', 'upperRoman'. Full list is the
+     * `ST_NumberFormat` enumeration in ECMA-376.
+     */
+    fmt?: string;
+    /** Chapter heading style reference (w:chapStyle) — integer */
+    chapStyle?: number;
+    /** Chapter / page-number separator character (w:chapSep) */
+    chapSep?: 'hyphen' | 'period' | 'colon' | 'emDash' | 'enDash';
+  };
+
   // Document grid
   /** Document grid */
   docGrid?: {
@@ -1580,4 +1645,37 @@ export interface DocumentBody {
   finalSectionProperties?: SectionProperties;
   /** Comments from comments.xml */
   comments?: Comment[];
+  /**
+   * Document-wide page background, from the doc-level `<w:background>`
+   * sibling of `<w:body>` (OOXML §17.2.1). Word + Google Docs both
+   * surface this as "Page color" in their Page Setup UI. Painter uses
+   * it as the default `pageBackground` when the host hasn't set one
+   * via `PainterOptions.pageBackground`.
+   */
+  background?: {
+    color?: ColorValue;
+    themeColor?: ThemeColorSlot;
+    themeTint?: string;
+    themeShade?: string;
+  };
+  /**
+   * Document-wide text watermark, rendered behind page content. Word stores
+   * this as VML (`<v:shape>` + `<v:textpath>`) inside a default section
+   * header part; we model only the rendered properties since round-trip
+   * across Word's many watermark shapes is out of scope for v0 (round-trip
+   * lands in a follow-up). When set, the painter draws the text once per
+   * page, rotated diagonally behind the content, like Word's default
+   * "DRAFT" watermark.
+   */
+  watermark?: {
+    text: string;
+    /** Hex RGB without the leading `#`; default `808080` (Word's gray). */
+    color?: string;
+    /** 0–1; default `0.5`. */
+    opacity?: number;
+    /** Pixels, applied to the rendered overlay; default `96`. */
+    fontSize?: number;
+    /** Degrees, clockwise; default `-45` (diagonal, Word default). */
+    rotation?: number;
+  };
 }

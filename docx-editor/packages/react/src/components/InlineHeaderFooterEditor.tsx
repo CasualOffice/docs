@@ -62,6 +62,14 @@ export interface InlineHeaderFooterEditorProps {
   onSelectionChange?: (state: SelectionState | null) => void;
   /** Callback to remove the header/footer entirely */
   onRemove?: () => void;
+  /** Current OOXML `w:titlePg` flag on the section (= "Different first page"). */
+  titlePg?: boolean;
+  /** Current OOXML `w:evenAndOddHeaders` flag on settings.xml (= "Different odd & even pages"). */
+  evenAndOddHeaders?: boolean;
+  /** Toggle `w:titlePg` on the active section. */
+  onToggleTitlePg?: (value: boolean) => void;
+  /** Toggle `w:evenAndOddHeaders` on settings.xml. */
+  onToggleEvenAndOdd?: (value: boolean) => void;
 }
 
 export interface InlineHeaderFooterEditorRef {
@@ -85,7 +93,7 @@ const separatorBarStyle: CSSProperties = {
   justifyContent: 'space-between',
   padding: '2px 0',
   fontSize: 11,
-  color: '#4285f4',
+  color: 'var(--doc-primary)',
   userSelect: 'none',
 };
 
@@ -97,7 +105,7 @@ const labelStyle: CSSProperties = {
 const optionsButtonStyle: CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#4285f4',
+  color: 'var(--doc-primary)',
   cursor: 'pointer',
   fontSize: 11,
   padding: '2px 6px',
@@ -108,8 +116,8 @@ const dropdownStyle: CSSProperties = {
   position: 'absolute',
   right: 0,
   top: '100%',
-  background: 'white',
-  border: '1px solid #dadce0',
+  background: 'var(--doc-surface, white)',
+  border: '1px solid var(--doc-border)',
   borderRadius: 4,
   boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
   zIndex: Z_INDEX.dropdown,
@@ -126,7 +134,7 @@ const dropdownItemStyle: CSSProperties = {
   textAlign: 'left',
   cursor: 'pointer',
   fontSize: 12,
-  color: '#3c4043',
+  color: 'var(--doc-text-on-surface)',
 };
 
 // ============================================================================
@@ -147,6 +155,10 @@ export const InlineHeaderFooterEditor = forwardRef<
     onClose,
     onSelectionChange,
     onRemove,
+    titlePg,
+    evenAndOddHeaders,
+    onToggleTitlePg,
+    onToggleEvenAndOdd,
   },
   ref
 ) {
@@ -351,11 +363,19 @@ export const InlineHeaderFooterEditor = forwardRef<
             onRemove={onRemove}
             onClose={handleSaveAndClose}
             viewRef={viewRef}
+            titlePg={titlePg}
+            evenAndOddHeaders={evenAndOddHeaders}
+            onToggleTitlePg={onToggleTitlePg}
+            onToggleEvenAndOdd={onToggleEvenAndOdd}
           />
         </div>
       )}
 
-      {/* ProseMirror editor area */}
+      {/* ProseMirror editor area. Opaque page-colored background so the body
+          content BEHIND the overlay doesn't bleed through — a complex header
+          (e.g. an SDS letterhead with many positioned boxes) grows tall and the
+          overlay extends over the body region; a transparent overlay let the
+          grayed body text show through and read as "broken". */}
       <div
         ref={editorContainerRef}
         className="hf-editor-pm prosemirror-editor"
@@ -363,6 +383,7 @@ export const InlineHeaderFooterEditor = forwardRef<
           minHeight: 40,
           outline: 'none',
           fontSize: `${defaultFontSizePt}pt`,
+          background: 'var(--doc-surface, #ffffff)',
         }}
       />
 
@@ -378,6 +399,10 @@ export const InlineHeaderFooterEditor = forwardRef<
             onRemove={onRemove}
             onClose={handleSaveAndClose}
             viewRef={viewRef}
+            titlePg={titlePg}
+            evenAndOddHeaders={evenAndOddHeaders}
+            onToggleTitlePg={onToggleTitlePg}
+            onToggleEvenAndOdd={onToggleEvenAndOdd}
           />
         </div>
       )}
@@ -397,6 +422,10 @@ function OptionsMenu({
   onRemove,
   onClose,
   viewRef,
+  titlePg,
+  evenAndOddHeaders,
+  onToggleTitlePg,
+  onToggleEvenAndOdd,
 }: {
   label: string;
   showOptions: boolean;
@@ -405,6 +434,10 @@ function OptionsMenu({
   onRemove?: () => void;
   onClose: () => void;
   viewRef: React.RefObject<EditorView | null>;
+  titlePg?: boolean;
+  evenAndOddHeaders?: boolean;
+  onToggleTitlePg?: (value: boolean) => void;
+  onToggleEvenAndOdd?: (value: boolean) => void;
 }) {
   const { t } = useTranslation();
   const insertField = (fieldType: 'PAGE' | 'NUMPAGES') => {
@@ -447,7 +480,7 @@ function OptionsMenu({
               insertField('PAGE');
             }}
             onMouseOver={(e) => {
-              (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+              (e.target as HTMLElement).style.backgroundColor = 'var(--doc-bg-hover, #f1f3f4)';
             }}
             onMouseOut={(e) => {
               (e.target as HTMLElement).style.backgroundColor = 'transparent';
@@ -463,7 +496,7 @@ function OptionsMenu({
               insertField('NUMPAGES');
             }}
             onMouseOver={(e) => {
-              (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+              (e.target as HTMLElement).style.backgroundColor = 'var(--doc-bg-hover, #f1f3f4)';
             }}
             onMouseOut={(e) => {
               (e.target as HTMLElement).style.backgroundColor = 'transparent';
@@ -472,6 +505,55 @@ function OptionsMenu({
             {t('headerFooter.insertTotalPages')}
           </button>
           <div style={{ borderTop: '1px solid #e8eaed', margin: '4px 0' }} />
+          {/* Different first page (w:titlePg). Toggling on/off updates
+              the active section's `titlePg` flag. The host renders
+              a separate first-page header/footer when on. */}
+          {onToggleTitlePg && (
+            <button
+              type="button"
+              style={dropdownItemStyle}
+              onClick={() => {
+                setShowOptions(false);
+                onToggleTitlePg(!titlePg);
+              }}
+              data-testid="hf-toggle-titlepg"
+              onMouseOver={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = 'var(--doc-bg-hover, #f1f3f4)';
+              }}
+              onMouseOut={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
+              }}
+            >
+              {titlePg ? '✓ ' : ''}
+              {t('headerFooter.differentFirstPage')}
+            </button>
+          )}
+          {/* Different odd & even pages (w:evenAndOddHeaders in
+              settings.xml). When on, even pages render their own
+              header/footer separately from odd pages. */}
+          {onToggleEvenAndOdd && (
+            <button
+              type="button"
+              style={dropdownItemStyle}
+              onClick={() => {
+                setShowOptions(false);
+                onToggleEvenAndOdd(!evenAndOddHeaders);
+              }}
+              data-testid="hf-toggle-evenodd"
+              onMouseOver={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = 'var(--doc-bg-hover, #f1f3f4)';
+              }}
+              onMouseOut={(e) => {
+                (e.target as HTMLElement).style.backgroundColor = 'transparent';
+              }}
+            >
+              {evenAndOddHeaders ? '✓ ' : ''}
+              {t('headerFooter.differentEvenOdd')}
+            </button>
+          )}
+          {(onToggleTitlePg || onToggleEvenAndOdd) && (
+            <div style={{ borderTop: '1px solid #e8eaed', margin: '4px 0' }} />
+          )}
           {onRemove && (
             <button
               type="button"
@@ -481,7 +563,7 @@ function OptionsMenu({
                 onRemove();
               }}
               onMouseOver={(e) => {
-                (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+                (e.target as HTMLElement).style.backgroundColor = 'var(--doc-bg-hover, #f1f3f4)';
               }}
               onMouseOut={(e) => {
                 (e.target as HTMLElement).style.backgroundColor = 'transparent';
@@ -498,7 +580,7 @@ function OptionsMenu({
               onClose();
             }}
             onMouseOver={(e) => {
-              (e.target as HTMLElement).style.backgroundColor = '#f1f3f4';
+              (e.target as HTMLElement).style.backgroundColor = 'var(--doc-bg-hover, #f1f3f4)';
             }}
             onMouseOut={(e) => {
               (e.target as HTMLElement).style.backgroundColor = 'transparent';

@@ -230,7 +230,7 @@ export function FontSizePicker({
         variant="ghost"
         size="icon-sm"
         className={cn(
-          'h-7 w-7 text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 rounded-r-none',
+          'h-7 w-7 text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] rounded-r-none',
           disabled && 'opacity-30 cursor-not-allowed'
         )}
         onMouseDown={handleDecrease}
@@ -252,7 +252,7 @@ export function FontSizePicker({
             onBlur={handleInputBlur}
             onKeyDown={handleInputKeyDown}
             className={cn(
-              'h-7 w-10 text-center text-sm border border-slate-300 bg-white',
+              'h-7 w-10 text-center text-sm border border-[color:var(--doc-border,#e0e0e0)] bg-[color:var(--doc-surface,white)]',
               'focus:outline-none focus:ring-1 focus:ring-slate-400',
               'rounded-none'
             )}
@@ -264,8 +264,8 @@ export function FontSizePicker({
             type="button"
             onClick={handleInputClick}
             className={cn(
-              'h-7 w-10 text-center text-sm border border-slate-200 bg-white',
-              'hover:border-slate-300 hover:bg-slate-50',
+              'h-7 w-10 text-center text-sm border border-[color:var(--doc-border,#e0e0e0)] bg-[color:var(--doc-surface,white)]',
+              'hover:border-[color:var(--doc-border,#e0e0e0)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
               'focus:outline-none focus:ring-1 focus:ring-slate-400',
               'rounded-none',
               disabled && 'opacity-50 cursor-not-allowed'
@@ -287,7 +287,7 @@ export function FontSizePicker({
           ref={dropdownRef}
           style={{
             ...fixedDropdownStyle,
-            backgroundColor: 'white',
+            backgroundColor: 'var(--doc-surface, white)',
             border: '1px solid #e2e8f0',
             borderRadius: 6,
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
@@ -305,8 +305,9 @@ export function FontSizePicker({
               onClick={() => handleSizeSelect(size)}
               className={cn(
                 'w-full px-3 py-1.5 text-sm text-left',
-                'hover:bg-slate-100',
-                size === currentValue && 'bg-slate-100 font-medium'
+                'hover:bg-[color:var(--doc-bg-hover)]',
+                size === currentValue &&
+                  'bg-[color:var(--doc-primary-light,#e8f0fe)] text-[color:var(--doc-primary,#1a73e8)] font-medium'
               )}
               role="option"
               aria-selected={size === currentValue}
@@ -322,7 +323,7 @@ export function FontSizePicker({
         variant="ghost"
         size="icon-sm"
         className={cn(
-          'h-7 w-7 text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 rounded-l-none',
+          'h-7 w-7 text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] rounded-l-none',
           disabled && 'opacity-30 cursor-not-allowed'
         )}
         onMouseDown={handleIncrease}

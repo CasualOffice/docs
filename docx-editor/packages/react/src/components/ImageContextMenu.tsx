@@ -22,6 +22,7 @@ import {
 import { Z_INDEX } from '../styles/zIndex';
 import { useTranslation } from '../i18n';
 import { MaterialSymbol } from './ui/Icons';
+import { Tooltip } from './ui/Tooltip';
 import type { TextContextAction } from './TextContextMenu';
 
 type ImageAttrsCssFloat = 'left' | 'right' | 'none' | null;
@@ -182,7 +183,7 @@ export const ImageContextMenu: React.FC<ImageContextMenuProps> = ({
       top: y,
       left: x,
       minWidth: menuWidth,
-      background: 'white',
+      background: 'var(--doc-surface, white)',
       border: '1px solid var(--doc-border-light, #e0e0e0)',
       borderRadius: '8px',
       boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
@@ -212,57 +213,57 @@ export const ImageContextMenu: React.FC<ImageContextMenuProps> = ({
         // because they would no-op against the current image.
         const tooltip = t(`imageWrap.menuDesc.${option.i18nDescKey}` as never);
         return (
-          <button
-            key={option.choice}
-            type="button"
-            role="menuitem"
-            data-wrap-type={option.choice}
-            data-current={isCurrent ? 'true' : 'false'}
-            data-disabled={!isEnabled ? 'true' : 'false'}
-            disabled={!isEnabled}
-            onClick={() => {
-              if (!isEnabled) return;
-              onApplyLayout(option.choice as ImageLayoutTarget);
-              onClose();
-            }}
-            onMouseEnter={() => {
-              if (navIdx >= 0) setHighlightedIndex(navIdx);
-            }}
-            title={tooltip}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '8px 12px',
-              border: 'none',
-              background: isHighlighted ? 'var(--doc-primary-light, #eef4ff)' : 'transparent',
-              cursor: isEnabled ? 'pointer' : 'not-allowed',
-              fontSize: '13px',
-              color: isEnabled ? 'var(--doc-text, #222)' : 'var(--doc-text-placeholder, #999)',
-              textAlign: 'left',
-              opacity: isEnabled ? 1 : 0.55,
-            }}
-          >
-            <span
+          <Tooltip key={option.choice} content={tooltip} side="right">
+            <button
+              type="button"
+              role="menuitem"
+              data-wrap-type={option.choice}
+              data-current={isCurrent ? 'true' : 'false'}
+              data-disabled={!isEnabled ? 'true' : 'false'}
+              disabled={!isEnabled}
+              onClick={() => {
+                if (!isEnabled) return;
+                onApplyLayout(option.choice as ImageLayoutTarget);
+                onClose();
+              }}
+              onMouseEnter={() => {
+                if (navIdx >= 0) setHighlightedIndex(navIdx);
+              }}
               style={{
                 display: 'flex',
-                color: isCurrent ? 'var(--doc-primary, #2563eb)' : 'var(--doc-text-muted, #666)',
-                width: ICON_SIZE,
+                alignItems: 'center',
+                gap: '10px',
+                width: '100%',
+                padding: '8px 12px',
+                border: 'none',
+                background: isHighlighted ? 'var(--doc-primary-light, #eef4ff)' : 'transparent',
+                cursor: isEnabled ? 'pointer' : 'not-allowed',
+                fontSize: '13px',
+                color: isEnabled ? 'var(--doc-text, #222)' : 'var(--doc-text-placeholder, #999)',
+                textAlign: 'left',
+                opacity: isEnabled ? 1 : 0.55,
               }}
             >
-              <MaterialSymbol name={ICON_BY_HINT[option.iconHint]} size={ICON_SIZE} />
-            </span>
-            <span style={{ flex: 1 }}>{t(`imageWrap.menu.${option.i18nLabelKey}` as never)}</span>
-            {isCurrent && (
               <span
-                style={{ fontSize: '11px', color: 'var(--doc-primary, #2563eb)' }}
-                aria-label={t('toolbar.imageWrap.current' as never)}
+                style={{
+                  display: 'flex',
+                  color: isCurrent ? 'var(--doc-primary, #2563eb)' : 'var(--doc-text-muted, #666)',
+                  width: ICON_SIZE,
+                }}
               >
-                ●
+                <MaterialSymbol name={ICON_BY_HINT[option.iconHint]} size={ICON_SIZE} />
               </span>
-            )}
-          </button>
+              <span style={{ flex: 1 }}>{t(`imageWrap.menu.${option.i18nLabelKey}` as never)}</span>
+              {isCurrent && (
+                <span
+                  style={{ fontSize: '11px', color: 'var(--doc-primary, #2563eb)' }}
+                  aria-label={t('toolbar.imageWrap.current' as never)}
+                >
+                  ●
+                </span>
+              )}
+            </button>
+          </Tooltip>
         );
       })}
 

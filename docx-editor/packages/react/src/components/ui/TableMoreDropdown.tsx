@@ -23,8 +23,10 @@ export interface TableMoreDropdownProps {
     isInTable: boolean;
     rowCount?: number;
     columnCount?: number;
+    columnIndex?: number;
     canSplitCell?: boolean;
     hasMultiCellSelection?: boolean;
+    currentRowIsHeader?: boolean;
     table?: { attrs?: { justification?: string } };
   } | null;
 }
@@ -126,8 +128,8 @@ export function TableMoreDropdown({
       variant="ghost"
       size="icon-sm"
       className={cn(
-        'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80',
-        isOpen && 'bg-slate-100',
+        'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
+        isOpen && 'bg-[color:var(--doc-bg-hover)]',
         disabled && 'opacity-30 cursor-not-allowed'
       )}
       onMouseDown={handleMouseDown}
@@ -151,7 +153,7 @@ export function TableMoreDropdown({
           ref={dropdownRef}
           style={{
             ...dropdownStyle,
-            backgroundColor: 'white',
+            backgroundColor: 'var(--doc-surface, white)',
             border: '1px solid var(--doc-border)',
             borderRadius: 8,
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
@@ -210,34 +212,36 @@ export function TableMoreDropdown({
                 center: 'tableAdvanced.middle' as const,
                 bottom: 'tableAdvanced.bottom' as const,
               };
+              const label = t(labelKeys[align]);
               return (
-                <button
-                  key={align}
-                  type="button"
-                  title={t(labelKeys[align])}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 32,
-                    height: 28,
-                    border: '1px solid var(--doc-border)',
-                    borderRadius: 4,
-                    backgroundColor: 'transparent',
-                    cursor: 'pointer',
-                  }}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                      'var(--doc-bg-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                  }}
-                  onClick={() => handleAction({ type: 'cellVerticalAlign', align })}
-                >
-                  <MaterialSymbol name={icons[align]} size={16} />
-                </button>
+                <Tooltip key={align} content={label}>
+                  <button
+                    type="button"
+                    aria-label={label}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 28,
+                      border: '1px solid var(--doc-border)',
+                      borderRadius: 4,
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                        'var(--doc-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                    }}
+                    onClick={() => handleAction({ type: 'cellVerticalAlign', align })}
+                  >
+                    <MaterialSymbol name={icons[align]} size={16} />
+                  </button>
+                </Tooltip>
               );
             })}
           </div>
@@ -254,37 +258,39 @@ export function TableMoreDropdown({
                 right: 'format_align_right',
               };
               const isActive = currentJustification === align;
+              const label = t(
+                {
+                  left: 'tableAdvanced.alignTableLeft' as const,
+                  center: 'tableAdvanced.alignTableCenter' as const,
+                  right: 'tableAdvanced.alignTableRight' as const,
+                }[align]
+              );
               return (
-                <button
-                  key={align}
-                  type="button"
-                  title={t(
-                    {
-                      left: 'tableAdvanced.alignTableLeft' as const,
-                      center: 'tableAdvanced.alignTableCenter' as const,
-                      right: 'tableAdvanced.alignTableRight' as const,
-                    }[align]
-                  )}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 32,
-                    height: 28,
-                    border: '1px solid var(--doc-border)',
-                    borderRadius: 4,
-                    backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
-                    borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
-                    color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() =>
-                    handleAction({ type: 'tableProperties', props: { justification: align } })
-                  }
-                >
-                  <MaterialSymbol name={icons[align]} size={16} />
-                </button>
+                <Tooltip key={align} content={label}>
+                  <button
+                    type="button"
+                    aria-label={label}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 28,
+                      border: '1px solid var(--doc-border)',
+                      borderRadius: 4,
+                      backgroundColor: isActive ? 'var(--doc-primary-light)' : 'transparent',
+                      borderColor: isActive ? 'var(--doc-primary)' : 'var(--doc-border)',
+                      color: isActive ? 'var(--doc-primary)' : 'var(--doc-text)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() =>
+                      handleAction({ type: 'tableProperties', props: { justification: align } })
+                    }
+                  >
+                    <MaterialSymbol name={icons[align]} size={16} />
+                  </button>
+                </Tooltip>
               );
             })}
           </div>
@@ -292,8 +298,16 @@ export function TableMoreDropdown({
           <div style={separatorStyles} role="separator" />
 
           {/* Other options */}
-          {menuItem('headerRow', 'table_rows', t('tableAdvanced.toggleHeaderRow'), {
-            type: 'toggleHeaderRow',
+          {menuItem(
+            'headerRow',
+            tableContext?.currentRowIsHeader ? 'push_pin' : 'table_rows',
+            tableContext?.currentRowIsHeader
+              ? `✓ ${t('tableAdvanced.toggleHeaderRow')}`
+              : t('tableAdvanced.toggleHeaderRow'),
+            { type: 'toggleHeaderRow' }
+          )}
+          {menuItem('distributeRows', 'table_rows', t('tableAdvanced.distributeRows'), {
+            type: 'distributeRows',
           })}
           {menuItem('distribute', 'view_column', t('tableAdvanced.distributeColumns'), {
             type: 'distributeColumns',
@@ -301,6 +315,21 @@ export function TableMoreDropdown({
           {menuItem('autoFit', 'fit_width', t('tableAdvanced.autoFit'), {
             type: 'autoFitContents',
           })}
+          {menuItem('autoFitWindow', 'fit_width', t('tableAdvanced.autoFitWindow'), {
+            type: 'autoFitWindow',
+          })}
+          {menuItem(
+            'sortAsc',
+            'keyboard_arrow_up',
+            t('tableAdvanced.sortAscending', { column: (tableContext?.columnIndex ?? 0) + 1 }),
+            { type: 'sortTable', direction: 'asc' }
+          )}
+          {menuItem(
+            'sortDesc',
+            'keyboard_arrow_down',
+            t('tableAdvanced.sortDescending', { column: (tableContext?.columnIndex ?? 0) + 1 }),
+            { type: 'sortTable', direction: 'desc' }
+          )}
           {menuItem('noWrap', 'wrap_text', t('tableAdvanced.toggleNoWrap'), {
             type: 'toggleNoWrap',
           })}

@@ -1014,6 +1014,13 @@ function createShapeRun(node: PMNode): Run {
     };
   }
 
+  // Restore the original OOXML envelope so the serializer re-emits the drawing
+  // verbatim (the rawXml invariant: when set, model-based emission is skipped).
+  // This is what makes drawings survive a from-PM rebuild — structural edit,
+  // collab peer, or server snapshot — instead of being dropped.
+  if (attrs.rawXml) shape.rawXml = attrs.rawXml;
+  if (attrs.envelopeKey) shape.envelopeKey = attrs.envelopeKey;
+
   const shapeContent: ShapeContent = { type: 'shape', shape };
 
   return {
@@ -1685,11 +1692,59 @@ function convertPMTextBox(node: PMNode): Paragraph {
     },
   };
 
+  // Restore the original OOXML envelope so the serializer re-emits this drawing
+  // verbatim (rawXml invariant) — the core of surviving a from-PM rebuild from a
+  // structural edit / collab peer / server snapshot.
+  if (attrs.rawXml) shape.rawXml = attrs.rawXml;
+  if (attrs.envelopeKey) shape.envelopeKey = attrs.envelopeKey;
+
   // Convert fill color back
   if (attrs.fillColor) {
     shape.fill = {
       type: 'solid',
       color: { rgb: attrs.fillColor.replace('#', '') },
+    };
+  }
+
+  // Round-trip anchor position so a save-then-reload preserves the
+  // shape's posOffset / relativeFrom / alignment. These are honored at
+  // layout time (`layoutAnchoredTextBox`) AND must survive editing —
+  // otherwise every save would degrade anchored shapes to inline-flow,
+  // even if the user never touched them. The Format-panel Position X/Y
+  // control writes margin-relative offsets through this same path.
+  if (
+    attrs.posOffsetH != null ||
+    attrs.posOffsetV != null ||
+    attrs.posAlignH ||
+    attrs.posAlignV ||
+    attrs.posRelFromH ||
+    attrs.posRelFromV
+  ) {
+    shape.position = {
+      horizontal: {
+        relativeTo:
+          (attrs.posRelFromH as import('../../types/content').ImagePosition['horizontal']['relativeTo']) ??
+          'column',
+        ...(attrs.posOffsetH != null ? { posOffset: pixelsToEmu(attrs.posOffsetH) } : {}),
+        ...(attrs.posAlignH
+          ? {
+              alignment:
+                attrs.posAlignH as import('../../types/content').ImagePosition['horizontal']['alignment'],
+            }
+          : {}),
+      },
+      vertical: {
+        relativeTo:
+          (attrs.posRelFromV as import('../../types/content').ImagePosition['vertical']['relativeTo']) ??
+          'paragraph',
+        ...(attrs.posOffsetV != null ? { posOffset: pixelsToEmu(attrs.posOffsetV) } : {}),
+        ...(attrs.posAlignV
+          ? {
+              alignment:
+                attrs.posAlignV as import('../../types/content').ImagePosition['vertical']['alignment'],
+            }
+          : {}),
+      },
     };
   }
 

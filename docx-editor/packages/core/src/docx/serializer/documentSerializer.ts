@@ -109,7 +109,7 @@ function buildNamespaceDeclarations(): string {
 /**
  * Serialize a border element
  */
-function serializeBorder(border: BorderSpec | undefined, elementName: string): string {
+export function serializeBorder(border: BorderSpec | undefined, elementName: string): string {
   if (!border || border.style === 'none' || border.style === 'nil') {
     return '';
   }
@@ -201,7 +201,9 @@ function serializeFootnoteProperties(props: FootnoteProperties | undefined): str
     parts.push(`<w:numRestart w:val="${props.numRestart}"/>`);
   }
 
-  if (parts.length === 0) return '';
+  // Empty footnotePr is meaningful (forces section-scoped numbering
+  // behavior). Emit the self-closing form when no children landed.
+  if (parts.length === 0) return '<w:footnotePr/>';
 
   return `<w:footnotePr>${parts.join('')}</w:footnotePr>`;
 }
@@ -230,7 +232,9 @@ function serializeEndnoteProperties(props: EndnoteProperties | undefined): strin
     parts.push(`<w:numRestart w:val="${props.numRestart}"/>`);
   }
 
-  if (parts.length === 0) return '';
+  // Empty endnotePr is meaningful — emit the self-closing form so an
+  // input <w:endnotePr/> survives round-trip.
+  if (parts.length === 0) return '<w:endnotePr/>';
 
   return `<w:endnotePr>${parts.join('')}</w:endnotePr>`;
 }
@@ -532,6 +536,19 @@ export function serializeSectionProperties(props: SectionProperties | undefined)
     parts.push(pgBordersXml);
   }
 
+  // Page numbering (w:pgNumType) — ECMA-376 §17.6.12
+  if (props.pageNumberType) {
+    const pnt = props.pageNumberType;
+    const pntAttrs: string[] = [];
+    if (pnt.fmt) pntAttrs.push(`w:fmt="${pnt.fmt}"`);
+    if (pnt.start !== undefined) pntAttrs.push(`w:start="${pnt.start}"`);
+    if (pnt.chapStyle !== undefined) pntAttrs.push(`w:chapStyle="${pnt.chapStyle}"`);
+    if (pnt.chapSep) pntAttrs.push(`w:chapSep="${pnt.chapSep}"`);
+    if (pntAttrs.length > 0) {
+      parts.push(`<w:pgNumType ${pntAttrs.join(' ')}/>`);
+    }
+  }
+
   // Line numbers
   const lnNumXml = serializeLineNumbers(props);
   if (lnNumXml) {
@@ -558,6 +575,16 @@ export function serializeSectionProperties(props: SectionProperties | undefined)
   // Bidirectional
   if (props.bidi) {
     parts.push('<w:bidi/>');
+  }
+
+  // Form protection (w:formProt) — ECMA-376 §17.6.7
+  if (props.formProtection !== undefined) {
+    parts.push(`<w:formProt w:val="${props.formProtection ? 'true' : 'false'}"/>`);
+  }
+
+  // Text direction (w:textDirection) — ECMA-376 §17.6.20
+  if (props.textDirection) {
+    parts.push(`<w:textDirection w:val="${props.textDirection}"/>`);
   }
 
   // Title page (different first page header/footer)
@@ -648,6 +675,27 @@ export function serializeDocument(doc: Document): string {
   // Document element with namespaces
   const nsDecl = buildNamespaceDeclarations();
   parts.push(`<w:document ${nsDecl} mc:Ignorable="w14 w15 wp14">`);
+
+  // Doc-level `<w:background>` (OOXML §17.2.1). Must precede `<w:body>`.
+  // Round-trips the "Page color" the user picked in our dialog AND any
+  // background that came in from the source DOCX.
+  const bg = doc.package.document.background;
+  if (bg) {
+    const attrs: string[] = [];
+    if (bg.color?.rgb) attrs.push(`w:color="${bg.color.rgb}"`);
+    if (bg.themeColor) attrs.push(`w:themeColor="${bg.themeColor}"`);
+    if (bg.themeTint) attrs.push(`w:themeTint="${bg.themeTint}"`);
+    if (bg.themeShade) attrs.push(`w:themeShade="${bg.themeShade}"`);
+    // Word requires at least `w:color` to be present on a non-empty
+    // background. If the model carries only theme info without color,
+    // emit `w:color="auto"` so the element is well-formed.
+    if (!bg.color?.rgb && (bg.themeColor || bg.themeTint || bg.themeShade)) {
+      attrs.unshift('w:color="auto"');
+    }
+    if (attrs.length > 0) {
+      parts.push(`<w:background ${attrs.join(' ')}/>`);
+    }
+  }
 
   // Document body
   parts.push('<w:body>');

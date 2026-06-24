@@ -8,9 +8,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@eigenpal/docx-js-editor": "^0.0.7",
+    "@casualoffice/docs": "workspace:*",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.2",
+    "@hocuspocus/provider": "^2.15.0",
+    "codemirror": "^6.0.2",
+    "dompurify": "^3.4.11",
+    "marked": "^18.0.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "y-codemirror.next": "^0.3.5",
     "y-prosemirror": "^1.2.12",
     "y-websocket": "^2.1.0",
     "yjs": "^13.6.18"

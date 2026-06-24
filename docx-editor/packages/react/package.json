@@ -1,6 +1,6 @@
 {
-  "name": "@eigenpal/docx-js-editor",
-  "version": "0.5.1",
+  "name": "@casualoffice/docs",
+  "version": "1.1.7",
   "description": "A browser-based DOCX template editor with variable insertion support",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -42,6 +42,12 @@
       "require": "./dist/mcp-reexport.js"
     },
     "./styles.css": "./dist/styles.css",
+    "./embed-runtime": {
+      "types": "./dist/embed/embed-runtime.d.mts",
+      "import": "./dist/embed/embed-runtime.mjs"
+    },
+    "./embed/embed.html": "./dist/embed/embed.html",
+    "./embed/embed-runtime.css": "./dist/embed/embed-runtime.css",
     "./i18n/*.json": "./i18n/*.json"
   },
   "typesVersions": {
@@ -74,12 +80,15 @@
     "i18n"
   ],
   "scripts": {
-    "build": "tsup && bun run build:css",
+    "build": "tsup && bun run build:fonts && bun run build:css && bun run build:embed-css",
+    "build:fonts": "mkdir -p dist/fonts && cp src/styles/fonts/*.woff2 src/styles/fonts/LICENSE dist/fonts/",
     "build:css": "tailwindcss -c ../../tailwind.config.lib.js -i ./src/styles/editor.css -o ./dist/styles.css --minify",
+    "build:embed-css": "node -e \"const fs=require('fs'); const base=fs.existsSync('dist/embed/embed-runtime.css')?fs.readFileSync('dist/embed/embed-runtime.css','utf8'):''; const editor=fs.readFileSync('dist/styles.css','utf8').replace(/url\\(fonts\\//g,'url(../fonts/'); fs.writeFileSync('dist/embed/embed-runtime.css', base + '\\n' + editor);\"",
     "prepublishOnly": "bun run build && sed -e 's|\\./assets/|https://raw.githubusercontent.com/eigenpal/docx-editor/main/assets/|g' -e 's|(packages/|(https://github.com/eigenpal/docx-editor/tree/main/packages/|g' -e 's|(docs/|(https://github.com/eigenpal/docx-editor/blob/main/docs/|g' -e 's|(examples/|(https://github.com/eigenpal/docx-editor/tree/main/examples/|g' ../../README.md > README.md",
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
+    "@hocuspocus/provider": "^2.15.0",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-dropcursor": "^1.8.2",
     "prosemirror-history": "^1.4.0",
@@ -90,22 +99,44 @@
     "prosemirror-transform": "^1.10.2",
     "prosemirror-view": "^1.41.6",
     "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "y-prosemirror": "^1.2.0",
+    "y-websocket": "^2.0.0",
+    "yjs": "^13.6.0"
   },
   "peerDependenciesMeta": {
+    "@hocuspocus/provider": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
     "react-dom": {
       "optional": true
+    },
+    "y-prosemirror": {
+      "optional": true
+    },
+    "y-websocket": {
+      "optional": true
+    },
+    "yjs": {
+      "optional": true
     }
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "@mlc-ai/web-llm": "^0.2.84",
     "@radix-ui/react-select": "^2.2.6",
+    "@schnsrw/core": "^0.1.1",
     "clsx": "^2.1.0",
+    "dictionary-en": "^4.0.0",
+    "nspell": "^2.1.5",
     "sonner": "^2.0.7"
   },
   "devDependencies": {
+    "@hocuspocus/provider": "^2.15.0",
+    "@schnsrw/design-system": "file:../../vendor/design-system",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-dropcursor": "^1.8.2",
     "prosemirror-history": "^1.4.0",
@@ -114,7 +145,10 @@
     "prosemirror-state": "^1.4.3",
     "prosemirror-tables": "^1.8.5",
     "prosemirror-transform": "^1.10.2",
-    "prosemirror-view": "^1.41.6"
+    "prosemirror-view": "^1.41.6",
+    "y-prosemirror": "^1.2.0",
+    "y-websocket": "^2.0.0",
+    "yjs": "^13.6.0"
   },
   "keywords": [
     "docx",
@@ -130,8 +164,8 @@
   "homepage": "https://docx-editor.dev/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eigenpal/docx-editor.git",
-    "directory": "packages/react"
+    "url": "https://github.com/CasualOffice/docs.git",
+    "directory": "docx-editor/packages/react"
   },
   "publishConfig": {
     "access": "public"

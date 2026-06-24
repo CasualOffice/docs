@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { toast } from 'sonner';
 import { useTranslation } from '../../i18n';
+import { Tooltip } from './Tooltip';
 
 // ============================================================================
 // TYPES
@@ -50,10 +51,10 @@ export interface HyperlinkPopupProps {
 const BASE_POPUP_STYLE: CSSProperties = {
   position: 'fixed',
   zIndex: 10000,
-  background: 'white',
+  background: 'var(--doc-surface, white)',
   borderRadius: '8px',
   boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)',
-  border: '1px solid #dadce0',
+  border: '1px solid var(--doc-border, #dadce0)',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   fontSize: '14px',
 };
@@ -77,14 +78,14 @@ const ICON_STYLE: CSSProperties = {
   width: '20px',
   height: '20px',
   flexShrink: 0,
-  color: '#5f6368',
+  color: 'var(--doc-text-muted)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
 const URL_LINK_STYLE: CSSProperties = {
-  color: '#1a73e8',
+  color: 'var(--doc-primary)',
   textDecoration: 'none',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -105,7 +106,7 @@ const ICON_BUTTON_STYLE: CSSProperties = {
   background: 'none',
   borderRadius: '4px',
   cursor: 'pointer',
-  color: '#5f6368',
+  color: 'var(--doc-text-muted)',
   padding: 0,
   flexShrink: 0,
 };
@@ -113,7 +114,7 @@ const ICON_BUTTON_STYLE: CSSProperties = {
 const SEPARATOR_STYLE: CSSProperties = {
   width: '1px',
   height: '20px',
-  background: '#dadce0',
+  background: 'var(--doc-border)',
   flexShrink: 0,
 };
 
@@ -127,7 +128,7 @@ const EDIT_ROW_STYLE: CSSProperties = {
 const EDIT_INPUT_STYLE: CSSProperties = {
   flex: 1,
   padding: '6px 8px',
-  border: '1px solid #dadce0',
+  border: '1px solid var(--doc-border, #dadce0)',
   borderRadius: '4px',
   fontSize: '14px',
   outline: 'none',
@@ -135,7 +136,7 @@ const EDIT_INPUT_STYLE: CSSProperties = {
 };
 
 const APPLY_BUTTON_STYLE: CSSProperties = {
-  color: '#1a73e8',
+  color: 'var(--doc-primary)',
   fontWeight: 600,
   fontSize: '14px',
   border: 'none',
@@ -235,15 +236,17 @@ function PopupIconButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      className="ep-hyperlink-popup__icon-btn"
-      style={ICON_BUTTON_STYLE}
-      title={title}
-      onClick={onClick}
-    >
-      {children}
-    </button>
+    <Tooltip content={title}>
+      <button
+        type="button"
+        className="ep-hyperlink-popup__icon-btn"
+        style={ICON_BUTTON_STYLE}
+        aria-label={title}
+        onClick={onClick}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 }
 
@@ -389,7 +392,7 @@ export function HyperlinkPopup({
             onChange={(e) => setEditText(e.target.value)}
             onKeyDown={handleEditKeyDown}
             placeholder={t('hyperlinkPopup.displayTextPlaceholder')}
-            onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--doc-primary)')}
             onBlur={(e) => (e.target.style.borderColor = '#dadce0')}
           />
         </div>
@@ -406,7 +409,7 @@ export function HyperlinkPopup({
             onChange={(e) => setEditUrl(e.target.value)}
             onKeyDown={handleEditKeyDown}
             placeholder={t('hyperlinkPopup.urlPlaceholder')}
-            onFocus={(e) => (e.target.style.borderColor = '#1a73e8')}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--doc-primary)')}
             onBlur={(e) => (e.target.style.borderColor = '#dadce0')}
           />
           <button

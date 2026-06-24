@@ -235,8 +235,28 @@ export function consolidateRuns(runs: Run[]): Run[] {
   let current: Run | null = null;
 
   for (const run of runs) {
-    // Skip empty runs
-    if (run.content.length === 0) continue;
+    // Empty runs without formatting are noise (`<w:r/>` placeholders),
+    // but an empty run can also be the parser's transient state for a
+    // drawing-bearing run whose <w:drawing> hit a case that returned
+    // null (e.g. wps:wsp with wps:txbx — handled later by
+    // textBoxEnricher). Dropping that run here breaks the index
+    // matching the enricher relies on, so any standalone wps:wsp
+    // anchored shape silently disappears from the document. Preserve
+    // empty runs so the enricher can backfill the shape; the
+    // ProseMirror schema tolerates empty runs and the serializer
+    // re-emits them as `<w:r/>`, so this only inflates the parsed model
+    // by a handful of stub runs per page.
+    if (run.content.length === 0 && !run.formatting) {
+      // Flush any in-progress merge before inserting the placeholder so
+      // the empty run lands between the surrounding text runs (and at
+      // the same index position) — that's what textBoxEnricher needs.
+      if (current !== null) {
+        result.push(current);
+        current = null;
+      }
+      result.push({ ...run, content: [] });
+      continue;
+    }
 
     // If no current run, start with this one
     if (current === null) {

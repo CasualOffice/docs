@@ -210,7 +210,9 @@ function serializeCellMargins(margins: CellMargins | undefined, elementName: str
   }
 
   if (margins.left) {
-    parts.push(serializeMeasurement(margins.left, 'left'));
+    // Re-emit the logical-side name (w:start) when that's what the
+    // source used; otherwise the older physical name (w:left).
+    parts.push(serializeMeasurement(margins.left, margins.useLogicalSides ? 'start' : 'left'));
   }
 
   if (margins.bottom) {
@@ -218,7 +220,7 @@ function serializeCellMargins(margins: CellMargins | undefined, elementName: str
   }
 
   if (margins.right) {
-    parts.push(serializeMeasurement(margins.right, 'right'));
+    parts.push(serializeMeasurement(margins.right, margins.useLogicalSides ? 'end' : 'right'));
   }
 
   if (parts.length === 0) return '';
@@ -875,6 +877,22 @@ export function serializeTable(table: Table): string {
   // Rows
   for (const row of table.rows) {
     parts.push(serializeTableRow(row));
+  }
+
+  // Trailing bookmark markers captured as direct children of <w:tbl>
+  // (after the last <w:tr>) at parse time.
+  if (table.trailingBookmarks) {
+    for (const marker of table.trailingBookmarks) {
+      if (marker.type === 'bookmarkStart') {
+        const colFirst = marker.colFirst !== undefined ? ` w:colFirst="${marker.colFirst}"` : '';
+        const colLast = marker.colLast !== undefined ? ` w:colLast="${marker.colLast}"` : '';
+        parts.push(
+          `<w:bookmarkStart w:id="${marker.id}" w:name="${marker.name}"${colFirst}${colLast}/>`
+        );
+      } else {
+        parts.push(`<w:bookmarkEnd w:id="${marker.id}"/>`);
+      }
+    }
   }
 
   return `<w:tbl>${parts.join('')}</w:tbl>`;

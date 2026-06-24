@@ -5,7 +5,7 @@
  * loading, placeholder, and error states.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n';
 
 // ============================================================================
@@ -13,10 +13,31 @@ import { useTranslation } from '../i18n';
 // ============================================================================
 
 /**
- * Default loading indicator
+ * Default loading indicator. Honest phase labels + elapsed timer so the
+ * user can tell whether a parse is mid-flight or wedged. Phases are
+ * time-based heuristics (we don't currently emit progress from the
+ * parser); the labels switch as time passes so it never looks frozen.
  */
 export function DefaultLoadingIndicator(): React.ReactElement {
   const { t } = useTranslation();
+  const [elapsedMs, setElapsedMs] = useState(0);
+  useEffect(() => {
+    const startedAt = Date.now();
+    const i = window.setInterval(() => setElapsedMs(Date.now() - startedAt), 100);
+    return () => window.clearInterval(i);
+  }, []);
+
+  // Phase labels are time-based. They roughly mirror what the parser
+  // actually does — reading bytes is fast, schema build is the bulk, then
+  // the layout-painter paint is the last leg.
+  let phase = 'Reading document…';
+  if (elapsedMs > 600) phase = 'Parsing…';
+  if (elapsedMs > 2200) phase = 'Building layout…';
+  if (elapsedMs > 6000) phase = 'Still working — large document…';
+
+  const showTimer = elapsedMs >= 1500;
+  const seconds = (elapsedMs / 1000).toFixed(1);
+
   return (
     <div
       style={{
@@ -25,9 +46,13 @@ export function DefaultLoadingIndicator(): React.ReactElement {
         alignItems: 'center',
         justifyContent: 'center',
         height: '100%',
-        gap: '20px',
+        gap: '16px',
         color: 'var(--doc-text-muted)',
       }}
+      role="status"
+      aria-live="polite"
+      aria-label={`${t('errors.loadingDocument')} — ${phase}`}
+      data-testid="loading-indicator"
     >
       <div
         style={{
@@ -46,7 +71,21 @@ export function DefaultLoadingIndicator(): React.ReactElement {
           }
         `}
       </style>
-      <div style={{ fontSize: '14px' }}>{t('errors.loadingDocument')}</div>
+      <div style={{ fontSize: '14px', fontWeight: 500 }}>{t('errors.loadingDocument')}</div>
+      <div style={{ fontSize: '12px', color: 'var(--doc-text-on-surface-muted, #6b7280)' }}>
+        {phase}
+      </div>
+      {showTimer && (
+        <div
+          style={{
+            fontSize: '11px',
+            color: 'var(--doc-text-on-surface-muted, #9ca3af)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {seconds}s elapsed
+        </div>
+      )}
     </div>
   );
 }

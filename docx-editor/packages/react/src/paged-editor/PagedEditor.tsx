@@ -34,8 +34,13 @@ import type { EditorView } from 'prosemirror-view';
 // Internal components
 import { HiddenProseMirror, type HiddenProseMirrorRef } from './HiddenProseMirror';
 import { SelectionOverlay } from './SelectionOverlay';
+import { MobileFormatBar } from '../components/ui/MobileFormatBar';
+import { usePinchZoom } from '../components/hooks/usePinchZoom';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
+import { EndnoteSection } from './EndnoteSection';
 import { DecorationLayer } from './DecorationLayer';
+import { spellcheckPluginKey } from '@eigenpal/docx-core/prosemirror/extensions';
+import { getTableContext } from '@eigenpal/docx-core/prosemirror';
 
 // Layout engine
 import {
@@ -91,6 +96,7 @@ import {
   findBodyPmAnchor,
   findBodyPmAnchors,
   findBodyPmSpans,
+  findHeaderFooterPmAnchor,
 } from '@eigenpal/docx-core/layout-bridge';
 import {
   selectionToRects,
@@ -246,6 +252,24 @@ export interface PagedEditorProps {
   pageGap?: number;
   /** Zoom level (1 = 100%). */
   zoom?: number;
+  /**
+   * Opt-in Word-style rendering quirks (#395). Off by default.
+   *
+   * Currently switches on the "firstRow-only borders close the last body
+   * row" heuristic — Word draws the firstRow's bottom border on the last
+   * cell of a table when the cell has no explicit bottom border of its
+   * own. Other editors (LibreOffice, Google Docs) skip this. Hosts that
+   * want the Word look (e.g. doc-comparison UIs) flip this on; the
+   * default off keeps the renderer faithful to the literal OOXML.
+   *
+   * Threaded straight through to `renderPages` → `RenderPageOptions` →
+   * `RenderContext.wordCompat`.
+   */
+  wordCompat?: boolean;
+  /** Show paragraph marks, tabs, and line breaks as visible glyphs (F6).
+   * CSS-only — adds `paged-editor--show-marks` to the pages container so
+   * `editor.css` can render `¶`, `→`, `↵` via `::before` / `::after`. */
+  showFormattingMarks?: boolean;
   /** Callback when document changes. */
   onDocumentChange?: (document: Document) => void;
   /** Callback when selection changes. */
@@ -254,6 +278,8 @@ export interface PagedEditorProps {
   externalPlugins?: Plugin[];
   /** Extension manager for plugins/schema/commands (optional — falls back to default) */
   extensionManager?: import('@eigenpal/docx-core/prosemirror/extensions').ExtensionManager;
+  /** Accessible name for the off-screen editing surface (screen-reader label). */
+  contentLabel?: string;
   /** Callback when editor is ready. */
   onReady?: (ref: PagedEditorRef) => void;
   /** Callback when rendered DOM context is ready. */
@@ -270,6 +296,22 @@ export interface PagedEditorProps {
   className?: string;
   /** Custom styles. */
   style?: CSSProperties;
+  /** Selection-formatting bitfield (bold/italic/underline/strike/etc).
+   *  When passed, the paged editor renders a floating mobile format
+   *  chip near the selection on phone viewports. Desktop is unaffected. */
+  selectionFormatting?: import('../components/Toolbar').SelectionFormatting;
+  /** Format command sink for the mobile chip. Same shape as Toolbar's onFormat. */
+  onFormat?: (cmd: import('../components/Toolbar').FormattingAction) => void;
+  /** Emit the new zoom value after a phone pinch-zoom gesture. The
+   *  host (DocxEditor) is expected to feed it back via the `zoom` prop. */
+  onZoomChange?: (zoom: number) => void;
+  /** True while a ruler margin marker is being dragged. When set, the
+   *  scroll-restore after the reflow freezes the exact scroll position
+   *  instead of re-anchoring to content — otherwise the margin change
+   *  reflows the page and the viewport chases it, so the page appears to
+   *  scroll out from under the marker as you drag. A ref (not a prop
+   *  value) so toggling it mid-drag doesn't re-render the editor. */
+  marginDraggingRef?: React.RefObject<boolean>;
   /** Whether comments sidebar is open (shifts document left). */
   commentsSidebarOpen?: boolean;
   /** Sidebar overlay rendered inside the scroll container (scrolls with document). */
@@ -300,7 +342,24 @@ export interface PagedEditorProps {
       cssFloat?: 'left' | 'right' | 'none' | null;
       inlinePositionEmu?: { horizontalEmu: number; verticalEmu: number };
     } | null;
+    /**
+     * Populated when the right-click landed on a `.spellcheck-error`
+     * decoration overlay. `word` is the text the spell-check plugin
+     * flagged; the host opens a suggestion menu and uses the range to
+     * dispatch the replacement transaction.
+     */
+    spellcheck?: { from: number; to: number; word: string } | null;
   }) => void;
+  /** Open the contextual Format panel for the currently-selected object
+   *  (image or table). Wired to the on-object "Format" chip. The host
+   *  derives the panel's kind from its own selection context. */
+  onOpenProperties?: () => void;
+  /** Apply a new text box size (node px) from an on-canvas resize-handle drag. */
+  onResizeTextBox?: (width: number, height: number) => void;
+  /** Open the footnote text editor for the footnote double-clicked at page bottom. */
+  onEditFootnote?: (footnoteId: number) => void;
+  /** Open the endnote text editor for the endnote double-clicked at document end. */
+  onEditEndnote?: (endnoteId: number) => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
   onAnchorPositionsChange?: (positions: Map<string, number>) => void;
   /**
@@ -581,18 +640,43 @@ function getColumns(sectionProps: SectionProperties | null | undefined): ColumnL
   if (count <= 1) return undefined;
   // Default column spacing: 720 twips (0.5 inch) per OOXML spec
   const gap = twipsToPixels(sectionProps?.columnSpace ?? 720);
-  return {
+  const cols: ColumnLayout = {
     count,
     gap,
     equalWidth: sectionProps?.equalWidth ?? true,
     separator: sectionProps?.separator,
   };
+  // Unequal columns: carry explicit per-column widths so measurement uses the
+  // true (wider) value-column width instead of an even split. Mirrors the
+  // inner-section path in toFlowBlocks.
+  const colDefs = sectionProps?.columns;
+  if (
+    sectionProps?.equalWidth === false &&
+    colDefs &&
+    colDefs.length === count &&
+    colDefs.every((c) => typeof c.width === 'number' && (c.width as number) > 0)
+  ) {
+    cols.columnWidths = colDefs.map((c) => ({
+      width: twipsToPixels(c.width as number),
+      space: twipsToPixels(c.space ?? 0),
+    }));
+  }
+  return cols;
 }
 
-function columnWidthForSection(config: SectionLayoutConfig): number {
+/**
+ * Body width for column index `colIndex` of a section. With explicit unequal
+ * columns (`w:equalWidth="0"`) returns that column's true width; otherwise the
+ * even split. Single-column sections return full content width.
+ */
+function columnWidthForSection(config: SectionLayoutConfig, colIndex = 0): number {
   const contentWidth = config.pageSize.w - config.margins.left - config.margins.right;
   const cols = config.columns;
   if (!cols || cols.count <= 1) return contentWidth;
+  if (cols.columnWidths && cols.columnWidths.length === cols.count) {
+    const w = cols.columnWidths[Math.min(colIndex, cols.count - 1)]?.width;
+    if (typeof w === 'number' && w > 0) return Math.floor(w);
+  }
   return Math.floor((contentWidth - (cols.count - 1) * cols.gap) / cols.count);
 }
 
@@ -614,13 +698,24 @@ function computePerBlockWidths(
   );
 
   let sectionIdx = 0;
+  // Column index within the current section, advanced by explicit column
+  // breaks so unequal columns measure each block at its own column's width.
+  let colIndex = 0;
   const widths: number[] = [];
 
   for (let i = 0; i < blocks.length; i++) {
-    widths.push(columnWidthForSection(sectionConfigs[sectionIdx] ?? initialConfig));
+    const cfg = sectionConfigs[sectionIdx] ?? initialConfig;
+    widths.push(columnWidthForSection(cfg, colIndex));
+
+    const block = blocks[i];
+    if (block.kind === 'columnBreak') {
+      const count = cfg.columns?.count ?? 1;
+      if (colIndex < count - 1) colIndex += 1;
+    }
 
     if (sectionIdx < breakIndices.length && i === breakIndices[sectionIdx]) {
       sectionIdx++;
+      colIndex = 0; // new section restarts at column 0
     }
   }
 
@@ -630,6 +725,35 @@ function computePerBlockWidths(
 // `isTextWrappingFloatingImageRun` and `emuToPixels` are imported from core. Local
 // duplicates were drifting from the canonical implementations; sharing
 // keeps them in lockstep across React + Vue adapters.
+
+/**
+ * Top body margin (px) once the header content has been accounted for.
+ *
+ * When header content is taller than the gap between the page top and the
+ * header distance, Word pushes body content down to clear it. The body top is
+ * normally `headerDistance + headerContentHeight`, with the authored top margin
+ * (`marginTop`) acting as a floor.
+ *
+ * The negative-top-margin case is the subtle one. `w:pgMar w:top` can be
+ * negative (e.g. medical-incident-form's `w:top="-270"` = −13.5pt). Word reads
+ * that as permission for the header to OVERLAP the body rather than fully
+ * displace it: the negative margin pulls body content up under the header by
+ * |marginTop|. So the clear position is reduced by the negative margin and
+ * clamped to the page edge (never above 0).
+ *
+ * For every positive-top document `Math.min(marginTop, 0)` is 0, so this
+ * reduces to the original `headerDistance + headerContentHeight` push — the
+ * function is provably a no-op for positive-margin docs.
+ */
+export function computeExtendedTopMargin(
+  marginTop: number,
+  headerDistance: number,
+  headerContentHeight: number
+): number {
+  const headerOverlapPull = Math.min(marginTop, 0);
+  const clearTop = Math.max(0, headerDistance + headerContentHeight + headerOverlapPull);
+  return Math.max(marginTop, clearTop);
+}
 
 export function measureTableCellBlockVisualHeight(block: FlowBlock, blockMeasure: Measure): number {
   if (block.kind !== 'paragraph' || blockMeasure.kind !== 'paragraph') {
@@ -1206,6 +1330,7 @@ function buildFootnoteRenderItems(
       items.push({
         displayNumber: String(displayNum),
         text,
+        id: fn.id,
       });
     }
 
@@ -1220,6 +1345,17 @@ function buildFootnoteRenderItems(
 // =============================================================================
 // COMPONENT
 // =============================================================================
+
+/**
+ * Clicks / focus that originate inside a sidebar panel (comment textareas,
+ * tracked-change cards, the unified sidebar) must NOT be yanked back to the
+ * off-screen document editor — otherwise the user could never type in them.
+ * Centralised so every focus-recapture path applies the same exclusion.
+ */
+function isWithinSidebar(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  return !!(el?.closest('.docx-comments-sidebar') || el?.closest('.docx-unified-sidebar'));
+}
 
 /**
  * PagedEditor - Main paginated editing component.
@@ -1239,10 +1375,13 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       readOnly = false,
       pageGap = DEFAULT_PAGE_GAP,
       zoom = 1,
+      wordCompat = false,
+      showFormattingMarks = false,
       onDocumentChange,
       onSelectionChange,
       externalPlugins = EMPTY_PLUGINS,
       extensionManager,
+      contentLabel,
       onReady,
       onRenderedDomContextReady,
       pluginOverlays,
@@ -1251,11 +1390,19 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onBodyClick,
       className,
       style,
+      selectionFormatting,
+      onFormat,
+      onZoomChange,
+      marginDraggingRef,
       commentsSidebarOpen = false,
       sidebarOverlay,
       scrollContainerRef: scrollContainerRefProp,
       onHyperlinkClick,
       onContextMenu,
+      onOpenProperties,
+      onResizeTextBox,
+      onEditFootnote,
+      onEditEndnote,
       onAnchorPositionsChange,
       onTotalPagesChange,
       resolvedCommentIds,
@@ -1272,6 +1419,16 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // Refs
     const containerRef = useRef<HTMLDivElement>(null);
     const pagesContainerRef = useRef<HTMLDivElement>(null);
+
+    // Phone-only: two-finger pinch on the editor area updates zoom.
+    // The hook self-gates via matchMedia('(max-width: 720px)'); on
+    // desktop nothing is attached. Commits the new zoom on touchend.
+    usePinchZoom({
+      target: containerRef.current,
+      zoom: zoom,
+      onZoomChange: onZoomChange ?? (() => undefined),
+      disabled: !onZoomChange,
+    });
     /** Viewport wrapper: sync minHeight/marginBottom in layout pipeline before scroll restore. */
     const viewportLayoutRef = useRef<HTMLDivElement>(null);
     const pendingScrollRestoreRef = useRef<{
@@ -1280,6 +1437,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       scrollTopSnapshot: number | null;
       domAnchorPmStart: number | null;
       domAnchorOffsetInScroller: number;
+      /** When set, restore the exact captured scrollTop and skip the
+       *  ratio/DOM-anchor logic (used during ruler margin drags). */
+      freeze?: boolean;
     } | null>(null);
     const pendingIncrementalScrollSnapshotWrittenAtRef = useRef(0);
     const hiddenPMRef = useRef<HiddenProseMirrorRef>(null);
@@ -1297,6 +1457,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const onDocumentChangeRef = useRef(onDocumentChange);
     const onReadyRef = useRef(onReady);
     const onRenderedDomContextReadyRef = useRef(onRenderedDomContextReady);
+    // Always-current document, read by async layout passes (font-load / rAF
+    // relayout) for doc-level overlays. Without this they close over a stale
+    // `document` and a late relayout can clobber freshly-applied state — e.g.
+    // applying a watermark then a font-triggered relayout dropping it.
+    const documentRef = useRef(document);
     // Last PM state we invoked onSelectionChange for. updateSelectionOverlay
     // runs from ResizeObserver / layout / font-load paths too, not only on real
     // state changes — firing the callback in those cases caused the sidebar
@@ -1310,6 +1475,28 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     onDocumentChangeRef.current = onDocumentChange;
     onReadyRef.current = onReady;
     onRenderedDomContextReadyRef.current = onRenderedDomContextReady;
+    documentRef.current = document;
+    const onEditFootnoteRef = useRef(onEditFootnote);
+    onEditFootnoteRef.current = onEditFootnote;
+    // Double-click a painted footnote at page bottom → open its text editor.
+    useEffect(() => {
+      const el = pagesContainerRef.current;
+      if (!el) return;
+      const onDbl = (e: MouseEvent) => {
+        const fnEl = (e.target as HTMLElement | null)?.closest(
+          '.layout-footnote[data-footnote-id]'
+        ) as HTMLElement | null;
+        if (!fnEl) return;
+        const id = Number(fnEl.dataset.footnoteId);
+        if (!Number.isNaN(id)) {
+          e.preventDefault();
+          e.stopPropagation();
+          onEditFootnoteRef.current?.(id);
+        }
+      };
+      el.addEventListener('dblclick', onDbl);
+      return () => el.removeEventListener('dblclick', onDbl);
+    }, []);
 
     // State
     const [layout, setLayout] = useState<Layout | null>(null);
@@ -1334,6 +1521,26 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // Image selection state
     const [selectedImageInfo, setSelectedImageInfo] = useState<ImageSelectionInfo | null>(null);
     const isImageInteractingRef = useRef(false);
+
+    // Table "Format" chip — overlay-relative {x,y} of the top-right corner of
+    // the table containing the caret, or null when the caret isn't in a table.
+    // Mirrors the image chip; opens the same Format panel via onOpenProperties.
+    const [tableChipPos, setTableChipPos] = useState<{ x: number; y: number } | null>(null);
+
+    // Text box "Format" chip — overlay-relative {x,y} of the top-right corner
+    // of the text box whose content range contains the caret, else null. The
+    // painted `.layout-textbox` carries data-pm-start/end so detection is a
+    // pure DOM range test (no PM walk needed here).
+    const [textBoxChipPos, setTextBoxChipPos] = useState<{
+      x: number;
+      y: number;
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+    } | null>(null);
+    // Live drag preview rect during a textbox resize (viewport-relative px).
+    const [textBoxResize, setTextBoxResize] = useState<{ w: number; h: number } | null>(null);
 
     /** Build ImageSelectionInfo from a DOM element with data-pm-start */
     const buildImageSelectionInfo = useCallback(
@@ -1419,6 +1626,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     // DecorationLayer's resync so plugins like yCursorPlugin (which update
     // decorations on awareness pings — non-doc transactions) propagate.
     const [transactionVersion, setTransactionVersion] = useState(0);
+    // Bumped when the page viewport reflows (e.g. the Format panel opens and
+    // shifts the page) so the image selection overlay re-anchors to its <img>.
+    const [overlayReanchorTick, setOverlayReanchorTick] = useState(0);
 
     // Compute page size and margins
     const pageSize = useMemo(() => getPageSize(sectionProperties), [sectionProperties]);
@@ -1598,7 +1808,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             const extend = (m: PageMargins): PageMargins => {
               const out = { ...m };
               if (extendHeader) {
-                out.top = Math.max(m.top, headerDistance + headerContentHeight);
+                // Negative-top-margin docs let the header overlap the body
+                // instead of fully displacing it; see computeExtendedTopMargin.
+                // Positive-top docs are unaffected (no-op).
+                out.top = computeExtendedTopMargin(m.top, headerDistance, headerContentHeight);
               }
               if (extendFooter) {
                 out.bottom = Math.max(m.bottom, footerDistance + footerContentHeight);
@@ -1747,11 +1960,29 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               ? buildFootnoteRenderItems(pageFootnoteMap, footnoteContentMap, document)
               : undefined;
 
+            // Honor the doc-level `<w:background>` (OOXML §17.2.1)
+            // — Word + Google Docs surface this as "Page color". The
+            // host can still override via its own `pageBackground`
+            // prop; falls back to white when neither is set. The
+            // painter's `applyPageStyles` reads `backgroundColor`
+            // (not `pageBackground`), so we set both keys to keep
+            // `LayoutPainter`'s own `pageBackground` option happy too.
+            // Read doc-level overlays from the ref so a late/async relayout
+            // (font-load, rAF) uses the current document, not a stale closure.
+            const currentDoc = documentRef.current;
+            const docBgColor = currentDoc?.package.document.background?.color?.rgb ?? undefined;
+            const pageBackground = docBgColor ? `#${docBgColor}` : '#fff';
+            // Document-level text watermark (C5). Painter draws it as a
+            // rotated overlay behind the content on every page.
+            const watermark = currentDoc?.package.document.watermark;
+
             // Render pages to container
             const renderPagesKind = renderPages(newLayout.pages, pagesContainerRef.current, {
               pageGap,
               showShadow: true,
-              pageBackground: '#fff',
+              pageBackground,
+              backgroundColor: pageBackground,
+              watermark,
               blockLookup,
               headerContent: headerContentForRender,
               footerContent: footerContentForRender,
@@ -1765,9 +1996,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                 ? twipsToPixels(sectionProperties.footerDistance)
                 : undefined,
               pageBorders: sectionProperties?.pageBorders,
+              lineNumbers: sectionProperties?.lineNumbers,
               theme: _theme,
               footnotesByPage: footnotesByPage?.size ? footnotesByPage : undefined,
               resolvedCommentIds,
+              wordCompat,
             } as RenderPageOptions & {
               pageGap?: number;
               blockLookup?: BlockLookup;
@@ -1786,19 +2019,25 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             }
 
             if (scrollParent?.isConnected) {
+              // While a ruler margin marker is being dragged, freeze the exact
+              // pre-reflow scroll position. The margin change reflows the whole
+              // page; the ratio/DOM-anchor restore would chase the moved content
+              // and scroll the viewport out from under the marker.
+              const freeze = marginDraggingRef?.current === true;
               let ratioForRestore = scrollRestoreRatioPre;
               if (renderPagesKind === 'incremental') {
                 const maxPost = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight);
                 ratioForRestore = scrollParent.scrollTop / maxPost;
               }
               const scrollTopSnapshot =
-                renderPagesKind === 'incremental' ? scrollParent.scrollTop : null;
+                renderPagesKind === 'incremental' || freeze ? scrollParent.scrollTop : null;
               pendingScrollRestoreRef.current = {
                 renderKind: renderPagesKind,
                 ratio: ratioForRestore,
                 scrollTopSnapshot,
                 domAnchorPmStart,
                 domAnchorOffsetInScroller,
+                freeze,
               };
               if (renderPagesKind === 'incremental' && scrollTopSnapshot != null) {
                 pendingIncrementalScrollSnapshotWrittenAtRef.current = performance.now();
@@ -1887,8 +2126,14 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         getScrollContainer() ?? (pagesEl ? findVerticalScrollParentOrRoot(pagesEl) : null);
       if (!pagesEl || !scrollParent?.isConnected) return;
 
-      const { renderKind, ratio, scrollTopSnapshot, domAnchorPmStart, domAnchorOffsetInScroller } =
-        pending;
+      const {
+        renderKind,
+        ratio,
+        scrollTopSnapshot,
+        domAnchorPmStart,
+        domAnchorOffsetInScroller,
+        freeze,
+      } = pending;
 
       const applyRatio = () => {
         const maxAfter = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight);
@@ -1896,7 +2141,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       };
 
       const applyIncrementalSnapshot = (): boolean => {
-        if (renderKind !== 'incremental' || scrollTopSnapshot == null) return false;
+        // `freeze` (ruler drag) restores the exact scrollTop regardless of
+        // renderKind so the page holds still under the dragged marker.
+        if ((renderKind !== 'incremental' && !freeze) || scrollTopSnapshot == null) return false;
         const maxAfter = Math.max(1, scrollParent.scrollHeight - scrollParent.clientHeight);
         scrollParent.scrollTop = Math.min(Math.max(0, scrollTopSnapshot), maxAfter);
         return true;
@@ -2137,6 +2384,90 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
         }
 
+        // Table "Format" chip — anchor to the painted table containing the
+        // caret (top-right corner), mirroring the image chip. Cleared when the
+        // caret leaves any table. getTableContext is the authoritative
+        // in-table test; the DOM lookup only locates the painted box.
+        {
+          const pagesEl = pagesContainerRef.current;
+          const viewportEl = pagesEl?.parentElement;
+          let nextChip: { x: number; y: number } | null = null;
+          if (pagesEl && viewportEl) {
+            let inTable = false;
+            try {
+              inTable = getTableContext(state).isInTable;
+            } catch {
+              inTable = false;
+            }
+            if (inTable) {
+              // Painted cell enclosing the caret = greatest data-pm-start <= from.
+              const cells = pagesEl.querySelectorAll('.layout-table-cell[data-pm-start]');
+              let bestCell: HTMLElement | null = null;
+              let bestStart = -1;
+              for (const c of Array.from(cells)) {
+                const s = Number((c as HTMLElement).dataset.pmStart);
+                if (!Number.isNaN(s) && s <= from && s > bestStart) {
+                  bestStart = s;
+                  bestCell = c as HTMLElement;
+                }
+              }
+              const tableEl = bestCell?.closest('.layout-table') as HTMLElement | null;
+              if (tableEl) {
+                const tRect = tableEl.getBoundingClientRect();
+                const vRect = viewportEl.getBoundingClientRect();
+                nextChip = { x: tRect.right - vRect.left, y: tRect.top - vRect.top };
+              }
+            }
+          }
+          setTableChipPos((prev) => {
+            if (prev === nextChip) return prev;
+            if (prev && nextChip && prev.x === nextChip.x && prev.y === nextChip.y) return prev;
+            return nextChip;
+          });
+        }
+
+        // Text box "Format" chip — anchor to the painted text box whose
+        // [data-pm-start, data-pm-end) range contains the caret.
+        {
+          const pagesEl = pagesContainerRef.current;
+          const viewportEl = pagesEl?.parentElement;
+          let nextTb: typeof textBoxChipPos = null;
+          if (pagesEl && viewportEl) {
+            const boxes = pagesEl.querySelectorAll('.layout-textbox[data-pm-start]');
+            for (const el of Array.from(boxes)) {
+              const htmlEl = el as HTMLElement;
+              const s = Number(htmlEl.dataset.pmStart);
+              const e = Number(htmlEl.dataset.pmEnd);
+              if (!Number.isNaN(s) && !Number.isNaN(e) && from >= s && from < e) {
+                const r = htmlEl.getBoundingClientRect();
+                const v = viewportEl.getBoundingClientRect();
+                nextTb = {
+                  x: r.right - v.left,
+                  y: r.top - v.top,
+                  left: r.left - v.left,
+                  top: r.top - v.top,
+                  width: r.width,
+                  height: r.height,
+                };
+                break;
+              }
+            }
+          }
+          setTextBoxChipPos((prev) => {
+            if (prev === nextTb) return prev;
+            if (
+              prev &&
+              nextTb &&
+              prev.left === nextTb.left &&
+              prev.top === nextTb.top &&
+              prev.width === nextTb.width &&
+              prev.height === nextTb.height
+            )
+              return prev;
+            return nextTb;
+          });
+        }
+
         if (!layout || blocks.length === 0) return;
 
         // Collapsed selection - show caret
@@ -2282,6 +2613,50 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       // NOTE: onSelectionChange removed from dependencies - accessed via ref to prevent infinite loops
     );
 
+    // Re-anchor on-canvas selection chrome (the text-box "Format" chip + blue
+    // box + resize handles) when the page reflows WITHOUT a PM transaction —
+    // most notably when the Format panel opens as a flex sibling and shrinks the
+    // page column. `updateSelectionOverlay` only re-runs on PM selection/doc
+    // changes, so without this the text-box box stayed at the old coordinates
+    // and the user had to close + reopen the panel to realign it. A
+    // ResizeObserver on the pages viewport (the coordinate frame the chip is
+    // measured against) catches the reflow and recomputes. (Images self-heal via
+    // ImageSelectionOverlay's own ResizeObserver.)
+    useEffect(() => {
+      const viewportEl = pagesContainerRef.current?.parentElement;
+      if (!viewportEl || typeof ResizeObserver === 'undefined') return;
+      let raf = 0;
+      const ro = new ResizeObserver(() => {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          const view = hiddenPMRef.current?.getView();
+          if (view) updateSelectionOverlay(view.state);
+          // The reflow re-renders the painted pages, REPLACING the <img> node —
+          // so the image overlay's stored element ref is now detached (its
+          // getBoundingClientRect() returns 0 and the box jumps off-screen).
+          // Re-find the live image for the selection's PM position and rebuild
+          // the selection info so the overlay tracks the new node. Then bump the
+          // tick so the overlay recomputes against it.
+          setSelectedImageInfo((prev) => {
+            if (!prev || prev.element.isConnected) return prev;
+            const root = pagesContainerRef.current;
+            if (!root) return prev;
+            const holder = root.querySelector(`[data-pm-start="${prev.pmPos}"]`);
+            const live = (
+              holder?.tagName === 'IMG' ? holder : (holder?.querySelector('img') ?? holder)
+            ) as HTMLElement | null;
+            return live ? buildImageSelectionInfo(live, prev.pmPos) : prev;
+          });
+          setOverlayReanchorTick((t) => t + 1);
+        });
+      });
+      ro.observe(viewportEl);
+      return () => {
+        ro.disconnect();
+        cancelAnimationFrame(raf);
+      };
+    }, [updateSelectionOverlay, buildImageSelectionInfo]);
+
     // =========================================================================
     // Event Handlers
     // =========================================================================
@@ -2355,8 +2730,17 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           const { selection: sel } = view.state;
           if (sel instanceof NodeSelection && sel.node.type.name === 'image') {
             const pmPos = sel.from;
+            // Header/footer images live in a SEPARATE ProseMirror
+            // document, painted into `.layout-page-header` or
+            // `.layout-page-footer` — the body-scoped lookup misses
+            // them entirely and we'd silently drop the selection
+            // info → no resize handles on HF images (GH #266).
+            // Route through the HF-scoped helper when hfEditMode is
+            // active so handles attach to the correct DOM element.
             const imgEl = pagesContainerRef.current
-              ? findBodyPmAnchor(pagesContainerRef.current, pmPos)
+              ? hfEditMode
+                ? findHeaderFooterPmAnchor(pagesContainerRef.current, pmPos, hfEditMode)
+                : findBodyPmAnchor(pagesContainerRef.current, pmPos)
               : null;
             if (imgEl) {
               setSelectedImageInfo(buildImageSelectionInfo(imgEl, pmPos));
@@ -2368,7 +2752,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
         });
       },
-      [updateSelectionOverlay, zoom, buildImageSelectionInfo, syncCoordinator]
+      [updateSelectionOverlay, zoom, buildImageSelectionInfo, syncCoordinator, hfEditMode]
     );
 
     /**
@@ -2474,6 +2858,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         'layout-block-image',
         'layout-image',
         'layout-page-floating-image',
+        // Floating images anchored inside a table cell paint via the same
+        // renderFloatingImagesLayer helper (so they carry data-pm-start), but
+        // were missing here — clicking one fell through and couldn't select it.
+        'layout-cell-floating-image',
       ];
       const isImageContainer = (el: HTMLElement) =>
         !!el.dataset.pmStart && IMAGE_CONTAINER_CLASSES.some((c) => el.classList.contains(c));
@@ -3562,11 +3950,32 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           ? updatedState.selection.from !== updatedState.selection.to
           : false;
 
+        // Spell-check hit: ask PM directly. `pmPos` is the document
+        // position at the click coords; if the spellcheck plugin has a
+        // decoration covering that position, the user right-clicked a
+        // misspelled word and we surface it to the host so the spell
+        // suggestions menu can open instead of the standard text menu.
+        let spellcheckInfo: { from: number; to: number; word: string } | null = null;
+        if (pmPos !== null) {
+          const sst = spellcheckPluginKey.getState(view.state);
+          if (sst) {
+            const hits = sst.decos.find(pmPos, pmPos);
+            if (hits.length > 0) {
+              const d = hits[0];
+              const word = view.state.doc.textBetween(d.from, d.to, '', '');
+              if (word) {
+                spellcheckInfo = { from: d.from, to: d.to, word };
+              }
+            }
+          }
+        }
+
         onContextMenu({
           x: e.clientX,
           y: e.clientY,
           hasSelection,
           image: imageInfo,
+          spellcheck: spellcheckInfo,
         });
       },
       // `zoom` is read inside `captureInlinePositionEmu` to convert post-
@@ -3580,17 +3989,29 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     /**
      * Handle focus on container - redirect to hidden PM.
      */
+    /**
+     * Single place that claims keyboard focus for the editor: moves DOM focus to
+     * the off-screen ProseMirror (only if it isn't already there, to avoid focus
+     * thrashing) and marks the editor focused so the caret blink, mobile format
+     * chip and image handles all light up. Previously this `focus()` +
+     * `setIsFocused(true)` pair was copy-pasted across every click/key handler,
+     * which made it easy to update one path and desync the others.
+     */
+    const claimEditorFocus = useCallback(() => {
+      if (readOnly) return;
+      if (!hiddenPMRef.current?.isFocused()) {
+        hiddenPMRef.current?.focus();
+      }
+      setIsFocused(true);
+    }, [readOnly]);
+
     const handleContainerFocus = useCallback(
       (e: React.FocusEvent) => {
-        if (readOnly) return;
         // Don't steal focus from sidebar inputs (textareas, inputs, buttons)
-        const target = e.target as HTMLElement;
-        if (target.closest('.docx-comments-sidebar') || target.closest('.docx-unified-sidebar'))
-          return;
-        hiddenPMRef.current?.focus();
-        setIsFocused(true);
+        if (isWithinSidebar(e.target)) return;
+        claimEditorFocus();
       },
-      [readOnly]
+      [claimEditorFocus]
     );
 
     /**
@@ -3657,7 +4078,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
      * to the drop position determined by mouse coordinates.
      */
     const handleImageDragMove = useCallback(
-      (pmPos: number, clientX: number, clientY: number) => {
+      (pmPos: number, clientX: number, clientY: number, grabOffsetX = 0, grabOffsetY = 0) => {
         const view = hiddenPMRef.current?.getView();
         if (!view) return;
 
@@ -3694,9 +4115,12 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             if (!contentEl) return;
 
             const contentRect = contentEl.getBoundingClientRect();
-            // Convert drop coordinates to content-area-relative pixels
-            const dropX = (clientX - contentRect.left) / zoom;
-            const dropY = (clientY - contentRect.top) / zoom;
+            // Convert the image's NEW top-left to content-area-relative pixels.
+            // Subtract the grab offset so the image tracks the pointer instead
+            // of snapping its top-left corner to the cursor (the grabbed point
+            // stays under the cursor, matching the drag ghost and Google Docs).
+            const dropX = (clientX - grabOffsetX - contentRect.left) / zoom;
+            const dropY = (clientY - grabOffsetY - contentRect.top) / zoom;
             const hOffsetEmu = pixelsToEmu(dropX);
             const vOffsetEmu = pixelsToEmu(dropY);
 
@@ -3756,10 +4180,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       (e: React.KeyboardEvent) => {
         if (readOnly) return;
         // Ensure hidden PM is focused if user types
-        if (!hiddenPMRef.current?.isFocused()) {
-          hiddenPMRef.current?.focus();
-          setIsFocused(true);
-        }
+        claimEditorFocus();
 
         // Prevent space from scrolling the container - let PM handle it as text input.
         // During IME composition, let the browser handle space natively to avoid
@@ -3798,7 +4219,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           if (sc) sc.scrollTop = sc.scrollHeight;
         }
       },
-      [readOnly, getScrollContainer]
+      [readOnly, getScrollContainer, claimEditorFocus]
     );
 
     /**
@@ -3806,20 +4227,12 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
      */
     const handleContainerMouseDown = useCallback(
       (e: React.MouseEvent) => {
-        if (readOnly) return;
         // Don't steal focus from sidebar inputs
-        if (
-          (e.target as HTMLElement).closest('.docx-comments-sidebar') ||
-          (e.target as HTMLElement).closest('.docx-unified-sidebar')
-        )
-          return;
+        if (isWithinSidebar(e.target)) return;
         // Focus hidden PM if clicking outside pages area
-        if (!hiddenPMRef.current?.isFocused()) {
-          hiddenPMRef.current?.focus();
-          setIsFocused(true);
-        }
+        claimEditorFocus();
       },
-      [readOnly]
+      [claimEditorFocus]
     );
 
     // =========================================================================
@@ -3833,6 +4246,41 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       (view: EditorView) => {
         runLayoutPipeline(view.state);
         updateSelectionOverlay(view.state);
+
+        // IME caret sync. The hidden ProseMirror lives off-screen
+        // (HIDDEN_HOST_STYLES, left:-9999px), so during CJK/JA/KO composition the
+        // OS candidate window — which tracks the contenteditable caret — appears
+        // off-screen and the user can't see what they're composing. During
+        // composition, translate the (opacity:0) hidden host so its caret aligns
+        // with the painted/visual caret, putting the candidate window in the
+        // right place; clear the translate when composition ends. The host stays
+        // opacity:0 so nothing extra becomes visible, and these listeners fire
+        // ONLY during composition — Latin typing is completely unaffected.
+        const imeHost = view.dom.closest('.paged-editor__hidden-pm') as HTMLElement | null;
+        const syncImeCaret = () => {
+          if (!imeHost) return;
+          // Measure in un-translated space first so repeated compositionupdate
+          // events don't compound the offset.
+          imeHost.style.transform = '';
+          // NB: `document` is shadowed by the OOXML Document prop in this
+          // component — use the view's owner document for DOM queries.
+          const caretEl = view.dom.ownerDocument.querySelector('[data-testid="caret"]');
+          if (!caretEl) return;
+          const vr = caretEl.getBoundingClientRect();
+          let hc: { left: number; top: number };
+          try {
+            hc = view.coordsAtPos(view.state.selection.head);
+          } catch {
+            return;
+          }
+          imeHost.style.transform = `translate(${vr.left - hc.left}px, ${vr.top - hc.top}px)`;
+        };
+        const clearImeCaret = () => {
+          if (imeHost) imeHost.style.transform = '';
+        };
+        view.dom.addEventListener('compositionstart', syncImeCaret);
+        view.dom.addEventListener('compositionupdate', syncImeCaret);
+        view.dom.addEventListener('compositionend', clearImeCaret);
 
         // Auto-focus the editor so the user can start typing immediately
         if (!readOnly) {
@@ -4045,6 +4493,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           onSelectionChange={handleSelectionChange}
           externalPlugins={externalPlugins}
           extensionManager={extensionManager}
+          ariaLabel={contentLabel}
           onEditorViewReady={handleEditorViewReady}
           onKeyDown={handlePMKeyDown}
         />
@@ -4052,6 +4501,18 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         {/* Viewport for visible pages */}
         <div
           ref={viewportLayoutRef}
+          onContextMenu={(e) => {
+            // Catch right-clicks on overlays that sit OUTSIDE
+            // `.paged-editor__pages` (DecorationLayer, decoration spans
+            // like `.spellcheck-error`). The inner pages-container
+            // handler already preventDefaulted these for clicks on the
+            // pages themselves — that branch returns early via the
+            // `defaultPrevented` guard so we don't double-fire.
+            if (e.defaultPrevented) return;
+            const target = e.target as HTMLElement | null;
+            if (target?.closest('.paged-editor__pages')) return;
+            handlePagesContextMenu(e);
+          }}
           style={{
             ...viewportStyles,
             minHeight: totalHeight,
@@ -4074,7 +4535,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           {/* Pages container */}
           <div
             ref={pagesContainerRef}
-            className={`paged-editor__pages${readOnly ? ' paged-editor--readonly' : ''}${hfEditMode ? ` paged-editor--hf-editing paged-editor--editing-${hfEditMode}` : ''}`}
+            className={`paged-editor__pages${readOnly ? ' paged-editor--readonly' : ''}${hfEditMode ? ` paged-editor--hf-editing paged-editor--editing-${hfEditMode}` : ''}${showFormattingMarks ? ' paged-editor--show-marks' : ''}`}
             style={pagesContainerStyles}
             onMouseDown={handlePagesMouseDown}
             onMouseMove={handlePagesMouseMove}
@@ -4082,6 +4543,16 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             onContextMenu={handlePagesContextMenu}
             aria-hidden="true" // Visual only, PM provides semantic content
           />
+
+          {/* Endnotes — rendered after the last page (the layout-painter has no
+              endnote area). Double-click an entry to edit it. */}
+          {document?.package?.endnotes && document.package.endnotes.length > 0 && (
+            <EndnoteSection
+              endnotes={document.package.endnotes}
+              width={layout?.pages[0]?.size.w}
+              onEditEndnote={onEditEndnote}
+            />
+          )}
 
           {/* Selection overlay */}
           <SelectionOverlay
@@ -4092,10 +4563,39 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             readOnly={readOnly}
           />
 
+          {/* Floating format chip — appears above a non-collapsed
+           *  selection. Two variants render simultaneously; the
+           *  component's internal viewport gate picks the right one
+           *  (mobile chip on phones, smaller pill on desktop). Reads
+           *  its own viewport-fixed coordinates from the selection-
+           *  overlay rect; we just pass the overlay-local rects + zoom. */}
+          {!readOnly && selectionFormatting && onFormat && (
+            <>
+              <MobileFormatBar
+                rects={selectionRects}
+                formatting={selectionFormatting}
+                onFormat={onFormat}
+                visible={isFocused && selectionRects.length > 0}
+                zoom={zoom}
+                variant="mobile"
+              />
+              <MobileFormatBar
+                rects={selectionRects}
+                formatting={selectionFormatting}
+                onFormat={onFormat}
+                visible={isFocused && selectionRects.length > 0}
+                zoom={zoom}
+                variant="desktop"
+              />
+            </>
+          )}
+
           {/* Image selection overlay */}
           <ImageSelectionOverlay
             imageInfo={selectedImageInfo}
             zoom={zoom}
+            panelOpen={commentsSidebarOpen}
+            reanchorTick={overlayReanchorTick}
             isFocused={isFocused}
             onResize={handleImageResize}
             onResizeStart={handleImageResizeStart}
@@ -4104,12 +4604,209 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             onDragStart={handleImageDragStart}
             onDragEnd={handleImageDragEnd}
             onContextMenu={handlePagesContextMenu}
+            onOpenProperties={onOpenProperties}
           />
+
+          {/* Table "Format" chip — top-right of the table containing the
+              caret. Opens the same contextual Format panel as the image chip
+              (host derives table vs image from its selection context). */}
+          {onOpenProperties && tableChipPos && isFocused && (
+            <button
+              type="button"
+              data-testid="table-format-chip"
+              aria-label="Format table"
+              title="Format"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenProperties();
+              }}
+              style={{
+                position: 'absolute',
+                left: tableChipPos.x,
+                top: tableChipPos.y - 14,
+                transform: 'translateX(-100%)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                height: 26,
+                padding: '0 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: '26px',
+                color: '#fff',
+                background: '#2563eb',
+                border: 'none',
+                borderRadius: 13,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                cursor: 'pointer',
+                zIndex: 201,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+              </svg>
+              Format
+            </button>
+          )}
+
+          {/* Text box "Format" chip — top-right of the box containing the
+              caret. Opens the same contextual Format panel (host derives the
+              textbox kind from its selection context). */}
+          {onOpenProperties && textBoxChipPos && isFocused && (
+            <button
+              type="button"
+              data-testid="textbox-format-chip"
+              aria-label="Format text box"
+              title="Format"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onOpenProperties();
+              }}
+              style={{
+                position: 'absolute',
+                left: textBoxChipPos.x,
+                top: textBoxChipPos.y - 14,
+                transform: 'translateX(-100%)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                height: 26,
+                padding: '0 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: '26px',
+                color: '#fff',
+                background: '#2563eb',
+                border: 'none',
+                borderRadius: 13,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                cursor: 'pointer',
+                zIndex: 201,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+              </svg>
+              Format
+            </button>
+          )}
+
+          {/* Text box resize handles — border outline + 4 corner grips. Drag a
+              corner to resize the box (resize-only; no move). Mirrors the image
+              overlay. The new size is converted from screen px to node px via
+              the live zoom and applied through onResizeTextBox. */}
+          {onResizeTextBox &&
+            textBoxChipPos &&
+            isFocused &&
+            (() => {
+              const box = textBoxResize
+                ? { ...textBoxChipPos, width: textBoxResize.w, height: textBoxResize.h }
+                : textBoxChipPos;
+              const startResize = (corner: 'nw' | 'ne' | 'se' | 'sw', e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const sx = e.clientX;
+                const sy = e.clientY;
+                const sw = textBoxChipPos.width;
+                const sh = textBoxChipPos.height;
+                const signX = corner.includes('w') ? -1 : 1;
+                const signY = corner.includes('n') ? -1 : 1;
+                let fw = sw;
+                let fh = sh;
+                const move = (me: MouseEvent) => {
+                  fw = Math.max(40, sw + (me.clientX - sx) * signX);
+                  fh = Math.max(24, sh + (me.clientY - sy) * signY);
+                  setTextBoxResize({ w: fw, h: fh });
+                };
+                const up = () => {
+                  window.removeEventListener('mousemove', move);
+                  window.removeEventListener('mouseup', up);
+                  setTextBoxResize(null);
+                  // screen px -> node px via zoom
+                  onResizeTextBox(Math.round(fw / zoom), Math.round(fh / zoom));
+                };
+                window.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', up);
+              };
+              const HS = 9;
+              const corners: Array<['nw' | 'ne' | 'se' | 'sw', number, number, string]> = [
+                ['nw', box.left, box.top, 'nwse-resize'],
+                ['ne', box.left + box.width, box.top, 'nesw-resize'],
+                ['se', box.left + box.width, box.top + box.height, 'nwse-resize'],
+                ['sw', box.left, box.top + box.height, 'nesw-resize'],
+              ];
+              return (
+                <>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: box.left,
+                      top: box.top,
+                      width: box.width,
+                      height: box.height,
+                      // Subtle while editing text inside; the corner grips carry
+                      // the resize affordance without a heavy frame.
+                      border: textBoxResize
+                        ? '1.5px solid #2563eb'
+                        : '1px dashed rgba(37,99,235,0.45)',
+                      pointerEvents: 'none',
+                      zIndex: 199,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  {corners.map(([c, cx, cy, cursor]) => (
+                    <div
+                      key={c}
+                      data-testid={`textbox-resize-${c}`}
+                      onMouseDown={(e) => startResize(c, e)}
+                      style={{
+                        position: 'absolute',
+                        left: cx - HS / 2,
+                        top: cy - HS / 2,
+                        width: HS,
+                        height: HS,
+                        background: '#fff',
+                        border: '1.5px solid #2563eb',
+                        borderRadius: 2,
+                        cursor,
+                        pointerEvents: 'auto',
+                        zIndex: 200,
+                      }}
+                    />
+                  ))}
+                </>
+              );
+            })()}
 
           {/* Table quick action insert button */}
           {tableInsertButton && (
             <button
               type="button"
+              className="ep-focus-ring"
               onMouseDown={handleTableInsertClick}
               onMouseEnter={clearTableInsertTimer}
               onMouseLeave={() => setTableInsertButton(null)}
@@ -4120,9 +4817,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                 width: 20,
                 height: 20,
                 borderRadius: '4px',
-                border: '1px solid #dadce0',
-                backgroundColor: '#f8f9fa',
-                color: '#5f6368',
+                border: '1px solid var(--doc-border, #dadce0)',
+                backgroundColor: 'var(--doc-surface)',
+                color: 'var(--doc-text-on-surface-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

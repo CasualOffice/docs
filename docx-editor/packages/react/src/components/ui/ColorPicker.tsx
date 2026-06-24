@@ -86,13 +86,13 @@ const S_BUTTON: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 
 const S_DROPDOWN: CSSProperties = {
   padding: '10px',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--doc-surface, white)',
   border: '1px solid #d0d0d0',
   borderRadius: '6px',
   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
@@ -124,7 +124,7 @@ const S_CELL: CSSProperties = {
   borderRadius: '2px',
   cursor: 'pointer',
   padding: 0,
-  transition: 'transform 0.1s, border-color 0.1s',
+  transition: 'transform var(--doc-anim-fast), border-color var(--doc-anim-fast)',
 };
 
 const S_CELL_HOVER: CSSProperties = {
@@ -149,7 +149,7 @@ const S_AUTO_BUTTON: CSSProperties = {
   padding: '5px 8px',
   border: '1px solid #d0d0d0',
   borderRadius: '4px',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--doc-surface, white)',
   cursor: 'pointer',
   fontSize: '12px',
   color: '#333',
@@ -165,7 +165,7 @@ const S_HEX_INPUT: CSSProperties = {
   width: '70px',
   height: '24px',
   padding: '2px 6px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border, #ccc)',
   borderRadius: '3px',
   fontSize: '12px',
 };
@@ -173,18 +173,24 @@ const S_HEX_INPUT: CSSProperties = {
 const S_APPLY_BTN: CSSProperties = {
   height: '24px',
   padding: '0 10px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border, #ccc)',
   borderRadius: '3px',
-  backgroundColor: '#f5f5f5',
+  backgroundColor: 'var(--doc-bg-subtle, #f5f5f5)',
+  color: 'var(--doc-text-on-surface)',
   fontSize: '12px',
   cursor: 'pointer',
 };
 
 const S_COLOR_BAR: CSSProperties = {
-  width: '16px',
-  height: '4px',
+  // Tighter, more polished indicator strip beneath the icon. The old
+  // 16×4 px with marginTop -2 made the bar overlap the icon by 2 px
+  // and look chunky next to the rest of the toolbar (UX-EDITOR-3:
+  // user feedback "highlight button and all CSS is messed up"). 18×3
+  // sits cleanly below the 18 px icon with a 1 px breathing gap.
+  width: '18px',
+  height: '3px',
   borderRadius: '1px',
-  marginTop: '-2px',
+  marginTop: '1px',
 };
 
 // ── Split-button styles ─────────────────────────────────────────────────────
@@ -210,7 +216,7 @@ const S_SPLIT_APPLY_BTN: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 
@@ -224,7 +230,7 @@ const S_SPLIT_ARROW_BTN: CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'transparent',
   cursor: 'pointer',
-  transition: 'background-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast)',
   color: 'var(--doc-text-muted)',
 };
 
@@ -657,10 +663,10 @@ export function ColorPicker({
                     display: 'inline-block',
                     width: '16px',
                     height: '16px',
-                    border: '1px solid #ccc',
+                    border: '1px solid var(--doc-border, #ccc)',
                     borderRadius: '2px',
                     position: 'relative',
-                    backgroundColor: '#fff',
+                    backgroundColor: 'var(--doc-surface, white)',
                   }}
                 >
                   <span

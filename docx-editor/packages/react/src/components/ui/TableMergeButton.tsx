@@ -43,7 +43,7 @@ export function TableMergeButton({
         variant="ghost"
         size="icon-sm"
         className={cn(
-          'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80',
+          'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
           (disabled || !canMerge) && 'opacity-30 cursor-not-allowed'
         )}
         onMouseDown={handleMouseDown}
@@ -63,7 +63,7 @@ export function TableMergeButton({
         variant="ghost"
         size="icon-sm"
         className={cn(
-          'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80',
+          'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
           (disabled || !canSplit) && 'opacity-30 cursor-not-allowed'
         )}
         onMouseDown={handleMouseDown}

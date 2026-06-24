@@ -18,7 +18,9 @@
     "dismiss": "Verwerfen",
     "change": "Ändern",
     "px": "px",
-    "closeDialog": "Dialogfeld schließen"
+    "closeDialog": "Dialogfeld schließen",
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "Formatierungssymbolleiste",
@@ -40,7 +42,54 @@
     "open": "Öffnen",
     "openShortcut": "Strg+O",
     "save": "Speichern",
-    "saveShortcut": "Strg+S"
+    "saveShortcut": "Strg+S",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null,
+    "paragraph": null,
+    "bordersAndShading": null,
+    "customSpacing": null,
+    "footnote": null,
+    "horizontalLine": null,
+    "specialCharacters": null,
+    "keyboardShortcuts": null,
+    "searchMenus": null,
+    "makeCopy": null,
+    "preferences": null,
+    "tools": null,
+    "watermark": null,
+    "accessibility": null,
+    "buildingBlocks": null,
+    "showFormattingMarks": null,
+    "wordCount": null,
+    "convertToTable": null,
+    "emailAsAttachment": null,
+    "convertToText": null,
+    "dictionary": null,
+    "translate": null,
+    "explore": null,
+    "citations": null,
+    "shape": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null,
+    "showOutline": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +125,11 @@
     "subscriptShortcut": "Tiefgestellt (Strg+=)",
     "imageProperties": "Bildeigenschaften",
     "imagePropertiesShortcut": "Bildeigenschaften (Alternativtext, Rahmen)...",
-    "clearFormatting": "Formatierung löschen"
+    "clearFormatting": "Formatierung löschen",
+    "allCaps": null,
+    "smallCaps": null,
+    "addComment": null,
+    "paintFormat": null
   },
   "alignment": {
     "alignLeft": "Linksbündig",
@@ -203,7 +256,8 @@
       "replaceAllTitle": "Alle Treffer ersetzen",
       "matchCase": "Groß-/Kleinschreibung beachten",
       "wholeWords": "Nur ganzes Wort suchen",
-      "toggleReplace": "+ Ersetzen"
+      "toggleReplace": "+ Ersetzen",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "Hyperlink bearbeiten",
@@ -346,7 +400,9 @@
         "a5": "A5 (5,83\" × 8,27\")",
         "b5": "B5 (6,93\" × 9,84\")",
         "executive": "Executive (7,25\" × 10,5\")"
-      }
+      },
+      "pageColor": null,
+      "pageColorReset": null
     },
     "tableProperties": {
       "title": "Tabelleneigenschaften",
@@ -366,7 +422,9 @@
         "left": "Links",
         "center": "Zentriert",
         "right": "Rechts"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "Inhalte einfügen",
@@ -502,11 +560,114 @@
         "resetZoom": "Zoom zurücksetzen",
         "resetZoomDescription": "Zoom auf 100 % zurücksetzen",
         "keyboardShortcuts": "Tastenkombinationen",
-        "keyboardShortcutsDescription": "Dieses Hilfedialogfeld anzeigen"
+        "keyboardShortcutsDescription": "Dieses Hilfedialogfeld anzeigen",
+        "bulletList": null,
+        "bulletListDescription": null,
+        "commandPalette": null,
+        "commandPaletteDescription": null,
+        "cycleMode": null,
+        "cycleModeDescription": null,
+        "dictionary": null,
+        "dictionaryDescription": null,
+        "startComment": null,
+        "startCommentDescription": null,
+        "wordCount": null,
+        "wordCountDescription": null,
+        "documentOutline": null,
+        "documentOutlineDescription": null,
+        "pageBreak": null,
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "Keine Tastenkombinationen für \"{query}\" gefunden",
       "pressEscToClose": "{key} drücken, um zu schließen",
       "or": "oder"
+    },
+    "bookmarks": {
+      "goTo": null,
+      "noBookmarks": null,
+      "title": null,
+      "addPlaceholder": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
+    },
+    "bordersShading": {
+      "color": null,
+      "colorHex": null,
+      "fill": null,
+      "fillColor": null,
+      "fillHex": null,
+      "lineStyle": null,
+      "noFill": null,
+      "pattern": null,
+      "patternClear": null,
+      "patternSolid": null,
+      "presetBox": null,
+      "presetNone": null,
+      "setting": null,
+      "side": {
+        "bottom": null,
+        "left": null,
+        "right": null,
+        "top": null
+      },
+      "sides": null,
+      "style": null,
+      "styleDashed": null,
+      "styleDotted": null,
+      "styleDouble": null,
+      "styleSingle": null,
+      "styleThick": null,
+      "styleTriple": null,
+      "tabBorders": null,
+      "tabShading": null,
+      "title": null,
+      "widthPt": null
+    },
+    "customSpacing": {
+      "afterPt": null,
+      "atPt": null,
+      "beforePt": null,
+      "contextualSpacing": null,
+      "keepLines": null,
+      "keepNext": null,
+      "lineSpacing": null,
+      "multipleOf": null,
+      "pageBreakBefore": null,
+      "pagination": null,
+      "paragraphSpacing": null,
+      "rule": null,
+      "rule_atLeast": null,
+      "rule_auto": null,
+      "rule_exact": null,
+      "title": null,
+      "widowControl": null
+    },
+    "wordCount": {
+      "characters": null,
+      "charactersNoSpaces": null,
+      "pages": null,
+      "paragraphs": null,
+      "title": null,
+      "words": null,
+      "readingTime": null
     }
   },
   "comments": {
@@ -517,14 +678,19 @@
     "unknown": "Unbekannt",
     "addComment": "Kommentar hinzufügen...",
     "replyPlaceholder": "Antworten oder andere mit @ erwähnen",
-    "replyCount": "{count, plural, one {# Antwort} other {# Antworten}}"
+    "replyCount": "{count, plural, one {# Antwort} other {# Antworten}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "Unbekannt",
     "replaced": "Ersetzt",
     "with": "durch",
     "added": "Hinzugefügt",
-    "deleted": "Gelöscht"
+    "deleted": "Gelöscht",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "KI-Aktionsmenü",
@@ -561,7 +727,9 @@
     "closeAriaLabel": "Gliederung schließen",
     "closeTitle": "Gliederung schließen",
     "title": "Gliederung",
-    "noHeadings": "Keine Überschriften gefunden. Fügen Sie Ihrem Dokument Überschriften hinzu, um sie hier anzuzeigen."
+    "noHeadings": "Keine Überschriften gefunden. Fügen Sie Ihrem Dokument Überschriften hinzu, um sie hier anzuzeigen.",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "Anmerkungsleiste"
@@ -664,7 +832,11 @@
     "alignTableCenter": "Tabelle zentrieren",
     "alignTableRight": "Tabelle rechts ausrichten",
     "tableOptionsMenu": "Tabellenoptionsmenü",
-    "tableOptions": "Tabellenoptionen"
+    "tableOptions": "Tabellenoptionen",
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "Transformieren",
@@ -723,7 +895,8 @@
     "failedToParse": "Dokument konnte nicht verarbeitet werden",
     "linkRemoved": "Link entfernt",
     "linkCopied": "Link in Zwischenablage kopiert",
-    "failedToSave": "Dokument konnte nicht gespeichert werden"
+    "failedToSave": "Dokument konnte nicht gespeichert werden",
+    "contentLabel": null
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "Anzuzeigender Text",
@@ -739,7 +912,9 @@
     "insertPageNumber": "Aktuelle Seitenzahl einfügen",
     "insertTotalPages": "Gesamtseitenzahl einfügen",
     "remove": "{label} entfernen",
-    "closeEditing": "{label}-Bearbeitung schließen"
+    "closeEditing": "{label}-Bearbeitung schließen",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "Bildplatzhalter",
@@ -788,5 +963,18 @@
   },
   "viewer": {
     "pageIndicator": "{current} von {total}"
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
+  },
+  "suggestingBanner": {
+    "body": null,
+    "switchToEditing": null,
+    "title": null
   }
 }

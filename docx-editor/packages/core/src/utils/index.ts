@@ -112,6 +112,10 @@ export {
 export { collectHeadings } from './headingCollector';
 export type { HeadingInfo } from './headingCollector';
 
+// Accessibility check (D8)
+export { checkAccessibility } from './accessibilityCheck';
+export type { AccessibilityIssue } from './accessibilityCheck';
+
 // Insert operations
 export {
   createPageBreak,

@@ -270,6 +270,29 @@ describe('Layout Engine - Page Production', () => {
       expect(layout.pages[1].fragments.length).toBe(1);
     });
 
+    test('column break does NOT create a new page in single-column layout', () => {
+      // A `<w:br w:type="column"/>` in a single-column section has no next
+      // column to advance to, so Word keeps the following content on the same
+      // page. The paginator must treat it as a no-op rather than spilling onto
+      // a fresh page (regression guard: column breaks were collapsing into page
+      // breaks and inflating the SDS page count 18 → 22).
+      const blocks: FlowBlock[] = [
+        makeParagraphBlock(0, 'Before column break', 1),
+        { kind: 'columnBreak', id: 1, pmStart: 19, pmEnd: 20 },
+        makeParagraphBlock(2, 'After column break', 21),
+      ];
+      const measures: Measure[] = [
+        makeParagraphMeasure([makeLine(0, 0, 0, 18, 150, 24)]),
+        { kind: 'columnBreak' },
+        makeParagraphMeasure([makeLine(0, 0, 0, 17, 140, 24)]),
+      ];
+
+      const layout = layoutDocument(blocks, measures, makeLayoutOptions());
+
+      expect(layout.pages.length).toBe(1);
+      expect(layout.pages[0].fragments.length).toBe(2);
+    });
+
     test('pageBreakBefore attribute creates new page', () => {
       const blocks: FlowBlock[] = [
         makeParagraphBlock(0, 'First paragraph', 1),
@@ -948,7 +971,7 @@ describe('Layout Engine - Contextual Spacing', () => {
 
     const frags = layout.pages[0].fragments;
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(13); // max(13, 5)
+    expect(gap).toBe(18); // 13 + 5 (Word adds spaceAfter + spaceBefore)
   });
 
   test('does NOT suppress spacing when styles differ', () => {
@@ -975,7 +998,7 @@ describe('Layout Engine - Contextual Spacing', () => {
     const frags = layout.pages[0].fragments;
     // Different styles — spacing should NOT be suppressed
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(13); // max(13, 5)
+    expect(gap).toBe(18); // 13 + 5 (Word adds spaceAfter + spaceBefore)
   });
 
   test('does NOT suppress when only one paragraph has contextualSpacing', () => {
@@ -1001,7 +1024,7 @@ describe('Layout Engine - Contextual Spacing', () => {
 
     const frags = layout.pages[0].fragments;
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(13); // max(13, 5)
+    expect(gap).toBe(18); // 13 + 5 (Word adds spaceAfter + spaceBefore)
   });
 
   test('suppresses spacing in a chain of 3+ same-style paragraphs', () => {
@@ -1079,17 +1102,17 @@ describe('Layout Engine - Contextual Spacing', () => {
     const frags = layout.pages[0].fragments;
     expect(frags.length).toBe(4);
 
-    // Normal → Bullet: no contextualSpacing, max(13, 5)
+    // Normal → Bullet: no contextualSpacing, 13 + 5 (Word sums)
     const gap0to1 = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap0to1).toBe(13);
+    expect(gap0to1).toBe(18);
 
     // Bullet → Bullet: both contextual, same style → suppressed
     const gap1to2 = frags[2].y - (frags[1].y + frags[1].height);
     expect(gap1to2).toBe(0);
 
-    // Bullet → Normal: Normal lacks contextualSpacing, max(13, 5)
+    // Bullet → Normal: Normal lacks contextualSpacing, 13 + 5 (Word sums)
     const gap2to3 = frags[3].y - (frags[2].y + frags[2].height);
-    expect(gap2to3).toBe(13);
+    expect(gap2to3).toBe(18);
   });
 
   test('does NOT suppress when styleId is undefined', () => {
@@ -1116,6 +1139,127 @@ describe('Layout Engine - Contextual Spacing', () => {
     const frags = layout.pages[0].fragments;
     // Without styleId, contextual spacing should NOT be applied
     const gap = frags[1].y - (frags[0].y + frags[0].height);
-    expect(gap).toBe(10); // max(10, 5)
+    expect(gap).toBe(15); // 10 + 5 (Word adds spaceAfter + spaceBefore)
+  });
+});
+
+// =============================================================================
+// TEST SUITE: Behind-doc anchored text box reserves flow space (B2 / SDS)
+// =============================================================================
+
+describe('Layout Engine - Behind-doc anchored text box flow reservation', () => {
+  type TbAnchor = NonNullable<import('./types').TextBoxBlock['anchor']>;
+
+  function makeTextBoxBlock(
+    id: number,
+    height: number,
+    anchor: TbAnchor | undefined
+  ): import('./types').TextBoxBlock {
+    return {
+      kind: 'textBox',
+      id,
+      width: 200,
+      height,
+      content: [],
+      anchor,
+    };
+  }
+
+  function makeTextBoxMeasure(width: number, height: number): import('./types').TextBoxMeasure {
+    return { kind: 'textBox', width, height, innerMeasures: [] };
+  }
+
+  /** A behind-doc, paragraph-V-relative anchor (the SDS hazard-box family). */
+  function behindParaAnchor(offsetV: number): TbAnchor {
+    return {
+      offsetH: 30,
+      offsetV,
+      relFromH: 'page',
+      relFromV: 'paragraph',
+      behindDoc: true,
+    };
+  }
+
+  function layoutWithTrailingParagraph(
+    boxes: Array<{ height: number; anchor: TbAnchor | undefined }>
+  ): { firstY: number; trailingY: number } {
+    const blocks: FlowBlock[] = [
+      makeParagraphBlock(0, 'Heading', 1),
+      ...boxes.map((b, i) => makeTextBoxBlock(100 + i, b.height, b.anchor)),
+      makeParagraphBlock(200, 'After', 100),
+    ];
+    const measures: Measure[] = [
+      makeParagraphMeasure([makeLine(0, 0, 0, 7, 100, 20)]),
+      ...boxes.map((b) => makeTextBoxMeasure(200, b.height)),
+      makeParagraphMeasure([makeLine(0, 0, 0, 5, 100, 20)]),
+    ];
+    const layout = layoutDocument(blocks, measures, makeLayoutOptions());
+    const frags = layout.pages[0].fragments;
+    const headingFrag = frags.find((f) => f.kind === 'paragraph' && f.blockId === 0)!;
+    const trailingFrag = frags.find((f) => f.kind === 'paragraph' && f.blockId === 200)!;
+    return { firstY: headingFrag.y + headingFrag.height, trailingY: trailingFrag.y };
+  }
+
+  test('a tall behind-doc paragraph-anchored group reserves its bottom extent ONCE', () => {
+    // Mirrors the SDS hazard group: three children sharing one anchor,
+    // offsets 32/34/93, heights 50/48/31 → deepest bottom = 93 + 31 = 124.
+    const { firstY, trailingY } = layoutWithTrailingParagraph([
+      { height: 48, anchor: behindParaAnchor(34) },
+      { height: 50, anchor: behindParaAnchor(32) },
+      { height: 31, anchor: behindParaAnchor(93) },
+    ]);
+    // The trailing paragraph flows BELOW the reserved band (124px), not at the
+    // heading's bottom — and the reservation is applied once, not summed per
+    // child (which would be ~250px).
+    expect(trailingY - firstY).toBeCloseTo(124, 0);
+  });
+
+  test('a hairline divider (height 1) reserves no space', () => {
+    const { firstY, trailingY } = layoutWithTrailingParagraph([
+      { height: 1, anchor: behindParaAnchor(6) },
+    ]);
+    expect(trailingY).toBeCloseTo(firstY, 0);
+  });
+
+  test('a page-relative behind-doc shape (watermark) reserves no space', () => {
+    const { firstY, trailingY } = layoutWithTrailingParagraph([
+      {
+        height: 200,
+        anchor: { offsetH: 30, offsetV: 100, relFromH: 'page', relFromV: 'page', behindDoc: true },
+      },
+    ]);
+    expect(trailingY).toBeCloseTo(firstY, 0);
+  });
+
+  test('an in-front (non-behind-doc) anchored shape reserves no space', () => {
+    const { firstY, trailingY } = layoutWithTrailingParagraph([
+      {
+        height: 200,
+        anchor: { offsetH: 30, offsetV: 40, relFromH: 'page', relFromV: 'paragraph' },
+      },
+    ]);
+    expect(trailingY).toBeCloseTo(firstY, 0);
+  });
+
+  test('the behind-doc cluster fragments are still painted (behind, z-index -1)', () => {
+    const blocks: FlowBlock[] = [
+      makeParagraphBlock(0, 'Heading', 1),
+      makeTextBoxBlock(100, 48, behindParaAnchor(34)),
+      makeTextBoxBlock(101, 31, behindParaAnchor(93)),
+      makeParagraphBlock(200, 'After', 100),
+    ];
+    const measures: Measure[] = [
+      makeParagraphMeasure([makeLine(0, 0, 0, 7, 100, 20)]),
+      makeTextBoxMeasure(200, 48),
+      makeTextBoxMeasure(200, 31),
+      makeParagraphMeasure([makeLine(0, 0, 0, 5, 100, 20)]),
+    ];
+    const layout = layoutDocument(blocks, measures, makeLayoutOptions());
+    const textBoxFrags = layout.pages[0].fragments.filter((f) => f.kind === 'textBox');
+    expect(textBoxFrags).toHaveLength(2);
+    for (const f of textBoxFrags) {
+      expect((f as import('./types').TextBoxFragment).isAnchored).toBe(true);
+      expect((f as import('./types').TextBoxFragment).zIndex).toBe(-1);
+    }
   });
 });

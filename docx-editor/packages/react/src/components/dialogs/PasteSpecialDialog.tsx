@@ -13,6 +13,7 @@ import type { ParsedClipboardContent } from '@eigenpal/docx-core/utils';
 import { readFromClipboard } from '@eigenpal/docx-core/utils';
 import { useTranslation } from '../../i18n';
 import type { TranslationKey } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 // ============================================================================
 // TYPES
@@ -177,7 +178,7 @@ const PasteOptionButton: React.FC<PasteOptionButtonProps> = ({
         cursor: 'pointer',
         textAlign: 'left',
         borderRadius: '4px',
-        transition: 'background-color 0.15s ease',
+        transition: 'background-color var(--doc-anim-base)',
       }}
     >
       <span
@@ -370,7 +371,7 @@ export const PasteSpecialDialog: React.FC<PasteSpecialDialogProps> = ({
       top: y,
       left: x,
       width: dialogWidth,
-      background: 'white',
+      background: 'var(--doc-surface, white)',
       border: '1px solid var(--doc-border-light)',
       borderRadius: '8px',
       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
@@ -382,134 +383,137 @@ export const PasteSpecialDialog: React.FC<PasteSpecialDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div
-      ref={dialogRef}
-      className={`docx-paste-special-dialog ${className}`}
-      style={getDialogStyle()}
-      role="dialog"
-      aria-label={t('dialogs.pasteSpecial.title')}
-    >
-      {/* Header */}
+    <FocusTrap>
       <div
-        style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--doc-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
+        ref={dialogRef}
+        className={`docx-paste-special-dialog ${className}`}
+        style={getDialogStyle()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('dialogs.pasteSpecial.title')}
       >
-        <span
+        {/* Header */}
+        <div
           style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color: 'var(--doc-text)',
-          }}
-        >
-          {t('dialogs.pasteSpecial.title')}
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('common.closeDialog')}
-          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--doc-border)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            width: '24px',
-            height: '24px',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            borderRadius: '4px',
-            color: 'var(--doc-text-muted)',
+            justifyContent: 'space-between',
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M4 4l8 8M12 4l-8 8"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      </div>
-
-      {/* Content */}
-      <div style={{ padding: '8px' }}>
-        {isLoading ? (
-          <div
+          <span
             style={{
-              padding: '20px',
-              textAlign: 'center',
+              fontSize: '14px',
+              fontWeight: 600,
+              color: 'var(--doc-text)',
+            }}
+          >
+            {t('dialogs.pasteSpecial.title')}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('common.closeDialog')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              borderRadius: '4px',
               color: 'var(--doc-text-muted)',
-              fontSize: '13px',
             }}
           >
-            {t('dialogs.pasteSpecial.readingClipboard')}
-          </div>
-        ) : error ? (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M4 4l8 8M12 4l-8 8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '8px' }}>
+          {isLoading ? (
+            <div
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: 'var(--doc-text-muted)',
+                fontSize: '13px',
+              }}
+            >
+              {t('dialogs.pasteSpecial.readingClipboard')}
+            </div>
+          ) : error ? (
+            <div
+              style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: 'var(--doc-error)',
+                fontSize: '13px',
+              }}
+            >
+              {error}
+            </div>
+          ) : (
+            <div role="menu">
+              {pasteOptions.map((option, index) => (
+                <PasteOptionButton
+                  key={option.id}
+                  option={option}
+                  isSelected={index === selectedIndex}
+                  onClick={() => handlePaste(option.id)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clipboard preview */}
+        {clipboardContent && !isLoading && !error && (
           <div
             style={{
-              padding: '20px',
-              textAlign: 'center',
-              color: 'var(--doc-error)',
-              fontSize: '13px',
+              padding: '8px 16px 12px',
+              borderTop: '1px solid var(--doc-border)',
             }}
           >
-            {error}
-          </div>
-        ) : (
-          <div role="menu">
-            {pasteOptions.map((option, index) => (
-              <PasteOptionButton
-                key={option.id}
-                option={option}
-                isSelected={index === selectedIndex}
-                onClick={() => handlePaste(option.id)}
-                onMouseEnter={() => setSelectedIndex(index)}
-              />
-            ))}
+            <div
+              style={{
+                fontSize: '11px',
+                color: 'var(--doc-text-muted)',
+                marginBottom: '4px',
+              }}
+            >
+              {t('dialogs.pasteSpecial.preview')}
+            </div>
+            <div
+              style={{
+                fontSize: '12px',
+                color: 'var(--doc-text)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                padding: '6px 8px',
+                background: 'var(--doc-surface-sunken)',
+                borderRadius: '4px',
+              }}
+            >
+              "{clipboardContent.plainText.slice(0, 50)}
+              {clipboardContent.plainText.length > 50 ? '...' : ''}"
+            </div>
           </div>
         )}
       </div>
-
-      {/* Clipboard preview */}
-      {clipboardContent && !isLoading && !error && (
-        <div
-          style={{
-            padding: '8px 16px 12px',
-            borderTop: '1px solid var(--doc-border)',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '11px',
-              color: 'var(--doc-text-muted)',
-              marginBottom: '4px',
-            }}
-          >
-            {t('dialogs.pasteSpecial.preview')}
-          </div>
-          <div
-            style={{
-              fontSize: '12px',
-              color: 'var(--doc-text)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              padding: '6px 8px',
-              background: 'var(--doc-bg)',
-              borderRadius: '4px',
-            }}
-          >
-            "{clipboardContent.plainText.slice(0, 50)}
-            {clipboardContent.plainText.length > 50 ? '...' : ''}"
-          </div>
-        </div>
-      )}
-    </div>
+    </FocusTrap>
   );
 };
 

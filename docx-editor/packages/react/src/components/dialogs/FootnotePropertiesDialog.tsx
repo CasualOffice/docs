@@ -47,18 +47,18 @@ const overlayStyle: CSSProperties = {
 };
 
 const dialogStyle: CSSProperties = {
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   borderRadius: 8,
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
   padding: 24,
-  minWidth: 400,
+  minWidth: 'min(400px, calc(100vw - 32px))',
   maxWidth: 500,
 };
 
 const sectionStyle: CSSProperties = {
   marginBottom: 16,
   padding: 12,
-  border: '1px solid #e0e0e0',
+  border: '1px solid var(--doc-border, #e0e0e0)',
   borderRadius: 4,
 };
 
@@ -72,16 +72,18 @@ const labelStyle: CSSProperties = {
 const selectStyle: CSSProperties = {
   width: '100%',
   padding: '4px 8px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border, #ccc)',
   borderRadius: 4,
   fontSize: 13,
   marginBottom: 8,
 };
 
 const inputStyle: CSSProperties = {
+  background: 'var(--doc-surface)',
+  color: 'var(--doc-text-on-surface)',
   width: 60,
   padding: '4px 8px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border, #ccc)',
   borderRadius: 4,
   fontSize: 13,
   marginBottom: 8,
@@ -96,11 +98,11 @@ const buttonRowStyle: CSSProperties = {
 
 const buttonStyle: CSSProperties = {
   padding: '6px 16px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border, #ccc)',
   borderRadius: 4,
   cursor: 'pointer',
   fontSize: 13,
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
 };
 
 const primaryButtonStyle: CSSProperties = {

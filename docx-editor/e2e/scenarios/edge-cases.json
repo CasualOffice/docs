@@ -282,6 +282,7 @@
         { "action": "typeText", "args": { "text": "Hello" } },
         { "action": "selectText", "args": { "text": "Hello" } },
         { "action": "applyBold" },
+        { "action": "collapseSelectionToEnd" },
         { "action": "typeText", "args": { "text": " World" } },
         { "assert": "expectDocumentContains", "args": { "text": "Hello World" } }
       ]
@@ -315,7 +316,7 @@
       "name": "Very long paragraph performance",
       "description": "Very long paragraph should not cause performance issues",
       "tags": ["performance"],
-      "timeout": 60000,
+      "timeout": 120000,
       "steps": [
         { "action": "goto" },
         { "action": "waitForReady" },

@@ -327,6 +327,33 @@ const paragraphNodeSpec: NodeSpec = {
         };
       },
     },
+    // List items (`<li>` inside `<ul>`/`<ol>`) — pasted from the web, Word,
+    // Google Docs, etc. The editor models lists as PARAGRAPHS carrying `numPr`
+    // + `listIsBullet`/`listNumFmt`, not as nested list nodes, so without this
+    // rule pasted lists collapsed to plain paragraphs. Bullet-vs-ordered comes
+    // from the nearest `<ul>`/`<ol>` ancestor; `ilvl` from the nesting depth.
+    {
+      tag: 'li',
+      getAttrs(dom: HTMLElement): ParagraphAttrs {
+        let ordered = false;
+        let depth = 0;
+        for (let el = dom.parentElement; el; el = el.parentElement) {
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'ul' || tag === 'ol') {
+            if (depth === 0) ordered = tag === 'ol';
+            depth++;
+          }
+        }
+        const ilvl = Math.max(0, depth - 1);
+        const styleAttrs = extractParagraphAttrsFromStyle(dom);
+        return {
+          ...styleAttrs,
+          numPr: { numId: ordered ? 2 : 1, ilvl },
+          listIsBullet: !ordered,
+          listNumFmt: ordered ? 'decimal' : undefined,
+        };
+      },
+    },
     // Heading tags (h1-h6) — pasted from Google Docs, Word Online, etc.
     // Map to paragraphs with appropriate styleId and formatting extracted from CSS.
     ...(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => ({
@@ -415,13 +442,19 @@ function setParagraphAttr(attr: string, value: unknown): Command {
   };
 }
 
-function setParagraphAttrsCmd(attrs: Record<string, unknown>): Command {
+export function setParagraphAttrsCmd(attrs: Record<string, unknown>): Command {
   return (state, dispatch) => {
     const { $from, $to } = state.selection;
 
     if (!dispatch) return true;
 
-    let tr = state.tr;
+    // Paragraph-attribute changes (alignment, line spacing, indents,
+    // borders, shading) should be discrete undo steps. Without
+    // `closeHistory`, prosemirror-history coalesces a fresh attr
+    // change with whatever text-typing transaction preceded it
+    // (small time window, no selection change in between), so one
+    // Ctrl-Z wipes the typing in addition to the attr change.
+    let tr = closeHistory(state.tr);
     const seen = new Set<number>();
 
     state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
@@ -553,17 +586,27 @@ function makeApplyStyle(schema: Schema) {
             schema.marks.fontFamily.create({
               ascii: rpr.fontFamily.ascii,
               hAnsi: rpr.fontFamily.hAnsi,
+              eastAsia: rpr.fontFamily.eastAsia,
+              cs: rpr.fontFamily.cs,
               asciiTheme: rpr.fontFamily.asciiTheme,
+              hAnsiTheme: rpr.fontFamily.hAnsiTheme,
+              eastAsiaTheme: rpr.fontFamily.eastAsiaTheme,
+              csTheme: rpr.fontFamily.csTheme,
             })
           );
         }
-        if (rpr.color && !rpr.color.auto) {
+        // Match the toProseDoc gate: skip pure `auto` (no themeColor)
+        // but keep `auto + themeColor` so the style cascade's
+        // theme-resolved intent survives. Forward `auto` so the
+        // fromProseDoc serializer can write `<w:color w:val="auto" ... />` back.
+        if (rpr.color && (!rpr.color.auto || rpr.color.themeColor)) {
           styleMarks.push(
             schema.marks.textColor.create({
               rgb: rpr.color.rgb,
               themeColor: rpr.color.themeColor,
               themeTint: rpr.color.themeTint,
               themeShade: rpr.color.themeShade,
+              auto: rpr.color.auto || null,
             })
           );
         }

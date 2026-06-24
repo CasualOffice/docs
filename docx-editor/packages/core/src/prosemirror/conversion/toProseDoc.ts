@@ -45,9 +45,24 @@ import { emuToPixels } from '../../docx/imageParser';
 import { isWrapNone } from '../../docx/wrapTypes';
 import { createStyleResolver, type StyleResolver } from '../styles';
 import type { TableAttrs, TableRowAttrs, TableCellAttrs } from '../schema/nodes';
-import { resolveColorToHex } from '../../utils/colorResolver';
+import { resolveColor, resolveColorToHex } from '../../utils/colorResolver';
+
+/**
+ * Resolve a DrawingML shape/textbox fill or outline ColorValue to a CSS hex.
+ * Reading `.rgb` directly (as the old code did) dropped THEME colors (e.g.
+ * `schemeClr bg1 + lumMod 85%` = light-gray border) entirely, since they carry
+ * no `.rgb`. `resolveColor` honours themeColor + tint/shade + lumMod/lumOff
+ * (default theme is fine for the base slots these borders use). Returns
+ * undefined for absent / `noFill` / auto colors so we don't paint a stray
+ * black border. (theme threading through convertRunContent is avoided here.)
+ */
+function resolveShapeColor(color: ColorValue | undefined): string | undefined {
+  if (!color || color.auto || (!color.rgb && !color.themeColor)) return undefined;
+  return resolveColor(color, undefined);
+}
 import { mergeTextFormatting } from '../../utils/textFormattingMerge';
 import type { Theme } from '../../types/document';
+import type { ColorValue } from '../../types/colors';
 
 /**
  * Options for document conversion
@@ -101,9 +116,13 @@ export function toProseDoc(document: Document, options?: ToProseDocOptions): PMN
     if (block.type === 'paragraph') {
       // Convert paragraph and extract text boxes as sibling nodes
       nodes.push(...convertParagraphWithTextBoxes(block, styleResolver));
-      // If any run in this paragraph contains a page break, emit a pageBreak node after
-      if (paragraphHasPageBreak(block)) {
-        nodes.push(schema.node('pageBreak'));
+      // If any run in this paragraph contains a forced page/column break, emit
+      // a pageBreak node after. Column breaks (§17.3.3.1 `w:type="column"`) are
+      // carried via the node's `breakType` attr so they aren't silently
+      // collapsed into page breaks.
+      const forcedBreak = paragraphForcedBreakType(block);
+      if (forcedBreak) {
+        nodes.push(schema.node('pageBreak', { breakType: forcedBreak }));
       }
     } else if (block.type === 'table') {
       const pmTable = convertTable(block, styleResolver, theme);
@@ -624,6 +643,38 @@ function convertTable(
       }
     : undefined;
 
+  // Render-only resolved margins. The `cellMargins` attr above stays the
+  // verbatim inline <w:tblCellMar> so round-trip serialization re-emits
+  // exactly what the source had. But the cascade is PER-SIDE for LAYOUT:
+  // a table whose inline tblCellMar specifies only top/bottom (a common
+  // authoring pattern, e.g. medical-incident-form) must still inherit
+  // left/right from the table style / default table style — Word does NOT
+  // treat the unspecified sides as zero. We resolve each side independently
+  // here and stash it in a non-serialized attr the layout bridge prefers;
+  // this is what keeps the label column's left text inset (~108 twips)
+  // matching LibreOffice instead of letting text run to the cell edge
+  // (wider text area → drifted wrap points → taller rows → page drift).
+  const cellMarginSources = [
+    table.formatting?.cellMargins,
+    tableStyle?.tblPr?.cellMargins,
+    defaultTableStyle?.tblPr?.cellMargins,
+  ];
+  const resolveCellMarginSide = (side: 'top' | 'bottom' | 'left' | 'right') => {
+    for (const source of cellMarginSources) {
+      const measurement = source?.[side];
+      if (measurement?.value != null) return measurement.value;
+    }
+    return undefined;
+  };
+  const resolvedCellMarginsAttr = cellMarginSources.some((source) => source != null)
+    ? {
+        top: resolveCellMarginSide('top'),
+        bottom: resolveCellMarginSide('bottom'),
+        left: resolveCellMarginSide('left'),
+        right: resolveCellMarginSide('right'),
+      }
+    : undefined;
+
   const attrs: TableAttrs = {
     styleId: table.formatting?.styleId,
     width: table.formatting?.width?.value,
@@ -632,6 +683,7 @@ function convertTable(
     columnWidths: columnWidths,
     floating: table.formatting?.floating,
     cellMargins: cellMarginsAttr,
+    resolvedCellMargins: resolvedCellMarginsAttr,
     look: table.formatting?.look,
     _originalFormatting: table.formatting || undefined,
   };
@@ -1215,7 +1267,8 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
       if (content.breakType === 'textWrapping' || !content.breakType) {
         return [schema.node('hardBreak')];
       }
-      // Page breaks not supported in inline content
+      // Page/column breaks are not inline content; they are re-extracted to a
+      // block-level pageBreak node (see paragraphForcedBreakType in toProseDoc).
       return [];
 
     case 'tab':
@@ -1256,7 +1309,14 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
       // safe Unicode character — substitution chars (☐ ☒ ➤ etc.) are
       // universally available so forcing a specific font would hurt
       // rather than help.
-      if (isTranslatedUnicode(ch, content.font, content.char)) {
+      //
+      // Exception: tall dingbat fonts (Wingdings/Webdings). Their glyphs have
+      // a much taller ink box than a normal font, so a line set in them gets a
+      // large line height in Word/LibreOffice. We still render the substituted
+      // Unicode glyph (browsers fall back per-glyph), but we KEEP the dingbat
+      // font name so the measurer applies its hardcoded line metrics — without
+      // it, form checkbox rows collapse to ~half height (#11).
+      if (isTranslatedUnicode(ch, content.font, content.char) && !isTallSymbolFont(content.font)) {
         return [schema.text(ch, marks)];
       }
       const fontMark = schema.mark('fontFamily', {
@@ -1299,6 +1359,17 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
  * Map sources: Adobe / ECMA-376 Annex L, plus
  * https://www.alanwood.net/demos/wingdings.html (cross-checked).
  */
+/**
+ * Tall dingbat fonts whose glyphs (checkboxes, dingbats) occupy a much taller
+ * ink box than normal text, so lines set in them get an inflated line height in
+ * Word/LibreOffice. Mirrors the calibrated entries in `fontResolver`'s
+ * FONT_MAPPINGS. `Symbol` (Greek/math) is excluded — it has normal metrics.
+ */
+function isTallSymbolFont(font: string | undefined): boolean {
+  const f = (font || '').toLowerCase().trim();
+  return f === 'wingdings' || f === 'wingdings 2' || f === 'wingdings 3' || f === 'webdings';
+}
+
 function symbolToUnicodeChar(font: string, char: string): string | null {
   if (!char) return null;
   // OOXML stores `w:char` as a hex string. Word also sometimes emits
@@ -1789,9 +1860,7 @@ function convertShape(shape: Shape): PMNode {
   let gradientStops: string | undefined;
   if (shape.fill) {
     fillType = shape.fill.type;
-    if (shape.fill.color?.rgb) {
-      fillColor = `#${shape.fill.color.rgb}`;
-    }
+    fillColor = resolveShapeColor(shape.fill.color) ?? fillColor;
     // Extract gradient data
     if (shape.fill.type === 'gradient' && shape.fill.gradient) {
       const g = shape.fill.gradient;
@@ -1814,9 +1883,7 @@ function convertShape(shape: Shape): PMNode {
     if (shape.outline.width) {
       outlineWidth = Math.round((shape.outline.width / 914400) * 96 * 100) / 100;
     }
-    if (shape.outline.color?.rgb) {
-      outlineColor = `#${shape.outline.color.rgb}`;
-    }
+    outlineColor = resolveShapeColor(shape.outline.color);
     outlineStyle = ooxmlDashToCssBorderStyle(shape.outline.style);
   }
 
@@ -1837,6 +1904,16 @@ function convertShape(shape: Shape): PMNode {
     }
   }
 
+  // Surface the parsed anchor position and wrap on the PM node so a floating
+  // shape round-trips through save without losing where it's anchored. Mirrors
+  // the textBox node (convertTextBox above): the layout engine doesn't honor
+  // these yet, but carrying the data is safe and unblocks future float work
+  // instead of silently dropping the anchor on the next save.
+  const posH = shape.position?.horizontal;
+  const posV = shape.position?.vertical;
+  const posOffsetH = posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
+  const posOffsetV = posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
+
   return schema.node('shape', {
     shapeType: shape.shapeType || 'rect',
     shapeId: shape.id,
@@ -1851,6 +1928,18 @@ function convertShape(shape: Shape): PMNode {
     outlineColor,
     outlineStyle,
     transform,
+    wrapType: shape.wrap?.type ?? 'inline',
+    posOffsetH,
+    posOffsetV,
+    posRelFromH: posH?.relativeTo ?? null,
+    posRelFromV: posV?.relativeTo ?? null,
+    posAlignH: posH?.alignment ?? null,
+    posAlignV: posV?.alignment ?? null,
+    // Carry the original OOXML envelope so a from-PM rebuild (structural edit,
+    // collab peer, server snapshot) re-emits the drawing verbatim rather than
+    // dropping it. Survives Yjs intact (verified).
+    rawXml: shape.rawXml ?? null,
+    envelopeKey: shape.envelopeKey ?? null,
   });
 }
 
@@ -1911,6 +2000,10 @@ function extractTextBoxesFromParagraph(paragraph: Paragraph): TextBox[] {
                   ? shape.textBody.content
                   : [{ type: 'paragraph', content: [] }],
               margins: shape.textBody.margins,
+              // Carry the original OOXML envelope so a from-PM rebuild re-emits
+              // this drawing verbatim instead of dropping it (collab/snapshot).
+              rawXml: shape.rawXml,
+              envelopeKey: shape.envelopeKey,
             });
           }
         }
@@ -1928,20 +2021,20 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
   const heightPx = textBox.size?.height ? emuToPixels(textBox.size.height) : undefined;
 
   // Convert fill color
-  let fillColor: string | undefined;
-  if (textBox.fill?.color?.rgb) {
-    fillColor = `#${textBox.fill.color.rgb}`;
-  }
+  const fillColor: string | undefined = resolveShapeColor(textBox.fill?.color);
 
-  // Convert outline
+  // Convert outline. Render when the line carries EITHER a width or a
+  // resolvable color — a `<a:ln>` with a fill but no explicit `w` is a
+  // hairline (default ~0.75pt ≈ 1px), and its theme-color fill (e.g.
+  // bg1 + lumMod) must not be dropped.
   let outlineWidth: number | undefined;
   let outlineColor: string | undefined;
   let outlineStyle: string | undefined;
-  if (textBox.outline && textBox.outline.width) {
-    outlineWidth = Math.round((textBox.outline.width / 914400) * 96 * 100) / 100;
-    if (textBox.outline.color?.rgb) {
-      outlineColor = `#${textBox.outline.color.rgb}`;
-    }
+  if (textBox.outline && (textBox.outline.width || resolveShapeColor(textBox.outline.color))) {
+    outlineWidth = textBox.outline.width
+      ? Math.round((textBox.outline.width / 914400) * 96 * 100) / 100
+      : 1;
+    outlineColor = resolveShapeColor(textBox.outline.color);
     outlineStyle = ooxmlDashToCssBorderStyle(textBox.outline.style);
   }
 
@@ -1962,6 +2055,16 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
     contentNodes.push(schema.node('paragraph', {}, []));
   }
 
+  // Surface the parsed anchor position on the PM node so it round-trips
+  // through save AND is honored at layout time: `layoutAnchoredTextBox`
+  // resolves the full relativeFrom band math via `resolveAnchorX/Y`.
+  // (The naive first attempt that floated every shape was reverted; the
+  // dedicated anchored path only floats genuinely-anchored boxes.)
+  const posH = textBox.position?.horizontal;
+  const posV = textBox.position?.vertical;
+  const posOffsetH = posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
+  const posOffsetV = posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
+
   return schema.node(
     'textBox',
     {
@@ -1977,6 +2080,21 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
       marginLeft,
       marginRight,
       autoFit: textBox.autoFit,
+      // Behind-text wrap (VML z-index<0) — carried so the layout engine can
+      // both paint the box behind body text AND reserve its band in the flow
+      // (the SDS hazard box). 'inline' is the schema default for non-anchored
+      // boxes; only emit a non-default when the source said so.
+      wrapType: textBox.wrap?.type ?? 'inline',
+      posOffsetH,
+      posOffsetV,
+      posRelFromH: posH?.relativeTo ?? null,
+      posRelFromV: posV?.relativeTo ?? null,
+      posAlignH: posH?.alignment ?? null,
+      posAlignV: posV?.alignment ?? null,
+      // Original OOXML envelope — re-emitted verbatim on a from-PM rebuild so
+      // the drawing survives structural edits / collab peers / server snapshots.
+      rawXml: textBox.rawXml ?? null,
+      envelopeKey: textBox.envelopeKey ?? null,
     },
     contentNodes
   );
@@ -2029,7 +2147,9 @@ export function footnoteToProseDoc(
 }
 
 /**
- * Returns true when `<w:br w:type="page"/>` appears anywhere in a paragraph.
+ * Returns the forced break type (`'page'` or `'column'`) when a
+ * `<w:br w:type="page"/>` or `<w:br w:type="column"/>` appears anywhere in a
+ * paragraph, or `null` when there is none.
  *
  * A hard page break is always a forced break per ECMA-376 §17.3.3.1. We used
  * to require visible content before the break (and rely on
@@ -2039,41 +2159,50 @@ export function footnoteToProseDoc(
  * forced break — Word renders such paragraphs with the next paragraph on a
  * fresh page.
  */
-function paragraphHasPageBreak(paragraph: Paragraph): boolean {
-  function visitRunContent(content: RunContent): boolean {
-    return content.type === 'break' && content.breakType === 'page';
+function paragraphForcedBreakType(paragraph: Paragraph): 'page' | 'column' | null {
+  function breakTypeOf(content: RunContent): 'page' | 'column' | null {
+    if (content.type !== 'break') return null;
+    if (content.breakType === 'page') return 'page';
+    if (content.breakType === 'column') return 'column';
+    return null;
   }
 
-  function visit(item: Paragraph['content'][number]): boolean {
+  function visit(item: Paragraph['content'][number]): 'page' | 'column' | null {
     if (item.type === 'run') {
       for (const c of (item as Run).content) {
-        if (visitRunContent(c)) return true;
+        const bt = breakTypeOf(c);
+        if (bt) return bt;
       }
-      return false;
+      return null;
     }
     if (item.type === 'hyperlink') {
       for (const r of (item as Hyperlink).children) {
-        if (r.type === 'run' && visit(r)) return true;
+        if (r.type === 'run') {
+          const bt = visit(r);
+          if (bt) return bt;
+        }
       }
-      return false;
+      return null;
     }
     if (item.type === 'insertion' || item.type === 'deletion') {
-      // Tracked-change wrappers can themselves contain a page break.
+      // Tracked-change wrappers can themselves contain a forced break.
       // Descend so a break inside <w:ins> or <w:del> still emits a
       // pageBreak node downstream.
       const tc = item as { content: Paragraph['content'] };
       for (const inner of tc.content) {
-        if (visit(inner)) return true;
+        const bt = visit(inner);
+        if (bt) return bt;
       }
-      return false;
+      return null;
     }
-    return false;
+    return null;
   }
 
   for (const item of paragraph.content) {
-    if (visit(item)) return true;
+    const bt = visit(item);
+    if (bt) return bt;
   }
-  return false;
+  return null;
 }
 
 /**

@@ -645,6 +645,30 @@ function parseAnchor(
   if (layoutInCell !== undefined) image.layoutInCell = layoutInCell;
   if (allowOverlap !== undefined) image.allowOverlap = allowOverlap;
 
+  // wp14:sizeRelH / wp14:sizeRelV — Word 2010+ percent-of-anchor sizing
+  // hints. We don't drive layout from them, but round-trip is required so
+  // saving doesn't drop the elements Word always emits.
+  const sizeRelH = findByFullName(anchorEl, 'wp14:sizeRelH');
+  const sizeRelV = findByFullName(anchorEl, 'wp14:sizeRelV');
+  if (sizeRelH || sizeRelV) {
+    const rel: NonNullable<Image['relativeSize']> = {};
+    if (sizeRelH) {
+      const relativeFrom = getAttribute(sizeRelH, null, 'relativeFrom') ?? 'margin';
+      const pctEl = findByFullName(sizeRelH, 'wp14:pctWidth');
+      const pctText = pctEl?.elements?.find((e) => e.type === 'text')?.text;
+      const pct = pctText !== undefined ? Number(pctText) : undefined;
+      rel.horizontal = { relativeFrom, ...(Number.isFinite(pct) ? { pct } : {}) };
+    }
+    if (sizeRelV) {
+      const relativeFrom = getAttribute(sizeRelV, null, 'relativeFrom') ?? 'margin';
+      const pctEl = findByFullName(sizeRelV, 'wp14:pctHeight');
+      const pctText = pctEl?.elements?.find((e) => e.type === 'text')?.text;
+      const pct = pctText !== undefined ? Number(pctText) : undefined;
+      rel.vertical = { relativeFrom, ...(Number.isFinite(pct) ? { pct } : {}) };
+    }
+    image.relativeSize = rel;
+  }
+
   // Resolve image hyperlink (a:hlinkClick). Keep the original rId on
   // the model so the serializer can emit the same reference back
   // verbatim (round-trip preserves the existing rels.xml entry rather

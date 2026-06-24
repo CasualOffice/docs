@@ -69,6 +69,16 @@ export {
   toggleStrike,
   toggleSuperscript,
   toggleSubscript,
+  toggleSmallCaps,
+  toggleAllCaps,
+  toggleHidden,
+  toggleEmboss,
+  toggleImprint,
+  toggleTextShadow,
+  toggleTextOutline,
+  setCharacterSpacing,
+  setCharacterAttrs,
+  type CharacterAttrs,
   setTextColor,
   clearTextColor,
   setHighlight,
@@ -88,6 +98,7 @@ export {
   removeHyperlink,
   insertHyperlink,
   // Paragraph formatting
+  setParagraphAttrs,
   setAlignment,
   alignLeft,
   alignCenter,
@@ -115,6 +126,8 @@ export {
   getStyleId,
   setRtl,
   setLtr,
+  setSpaceBefore,
+  setSpaceAfter,
   // Table operations
   isInTable,
   getTableContext,
@@ -144,7 +157,10 @@ export {
   setRowHeight,
   toggleHeaderRow,
   distributeColumns,
+  distributeRows,
   autoFitContents,
+  autoFitWindow,
+  sortTable,
   setTableProperties,
   applyTableStyle,
   setCellFillColor,
@@ -152,10 +168,20 @@ export {
   setTableBorderWidth,
   // Page break
   insertPageBreak,
+  // Field insert (PAGE / NUMPAGES / DATE / TIME / …)
+  insertField,
+  // List numbering control
+  restartListNumbering,
+  continueListNumbering,
+  // Section break
+  insertSectionBreak,
+  insertFootnote,
+  insertEndnote,
+  insertHorizontalRule,
   // Table of Contents
   generateTOC,
 } from './commands';
-export type { TableContextInfo, BorderPreset } from './commands';
+export type { TableContextInfo, BorderPreset, InsertableFieldType } from './commands';
 
 /** Word `w14:paraId` → ProseMirror position before matching paragraph. */
 export { findStartPosForParaId } from './utils/findStartPosForParaId';

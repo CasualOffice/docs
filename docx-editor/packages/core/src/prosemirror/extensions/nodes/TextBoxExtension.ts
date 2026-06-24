@@ -46,6 +46,46 @@ export interface TextBoxAttrs {
    * font metrics disagree with Word's saved ext.cy).
    */
   autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
+  /**
+   * Anchor position for floating text-bearing shapes (wps:wsp inside
+   * wp:anchor + wpg:wgp children). Stored in PIXELS at 96 DPI so they
+   * sit alongside `width` / `height` / `marginTop` etc. — the parser
+   * converts EMU → px in `convertTextBox` and `fromProseDoc` reverses
+   * it on save.
+   *
+   * HONORED BY THE LAYOUT ENGINE via `layoutAnchoredTextBox`, which
+   * resolves the full `relativeFrom` band math (page/margin/column/
+   * paragraph) through `resolveAnchorX/Y` and places the box WITHOUT
+   * reserving in-flow space (behind-doc clusters reserve once via
+   * `reservesBehindDocBand`). The Format-panel "Position X/Y" control
+   * writes posOffsetH/V as `margin`-relative offsets through these attrs.
+   *
+   * History: the first attempt wired these into `layoutTextBox` directly
+   * (commit `d8b85d1`, reverted in `d4ceebf`) and floated EVERY imported
+   * shape as an overlay that didn't advance the cursor — shifting body
+   * text on real-world fixtures (medical-incident-form 4→3 pages). The
+   * working approach is the dedicated anchored path above, which only
+   * floats genuinely-anchored boxes and keeps in-flow boxes in flow.
+   */
+  posOffsetH?: number;
+  posOffsetV?: number;
+  /**
+   * `wp:positionH/V`'s `relativeFrom` (e.g. "margin", "page",
+   * "column", "paragraph"). Captured for round-trip; same caveat as
+   * `posOffsetH/V` above — not yet honored by the layout engine.
+   */
+  posRelFromH?: string;
+  posRelFromV?: string;
+  /**
+   * `wp:positionH/V`'s `<wp:align>` value when no `posOffset` is
+   * given (e.g. "center", "right"). Captured for round-trip.
+   */
+  posAlignH?: string;
+  posAlignV?: string;
+  /** Original OOXML envelope for verbatim re-emission on save. */
+  rawXml?: string;
+  /** Dedupe key for shapes sharing one source envelope. */
+  envelopeKey?: string;
 }
 
 export const TextBoxExtension = createNodeExtension({
@@ -73,6 +113,16 @@ export const TextBoxExtension = createNodeExtension({
       cssFloat: { default: null },
       wrapType: { default: 'inline' },
       autoFit: { default: null },
+      posOffsetH: { default: null },
+      posOffsetV: { default: null },
+      posRelFromH: { default: null },
+      posRelFromV: { default: null },
+      posAlignH: { default: null },
+      posAlignV: { default: null },
+      // Original OOXML envelope (VML/DrawingML), carried through PM + Yjs so a
+      // from-PM rebuild re-emits the drawing verbatim instead of dropping it.
+      rawXml: { default: null },
+      envelopeKey: { default: null },
     },
     parseDOM: [
       {
@@ -96,6 +146,12 @@ export const TextBoxExtension = createNodeExtension({
             cssFloat: (el.dataset.cssFloat as TextBoxAttrs['cssFloat']) || undefined,
             wrapType: el.dataset.wrapType || undefined,
             autoFit: (el.dataset.autoFit as TextBoxAttrs['autoFit']) || undefined,
+            posOffsetH: el.dataset.posOffsetH ? Number(el.dataset.posOffsetH) : undefined,
+            posOffsetV: el.dataset.posOffsetV ? Number(el.dataset.posOffsetV) : undefined,
+            posRelFromH: el.dataset.posRelFromH || undefined,
+            posRelFromV: el.dataset.posRelFromV || undefined,
+            posAlignH: el.dataset.posAlignH || undefined,
+            posAlignV: el.dataset.posAlignV || undefined,
           };
         },
       },
@@ -123,6 +179,12 @@ export const TextBoxExtension = createNodeExtension({
       if (attrs.cssFloat) domAttrs['data-css-float'] = attrs.cssFloat;
       if (attrs.wrapType) domAttrs['data-wrap-type'] = attrs.wrapType;
       if (attrs.autoFit) domAttrs['data-auto-fit'] = attrs.autoFit;
+      if (attrs.posOffsetH != null) domAttrs['data-pos-offset-h'] = String(attrs.posOffsetH);
+      if (attrs.posOffsetV != null) domAttrs['data-pos-offset-v'] = String(attrs.posOffsetV);
+      if (attrs.posRelFromH) domAttrs['data-pos-rel-from-h'] = attrs.posRelFromH;
+      if (attrs.posRelFromV) domAttrs['data-pos-rel-from-v'] = attrs.posRelFromV;
+      if (attrs.posAlignH) domAttrs['data-pos-align-h'] = attrs.posAlignH;
+      if (attrs.posAlignV) domAttrs['data-pos-align-v'] = attrs.posAlignV;
 
       // Build inline styles
       const styles: string[] = [];

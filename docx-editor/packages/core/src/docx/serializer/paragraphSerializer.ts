@@ -414,10 +414,15 @@ export function serializeParagraphFormatting(
       parts.push(numPrXml);
     }
 
-    // Paragraph borders
+    // Paragraph borders. Empty <w:pBdr/> overrides the inherited
+    // style chain and must round-trip back even when no border sides
+    // populated (see paragraphParser.isEmptyXmlElement + presentEmpty
+    // marker).
     const bordersXml = serializeParagraphBorders(formatting.borders);
     if (bordersXml) {
       parts.push(bordersXml);
+    } else if (formatting.presentEmpty?.pBdr) {
+      parts.push('<w:pBdr/>');
     }
 
     // Shading
@@ -464,16 +469,21 @@ export function serializeParagraphFormatting(
       parts.push(`<w:textAlignment w:val="${formatting.textAlignment}"/>`);
     }
 
-    // Spacing
+    // Spacing — empty <w:spacing/> round-trips when paragraph had no
+    // populated spacing attrs but the source XML included the element.
     const spacingXml = serializeSpacing(formatting);
     if (spacingXml) {
       parts.push(spacingXml);
+    } else if (formatting.presentEmpty?.spacing) {
+      parts.push('<w:spacing/>');
     }
 
-    // Indentation
+    // Indentation — same empty-element preservation as spacing.
     const indXml = serializeIndentation(formatting);
     if (indXml) {
       parts.push(indXml);
+    } else if (formatting.presentEmpty?.ind) {
+      parts.push('<w:ind/>');
     }
 
     // Text direction (bidi)
@@ -491,12 +501,19 @@ export function serializeParagraphFormatting(
       parts.push(`<w:outlineLvl w:val="${formatting.outlineLevel}"/>`);
     }
 
-    // Run properties (default run formatting for paragraph)
+    // Run properties (default run formatting for paragraph). Empty
+    // <w:rPr/> inside pPr overrides the style chain's default run
+    // formatting and must round-trip — handled via the same presentEmpty
+    // marker as borders/spacing/indent above.
     if (formatting.runProperties) {
       const rPrXml = serializeTextFormatting(formatting.runProperties);
       if (rPrXml) {
         parts.push(rPrXml);
+      } else if (formatting.presentEmpty?.rPr) {
+        parts.push('<w:rPr/>');
       }
+    } else if (formatting.presentEmpty?.rPr) {
+      parts.push('<w:rPr/>');
     }
   }
 

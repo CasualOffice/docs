@@ -21,6 +21,10 @@ export const SuperscriptExtension = createMarkExtension({
       commands: {
         toggleSuperscript: () => toggleMark(ctx.schema.marks.superscript),
       },
+      keyboardShortcuts: {
+        // Google Docs: Ctrl+. for superscript
+        'Mod-.': toggleMark(ctx.schema.marks.superscript),
+      },
     };
   },
 });

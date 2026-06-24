@@ -23,6 +23,7 @@ import type {
 } from '../layout-engine/types';
 import type { Footnote, StyleDefinitions, Theme } from '../types/document';
 import { footnoteToProseDoc } from '../prosemirror/conversion/toProseDoc';
+import { createStyleResolver } from '../prosemirror/styles/styleResolver';
 import { toFlowBlocks } from './toFlowBlocks';
 
 /** Separator line height + padding in pixels */
@@ -33,11 +34,40 @@ const SEPARATOR_HEIGHT = 12;
  * style sets 8pt; we apply this only when the footnote's runs don't
  * already specify a fontSize (avoids overriding authored sizes).
  *
- * TODO once the style cascade for paragraph styles is fully wired through
- * the bridge, footnotes should pick this up from the resolved
- * "FootnoteText" / "footnote text" style instead of hardcoding the value.
+ * Used as a last-resort fallback when the document doesn't define a
+ * `FootnoteText` / `footnote text` style — `resolveFootnoteFontSizePt`
+ * below prefers the style cascade.
  */
-const FOOTNOTE_FONT_SIZE_PT = 8;
+const DEFAULT_FOOTNOTE_FONT_SIZE_PT = 8;
+
+/**
+ * OOXML candidate style IDs for the footnote-body style, in resolution
+ * order. Word writes `FootnoteText`; Pages / older Office writes
+ * `footnote text` (lowercase + space). We try each in turn and fall
+ * through to the 8pt baked-in default.
+ */
+const FOOTNOTE_STYLE_CANDIDATES = ['FootnoteText', 'footnote text'] as const;
+
+/**
+ * Resolve the effective footnote body font size in points by consulting
+ * the document's style cascade. Returns the 8pt default if no styles
+ * are provided or no `FootnoteText`-like style declares a fontSize.
+ *
+ * Note: `TextFormatting.fontSize` is in OOXML half-points; FlowBlock
+ * runs carry points, so we divide by 2 at the boundary.
+ */
+function resolveFootnoteFontSizePt(styles: StyleDefinitions | null | undefined): number {
+  if (!styles) return DEFAULT_FOOTNOTE_FONT_SIZE_PT;
+  const resolver = createStyleResolver(styles);
+  for (const candidate of FOOTNOTE_STYLE_CANDIDATES) {
+    const resolved = resolver.resolveParagraphStyle(candidate);
+    const halfPoints = resolved.runFormatting?.fontSize;
+    if (halfPoints != null && halfPoints > 0) {
+      return halfPoints / 2;
+    }
+  }
+  return DEFAULT_FOOTNOTE_FONT_SIZE_PT;
+}
 
 // ============================================================================
 // 1. Scan FlowBlocks for footnote references
@@ -128,7 +158,11 @@ export function mapFootnotesToPages(
  * Exported for callers that want to compose their own conversion
  * pipeline; `convertFootnoteToContent` calls it as part of its flow.
  */
-export function applyFootnotePresentation(blocks: FlowBlock[], displayNumber: number): FlowBlock[] {
+export function applyFootnotePresentation(
+  blocks: FlowBlock[],
+  displayNumber: number,
+  defaultFontSizePt: number = DEFAULT_FOOTNOTE_FONT_SIZE_PT
+): FlowBlock[] {
   if (blocks.length === 0) {
     return [
       {
@@ -138,7 +172,7 @@ export function applyFootnotePresentation(blocks: FlowBlock[], displayNumber: nu
           {
             kind: 'text',
             text: `${displayNumber}  `,
-            fontSize: FOOTNOTE_FONT_SIZE_PT,
+            fontSize: defaultFontSizePt,
             superscript: true,
           },
         ],
@@ -146,8 +180,9 @@ export function applyFootnotePresentation(blocks: FlowBlock[], displayNumber: nu
     ];
   }
 
-  // Apply default 8pt to every run that didn't specify a fontSize. Mutating
-  // a copy keeps the input blocks pure for caching upstream.
+  // Apply the resolved default size to every run that didn't specify a
+  // fontSize. Mutating a copy keeps the input blocks pure for caching
+  // upstream.
   const out = blocks.map((b) => {
     if (b.kind !== 'paragraph') return b;
     const para = b as ParagraphBlock;
@@ -156,7 +191,7 @@ export function applyFootnotePresentation(blocks: FlowBlock[], displayNumber: nu
       runs: para.runs.map((r) => {
         if (r.kind === 'text' || r.kind === 'tab') {
           if (r.fontSize == null) {
-            return { ...r, fontSize: FOOTNOTE_FONT_SIZE_PT };
+            return { ...r, fontSize: defaultFontSizePt };
           }
         }
         return r;
@@ -170,7 +205,7 @@ export function applyFootnotePresentation(blocks: FlowBlock[], displayNumber: nu
     const numberRun = {
       kind: 'text' as const,
       text: `${displayNumber}  `,
-      fontSize: FOOTNOTE_FONT_SIZE_PT,
+      fontSize: defaultFontSizePt,
       superscript: true,
     };
     out[0] = {
@@ -221,7 +256,8 @@ export function convertFootnoteToContent(
     theme: options.theme ?? null,
   });
   const rawBlocks = toFlowBlocks(pmDoc, { theme: options.theme ?? undefined });
-  const blocks = applyFootnotePresentation(rawBlocks, displayNumber);
+  const defaultFontSizePt = resolveFootnoteFontSizePt(options.styles);
+  const blocks = applyFootnotePresentation(rawBlocks, displayNumber, defaultFontSizePt);
 
   const measures = options.measureBlocks(blocks, contentWidth);
 

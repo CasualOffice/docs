@@ -18,7 +18,9 @@
     "dismiss": "忽略",
     "change": "更改",
     "px": "px",
-    "closeDialog": "关闭对话框"
+    "closeDialog": "关闭对话框",
+    "ok": null,
+    "add": null
   },
   "toolbar": {
     "ariaLabel": "格式工具栏",
@@ -40,7 +42,54 @@
     "tableOfContents": "目录",
     "symbol": "符号",
     "help": "帮助",
-    "reportIssue": "反馈问题"
+    "reportIssue": "反馈问题",
+    "bookmarks": null,
+    "characterSpacing": null,
+    "continueListNumbering": null,
+    "fieldAuthor": null,
+    "fieldCreateDate": null,
+    "fieldDate": null,
+    "fieldFileName": null,
+    "fieldNumPages": null,
+    "fieldPage": null,
+    "fieldSaveDate": null,
+    "fieldTime": null,
+    "insertField": null,
+    "restartListNumbering": null,
+    "sectionBreak": null,
+    "sectionBreakContinuous": null,
+    "sectionBreakEvenPage": null,
+    "sectionBreakNextPage": null,
+    "sectionBreakOddPage": null,
+    "paragraph": null,
+    "bordersAndShading": null,
+    "customSpacing": null,
+    "footnote": null,
+    "horizontalLine": null,
+    "specialCharacters": null,
+    "keyboardShortcuts": null,
+    "searchMenus": null,
+    "makeCopy": null,
+    "preferences": null,
+    "tools": null,
+    "watermark": null,
+    "accessibility": null,
+    "buildingBlocks": null,
+    "showFormattingMarks": null,
+    "wordCount": null,
+    "convertToTable": null,
+    "emailAsAttachment": null,
+    "convertToText": null,
+    "dictionary": null,
+    "translate": null,
+    "explore": null,
+    "citations": null,
+    "shape": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null,
+    "showOutline": null
   },
   "formattingBar": {
     "groups": {
@@ -76,7 +125,11 @@
     "subscriptShortcut": "下标(Ctrl+=)",
     "imageProperties": "图片属性",
     "imagePropertiesShortcut": "图片属性(替代文本、边框)...",
-    "clearFormatting": "清除格式"
+    "clearFormatting": "清除格式",
+    "allCaps": null,
+    "smallCaps": null,
+    "addComment": null,
+    "paintFormat": null
   },
   "alignment": {
     "alignLeft": "左对齐",
@@ -203,7 +256,8 @@
       "replaceAllTitle": "替换所有匹配项",
       "matchCase": "区分大小写",
       "wholeWords": "全字匹配",
-      "toggleReplace": "+ 替换"
+      "toggleReplace": "+ 替换",
+      "useRegex": null
     },
     "hyperlink": {
       "titleEdit": "编辑超链接",
@@ -346,7 +400,9 @@
         "a5": "A5 (5.83\" × 8.27\")",
         "b5": "B5 (6.93\" × 9.84\")",
         "executive": "Executive (7.25\" × 10.5\")"
-      }
+      },
+      "pageColor": null,
+      "pageColorReset": null
     },
     "tableProperties": {
       "title": "表格属性",
@@ -366,7 +422,9 @@
         "left": "左对齐",
         "center": "居中",
         "right": "右对齐"
-      }
+      },
+      "bandedColumns": null,
+      "bandedRows": null
     },
     "pasteSpecial": {
       "title": "选择性粘贴",
@@ -502,11 +560,114 @@
         "resetZoom": "重置缩放",
         "resetZoomDescription": "重置缩放至 100%",
         "keyboardShortcuts": "键盘快捷方式",
-        "keyboardShortcutsDescription": "显示键盘快捷方式"
+        "keyboardShortcutsDescription": "显示键盘快捷方式",
+        "bulletList": null,
+        "bulletListDescription": null,
+        "commandPalette": null,
+        "commandPaletteDescription": null,
+        "cycleMode": null,
+        "cycleModeDescription": null,
+        "dictionary": null,
+        "dictionaryDescription": null,
+        "startComment": null,
+        "startCommentDescription": null,
+        "wordCount": null,
+        "wordCountDescription": null,
+        "documentOutline": null,
+        "documentOutlineDescription": null,
+        "pageBreak": null,
+        "pageBreakDescription": null,
+        "hyperlink": null,
+        "hyperlinkDescription": null
       },
       "noResults": "未找到与 \"{query}\" 匹配的快捷方式",
       "pressEscToClose": "按 {key} 关闭",
       "or": "或"
+    },
+    "bookmarks": {
+      "goTo": null,
+      "noBookmarks": null,
+      "title": null,
+      "addPlaceholder": null
+    },
+    "characterSpacing": {
+      "condensed": null,
+      "expanded": null,
+      "kerning": null,
+      "kerningHint": null,
+      "kerningThreshold": null,
+      "lowered": null,
+      "normal": null,
+      "position": null,
+      "positionBy": null,
+      "preview": null,
+      "previewSample": null,
+      "raised": null,
+      "scale": null,
+      "spacing": null,
+      "spacingBy": null,
+      "title": null
+    },
+    "bordersShading": {
+      "color": null,
+      "colorHex": null,
+      "fill": null,
+      "fillColor": null,
+      "fillHex": null,
+      "lineStyle": null,
+      "noFill": null,
+      "pattern": null,
+      "patternClear": null,
+      "patternSolid": null,
+      "presetBox": null,
+      "presetNone": null,
+      "setting": null,
+      "side": {
+        "bottom": null,
+        "left": null,
+        "right": null,
+        "top": null
+      },
+      "sides": null,
+      "style": null,
+      "styleDashed": null,
+      "styleDotted": null,
+      "styleDouble": null,
+      "styleSingle": null,
+      "styleThick": null,
+      "styleTriple": null,
+      "tabBorders": null,
+      "tabShading": null,
+      "title": null,
+      "widthPt": null
+    },
+    "customSpacing": {
+      "afterPt": null,
+      "atPt": null,
+      "beforePt": null,
+      "contextualSpacing": null,
+      "keepLines": null,
+      "keepNext": null,
+      "lineSpacing": null,
+      "multipleOf": null,
+      "pageBreakBefore": null,
+      "pagination": null,
+      "paragraphSpacing": null,
+      "rule": null,
+      "rule_atLeast": null,
+      "rule_auto": null,
+      "rule_exact": null,
+      "title": null,
+      "widowControl": null
+    },
+    "wordCount": {
+      "characters": null,
+      "charactersNoSpaces": null,
+      "pages": null,
+      "paragraphs": null,
+      "title": null,
+      "words": null,
+      "readingTime": null
     }
   },
   "comments": {
@@ -517,14 +678,19 @@
     "unknown": "未知",
     "addComment": "添加批注",
     "replyPlaceholder": "回复或使用 @ 提及他人...",
-    "replyCount": "{count, plural, one {# 条回复} other {# 条回复}}"
+    "replyCount": "{count, plural, one {# 条回复} other {# 条回复}}",
+    "mentionSuggestions": null
   },
   "trackedChanges": {
     "unknown": "未知",
     "replaced": "替换",
     "with": "为",
     "added": "添加",
-    "deleted": "删除"
+    "deleted": "删除",
+    "acceptAll": null,
+    "next": null,
+    "previous": null,
+    "rejectAll": null
   },
   "contextMenu": {
     "ariaLabel": "AI 操作菜单",
@@ -561,7 +727,9 @@
     "closeAriaLabel": "关闭大纲",
     "closeTitle": "关闭大纲",
     "title": "大纲",
-    "noHeadings": "未找到标题。请在文档中添加标题以在此处显示。"
+    "noHeadings": "未找到标题。请在文档中添加标题以在此处显示。",
+    "collapse": null,
+    "expand": null
   },
   "sidebar": {
     "ariaLabel": "批注侧边栏"
@@ -664,7 +832,11 @@
     "alignTableCenter": "表格居中对齐",
     "alignTableRight": "表格右对齐",
     "tableOptionsMenu": "表格选项菜单",
-    "tableOptions": "表格选项"
+    "tableOptions": "表格选项",
+    "distributeRows": null,
+    "sortAscending": null,
+    "sortDescending": null,
+    "autoFitWindow": null
   },
   "imageTransform": {
     "tooltip": "变换",
@@ -723,7 +895,8 @@
     "failedToParse": "解析文档失败",
     "linkRemoved": "链接已删除",
     "linkCopied": "链接已复制到剪贴板",
-    "failedToSave": "保存文档失败"
+    "failedToSave": "保存文档失败",
+    "contentLabel": null
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "显示文本",
@@ -739,7 +912,9 @@
     "insertPageNumber": "插入当前页码",
     "insertTotalPages": "插入总页数",
     "remove": "删除 {label}",
-    "closeEditing": "关闭 {label} 编辑"
+    "closeEditing": "关闭 {label} 编辑",
+    "differentEvenOdd": null,
+    "differentFirstPage": null
   },
   "image": {
     "placeholder": "图片占位符",
@@ -788,5 +963,18 @@
   },
   "viewer": {
     "pageIndicator": "第 {current} 页，共 {total} 页"
+  },
+  "voiceTyping": {
+    "error": null,
+    "listening": null,
+    "listeningHint": null,
+    "menuItem": null,
+    "stop": null,
+    "unsupported": null
+  },
+  "suggestingBanner": {
+    "body": null,
+    "switchToEditing": null,
+    "title": null
   }
 }

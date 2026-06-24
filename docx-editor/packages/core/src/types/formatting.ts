@@ -209,6 +209,13 @@ export interface TextFormatting {
   noProof?: boolean;
   /** Hidden when the document is viewed in a web layout (`<w:webHidden>`). */
   webHidden?: boolean;
+
+  /**
+   * Run border (`<w:bdr>`, ECMA-376 §17.3.2.4) — a box drawn around the run's
+   * text. Round-tripped verbatim so Word's "box around text" character
+   * formatting survives a save cycle.
+   */
+  border?: BorderSpec;
 }
 
 // ============================================================================
@@ -265,6 +272,24 @@ export type ParagraphAlignment =
 export type SpacingExplicit = { before?: boolean; after?: boolean };
 
 export interface ParagraphFormatting {
+  /**
+   * Records which empty self-closing property elements were present on
+   * the source paragraph's pPr (e.g. `<w:pBdr/>`, `<w:spacing/>`,
+   * `<w:ind/>`, `<w:rPr/>` with no children or attributes). These are
+   * semantically meaningful — they explicitly override the inherited
+   * style chain — so they must round-trip back to the same self-closing
+   * form even though the populated property fields are absent. The
+   * parser sets the flag when it encounters an empty element; the
+   * serializer emits the self-closing form when the flag is set and
+   * the corresponding populated fields are absent.
+   */
+  presentEmpty?: {
+    pBdr?: boolean;
+    spacing?: boolean;
+    ind?: boolean;
+    rPr?: boolean;
+  };
+
   // Alignment
   /** Paragraph alignment (w:jc) */
   alignment?: ParagraphAlignment;
@@ -432,6 +457,15 @@ export interface CellMargins {
   bottom?: TableMeasurement;
   left?: TableMeasurement;
   right?: TableMeasurement;
+  /**
+   * Source emitted the logical-side names (w:start / w:end) instead of
+   * the older physical-side names (w:left / w:right). The parser stores
+   * left/right regardless (the two are semantically identical in
+   * LTR documents) and sets this flag so the serializer can re-emit
+   * the same form. Default (undefined / false) keeps the physical
+   * names, matching Word's default output.
+   */
+  useLogicalSides?: boolean;
 }
 
 /**

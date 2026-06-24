@@ -32,12 +32,30 @@ export { ExtensionManager } from './ExtensionManager';
 export { createStarterKit } from './StarterKit';
 export type { StarterKitOptions } from './StarterKit';
 
+// Runtime preferences — read by SmartQuotes/Autocorrect each keystroke.
+// Tools → Preferences dialog mutates these; the React layer persists to
+// localStorage on mount and on change.
+export { editorPreferences, setEditorPreference } from './features/editorPreferences';
+export type { EditorPreferences } from './features/editorPreferences';
+
+// Spell-check — the extension is registered by `createStarterKit`; the
+// React layer plugs in the actual dictionary engine via `setSpellChecker`.
+export {
+  SpellcheckExtension,
+  setSpellChecker,
+  refreshSpellcheckDecorations,
+  spellcheckPluginKey,
+} from './features/SpellcheckExtension';
+export type { SpellChecker } from './features/SpellcheckExtension';
+
 // Re-export specific extensions consumers commonly customize
 export {
   ParagraphChangeTrackerExtension,
   getChangedParagraphIds,
   hasStructuralChanges,
   hasUntrackedChanges,
+  getChangedBlockTypes,
+  hasNonParagraphBlockChanges,
   clearTrackedChanges,
 } from './features/ParagraphChangeTrackerExtension';
 export {

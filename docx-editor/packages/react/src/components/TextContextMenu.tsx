@@ -5,7 +5,7 @@
  * Shows Cut, Copy, Paste, and other text editing options.
  */
 
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import defaultLocale from '../../i18n/en.json';
@@ -32,9 +32,15 @@ export type TextContextAction =
   | 'addColumnLeft'
   | 'addColumnRight'
   | 'deleteColumn'
+  | 'deleteTable'
   | 'mergeCells'
   | 'splitCell'
-  | 'addComment';
+  | 'addComment'
+  | 'translateSelection'
+  | 'translateQuickReplace'
+  | 'aiRewrite'
+  | 'aiSummarize'
+  | 'aiAsk';
 
 /**
  * Menu item configuration
@@ -290,6 +296,39 @@ const SplitCellIcon = () => (
   </svg>
 );
 
+const SparkleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M8 1.5L9 5.5L13 7L9 8.5L8 12.5L7 8.5L3 7L7 5.5L8 1.5Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M13 11.5L13.5 13L15 13.5L13.5 14L13 15.5L12.5 14L11 13.5L12.5 13L13 11.5Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const TranslateIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M2 4h6M5 2v2M3 4c0 3 2 5 4 5M7 4c0 3-2 5-4 5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <path
+      d="M8 14l2.5-6 2.5 6M9 12h3"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const CommentIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
@@ -329,12 +368,23 @@ function getActionIcon(action: TextContextAction): React.ReactNode {
       return <AddColumnRightIcon />;
     case 'deleteColumn':
       return <DeleteColumnIcon />;
+    case 'deleteTable':
+      // Re-use the generic delete glyph — Word, Notion, and Google
+      // Docs all use a trash/delete icon for whole-table removal.
+      return <DeleteIcon />;
     case 'mergeCells':
       return <MergeCellsIcon />;
     case 'splitCell':
       return <SplitCellIcon />;
     case 'addComment':
       return <CommentIcon />;
+    case 'translateSelection':
+    case 'translateQuickReplace':
+      return <TranslateIcon />;
+    case 'aiRewrite':
+    case 'aiSummarize':
+    case 'aiAsk':
+      return <SparkleIcon />;
     default:
       return null;
   }
@@ -559,39 +609,62 @@ export const TextContextMenu: React.FC<TextContextMenuProps> = ({
     }
   }, [isOpen]);
 
-  // Position menu to stay within viewport
+  // Measure the actual rendered size so the viewport clamp is exact — the
+  // per-item estimate is wrong with separators/long items, which let the menu
+  // spill below the window and gain an internal scrollbar. useLayoutEffect runs
+  // before paint, so the corrected position lands without a flicker.
+  const [measured, setMeasured] = useState<{ w: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setMeasured(null);
+      return;
+    }
+    const el = menuRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setMeasured((prev) =>
+        prev && Math.abs(prev.h - r.height) < 1 && Math.abs(prev.w - r.width) < 1
+          ? prev
+          : { w: r.width, h: r.height }
+      );
+    }
+  }, [isOpen, menuItems.length]);
+
+  // Position menu to stay within the viewport, and never let it grow past the
+  // window — a too-tall menu caps to the available height and scrolls internally
+  // instead of spilling below the window edge.
   const getMenuStyle = useCallback((): React.CSSProperties => {
-    const menuWidth = 220;
-    const menuHeight = menuItems.length * 36 + 16;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const MARGIN = 10;
+    const maxH = Math.max(120, vh - 2 * MARGIN);
+    const menuWidth = measured?.w ?? 220;
+    const menuHeight = Math.min(measured?.h ?? menuItems.length * 36 + 16, maxH);
 
     let x = position.x;
     let y = position.y;
-
-    if (typeof window !== 'undefined') {
-      if (x + menuWidth > window.innerWidth) {
-        x = window.innerWidth - menuWidth - 10;
-      }
-      if (y + menuHeight > window.innerHeight) {
-        y = window.innerHeight - menuHeight - 10;
-      }
-      if (x < 10) x = 10;
-      if (y < 10) y = 10;
-    }
+    if (x + menuWidth > vw) x = vw - menuWidth - MARGIN;
+    if (y + menuHeight > vh) y = vh - menuHeight - MARGIN;
+    if (x < MARGIN) x = MARGIN;
+    if (y < MARGIN) y = MARGIN;
 
     return {
       position: 'fixed',
       top: y,
       left: x,
-      minWidth: menuWidth,
-      background: 'white',
+      minWidth: 220,
+      maxHeight: maxH,
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      background: 'var(--doc-surface, white)',
+      color: 'var(--doc-text-on-surface, #1f2937)',
       border: '1px solid var(--doc-border-light)',
       borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
+      boxShadow: 'var(--doc-shadow, 0 2px 10px rgba(0, 0, 0, 0.15))',
       zIndex: Z_INDEX.contextMenu,
       padding: '4px 0',
-      overflow: 'hidden',
     };
-  }, [position, menuItems.length]);
+  }, [position, menuItems.length, measured]);
 
   const handleItemClick = (item: TextContextMenuItem) => {
     if (item.disabled) return;
@@ -789,9 +862,15 @@ export function getTextActionLabel(action: TextContextAction): string {
     addColumnLeft: 'Insert column left',
     addColumnRight: 'Insert column right',
     deleteColumn: 'Delete column',
+    deleteTable: 'Delete table',
     mergeCells: defaultLocale.table.mergeCells,
     splitCell: defaultLocale.table.splitCell,
     addComment: 'Comment',
+    translateSelection: 'Translate selection…',
+    translateQuickReplace: 'Translate selection',
+    aiRewrite: 'Rewrite with AI',
+    aiSummarize: 'Summarize with AI',
+    aiAsk: 'Ask AI about this',
   };
   return labels[action];
 }
@@ -814,9 +893,15 @@ export function getTextActionShortcut(action: TextContextAction): string {
     addColumnLeft: '',
     addColumnRight: '',
     deleteColumn: '',
+    deleteTable: '',
     mergeCells: '',
     splitCell: '',
     addComment: '',
+    translateSelection: '',
+    translateQuickReplace: '',
+    aiRewrite: '',
+    aiSummarize: '',
+    aiAsk: '',
   };
   return shortcuts[action];
 }
@@ -850,6 +935,12 @@ export function isTextActionAvailable(
     case 'pasteAsPlainText':
       return isEditable;
     case 'addComment':
+      return hasSelection;
+    case 'translateSelection':
+    case 'translateQuickReplace':
+    case 'aiRewrite':
+    case 'aiSummarize':
+    case 'aiAsk':
       return hasSelection;
     case 'selectAll':
       return true;

@@ -14,6 +14,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { useTranslation } from '../../i18n';
+import { FocusTrap } from '../ui/FocusTrap';
 
 // ============================================================================
 // TYPES
@@ -71,13 +72,13 @@ const DIALOG_OVERLAY_STYLE: CSSProperties = {
 };
 
 const DIALOG_CONTENT_STYLE: CSSProperties = {
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   borderRadius: '8px',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
   minWidth: '320px',
   maxWidth: '400px',
   width: '100%',
-  margin: '20px',
+  margin: 'clamp(8px, 2.5vw, 20px)',
 };
 
 const DIALOG_HEADER_STYLE: CSSProperties = {
@@ -128,10 +129,10 @@ const GRID_STYLE: CSSProperties = {
 const GRID_CELL_STYLE: CSSProperties = {
   width: '24px',
   height: '24px',
-  backgroundColor: 'white',
+  backgroundColor: 'var(--doc-surface, white)',
   border: '1px solid var(--doc-border-dark)',
   borderRadius: '2px',
-  transition: 'background-color 0.1s, border-color 0.1s',
+  transition: 'background-color var(--doc-anim-fast), border-color var(--doc-anim-fast)',
 };
 
 const GRID_CELL_SELECTED_STYLE: CSSProperties = {
@@ -411,126 +412,128 @@ export function InsertTableDialog({
       : t('dialogs.insertTable.hoverToSelect');
 
   return (
-    <div
-      className={`docx-insert-table-dialog-overlay ${className || ''}`}
-      style={{ ...DIALOG_OVERLAY_STYLE, ...style }}
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="insert-table-dialog-title"
-    >
+    <FocusTrap>
       <div
-        ref={dialogRef}
-        className="docx-insert-table-dialog"
-        style={DIALOG_CONTENT_STYLE}
-        tabIndex={-1}
+        className={`docx-insert-table-dialog-overlay ${className || ''}`}
+        style={{ ...DIALOG_OVERLAY_STYLE, ...style }}
+        onClick={handleOverlayClick}
+        onKeyDown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="insert-table-dialog-title"
       >
-        {/* Header */}
-        <div className="docx-insert-table-dialog-header" style={DIALOG_HEADER_STYLE}>
-          <h2 id="insert-table-dialog-title" style={DIALOG_TITLE_STYLE}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TableIcon />
-              {t('dialogs.insertTable.title')}
-            </span>
-          </h2>
-          <button
-            type="button"
-            className="docx-insert-table-dialog-close"
-            style={CLOSE_BUTTON_STYLE}
-            onClick={onClose}
-            aria-label={t('common.closeDialog')}
-          >
-            &times;
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="docx-insert-table-dialog-body" style={DIALOG_BODY_STYLE}>
-          {/* Grid selector */}
-          <div className="docx-insert-table-grid-container" style={GRID_CONTAINER_STYLE}>
-            <div
-              className="docx-insert-table-grid"
-              style={{
-                ...GRID_STYLE,
-                gridTemplateColumns: `repeat(${maxGridColumns}, 1fr)`,
-              }}
-              onMouseLeave={() => {
-                setHoverRows(0);
-                setHoverCols(0);
-              }}
-              role="grid"
-              aria-label="Table size selector"
+        <div
+          ref={dialogRef}
+          className="docx-insert-table-dialog"
+          style={DIALOG_CONTENT_STYLE}
+          tabIndex={-1}
+        >
+          {/* Header */}
+          <div className="docx-insert-table-dialog-header" style={DIALOG_HEADER_STYLE}>
+            <h2 id="insert-table-dialog-title" style={DIALOG_TITLE_STYLE}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TableIcon />
+                {t('dialogs.insertTable.title')}
+              </span>
+            </h2>
+            <button
+              type="button"
+              className="docx-insert-table-dialog-close"
+              style={CLOSE_BUTTON_STYLE}
+              onClick={onClose}
+              aria-label={t('common.closeDialog')}
             >
-              {gridCells}
+              &times;
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="docx-insert-table-dialog-body" style={DIALOG_BODY_STYLE}>
+            {/* Grid selector */}
+            <div className="docx-insert-table-grid-container" style={GRID_CONTAINER_STYLE}>
+              <div
+                className="docx-insert-table-grid"
+                style={{
+                  ...GRID_STYLE,
+                  gridTemplateColumns: `repeat(${maxGridColumns}, 1fr)`,
+                }}
+                onMouseLeave={() => {
+                  setHoverRows(0);
+                  setHoverCols(0);
+                }}
+                role="grid"
+                aria-label="Table size selector"
+              >
+                {gridCells}
+              </div>
+              <div className="docx-insert-table-grid-label" style={GRID_LABEL_STYLE}>
+                {gridLabel}
+              </div>
             </div>
-            <div className="docx-insert-table-grid-label" style={GRID_LABEL_STYLE}>
-              {gridLabel}
+
+            {/* Separator */}
+            <div className="docx-insert-table-separator" style={SEPARATOR_STYLE}>
+              <div style={SEPARATOR_LINE_STYLE} />
+              <span>{t('dialogs.insertTable.orSpecifySize')}</span>
+              <div style={SEPARATOR_LINE_STYLE} />
+            </div>
+
+            {/* Manual input */}
+            <div className="docx-insert-table-inputs">
+              <div style={INPUT_ROW_STYLE}>
+                <label htmlFor="insert-table-rows" style={LABEL_STYLE}>
+                  {t('dialogs.insertTable.rowsLabel')}
+                </label>
+                <input
+                  id="insert-table-rows"
+                  type="number"
+                  min={1}
+                  max={maxRows}
+                  value={inputRows}
+                  onChange={handleRowsChange}
+                  style={INPUT_STYLE}
+                />
+              </div>
+              <div style={INPUT_ROW_STYLE}>
+                <label htmlFor="insert-table-cols" style={LABEL_STYLE}>
+                  {t('dialogs.insertTable.columnsLabel')}
+                </label>
+                <input
+                  id="insert-table-cols"
+                  type="number"
+                  min={1}
+                  max={maxColumns}
+                  value={inputCols}
+                  onChange={handleColsChange}
+                  style={INPUT_STYLE}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Separator */}
-          <div className="docx-insert-table-separator" style={SEPARATOR_STYLE}>
-            <div style={SEPARATOR_LINE_STYLE} />
-            <span>{t('dialogs.insertTable.orSpecifySize')}</span>
-            <div style={SEPARATOR_LINE_STYLE} />
+          {/* Footer */}
+          <div className="docx-insert-table-dialog-footer" style={DIALOG_FOOTER_STYLE}>
+            <button
+              type="button"
+              className="docx-insert-table-dialog-cancel"
+              style={SECONDARY_BUTTON_STYLE}
+              onClick={onClose}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="docx-insert-table-dialog-insert"
+              style={canInsert ? PRIMARY_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+              onClick={handleManualInsert}
+              disabled={!canInsert}
+            >
+              {t('dialogs.insertTable.insertButton')}
+            </button>
           </div>
-
-          {/* Manual input */}
-          <div className="docx-insert-table-inputs">
-            <div style={INPUT_ROW_STYLE}>
-              <label htmlFor="insert-table-rows" style={LABEL_STYLE}>
-                {t('dialogs.insertTable.rowsLabel')}
-              </label>
-              <input
-                id="insert-table-rows"
-                type="number"
-                min={1}
-                max={maxRows}
-                value={inputRows}
-                onChange={handleRowsChange}
-                style={INPUT_STYLE}
-              />
-            </div>
-            <div style={INPUT_ROW_STYLE}>
-              <label htmlFor="insert-table-cols" style={LABEL_STYLE}>
-                {t('dialogs.insertTable.columnsLabel')}
-              </label>
-              <input
-                id="insert-table-cols"
-                type="number"
-                min={1}
-                max={maxColumns}
-                value={inputCols}
-                onChange={handleColsChange}
-                style={INPUT_STYLE}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="docx-insert-table-dialog-footer" style={DIALOG_FOOTER_STYLE}>
-          <button
-            type="button"
-            className="docx-insert-table-dialog-cancel"
-            style={SECONDARY_BUTTON_STYLE}
-            onClick={onClose}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="docx-insert-table-dialog-insert"
-            style={canInsert ? PRIMARY_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
-            onClick={handleManualInsert}
-            disabled={!canInsert}
-          >
-            {t('dialogs.insertTable.insertButton')}
-          </button>
         </div>
       </div>
-    </div>
+    </FocusTrap>
   );
 }
 

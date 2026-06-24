@@ -189,8 +189,18 @@ export function buildSelectionContext(
     wordCount: countWords(paragraphText),
   };
 
-  // Check if in table or hyperlink
-  const inTable = false; // TODO: detect if selection is in a table
+  // Check if in table or hyperlink.
+  //
+  // `inTable` is always false by design: `paragraphs` above filters
+  // `body.content` to top-level paragraph blocks only — table cells
+  // contain their own paragraphs that are never reachable through
+  // `range.start.paragraphIndex` in the current addressing scheme.
+  // Extending the agent to address paragraphs inside tables requires
+  // either (a) a flattened-paragraph walker that recurses into
+  // table / row / cell content, or (b) a separate `tableCell` range
+  // type. Both are out of scope until the agent gets table-editing
+  // actions.
+  const inTable = false;
   const inHyperlink = isInHyperlink(paragraph, range.start.offset);
 
   // Build suggested actions

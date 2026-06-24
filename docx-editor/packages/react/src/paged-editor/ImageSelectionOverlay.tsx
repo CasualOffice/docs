@@ -34,6 +34,14 @@ export interface ImageSelectionOverlayProps {
   imageInfo: ImageSelectionInfo | null;
   /** Zoom level */
   zoom: number;
+  /** True while a right-side panel (Format / comments) is open and has shifted
+   *  the page via a CSS transform. Toggling it re-anchors the overlay across the
+   *  0.2s shift transition (no scroll/resize event fires for a transform). */
+  panelOpen?: boolean;
+  /** Monotonic counter bumped by the host when the page viewport reflows
+   *  (Format panel open/close). Each change forces the overlay to re-anchor to
+   *  its <img>, since such reflows fire no scroll/resize event the overlay sees. */
+  reanchorTick?: number;
   /** Whether the editor is focused */
   isFocused: boolean;
   /** Callback when image is resized */
@@ -42,8 +50,18 @@ export interface ImageSelectionOverlayProps {
   onResizeStart?: () => void;
   /** Callback when resize ends */
   onResizeEnd?: () => void;
-  /** Callback when image drag-move completes. Receives drop clientX/clientY. */
-  onDragMove?: (pmPos: number, clientX: number, clientY: number) => void;
+  /** Callback when image drag-move completes. Receives the drop clientX/clientY
+   *  and the grab offset — where inside the image the drag started, measured
+   *  from the image's top-left. Floating-image moves must subtract the grab
+   *  offset so the image tracks the pointer instead of snapping its top-left
+   *  corner to the cursor. */
+  onDragMove?: (
+    pmPos: number,
+    clientX: number,
+    clientY: number,
+    grabOffsetX: number,
+    grabOffsetY: number
+  ) => void;
   /** Callback when drag starts */
   onDragStart?: () => void;
   /** Callback when drag ends (cancelled or completed) */
@@ -53,6 +71,9 @@ export interface ImageSelectionOverlayProps {
    *  paged-editor's contextmenu handler never fires for it — the parent wires
    *  this prop to route through to the same image-context-menu opener. */
   onContextMenu?: (e: React.MouseEvent) => void;
+  /** Open the Format panel for this image. Renders the on-object "Format"
+   *  chip at the selection's top-right corner when provided. */
+  onOpenProperties?: () => void;
 }
 
 // =============================================================================
@@ -152,6 +173,8 @@ function calculateNewDimensions(
 export function ImageSelectionOverlay({
   imageInfo,
   zoom,
+  panelOpen,
+  reanchorTick,
   isFocused,
   onResize,
   onResizeStart,
@@ -160,6 +183,7 @@ export function ImageSelectionOverlay({
   onDragStart,
   onDragEnd,
   onContextMenu,
+  onOpenProperties,
 }: ImageSelectionOverlayProps): React.ReactElement | null {
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -225,6 +249,23 @@ export function ImageSelectionOverlay({
   useEffect(() => {
     updatePosition();
   }, [updatePosition]);
+
+  // Opening/closing a right panel shifts the page via a CSS transform with a
+  // ~0.2s transition. No scroll/resize event fires, so without this the blue
+  // box detached from the image until the panel was toggled again. Track the
+  // image through the whole transition with a short rAF loop so the box glides
+  // with it and lands aligned.
+  useEffect(() => {
+    if (!imageInfo) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = () => {
+      updatePosition();
+      if (performance.now() - start < 320) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [panelOpen, reanchorTick, imageInfo, updatePosition]);
 
   // Also update on scroll/resize
   useEffect(() => {
@@ -342,6 +383,13 @@ export function ImageSelectionOverlay({
       const DRAG_THRESHOLD = 4; // px before considering it a drag
       const startX = e.clientX;
       const startY = e.clientY;
+      // Where inside the image the pointer grabbed, from the image's top-left.
+      // The draggable body div exactly overlays the painted image, so its rect
+      // is the image's on-screen box. Preserving this offset keeps the grabbed
+      // point under the cursor for the whole drag (Google-Docs behaviour).
+      const bodyRect = e.currentTarget.getBoundingClientRect();
+      const grabOffsetX = startX - bodyRect.left;
+      const grabOffsetY = startY - bodyRect.top;
       let dragStarted = false;
       let ghostEl: HTMLElement | null = null;
 
@@ -370,8 +418,10 @@ export function ImageSelectionOverlay({
         }
 
         if (ghostEl) {
-          ghostEl.style.left = `${moveEvent.clientX - overlayRect.width / 2}px`;
-          ghostEl.style.top = `${moveEvent.clientY - overlayRect.height / 2}px`;
+          // Track the grabbed point, not the image centre, so the ghost sits
+          // exactly where the image will land on drop.
+          ghostEl.style.left = `${moveEvent.clientX - grabOffsetX}px`;
+          ghostEl.style.top = `${moveEvent.clientY - grabOffsetY}px`;
         }
       };
 
@@ -389,7 +439,13 @@ export function ImageSelectionOverlay({
         if (dragStarted) {
           const info = imageInfoRef.current;
           if (info) {
-            onDragMoveRef.current?.(info.pmPos, upEvent.clientX, upEvent.clientY);
+            onDragMoveRef.current?.(
+              info.pmPos,
+              upEvent.clientX,
+              upEvent.clientY,
+              grabOffsetX,
+              grabOffsetY
+            );
           }
           onDragEndRef.current?.();
         }
@@ -467,6 +523,57 @@ export function ImageSelectionOverlay({
         style={{ left: left - HANDLE_HALF, top: top + height - HANDLE_HALF }}
         onMouseDown={handleResizeStart}
       />
+
+      {/* On-object "Format" chip — top-right corner of the selection.
+          Opens the contextual Format panel for this image. Hidden while
+          actively resizing/dragging so it doesn't fight the gesture. */}
+      {onOpenProperties && !isResizing && !isDragging && (
+        <button
+          type="button"
+          data-testid="image-format-chip"
+          aria-label="Format image"
+          title="Format"
+          onMouseDown={(e) => {
+            // Don't let the mousedown reach the image body (would start a drag)
+            // or the hidden PM view (would move the caret).
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onOpenProperties();
+          }}
+          style={{
+            position: 'absolute',
+            left: left + width - 4,
+            top: top - 14,
+            transform: 'translateX(-100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            height: 26,
+            padding: '0 10px',
+            fontSize: 12,
+            fontWeight: 600,
+            lineHeight: '26px',
+            color: '#fff',
+            background: ACCENT_COLOR,
+            border: 'none',
+            borderRadius: 13,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            zIndex: 21,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+          </svg>
+          Format
+        </button>
+      )}
 
       {/* Dimension indicator during resize */}
       {isResizing && (

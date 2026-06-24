@@ -10,14 +10,32 @@ import * as path from 'path';
 
 test.describe('scrollToPage / getTotalPages (issue #280)', () => {
   test.beforeEach(async ({ page }) => {
+    // Loading the ~50-page, 1 MB fixture and laying it out is genuinely slow
+    // on constrained CI runners (2 vCPU); the default 30 s test budget gets
+    // eaten by load + layout before the scroll wait can finish. Triple it so
+    // the in-viewport wait has room rather than racing the test timeout.
+    test.slow();
     const editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
-    const docPath = path.resolve(process.cwd(), 'screenshots/paraid-test.docx');
+    // `paraid-test.docx` was an old long-doc fixture in `screenshots/`
+    // that never got committed; reuse the in-tree multi-page fixture
+    // `issue-68-large.docx` (1 MB, ~50 pages) which exercises the same
+    // page-jump behaviour.
+    const docPath = path.resolve(process.cwd(), 'e2e/fixtures/issue-68-large.docx');
     await editor.loadDocxFile(docPath);
     await page.waitForFunction(() => (window.__DOCX_EDITOR_E2E__?.getTotalPages() ?? 0) > 1, {
       timeout: 10000,
     });
+    // getTotalPages reflects the layout calculation, but the .layout-page
+    // shells render asynchronously after that. scrollToPage(n) is a no-op
+    // until shell n exists in the DOM, which on CI sometimes lags the
+    // total-pages signal by a few hundred ms — wait for at least two shells
+    // so the first scroll target is present before the test acts.
+    await page.waitForFunction(
+      () => document.querySelectorAll('.layout-page').length >= 2,
+      { timeout: 10000 }
+    );
   });
 
   test('getTotalPages reports the layout page count (>1) without scrolling', async ({ page }) => {

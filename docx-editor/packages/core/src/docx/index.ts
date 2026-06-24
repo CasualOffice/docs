@@ -45,6 +45,7 @@ export {
   isSeparatorEndnote,
 } from './footnoteParser';
 export type { FootnoteMap, EndnoteMap } from './footnoteParser';
+export { setFootnotePlainText, setEndnotePlainText } from './serializer/footnoteSerializer';
 
 // Fields
 export {

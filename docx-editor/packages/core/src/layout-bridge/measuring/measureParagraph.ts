@@ -34,8 +34,6 @@ import { DEFAULT_SINGLE_LINE_RATIO } from '../../utils/fontResolver';
 const DEFAULT_FONT_SIZE = 11; // 11pt (Word 2007+ default)
 const DEFAULT_FONT_FAMILY = 'Calibri';
 
-/** Word's "single line spacing" floor applied to `auto`/`atLeast` line rules. */
-const WORD_SINGLE_LINE_FLOOR = 1.15;
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.0; // OOXML spec default: single spacing (line=240)
 
 // Floating-point tolerance for line breaking (0.5px)
@@ -70,7 +68,20 @@ function computeTabWidth(
         } else if (stop.val === 'end') {
           width -= followingTextWidth;
         }
-        return Math.max(1, width);
+        // When center/right alignment subtracts text wider than the
+        // gap, `width` goes <= 0 ("text is too long to fit at this
+        // stop"). The renderer (tabCalculator.ts:232-241) falls back
+        // to the next default tab interval in this case — NOT to 1px.
+        // Returning 1px here while the painter draws ~48px makes
+        // measurement under-report line width, causing the layout to
+        // accept a line that subsequently overflows when painted.
+        // Mirror the renderer's fallback to keep measurement honest.
+        if (width < 1) {
+          const remainder = currentPos % DEFAULT_TAB_WIDTH;
+          const fallback = remainder < 0.5 ? DEFAULT_TAB_WIDTH : DEFAULT_TAB_WIDTH - remainder;
+          return fallback;
+        }
+        return width;
       }
     }
   }
@@ -262,13 +273,20 @@ function calculateEmptyParagraphMetrics(
   const metrics = getFontMetrics({ fontSize, fontFamily: fontFamily ?? DEFAULT_FONT_FAMILY });
   const result = calculateTypographyMetrics(fontSize, spacing, metrics);
 
-  // Empty paragraphs render at single-line height even when the doc writes a
-  // smaller line value; without this floor, narrow-metric fonts (OS/2 ratio
-  // < 1.15) collapse below Word's render.
+  // Empty paragraphs render at the font's natural single-line height even when
+  // the doc writes a smaller `line` value (e.g. an exact/atLeast value below the
+  // single line). The floor is the SAME single-line ratio used for non-empty
+  // lines (font-specific OS/2 metric, not a hardcoded constant) so an empty
+  // paragraph and a one-line paragraph in the same font measure identically and
+  // both match LibreOffice. A flat 1.15 floor over-inflated empty paragraphs in
+  // narrow-ratio serif fonts (Times New Roman / Liberation Serif ≈ 1.107),
+  // which dense form documents stack dozens of — accumulating visible downward
+  // drift vs the reference renderer.
   const lineRule = spacing?.lineRule ?? 'auto';
   if (lineRule === 'auto' || lineRule === 'atLeast') {
     const fontSizePx = ptToPx(fontSize);
-    const floored = Math.max(result.lineHeight, fontSizePx * WORD_SINGLE_LINE_FLOOR);
+    const ratio = metrics?.singleLineRatio ?? DEFAULT_SINGLE_LINE_RATIO;
+    const floored = Math.max(result.lineHeight, fontSizePx * ratio);
     if (floored !== result.lineHeight) {
       return { ...result, lineHeight: floored };
     }

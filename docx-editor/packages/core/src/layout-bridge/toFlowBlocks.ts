@@ -17,6 +17,7 @@ import type {
   ImageBlock,
   TextBoxBlock,
   PageBreakBlock,
+  ColumnBreakBlock,
   SectionBreakBlock,
   ColumnLayout,
   Run,
@@ -73,13 +74,26 @@ const DEFAULT_FONT = 'Calibri';
 
 /**
  * Constrain image dimensions to fit within the page content area.
- * Scales proportionally if height exceeds pageContentHeight.
+ *
+ * Scales proportionally (preserves aspect ratio) when height exceeds
+ * `pageContentHeight`. Only applied to **non-floating** images —
+ * floating images (any DrawingML wrap type: square, tight, through,
+ * topAndBottom, behind, inFront) are anchored to a position and must
+ * keep their declared size; Word lets them extend past the page
+ * boundary rather than scale them down.
+ *
+ * The save path reads the PM node's original `attrs.width` /
+ * `attrs.height` (not the constrained values), so this is a
+ * layout-only adjustment — the .docx on disk keeps the original size
+ * regardless.
  */
 function constrainImageToPage(
   width: number,
   height: number,
-  pageContentHeight: number | undefined
+  pageContentHeight: number | undefined,
+  isFloating: boolean = false
 ): { width: number; height: number } {
+  if (isFloating) return { width, height };
   if (!pageContentHeight || height <= pageContentHeight) {
     return { width, height };
   }
@@ -664,7 +678,8 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       const constrained = constrainImageToPage(
         (attrs.width as number) || 100,
         (attrs.height as number) || 100,
-        _options.pageContentHeight
+        _options.pageContentHeight,
+        !!attrs.wrapType // any wrap type = floating; don't scale to page
       );
       const run: ImageRun = {
         kind: 'image',
@@ -673,6 +688,9 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
         height: constrained.height,
         alt: attrs.alt as string | undefined,
         transform: attrs.transform as string | undefined,
+        borderWidth: attrs.borderWidth as number | undefined,
+        borderColor: attrs.borderColor as string | undefined,
+        borderStyle: attrs.borderStyle as string | undefined,
         // Preserve wrap attributes for proper rendering
         wrapType: attrs.wrapType as string | undefined,
         displayMode: attrs.displayMode as 'inline' | 'block' | 'float' | undefined,
@@ -765,7 +783,8 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
           const sdtConstrained = constrainImageToPage(
             (attrs.width as number) || 100,
             (attrs.height as number) || 100,
-            _options.pageContentHeight
+            _options.pageContentHeight,
+            !!attrs.wrapType // any wrap type = floating; don't scale to page
           );
           const run: ImageRun = {
             kind: 'image',
@@ -774,6 +793,9 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
             height: sdtConstrained.height,
             alt: attrs.alt as string | undefined,
             transform: attrs.transform as string | undefined,
+            borderWidth: attrs.borderWidth as number | undefined,
+            borderColor: attrs.borderColor as string | undefined,
+            borderStyle: attrs.borderStyle as string | undefined,
             wrapType: attrs.wrapType as string | undefined,
             displayMode: attrs.displayMode as 'inline' | 'block' | 'float' | undefined,
             cssFloat: attrs.cssFloat as 'left' | 'right' | 'none' | undefined,
@@ -1334,9 +1356,15 @@ function convertTable(node: PMNode, startPos: number, options: ToFlowBlocksOptio
   let offset = startPos + 1; // +1 for opening tag
 
   // Read the table-level <w:tblCellMar> default cell margins (twips). Cells
-  // cascade to this when their own w:tcMar is absent or explicit-zero. PM
-  // stores it as `cellMargins: { top, bottom, left, right }` in twips.
-  const tableCellMargins = node.attrs.cellMargins as
+  // cascade to this when their own w:tcMar is absent or explicit-zero.
+  //
+  // Prefer `resolvedCellMargins` — the per-side cascade result (inline →
+  // table style → default table style). The bare `cellMargins` attr mirrors
+  // the verbatim inline tblCellMar for round-trip and may omit sides the
+  // source left to inheritance (e.g. a top/bottom-only tblCellMar); using it
+  // directly would zero the unspecified left/right and let cell text run to
+  // the cell edge. `resolvedCellMargins` carries the inherited sides.
+  const tableCellMargins = (node.attrs.resolvedCellMargins ?? node.attrs.cellMargins) as
     | { top?: number; bottom?: number; left?: number; right?: number }
     | undefined;
 
@@ -1456,7 +1484,8 @@ function convertImage(node: PMNode, startPos: number, pageContentHeight?: number
   const constrained = constrainImageToPage(
     (attrs.width as number) || 100,
     (attrs.height as number) || 100,
-    pageContentHeight
+    pageContentHeight,
+    !!wrapType // any wrap type = floating; don't scale to page
   );
 
   return {
@@ -1467,6 +1496,9 @@ function convertImage(node: PMNode, startPos: number, pageContentHeight?: number
     height: constrained.height,
     alt: attrs.alt as string | undefined,
     transform: attrs.transform as string | undefined,
+    borderWidth: attrs.borderWidth as number | undefined,
+    borderColor: attrs.borderColor as string | undefined,
+    borderStyle: attrs.borderStyle as string | undefined,
     anchor: shouldAnchor
       ? {
           isAnchored: true,
@@ -1500,6 +1532,35 @@ function convertTextBoxNode(
     }
   });
 
+  // Anchor data — round-tripped through PM via TextBoxExtension's
+  // posOffsetH/V/posRelFromH/V/posAlignH/V attrs. Wrapping into a
+  // single `anchor` object is purely a layout-time grouping; the
+  // PM-side attrs stay flat for backwards compatibility. Only emit
+  // the anchor when at least one position attr is present, so
+  // non-anchored boxes don't pay any render-time cost.
+  const hasAnchor =
+    attrs.posOffsetH != null ||
+    attrs.posOffsetV != null ||
+    attrs.posRelFromH != null ||
+    attrs.posRelFromV != null ||
+    attrs.posAlignH != null ||
+    attrs.posAlignV != null;
+  // `behindDoc` (VML z-index<0 → wrapType 'behind') drives both the paint
+  // order (z-index −1) and the flow space-reservation for paragraph-anchored
+  // groups (the SDS hazard box). Carried on the anchor only.
+  const behindDoc = (attrs.wrapType as string | undefined) === 'behind';
+  const anchor: TextBoxBlock['anchor'] = hasAnchor
+    ? {
+        offsetH: (attrs.posOffsetH as number | undefined) ?? undefined,
+        offsetV: (attrs.posOffsetV as number | undefined) ?? undefined,
+        relFromH: (attrs.posRelFromH as string | undefined) ?? undefined,
+        relFromV: (attrs.posRelFromV as string | undefined) ?? undefined,
+        alignH: (attrs.posAlignH as string | undefined) ?? undefined,
+        alignV: (attrs.posAlignV as string | undefined) ?? undefined,
+        behindDoc: behindDoc || undefined,
+      }
+    : undefined;
+
   return {
     kind: 'textBox',
     id: nextBlockId(),
@@ -1517,6 +1578,7 @@ function convertTextBoxNode(
     },
     content: contentBlocks,
     autoFit: (attrs.autoFit as TextBoxBlock['autoFit']) ?? undefined,
+    anchor,
     pmStart: startPos,
     pmEnd: startPos + node.nodeSize,
   };
@@ -1613,6 +1675,22 @@ export function toFlowBlocks(doc: PMNode, options: ToFlowBlocksOptions = {}): Fl
                   equalWidth: secProps.equalWidth ?? true,
                   separator: secProps.separator,
                 };
+                // Unequal columns (`w:equalWidth="0"`): carry the explicit
+                // per-column `w:col` widths/spaces so the value column gets its
+                // true (wider) width instead of an even split — even columns
+                // over-narrow the wide column, over-wrapping its text and
+                // inflating the region (and document) height.
+                if (
+                  secProps.equalWidth === false &&
+                  secProps.columns &&
+                  secProps.columns.length === colCount &&
+                  secProps.columns.every((c) => typeof c.width === 'number' && c.width > 0)
+                ) {
+                  cols.columnWidths = secProps.columns.map((c) => ({
+                    width: twipsToPixels(c.width as number),
+                    space: twipsToPixels(c.space ?? 0),
+                  }));
+                }
                 sectionBreak.columns = cols;
               }
             }
@@ -1637,6 +1715,23 @@ export function toFlowBlocks(doc: PMNode, options: ToFlowBlocksOptions = {}): Fl
 
       case 'horizontalRule':
       case 'pageBreak': {
+        // A `pageBreak` node carries a `breakType` attr: 'page' (the default,
+        // forced page break) or 'column' (§17.3.3.1 `<w:br w:type="column"/>`).
+        // Route a column break to a `columnBreak` FlowBlock so the paginator
+        // advances the column rather than forcing a whole new page — in a
+        // single-column section that advance is a no-op, matching Word, instead
+        // of spilling each column break onto its own page. `horizontalRule`
+        // has no attrs and falls through as a page break.
+        if (node.type.name === 'pageBreak' && node.attrs.breakType === 'column') {
+          const cb: ColumnBreakBlock = {
+            kind: 'columnBreak',
+            id: nextBlockId(),
+            pmStart: pos,
+            pmEnd: pos + node.nodeSize,
+          };
+          blocks.push(cb);
+          break;
+        }
         const pb: PageBreakBlock = {
           kind: 'pageBreak',
           id: nextBlockId(),

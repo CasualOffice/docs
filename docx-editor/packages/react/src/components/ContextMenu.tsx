@@ -5,7 +5,7 @@
  * Shows AI options like rewrite, expand, summarize, translate, etc.
  */
 
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useCallback, useState } from 'react';
 import type { AIAction, SelectionContext } from '@eigenpal/docx-core/types/agentApi';
 import { getActionDescription, DEFAULT_AI_ACTIONS } from '@eigenpal/docx-core/types/agentApi';
 import { useTranslation } from '../i18n';
@@ -297,7 +297,7 @@ const CustomPromptDialog: React.FC<CustomPromptDialogProps> = ({
         left: 0,
         right: 0,
         padding: '8px',
-        background: 'white',
+        background: 'var(--doc-surface, white)',
         borderTop: '1px solid var(--doc-border)',
       }}
     >
@@ -329,7 +329,7 @@ const CustomPromptDialog: React.FC<CustomPromptDialogProps> = ({
               padding: '6px 12px',
               border: '1px solid var(--doc-border-light)',
               borderRadius: '4px',
-              background: 'white',
+              background: 'var(--doc-surface, white)',
               cursor: 'pointer',
               fontSize: '12px',
             }}
@@ -375,6 +375,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [showPromptDialog, setShowPromptDialog] = useState(false);
+  // Actual rendered size, measured after mount, so the viewport clamp is exact
+  // (the action-count × 36 estimate is wrong with separators/submenus, which let
+  // the menu spill below the viewport and gain an internal scrollbar).
+  const [measured, setMeasured] = useState<{ w: number; h: number } | null>(null);
   const { t } = useTranslation();
 
   // All available actions including custom
@@ -440,40 +444,59 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
   }, [isOpen]);
 
-  // Position the menu to stay within viewport
+  // Measure the actual rendered size once the menu mounts so the viewport clamp
+  // below uses the real height (not the per-action estimate). useLayoutEffect
+  // runs before paint, so the corrected position is applied without a flicker.
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setMeasured(null);
+      return;
+    }
+    const el = menuRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setMeasured((prev) =>
+        prev && Math.abs(prev.h - r.height) < 1 && Math.abs(prev.w - r.width) < 1
+          ? prev
+          : { w: r.width, h: r.height }
+      );
+    }
+  }, [isOpen, allActions.length, showPromptDialog]);
+
+  // Position the menu to stay within the viewport, and never let it grow past
+  // the viewport — a too-tall menu caps to the available height and scrolls
+  // internally instead of spilling below the window.
   const getMenuStyle = useCallback((): React.CSSProperties => {
-    const menuWidth = 200;
-    const menuHeight = allActions.length * 36 + 16; // Approximate height
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const MARGIN = 10;
+    const maxH = Math.max(120, vh - 2 * MARGIN);
+    const menuWidth = measured?.w ?? 200;
+    const menuHeight = Math.min(measured?.h ?? allActions.length * 36 + 16, maxH);
 
     let x = position.x;
     let y = position.y;
-
-    // Adjust for viewport boundaries
-    if (typeof window !== 'undefined') {
-      if (x + menuWidth > window.innerWidth) {
-        x = window.innerWidth - menuWidth - 10;
-      }
-      if (y + menuHeight > window.innerHeight) {
-        y = window.innerHeight - menuHeight - 10;
-      }
-      if (x < 10) x = 10;
-      if (y < 10) y = 10;
-    }
+    if (x + menuWidth > vw) x = vw - menuWidth - MARGIN;
+    if (y + menuHeight > vh) y = vh - menuHeight - MARGIN;
+    if (x < MARGIN) x = MARGIN;
+    if (y < MARGIN) y = MARGIN;
 
     return {
       position: 'fixed',
       top: y,
       left: x,
-      minWidth: menuWidth,
-      background: 'white',
+      minWidth: 200,
+      maxHeight: maxH,
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      background: 'var(--doc-surface, white)',
       border: '1px solid var(--doc-border-light)',
       borderRadius: '8px',
       boxShadow: '0 2px 10px rgba(0, 0, 0, 0.15)',
       zIndex: Z_INDEX.contextMenu,
       padding: '4px 0',
-      overflow: 'hidden',
     };
-  }, [position, allActions.length]);
+  }, [position, allActions.length, measured]);
 
   const handleActionClick = (action: AIAction) => {
     if (action === 'custom') {

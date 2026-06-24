@@ -21,6 +21,10 @@ export const SubscriptExtension = createMarkExtension({
       commands: {
         toggleSubscript: () => toggleMark(ctx.schema.marks.subscript),
       },
+      keyboardShortcuts: {
+        // Google Docs: Ctrl+, for subscript
+        'Mod-,': toggleMark(ctx.schema.marks.subscript),
+      },
     };
   },
 });

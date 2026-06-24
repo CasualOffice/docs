@@ -110,6 +110,12 @@ export function extractSelectionContext(state: EditorState): SelectionContext {
     if (paragraph.attrs.styleId) {
       paragraphFormatting.styleId = paragraph.attrs.styleId;
     }
+    if (paragraph.attrs.spaceBefore != null) {
+      paragraphFormatting.spaceBefore = paragraph.attrs.spaceBefore;
+    }
+    if (paragraph.attrs.spaceAfter != null) {
+      paragraphFormatting.spaceAfter = paragraph.attrs.spaceAfter;
+    }
   }
 
   // List detection
@@ -157,10 +163,58 @@ export function extractSelectionContext(state: EditorState): SelectionContext {
  */
 function extractTextFormatting(state: EditorState): TextFormatting {
   const { selection } = state;
-  const { empty, $from } = selection;
+  const { empty, $from, from, to } = selection;
 
-  // Get marks: stored marks take precedence, then marks at cursor
-  const marks = state.storedMarks || (empty ? $from.marks() : []);
+  // Get marks. For an empty selection (cursor), stored marks take
+  // precedence (so format-then-type works), otherwise the marks at the
+  // resolved cursor position. For a non-empty selection, walk every
+  // text node in the range and intersect the marks — the toolbar
+  // should reflect a formatting as "active" only when *every* covered
+  // character carries it. (Without this branch, a selection like
+  // "bold" inside `<strong>bold</strong>` returned `[]` and the
+  // toolbar showed bold=inactive even though the entire selection was
+  // bold.)
+  let marks: readonly import('prosemirror-model').Mark[] = [];
+  if (empty) {
+    if (state.storedMarks) {
+      marks = state.storedMarks;
+    } else {
+      // $from.marks() is left-leaning — at the start of a marked
+      // range (cursor between a non-bold space and bold "bold")
+      // it returns the marks of the preceding character (no bold),
+      // so the toolbar reads bold-inactive even though the user
+      // is visually "inside" the bold range. Word + Google Docs
+      // treat boundary cursors as inside the *adjacent* mark for
+      // toolbar state, so also peek at the node *after* the
+      // cursor and union those marks in.
+      const leftMarks = $from.marks();
+      const after = $from.nodeAfter;
+      const rightMarks = after ? after.marks : [];
+      const seen = new Set<string>();
+      const combined: import('prosemirror-model').Mark[] = [];
+      for (const m of [...leftMarks, ...rightMarks]) {
+        // Dedupe by type+attrs so the same mark from both sides
+        // doesn't double up in the toolbar's mark scan below.
+        const key = m.type.name + JSON.stringify(m.attrs);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        combined.push(m);
+      }
+      marks = combined;
+    }
+  } else {
+    let intersection: import('prosemirror-model').Mark[] | null = null;
+    state.doc.nodesBetween(from, to, (node) => {
+      if (!node.isText) return true;
+      if (intersection === null) {
+        intersection = [...node.marks];
+      } else {
+        intersection = intersection.filter((m) => node.marks.some((n) => n.eq(m)));
+      }
+      return false;
+    });
+    marks = intersection ?? [];
+  }
   const formatting: TextFormatting = {};
 
   for (const mark of marks) {
@@ -210,6 +264,32 @@ function extractTextFormatting(state: EditorState): TextFormatting {
         break;
       case 'subscript':
         formatting.vertAlign = 'subscript';
+        break;
+      case 'smallCaps':
+        formatting.smallCaps = true;
+        break;
+      case 'allCaps':
+        formatting.allCaps = true;
+        break;
+      case 'hidden':
+        formatting.hidden = true;
+        break;
+      case 'emboss':
+        formatting.emboss = true;
+        break;
+      case 'imprint':
+        formatting.imprint = true;
+        break;
+      case 'textShadow':
+        formatting.shadow = true;
+        break;
+      case 'textOutline':
+        formatting.outline = true;
+        break;
+      case 'characterSpacing':
+        if (mark.attrs.spacing != null) {
+          formatting.spacing = mark.attrs.spacing;
+        }
         break;
     }
   }

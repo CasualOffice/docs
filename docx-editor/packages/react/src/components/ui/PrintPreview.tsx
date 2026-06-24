@@ -94,13 +94,13 @@ export function PrintButton({
     gap: compact ? '4px' : '6px',
     padding: compact ? '4px 8px' : '6px 12px',
     fontSize: compact ? '13px' : '14px',
-    backgroundColor: 'white',
+    backgroundColor: 'var(--doc-surface, white)',
     border: '1px solid var(--doc-border)',
     borderRadius: '4px',
     cursor: disabled ? 'not-allowed' : 'pointer',
     color: disabled ? 'var(--doc-text-muted)' : 'var(--doc-text)',
     opacity: disabled ? 0.6 : 1,
-    transition: 'background-color 0.15s, border-color 0.15s',
+    transition: 'background-color var(--doc-anim-base), border-color var(--doc-anim-base)',
     ...style,
   };
 

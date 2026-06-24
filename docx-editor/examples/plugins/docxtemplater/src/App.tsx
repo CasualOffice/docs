@@ -6,7 +6,7 @@ import {
   type Document,
   PluginHost,
   templatePlugin,
-} from '@eigenpal/docx-js-editor';
+} from '@casualoffice/docs';
 
 function createTemplateDocument(): Document {
   const doc = createEmptyDocument();
@@ -269,7 +269,7 @@ export function App() {
             rel="noopener noreferrer"
             style={styles.titleLink}
           >
-            <h1 style={styles.title}>@eigenpal/docx-js-editor</h1>
+            <h1 style={styles.title}>@casualoffice/docs</h1>
           </a>
           <span style={styles.badge}>Docxtemplater Plugin</span>
           {fileName && <span style={styles.fileName}>{fileName}</span>}

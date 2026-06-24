@@ -54,6 +54,7 @@ import {
 } from './xmlParser';
 import { resolveThemeFontRef } from './themeParser';
 import { parseImage } from './imageParser';
+import { parseBorderSpec } from './paragraphParser';
 
 /**
  * Parse color value from attributes
@@ -226,6 +227,13 @@ export function parseRunProperties(
       getAttribute(color, 'w', 'themeTint'),
       getAttribute(color, 'w', 'themeShade')
     );
+  }
+
+  // Run border (w:bdr) — box around the run's text (§17.3.2.4)
+  const bdr = findChild(rPr, 'w', 'bdr');
+  if (bdr) {
+    const border = parseBorderSpec(bdr);
+    if (border) formatting.border = border;
   }
 
   // Highlight color (w:highlight)
@@ -622,6 +630,14 @@ function parseRunContents(
         contents.push(parseTextContent(child));
         break;
 
+      case 'delText':
+        // Tracked-deletion text — the same TextContent shape; the
+        // paragraph serializer rewrites <w:t> → <w:delText> when this
+        // run sits inside <w:del>/<w:moveFrom>. Without this case the
+        // text vanished from any run inside a deletion block.
+        contents.push(parseTextContent(child));
+        break;
+
       case 'tab':
         // Tab character
         contents.push(parseTabContent());
@@ -657,6 +673,15 @@ function parseRunContents(
         contents.push(parseInstrText(child));
         break;
 
+      case 'delInstrText':
+        // Tracked-deletion field instruction — same shape as instrText;
+        // the paragraph serializer rewrites it back to <w:delInstrText>
+        // when this run sits inside <w:del>/<w:moveFrom>. Without this
+        // case the instruction string vanished, leaving an incomplete
+        // field skeleton on round-trip.
+        contents.push(parseInstrText(child));
+        break;
+
       case 'softHyphen':
         // Soft hyphen
         contents.push({ type: 'softHyphen' } as SoftHyphenContent);
@@ -667,13 +692,19 @@ function parseRunContents(
         contents.push({ type: 'noBreakHyphen' } as NoBreakHyphenContent);
         break;
 
-      case 'drawing':
-        // Drawing/image
+      case 'drawing': {
+        // Drawing/image. Only emit a drawing run when it carries actual image
+        // data: a shape-only drawing (e.g. <wps:wsp> with solidFill and no
+        // <a:blip>) parses to an image with an empty src, which the painter
+        // rendered as a spurious broken-image <img> *alongside* the shape that
+        // the shape pipeline already draws. Skip those here — same rule the
+        // AlternateContent branch below already applies ("skip shapes").
         const drawing = parseDrawingContent(child, rels, media);
-        if (drawing) {
+        if (drawing?.image?.src) {
           contents.push(drawing);
         }
         break;
+      }
 
       case 'pict':
       case 'object':

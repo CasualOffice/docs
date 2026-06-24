@@ -36,6 +36,7 @@ import type {
   RunPropertyChange,
 } from '../../types/document';
 import { serializeParagraph } from './paragraphSerializer';
+import { serializeBorder } from './documentSerializer';
 import { escapeXml, intAttr } from './xmlUtils';
 
 // ============================================================================
@@ -57,9 +58,21 @@ export function resetAutoIdCounter(): void {
   nextAutoId = 100000;
 }
 
-/** Get a unique positive integer ID, using the provided value or generating one */
+/**
+ * Get a unique positive integer ID, using the provided value or
+ * generating one.
+ *
+ * The "0" check matters: template-engine-generated DOCX files routinely
+ * emit `<pic:cNvPr id="0"/>` on every image (the engine never bothers
+ * to allocate unique ids, since Word renders the file fine even with
+ * dupes when the relationship target differs). Our parser carries that
+ * id through verbatim, so without this guard every image we serialise
+ * lands with `id="0"` and Word fails to render any but the first.
+ * Treat both numeric 0 and the string "0" as falsy → fall through to
+ * the auto-incrementing counter.
+ */
 function getUniqueId(id: string | number | undefined): string {
-  if (id !== undefined && id !== null && id !== '' && id !== 0) {
+  if (id !== undefined && id !== null && id !== '' && id !== 0 && id !== '0') {
     return String(id);
   }
   return String(nextAutoId++);
@@ -80,6 +93,7 @@ const VALID_HIGHLIGHT_COLORS = new Set([
   'green',
   'lightGray',
   'magenta',
+  'none',
   'red',
   'white',
   'yellow',
@@ -324,12 +338,19 @@ export function serializeTextFormatting(formatting: TextFormatting | undefined):
     parts.push(`<w:szCs w:val="${intAttr(formatting.fontSizeCs)}"/>`);
   }
 
-  // Highlight — emit valid OOXML named colors via w:highlight,
-  // fall back to w:shd for custom hex colors
-  if (formatting.highlight && formatting.highlight !== 'none') {
+  // Run border (<w:bdr>) — box around the run's text (§17.3.2.4)
+  if (formatting.border) {
+    const bdrXml = serializeBorder(formatting.border, 'bdr');
+    if (bdrXml) parts.push(bdrXml);
+  }
+
+  // Highlight — emit valid OOXML named colors via w:highlight (including
+  // the explicit "none" override, ECMA-376 §17.18.40), fall back to w:shd
+  // for custom hex colors.
+  if (formatting.highlight) {
     if (VALID_HIGHLIGHT_COLORS.has(formatting.highlight)) {
       parts.push(`<w:highlight w:val="${formatting.highlight}"/>`);
-    } else if (!formatting.shading) {
+    } else if (formatting.highlight !== 'none' && !formatting.shading) {
       // Custom color not in OOXML predefined set — use w:shd as fallback.
       // Only emit if value looks like a valid hex color.
       const hex = formatting.highlight.replace(/^#/, '');
@@ -841,6 +862,7 @@ function serializeDrawingContent(content: DrawingContent): string {
     ? serializePosition(image.position)
     : '<wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>';
   const wrap = serializeWrap(image.wrap);
+  const sizeRel = serializeRelativeSize(image.relativeSize);
 
   return [
     '<w:drawing>',
@@ -853,9 +875,36 @@ function serializeDrawingContent(content: DrawingContent): string {
     buildDocPr(docPrId, docPrName, image),
     '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>',
     graphic,
+    sizeRel,
     '</wp:anchor>',
     '</w:drawing>',
   ].join('');
+}
+
+/**
+ * Serialize wp14:sizeRelH / wp14:sizeRelV (Word 2010+ percent-of-anchor
+ * sizing hints). Returns '' when no relative-size info is present so the
+ * anchor doesn't grow unnecessary children. Children sit at the end of
+ * the anchor per the wp14 schema.
+ */
+function serializeRelativeSize(rel: Image['relativeSize']): string {
+  if (!rel) return '';
+  const parts: string[] = [];
+  if (rel.horizontal) {
+    const relFrom = rel.horizontal.relativeFrom || 'margin';
+    const pct = rel.horizontal.pct;
+    parts.push(
+      `<wp14:sizeRelH relativeFrom="${relFrom}"><wp14:pctWidth>${pct ?? 0}</wp14:pctWidth></wp14:sizeRelH>`
+    );
+  }
+  if (rel.vertical) {
+    const relFrom = rel.vertical.relativeFrom || 'margin';
+    const pct = rel.vertical.pct;
+    parts.push(
+      `<wp14:sizeRelV relativeFrom="${relFrom}"><wp14:pctHeight>${pct ?? 0}</wp14:pctHeight></wp14:sizeRelV>`
+    );
+  }
+  return parts.join('');
 }
 
 /** Serialize text body content for shapes/textboxes */

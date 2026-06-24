@@ -13,7 +13,7 @@ test.describe('HF inline editor: toolbar + context menu + z-index (#384, #385)',
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');
     await expect(page.locator('.layout-page-header [data-from-row]')).toHaveCount(1, {
@@ -43,7 +43,7 @@ test.describe('HF inline editor: toolbar + context menu + z-index (#384, #385)',
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');
     await expect(page.locator('.layout-page-header [data-from-row]')).toHaveCount(1, {
@@ -70,7 +70,7 @@ test.describe('HF inline editor: toolbar + context menu + z-index (#384, #385)',
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');
     await expect(page.locator('.layout-page-header [data-from-row]')).toHaveCount(1, {
@@ -92,7 +92,7 @@ test.describe('HF inline editor: toolbar + context menu + z-index (#384, #385)',
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');
 

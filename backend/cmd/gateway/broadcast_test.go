@@ -29,7 +29,25 @@ func startTestGateway(t *testing.T) (*httptest.Server, *room.Manager, *inline.St
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/api/docs", uploadHandler(store))
-	mux.HandleFunc("/api/docs/", downloadHandler(store))
+	dlHandler := downloadHandler(store)
+	rnHandler := renameHandler(store)
+	histHandler := historyHandler(store)
+	revHandler := revisionDownloadHandler(store)
+	mux.HandleFunc("/api/docs/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/rename") {
+			rnHandler(w, r)
+			return
+		}
+		if strings.Contains(r.URL.Path, "/history/") && strings.HasSuffix(r.URL.Path, "/download") {
+			revHandler(w, r)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, "/history") {
+			histHandler(w, r)
+			return
+		}
+		dlHandler(w, r)
+	})
 	mux.HandleFunc("/doc/", wsHandler(rooms, store))
 	srv := httptest.NewServer(withCORS(mux))
 	t.Cleanup(srv.Close)

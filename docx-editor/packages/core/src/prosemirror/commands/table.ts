@@ -179,11 +179,34 @@ export function distributeColumns(): (
 ) => boolean {
   return cmds.distributeColumns();
 }
+// Row distribution (mirrors distributeColumns; averages row heights
+// or falls back to the 360-twip default when no row has an explicit
+// height set yet).
+export function distributeRows(): (
+  state: EditorState,
+  dispatch?: (tr: Transaction) => void
+) => boolean {
+  return cmds.distributeRows();
+}
 export function autoFitContents(): (
   state: EditorState,
   dispatch?: (tr: Transaction) => void
 ) => boolean {
   return cmds.autoFitContents();
+}
+// Force columns to equal width summing to the page content area (B9).
+export function autoFitWindow(): (
+  state: EditorState,
+  dispatch?: (tr: Transaction) => void
+) => boolean {
+  return cmds.autoFitWindow();
+}
+// Sort the current table's data rows by the cursor column (header rows
+// stay pinned). Reorder only — serializer untouched.
+export function sortTable(
+  direction: 'asc' | 'desc'
+): (state: EditorState, dispatch?: (tr: Transaction) => void) => boolean {
+  return cmds.sortTable(direction);
 }
 
 // Table properties

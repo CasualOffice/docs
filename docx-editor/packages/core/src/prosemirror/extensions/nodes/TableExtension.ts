@@ -191,6 +191,7 @@ const tableSpec: NodeSpec = {
     columnWidths: { default: null },
     floating: { default: null },
     cellMargins: { default: null },
+    resolvedCellMargins: { default: null },
     look: { default: null },
     _originalFormatting: { default: null },
   },
@@ -516,6 +517,11 @@ export interface TableContextInfo {
   cellBorderColor?: ColorValue;
   /** Current cell's background/fill color (RGB hex without #), if any */
   cellBackgroundColor?: string;
+  /** Current row's isHeader attr — true when the row is pinned to
+   * repeat on page breaks (serializes to <w:tblHeader/>). Lets the
+   * toolbar show an active/checked state on the "Pin header row"
+   * menu item. */
+  currentRowIsHeader?: boolean;
 }
 
 function getTableContext(state: EditorState): TableContextInfo {
@@ -531,6 +537,7 @@ function getTableContext(state: EditorState): TableContextInfo {
   let rowIndex: number | undefined;
   let columnIndex: number | undefined;
   let cellNode: PMNode | undefined;
+  let currentRowIsHeader: boolean | undefined;
 
   for (let d = $from.depth; d > 0; d--) {
     const node = $from.node(d);
@@ -553,6 +560,7 @@ function getTableContext(state: EditorState): TableContextInfo {
         });
       }
     } else if (node.type.name === 'tableRow') {
+      currentRowIsHeader = !!node.attrs.isHeader;
       const tableNode = $from.node(d - 1);
       if (tableNode && tableNode.type.name === 'table') {
         rowIndex = $from.index(d - 1);
@@ -619,6 +627,7 @@ function getTableContext(state: EditorState): TableContextInfo {
     canSplitCell: !!canSplitCell,
     cellBorderColor,
     cellBackgroundColor,
+    currentRowIsHeader,
   };
 }
 
@@ -1825,6 +1834,54 @@ export const TablePluginExtension = createExtension({
       };
     }
 
+    function distributeRows(): Command {
+      return (state, dispatch) => {
+        const context = getTableContext(state);
+        if (!context.isInTable || context.tablePos === undefined || !context.table) return false;
+
+        if (dispatch) {
+          let tr = state.tr;
+          const table = context.table;
+
+          // Average the explicit row heights; fall back to 360 twips
+          // (the same default the row spec uses elsewhere) when no
+          // row has a height set yet. heightRule = 'atLeast' so
+          // contents that overflow still grow the row — matches what
+          // Word and Docs do.
+          let totalHeight = 0;
+          let rowsWithHeight = 0;
+          let rowCount = 0;
+          table.forEach((row) => {
+            if (row.type.name !== 'tableRow') return;
+            rowCount += 1;
+            const h = row.attrs.height as number | null;
+            if (h && h > 0) {
+              totalHeight += h;
+              rowsWithHeight += 1;
+            }
+          });
+          if (rowCount === 0) return false;
+          const equalHeight = rowsWithHeight > 0 ? Math.floor(totalHeight / rowsWithHeight) : 360;
+
+          let rowPos = context.tablePos + 1;
+          table.forEach((row) => {
+            if (row.type.name === 'tableRow') {
+              tr = tr.setNodeMarkup(rowPos, undefined, {
+                ...row.attrs,
+                height: equalHeight,
+                heightRule: 'atLeast',
+              });
+            }
+            rowPos += row.nodeSize;
+          });
+
+          dispatch(tr.scrollIntoView());
+        }
+
+        return true;
+      };
+    }
+
     function distributeColumns(): Command {
       return (state, dispatch) => {
         const context = getTableContext(state);
@@ -1919,6 +1976,138 @@ export const TablePluginExtension = createExtension({
             widthType: 'auto',
           });
 
+          dispatch(tr.scrollIntoView());
+        }
+
+        return true;
+      };
+    }
+
+    /**
+     * Auto-fit the table to the page window (B9). Force all columns to
+     * equal width summing to the page's content width — companion to
+     * autoFitContents, which clears widths and lets the browser auto-size.
+     * For v0 we use Word's default Letter+1"-margins content area
+     * (9360 twips); section-aware width sourcing can come later.
+     */
+    function autoFitWindow(): Command {
+      return (state, dispatch) => {
+        const context = getTableContext(state);
+        if (
+          !context.isInTable ||
+          context.tablePos === undefined ||
+          !context.table ||
+          !context.columnCount
+        )
+          return false;
+
+        if (dispatch) {
+          let tr = state.tr;
+          const table = context.table;
+          const colCount = context.columnCount;
+          const CONTENT_WIDTH_TWIPS = 9360;
+          const colWidth = Math.floor(CONTENT_WIDTH_TWIPS / colCount);
+
+          let rowPos = context.tablePos + 1;
+          table.forEach((row) => {
+            if (row.type.name === 'tableRow') {
+              let cellPos = rowPos + 1;
+              row.forEach((cell) => {
+                if (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader') {
+                  tr = tr.setNodeMarkup(cellPos, undefined, {
+                    ...cell.attrs,
+                    width: colWidth,
+                    widthType: 'dxa',
+                    colwidth: null,
+                  });
+                }
+                cellPos += cell.nodeSize;
+              });
+            }
+            rowPos += row.nodeSize;
+          });
+
+          const newColumnWidths = Array(colCount).fill(colWidth);
+          tr = tr.setNodeMarkup(context.tablePos, undefined, {
+            ...table.attrs,
+            columnWidths: newColumnWidths,
+            width: CONTENT_WIDTH_TWIPS,
+            widthType: 'dxa',
+          });
+
+          dispatch(tr.scrollIntoView());
+        }
+
+        return true;
+      };
+    }
+
+    /**
+     * Sort the table's data rows by the text of the cell in the current
+     * column. Leading header rows (isHeader) stay pinned at the top.
+     * Pure reorder of tableRow nodes — cell structure and the serializer
+     * are untouched. Numeric columns sort numerically; everything else
+     * falls back to a locale string compare.
+     */
+    function sortTable(direction: 'asc' | 'desc'): Command {
+      return (state, dispatch) => {
+        const context = getTableContext(state);
+        if (!context.isInTable || context.tablePos === undefined || !context.table) return false;
+
+        const table = context.table;
+        const colIndex = context.columnIndex ?? 0;
+
+        const rows: PMNode[] = [];
+        table.forEach((row) => {
+          if (row.type.name === 'tableRow') rows.push(row);
+        });
+
+        // Pin any leading header rows; only sort what follows.
+        let headerCount = 0;
+        while (headerCount < rows.length && rows[headerCount].attrs.isHeader) headerCount += 1;
+        const pinned = rows.slice(0, headerCount);
+        const sortable = rows.slice(headerCount);
+        if (sortable.length < 2) return false;
+
+        // Text of the cell covering `colIndex` (colspan-aware).
+        const keyOf = (row: PMNode): string => {
+          let col = 0;
+          let key = '';
+          let found = false;
+          row.forEach((cell) => {
+            if (found) return;
+            const span = (cell.attrs.colspan as number) || 1;
+            if (colIndex >= col && colIndex < col + span) {
+              key = cell.textContent.trim();
+              found = true;
+            }
+            col += span;
+          });
+          return key;
+        };
+
+        const sorted = [...sortable].sort((a, b) => {
+          const ka = keyOf(a);
+          const kb = keyOf(b);
+          const na = Number(ka);
+          const nb = Number(kb);
+          const bothNumeric = ka !== '' && kb !== '' && !Number.isNaN(na) && !Number.isNaN(nb);
+          const cmp = bothNumeric ? na - nb : ka.localeCompare(kb);
+          return direction === 'asc' ? cmp : -cmp;
+        });
+
+        // Bail if the order didn't change (avoids a no-op history entry).
+        const unchanged = sorted.every((row, i) => row === sortable[i]);
+        if (unchanged) return false;
+
+        if (dispatch) {
+          const newTable = table.type.create(table.attrs, [...pinned, ...sorted], table.marks);
+          const tr = state.tr.replaceWith(
+            context.tablePos,
+            context.tablePos + table.nodeSize,
+            newTable
+          );
+          tr.setSelection(Selection.near(tr.doc.resolve(context.tablePos + 1)));
           dispatch(tr.scrollIntoView());
         }
 
@@ -2097,6 +2286,8 @@ export const TablePluginExtension = createExtension({
       width?: number | null;
       widthType?: string | null;
       justification?: 'left' | 'center' | 'right' | null;
+      bandedRows?: boolean;
+      bandedColumns?: boolean;
     }): Command {
       return (state, dispatch) => {
         const context = getTableContext(state);
@@ -2108,6 +2299,25 @@ export const TablePluginExtension = createExtension({
           if ('width' in props) newAttrs.width = props.width;
           if ('widthType' in props) newAttrs.widthType = props.widthType;
           if ('justification' in props) newAttrs.justification = props.justification;
+          // Banded rows / banded columns map to the inverse of `noHBand`
+          // / `noVBand` on the table's `look` (w:tblLook) attribute.
+          // Word's convention: `noHBand="1"` means "do NOT alternate row
+          // shading"; the user-facing checkbox is the positive form.
+          if (props.bandedRows !== undefined || props.bandedColumns !== undefined) {
+            const currentLook =
+              (newAttrs.look as {
+                firstRow?: boolean;
+                lastRow?: boolean;
+                firstColumn?: boolean;
+                lastColumn?: boolean;
+                noHBand?: boolean;
+                noVBand?: boolean;
+              } | null) ?? {};
+            const nextLook = { ...currentLook };
+            if (props.bandedRows !== undefined) nextLook.noHBand = !props.bandedRows;
+            if (props.bandedColumns !== undefined) nextLook.noVBand = !props.bandedColumns;
+            newAttrs.look = nextLook;
+          }
           tr.setNodeMarkup(context.tablePos, undefined, newAttrs);
           dispatch(tr.scrollIntoView());
         }
@@ -2400,11 +2610,16 @@ export const TablePluginExtension = createExtension({
           setRowHeight(height, rule),
         toggleHeaderRow: () => toggleHeaderRow(),
         distributeColumns: () => distributeColumns(),
+        distributeRows: () => distributeRows(),
         autoFitContents: () => autoFitContents(),
+        autoFitWindow: () => autoFitWindow(),
+        sortTable: (direction: 'asc' | 'desc') => sortTable(direction),
         setTableProperties: (props: {
           width?: number | null;
           widthType?: string | null;
           justification?: 'left' | 'center' | 'right' | null;
+          bandedRows?: boolean;
+          bandedColumns?: boolean;
         }) => setTableProperties(props),
         applyTableStyle: (styleData: Parameters<typeof applyTableStyle>[0]) =>
           applyTableStyle(styleData),

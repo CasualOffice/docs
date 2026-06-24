@@ -1,9 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
-
-function findShortcut(): string {
-  return process.platform === 'darwin' ? 'Meta+f' : 'Control+f';
-}
+import { modifierKey } from '../helpers/keyboard';
 
 test.describe('Find/replace shortcuts', () => {
   test('opens editor find by default', async ({ page }) => {
@@ -13,7 +10,8 @@ test.describe('Find/replace shortcuts', () => {
     await editor.newDocument();
     await editor.focus();
 
-    await page.keyboard.press(findShortcut());
+    const mod = await modifierKey(page);
+    await page.keyboard.press(`${mod}+f`);
 
     await editor.findReplaceDialog.waitFor();
   });
@@ -25,7 +23,8 @@ test.describe('Find/replace shortcuts', () => {
     await editor.newDocument();
     await editor.focus();
 
-    await page.keyboard.press(findShortcut());
+    const mod = await modifierKey(page);
+    await page.keyboard.press(`${mod}+f`);
 
     await expect(editor.findReplaceDialog).toHaveCount(0);
   });

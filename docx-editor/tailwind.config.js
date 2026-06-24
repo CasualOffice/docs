@@ -11,7 +11,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: ['class'],
+  // Honor the existing `[data-theme="dark"]` attribute used by editor.css
+  // for the CSS-variable dark theme, so Tailwind `dark:` variants fire in
+  // the same conditions. The literal 'class' fallback still works for any
+  // app that prefers to flip a class on <html> instead.
+  darkMode: ['variant', ['&:where(.dark, .dark *)', '&:where([data-theme="dark"], [data-theme="dark"] *)']],
+  // Absolute, cwd-independent globs (see header comment) so the desktop
+  // `--base=./` build run from docx-editor/ still scans the right sources.
   content: [
     join(__dirname, 'packages/react/src/**/*.{ts,tsx}'),
     join(__dirname, 'examples/**/*.{ts,tsx}'),

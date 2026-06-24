@@ -230,7 +230,6 @@
             "text": "This is justified text that should span the full width of the paragraph when justified."
           }
         },
-        { "action": "focusParagraph", "args": { "index": 0 } },
         { "action": "alignJustify" },
         { "assert": "expectParagraphAlignment", "args": { "index": 0, "alignment": "justify" } }
       ]

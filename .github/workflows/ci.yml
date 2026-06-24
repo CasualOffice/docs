@@ -24,7 +24,12 @@ jobs:
     name: Lint + format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -44,7 +49,12 @@ jobs:
     name: Typecheck + unit + build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -80,7 +90,12 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -101,10 +116,20 @@ jobs:
 
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Drop broken Microsoft apt repo
+        # The GitHub-hosted runner image pre-configures Microsoft's apt repos
+        # (azure-cli / packages.microsoft.com). They intermittently return 403,
+        # and `playwright install --with-deps` runs `apt-get update`, which
+        # fails the whole step (exit 100) when any configured repo errors. We
+        # don't need those repos for the browser system deps (they come from
+        # the stock Ubuntu archives), so remove them first.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure* 2>/dev/null || true
 
       - name: Install Playwright browsers
         if: steps.pw-cache.outputs.cache-hit != 'true'
@@ -121,7 +146,7 @@ jobs:
 
       - name: Upload Playwright HTML report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-shard-${{ matrix.shard }}
           path: |
@@ -136,12 +161,17 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          # The editor's styles.css @imports the @schnsrw/design-system
+          # tokens vendored at docx-editor/vendor/design-system (git
+          # submodule); the build fails without it checked out.
+          submodules: recursive
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache-dependency-path: backend/go.sum
 
       - name: Vet

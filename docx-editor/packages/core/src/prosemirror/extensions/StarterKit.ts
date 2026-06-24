@@ -66,8 +66,13 @@ import { ImagePasteExtension } from './features/ImagePasteExtension';
 import { DropCursorExtension } from './features/DropCursorExtension';
 import { ParagraphChangeTrackerExtension } from './features/ParagraphChangeTrackerExtension';
 import { ParaIdAllocatorExtension } from './features/ParaIdAllocatorExtension';
+import { StoredMarksRestoreExtension } from './features/StoredMarksRestoreExtension';
 import { BidiShortcutExtension } from './features/BidiShortcutExtension';
 import { PasteStyleInlinerExtension } from './features/PasteStyleInlinerExtension';
+import { SmartQuotesExtension } from './features/SmartQuotesExtension';
+import { AutocorrectExtension } from './features/AutocorrectExtension';
+import { SpellcheckExtension } from './features/SpellcheckExtension';
+import { WordNavigationExtension } from './features/WordNavigationExtension';
 
 export interface StarterKitOptions {
   /** Extensions to disable by name */
@@ -169,7 +174,32 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // state. Allocates `paraId` for any paragraph without one (e.g. new
   // paragraphs from Enter / paste / programmatic insertion).
   add('paraIdAllocator', ParaIdAllocatorExtension());
+  // Restore storedMarks from a paragraph's defaultTextFormatting after
+  // doc-changing edits that clear storedMarks (e.g. select-all + Backspace).
+  // Must run after paraIdAllocator so the paragraph's attrs are final.
+  // Gated on docChanged to avoid firing on selection-only transactions
+  // (caught a race against TableMoreDropdown re-renders 2026-05-25).
+  add('storedMarksRestore', StoredMarksRestoreExtension());
   add('bidiShortcut', BidiShortcutExtension());
+  // Typographic substitutions (smart quotes, em dash, ellipsis) as
+  // the user types. Defaults on, matching Word + Docs. Disable via
+  // `createStarterKit({ disable: ['smartQuotes'] })` when authoring
+  // technical content where straight quotes matter (e.g. code).
+  add('smartQuotes', SmartQuotesExtension());
+  // Autocorrect: symbol sequences ((c)→©, -->→→) + a small common-
+  // typo dictionary (teh→the). Same input-rule mechanism as smart
+  // quotes, single-transaction so Ctrl+Z reverts. Defaults on;
+  // disable via createStarterKit({ disable: ['autocorrect'] }).
+  add('autocorrect', AutocorrectExtension());
+  // Spell-check decorations — inert until the React side calls
+  // `setSpellChecker(...)` with an nspell-backed engine + the user
+  // toggles it on. Off by default so the ~500 KB dictionary download
+  // doesn't fire on every page load.
+  add('spellcheck', SpellcheckExtension());
+  // Word-wise cursor motion (Alt+Arrow on macOS, Ctrl+Arrow elsewhere) +
+  // Shift variants to extend. Operates on PM state — the dialog-advertised
+  // "move by word" had no working binding before this.
+  add('wordNavigation', WordNavigationExtension());
 
   return extensions;
 }

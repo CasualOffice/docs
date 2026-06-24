@@ -17,7 +17,7 @@ test.describe('Header tables render in the paginated view (#356)', () => {
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');
 
@@ -45,7 +45,7 @@ test.describe('Header tables render in the paginated view (#356)', () => {
     await editor.goto();
     await editor.waitForReady();
 
-    await page.locator('input[type="file"][accept=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
+    await page.locator('input[type="file"][accept*=".docx"]').setInputFiles(`e2e/${FIXTURE}`);
     await page.waitForSelector('.paged-editor__pages');
     await page.waitForSelector('[data-page-number]');
     await page.waitForTimeout(1000);

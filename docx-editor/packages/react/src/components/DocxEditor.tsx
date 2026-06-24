@@ -39,22 +39,39 @@ import {
 } from './Toolbar';
 import type { FontOption } from './ui/FontPicker';
 import { EditorToolbar } from './EditorToolbar';
+import { StatusBar } from './StatusBar';
+import { FocusModeBar } from './FocusModeBar';
+import { useStatPrefs } from './statbar-prefs';
+import { READABILITY_PLUGIN_KEY, readabilityPlugin } from '../lib/quality/readabilityPlugin';
 import { pointsToHalfPoints } from './ui/FontSizePicker';
-import {
-  DocumentOutline,
-  OUTLINE_BUTTON_LEFT_OFFSET,
-  OUTLINE_BUTTON_RESERVED_SPACE,
-  OUTLINE_RESERVED_SPACE,
-} from './DocumentOutline';
+import { DocumentOutline, OUTLINE_RESERVED_SPACE } from './DocumentOutline';
 import { SIDEBAR_DOCUMENT_SHIFT } from './sidebar/constants';
+import { VersionHistoryPanel } from './sidebar/VersionHistoryPanel';
+import { PropertiesPanel, type PropertiesTargetKind } from './sidebar/PropertiesPanel';
+import { ImagePropertiesSection } from './sidebar/ImagePropertiesSection';
+import { TablePropertiesSection } from './sidebar/TablePropertiesSection';
+import { TextBoxPropertiesSection } from './sidebar/TextBoxPropertiesSection';
+import { useEditHistory } from '../hooks/useEditHistory';
+import { useVersionHistoryCapture } from '../version-history/useVersionHistoryCapture';
+import { downloadServerVersion, type ServerVersionBackend } from '../version-history/server-source';
+import { useVoiceTyping } from '../hooks/useVoiceTyping';
+import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
+import { PanelRail } from './PanelRail';
+import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
+import { writeAutosave } from '../utils/autosave';
+import { recordRecentFile } from '../utils/recent-files';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
+import { NodeSelection } from 'prosemirror-state';
+import type { Mark as PMMark } from 'prosemirror-model';
+import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
+import { checkAccessibility, type AccessibilityIssue } from '@eigenpal/docx-core/utils';
 import type { Comment, BlockContent, ParagraphContent } from '@eigenpal/docx-core/types/content';
 import { ErrorBoundary, ErrorProvider } from './ErrorBoundary';
 import type { TableAction } from './ui/TableToolbar';
@@ -65,24 +82,43 @@ import { HorizontalRuler } from './ui/HorizontalRuler';
 import { VerticalRuler } from './ui/VerticalRuler';
 import { Z_INDEX } from '../styles/zIndex';
 import { type PrintOptions } from './ui/PrintPreview';
-// Dialog hooks and utilities (static imports — lightweight, no UI)
+// Dialog hooks + utilities — pulled from their own modules so a
+// consumer that needs the runtime helpers doesn't drag a lazy()-
+// loaded dialog component's chunk back into the main bundle. That
+// double-import (eager + lazy on the same file) was the root cause
+// of the production-only "TypeError: n is not a function" at boot
+// — Vite couldn't form a stable chunk graph and the minified output
+// reached for a value that had become undefined.
+import { useFindReplace } from './dialogs/useFindReplace';
 import {
-  useFindReplace,
   findInDocument,
   scrollToMatch,
   type FindMatch,
   type FindOptions,
   type FindResult,
-} from './dialogs/FindReplaceDialog';
-import { useHyperlinkDialog, type HyperlinkData } from './dialogs/HyperlinkDialog';
+} from './dialogs/findReplaceUtils';
+import { useHyperlinkDialog, type HyperlinkData } from './dialogs/useHyperlinkDialog';
 import type { ImagePositionData } from './dialogs/ImagePositionDialog';
+import type { BordersAndShadingValue } from './dialogs/BordersAndShadingDialog';
 import type { ImagePropertiesData } from './dialogs/ImagePropertiesDialog';
+import { FootnoteEditDialog } from './FootnoteEditDialog';
 import {
   InlineHeaderFooterEditor,
   type InlineHeaderFooterEditorRef,
 } from './InlineHeaderFooterEditor';
 
 // Dialog components (lazy-loaded — only fetched when first opened)
+const trackedChangesActionBtnStyle: CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  padding: '4px 6px',
+  borderRadius: 4,
+  color: 'var(--doc-text-on-surface)',
+  display: 'inline-flex',
+  alignItems: 'center',
+};
+
 const FindReplaceDialog = lazy(() => import('./dialogs/FindReplaceDialog'));
 const HyperlinkDialog = lazy(() => import('./dialogs/HyperlinkDialog'));
 const TablePropertiesDialog = lazy(() =>
@@ -106,6 +142,69 @@ const PageSetupDialog = lazy(() =>
 const FilePropertiesDialog = lazy(() =>
   import('./dialogs/FilePropertiesDialog').then((m) => ({ default: m.FilePropertiesDialog }))
 );
+const WordCountDialog = lazy(() =>
+  import('./dialogs/WordCountDialog').then((m) => ({ default: m.WordCountDialog }))
+);
+const BookmarksDialog = lazy(() =>
+  import('./dialogs/BookmarksDialog').then((m) => ({ default: m.BookmarksDialog }))
+);
+const CharacterSpacingDialog = lazy(() =>
+  import('./dialogs/CharacterSpacingDialog').then((m) => ({ default: m.CharacterSpacingDialog }))
+);
+const CustomSpacingDialog = lazy(() =>
+  import('./dialogs/CustomSpacingDialog').then((m) => ({ default: m.CustomSpacingDialog }))
+);
+const BordersAndShadingDialog = lazy(() =>
+  import('./dialogs/BordersAndShadingDialog').then((m) => ({
+    default: m.BordersAndShadingDialog,
+  }))
+);
+const InsertSymbolDialog = lazy(() =>
+  import('./dialogs/InsertSymbolDialog').then((m) => ({ default: m.InsertSymbolDialog }))
+);
+const AboutDialog = lazy(() =>
+  import('./dialogs/AboutDialog').then((m) => ({ default: m.AboutDialog }))
+);
+const CommandPaletteDialog = lazy(() =>
+  import('./dialogs/CommandPaletteDialog').then((m) => ({ default: m.CommandPaletteDialog }))
+);
+const KeyboardShortcutsDialog = lazy(() =>
+  import('./dialogs/KeyboardShortcutsDialog').then((m) => ({ default: m.KeyboardShortcutsDialog }))
+);
+const PreferencesDialog = lazy(() =>
+  import('./dialogs/PreferencesDialog').then((m) => ({ default: m.PreferencesDialog }))
+);
+const WatermarkDialog = lazy(() =>
+  import('./dialogs/WatermarkDialog').then((m) => ({ default: m.WatermarkDialog }))
+);
+const AccessibilityDialog = lazy(() =>
+  import('./dialogs/AccessibilityDialog').then((m) => ({ default: m.AccessibilityDialog }))
+);
+const BuildingBlocksDialog = lazy(() =>
+  import('./dialogs/BuildingBlocksDialog').then((m) => ({ default: m.BuildingBlocksDialog }))
+);
+const DictionaryDialog = lazy(() =>
+  import('./dialogs/DictionaryDialog').then((m) => ({ default: m.DictionaryDialog }))
+);
+const TranslateDialog = lazy(() =>
+  import('./dialogs/TranslateDialog').then((m) => ({ default: m.TranslateDialog }))
+);
+const TranslateDocumentDialog = lazy(() =>
+  import('./dialogs/TranslateDocumentDialog').then((m) => ({
+    default: m.TranslateDocumentDialog,
+  }))
+);
+const WritingAssistantSheet = lazy(() =>
+  import('./dialogs/WritingAssistantSheet').then((m) => ({
+    default: m.WritingAssistantSheet,
+  }))
+);
+const ExploreDialog = lazy(() =>
+  import('./dialogs/ExploreDialog').then((m) => ({ default: m.ExploreDialog }))
+);
+const CitationsDialog = lazy(() =>
+  import('./dialogs/CitationsDialog').then((m) => ({ default: m.CitationsDialog }))
+);
 import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import {
@@ -115,17 +214,59 @@ import {
 } from './TextContextMenu';
 import { ImageContextMenu, useImageContextMenu } from './ImageContextMenu';
 import { setImageWrapType, type ImageLayoutTarget } from '@eigenpal/docx-core/prosemirror/commands';
+import {
+  editorPreferences,
+  setEditorPreference,
+  type EditorPreferences,
+  setSpellChecker,
+  refreshSpellcheckDecorations,
+} from '@eigenpal/docx-core/prosemirror/extensions';
+import {
+  getSpellCheckerImpl,
+  isSpellEnabled,
+  setSpellEnabled,
+  loadSpellChecker,
+  suggestionsFor,
+  ignoreWord,
+} from '../lib/spellcheck/service';
+import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
+import { bootWriterController, useWriterState } from '../lib/writer/controller';
+import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
+import {
+  applyFragmentAsSuggestion,
+  applyInsertAsSuggestion,
+  applyMarkdownAsSuggestion,
+  applyRewriteAsSuggestion,
+} from '../lib/writer/applyAsSuggestion';
+import { stripModelPreamble } from '../lib/writer/stripPreamble';
+import { AISuggestionPanel } from './AISuggestionPanel';
+import { ChatPanel } from './ChatPanel';
+import { InlinePreviewPopover } from './InlinePreviewPopover';
+import { SelectionAskAi } from './SelectionAskAi';
+import { runPipeline } from '../lib/writer/pipeline';
+// WriterStatusPill is built and exported; rendering it inside
+// `TitleBarRight` is queued for P2 along with the active-feature
+// integrations so the chip appears next to the save indicator only
+// once the engine actually does something interesting.
 import type { WrapType } from '@eigenpal/docx-core/docx/wrapTypes';
 import {
   captureInlinePositionEmu,
   toolbarValueToLayoutTarget,
+  forceRenderAllPages,
+  restoreVirtualization,
 } from '@eigenpal/docx-core/layout-painter';
 import { HyperlinkPopup, type HyperlinkPopupData } from './ui/HyperlinkPopup';
 import { Toaster, toast } from 'sonner';
 import { getBuiltinTableStyle, type TableStylePreset } from './ui/TableStyleGallery';
 import { DocumentAgent } from '@eigenpal/docx-core/agent';
 import { DefaultLoadingIndicator, DefaultPlaceholder, ParseError } from './DocxEditorHelpers';
-import { parseDocx } from '@eigenpal/docx-core/docx';
+import {
+  parseDocx,
+  getFootnoteText,
+  setFootnotePlainText,
+  getEndnoteText,
+  setEndnotePlainText,
+} from '@eigenpal/docx-core/docx';
 import { findBodyPmAnchors } from '@eigenpal/docx-core/layout-bridge';
 import { type DocxInput } from '@eigenpal/docx-core/utils';
 import { onFontsLoaded, loadDocumentFonts } from '@eigenpal/docx-core/utils';
@@ -146,8 +287,9 @@ import {
   setSuggestionMode,
 } from '@eigenpal/docx-core/prosemirror/plugins';
 
-// Conversion (for HF inline editor save)
-import { proseDocToBlocks } from '@eigenpal/docx-core/prosemirror/conversion';
+// Conversion (for HF inline editor save + version-history preview)
+import { proseDocToBlocks, fromProseDoc } from '@eigenpal/docx-core/prosemirror/conversion';
+import { buildVersionDiffDoc } from '../version-history/versionDiff';
 
 // ProseMirror editor
 import {
@@ -189,8 +331,33 @@ import {
   // Text direction commands
   setRtl,
   setLtr,
+  // Small caps / all caps / hidden / character spacing
+  toggleSmallCaps,
+  toggleAllCaps,
+  toggleHidden,
+  // Text effects (emboss / imprint / shadow / outline)
+  toggleEmboss,
+  toggleImprint,
+  toggleTextShadow,
+  toggleTextOutline,
+  setCharacterSpacing,
+  setCharacterAttrs,
+  type CharacterAttrs,
+  setParagraphAttrs,
+  // Space before/after
+  setSpaceBefore,
+  setSpaceAfter,
   // Page break command
   insertPageBreak,
+  // Section break command
+  insertSectionBreak,
+  insertFootnote,
+  insertHorizontalRule,
+  // Field insert command (PAGE / NUMPAGES / DATE / …)
+  insertField,
+  // List numbering control
+  restartListNumbering,
+  continueListNumbering,
   // Table of Contents command
   generateTOC,
   // Table commands
@@ -215,7 +382,10 @@ import {
   setRowHeight,
   toggleHeaderRow,
   distributeColumns,
+  distributeRows,
   autoFitContents,
+  autoFitWindow,
+  sortTable,
   setTableProperties,
   applyTableStyle,
   removeTableBorders,
@@ -226,13 +396,22 @@ import {
   setTableBorderColor,
   setTableBorderWidth,
   type TableContextInfo,
+  type InsertableFieldType,
 } from '@eigenpal/docx-core/prosemirror';
-import { acceptChange, rejectChange } from '@eigenpal/docx-core/prosemirror/commands';
+import {
+  acceptChange,
+  rejectChange,
+  acceptAllChanges,
+  rejectAllChanges,
+  findNextChange,
+  findPreviousChange,
+} from '@eigenpal/docx-core/prosemirror/commands';
 import { collectHeadings } from '@eigenpal/docx-core/utils';
 import {
   getChangedParagraphIds,
   hasStructuralChanges,
   hasUntrackedChanges,
+  hasNonParagraphBlockChanges,
   clearTrackedChanges,
 } from '@eigenpal/docx-core/prosemirror/extensions';
 
@@ -241,6 +420,41 @@ import { PagedEditor, type PagedEditorRef, DEFAULT_PAGE_WIDTH } from '../paged-e
 
 // Plugin API types
 import type { RenderedDomContext } from '../plugin-api/types';
+
+// E3 — suggesting-mode banner. Yellow stripe above the editor matching
+// Google Docs' visual language; visible only while editing-mode is
+// "suggesting".
+import { SuggestingModeBanner } from './SuggestingModeBanner';
+
+// Building blocks (C6) — saved reusable snippets the user inserts via the
+// Insert menu. Backed by localStorage; PM Slice JSON round-trip.
+import { Slice } from 'prosemirror-model';
+import { translateFragment, TRANSLATE_LANGUAGES } from '../lib/translate';
+import {
+  loadBuildingBlocks,
+  addBuildingBlock,
+  removeBuildingBlock,
+  previewFromText,
+  type BuildingBlock,
+} from '../utils/buildingBlocks';
+
+// Convert selection to table (B8) — auto-detect-delimiter helper that
+// turns the selected paragraphs into a table in one click. The reverse
+// direction (table → text) lives alongside it.
+import { convertSelectionToTable, convertTableToText } from '../utils/convertTextToTable';
+import { detectTabular } from '../utils/smartPaste';
+
+// Citations manager (A6 v0) — localStorage CRUD; the host renders the
+// formatted citation text and threads in a hyperlink for the URL.
+import { loadCitations, addCitation, removeCitation, type Citation } from '../utils/citations';
+
+// Basic inline shape generator (C2 v0). Returns SVG + data URL ready to
+// drop into an image node at the cursor.
+import { generateShape, type ShapeType } from '../utils/shapes';
+
+// Platform-aware shortcut formatter (⌘ on Mac, Ctrl elsewhere).
+// formatShortcut was used by the now-deleted floating outline button —
+// the PanelRail computes its own shortcut chip via the same helper.
 
 // ============================================================================
 // TYPES
@@ -256,6 +470,9 @@ export interface DocxEditorProps {
   document?: Document | null;
   /** Callback when document is saved */
   onSave?: (buffer: ArrayBuffer) => void;
+  /** Callback invoked when the user picks File → New. Host should
+   *  replace the loaded document with a blank one. */
+  onNew?: () => void;
   /** Author name used for comments and track changes */
   author?: string;
   /** Callback when document changes */
@@ -264,6 +481,11 @@ export interface DocxEditorProps {
   onSelectionChange?: (state: SelectionState | null) => void;
   /** Callback on error */
   onError?: (error: Error) => void;
+  /** When set, the Version-history panel lists the host's
+   *  server-persisted revision chain (`/history`) and restores by
+   *  downloading a revision's `.docx` into the editor. Absent → the
+   *  panel uses local IndexedDB snapshots only (unchanged). */
+  versionBackend?: ServerVersionBackend;
   /** Callback when fonts are loaded */
   onFontsLoaded?: () => void;
   /** External ProseMirror plugins (from PluginHost) */
@@ -278,6 +500,28 @@ export interface DocxEditorProps {
    * editor can build its schema and render the shell.
    */
   externalContent?: boolean;
+  /**
+   * Collab transport for footnote-text edits. Footnotes aren't in the
+   * ProseMirror document, so they don't ride ySyncPlugin; the host wires this
+   * to a shared map (e.g. the `footnotes` Y.Map from `useCollab`) so footnote
+   * edits sync across peers and survive any peer's snapshot. When provided,
+   * footnote edits route through it; the observer applies local + remote edits
+   * uniformly. Omit for single-user (edits apply directly).
+   */
+  footnoteSync?: {
+    set: (id: number, text: string) => void;
+    observe: (cb: (id: number, text: string) => void) => () => void;
+  };
+  /** Collab transport for endnote-text edits (mirror of `footnoteSync`). */
+  endnoteSync?: {
+    set: (id: number, text: string) => void;
+    observe: (cb: (id: number, text: string) => void) => () => void;
+  };
+  /** Collab transport for core document properties (File → Properties). */
+  propsSync?: {
+    set: (edits: Record<string, string>) => void;
+    observe: (cb: (props: Record<string, string>) => void) => () => void;
+  };
   /**
    * Starting offset for comment/tracked-change IDs. Default 0.
    *
@@ -297,8 +541,33 @@ export interface DocxEditorProps {
   onEditorViewReady?: (view: import('prosemirror-view').EditorView) => void;
   /** Theme for styling */
   theme?: Theme | null;
-  /** Whether to show toolbar (default: true) */
+  /**
+   * Built-in chrome preset — a shortcut for the individual `show*` flags so
+   * hosts pick a UI level the way the sister sheet SDK does:
+   *   - `"full"` (default): batteries-included shell — toolbar + status bar +
+   *     panel rail + zoom. For 3rd-party hosts.
+   *   - `"minimal"`: lean editing surface — toolbar + zoom only.
+   *   - `"none"`: bare editing canvas, no built-in chrome — the host brings its
+   *     own shell and consumes the editor core.
+   * Any explicit `showToolbar` / `showStatusBar` / `showPanelRail` /
+   * `showZoomControl` prop overrides the preset.
+   */
+  chrome?: 'none' | 'minimal' | 'full';
+  /**
+   * Called once, after the editor mounts and finishes loading its initial
+   * document, with the imperative API (the same object exposed via `ref`).
+   * Mirrors the sheet SDK's `onReady(api)` handshake so hosts get a single
+   * "ready" signal instead of polling the ref.
+   */
+  onReady?: (api: DocxEditorRef) => void;
+  /** Whether to show toolbar (default: true, or per `chrome` preset) */
   showToolbar?: boolean;
+  /** Whether to show the right-edge PanelRail (default: true). Set to
+   *  `false` when embedding the editor as a read-only preview so the
+   *  Outline / Comments / History toggles don't render. */
+  showPanelRail?: boolean;
+  /** Whether to show the bottom status bar (default: true) */
+  showStatusBar?: boolean;
   /** Whether to show zoom control (default: true) */
   showZoomControl?: boolean;
   /** Whether to show page margin guides/boundaries (default: false) */
@@ -449,6 +718,22 @@ export interface DocxEditorProps {
     /** Max drag width. Default: 600. */
     maxWidth?: number;
   };
+  /**
+   * Opt-in Word-style rendering quirks (#395). Off by default.
+   *
+   * When set, the painter emulates Word's "firstRow-only borders close
+   * the last body row" behavior — for a table where `<w:tblBorders>`
+   * declares only `firstRow` styling, Word also draws the firstRow's
+   * bottom border on the last cell of the last body row when that cell
+   * has no `<w:bottom>` of its own. Other editors (LibreOffice, Google
+   * Docs) leave the last row open in that case.
+   *
+   * Default is `false` so the renderer stays faithful to the literal
+   * OOXML — hosts that want the Word look (doc-comparison UIs, side-
+   * by-side viewers) flip this on. See gap-matrix → `table-last-row-
+   * border` and GH #395.
+   */
+  wordCompat?: boolean;
 }
 
 /**
@@ -501,6 +786,11 @@ export interface DocxEditorRef {
   loadDocument: (doc: Document) => void;
   /** Load a DOCX buffer programmatically (ArrayBuffer, Uint8Array, Blob, or File) */
   loadDocumentBuffer: (buffer: DocxInput) => Promise<void>;
+  /** Alias of `loadDocumentBuffer` — parity with the sheet SDK's `importXlsx`. */
+  importDocx: (buffer: DocxInput) => Promise<void>;
+  /** Alias of `save` — parity with the sheet SDK's `exportXlsx`. Returns the
+   *  serialized .docx bytes, or null if serialization fails. */
+  exportDocx: (options?: { selective?: boolean }) => Promise<ArrayBuffer | null>;
   /** Add a comment programmatically. Anchored by Word `w14:paraId` so
    * it survives unrelated edits. Returns the comment ID, or null if
    * the paraId is unknown or the search text isn't found / is ambiguous. */
@@ -609,6 +899,22 @@ interface EditorState {
     borderWidth: number | null;
     borderColor: string | null;
     borderStyle: string | null;
+    width: number | null;
+    height: number | null;
+    distTop: number | null;
+    distBottom: number | null;
+    distLeft: number | null;
+    distRight: number | null;
+  } | null;
+  pmTextBoxContext: {
+    pos: number;
+    width: number | null;
+    height: number | null;
+    fillColor: string | null;
+    outlineWidth: number | null;
+    outlineColor: string | null;
+    posOffsetH: number | null;
+    posOffsetV: number | null;
   } | null;
 }
 
@@ -647,21 +953,6 @@ const EDITING_MODES: readonly EditingModeDef[] = [
 ];
 
 /**
- * Wrapper for the comments-sidebar toggle so the button title runs through
- * `t()` — `useTranslation()` only works for components rendered *inside*
- * `<LocaleProvider>`, which `DocxEditor`'s own body is not.
- */
-function CommentsSidebarToggle({ active, onClick }: { active: boolean; onClick: () => void }) {
-  const { t } = useTranslation();
-  const title = t('editor.toggleCommentsSidebar');
-  return (
-    <ToolbarButton onClick={onClick} active={active} title={title} ariaLabel={title}>
-      <MaterialSymbol name="comment" size={20} />
-    </ToolbarButton>
-  );
-}
-
-/**
  * Floating page indicator shown next to the scrollbar while the user
  * scrolls a multi-page document. Wrapped so the `{current} of {total}`
  * template runs through `t()`; `useTranslation()` only works inside
@@ -695,7 +986,7 @@ function PageIndicator({
         pointerEvents: 'none',
         zIndex: 1000,
         opacity: visible ? 1 : 0,
-        transition: 'opacity 0.3s ease',
+        transition: 'opacity var(--doc-anim-slow)',
         userSelect: 'none',
       }}
       aria-live="polite"
@@ -750,48 +1041,6 @@ function AgentPanelToggle({
   );
 }
 
-/**
- * Outline toggle — same reason as `CommentsSidebarToggle`: needs to render
- * inside `<LocaleProvider>` to see the user's `i18n` prop.
- */
-function OutlineToggleButton({
-  onClick,
-  topPx,
-  scrollLeft = 0,
-}: {
-  onClick: () => void;
-  topPx: number;
-  /** Horizontal scroll offset of the editor — button slides with the doc. */
-  scrollLeft?: number;
-}) {
-  const { t } = useTranslation();
-  return (
-    <button
-      className="docx-outline-nav"
-      onClick={onClick}
-      onMouseDown={(e) => e.stopPropagation()}
-      title={t('editor.showDocumentOutline')}
-      style={{
-        position: 'absolute',
-        // Anchor at the page's top-left and track horizontal scroll so the
-        // button doesn't pin to the viewport and overlay the doc.
-        left: OUTLINE_BUTTON_LEFT_OFFSET - scrollLeft,
-        top: topPx,
-        zIndex: 50,
-        background: 'transparent',
-        border: 'none',
-        borderRadius: '50%',
-        padding: 6,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-      }}
-    >
-      <MaterialSymbol name="format_list_bulleted" size={20} style={{ color: '#444746' }} />
-    </button>
-  );
-}
-
 function EditingModeDropdown({
   mode,
   onModeChange,
@@ -817,12 +1066,10 @@ function EditingModeDropdown({
     return () => mql.removeEventListener('change', handler);
   }, []);
 
-  useEffect(() => {
-    if (!isOpen || !triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    // Align dropdown to right edge of trigger so it doesn't overflow the screen
-    setPos({ top: rect.bottom + 2, left: rect.right - 220 });
-  }, [isOpen]);
+  // Position is computed in the trigger's onClick from e.currentTarget (see
+  // below) so it works even when triggerRef is null — the <Tooltip> wrapper
+  // can swallow the ref, which previously left the menu pinned at {0,0} (top
+  // of the page) instead of under its right-aligned trigger.
 
   useEffect(() => {
     if (!isOpen) return;
@@ -847,32 +1094,43 @@ function EditingModeDropdown({
 
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setIsOpen(!isOpen)}
-        title={`${t(current.labelKey)} (Ctrl+Shift+E)`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: compact ? 0 : 4,
-          padding: compact ? '2px 4px' : '2px 6px 2px 4px',
-          border: 'none',
-          background: isOpen ? 'var(--doc-hover, #f3f4f6)' : 'transparent',
-          borderRadius: 4,
-          cursor: 'pointer',
-          fontSize: 13,
-          fontWeight: 400,
-          color: 'var(--doc-text, #374151)',
-          whiteSpace: 'nowrap',
-          height: 28,
-        }}
-      >
-        <MaterialSymbol name={current.icon} size={18} />
-        {!compact && <span>{t(current.labelKey)}</span>}
-        <MaterialSymbol name="arrow_drop_down" size={16} />
-      </button>
+      <Tooltip content={`${t(current.labelKey)} (Ctrl+Shift+E)`}>
+        <button
+          ref={triggerRef}
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            if (!isOpen) {
+              const r = e.currentTarget.getBoundingClientRect();
+              // Right-align the 220px menu to the trigger, clamped into the
+              // viewport so it never runs off-screen or pins to a corner.
+              const left = Math.max(8, Math.min(r.right, window.innerWidth - 8) - 220);
+              setPos({ top: r.bottom + 2, left });
+            }
+            setIsOpen(!isOpen);
+          }}
+          aria-label={`${t(current.labelKey)} (Ctrl+Shift+E)`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: compact ? 0 : 4,
+            padding: compact ? '2px 4px' : '2px 6px 2px 4px',
+            border: 'none',
+            background: isOpen ? 'var(--doc-hover, #f3f4f6)' : 'transparent',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 400,
+            color: 'var(--doc-text, #374151)',
+            whiteSpace: 'nowrap',
+            height: 28,
+          }}
+        >
+          <MaterialSymbol name={current.icon} size={18} />
+          {!compact && <span>{t(current.labelKey)}</span>}
+          <MaterialSymbol name="arrow_drop_down" size={16} />
+        </button>
+      </Tooltip>
 
       {isOpen && (
         <div
@@ -882,10 +1140,11 @@ function EditingModeDropdown({
             position: 'fixed',
             top: pos.top,
             left: pos.left,
-            backgroundColor: 'white',
+            backgroundColor: 'var(--doc-surface, white)',
+            color: 'var(--doc-text-on-surface, #1f2937)',
             border: '1px solid var(--doc-border, #d1d5db)',
             borderRadius: 8,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+            boxShadow: 'var(--doc-shadow, 0 4px 12px rgba(0, 0, 0, 0.12))',
             padding: '4px 0',
             zIndex: 10000,
             minWidth: 220,
@@ -932,7 +1191,7 @@ function EditingModeDropdown({
                 <MaterialSymbol
                   name="check"
                   size={18}
-                  style={{ marginLeft: 'auto', color: '#1a73e8' }}
+                  style={{ marginLeft: 'auto', color: 'var(--doc-primary)' }}
                 />
               )}
             </button>
@@ -1287,14 +1546,23 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     documentBuffer,
     document: initialDocument,
     onSave,
+    onNew,
     author = 'User',
     onChange,
     onSelectionChange,
     onError,
+    versionBackend,
     onFontsLoaded: onFontsLoadedCallback,
     theme,
-    showToolbar = true,
-    showZoomControl = true,
+    chrome,
+    onReady,
+    // `chrome` sets the default UI level; an explicit show* prop still wins
+    // (destructuring defaults only apply when the prop is undefined). No
+    // chrome → "full" defaults, so existing consumers are unaffected.
+    showToolbar = chrome === 'none' ? false : true,
+    showPanelRail = chrome === 'none' || chrome === 'minimal' ? false : true,
+    showStatusBar = chrome === 'none' || chrome === 'minimal' ? false : true,
+    showZoomControl = chrome === 'none' ? false : true,
     showMarginGuides: _showMarginGuides = false,
     marginGuideColor: _marginGuideColor,
     showRuler = false,
@@ -1308,7 +1576,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     placeholder,
     loadingIndicator,
     showOutline: showOutlineProp = false,
-    showOutlineButton = true,
+    // showOutlineButton is a vestigial prop (the outline now lives in the
+    // right-edge PanelRail); kept on the props type for API compatibility but no
+    // longer consumed here.
     fontFamilies,
     showPrintButton = true,
     printOptions: _printOptions,
@@ -1326,6 +1596,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onCommentsChange,
     externalPlugins,
     externalContent = false,
+    footnoteSync,
+    endnoteSync,
+    propsSync,
     commentIdBase,
     onEditorViewReady,
     onRenderedDomContextReady,
@@ -1339,6 +1612,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     renderTitleBarRight,
     i18n,
     agentPanel,
+    wordCompat = false,
   },
   ref
 ) {
@@ -1356,10 +1630,29 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     paragraphTabs: null,
     pmTableContext: null,
     pmImageContext: null,
+    pmTextBoxContext: null,
   });
 
   // Table properties dialog state
   const [tablePropsOpen, setTablePropsOpen] = useState(false);
+  // Bookmarks dialog state (Phase 1.5 U14)
+  const [bookmarksDialogOpen, setBookmarksDialogOpen] = useState(false);
+  // Character spacing dialog state (Phase 1.5 U1)
+  const [characterSpacingDialogOpen, setCharacterSpacingDialogOpen] = useState(false);
+  const [characterSpacingInitial, setCharacterSpacingInitial] = useState<{
+    scale: number | null;
+    spacing: number | null;
+    position: number | null;
+    kerning: number | null;
+  }>({ scale: null, spacing: null, position: null, kerning: null });
+  // Paragraph dialog state (Phase 1.5 U5)
+  const [paragraphDialogOpen, setParagraphDialogOpen] = useState(false);
+  // Borders + Shading dialog state (Phase 1.5 U6)
+  const [bordersShadingOpen, setBordersShadingOpen] = useState(false);
+  const [bordersShadingInitial, setBordersShadingInitial] = useState<BordersAndShadingValue>({
+    borders: {},
+    shading: { fillHex: '', pattern: 'clear', patternColorHex: '' },
+  });
   const [splitCellDialogState, setSplitCellDialogState] = useState({
     isOpen: false,
     initialRows: 1,
@@ -1388,7 +1681,100 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Comments sidebar state
   const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
+  // Wire-up batch (Docs parity #1.5): dialogs that already existed but
+  // had no menu entry. Each is open/close + a trigger handler.
+  const [insertSymbolOpen, setInsertSymbolOpen] = useState(false);
+  // Ruler visibility override — once the user toggles it, this takes
+  // precedence over the showRuler prop. Initialised from the prop.
+  const [showRulerLocal, setShowRulerLocal] = useState<boolean | null>(null);
+  // Focus mode (Phase 5) — declared early so it can gate the ruler
+  // (and any other chrome) without TDZ errors. The keydown handler +
+  // chrome conditionals further below consume the same state.
+  const [focusMode, setFocusMode] = useState(false);
+  const showRulerEffective = (showRulerLocal ?? showRuler) && !focusMode;
+  // Paint format (format painter) — when set, the next non-empty
+  // selection will receive these marks. Esc cancels. Toolbar button
+  // toggles between idle/armed.
+  const [paintFormatMarks, setPaintFormatMarks] = useState<readonly PMMark[] | null>(null);
+  const paintFormatMarksRef = useRef<readonly PMMark[] | null>(null);
+  useEffect(() => {
+    paintFormatMarksRef.current = paintFormatMarks;
+  }, [paintFormatMarks]);
   const [expandedSidebarItem, setExpandedSidebarItem] = useState<string | null>(null);
+
+  // Version-history side-panel state (F1 mount). The hook owns the
+  // capture plugin; attach it to the body PM view once it's mounted.
+  // Comments + version-history are mutually exclusive — opening one
+  // closes the other so the right rail doesn't double-stack panels.
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  // Version preview — when set, a read-only render of the selected
+  // version covers the canvas (Google-Docs model). `previewShowChanges`
+  // toggles the inline insertion/deletion overlay vs a clean snapshot.
+  // The live editor + its Yjs/undo state are untouched: the preview is a
+  // separate read-only editor, so nothing is broadcast to peers.
+  const [versionPreview, setVersionPreview] = useState<{
+    name: string;
+    savedAt: number;
+    author?: string;
+    data: unknown;
+    previousData: unknown | null;
+  } | null>(null);
+  const [previewShowChanges, setPreviewShowChanges] = useState(true);
+  const [showProperties, setShowProperties] = useState(false);
+  // Footnote text editor (opened by double-clicking a footnote at page bottom).
+  const [noteEdit, setNoteEdit] = useState<{
+    kind: 'footnote' | 'endnote';
+    id: number;
+    text: string;
+  } | null>(null);
+  // Pending footnote/endnote text edits (id → new text), applied to the save
+  // document in handleSave so they persist regardless of doc-object identity.
+  const footnoteEditsRef = useRef<Map<number, string>>(new Map());
+  const endnoteEditsRef = useRef<Map<number, string>>(new Map());
+  // Pending core-property edits, applied to the save document in handleSave.
+  const propsEditsRef = useRef<Record<string, string>>({});
+  const editHistory = useEditHistory({ author: 'You' });
+
+  // Shared toggle handlers — used by both the toolbar buttons and the
+  // right-edge PanelRail so the mutual-exclusion logic between Comments
+  // and Version history lives in one place. Declared up here (before any
+  // conditional early-return) to keep React's hook order stable.
+  // Tracks `comments.length` so the rail toggle can read it without
+  // depending on the (still-undeclared at this hook order) `comments`
+  // variable. Updated every render in an effect below.
+  const commentsCountRef = useRef(0);
+  const handleToggleComments = useCallback(() => {
+    // Comments use the anchored-cards approach: each thread renders as a
+    // card floating next to its commented text (UnifiedSidebar), not a
+    // solid docked panel. On an empty doc there are no anchors to show, so
+    // surface a toast hint instead of an empty panel.
+    setShowCommentsSidebar((v) => {
+      const next = !v;
+      if (next && commentsCountRef.current === 0) {
+        toast.info('No comments yet. Select text and click "Add comment" to start a thread.');
+      }
+      // One right-side surface at a time: opening comments closes the rest.
+      if (next) {
+        setShowVersionHistory(false);
+        setShowProperties(false);
+        setShowOutline(false);
+      }
+      return next;
+    });
+    setExpandedSidebarItem(null);
+  }, []);
+  const handleToggleVersionHistory = useCallback(() => {
+    setShowVersionHistory((v) => {
+      const next = !v;
+      if (next) {
+        setShowCommentsSidebar(false);
+        setExpandedSidebarItem(null);
+        setShowProperties(false);
+        setShowOutline(false);
+      }
+      return next;
+    });
+  }, []);
   // Comments live in internal state by default; if the consumer passes
   // `comments` as a prop, we treat the editor as controlled — `setComments`
   // routes mutations through `onCommentsChange` instead of touching internal
@@ -1396,11 +1782,30 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [internalComments, setInternalComments] = useState<Comment[]>([]);
   const isControlledComments = commentsProp !== undefined;
   const comments = isControlledComments ? commentsProp : internalComments;
+  // Mirror to the ref the rail toggle reads — kept in render, not in
+  // an effect, so the very first click after a comment-state update
+  // sees the right count.
+  commentsCountRef.current = comments.length;
   // Latest PM state — mirrored from the view on every doc-changing transaction.
   // Drives `useTrackedChanges` so the sidebar derives its list directly from PM
   // (the source of truth, including remote ySync updates) rather than a debounced
   // copy in React state.
   const [pmState, setPmState] = useState<PMEditorState | null>(null);
+  // Index of the heading whose section the cursor is currently in.
+  // Recomputed from the live PM selection + the heading list whenever
+  // either changes. The outline panel uses this to render the active-row
+  // highlight (A2 of the parity pipeline). Declared here (after pmState)
+  // because both inputs need to be in scope.
+  const activeOutlineIndex = useMemo(() => {
+    if (outlineHeadings.length === 0 || !pmState) return null;
+    const cursor = pmState.selection.from;
+    let active: number | null = null;
+    for (let i = 0; i < outlineHeadings.length; i++) {
+      if (outlineHeadings[i].pmPos <= cursor) active = i;
+      else break;
+    }
+    return active;
+  }, [outlineHeadings, pmState]);
   const { entries: trackedChanges, commentToRevision } = useTrackedChanges(pmState);
   const [anchorPositions, setAnchorPositions] =
     useState<Map<string, number>>(EMPTY_ANCHOR_POSITIONS);
@@ -1418,6 +1823,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (!modeProp) setEditingModeInternal(mode);
     onModeChange?.(mode);
   };
+  // Refs so the global keydown listener can read latest without re-binding.
+  const editingModeRef = useRef<EditorMode>(editingMode);
+  useEffect(() => {
+    editingModeRef.current = editingMode;
+  }, [editingMode]);
+  const setEditingModeRef = useRef(setEditingMode);
+  useEffect(() => {
+    setEditingModeRef.current = setEditingMode;
+  });
   // 'viewing' mode acts as read-only
   const readOnly = readOnlyProp || editingMode === 'viewing';
 
@@ -1632,12 +2046,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
   }, [commentIdBase]);
 
-  // Extension manager — built once, provides schema + plugins + commands
+  // Extension manager — built once, provides schema + plugins + commands.
+  //
+  // When content is driven by an external CRDT (Yjs collab via
+  // `externalContent` + a `yUndoPlugin` in `externalPlugins`), undo/redo
+  // is owned by y-prosemirror's yUndoPlugin. Running the native
+  // prosemirror-history alongside it is the documented y-prosemirror
+  // footgun: native Ctrl+Z operates on the local EditorState's history and
+  // can revert *other* users' changes, desyncing the shared Y.Doc. Disable
+  // native history when content is external so undo stays scoped to the
+  // local user. (Read once at mount — collab-ness is fixed for the
+  // editor's lifetime; the schema must stay stable, hence the empty deps.)
   const extensionManager = useMemo(() => {
-    const mgr = new ExtensionManager(createStarterKit());
+    const mgr = new ExtensionManager(
+      createStarterKit(externalContent ? { disable: ['history'] } : {})
+    );
     mgr.buildSchema();
     mgr.initializeRuntime();
     return mgr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Suggestion mode plugin — merged with external plugins
@@ -1652,6 +2079,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Refs
   const pagedEditorRef = useRef<PagedEditorRef>(null);
+  const previewEditorRef = useRef<PagedEditorRef>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const hfEditorRef = useRef<InlineHeaderFooterEditorRef>(null);
   const agentRef = useRef<DocumentAgent | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1661,6 +2090,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const docxInputRef = useRef<HTMLInputElement>(null);
   const editorContentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // True while a ruler margin marker is being dragged. Threaded to PagedEditor
+  // so its post-reflow scroll-restore freezes the viewport instead of chasing
+  // the moved content (which made the page scroll out from under the marker).
+  const marginDraggingRef = useRef(false);
   const toolbarWrapperRef = useRef<HTMLDivElement>(null);
   const toolbarRoRef = useRef<ResizeObserver | null>(null);
   const [toolbarHeight, setToolbarHeight] = useState(0);
@@ -1673,6 +2106,186 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Keep history.state accessible in stable callbacks without stale closures
   const historyStateRef = useRef(history.state);
   historyStateRef.current = history.state;
+
+  // F1: attach the edit-history capture plugin once the body PM view is
+  // ready. `pmState != null` flips false→true exactly when the view is
+  // first available; subsequent state changes don't re-trigger the
+  // effect since the dep is a boolean. attach() returns a cleanup that
+  // detaches the plugin on unmount.
+  const isBodyPmReady = pmState != null;
+  const editHistoryAttach = editHistory.attach;
+  // Hold the EditorView in state so child components (notably the
+  // version-history capture hook) can depend on it via a stable
+  // identity. Set once the body PM is ready.
+  const [bodyView, setBodyView] = useState<import('prosemirror-view').EditorView | null>(null);
+  useEffect(() => {
+    if (!isBodyPmReady) {
+      setBodyView(null);
+      return;
+    }
+    const view = pagedEditorRef.current?.getView() ?? null;
+    setBodyView(view);
+    if (!view) return;
+    return editHistoryAttach(view);
+  }, [isBodyPmReady, editHistoryAttach]);
+
+  // Coarse-grained, IDB-persisted snapshot capture (Versions tab feed).
+  // Scoped by document name — matches recent-files identity. Manual
+  // entries via the panel's "Save version…" button; auto entries every
+  // 10 min while dirty.
+  const versionCapture = useVersionHistoryCapture({
+    docId: documentName?.trim() || 'Untitled',
+    view: bodyView,
+  });
+
+  // Restore a snapshot's PM doc JSON into the live editor. Mirrors
+  // useEditHistory.revert's transaction shape so Ctrl+Z can undo a
+  // restore.
+  const handleRestoreSnapshot = useCallback(
+    (data: unknown) => {
+      const view = bodyView;
+      if (!view) return;
+      try {
+        const node = view.state.schema.nodeFromJSON(data);
+        const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, node.content);
+        view.dispatch(tr);
+      } catch (err) {
+        console.warn('[version-history] restore failed', err);
+      }
+    },
+    [bodyView]
+  );
+
+  // Open the in-canvas preview for a version. Carries the already-
+  // resolved PM JSON (local snapshots hold their `data` in the list) and
+  // the previous version's JSON for the show-changes diff.
+  const handlePreviewVersion = useCallback(
+    (req: {
+      name: string;
+      savedAt: number;
+      author?: string;
+      data: unknown;
+      previousData: unknown | null;
+    }) => {
+      setPreviewShowChanges(true);
+      setVersionPreview(req);
+    },
+    []
+  );
+  const handleClosePreview = useCallback(() => setVersionPreview(null), []);
+  const handleRestoreFromPreview = useCallback(() => {
+    if (versionPreview) handleRestoreSnapshot(versionPreview.data);
+    setVersionPreview(null);
+  }, [versionPreview, handleRestoreSnapshot]);
+
+  // Build the read-only preview Document: annotate the version's doc with
+  // insertion/deletion marks (when Show changes is on), then convert to a
+  // Document inheriting the live doc's sections/headers/footers so the
+  // preview paints with the same page chrome. Built with the live schema
+  // so `nodeFromJSON` resolves the same node/mark types.
+  const previewDocument = useMemo(() => {
+    if (!versionPreview) return null;
+    const schema = bodyView?.state.schema;
+    if (!schema) return null;
+    try {
+      const node = previewShowChanges
+        ? buildVersionDiffDoc(versionPreview.previousData, versionPreview.data, schema, {
+            author: versionPreview.author,
+            date: new Date(versionPreview.savedAt).toISOString(),
+          }).doc
+        : schema.nodeFromJSON(versionPreview.data);
+      return fromProseDoc(node, history.state ?? undefined);
+    } catch (err) {
+      console.warn('[version-preview] failed to build preview doc', err);
+      return null;
+    }
+  }, [versionPreview, previewShowChanges, bodyView, history.state]);
+
+  // Long-sentence highlighter — Hemingway-style amber + yellow inline
+  // decorations for sentences > 25/35 words. Attached once on view
+  // ready; the meta-tagged toggle effect below flips its `enabled`
+  // flag when the user changes the status-bar pref.
+  const statPrefsForReadability = useStatPrefs();
+  useEffect(() => {
+    if (!isBodyPmReady) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const plugin = readabilityPlugin(statPrefsForReadability.prefs.readability);
+    const next = view.state.reconfigure({
+      plugins: [...view.state.plugins, plugin],
+    });
+    view.updateState(next);
+    return () => {
+      try {
+        const without = view.state.reconfigure({
+          plugins: view.state.plugins.filter((p) => p !== plugin),
+        });
+        view.updateState(without);
+      } catch {
+        // View may be on its way out — ignore.
+      }
+    };
+    // Intentionally exclude `statPrefsForReadability.prefs.readability`
+    // from the deps. The toggle effect below uses a meta-tagged
+    // transaction to flip enabled without tearing down the plugin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBodyPmReady]);
+  useEffect(() => {
+    if (!isBodyPmReady) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const tr = view.state.tr.setMeta(READABILITY_PLUGIN_KEY, {
+      enabled: statPrefsForReadability.prefs.readability,
+    });
+    view.dispatch(tr);
+  }, [statPrefsForReadability.prefs.readability, isBodyPmReady]);
+
+  // Word + character counts for the status bar. Derived from the live
+  // ProseMirror doc (not `history.state` — that only refreshes on major
+  // lifecycle events like open / save / autosave, so the count stayed
+  // stale during typing + undo / redo). Walks every text node via
+  // `descendants` and stitches text fragments. Recomputes whenever
+  // `pmState` flips, which `onSelectionChange` and the post-load effect
+  // already drive on every transaction.
+  const { wordCount, charCount, charCountWithSpaces, paragraphCount, docPlainText } =
+    useMemo(() => {
+      if (!pmState) {
+        return {
+          wordCount: undefined,
+          charCount: undefined,
+          charCountWithSpaces: undefined,
+          paragraphCount: undefined,
+          docPlainText: '',
+        };
+      }
+      const paraTexts: string[] = [];
+      pmState.doc.descendants((node) => {
+        if (node.type.name === 'paragraph') {
+          paraTexts.push(node.textContent);
+          return false;
+        }
+        return true;
+      });
+      const text = paraTexts.join('\n');
+      const words = text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
+      // Word's "characters (with spaces)" includes the joined newlines
+      // implicit between paragraphs. Mirror Word: count whitespace
+      // collapsed into a single space per paragraph break.
+      const charsWith = text.length;
+      // "characters (no spaces)" matches Word's convention.
+      const chars = text.replace(/\s/g, '').length;
+      const paragraphs = paraTexts.filter((p) => p.trim().length > 0).length;
+      return {
+        wordCount: words,
+        charCount: chars,
+        charCountWithSpaces: charsWith,
+        paragraphCount: paragraphs,
+        // Status bar's readability cell wants the joined plain text so
+        // it can run sentence + Flesch-Kincaid heuristics. Reusing the
+        // same walk avoids a second descendants() pass per render.
+        docPlainText: text,
+      };
+    }, [pmState]);
   // Track current border color/width for border presets (like Google Docs)
   const borderSpecRef = useRef({ style: 'single', size: 4, color: { rgb: '000000' } });
   // Cache style resolver to avoid recreating on every selection change
@@ -1787,6 +2400,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
   }, [hfEditPosition]);
 
+  const canUndoActiveEditor = useMemo(() => {
+    const view = getActiveEditorView();
+    return view ? pmUndo(view.state) : false;
+  }, [getActiveEditorView, state.selectionFormatting, hfEditPosition]);
+
+  const canRedoActiveEditor = useMemo(() => {
+    const view = getActiveEditorView();
+    return view ? pmRedo(view.state) : false;
+  }, [getActiveEditorView, state.selectionFormatting, hfEditPosition]);
+
   // Find/Replace hook
   const findReplace = useFindReplace();
 
@@ -1801,11 +2424,352 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showFileProperties, setShowFileProperties] = useState(false);
   const handleOpenFileProperties = useCallback(() => setShowFileProperties(true), []);
 
+  // Word count dialog state (Ctrl+Shift+C, also surfaced via Edit menu).
+  const [showWordCount, setShowWordCount] = useState(false);
+  const handleOpenWordCount = useCallback(() => setShowWordCount(true), []);
+
+  // Voice typing — inserts recognized text at the active editor's
+  // cursor. The hook owns the SpeechRecognition lifecycle; we just
+  // give it an insertion sink + render the floating indicator.
+  const voiceTyping = useVoiceTyping({
+    onFinalText: (text) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      // Append a leading space when the cursor is mid-text and the
+      // previous char isn't whitespace — Web Speech doesn't emit
+      // leading whitespace between continuous sessions, so without
+      // this two consecutive utterances would jam together.
+      const { from } = view.state.selection;
+      const prevChar = from > 0 ? view.state.doc.textBetween(from - 1, from, ' ', ' ') : '';
+      const insert = prevChar && !/\s/.test(prevChar) ? ' ' + text : text;
+      view.dispatch(view.state.tr.insertText(insert, from));
+    },
+  });
+  const handleToggleVoiceTyping = useCallback(() => {
+    voiceTyping.toggle();
+  }, [voiceTyping]);
+
+  // Help → About dialog state.
+  const [showAbout, setShowAbout] = useState(false);
+  const handleShowAbout = useCallback(() => setShowAbout(true), []);
+  const handleReportBug = useCallback(() => {
+    void import('./report-bug').then((m) => m.openBugReport());
+  }, []);
+
+  // Command palette state (⌘⇧P / Ctrl+Shift+P). Searchable list of every
+  // menu action, sourced from the same callbacks the menus use.
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
+  const [showAccessibility, setShowAccessibility] = useState(false);
+  const [accessibilityIssues, setAccessibilityIssues] = useState<AccessibilityIssue[]>([]);
+  // Building blocks (C6): persisted snippet list + a snapshot of whatever
+  // the editor selection contained at the moment the dialog opened, so
+  // saving works even after focus has shifted to the dialog input.
+  const [showBuildingBlocks, setShowBuildingBlocks] = useState(false);
+  const [buildingBlocks, setBuildingBlocks] = useState<BuildingBlock[]>(() => loadBuildingBlocks());
+  const [pendingBuildingBlock, setPendingBuildingBlock] = useState<{
+    content: unknown;
+    preview: string;
+  } | null>(null);
+  // A4 — dictionary lookup. Captures the selected word at open time so
+  // the dialog can show "looking up <word>" loading state without a
+  // re-fetch on every render.
+  const [showDictionary, setShowDictionary] = useState(false);
+  const [dictionaryWord, setDictionaryWord] = useState<string | null>(null);
+  // A5 — translate selection. Captures the selection text at open time.
+  // `translateRange` is also captured when the dialog is opened from
+  // the editor's right-click menu so the Replace button can target the
+  // exact span the user selected, even if the cursor moves while the
+  // dialog is up.
+  const [showTranslate, setShowTranslate] = useState(false);
+  const [translateText, setTranslateText] = useState<string | null>(null);
+  const [translateRange, setTranslateRange] = useState<{ from: number; to: number } | null>(null);
+  // Whole-document translate-and-export dialog. Separate from the
+  // selection dialog above because its action (download a translated
+  // copy) is distinct from "replace selection in-place".
+  const [showTranslateDocument, setShowTranslateDocument] = useState(false);
+
+  // Writing Assistant — sheet + rail entry. Boots the controller on
+  // mount so capability checks + auto-load run before the sheet opens.
+  const [showWritingAssistant, setShowWritingAssistant] = useState(false);
+  const [showChatPanel, setShowChatPanel] = useState(false);
+  useEffect(() => {
+    void bootWriterController();
+  }, []);
+
+  // Right-side panel mutex. Google Docs / Microsoft Word only ever
+  // expose ONE right-edge panel at a time (Comments XOR Outline,
+  // Activity XOR Editor) — letting our four AI panels + version
+  // history all stack at 340 px each would squeeze the doc to nothing.
+  // Each opener closes the other three; an AI rewrite trigger also
+  // wins exclusivity so the suggestion panel doesn't compete for the
+  // same slot the user just opened chat in.
+  //
+  // Version history additionally closes the comments sidebar (mirrors
+  // `handleToggleVersionHistory`'s historical behaviour — those two
+  // share the right-margin slot).
+  const openRightPanel = useCallback(
+    (which: 'writer' | 'chat' | 'history' | 'properties' | 'aiSuggestion' | 'none') => {
+      setShowWritingAssistant(which === 'writer');
+      setShowChatPanel(which === 'chat');
+      setShowVersionHistory(which === 'history');
+      setShowProperties(which === 'properties');
+      // Only ONE right-side surface is ever open: outline (TOC), comments,
+      // properties, history. Opening any of the docked panels closes the
+      // others (outline included — it was previously left open alongside).
+      if (which !== 'none') {
+        setShowCommentsSidebar(false);
+        setExpandedSidebarItem(null);
+        setShowOutline(false);
+      }
+      if (which !== 'aiSuggestion') setAiSuggestion(null);
+    },
+    []
+  );
+
+  // Smart paste — after the user pastes tabular content (TSV / CSV)
+  // the editor surfaces a sonner toast offering one-click conversion
+  // to a real table. Detection is strict (see `detectTabular`) so
+  // ordinary prose paste doesn't trigger the prompt.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const target = e.target as Node | null;
+      if (!target || !view.dom.contains(target)) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      const shape = detectTabular(text);
+      if (!shape) return;
+      const sizeBefore = view.state.doc.content.size;
+      // Wait one tick for PM to apply its paste transaction, then
+      // grab the inserted range from the doc-size delta. The
+      // selection collapses to the right edge of the inserted slice
+      // after PM applies the paste.
+      requestAnimationFrame(() => {
+        const live = getActiveEditorView();
+        if (!live) return;
+        const sizeAfter = live.state.doc.content.size;
+        const inserted = sizeAfter - sizeBefore;
+        if (inserted <= 0) return;
+        const to = live.state.selection.head;
+        const from = Math.max(0, to - inserted);
+        toast.message(`Pasted data looks like a ${shape.rows} × ${shape.columns} table.`, {
+          duration: 8000,
+          action: {
+            label: 'Convert to table',
+            onClick: () => {
+              const v = getActiveEditorView();
+              if (!v) return;
+              v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, from, to)));
+              convertSelectionToTable(v);
+            },
+          },
+        });
+      });
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [getActiveEditorView]);
+
+  // AI suggestion popover wiring. See definitions below the state
+  // for `openAiSuggestion`, `runAiSuggestion`, and the accept/reject
+  // handlers — they sit lower because they depend on
+  // `getActiveEditorView` which is declared further down the file.
+  type AIToneId = 'polish' | 'concise' | 'formal' | 'casual' | 'shorter' | 'longer';
+  const aiAbortRef = useRef<AbortController | null>(null);
+  const aiFragmentRef = useRef<import('prosemirror-model').Fragment | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    mode: 'rewrite' | 'summarize';
+    from: number;
+    to: number;
+    original: string;
+    suggestion: string | null;
+    inferenceMs: number | null;
+    tone: AIToneId;
+    busy: boolean;
+    error: string | null;
+  } | null>(null);
+  // Inline preview popover proposal — the structured draft produced by
+  // a chat-driven tool (insertTable, future rewrite/outline/translate).
+  // Per the AI-editor research (`docs/internal/11-ai-editor-research.md`)
+  // chat panels NEVER mutate the doc; mutations land here as a preview
+  // the user must explicitly Replace / Insert below / Try again /
+  // Discard.
+  const [activeProposal, setActiveProposal] = useState<
+    import('../lib/writer/pipeline').PipelineProposal | null
+  >(null);
+  // Captures the prompt that produced the active proposal — used by
+  // the popover's "Try again" refine flow to re-run the pipeline with
+  // the original intent + a follow-up instruction ("make it
+  // chronological"). Mirrors Notion's "Tell AI what to do next".
+  const [lastProposalPrompt, setLastProposalPrompt] = useState<string>('');
+  const [proposalBusy, setProposalBusy] = useState(false);
+  // Tracks whether the active editor view currently has a non-empty
+  // selection. Drives `<SelectionAskAi>`'s visibility — the Notion-style
+  // floating "Ask AI" pill anchored above the selection.
+  const [hasTextSelection, setHasTextSelection] = useState(false);
+  // Busy gate while a selection-prompt request is in flight, so the
+  // user can't queue a second request while the first runs.
+  const [askAiBusy, setAskAiBusy] = useState(false);
+  useEffect(() => {
+    const listener = (sel: SelectionState | null): void => {
+      setHasTextSelection(!!sel?.hasSelection);
+    };
+    selectionChangeSubscribersRef.current.add(listener);
+    return () => {
+      selectionChangeSubscribersRef.current.delete(listener);
+    };
+  }, []);
+  // A3 — explore (Wikipedia lookup). Seeds the query from the selection.
+  const [showExplore, setShowExplore] = useState(false);
+  const [exploreQuery, setExploreQuery] = useState<string | null>(null);
+  // A6 v0 — citations manager. Local-only storage.
+  const [showCitations, setShowCitations] = useState(false);
+  const [citations, setCitations] = useState<Citation[]>(() => loadCitations());
+  // Editor preferences — smart quotes / autocorrect runtime toggles.
+  // Lazy-init from localStorage and hydrate the core singleton so the
+  // smart-quotes/autocorrect plugins see the persisted values on the very
+  // first keystroke, not just after a re-render.
+  const [preferences, setPreferences] = useState<EditorPreferences>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem('docx-editor-prefs');
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<EditorPreferences>;
+          if (typeof parsed.smartQuotes === 'boolean') {
+            editorPreferences.smartQuotes = parsed.smartQuotes;
+          }
+          if (typeof parsed.autocorrect === 'boolean') {
+            editorPreferences.autocorrect = parsed.autocorrect;
+          }
+        }
+      } catch {
+        // Corrupted localStorage — fall through to defaults.
+      }
+    }
+    return { ...editorPreferences };
+  });
+
+  // Spell-suggestions popover — shown when the user right-clicks on a
+  // misspelled word. Captures the underlying PM range so the picked
+  // replacement can be dispatched directly.
+  const [spellMenu, setSpellMenu] = useState<{
+    x: number;
+    y: number;
+    from: number;
+    to: number;
+    word: string;
+    suggestions: string[];
+  } | null>(null);
+
+  // Spell-check runtime toggle. Off by default — the ~500 KB Hunspell
+  // dictionary downloads lazily the first time the user flips this on.
+  // Persisted to localStorage so the choice survives reloads.
+  const SPELLCHECK_KEY = 'docx-editor-spellcheck-enabled';
+  const [spellOn, setSpellOn] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(SPELLCHECK_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    // Register the React-side checker with the core extension exactly
+    // once. The injection is module-level so HMR-safe — every reload
+    // overwrites the same singleton.
+    setSpellChecker(getSpellCheckerImpl());
+    return () => {
+      setSpellChecker(null);
+    };
+  }, []);
+  const handlePreferenceChange = useCallback(
+    <K extends keyof EditorPreferences>(key: K, value: EditorPreferences[K]) => {
+      setEditorPreference(key, value);
+      setPreferences((prev) => {
+        const next = { ...prev, [key]: value };
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.setItem('docx-editor-prefs', JSON.stringify(next));
+          } catch {
+            // Quota exceeded / private mode — fail silently; runtime
+            // setting still applies for the current session.
+          }
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // Color theme: 'auto' (follow OS) | 'light' | 'dark'. Persisted in
+  // localStorage. The @schnsrw/design-system tokens are manual-only — they
+  // only define a [data-theme='dark'] override, with no prefers-color-scheme
+  // fallback — so 'auto' is resolved to a concrete 'light'/'dark' attribute
+  // in JS (resolveColorTheme below) and a single [data-theme='dark'] selector
+  // drives both the DS palette and the editor chrome.
+  const [colorTheme, setColorTheme] = useState<'light' | 'dark' | 'auto'>(() => {
+    if (typeof window === 'undefined') return 'auto';
+    const stored = window.localStorage.getItem('casual-editor:color-theme');
+    return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
+  });
+  // Resolve the user's choice to the concrete value the CSS keys off of:
+  // 'auto' follows the OS via matchMedia, everything else passes through.
+  const resolveColorTheme = useCallback((choice: 'light' | 'dark' | 'auto'): 'light' | 'dark' => {
+    if (choice !== 'auto') return choice;
+    if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }, []);
+  // Apply the *initial* theme synchronously on mount so the attribute is set
+  // before the first paint (no flash). Also tag the document with
+  // data-app="docs" so the DS swaps in the docs cyan accent ramp.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-app', 'docs');
+    document.documentElement.setAttribute('data-theme', resolveColorTheme(colorTheme));
+    // Only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // While the user's choice is 'auto', track OS theme changes live so the
+  // chrome flips with the system without a reload.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    if (colorTheme !== 'auto') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => {
+      document.documentElement.setAttribute('data-theme', mql.matches ? 'dark' : 'light');
+    };
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [colorTheme]);
+  // Update the data-theme attribute synchronously in the click handler so
+  // the CSS recalc happens immediately, without waiting for React's
+  // commit phase + useEffect. The setState below only drives the icon
+  // re-render in the title bar.
+  const handleSetColorTheme = useCallback(
+    (t: 'light' | 'dark' | 'auto') => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-theme', resolveColorTheme(t));
+      }
+      try {
+        window.localStorage.setItem('casual-editor:color-theme', t);
+      } catch {
+        // localStorage may be unavailable (private mode); harmless.
+      }
+      setColorTheme(t);
+    },
+    [resolveColorTheme]
+  );
+
   // Hyperlink popup state (Google Docs-style floating popup on link click)
   const [hyperlinkPopupData, setHyperlinkPopupData] = useState<HyperlinkPopupData | null>(null);
 
   // Monotonically increasing generation counter to discard stale async loads
   const loadGenerationRef = useRef(0);
+  // Real on-disk byte size of the most recently loaded document (Properties).
+  const loadedSizeRef = useRef<number | null>(null);
 
   // Reset internal state when loading a new document (clears stale refs, comments, tracked changes, etc.)
   const resetForNewDocument = useCallback(() => {
@@ -1843,8 +2807,21 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Load a DOCX buffer (used by ref method and internally)
   const loadBuffer = useCallback(
     async (buffer: DocxInput) => {
+      // Capture the REAL on-disk size of the loaded bytes (not an in-memory
+      // serialization estimate) for the Properties dialog.
+      loadedSizeRef.current =
+        buffer instanceof Blob
+          ? buffer.size
+          : buffer instanceof ArrayBuffer
+            ? buffer.byteLength
+            : ArrayBuffer.isView(buffer)
+              ? buffer.byteLength
+              : null;
       const generation = ++loadGenerationRef.current;
       resetForNewDocument();
+      // Loading a fresh buffer wipes the prior edit state, so the new
+      // document starts clean.
+      markDirty(false);
       setState((prev) => ({ ...prev, isLoading: true, parseError: null }));
       try {
         const doc = await parseDocx(buffer);
@@ -1863,6 +2840,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
     },
     [resetForNewDocument, loadParsedDocument, onError]
+  );
+
+  // Restore a server-persisted revision: download its .docx from the
+  // host and load it into the editor. In a live collab room the load
+  // flows through the same PM path, so peers converge on the restored
+  // content. Surfaces failures via onError rather than throwing.
+  const handleRestoreServerVersion = useCallback(
+    (version: number) => {
+      if (!versionBackend) return;
+      void (async () => {
+        try {
+          const buf = await downloadServerVersion(versionBackend, version);
+          await loadBuffer(buf);
+        } catch (err) {
+          onError?.(err instanceof Error ? err : new Error(String(err)));
+        }
+      })();
+    },
+    [versionBackend, loadBuffer, onError]
   );
 
   // React to document/documentBuffer prop changes
@@ -1934,9 +2930,38 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [history]
   );
 
+  // Tracks whether the user has unsaved edits. The ref is read by the
+  // `beforeunload` listener (which can't trigger React re-renders).
+  // The state mirrors the ref so the title-bar UnsavedIndicator updates
+  // when the value flips.
+  const isDirtyRef = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const markDirty = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty;
+    // Only re-render when the displayed state actually changes.
+    setIsDirty((prev) => (prev === dirty ? prev : dirty));
+  }, []);
+  // True while a save / download is in flight — drives the
+  // "Saving…" indicator in the title bar.
+  const [isSaving, setIsSaving] = useState(false);
+
+  // beforeunload guard — browsers show the native confirm dialog when
+  // `event.returnValue` is set to a non-empty string (the actual string is
+  // ignored in modern browsers; only the presence matters).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirtyRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
   // Handle document change
   const handleDocumentChange = useCallback(
     (newDocument: Document) => {
+      markDirty(true);
       pushDocument(newDocument);
       onChange?.(newDocument);
       // Fan out to bridge subscribers (errors in one don't break the others).
@@ -2071,6 +3096,50 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             borderWidth: (selectedNode.attrs.borderWidth as number) ?? null,
             borderColor: (selectedNode.attrs.borderColor as string) ?? null,
             borderStyle: (selectedNode.attrs.borderStyle as string) ?? null,
+            width: (selectedNode.attrs.width as number) ?? null,
+            height: (selectedNode.attrs.height as number) ?? null,
+            distTop: (selectedNode.attrs.distTop as number) ?? null,
+            distBottom: (selectedNode.attrs.distBottom as number) ?? null,
+            distLeft: (selectedNode.attrs.distLeft as number) ?? null,
+            distRight: (selectedNode.attrs.distRight as number) ?? null,
+          };
+        }
+      }
+
+      // Check if the caret is inside (or the selection is) a text box. Walk the
+      // ancestor chain so a caret in the box's text still surfaces the box —
+      // textboxes are edited by clicking inside (caret model), like tables.
+      let pmTextBoxCtx: typeof state.pmTextBoxContext = null;
+      if (view) {
+        const sel = view.state.selection;
+        const selNode = (
+          sel as { node?: { type: { name: string }; attrs: Record<string, unknown> } }
+        ).node;
+        let tbNode: { attrs: Record<string, unknown> } | null = null;
+        let tbPos = -1;
+        if (selNode?.type.name === 'textBox') {
+          tbNode = selNode;
+          tbPos = sel.from;
+        } else {
+          const $from = sel.$from;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === 'textBox') {
+              tbNode = $from.node(d);
+              tbPos = $from.before(d);
+              break;
+            }
+          }
+        }
+        if (tbNode && tbPos >= 0) {
+          pmTextBoxCtx = {
+            pos: tbPos,
+            width: (tbNode.attrs.width as number) ?? null,
+            height: (tbNode.attrs.height as number) ?? null,
+            fillColor: (tbNode.attrs.fillColor as string) ?? null,
+            outlineWidth: (tbNode.attrs.outlineWidth as number) ?? null,
+            outlineColor: (tbNode.attrs.outlineColor as string) ?? null,
+            posOffsetH: (tbNode.attrs.posOffsetH as number) ?? null,
+            posOffsetV: (tbNode.attrs.posOffsetV as number) ?? null,
           };
         }
       }
@@ -2082,6 +3151,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           selectionFormatting: {},
           pmTableContext: pmTableCtx,
           pmImageContext: pmImageCtx,
+          pmTextBoxContext: pmTextBoxCtx,
         }));
         return;
       }
@@ -2131,16 +3201,29 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         strike: textFormatting.strike,
         superscript: textFormatting.vertAlign === 'superscript',
         subscript: textFormatting.vertAlign === 'subscript',
+        smallCaps: textFormatting.smallCaps,
+        allCaps: textFormatting.allCaps,
+        hidden: textFormatting.hidden,
+        emboss: textFormatting.emboss,
+        imprint: textFormatting.imprint,
+        shadow: textFormatting.shadow,
+        outline: textFormatting.outline,
         fontFamily,
         fontSize,
         color: textColor,
         highlight: textFormatting.highlight,
         alignment: paragraphFormatting.alignment,
         lineSpacing: paragraphFormatting.lineSpacing,
+        spaceBefore: paragraphFormatting.spaceBefore,
+        spaceAfter: paragraphFormatting.spaceAfter,
         listState,
         styleId: selectionState.styleId ?? undefined,
         indentLeft: paragraphFormatting.indentLeft,
         bidi: !!paragraphFormatting.bidi,
+        keepNext: paragraphFormatting.keepNext,
+        keepLines: paragraphFormatting.keepLines,
+        pageBreakBefore: paragraphFormatting.pageBreakBefore,
+        widowControl: paragraphFormatting.widowControl,
       };
       setState((prev) => ({
         ...prev,
@@ -2152,10 +3235,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         paragraphTabs: paragraphFormatting.tabs ?? null,
         pmTableContext: pmTableCtx,
         pmImageContext: pmImageCtx,
+        pmTextBoxContext: pmTextBoxCtx,
       }));
 
       // Update floating comment button position
       recomputeFloatingCommentBtn();
+
+      // Paint-format armed and now there's a non-empty selection — apply.
+      if (paintFormatMarksRef.current) {
+        const view = pagedEditorRef.current?.getView();
+        if (view) {
+          const { from, to } = view.state.selection;
+          if (from !== to) {
+            applyPaintedMarks(from, to);
+          }
+        }
+      }
 
       // Notify parent
       onSelectionChange?.(selectionState);
@@ -2259,7 +3354,152 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               hyperlinkDialog.openInsert(selectedText);
             }
           }
+        } else if (e.key.toLowerCase() === 's') {
+          // Mod+S: Save (download .docx)
+          e.preventDefault();
+          shortcutActionsRef.current.save?.();
+        } else if (e.key.toLowerCase() === 'p') {
+          // Mod+P: Print
+          e.preventDefault();
+          shortcutActionsRef.current.print?.();
+        } else if (e.key.toLowerCase() === 'n') {
+          // Mod+N: New document. Only honor if the host opted in via onNew.
+          if (shortcutActionsRef.current.new) {
+            e.preventDefault();
+            shortcutActionsRef.current.new();
+          }
+        } else if (e.key.toLowerCase() === 'o') {
+          // Mod+O: Open file picker
+          e.preventDefault();
+          shortcutActionsRef.current.open?.();
+        } else if (e.key === '\\') {
+          // Mod+\\: Clear formatting (Google Docs convention)
+          const view = pagedEditorRef.current?.getView();
+          if (view) {
+            e.preventDefault();
+            clearFormatting(view.state, view.dispatch);
+          }
+        } else if (e.key === '=' || e.key === '+') {
+          // Mod+= / Mod++: Zoom in.
+          e.preventDefault();
+          shortcutActionsRef.current.zoomIn?.();
+        } else if (e.key === '-') {
+          // Mod+-: Zoom out.
+          e.preventDefault();
+          shortcutActionsRef.current.zoomOut?.();
+        } else if (e.key === '0') {
+          // Mod+0: Reset zoom to 100%.
+          e.preventDefault();
+          shortcutActionsRef.current.zoomReset?.();
         }
+      }
+
+      // Mod+Shift+P → command palette. Word / VS Code / Notion convention.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+
+      // Mod+Shift+\ → toggle focus mode. iA Writer / Bear / Notion all
+      // use a variant of this; backslash is chosen because it sits
+      // alone on every layout (no conflict with format shortcuts) and
+      // visually echoes the strikethrough of chrome.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.code === 'Backslash') {
+        e.preventDefault();
+        setFocusMode((v) => !v);
+      }
+
+      // Esc exits focus mode (regardless of whether the focus mode
+      // bar itself has focus). Only fires while focus mode is on so
+      // ESC inside a dialog still closes the dialog.
+      if (e.key === 'Escape' && focusMode) {
+        e.preventDefault();
+        setFocusMode(false);
+      }
+
+      // Mod+Alt+M → start a new comment on the selection (Google Docs
+      // binding). Uses e.code, not e.key, because Option remaps the M key
+      // on macOS. No-op when the selection is empty (handled downstream).
+      if (cmdOrCtrl && e.altKey && !e.shiftKey && e.code === 'KeyM') {
+        e.preventDefault();
+        shortcutActionsRef.current.startComment?.();
+      }
+
+      // Mod+/ → keyboard-shortcuts dialog (Google Docs binding).
+      if (cmdOrCtrl && !e.shiftKey && !e.altKey && e.key === '/') {
+        e.preventDefault();
+        setShowKeyboardShortcuts(true);
+      }
+
+      // Mod+Shift+L → toggle bullet list. Word convention; also matches
+      // Google Docs (Ctrl+Shift+8 there, but L is the documented Word
+      // binding and the doc community expects it). Routes through the
+      // same handleFormat path the toolbar uses so behavior stays
+      // identical to clicking the bullet button.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        const view = getActiveEditorView();
+        if (view) {
+          toggleBulletList(view.state, view.dispatch);
+        }
+      }
+
+      // Mod+Shift+E → cycle editing mode (Docs convention: Editing →
+      // Suggesting → Viewing → Editing). The mode-toggle button tooltip
+      // already advertises this shortcut; this wires it.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        const current = editingModeRef.current;
+        const next: EditorMode =
+          current === 'editing' ? 'suggesting' : current === 'suggesting' ? 'viewing' : 'editing';
+        setEditingModeRef.current(next);
+      }
+
+      // Mod+Shift+C → open Word count dialog (Google Docs convention).
+      // Same dialog the Edit → Word count menu item opens.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        setShowWordCount(true);
+      }
+
+      // Mod+Shift+Y → open Dictionary dialog (Google Docs convention, A4).
+      // Same dialog the Tools → Dictionary menu item opens, with the
+      // current selection (if any) pre-filled.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleOpenDictionary();
+      }
+
+      // Mod+Shift+H → toggle document outline. Mod+H (no shift) opens
+      // Find & Replace, so the shifted variant is the obvious free slot.
+      // Mac users can't easily use Mod+Alt+H — that's "Hide Others" at
+      // the system level — so the shift-modifier shortcut is the
+      // cross-platform-safe choice.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        handleToggleOutline();
+      }
+
+      // Mod+Shift+V → paste without formatting (Google Docs + Word
+      // convention; the same handler the Edit menu's "Paste without
+      // formatting" item runs). Reads the system clipboard as plain
+      // text and inserts via execCommand so the inserted run inherits
+      // the cursor's stored marks. Falls back silently when the
+      // browser blocks the clipboard read — the user can still
+      // ⌘V then Ctrl+\ (clear formatting) as a manual fallback.
+      if (cmdOrCtrl && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        void (async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (!text) return;
+            pagedEditorRef.current?.focus();
+            document.execCommand('insertText', false, text);
+          } catch {
+            // Clipboard read denied — silently no-op; the Edit menu
+            // entry has the same fallback behaviour.
+          }
+        })();
       }
     };
 
@@ -2267,7 +3507,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [disableFindReplaceShortcuts, findReplace, hyperlinkDialog, tableSelection]);
+  }, [disableFindReplaceShortcuts, findReplace, hyperlinkDialog, tableSelection, focusMode]);
+
+  // Ref holds the latest file-op handlers so the global keydown listener
+  // (registered once above) can call them without depending on their
+  // identity (they're defined later in the function — referencing them
+  // directly trips TS's temporal-dead-zone check).
+  const shortcutActionsRef = useRef<{
+    save?: () => void;
+    print?: () => void;
+    new?: () => void;
+    open?: () => void;
+    zoomIn?: () => void;
+    zoomOut?: () => void;
+    zoomReset?: () => void;
+    startComment?: () => void;
+  }>({});
 
   // Handle table insert from toolbar
   const handleInsertTable = useCallback(
@@ -2280,6 +3535,82 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [getActiveEditorView, focusActiveEditor]
   );
 
+  // Paint format (format painter): toggle armed state. If already armed,
+  // disarm. Otherwise capture the current cursor's mark set; the next
+  // selection-change with a non-empty selection will apply them.
+  const handleTogglePaintFormat = useCallback(() => {
+    if (paintFormatMarksRef.current) {
+      setPaintFormatMarks(null);
+      return;
+    }
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const { selection, storedMarks } = view.state;
+    let marks: readonly PMMark[];
+    if (storedMarks && storedMarks.length > 0) {
+      marks = storedMarks;
+    } else if (!selection.empty) {
+      // Take marks from the first character of the range.
+      const $pos = view.state.doc.resolve(selection.from + 1);
+      marks = $pos.marks();
+    } else {
+      marks = selection.$from.marks();
+    }
+    setPaintFormatMarks(marks);
+  }, []);
+
+  // Apply painted marks to a non-empty selection, then disarm.
+  const applyPaintedMarks = useCallback((from: number, to: number) => {
+    const marks = paintFormatMarksRef.current;
+    if (!marks) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    let tr = view.state.tr;
+    // Clear ALL existing marks on the range first, then add the captured
+    // set. This is what Docs/Word do — paint format replaces, not merges.
+    const allMarkTypes = Object.values(view.state.schema.marks);
+    for (const mt of allMarkTypes) {
+      tr = tr.removeMark(from, to, mt);
+    }
+    for (const m of marks) {
+      tr = tr.addMark(from, to, m);
+    }
+    view.dispatch(tr);
+    setPaintFormatMarks(null);
+  }, []);
+
+  // Cancel paint-format on Escape.
+  useEffect(() => {
+    if (!paintFormatMarks) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPaintFormatMarks(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [paintFormatMarks]);
+
+  // Start the add-comment flow from a toolbar/menu trigger (mirrors the
+  // floating "+" button + context-menu addComment paths). Selection
+  // must be non-empty; when empty, the toolbar button is disabled.
+  const handleStartAddComment = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const { from, to } = view.state.selection;
+    if (from === to) return;
+    const yPos = findSelectionYPosition(scrollContainerRef.current, editorContentRef.current, from);
+    setCommentSelectionRange({ from, to });
+    const pendingMark = view.state.schema.marks.comment.create({
+      commentId: PENDING_COMMENT_ID,
+    });
+    const tr = view.state.tr.addMark(from, to, pendingMark);
+    tr.setSelection(TextSelection.create(tr.doc, to));
+    view.dispatch(tr);
+    setAddCommentYPosition(yPos);
+    setShowCommentsSidebar(true);
+    setIsAddingComment(true);
+    setFloatingCommentBtn(null);
+  }, []);
+
   // Insert a page break at cursor
   const handleInsertPageBreak = useCallback(() => {
     const view = getActiveEditorView();
@@ -2287,6 +3618,252 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     insertPageBreak(view.state, view.dispatch);
     focusActiveEditor();
   }, [getActiveEditorView, focusActiveEditor]);
+
+  // Open the Character Spacing dialog with attrs harvested from the
+  // current selection's characterSpacing mark (or zeros if absent).
+  const handleOpenCharacterSpacing = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    const markType = view.state.schema.marks['characterSpacing'];
+    const initial = { scale: null, spacing: null, position: null, kerning: null } as {
+      scale: number | null;
+      spacing: number | null;
+      position: number | null;
+      kerning: number | null;
+    };
+    if (markType) {
+      const { from, to, empty } = view.state.selection;
+      let attrs: Record<string, unknown> | null = null;
+      if (empty) {
+        const stored = view.state.storedMarks ?? view.state.selection.$from.marks();
+        const m = stored.find((mk) => mk.type === markType);
+        if (m) attrs = m.attrs;
+      } else {
+        view.state.doc.nodesBetween(from, to, (node) => {
+          if (attrs) return false;
+          const m = node.marks.find((mk) => mk.type === markType);
+          if (m) attrs = m.attrs;
+          return true;
+        });
+      }
+      if (attrs) {
+        const a = attrs as Record<string, number | null | undefined>;
+        initial.scale = a.scale ?? null;
+        initial.spacing = a.spacing ?? null;
+        initial.position = a.position ?? null;
+        initial.kerning = a.kerning ?? null;
+      }
+    }
+    setCharacterSpacingInitial(initial);
+    setCharacterSpacingDialogOpen(true);
+  }, [getActiveEditorView]);
+
+  const handleSubmitCharacterSpacing = useCallback(
+    (value: CharacterAttrs) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      setCharacterAttrs(value)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Open the Paragraph dialog with the cursor paragraph's current attrs.
+  const handleOpenParagraphDialog = useCallback(() => {
+    setParagraphDialogOpen(true);
+  }, []);
+
+  // Open the Borders & Shading dialog. Harvest the current paragraph's
+  // borders/shading attrs from the live PM doc at open time so existing
+  // values appear in the dialog (Word's behaviour).
+  const handleOpenBordersShading = useCallback(() => {
+    const view = getActiveEditorView();
+    const initial: typeof bordersShadingInitial = {
+      borders: {},
+      shading: { fillHex: '', pattern: 'clear', patternColorHex: '' },
+    };
+    if (view) {
+      const { $from } = view.state.selection;
+      let para = $from.parent;
+      // Walk up to nearest paragraph if cursor is deeper.
+      for (let d = $from.depth; d > 0 && para.type.name !== 'paragraph'; d--) {
+        para = $from.node(d - 1);
+      }
+      if (para.type.name === 'paragraph') {
+        const attrs = para.attrs as {
+          borders?: Record<string, { style?: string; color?: { rgb?: string }; size?: number }>;
+          shading?: { fill?: { rgb?: string }; color?: { rgb?: string }; pattern?: string };
+        };
+        if (attrs.borders) {
+          const b = attrs.borders;
+          (['top', 'bottom', 'left', 'right'] as const).forEach((side) => {
+            const spec = b[side];
+            if (spec && spec.style && spec.style !== 'none' && spec.style !== 'nil') {
+              const known = ['single', 'double', 'dotted', 'dashed', 'thick', 'triple'];
+              const style = known.includes(spec.style)
+                ? (spec.style as 'single' | 'double' | 'dotted' | 'dashed' | 'thick' | 'triple')
+                : 'single';
+              (initial.borders as Record<string, unknown>)[side] = {
+                style,
+                colorHex: (spec.color?.rgb || '000000').toUpperCase(),
+                size: spec.size ?? 4,
+              };
+            }
+          });
+        }
+        if (attrs.shading) {
+          const s = attrs.shading;
+          initial.shading = {
+            fillHex: (s.fill?.rgb || '').toUpperCase(),
+            pattern: (s.pattern as typeof initial.shading.pattern) || 'clear',
+            patternColorHex: (s.color?.rgb || '').toUpperCase(),
+          };
+        }
+      }
+    }
+    setBordersShadingInitial(initial);
+    setBordersShadingOpen(true);
+  }, [getActiveEditorView]);
+
+  // Convert dialog value into OOXML-shaped paragraph attrs and dispatch.
+  const handleSubmitBordersShading = useCallback(
+    (v: BordersAndShadingValue) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const sides = ['top', 'bottom', 'left', 'right'] as const;
+      const borders: Record<string, unknown> = {};
+      let anyBorder = false;
+      for (const side of sides) {
+        const spec = (
+          v.borders as Record<string, { style: string; colorHex: string; size: number }>
+        )[side];
+        if (spec) {
+          anyBorder = true;
+          borders[side] = {
+            style: spec.style,
+            color: spec.colorHex ? { rgb: spec.colorHex } : undefined,
+            size: spec.size,
+          };
+        }
+      }
+      const shadingHasFill = !!v.shading.fillHex;
+      const shadingHasPattern = v.shading.pattern !== 'clear';
+      const shadingHasPatternColor = !!v.shading.patternColorHex;
+      const shading =
+        shadingHasFill || shadingHasPattern || shadingHasPatternColor
+          ? {
+              fill: shadingHasFill ? { rgb: v.shading.fillHex } : undefined,
+              color: shadingHasPatternColor ? { rgb: v.shading.patternColorHex } : undefined,
+              pattern: v.shading.pattern,
+            }
+          : null;
+      setParagraphAttrs({
+        borders: anyBorder ? borders : null,
+        shading,
+      })(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Insert an inline OOXML field node (PAGE / NUMPAGES / DATE / TIME /
+  // CREATEDATE / SAVEDATE / AUTHOR / FILENAME) at the cursor. The
+  // header/footer flow is the primary use; body insertion also works
+  // (Word renders PAGE in body the same way). The round-trip through
+  // parser+serializer is locked in by footer-field-roundtrip.test.ts.
+  const handleInsertField = useCallback(
+    (fieldType: InsertableFieldType) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      insertField(fieldType)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Insert a section break of the given OOXML type. Section breaks
+  // are a stronger structural divider than page breaks — they let
+  // the next section have its own page-size / margins / columns /
+  // headers + footers. `nextPage` matches Word's default; the
+  // other three (`continuous` / `evenPage` / `oddPage`) cover the
+  // less-common section-control cases.
+  const handleInsertSectionBreak = useCallback(
+    (breakType: 'nextPage' | 'continuous' | 'oddPage' | 'evenPage') => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      insertSectionBreak(breakType)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  const handleInsertHorizontalRule = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    insertHorizontalRule(view.state, view.dispatch);
+    focusActiveEditor();
+  }, [getActiveEditorView, focusActiveEditor]);
+
+  // Insert a footnote ref at the cursor. The id is "next free integer"
+  // computed by scanning existing footnoteRef marks in the doc.
+  const handleInsertFootnote = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    let maxId = 0;
+    view.state.doc.descendants((node) => {
+      if (!node.isText) return;
+      for (const m of node.marks) {
+        if (m.type.name === 'footnoteRef') {
+          const id = Number(m.attrs.id);
+          if (Number.isFinite(id) && id > maxId) maxId = id;
+        }
+      }
+    });
+    insertFootnote(maxId + 1)(view.state, view.dispatch);
+    focusActiveEditor();
+  }, [getActiveEditorView, focusActiveEditor]);
+
+  const handleOpenInsertSymbol = useCallback(() => setInsertSymbolOpen(true), []);
+
+  const handleToggleShowRuler = useCallback(() => {
+    setShowRulerLocal((prev) => !(prev ?? showRuler));
+  }, [showRuler]);
+
+  // F6 — View → Show non-printing characters. Persist across sessions so
+  // the preference survives a reload, matching how Google Docs / Word
+  // remember the formatting-marks toggle.
+  const [showFormattingMarks, setShowFormattingMarks] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('docx-editor-show-marks') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const handleToggleShowFormattingMarks = useCallback(() => {
+    setShowFormattingMarks((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('docx-editor-show-marks', next ? '1' : '0');
+        }
+      } catch {
+        // Quota / private mode — toggle still works in-memory.
+      }
+      return next;
+    });
+  }, []);
+
+  const handleInsertSymbol = useCallback(
+    (symbol: string) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      view.dispatch(view.state.tr.insertText(symbol));
+      setInsertSymbolOpen(false);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
 
   // Insert a table of contents at cursor
   const handleInsertTOC = useCallback(() => {
@@ -2305,6 +3882,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         if (view) {
           setHeadingInfos(collectHeadings(view.state.doc));
         }
+        // One right-side surface at a time: opening the outline closes the rest.
+        setShowCommentsSidebar(false);
+        setExpandedSidebarItem(null);
+        setShowVersionHistory(false);
+        setShowProperties(false);
       }
       return !prev;
     });
@@ -2378,6 +3960,24 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Handle shape insertion
   // Handle image wrap type change
+  // Re-select the image as a NODE selection after a Format-panel edit. A plain
+  // text selection at `pos` would NOT rebuild pmImageContext, so the panel
+  // would fall back to its empty "select an object" state — this keeps it on
+  // the image (the "keep selection through edits" behaviour).
+  const reselectImageNode = useCallback(
+    (pos: number) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      try {
+        const sel = NodeSelection.create(view.state.doc, pos);
+        view.dispatch(view.state.tr.setSelection(sel));
+      } catch {
+        // pos no longer points at a selectable node; ignore.
+      }
+    },
+    [getActiveEditorView]
+  );
+
   const handleImageWrapType = useCallback(
     (toolbarValue: string) => {
       const view = getActiveEditorView();
@@ -2406,10 +4006,287 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
 
       setImageWrapType(pos, target, opts)(view.state, view.dispatch);
+      // Keep the image node-selected so the Format panel stays on it (and the
+      // distance-from-text controls appear for the new wrap mode).
+      reselectImageNode(pos);
       focusActiveEditor();
     },
-    [getActiveEditorView, focusActiveEditor, state.pmImageContext, state.zoom]
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, state.zoom, reselectImageNode]
   );
+
+  // Re-select the image as a NODE selection after a Format-panel edit. A plain
+  // text selection at `pos` would NOT rebuild pmImageContext, so the panel
+  // would fall back to its empty "select an object" state — this keeps it on
+  // the image (the "keep selection through edits" follow-up).
+  // Set explicit image width/height from the Format panel's size inputs.
+  // Same node-markup path the resize handles use, so the painted pages and
+  // round-trip stay consistent. Re-selects the image so the panel keeps it.
+  const handleImageSetSize = useCallback(
+    (width: number, height: number) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const w = Math.max(8, Math.min(2000, Math.round(width)));
+      const h = Math.max(8, Math.min(2000, Math.round(height)));
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        width: w,
+        height: h,
+      });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // Re-select the image as a NODE selection after a Format-panel edit. A plain
+  // text selection at `pos` would NOT rebuild pmImageContext, so the panel
+  // would fall back to its empty "select an object" state — this keeps it on
+  // the image (the "keep selection through edits" follow-up).
+  // Set image border (width/color/style) from the Format panel. Same node
+  // attrs the image-properties dialog uses, so the two stay consistent.
+  const handleImageSetBorder = useCallback(
+    (borderWidth: number | null, borderColor: string | null, borderStyle: string | null) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        borderWidth,
+        borderColor,
+        borderStyle,
+      });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // Set a single distance-from-text margin (px) on the selected image. Drives
+  // the wrap spacing the layout engine already honors for floating images.
+  const handleImageSetDist = useCallback(
+    (side: 'distTop' | 'distBottom' | 'distLeft' | 'distRight', value: number) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const v = Math.max(0, Math.min(200, Math.round(value)));
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, [side]: v });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // Set image alt text (accessibility) from the Format panel.
+  const handleImageSetAlt = useCallback(
+    (alt: string) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmImageContext) return;
+      const pos = state.pmImageContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'image') return;
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        alt: alt.trim() ? alt : null,
+      });
+      view.dispatch(tr);
+      reselectImageNode(pos);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
+  );
+
+  // --- Text box Format-panel handlers ---------------------------------------
+  // All go through setNodeMarkup on the textBox node (reliable + round-trips);
+  // the painter re-renders at the new size/fill/outline. We keep the caret
+  // inside the box (setSelection at pos+1) so the panel stays open on it.
+  const updateTextBoxAttrs = useCallback(
+    (patch: Record<string, unknown>) => {
+      const view = getActiveEditorView();
+      if (!view || !state.pmTextBoxContext) return;
+      const pos = state.pmTextBoxContext.pos;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'textBox') return;
+      // CRITICAL: an imported box carries its original OOXML envelope in
+      // `rawXml`; the serializer re-emits that verbatim and skips the model
+      // (the rawXml invariant in fromProseDoc). So a fill/size/outline edit
+      // would render but be silently dropped on save. Clearing rawXml/
+      // envelopeKey on edit switches the box to model-based emission so the
+      // change actually persists. The model serializer is complete for the
+      // box's geometry/fill/outline/text; only original VML/custom-geometry
+      // /effects are dropped, which is the expected trade-off for editing.
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        ...patch,
+        rawXml: null,
+        envelopeKey: null,
+      });
+      view.dispatch(tr);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor, state.pmTextBoxContext]
+  );
+  const handleTextBoxSetSize = useCallback(
+    (width: number, height: number | null) => {
+      updateTextBoxAttrs({
+        width: Math.max(24, Math.min(2000, Math.round(width))),
+        height: height == null ? null : Math.max(16, Math.min(2000, Math.round(height))),
+      });
+    },
+    [updateTextBoxAttrs]
+  );
+  const handleTextBoxSetFill = useCallback(
+    (fillColor: string | null) => updateTextBoxAttrs({ fillColor }),
+    [updateTextBoxAttrs]
+  );
+  const handleTextBoxSetPosition = useCallback(
+    (x: number, y: number) => {
+      // Anchor the box at (x, y) px from the content-area top-left. `margin`
+      // relativeFrom = the content area (page minus margins), so resolveAnchorX/Y
+      // place it at exactly the offset. Clearing the align attrs lets the offset
+      // win (align would otherwise override posOffset in anchorGeometry).
+      updateTextBoxAttrs({
+        posOffsetH: Math.max(0, Math.round(x)),
+        posOffsetV: Math.max(0, Math.round(y)),
+        posRelFromH: 'margin',
+        posRelFromV: 'margin',
+        posAlignH: null,
+        posAlignV: null,
+      });
+    },
+    [updateTextBoxAttrs]
+  );
+  const handleTextBoxSetOutline = useCallback(
+    (outlineWidth: number | null, outlineColor: string | null) =>
+      updateTextBoxAttrs({
+        outlineWidth,
+        outlineColor: outlineWidth == null ? null : outlineColor,
+        outlineStyle: outlineWidth == null ? null : 'solid',
+      }),
+    [updateTextBoxAttrs]
+  );
+
+  // Open the note editor with the current text of the double-clicked note.
+  // Footnotes/endnotes live on the document package (history.state), NOT the PM doc.
+  const handleEditFootnote = useCallback(
+    (footnoteId: number) => {
+      const fn = history.state?.package?.footnotes?.find((f) => f.id === footnoteId);
+      setNoteEdit({ kind: 'footnote', id: footnoteId, text: fn ? getFootnoteText(fn) : '' });
+    },
+    [history]
+  );
+  const handleEditEndnote = useCallback(
+    (endnoteId: number) => {
+      const en = history.state?.package?.endnotes?.find((e) => e.id === endnoteId);
+      setNoteEdit({ kind: 'endnote', id: endnoteId, text: en ? getEndnoteText(en) : '' });
+    },
+    [history]
+  );
+
+  // Apply a footnote/endnote text edit to BOTH the render doc (history.state)
+  // and the save doc (agentRef). Marking the note `edited` makes the save path
+  // regenerate ONLY its text in footnotes.xml/endnotes.xml; untouched notes stay
+  // verbatim. Runs for local AND remote (collab) edits, so every peer's model —
+  // and any peer's snapshot — carries the change.
+  const applyNoteEditToModel = useCallback(
+    (kind: 'footnote' | 'endnote', noteId: number, text: string) => {
+      const editsRef = kind === 'footnote' ? footnoteEditsRef : endnoteEditsRef;
+      const apply = (pkg: import('@eigenpal/docx-core/types/document').DocxPackage | undefined) => {
+        const list = kind === 'footnote' ? pkg?.footnotes : pkg?.endnotes;
+        const note = list?.find((n) => n.id === noteId);
+        if (note) {
+          if (kind === 'footnote') setFootnotePlainText(note as never, text);
+          else setEndnotePlainText(note as never, text);
+          note.edited = true;
+        }
+      };
+      apply(history.state?.package);
+      apply(agentRef.current?.getDocument()?.package);
+      editsRef.current.set(noteId, text);
+      // Instant visual feedback: patch the painted note text span(s).
+      const cls = kind === 'footnote' ? 'layout-footnote' : 'layout-endnote';
+      document
+        .querySelectorAll(`.${cls}[data-${kind}-id="${noteId}"] .${cls}-text`)
+        .forEach((el) => {
+          (el as HTMLElement).textContent = ' ' + text;
+        });
+    },
+    [history]
+  );
+
+  // Commit an edit from the dialog. In collab, route through the shared map so
+  // peers receive it; the observer applies it to every peer's model (including
+  // ours). Single-user applies directly.
+  const handleApplyNoteEdit = useCallback(
+    (kind: 'footnote' | 'endnote', noteId: number, text: string) => {
+      const noteSync = kind === 'footnote' ? footnoteSync : endnoteSync;
+      if (noteSync) {
+        noteSync.set(noteId, text);
+      } else {
+        applyNoteEditToModel(kind, noteId, text);
+        pagedEditorRef.current?.relayout();
+      }
+      setNoteEdit(null);
+    },
+    [footnoteSync, endnoteSync, applyNoteEditToModel]
+  );
+
+  // Apply core-property edits to the live + save docs. Runs for local and remote
+  // (collab) edits so every peer's model carries them and any peer's snapshot
+  // writes them through applyCorePropertiesToXml.
+  const applyPropsToModel = useCallback((edits: Record<string, string>) => {
+    const apply = (pkg: import('@eigenpal/docx-core/types/document').DocxPackage | undefined) => {
+      if (pkg) pkg.properties = { ...(pkg.properties ?? {}), ...edits };
+    };
+    apply(history.state?.package);
+    apply(agentRef.current?.getDocument()?.package);
+    propsEditsRef.current = { ...propsEditsRef.current, ...edits };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Commit a File → Properties edit. In collab, route through the shared map so
+  // peers receive it; the observer applies it everywhere. Single-user direct.
+  const handleApplyFileProperties = useCallback(
+    (edits: Record<string, string>) => {
+      if (propsSync) propsSync.set(edits);
+      else applyPropsToModel(edits);
+    },
+    [propsSync, applyPropsToModel]
+  );
+
+  useEffect(() => {
+    if (!propsSync) return;
+    return propsSync.observe((props) => applyPropsToModel(props));
+  }, [propsSync, applyPropsToModel]);
+
+  // Apply remote (and own) note edits broadcast over the shared maps.
+  useEffect(() => {
+    const unsubs: Array<() => void> = [];
+    if (footnoteSync)
+      unsubs.push(
+        footnoteSync.observe((id, text) => {
+          applyNoteEditToModel('footnote', id, text);
+          pagedEditorRef.current?.relayout();
+        })
+      );
+    if (endnoteSync)
+      unsubs.push(
+        endnoteSync.observe((id, text) => {
+          applyNoteEditToModel('endnote', id, text);
+          pagedEditorRef.current?.relayout();
+        })
+      );
+    return () => unsubs.forEach((u) => u());
+  }, [footnoteSync, endnoteSync, applyNoteEditToModel]);
 
   // Handle image transform (rotate/flip)
   const handleImageTransform = useCallback(
@@ -2456,9 +4333,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         transform: newTransform,
       });
       view.dispatch(tr.scrollIntoView());
+      // Keep the image selected so the Format panel stays on it after the edit.
+      reselectImageNode(pos);
       focusActiveEditor();
     },
-    [getActiveEditorView, focusActiveEditor, state.pmImageContext]
+    [getActiveEditorView, focusActiveEditor, state.pmImageContext, reselectImageNode]
   );
 
   // Apply image position changes
@@ -2666,8 +4545,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               toggleHeaderRow()(view.state, view.dispatch);
             } else if (action.type === 'distributeColumns') {
               distributeColumns()(view.state, view.dispatch);
+            } else if (action.type === 'distributeRows') {
+              distributeRows()(view.state, view.dispatch);
+            } else if (action.type === 'sortTable') {
+              sortTable(action.direction)(view.state, view.dispatch);
             } else if (action.type === 'autoFitContents') {
               autoFitContents()(view.state, view.dispatch);
+            } else if (action.type === 'autoFitWindow') {
+              autoFitWindow()(view.state, view.dispatch);
             } else if (action.type === 'openTableProperties') {
               setTablePropsOpen(true);
             } else if (action.type === 'tableProperties') {
@@ -2871,6 +4756,48 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         setLtr(view.state, view.dispatch);
         return;
       }
+      if (action === 'selectAll') {
+        const { doc } = view.state;
+        const tr = view.state.tr.setSelection(TextSelection.create(doc, 0, doc.content.size));
+        view.dispatch(tr);
+        return;
+      }
+      if (action === 'toggleSmallCaps') {
+        toggleSmallCaps(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleAllCaps') {
+        toggleAllCaps(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleHidden') {
+        toggleHidden(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleEmboss') {
+        toggleEmboss(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleImprint') {
+        toggleImprint(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleTextShadow') {
+        toggleTextShadow(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'toggleTextOutline') {
+        toggleTextOutline(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'restartListNumbering') {
+        restartListNumbering(view.state, view.dispatch);
+        return;
+      }
+      if (action === 'continueListNumbering') {
+        continueListNumbering(view.state, view.dispatch);
+        return;
+      }
       if (action === 'insertLink') {
         // Get the selected text for the hyperlink dialog
         const selectedText = getSelectedText(view.state);
@@ -2922,6 +4849,21 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             break;
           case 'lineSpacing':
             setLineSpacing(action.value)(view.state, view.dispatch);
+            break;
+          case 'spaceBefore':
+            setSpaceBefore(action.value)(view.state, view.dispatch);
+            break;
+          case 'spaceAfter':
+            setSpaceAfter(action.value)(view.state, view.dispatch);
+            break;
+          case 'charSpacing':
+            setCharacterSpacing(action.value)(view.state, view.dispatch);
+            break;
+          case 'keepNext':
+          case 'keepLines':
+          case 'pageBreakBefore':
+          case 'widowControl':
+            setParagraphAttrs({ [action.type]: action.value })(view.state, view.dispatch);
             break;
           case 'applyStyle': {
             // Resolve style to get its formatting properties
@@ -3223,7 +5165,22 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         cssFloat?: 'left' | 'right' | 'none' | null;
         inlinePositionEmu?: { horizontalEmu: number; verticalEmu: number };
       } | null;
+      spellcheck?: { from: number; to: number; word: string } | null;
     }) => {
+      // Spell-check hit takes priority over both image and text menus —
+      // matches Word's behaviour where a misspelled word's right-click
+      // menu pre-empts the standard one.
+      if (data.spellcheck) {
+        setSpellMenu({
+          x: data.x,
+          y: data.y,
+          from: data.spellcheck.from,
+          to: data.spellcheck.to,
+          word: data.spellcheck.word,
+          suggestions: suggestionsFor(data.spellcheck.word, 5),
+        });
+        return;
+      }
       // Image right-click takes priority over the text context menu.
       if (data.image) {
         imageContextMenu.openForImage({
@@ -3248,6 +5205,37 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     },
     [getActiveEditorView, imageContextMenu]
   );
+
+  // Apply a spell-check suggestion: replace the misspelled span with
+  // the picked word, preserving the marks on the first character of the
+  // range so case/format don't disappear.
+  const handlePickSpellSuggestion = useCallback(
+    (suggestion: string) => {
+      const view = getActiveEditorView();
+      if (!view || !spellMenu) return;
+      const { from, to } = spellMenu;
+      const docSize = view.state.doc.content.size;
+      const clampedFrom = Math.min(Math.max(from, 0), docSize);
+      const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+      // Read the marks at the start of the misspelled word so the
+      // replacement carries the same bold/italic/etc styling.
+      const nodeAtFrom = view.state.doc.nodeAt(clampedFrom);
+      const marks = nodeAtFrom?.marks ?? [];
+      const replacementNode = view.state.schema.text(suggestion, marks);
+      const tr = view.state.tr.replaceWith(clampedFrom, clampedTo, replacementNode);
+      view.dispatch(tr);
+      setSpellMenu(null);
+    },
+    [getActiveEditorView, spellMenu]
+  );
+
+  const handleIgnoreSpell = useCallback(() => {
+    if (!spellMenu) return;
+    ignoreWord(spellMenu.word);
+    const view = getActiveEditorView();
+    if (view) refreshSpellcheckDecorations(view);
+    setSpellMenu(null);
+  }, [getActiveEditorView, spellMenu]);
 
   const handleImageWrapApply = useCallback(
     (target: ImageLayoutTarget) => {
@@ -3303,6 +5291,28 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     });
   }, []);
 
+  // Writing-Assistant state. The right-click "Rewrite with AI" and
+  // "Summarize with AI" menu entries only appear when the matching
+  // feature is enabled AND a model is currently loaded — anything
+  // else and the user would tap a menu item that errors immediately.
+  const writerState = useWriterState();
+  const aiRewriteReady =
+    writerState.enabledFeatures.includes('tone') &&
+    writerState.phase === 'ready' &&
+    writerState.loadedModelId !== null;
+  const aiSummarizeReady =
+    writerState.enabledFeatures.includes('summarize-basic') &&
+    writerState.phase === 'ready' &&
+    writerState.loadedModelId !== null;
+  // "Ask AI about this" routes through the chat panel + the advanced
+  // Llama tier (the only resident model that actually does open-ended
+  // conversation). Hide the entry on the basic flan-t5 tier so users
+  // don't ask the encoder-decoder a free-form question.
+  const aiAskReady =
+    writerState.enabledFeatures.includes('advanced-llm') &&
+    writerState.phase === 'ready' &&
+    writerState.loadedModelId !== null;
+
   const contextMenuItems = useMemo((): TextContextMenuItem[] => {
     const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
     const mod = isMac ? '⌘' : 'Ctrl';
@@ -3327,8 +5337,45 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       items.push({
         action: 'addComment',
         label: 'Comment',
-        dividerAfter: !contextMenu.cursorInTable,
       });
+      // Quick-translate: instant replace with the last target the
+      // user picked. The dialog entry sticks around for picking a
+      // different language or seeing the preview.
+      const lastTranslateTarget = (() => {
+        try {
+          return window.localStorage.getItem('translate:last-target');
+        } catch {
+          return null;
+        }
+      })();
+      const targetLabel =
+        lastTranslateTarget &&
+        TRANSLATE_LANGUAGES.find((l) => l.code === lastTranslateTarget)?.label;
+      if (targetLabel) {
+        items.push({
+          action: 'translateQuickReplace',
+          label: `Translate to ${targetLabel}`,
+        });
+      }
+      items.push({
+        action: 'translateSelection',
+        label: 'Translate selection…',
+      });
+      if (aiRewriteReady) {
+        items.push({ action: 'aiRewrite', label: 'Rewrite with AI' });
+      }
+      if (aiSummarizeReady) {
+        items.push({ action: 'aiSummarize', label: 'Summarize with AI' });
+      }
+      if (aiAskReady) {
+        items.push({ action: 'aiAsk', label: 'Ask AI about this' });
+      }
+      // Add the divider on the last selection-only entry, before the
+      // table block / Select All trailer.
+      if (items.length > 0) {
+        const last = items[items.length - 1];
+        if (last) last.dividerAfter = !contextMenu.cursorInTable;
+      }
     }
     if (contextMenu.cursorInTable) {
       items.push(
@@ -3337,7 +5384,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         { action: 'deleteRow', label: 'Delete row', dividerAfter: true },
         { action: 'addColumnLeft', label: 'Insert column left' },
         { action: 'addColumnRight', label: 'Insert column right' },
-        { action: 'deleteColumn', label: 'Delete column' },
+        { action: 'deleteColumn', label: 'Delete column', dividerAfter: true },
         {
           action: 'mergeCells',
           label: i18n?.table?.mergeCells ?? defaultLocale.table.mergeCells,
@@ -3348,12 +5395,188 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           label: i18n?.table?.splitCell ?? defaultLocale.table.splitCell,
           disabled: !contextMenu.tableContext?.canSplitCell,
           dividerAfter: true,
-        }
+        },
+        // Whole-table delete — was buried in the TableMoreDropdown
+        // before, so users couldn't find it. Surfaced here so the
+        // right-click in a cell exposes the same affordance Notion /
+        // Word both surface inline.
+        { action: 'deleteTable', label: 'Delete table', dividerAfter: true }
       );
     }
     items.push({ action: 'selectAll', label: 'Select All', shortcut: `${mod}+A` });
     return items;
-  }, [contextMenu.hasSelection, contextMenu.cursorInTable, contextMenu.tableContext]);
+  }, [
+    contextMenu.hasSelection,
+    contextMenu.cursorInTable,
+    contextMenu.tableContext,
+    aiRewriteReady,
+    aiSummarizeReady,
+    aiAskReady,
+  ]);
+
+  // ---------------------------------------------------------------
+  // AI suggestion (rewrite / summarize) — popover-based flow.
+  // ---------------------------------------------------------------
+
+  const runAiSuggestion = useCallback(
+    async (mode: 'rewrite' | 'summarize', tone: AIToneId, range: { from: number; to: number }) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      aiAbortRef.current?.abort();
+      const controller = new AbortController();
+      aiAbortRef.current = controller;
+      setAiSuggestion((prev) =>
+        prev ? { ...prev, busy: true, suggestion: null, error: null, inferenceMs: null } : prev
+      );
+      try {
+        const slice = view.state.doc.slice(range.from, range.to);
+        const ctx = sampleContext(view.state.doc, range.from, range.to);
+        const startedAt = Date.now();
+        const transformed = await rewriteFragment(
+          slice.content,
+          view.state.schema,
+          mode === 'rewrite' ? 'rewrite' : 'summarize',
+          {
+            tone,
+            contextBefore: ctx.before,
+            contextAfter: ctx.after,
+          },
+          controller.signal
+        );
+        const text = (() => {
+          let out = '';
+          for (let i = 0; i < transformed.childCount; i++) out += transformed.child(i).textContent;
+          return out.trim();
+        })();
+        if (controller.signal.aborted) return;
+        setAiSuggestion((prev) =>
+          prev
+            ? {
+                ...prev,
+                suggestion: text || prev.original,
+                inferenceMs: Date.now() - startedAt,
+                busy: false,
+              }
+            : prev
+        );
+        // Stash the transformed fragment so Accept can replay it
+        // without re-running inference.
+        aiFragmentRef.current = transformed;
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const e = err as Error;
+        const msg = e.message?.includes('No model is loaded')
+          ? mode === 'rewrite'
+            ? 'Enable Tone & style rewrite in the Writing Assistant first.'
+            : 'Enable Summarize selection in the Writing Assistant first.'
+          : (e.message ?? 'Inference failed.');
+        setAiSuggestion((prev) => (prev ? { ...prev, busy: false, error: msg } : prev));
+      }
+    },
+    [getActiveEditorView]
+  );
+
+  const openAiSuggestion = useCallback(
+    (mode: 'rewrite' | 'summarize') => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const { from, to } = view.state.selection;
+      if (from === to) return;
+      const original = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+      if (!original) return;
+      // Right-docked panel doesn't need a per-selection bbox — the
+      // dock position is fixed. We still snapshot the PM range so
+      // Accept replays exactly the span the user picked, even if the
+      // cursor moves while the panel is open.
+      // Close any other right panel so the suggestion gets the slot.
+      setShowWritingAssistant(false);
+      setShowChatPanel(false);
+      setShowVersionHistory(false);
+      setAiSuggestion({
+        mode,
+        from,
+        to,
+        original,
+        suggestion: null,
+        inferenceMs: null,
+        tone: 'polish',
+        busy: true,
+        error: null,
+      });
+      void runAiSuggestion(mode, 'polish', { from, to });
+    },
+    [getActiveEditorView, runAiSuggestion]
+  );
+
+  const handleAiAccept = useCallback(() => {
+    const view = getActiveEditorView();
+    const state = aiSuggestion;
+    if (!view || !state) return;
+    const docSize = view.state.doc.content.size;
+    if (state.mode === 'rewrite' && aiFragmentRef.current) {
+      // Land the rewrite as a tracked change instead of clobbering the
+      // selection — the original stays in place struck-through (red),
+      // the AI's version arrives underlined (green) so the user
+      // accepts or rejects through the existing tracked-change UI.
+      const from = Math.min(Math.max(state.from, 0), docSize);
+      const to = Math.min(Math.max(state.to, from), docSize);
+      applyRewriteAsSuggestion({
+        view,
+        from,
+        to,
+        replacement: aiFragmentRef.current,
+      });
+    } else if (state.mode === 'summarize' && state.suggestion) {
+      // Insert the summary at the END of the selection as a tracked
+      // change. Nothing gets deleted; the user just gets a marked
+      // insertion they can accept or reject.
+      const to = Math.min(Math.max(state.to, 0), docSize);
+      applyInsertAsSuggestion({
+        view,
+        at: to,
+        text: `\n\nSummary: ${state.suggestion}\n`,
+      });
+    }
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    aiFragmentRef.current = null;
+    setAiSuggestion(null);
+    // Hint the user where the suggestion just landed. The doc body
+    // now carries the deletion + insertion marks, and the action bar
+    // (now always visible when there are tracked changes) gives them
+    // Accept All / Reject All / Prev / Next at the top-right.
+    toast.success('AI suggestion ready for review — accept or reject in the doc.', {
+      duration: 5000,
+    });
+  }, [aiSuggestion, getActiveEditorView]);
+
+  const handleAiReject = useCallback(() => {
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    aiFragmentRef.current = null;
+    setAiSuggestion(null);
+  }, []);
+
+  const handleAiRetry = useCallback(() => {
+    if (!aiSuggestion) return;
+    void runAiSuggestion(aiSuggestion.mode, aiSuggestion.tone, {
+      from: aiSuggestion.from,
+      to: aiSuggestion.to,
+    });
+  }, [aiSuggestion, runAiSuggestion]);
+
+  const handleAiTone = useCallback(
+    (id: string) => {
+      if (!aiSuggestion) return;
+      const next = id as AIToneId;
+      setAiSuggestion((prev) => (prev ? { ...prev, tone: next, busy: true } : prev));
+      void runAiSuggestion(aiSuggestion.mode, next, {
+        from: aiSuggestion.from,
+        to: aiSuggestion.to,
+      });
+    },
+    [aiSuggestion, runAiSuggestion]
+  );
 
   const handleContextMenuAction = useCallback(
     async (action: TextContextAction) => {
@@ -3444,12 +5667,102 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         case 'deleteColumn':
           pmDeleteColumn(view.state, view.dispatch);
           break;
+        case 'deleteTable':
+          // The right-click "Delete table" item (see context-menu items)
+          // routes here; without this case it fell through to a no-op,
+          // so the menu entry did nothing.
+          pmDeleteTable(view.state, view.dispatch);
+          break;
         case 'mergeCells':
           pmMergeCells(view.state, view.dispatch);
           break;
         case 'splitCell':
           openSplitCellDialog();
           break;
+        // Translate — capture the selection range so the dialog's
+        // Replace button can write back to exactly this span.
+        case 'translateSelection': {
+          const { from, to } = view.state.selection;
+          if (from === to) break;
+          const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+          setTranslateRange({ from, to });
+          setTranslateText(raw.length > 0 ? raw : null);
+          setShowTranslate(true);
+          break;
+        }
+        // Quick translate — instant format-preserving replace into
+        // the user's last-chosen target language. No dialog, no
+        // preview, just the same translateFragment path the dialog
+        // would have run on Accept.
+        case 'translateQuickReplace': {
+          const { from, to } = view.state.selection;
+          if (from === to) break;
+          let target: string | null = null;
+          try {
+            target = window.localStorage.getItem('translate:last-target');
+          } catch {
+            // Storage denied — fall back to dialog.
+          }
+          if (!target) {
+            // No remembered language yet; route through the dialog so
+            // the user picks one.
+            const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+            setTranslateRange({ from, to });
+            setTranslateText(raw.length > 0 ? raw : null);
+            setShowTranslate(true);
+            break;
+          }
+          const targetLang = target;
+          const docSize = view.state.doc.content.size;
+          const clampedFrom = Math.min(Math.max(from, 0), docSize);
+          const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+          const slice = view.state.doc.slice(clampedFrom, clampedTo);
+          const targetLabel =
+            TRANSLATE_LANGUAGES.find((l) => l.code === targetLang)?.label ??
+            targetLang.toUpperCase();
+          const toastId = toast.loading(`Translating to ${targetLabel}…`);
+          try {
+            const translatedContent = await translateFragment(
+              slice.content,
+              view.state.schema,
+              'en',
+              targetLang
+            );
+            const translatedSlice = new Slice(translatedContent, slice.openStart, slice.openEnd);
+            const live = getActiveEditorView();
+            if (!live) {
+              toast.dismiss(toastId);
+              break;
+            }
+            const tr = live.state.tr.replace(clampedFrom, clampedTo, translatedSlice);
+            live.dispatch(tr);
+            toast.success(`Replaced with ${targetLabel} translation.`, { id: toastId });
+          } catch {
+            toast.error("Couldn't translate — check your connection or pick another language.", {
+              id: toastId,
+            });
+          }
+          break;
+        }
+        // AI rewrite — opens the inline suggestion popover anchored
+        // to the selection. The popover is what runs the model + lets
+        // the user Accept / Reject; nothing changes in the doc until
+        // they explicitly click Replace.
+        case 'aiRewrite': {
+          openAiSuggestion('rewrite');
+          break;
+        }
+        case 'aiSummarize': {
+          openAiSuggestion('summarize');
+          break;
+        }
+        // AI Ask — opens the chat panel; the selection chip will
+        // auto-include the current selection because the panel reads
+        // it on mount.
+        case 'aiAsk': {
+          openRightPanel('chat');
+          break;
+        }
         // Comment — same flow as floating comment button
         case 'addComment': {
           const { from, to } = view.state.selection;
@@ -3534,6 +5847,430 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
               ...history.state.package.document.finalSectionProperties,
               ...props,
             },
+          },
+        },
+      };
+      handleDocumentChange(newDoc);
+    },
+    [history.state, readOnly, handleDocumentChange]
+  );
+
+  // Page-color apply handler — writes the new color into the
+  // doc-level <w:background> slot so the painter picks it up on
+  // the next render and the next save round-trips it. `undefined`
+  // clears the background entirely (the serializer skips emitting
+  // <w:background> when `body.background` is absent).
+  const handlePageColorChange = useCallback(
+    (color: string | undefined) => {
+      if (!history.state || readOnly) return;
+      const rgb = color?.replace(/^#/, '').toUpperCase();
+      const nextBg = rgb ? { color: { rgb } } : undefined;
+      const newDoc = {
+        ...history.state,
+        package: {
+          ...history.state.package,
+          document: {
+            ...history.state.package.document,
+            background: nextBg,
+          },
+        },
+      };
+      handleDocumentChange(newDoc);
+    },
+    [history.state, readOnly, handleDocumentChange]
+  );
+
+  // Accessibility check (D8) — snapshots issues from the current PM doc
+  // when the user opens the dialog. Read-only; no edits to the document.
+  const handleOpenAccessibility = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (view) setAccessibilityIssues(checkAccessibility(view.state.doc));
+    setShowAccessibility(true);
+  }, []);
+  const handleAccessibilityGoto = useCallback((pmPos: number) => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const { doc } = view.state;
+    const safePos = Math.max(0, Math.min(pmPos, doc.content.size));
+    // Resolve to the nearest valid text selection so an image position
+    // doesn't fail (NodeSelection vs TextSelection).
+    const $pos = doc.resolve(safePos);
+    const near =
+      $pos.parent.isTextblock || $pos.parent.inlineContent
+        ? TextSelection.near($pos)
+        : TextSelection.create(doc, safePos);
+    view.dispatch(view.state.tr.setSelection(near).scrollIntoView());
+    view.focus();
+  }, []);
+
+  // Building blocks (C6) — capture the active editor's selection content
+  // at open time so the dialog can save it later without depending on the
+  // selection still being live (focus moves to the dialog input).
+  const handleOpenBuildingBlocks = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view && !view.state.selection.empty) {
+      const { from, to } = view.state.selection;
+      const slice = view.state.selection.content();
+      const text = view.state.doc.textBetween(from, to, ' ', ' ');
+      if (slice.content.size > 0) {
+        setPendingBuildingBlock({
+          content: slice.toJSON(),
+          preview: previewFromText(text) || '(non-text content)',
+        });
+      } else {
+        setPendingBuildingBlock(null);
+      }
+    } else {
+      setPendingBuildingBlock(null);
+    }
+    setShowBuildingBlocks(true);
+  }, [getActiveEditorView]);
+
+  const handleSaveBuildingBlock = useCallback(
+    (name: string) => {
+      if (!pendingBuildingBlock) return;
+      const next = addBuildingBlock({
+        name,
+        content: pendingBuildingBlock.content,
+        preview: pendingBuildingBlock.preview,
+      });
+      setBuildingBlocks(next);
+      setPendingBuildingBlock(null);
+    },
+    [pendingBuildingBlock]
+  );
+
+  const handleInsertBuildingBlock = useCallback(
+    (id: string) => {
+      const block = buildingBlocks.find((b) => b.id === id);
+      if (!block) return;
+      const view = getActiveEditorView();
+      if (!view) return;
+      try {
+        const slice = Slice.fromJSON(view.state.schema, block.content as never);
+        view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
+        view.focus();
+      } catch {
+        // Schema drift — block was saved against a different schema or the
+        // JSON is corrupt. Silently swallow; the row remains in the list.
+      }
+      setShowBuildingBlocks(false);
+    },
+    [buildingBlocks, getActiveEditorView]
+  );
+
+  const handleDeleteBuildingBlock = useCallback((id: string) => {
+    setBuildingBlocks(removeBuildingBlock(id));
+  }, []);
+
+  // Convert selection to table (B8) — wraps the utility for the
+  // Insert-menu callback. Returns `false` silently if there's nothing
+  // convertible at the current selection.
+  const handleConvertSelectionToTable = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    convertSelectionToTable(view);
+  }, [getActiveEditorView]);
+
+  const handleConvertTableToText = useCallback(() => {
+    const view = getActiveEditorView();
+    if (!view) return;
+    convertTableToText(view);
+  }, [getActiveEditorView]);
+
+  // A6 — citations manager handlers. Local-only storage; the Insert
+  // action writes formatted text at the cursor and wraps the URL
+  // substring (if present) in a hyperlink mark so the link is clickable.
+  const handleOpenCitations = useCallback(() => {
+    setShowCitations(true);
+  }, []);
+
+  const handleAddCitation = useCallback((input: Omit<Citation, 'id' | 'createdAt'>) => {
+    setCitations(addCitation(input));
+  }, []);
+
+  const handleDeleteCitation = useCallback((id: string) => {
+    setCitations(removeCitation(id));
+  }, []);
+
+  // C2 v0 — drop a default-styled SVG primitive at the cursor as an
+  // inline image. The user can resize / recolor via the existing image
+  // handles + properties dialog.
+  const handleInsertShape = useCallback(
+    (type: ShapeType) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const imageType = view.state.schema.nodes.image;
+      if (!imageType) return;
+      const shape = generateShape(type);
+      const rId = `rId_shape_${Date.now()}`;
+      const node = imageType.create({
+        src: shape.dataUrl,
+        alt: shape.altText,
+        width: shape.width,
+        height: shape.height,
+        rId,
+        wrapType: 'inline',
+        displayMode: 'inline',
+      });
+      const { from } = view.state.selection;
+      const tr = view.state.tr.insert(from, node);
+      view.dispatch(tr.scrollIntoView());
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Insert a new, editable text box (or a styled "callout" variant) at
+  // the cursor. The textBox node is block-level with `(paragraph|table)+`
+  // content, so we seed it with one empty paragraph and drop the caret
+  // inside so the user can type immediately.
+  const handleInsertTextBox = useCallback(
+    (variant: 'plain' | 'callout' = 'plain') => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const { schema } = view.state;
+      const textBoxType = schema.nodes.textBox;
+      const paragraphType = schema.nodes.paragraph;
+      if (!textBoxType || !paragraphType) return;
+
+      const attrs =
+        variant === 'callout'
+          ? {
+              width: 260,
+              displayMode: 'block' as const,
+              fillColor: '#eff6ff',
+              outlineColor: '#3b82f6',
+              outlineWidth: 1,
+              outlineStyle: 'solid',
+            }
+          : { width: 240, displayMode: 'block' as const };
+
+      const node =
+        textBoxType.createAndFill(attrs, paragraphType.create()) ??
+        textBoxType.create(attrs, paragraphType.create());
+      const tr = view.state.tr.replaceSelectionWith(node);
+      // Place the caret inside the new text box's first paragraph. After
+      // replaceSelectionWith, the node sits where the selection was; its
+      // content starts 2 positions in (textBox open + paragraph open).
+      const insertedAt = tr.selection.from - node.nodeSize;
+      const inside = insertedAt + 2;
+      try {
+        tr.setSelection(TextSelection.create(tr.doc, inside));
+      } catch {
+        // Fall back to the default post-insert selection if the math is
+        // off for an unusual schema configuration.
+      }
+      view.dispatch(tr.scrollIntoView());
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  const handleInsertCitation = useCallback(
+    (formatted: string, url?: string) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const { schema } = view.state;
+      // Two-phase insert: drop the citation text, then add a hyperlink
+      // mark over the URL substring so clicking it navigates. Keeping
+      // the entire citation as a single paragraph lets the user style
+      // it (italic title, etc.) without further wrangling.
+      const tr = view.state.tr.insertText(formatted);
+      if (url) {
+        const hyperlinkType = schema.marks.hyperlink;
+        const idx = formatted.lastIndexOf(url);
+        if (hyperlinkType && idx >= 0) {
+          const start = tr.selection.from - (formatted.length - idx);
+          const end = start + url.length;
+          tr.addMark(start, end, hyperlinkType.create({ href: url }));
+        }
+      }
+      view.dispatch(tr);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // A3 — open the Explore dialog (Wikipedia summary lookup). Seeds the
+  // query from the current selection; "Cite this" inserts a hyperlink
+  // at the cursor via the existing hyperlink command.
+  const handleOpenExplore = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view) {
+      const { from, to } = view.state.selection;
+      if (from !== to) {
+        const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+        setExploreQuery(raw.length > 0 ? raw : null);
+      } else {
+        setExploreQuery(null);
+      }
+    } else {
+      setExploreQuery(null);
+    }
+    setShowExplore(true);
+  }, [getActiveEditorView]);
+
+  const handleExploreCite = useCallback(
+    (title: string, url: string) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      insertHyperlink(title, url, title)(view.state, view.dispatch);
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Spell-check: flip enabled state, lazy-load dictionary on first
+  // enable, and tell the open editor view to repaint. Toast surfaces
+  // load / failure since dict download can be 100–1500 ms.
+  const handleToggleSpellcheck = useCallback(async () => {
+    const next = !isSpellEnabled();
+    if (next) {
+      try {
+        // Pre-warm — block the visible "enabled" flip on the dict so
+        // the very first transaction-tick already sees a usable engine.
+        const loadingToast = toast.loading('Loading spell-check dictionary…');
+        await loadSpellChecker();
+        toast.dismiss(loadingToast);
+      } catch {
+        toast.error("Couldn't load the spell-check dictionary.");
+        return;
+      }
+    }
+    setSpellEnabled(next);
+    setSpellOn(next);
+    try {
+      window.localStorage.setItem(SPELLCHECK_KEY, next ? '1' : '0');
+    } catch {
+      // Storage denied — toggle still takes effect for the session.
+    }
+    const view = getActiveEditorView();
+    if (view) refreshSpellcheckDecorations(view);
+  }, [getActiveEditorView]);
+
+  // Restore from localStorage on mount: if persisted "on", quietly load
+  // the dictionary in the background and turn the engine on without a
+  // visible toast — the user already opted in last session.
+  useEffect(() => {
+    if (!spellOn) return;
+    if (isSpellEnabled()) return;
+    void (async () => {
+      try {
+        await loadSpellChecker();
+        setSpellEnabled(true);
+        const view = getActiveEditorView();
+        if (view) refreshSpellcheckDecorations(view);
+      } catch {
+        // Silent — the user can re-toggle from the menu.
+      }
+    })();
+  }, [spellOn, getActiveEditorView]);
+
+  // A5 — Replace the selection (captured in `translateRange`) with a
+  // per-mark-run translation. Each text node inside the range is
+  // translated individually so bold/italic/link/etc boundaries land
+  // exactly where the user drew them. Returns void; toasts on failure.
+  const handleTranslateReplace = useCallback(
+    async (source: string, target: string): Promise<void> => {
+      const view = getActiveEditorView();
+      if (!view) throw new Error('no-view');
+      const range = translateRange;
+      if (!range) throw new Error('no-range');
+      const { from, to } = range;
+      if (from === to) throw new Error('empty-range');
+      // Re-resolve against current doc — autosave / other tx may have
+      // shifted positions while the dialog was up. Clamp to doc size.
+      const docSize = view.state.doc.content.size;
+      const clampedFrom = Math.min(Math.max(from, 0), docSize);
+      const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+      const slice = view.state.doc.slice(clampedFrom, clampedTo);
+      try {
+        const translatedContent = await translateFragment(
+          slice.content,
+          view.state.schema,
+          source,
+          target
+        );
+        const translatedSlice = new Slice(translatedContent, slice.openStart, slice.openEnd);
+        // Re-read the live view at dispatch time: the user may have typed
+        // or scrolled during the await; another tr may have shifted us.
+        const live = getActiveEditorView();
+        if (!live) return;
+        const tr = live.state.tr.replace(clampedFrom, clampedTo, translatedSlice);
+        live.dispatch(tr);
+        try {
+          window.localStorage.setItem('translate:last-target', target);
+        } catch {
+          // Storage denied — the right-click quick-translate just won't
+          // remember across sessions; nothing else breaks.
+        }
+        toast.success(`Replaced with ${target.toUpperCase()} translation.`);
+      } catch (err) {
+        toast.error("Couldn't translate — check your connection and try again.");
+        throw err;
+      }
+    },
+    [getActiveEditorView, translateRange]
+  );
+
+  // A5 — open the translate dialog. Seeds the original-text box with
+  // the current selection; the user can edit it freely once the dialog
+  // is up.
+  const handleOpenTranslate = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view) {
+      const { from, to } = view.state.selection;
+      if (from !== to) {
+        const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+        setTranslateText(raw.length > 0 ? raw : null);
+        setTranslateRange({ from, to });
+      } else {
+        setTranslateText(null);
+        setTranslateRange(null);
+      }
+    } else {
+      setTranslateText(null);
+      setTranslateRange(null);
+    }
+    setShowTranslate(true);
+  }, [getActiveEditorView]);
+
+  // A4 — open the dictionary dialog. Seeds the input from the selection
+  // (collapsed selection → null, dialog shows the bare input).
+  const handleOpenDictionary = useCallback(() => {
+    const view = getActiveEditorView();
+    if (view) {
+      const { from, to } = view.state.selection;
+      if (from !== to) {
+        const raw = view.state.doc.textBetween(from, to, ' ', ' ').trim();
+        // Take just the first whitespace-delimited token — the dictionary
+        // endpoint is single-word; multi-word selections would 404.
+        const firstWord = raw.split(/\s+/)[0] ?? '';
+        setDictionaryWord(firstWord.length > 0 ? firstWord : null);
+      } else {
+        setDictionaryWord(null);
+      }
+    } else {
+      setDictionaryWord(null);
+    }
+    setShowDictionary(true);
+  }, [getActiveEditorView]);
+
+  // Watermark apply/clear handler (C5) — writes into the doc-level
+  // body.watermark slot so the painter draws the overlay on the next
+  // render. `undefined` clears it. Round-trip to header XML lands in a
+  // separate pass.
+  const handleWatermarkChange = useCallback(
+    (watermark: { text: string } | undefined) => {
+      if (!history.state || readOnly) return;
+      const newDoc = {
+        ...history.state,
+        package: {
+          ...history.state.package,
+          document: {
+            ...history.state.package.document,
+            watermark,
           },
         },
       };
@@ -3657,6 +6394,35 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         // Sync React comments state (including new replies) back to the document model
         agentDoc.package.document.comments = comments;
 
+        // Apply pending footnote text edits to the save document so they persist
+        // (the surgical footnotes.xml regeneration in rezip keys off `edited`).
+        if (footnoteEditsRef.current.size > 0 && agentDoc.package.footnotes) {
+          for (const [id, text] of footnoteEditsRef.current) {
+            const fn = agentDoc.package.footnotes.find((f) => f.id === id);
+            if (fn) {
+              setFootnotePlainText(fn, text);
+              fn.edited = true;
+            }
+          }
+        }
+        if (endnoteEditsRef.current.size > 0 && agentDoc.package.endnotes) {
+          for (const [id, text] of endnoteEditsRef.current) {
+            const en = agentDoc.package.endnotes.find((e) => e.id === id);
+            if (en) {
+              setEndnotePlainText(en, text);
+              en.edited = true;
+            }
+          }
+        }
+        // Apply pending core-property edits to the save doc (collab peers may
+        // have set these via the observer; ensure the saver writes them).
+        if (Object.keys(propsEditsRef.current).length > 0) {
+          agentDoc.package.properties = {
+            ...(agentDoc.package.properties ?? {}),
+            ...propsEditsRef.current,
+          };
+        }
+
         // Inject commentRangeStart/End for reply comments that share the parent's range.
         // Pages/Word require every comment (including replies) to have range markers in document.xml.
         injectReplyRangeMarkers(agentDoc.package.document.content, comments);
@@ -3675,11 +6441,26 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           // which selective save can't handle since the affected paragraphs may not
           // be in changedParaIds)
           const hasInjectedReplies = comments.some((c) => c.parentId != null);
+          // Non-paragraph block changes (textBox / image / shape / table)
+          // bypass the paraId-keyed selective path entirely — the
+          // changed paraId set is empty for a drawing-only transaction
+          // and the round-trip would silently drop the new node. Treat
+          // them as untracked so the serializer falls back to a full
+          // re-pack. See ParagraphChangeTrackerExtension for the source
+          // of this signal.
           selectiveOptions = {
             selective: {
               changedParaIds: getChangedParagraphIds(editorState),
               structuralChange: hasStructuralChanges(editorState) || hasInjectedReplies,
-              hasUntrackedChanges: hasUntrackedChanges(editorState),
+              hasUntrackedChanges:
+                hasUntrackedChanges(editorState) ||
+                hasNonParagraphBlockChanges(editorState) ||
+                // Footnote/endnote edits live outside the PM doc (in
+                // footnotes.xml/endnotes.xml), so the paraId-keyed selective path
+                // can't see them — force a full repack so the override runs.
+                footnoteEditsRef.current.size > 0 ||
+                endnoteEditsRef.current.size > 0 ||
+                Object.keys(propsEditsRef.current).length > 0,
             },
           };
         }
@@ -3744,6 +6525,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
 
+      // Force-render all virtualized page shells so the clone captures every
+      // page's content, not just the pages near the viewport (issue #141).
+      forceRenderAllPages(pagesEl as HTMLElement);
+
       // Clone pages and remove transforms/shadows
       const pagesClone = pagesEl.cloneNode(true) as HTMLElement;
       pagesClone.style.cssText = 'display: block; margin: 0; padding: 0;';
@@ -3752,6 +6537,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         el.style.boxShadow = 'none';
         el.style.margin = '0';
       }
+
+      // Restore memory-efficient virtualization after the clone is done.
+      requestAnimationFrame(() => {
+        restoreVirtualization(pagesEl as HTMLElement);
+      });
 
       const titleEscaped = windowTitle
         .replace(/&/g, '&amp;')
@@ -3770,18 +6560,28 @@ body { background: white; }
 </head><body>${pagesClone.outerHTML}</body></html>`);
       printWindow.document.close();
 
-      // Wait for fonts/images then print
-      printWindow.onload = () => {
+      // Wait for fonts/images then print. The fallback timeout below
+      // covers browsers that never fire onload on a document-written
+      // window; we clear it from inside onload so the normal path
+      // doesn't double-trigger print() and surface a second print
+      // dialog the user already cancelled. Pre-fix the second print
+      // fired ~1s after the user dismissed the first.
+      let printed = false;
+      let fallback: ReturnType<typeof setTimeout> | null = null;
+      const runPrint = () => {
+        if (printed) return;
+        printed = true;
+        if (fallback !== null) {
+          clearTimeout(fallback);
+          fallback = null;
+        }
         printWindow.print();
         printWindow.close();
       };
-
-      // Fallback if onload doesn't fire (some browsers)
-      setTimeout(() => {
-        if (!printWindow.closed) {
-          printWindow.print();
-          printWindow.close();
-        }
+      printWindow.onload = runPrint;
+      fallback = setTimeout(() => {
+        fallback = null;
+        if (!printWindow.closed) runPrint();
       }, 1000);
 
       onPrint?.();
@@ -3805,50 +6605,196 @@ body { background: white; }
   }, [triggerPrintFlow, documentName]);
 
   const handleDownloadDocument = useCallback(async () => {
-    const buffer = await handleSave();
-    if (!buffer) return;
-    // When a parent supplied `onSave`, it owns persistence — `handleSave`
-    // has already passed it the buffer (line 3694). Doing a browser
-    // blob download on top of that would drop a duplicate file into
-    // ~/Downloads every time the user hits Save inside the Tauri shell,
-    // which is exactly the "save creates new files" bug.
-    if (onSave) return;
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = window.document.createElement('a');
-    a.href = url;
-    a.download = `${(documentName?.trim() || 'document').replace(/\.docx$/i, '')}.docx`;
-    a.click();
-    // Defer revoke so Safari has time to start the download.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  }, [handleSave, documentName, onSave]);
+    setIsSaving(true);
+    try {
+      const buffer = await handleSave();
+      if (!buffer) return;
+      // When a parent supplied `onSave`, it owns persistence — `handleSave`
+      // has already passed it the buffer. A browser blob download on top
+      // of that would drop a duplicate file into ~/Downloads on every Save
+      // inside the Tauri shell — exactly the "save creates new files" bug.
+      // Mark clean and let the host surface its own save status.
+      if (onSave) {
+        markDirty(false);
+        return;
+      }
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      const fileName = `${(documentName?.trim() || 'document').replace(/\.docx$/i, '')}.docx`;
+      a.download = fileName;
+      a.click();
+      // Defer revoke so Safari has time to start the download.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      markDirty(false);
+      toast.success(`Saved ${fileName}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [handleSave, documentName, markDirty, onSave]);
+
+  // Autosave to IndexedDB (sheet parity). A periodic interval polls the
+  // dirty flag every 30s; if dirty, it serializes and writes the buffer.
+  // The previous one-shot `setTimeout` only fired on the rising edge of
+  // `isDirty`, so continuous typing past 30s without an explicit save
+  // would never snapshot again. An interval gates on the ref so the
+  // serializer (`handleSave` re-walks the PM doc + re-packs the .docx)
+  // only runs when there's actually work to do.
+  const isDirtyRefAuto = useRef(false);
+  isDirtyRefAuto.current = isDirty;
+  useEffect(() => {
+    const tick = () => {
+      if (!isDirtyRefAuto.current) return;
+      void (async () => {
+        try {
+          const buffer = await handleSave();
+          if (!buffer) return;
+          await writeAutosave({
+            name: documentName?.trim() || 'Untitled',
+            buffer,
+            savedAt: Date.now(),
+          });
+        } catch {
+          // Silent — autosave is best-effort and shouldn't surface
+          // errors to the user. The next tick will try again.
+        }
+      })();
+    };
+    const interval = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(interval);
+  }, [handleSave, documentName]);
+
+  // File → Make a copy: download the current content as "Copy of <name>.docx".
+  // The original document is unchanged, so we don't touch the dirty flag.
+  // F2 — Email as attachment. Browsers can't auto-attach the downloaded
+  // file to a mailto draft (security), so the honest version is to do
+  // both: trigger the .docx download, then open the user's mail client
+  // with subject/body pre-filled. They drag the downloaded file in.
+  const handleEmailAsAttachment = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const buffer = await handleSave();
+      if (!buffer) return;
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
+      const fileName = `${base}.docx`;
+      a.download = fileName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+
+      const subject = encodeURIComponent(base);
+      const body = encodeURIComponent(
+        `Attached: ${fileName}\n\n(The file was downloaded to your machine — please attach it to this email.)`
+      );
+      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank', 'noopener');
+      toast.success(`Downloaded ${fileName}. Drag it into the email window to attach.`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [handleSave, documentName]);
+
+  const handleMakeCopy = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const buffer = await handleSave();
+      if (!buffer) return;
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
+      const fileName = `Copy of ${base}.docx`;
+      a.download = fileName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      toast.success(`Downloaded ${fileName}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [handleSave, documentName]);
+
+  const handleExportAs = useCallback(
+    async (target: 'odt' | 'md' | 'txt') => {
+      const label = target === 'odt' ? 'ODT' : target === 'md' ? 'Markdown' : 'Plain Text';
+      // Loading toast — kept until convert finishes. The first non-DOCX
+      // conversion in a session boots the ~7MB WASM bundle so this can
+      // take a couple seconds; the toast tells the user it's working.
+      const toastId = toast.loading(`Converting to ${label}…`);
+      try {
+        const buffer = await handleSave();
+        if (!buffer) {
+          toast.dismiss(toastId);
+          return;
+        }
+        const { exportDocxAs } = await import('../lib/format-converter');
+        const out = await exportDocxAs(new Uint8Array(buffer), target);
+        const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
+        const mime =
+          target === 'odt'
+            ? 'application/vnd.oasis.opendocument.text'
+            : target === 'md'
+              ? 'text/markdown'
+              : 'text/plain';
+        const blob =
+          typeof out === 'string'
+            ? new Blob([out], { type: mime })
+            : new Blob([out as BlobPart], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = `${base}.${target}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        toast.success(`Downloaded ${base}.${target}`, { id: toastId });
+      } catch (error) {
+        toast.error(`Failed to export as ${label}`, { id: toastId });
+        onError?.(error instanceof Error ? error : new Error(`Failed to export as ${target}`));
+      }
+    },
+    [handleSave, documentName, onError]
+  );
+  const handleExportOdt = useCallback(() => handleExportAs('odt'), [handleExportAs]);
+  const handleExportMd = useCallback(() => handleExportAs('md'), [handleExportAs]);
+  const handleExportTxt = useCallback(() => handleExportAs('txt'), [handleExportAs]);
 
   const handleOpenDocument = useCallback(() => {
     docxInputRef.current?.click();
   }, []);
 
-  // Ctrl/Cmd-S — fire the same save flow the toolbar's File→Save uses.
-  // Without this, the browser's default "save webpage as HTML" dialog
-  // kicks in. handleDownloadDocument respects the `onSave` prop, so in
-  // Tauri-shell mode this routes through the bridge → no blob download,
-  // overwrites the bound file in place. Placed AFTER
-  // handleDownloadDocument so the dep array doesn't read it in the
-  // temporal dead zone.
+  // Keep the global-keydown handler in sync with the latest file-op
+  // callbacks without recreating the listener. `save` → handleDownloadDocument,
+  // which respects the `onSave` prop, so in Tauri-shell mode Ctrl/Cmd-S
+  // routes through the bridge (overwrite in place, no blob download).
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const meta = e.ctrlKey || e.metaKey;
-      if (!meta || e.shiftKey || e.altKey) return;
-      if (e.key.toLowerCase() !== 's') return;
-      e.preventDefault();
-      void handleDownloadDocument();
+    shortcutActionsRef.current = {
+      save: handleDownloadDocument,
+      print: handleDirectPrint,
+      new: onNew,
+      open: handleOpenDocument,
+      zoomIn: () => handleZoomChange(Math.min(state.zoom * 1.1, 4)),
+      zoomOut: () => handleZoomChange(Math.max(state.zoom / 1.1, 0.25)),
+      zoomReset: () => handleZoomChange(1),
+      startComment: handleStartAddComment,
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [handleDownloadDocument]);
+  }, [
+    handleDownloadDocument,
+    handleDirectPrint,
+    onNew,
+    handleOpenDocument,
+    handleZoomChange,
+    state.zoom,
+    handleStartAddComment,
+  ]);
 
   const handleDocxFileChange = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -3858,8 +6804,33 @@ body { background: white; }
       if (!file) return;
       try {
         const buffer = await file.arrayBuffer();
-        await loadBuffer(buffer);
-        onDocumentNameChange?.(file.name.replace(/\.docx$/i, ''));
+        const { formatFromFilename, isForeignFormat, convertToDocx } =
+          await import('../lib/format-converter');
+        const fmt = formatFromFilename(file.name);
+        let docxBuffer: ArrayBuffer = buffer;
+        if (fmt && isForeignFormat(fmt)) {
+          // .odt / .md / .txt → DOCX via the WASM worker, then feed the
+          // existing parser. PDF is intentionally not handled.
+          const out = await convertToDocx(new Uint8Array(buffer), fmt);
+          // Take ownership of just the populated slice so the buffer
+          // passed to loadBuffer is exactly the converter's output.
+          docxBuffer = out.buffer.slice(
+            out.byteOffset,
+            out.byteOffset + out.byteLength
+          ) as ArrayBuffer;
+        }
+        await loadBuffer(docxBuffer);
+        const cleanName = file.name.replace(/\.(docx|odt|md|markdown|txt)$/i, '');
+        onDocumentNameChange?.(cleanName);
+        // Record in the recent-files list so the Home screen can show
+        // a one-click reopen tile. Best-effort — failures are logged
+        // inside the helper and don't surface to the user.
+        void recordRecentFile({
+          name: cleanName || file.name,
+          buffer: docxBuffer,
+          size: docxBuffer.byteLength,
+          openedAt: Date.now(),
+        });
       } catch (error) {
         onError?.(error instanceof Error ? error : new Error('Failed to open document'));
       }
@@ -3873,16 +6844,21 @@ body { background: white; }
 
   // Store the current find result for navigation
   const findResultRef = useRef<FindResult | null>(null);
+  const getFindDocument = useCallback(
+    () => pagedEditorRef.current?.getDocument() ?? history.state,
+    [history.state]
+  );
 
   // Handle find operation
   const handleFind = useCallback(
     (searchText: string, options: FindOptions): FindResult | null => {
-      if (!history.state || !searchText.trim()) {
+      const document = getFindDocument();
+      if (!document || !searchText.trim()) {
         findResultRef.current = null;
         return null;
       }
 
-      const matches = findInDocument(history.state, searchText, options);
+      const matches = findInDocument(document, searchText, options);
       const result: FindResult = {
         matches,
         totalCount: matches.length,
@@ -3899,7 +6875,7 @@ body { background: white; }
 
       return result;
     },
-    [history.state, findReplace]
+    [getFindDocument, findReplace]
   );
 
   // Handle find next
@@ -3939,7 +6915,8 @@ body { background: white; }
   // Handle replace current match
   const handleReplace = useCallback(
     (replaceText: string): boolean => {
-      if (!history.state || !findResultRef.current || findResultRef.current.matches.length === 0) {
+      const document = getFindDocument();
+      if (!document || !findResultRef.current || findResultRef.current.matches.length === 0) {
         return false;
       }
 
@@ -3948,7 +6925,7 @@ body { background: white; }
 
       // Execute replace command
       try {
-        const newDoc = executeCommand(history.state, {
+        const newDoc = executeCommand(document, {
           type: 'replaceText',
           range: {
             start: {
@@ -3970,22 +6947,23 @@ body { background: white; }
         return false;
       }
     },
-    [history.state, handleDocumentChange]
+    [getFindDocument, handleDocumentChange]
   );
 
   // Handle replace all matches
   const handleReplaceAll = useCallback(
     (searchText: string, replaceText: string, options: FindOptions): number => {
-      if (!history.state || !searchText.trim()) {
+      const document = getFindDocument();
+      if (!document || !searchText.trim()) {
         return 0;
       }
 
       // Find all matches first
-      const matches = findInDocument(history.state, searchText, options);
+      const matches = findInDocument(document, searchText, options);
       if (matches.length === 0) return 0;
 
       // Replace from end to start to maintain correct indices
-      let doc = history.state;
+      let doc = document;
       const sortedMatches = [...matches].sort((a, b) => {
         if (a.paragraphIndex !== b.paragraphIndex) {
           return b.paragraphIndex - a.paragraphIndex;
@@ -4020,13 +6998,15 @@ body { background: white; }
 
       return matches.length;
     },
-    [history.state, handleDocumentChange, findReplace]
+    [getFindDocument, handleDocumentChange, findReplace]
   );
 
   // Expose ref methods
-  useImperativeHandle(
-    ref,
-    () => ({
+  // Captured imperative handle + once-guard for the onReady handshake.
+  const exposedApiRef = useRef<DocxEditorRef | null>(null);
+  const onReadyFiredRef = useRef(false);
+  useImperativeHandle(ref, () => {
+    const api: DocxEditorRef = {
       getAgent: () => agentRef.current,
       getDocument: () => history.state,
       getEditorRef: () => pagedEditorRef.current,
@@ -4048,6 +7028,8 @@ body { background: white; }
       print: handleDirectPrint,
       loadDocument: loadParsedDocument,
       loadDocumentBuffer: loadBuffer,
+      importDocx: loadBuffer,
+      exportDocx: handleSave,
 
       addComment: (options) => {
         const view = pagedEditorRef.current?.getView();
@@ -4444,18 +7426,30 @@ body { background: white; }
           selectionChangeSubscribersRef.current.delete(listener);
         };
       },
-    }),
-    [
-      history.state,
-      state.zoom,
-      scrollPageInfo,
-      handleSave,
-      handleDirectPrint,
-      loadParsedDocument,
-      loadBuffer,
-      comments,
-    ]
-  );
+    };
+    // Expose the same handle to the onReady effect below.
+    exposedApiRef.current = api;
+    return api;
+  }, [
+    history.state,
+    state.zoom,
+    scrollPageInfo,
+    handleSave,
+    handleDirectPrint,
+    loadParsedDocument,
+    loadBuffer,
+    comments,
+  ]);
+
+  // onReady — fire once, after the editor has mounted and the initial document
+  // has finished loading, with the imperative API (sheet-SDK parity).
+  useEffect(() => {
+    if (!onReady || onReadyFiredRef.current || state.isLoading) return;
+    const api = exposedApiRef.current;
+    if (!api) return;
+    onReadyFiredRef.current = true;
+    onReady(api);
+  }, [onReady, state.isLoading]);
 
   const initialSectionProperties = useMemo(
     () => getInitialSectionProperties(history.state),
@@ -4705,6 +7699,58 @@ body { background: white; }
     }
   }, [hfEditPosition, handleHeaderFooterSave]);
 
+  // Toggle the OOXML `w:titlePg` flag on the document's section
+  // properties. When on, page 1 renders its own header/footer slot;
+  // off restores the unified header/footer behaviour. The layout
+  // engine already honours the flag; this just wires the on/off
+  // mutation behind the HF options dropdown.
+  const handleToggleTitlePg = useCallback(
+    (value: boolean) => {
+      if (!history.state?.package?.document) return;
+      const pkg = history.state.package;
+      const sectionProps = pkg.document.finalSectionProperties;
+      pushDocument({
+        ...history.state,
+        package: {
+          ...pkg,
+          document: {
+            ...pkg.document,
+            finalSectionProperties: {
+              ...sectionProps,
+              titlePg: value,
+            },
+          },
+        },
+      });
+    },
+    [history, pushDocument]
+  );
+
+  // Toggle `w:evenAndOddHeaders` (lives on settings.xml in OOXML, but
+  // exposed here off the document object alongside titlePg). Painter
+  // reads this flag to render an alternate even-page H/F.
+  const handleToggleEvenAndOddHeaders = useCallback(
+    (value: boolean) => {
+      if (!history.state?.package?.document) return;
+      const pkg = history.state.package;
+      const sectionProps = pkg.document.finalSectionProperties;
+      pushDocument({
+        ...history.state,
+        package: {
+          ...pkg,
+          document: {
+            ...pkg.document,
+            finalSectionProperties: {
+              ...sectionProps,
+              evenAndOddHeaders: value,
+            },
+          },
+        },
+      });
+    },
+    [history, pushDocument]
+  );
+
   // Handle removing the header/footer entirely
   const handleRemoveHeaderFooter = useCallback(() => {
     if (!hfEditPosition || !history.state?.package) {
@@ -4766,6 +7812,13 @@ body { background: white; }
     flexDirection: 'column',
     height: '100%',
     width: '100%',
+    // The shell fills its (host-bounded) box and never scrolls itself — only
+    // the inner canvas (editorContainerStyle) scrolls. overflow:hidden +
+    // minHeight:0 keep the flex column from overflowing its parent, so the
+    // chrome (toolbar/status bar) stays fixed regardless of how the host
+    // sizes us.
+    minHeight: 0,
+    overflow: 'hidden',
     backgroundColor: 'var(--doc-bg)',
     ...style,
   };
@@ -4865,6 +7918,48 @@ body { background: white; }
     },
   };
 
+  // Bulk tracked-change actions used by the suggesting-mode sidebar
+  // header bar. Each command lives in @eigenpal/docx-core; this is just
+  // a focus + scroll convenience wrapper.
+  const handleAcceptAllChanges = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    acceptAllChanges()(view.state, view.dispatch);
+  }, []);
+  const handleRejectAllChanges = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    rejectAllChanges()(view.state, view.dispatch);
+  }, []);
+  const handleNextChange = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const cursor = view.state.selection.from;
+    const next = findNextChange(view.state, cursor);
+    if (next) {
+      view.dispatch(
+        view.state.tr
+          .setSelection(TextSelection.create(view.state.doc, next.from, next.to))
+          .scrollIntoView()
+      );
+      view.focus();
+    }
+  }, []);
+  const handlePreviousChange = useCallback(() => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const cursor = view.state.selection.from;
+    const prev = findPreviousChange(view.state, cursor);
+    if (prev) {
+      view.dispatch(
+        view.state.tr
+          .setSelection(TextSelection.create(view.state.doc, prev.from, prev.to))
+          .scrollIntoView()
+      );
+      view.focus();
+    }
+  }, []);
+
   // Stable callbacks wrapper that delegates to ref (avoids recreating items on every render)
   const stableCallbacks = useMemo<CommentCallbacks>(
     () => ({
@@ -4889,6 +7984,7 @@ body { background: white; }
     showResolved: showCommentsSidebar,
     isAddingComment: showCommentsSidebar ? isAddingComment : false,
     addCommentYPosition,
+    currentAuthor: author,
   });
 
   const allSidebarItems = useMemo(() => {
@@ -4910,14 +8006,24 @@ body { background: white; }
     return map;
   }, [trackedChanges]);
 
-  const sidebarOpen = allSidebarItems.length > 0;
+  // "Sidebar open" drives PagedEditor's left-translate so the centered
+  // page makes horizontal room for Comments and per-anchor plugin
+  // items, which both live inside PagedEditor's sidebarOverlay. Version
+  // history is a flex sibling of the scroll container (see below) so
+  // it reserves real horizontal space via the flex layout and doesn't
+  // need the translate hack.
+  const sidebarOpen = showCommentsSidebar || allSidebarItems.length > 0;
   // Reserve 2× the left-edge allowance so the centered page clears whatever
   // outline UI is showing, without forcing a shift on wide viewports.
-  const outlineLeftAllowance = showOutline
-    ? OUTLINE_RESERVED_SPACE
-    : showOutlineButton
-      ? OUTLINE_BUTTON_RESERVED_SPACE
-      : 20;
+  // Google-Docs-style centering: the page centers in the FULL window at every
+  // width; the ruler + outline BUTTON are overlays in the page's left gutter, so
+  // they don't reserve flow space and may scroll off-screen-left when the window
+  // is too narrow to fit the page. Only the expanded outline PANEL is a real
+  // left panel, so only it reserves a (symmetric, to keep the page centered)
+  // lane. Previously the outline-button case reserved a 2×button-space lane,
+  // which pushed the page into a left "lane" at medium widths and jammed the
+  // ruler against the window's left corner instead of centering.
+  const outlineLeftAllowance = showOutline ? OUTLINE_RESERVED_SPACE : 0;
   const minLayoutWidth =
     2 * outlineLeftAllowance + DEFAULT_PAGE_WIDTH + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0);
 
@@ -4949,6 +8055,9 @@ body { background: white; }
     minHeight: 0,
     minWidth: 0, // Allow flex item to shrink below content width on narrow viewports
     overflow: 'auto', // Sole scroll container — PagedEditor sizes to content
+    // Contain the scroll: reaching the top/bottom of the canvas must NOT
+    // chain to the document and rubber-band the whole page (macOS/iOS).
+    overscrollBehavior: 'contain',
     position: 'relative',
     overflowAnchor: 'none',
   };
@@ -4994,17 +8103,9 @@ body { background: white; }
 
   const toolbarChildren = (
     <>
-      <ToolbarSeparator />
-      <CommentsSidebarToggle
-        active={showCommentsSidebar}
-        onClick={() => {
-          // Also reset expansion so reshowing the sidebar lands on the default
-          // collapsed state — resolved threads stay as checkmarks, not opened.
-          setShowCommentsSidebar((v) => !v);
-          setExpandedSidebarItem(null);
-        }}
-      />
-      {/* Resolved comments use margin markers instead of toolbar toggle */}
+      {/* Comments + Version-history toggles moved into the right-edge
+          PanelRail (sheet parity). The formatting toolbar keeps only
+          the mode-dropdown affordance on this trailing edge. */}
       <ToolbarSeparator />
       <EditingModeDropdown
         mode={editingMode}
@@ -5026,6 +8127,27 @@ body { background: white; }
       {toolbarExtra}
     </>
   );
+
+  // Suppress TS6133 for identifiers preserved while the LLM-stack UI
+  // is hidden. None of these are unused conceptually — they're the
+  // anchor points the restoration will reach for. This single void
+  // reference keeps the declarations in scope without polluting the
+  // render with `false &&` gates that would also break TS narrowing.
+  void [
+    AISuggestionPanel,
+    ChatPanel,
+    WritingAssistantSheet,
+    applyMarkdownAsSuggestion,
+    stripModelPreamble,
+    handleToggleVoiceTyping,
+    showWritingAssistant,
+    showChatPanel,
+    hasTextSelection,
+    handleAiAccept,
+    handleAiReject,
+    handleAiRetry,
+    handleAiTone,
+  ];
 
   return (
     <LocaleProvider i18n={i18n}>
@@ -5052,7 +8174,8 @@ body { background: white; }
               >
                 {/* Toolbar - above the scroll container so scrollbar doesn't extend behind it */}
                 {/* Hide toolbar only when readOnly prop is explicitly set (not from viewing mode) */}
-                {showToolbar && !readOnlyProp && (
+                {/* Focus mode (Phase 5) also hides toolbar for distraction-free writing. */}
+                {showToolbar && !readOnlyProp && !focusMode && (
                   <div ref={toolbarRefCallback} className="z-50 flex flex-col gap-0 flex-shrink-0">
                     <EditorToolbar
                       // When the agent panel is open, round the toolbar's
@@ -5061,14 +8184,14 @@ body { background: white; }
                       // makes opening / closing ease instead of snap.
                       className={agentPanelOpen ? 'rounded-br-2xl' : undefined}
                       style={{
-                        transition: 'border-radius 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'border-radius var(--doc-anim-slow)',
                       }}
                       currentFormatting={state.selectionFormatting}
                       onFormat={handleFormat}
                       onUndo={undoActiveEditor}
                       onRedo={redoActiveEditor}
-                      canUndo={true}
-                      canRedo={true}
+                      canUndo={canUndoActiveEditor}
+                      canRedo={canRedoActiveEditor}
                       disabled={readOnly}
                       documentStyles={history.state?.package.styles?.styles}
                       theme={history.state?.package.theme || theme}
@@ -5077,6 +8200,9 @@ body { background: white; }
                       onPrint={handleDirectPrint}
                       onOpen={handleOpenDocument}
                       onSave={handleDownloadDocument}
+                      onMakeCopy={handleMakeCopy}
+                      onEmailAsAttachment={handleEmailAsAttachment}
+                      onNew={onNew}
                       showZoomControl={showZoomControl}
                       zoom={state.zoom}
                       onZoomChange={handleZoomChange}
@@ -5085,14 +8211,67 @@ body { background: white; }
                       showTableInsert={true}
                       onInsertImage={handleInsertImageClick}
                       onInsertPageBreak={handleInsertPageBreak}
+                      onInsertSectionBreak={handleInsertSectionBreak}
+                      onInsertField={handleInsertField}
                       onInsertTOC={handleInsertTOC}
+                      onOpenBookmarks={() => setBookmarksDialogOpen(true)}
+                      onOpenCharacterSpacing={handleOpenCharacterSpacing}
+                      onOpenParagraphDialog={handleOpenParagraphDialog}
+                      onOpenBordersShading={handleOpenBordersShading}
+                      onAddComment={handleStartAddComment}
+                      onPaintFormat={handleTogglePaintFormat}
+                      paintFormatArmed={paintFormatMarks != null}
+                      onInsertHorizontalRule={handleInsertHorizontalRule}
+                      onInsertFootnote={handleInsertFootnote}
+                      onOpenInsertSymbol={handleOpenInsertSymbol}
+                      onToggleShowRuler={handleToggleShowRuler}
+                      rulerVisible={showRulerEffective}
+                      onToggleShowFormattingMarks={handleToggleShowFormattingMarks}
+                      showFormattingMarks={showFormattingMarks}
+                      onToggleOutline={handleToggleOutline}
+                      outlineVisible={showOutline}
                       imageContext={state.pmImageContext}
                       onImageWrapType={handleImageWrapType}
                       onImageTransform={handleImageTransform}
                       onOpenImageProperties={handleOpenImageProperties}
                       onPageSetup={handleOpenPageSetup}
                       onFileProperties={handleOpenFileProperties}
+                      onOpenWordCount={handleOpenWordCount}
+                      // Voice typing hidden — Web Speech API is
+                      // inconsistent across browsers. Re-enable when
+                      // we standardize on a backend.
                       onExportPdf={handleExportPdf}
+                      onExportOdt={handleExportOdt}
+                      onExportMd={handleExportMd}
+                      onExportTxt={handleExportTxt}
+                      onReportBug={handleReportBug}
+                      onShowAbout={handleShowAbout}
+                      onOpenCommandPalette={() => setShowCommandPalette(true)}
+                      onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
+                      onOpenPreferences={() => setShowPreferences(true)}
+                      onOpenWatermark={() => setShowWatermarkDialog(true)}
+                      onOpenAccessibility={handleOpenAccessibility}
+                      onOpenBuildingBlocks={handleOpenBuildingBlocks}
+                      onConvertSelectionToTable={handleConvertSelectionToTable}
+                      onConvertTableToText={
+                        state.pmTableContext?.isInTable ? handleConvertTableToText : undefined
+                      }
+                      onOpenDictionary={handleOpenDictionary}
+                      // LLM-stack entry points hidden: onOpenTranslate,
+                      // onTranslateDocument, onOpenWritingAssistant,
+                      // onOpenExplore. WebLLM inference blocks the main
+                      // thread on long docs; until that lands a yielding
+                      // path, these surfaces stay off. Re-wire with the
+                      // existing handlers when ready.
+                      onToggleSpellcheck={handleToggleSpellcheck}
+                      spellcheckEnabled={spellOn}
+                      onOpenCitations={handleOpenCitations}
+                      onInsertShape={handleInsertShape}
+                      onInsertTextBox={handleInsertTextBox}
+                      onSetColorTheme={handleSetColorTheme}
+                      colorTheme={colorTheme}
+                      isDirty={isDirty}
+                      isSaving={isSaving}
                       tableContext={state.pmTableContext}
                       onTableAction={handleTableAction}
                     >
@@ -5117,374 +8296,849 @@ body { background: white; }
                   </div>
                 )}
 
-                {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
+                {editingMode === 'suggesting' && (
+                  <SuggestingModeBanner onSwitchToEditing={() => setEditingMode('editing')} />
+                )}
+
+                {/* Autosave restore prompt — shown at mount when an autosave
+                    record exists from the last session. The Restore handler
+                    routes the saved buffer through the same `loadBuffer` path
+                    File → Open uses, so PM + UI state reset cleanly. */}
+                <AutosaveRestoreBanner
+                  onRestore={(buf, name) => {
+                    void loadBuffer(buf);
+                    onDocumentNameChange?.(name);
+                  }}
+                />
+
+                {/* Below-toolbar horizontal row: scroll container + the floating
+                    PanelRail. position:relative anchors the rail's absolute
+                    positioning so it floats over the top-right of the editor
+                    body (not the toolbar) without taking flex space. */}
                 <div
-                  ref={scrollContainerRef}
-                  style={editorContainerStyle}
-                  onMouseDown={(e) => {
-                    // Click in the grey gutter around the page → collapse any
-                    // expanded sidebar card. Clicks on the doc body already
-                    // collapse via the cursor-mark detector; clicks inside the
-                    // sidebar are user interactions with the card itself.
-                    const target = e.target as HTMLElement;
-                    if (
-                      target.closest('.paged-editor__pages') ||
-                      target.closest('.docx-unified-sidebar') ||
-                      target.closest('.docx-comment-margin-markers')
-                    ) {
-                      return;
-                    }
-                    setExpandedSidebarItem(null);
+                  style={{
+                    display: 'flex',
+                    flex: 1,
+                    minHeight: 0,
+                    minWidth: 0,
+                    flexDirection: 'row',
+                    position: 'relative',
                   }}
                 >
-                  {/* Horizontal Ruler - inside the scroll container so it
+                  {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
+                  <div
+                    ref={scrollContainerRef}
+                    style={editorContainerStyle}
+                    onMouseDown={(e) => {
+                      // Click in the grey gutter around the page → collapse any
+                      // expanded sidebar card. Clicks on the doc body already
+                      // collapse via the cursor-mark detector; clicks inside the
+                      // sidebar are user interactions with the card itself.
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest('.paged-editor__pages') ||
+                        target.closest('.docx-unified-sidebar') ||
+                        target.closest('.docx-comment-margin-markers')
+                      ) {
+                        return;
+                      }
+                      setExpandedSidebarItem(null);
+                    }}
+                  >
+                    {/* Horizontal Ruler - inside the scroll container so it
                       scrolls horizontally with the doc, sticky-top so it stays
                       visible during vertical scroll. min-width keeps the ruler
                       and the page area on the same horizontal axis when the
                       viewport is too narrow to fit page + outline + sidebar. */}
-                  {showRuler && (
-                    <div
-                      className="flex justify-center py-1 flex-shrink-0 bg-doc-bg"
-                      style={{
-                        position: 'sticky',
-                        top: 0,
-                        // Must sit above the inline header/footer editor
-                        // (Z_INDEX.hfInlineEditor) so the ruler stays readable
-                        // when the HF editor is active near the viewport top.
-                        zIndex: Z_INDEX.ruler,
-                        // paddingRight biases the centered ruler so it tracks
-                        // the page when the comments sidebar (translateX)
-                        // shifts the page left. Outline doesn't bias here —
-                        // the page stays centered until minLayoutWidth forces
-                        // horizontal scroll, and the ruler centers with it.
-                        paddingLeft: 20,
-                        paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
-                        minWidth: minLayoutWidth,
-                        transition: 'padding 0.2s ease',
-                      }}
-                    >
-                      <HorizontalRuler
-                        sectionProps={history.state?.package.document?.finalSectionProperties}
-                        zoom={state.zoom}
-                        unit={rulerUnit}
-                        editable={!readOnly}
-                        onLeftMarginChange={handleLeftMarginChange}
-                        onRightMarginChange={handleRightMarginChange}
-                        indentLeft={state.paragraphIndentLeft}
-                        indentRight={state.paragraphIndentRight}
-                        onIndentLeftChange={handleIndentLeftChange}
-                        onIndentRightChange={handleIndentRightChange}
-                        showFirstLineIndent={true}
-                        firstLineIndent={state.paragraphFirstLineIndent}
-                        hangingIndent={state.paragraphHangingIndent}
-                        onFirstLineIndentChange={handleFirstLineIndentChange}
-                        tabStops={state.paragraphTabs}
-                        onTabStopRemove={handleTabStopRemove}
-                      />
-                    </div>
-                  )}
-                  {/* Editor content wrapper. min-width matches the ruler so
+                    {showRulerEffective && !versionPreview && (
+                      <div
+                        className="flex justify-center py-1 flex-shrink-0 bg-doc-bg"
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          // Must sit above the inline header/footer editor
+                          // (Z_INDEX.hfInlineEditor) so the ruler stays readable
+                          // when the HF editor is active near the viewport top.
+                          zIndex: Z_INDEX.ruler,
+                          // paddingRight biases the centered ruler so it tracks
+                          // the page when the comments sidebar (translateX)
+                          // shifts the page left. Outline doesn't bias here —
+                          // the page stays centered until minLayoutWidth forces
+                          // horizontal scroll, and the ruler centers with it.
+                          paddingLeft: 20,
+                          paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
+                          minWidth: minLayoutWidth,
+                          transition: 'padding var(--doc-anim-slow)',
+                        }}
+                      >
+                        <HorizontalRuler
+                          sectionProps={history.state?.package.document?.finalSectionProperties}
+                          zoom={state.zoom}
+                          unit={rulerUnit}
+                          editable={!readOnly}
+                          onLeftMarginChange={handleLeftMarginChange}
+                          onRightMarginChange={handleRightMarginChange}
+                          indentLeft={state.paragraphIndentLeft}
+                          indentRight={state.paragraphIndentRight}
+                          onIndentLeftChange={handleIndentLeftChange}
+                          onIndentRightChange={handleIndentRightChange}
+                          showFirstLineIndent={true}
+                          firstLineIndent={state.paragraphFirstLineIndent}
+                          hangingIndent={state.paragraphHangingIndent}
+                          onFirstLineIndentChange={handleFirstLineIndentChange}
+                          tabStops={state.paragraphTabs}
+                          onTabStopRemove={handleTabStopRemove}
+                          onDragStateChange={(d) => {
+                            marginDraggingRef.current = d;
+                          }}
+                        />
+                      </div>
+                    )}
+                    {/* Editor content wrapper. min-width matches the ruler so
                       the page and ruler scroll horizontally as a single unit
                       when the viewport is too narrow to fit them. When the
                       outline is open, min-width grows to keep the centered
                       page clear of the panel — but on wide viewports the
                       page stays put (centered, or translated left by the
                       comments sidebar) instead of shifting. */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      flex: 1,
-                      minHeight: 0,
-                      position: 'relative',
-                      minWidth: minLayoutWidth,
-                    }}
-                  >
-                    {/* Editor content area */}
                     <div
-                      ref={editorContentRef}
                       style={{
-                        position: 'relative',
+                        display: 'flex',
                         flex: 1,
-                        minWidth: 0,
+                        minHeight: 0,
+                        position: 'relative',
+                        minWidth: minLayoutWidth,
                       }}
-                      onMouseDown={(e) => {
-                        // Focus editor when clicking on the background area (not the editor itself)
-                        // Using mouseDown for immediate response before focus can be lost
-                        if (e.target === e.currentTarget) {
-                          e.preventDefault();
-                          pagedEditorRef.current?.focus();
-                        }
-                      }}
-                      onContextMenu={handleEditorContextMenu}
                     >
-                      {/* Vertical Ruler - sits at the editor content's left
-                          edge so it scrolls horizontally with the page instead
-                          of pinning to the viewport (which would lay over the
-                          doc when the user scrolls right). */}
-                      {showRuler && !readOnlyProp && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: 0,
-                            top: 0,
-                            // Above the inline HF editor (Z_INDEX.hfInlineEditor)
-                            // so it stays readable on horizontal scroll.
-                            zIndex: Z_INDEX.ruler,
-                            // Must match `.paged-editor__pages` padding-top in
-                            // editor.css (24 viewport + 24 pages container);
-                            // update both together or the ruler misaligns.
-                            paddingTop: 48,
-                          }}
-                        >
-                          <VerticalRuler
-                            sectionProps={initialSectionProperties}
-                            zoom={state.zoom}
-                            unit={rulerUnit}
-                            editable={!readOnly}
-                            onTopMarginChange={handleTopMarginChange}
-                            onBottomMarginChange={handleBottomMarginChange}
-                          />
-                        </div>
-                      )}
-                      {/* Brighten highlight for the focused/expanded sidebar item */}
-                      {expandedSidebarItem && expandedSidebarItem.startsWith('comment-') && (
-                        <style>{`.paged-editor__pages [data-comment-id="${expandedSidebarItem.replace('comment-', '')}"] { background-color: rgba(255, 212, 0, 0.35) !important; border-bottom: 2px solid rgba(255, 212, 0, 0.7) !important; }`}</style>
-                      )}
-                      {expandedSidebarItem?.startsWith('tc-') &&
-                        (() => {
-                          const revId = expandedSidebarItem.split('-')[1];
-                          const tc = trackedChanges.find((c) => String(c.revisionId) === revId);
-                          const insRevId = tc?.insertionRevisionId;
-                          return (
-                            <style>{`
+                      {/* Editor content area */}
+                      <div
+                        ref={editorContentRef}
+                        style={{
+                          position: 'relative',
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                        onMouseDown={(e) => {
+                          // Focus editor when clicking on the background area (not the editor itself)
+                          // Using mouseDown for immediate response before focus can be lost
+                          if (e.target === e.currentTarget) {
+                            e.preventDefault();
+                            pagedEditorRef.current?.focus();
+                          }
+                        }}
+                        onContextMenu={handleEditorContextMenu}
+                      >
+                        {/* Vertical Ruler - hangs off the left edge of the
+                          centered page (Google Docs style) instead of floating
+                          against the content area's far-left edge. It reuses the
+                          horizontal ruler's centering (same padding + sidebar
+                          bias) so a page-width spacer lands exactly under the
+                          page, and the ruler is pinned to that spacer's left
+                          edge. */}
+                        {showRulerEffective && !readOnlyProp && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              right: 0,
+                              top: 0,
+                              // Above the inline HF editor (Z_INDEX.hfInlineEditor)
+                              // so it stays readable on horizontal scroll.
+                              zIndex: Z_INDEX.ruler,
+                              // Must match `.paged-editor__pages` padding-top in
+                              // editor.css (24 viewport + 24 pages container).
+                              // That padding scales with zoom, so the ruler's
+                              // top offset has to scale too or it drifts off the
+                              // page top at non-100% zoom.
+                              paddingTop: 48 * state.zoom,
+                              // Same horizontal centering as the horizontal ruler
+                              // so the vertical ruler tracks the centered page
+                              // (and its comment-sidebar bias).
+                              paddingLeft: 20,
+                              paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
+                              display: 'flex',
+                              justifyContent: 'center',
+                              // Only the ruler itself is interactive; the wrapper
+                              // must not swallow clicks over the gutter/page.
+                              pointerEvents: 'none',
+                              transition: 'padding var(--doc-anim-slow)',
+                            }}
+                          >
+                            {/* Invisible page-width spacer; the ruler is pinned
+                              to its left edge (right: 100%) so it sits just left
+                              of the page. */}
+                            <div
+                              style={{
+                                width: pageWidthPx * state.zoom,
+                                flexShrink: 0,
+                                position: 'relative',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  right: '100%',
+                                  top: 0,
+                                  marginRight: 6,
+                                  pointerEvents: 'auto',
+                                }}
+                              >
+                                <VerticalRuler
+                                  // Live section props (NOT initialSectionProperties):
+                                  // margin drags write to finalSectionProperties, and the
+                                  // horizontal ruler reads the same. initialSectionProperties
+                                  // resolves to sections[0].properties for docs that have a
+                                  // section, which the drag never updates — so the top/bottom
+                                  // margin marker stayed pinned while the page reflowed.
+                                  sectionProps={finalSectionProperties ?? initialSectionProperties}
+                                  zoom={state.zoom}
+                                  unit={rulerUnit}
+                                  editable={!readOnly}
+                                  onTopMarginChange={handleTopMarginChange}
+                                  onBottomMarginChange={handleBottomMarginChange}
+                                  onDragStateChange={(d) => {
+                                    marginDraggingRef.current = d;
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {/* Brighten highlight for the focused/expanded sidebar item */}
+                        {expandedSidebarItem && expandedSidebarItem.startsWith('comment-') && (
+                          <style>{`.paged-editor__pages [data-comment-id="${expandedSidebarItem.replace('comment-', '')}"] { background-color: rgba(255, 212, 0, 0.35) !important; border-bottom: 2px solid rgba(255, 212, 0, 0.7) !important; }`}</style>
+                        )}
+                        {expandedSidebarItem?.startsWith('tc-') &&
+                          (() => {
+                            const revId = expandedSidebarItem.split('-')[1];
+                            const tc = trackedChanges.find((c) => String(c.revisionId) === revId);
+                            const insRevId = tc?.insertionRevisionId;
+                            return (
+                              <style>{`
                             .paged-editor__pages .docx-insertion[data-revision-id="${insRevId ?? revId}"] { background-color: rgba(52, 168, 83, 0.2) !important; border-bottom: 2px solid #2e7d32 !important; }
                             .paged-editor__pages .docx-deletion[data-revision-id="${revId}"] { background-color: rgba(211, 47, 47, 0.2) !important; text-decoration-thickness: 2px !important; }
                           `}</style>
-                          );
-                        })()}
-                      <PagedEditor
-                        ref={pagedEditorRef}
-                        document={history.state}
-                        styles={history.state?.package.styles}
-                        theme={history.state?.package.theme || theme}
-                        sectionProperties={initialSectionProperties}
-                        finalSectionProperties={finalSectionProperties}
-                        headerContent={headerContent}
-                        footerContent={footerContent}
-                        firstPageHeaderContent={firstPageHeaderContent}
-                        firstPageFooterContent={firstPageFooterContent}
-                        onHeaderFooterDoubleClick={handleHeaderFooterDoubleClick}
-                        hfEditMode={hfEditPosition}
-                        onBodyClick={handleBodyClick}
-                        zoom={state.zoom}
-                        readOnly={readOnly}
-                        extensionManager={extensionManager}
-                        onDocumentChange={handleDocumentChange}
-                        onSelectionChange={(_from, _to) => {
-                          // Extract full selection state from PM and use the standard handler
-                          const view = pagedEditorRef.current?.getView();
-                          if (view) {
-                            const selectionState = extractSelectionState(view.state);
-                            handleSelectionChange(selectionState);
+                            );
+                          })()}
+                        <PagedEditor
+                          ref={pagedEditorRef}
+                          document={history.state}
+                          styles={history.state?.package.styles}
+                          theme={history.state?.package.theme || theme}
+                          sectionProperties={initialSectionProperties}
+                          finalSectionProperties={finalSectionProperties}
+                          headerContent={headerContent}
+                          footerContent={footerContent}
+                          firstPageHeaderContent={firstPageHeaderContent}
+                          firstPageFooterContent={firstPageFooterContent}
+                          onHeaderFooterDoubleClick={handleHeaderFooterDoubleClick}
+                          hfEditMode={hfEditPosition}
+                          onBodyClick={handleBodyClick}
+                          zoom={state.zoom}
+                          marginDraggingRef={marginDraggingRef}
+                          wordCompat={wordCompat}
+                          showFormattingMarks={showFormattingMarks}
+                          readOnly={readOnly}
+                          extensionManager={extensionManager}
+                          contentLabel={t('editor.contentLabel')}
+                          selectionFormatting={state.selectionFormatting}
+                          onFormat={handleFormat}
+                          onZoomChange={handleZoomChange}
+                          onDocumentChange={handleDocumentChange}
+                          onSelectionChange={(_from, _to) => {
+                            // Extract full selection state from PM and use the standard handler
+                            const view = pagedEditorRef.current?.getView();
+                            if (view) {
+                              const selectionState = extractSelectionState(view.state);
+                              handleSelectionChange(selectionState);
 
-                            // Detect comment/tracked-change marks at cursor to open sidebar card.
-                            // Collect marks from all sources — inclusive:false marks aren't
-                            // reported by $from.marks() at boundaries, and empty arrays are
-                            // truthy so an OR chain would short-circuit.
-                            const $from = view.state.selection.$from;
-                            const marks = [
-                              ...(view.state.storedMarks ?? []),
-                              ...($from.nodeAfter?.marks ?? []),
-                              ...($from.nodeBefore?.marks ?? []),
-                              ...$from.marks(),
-                            ];
-                            let cursorSidebarItem: string | null = null;
-                            for (const mark of marks) {
-                              if (mark.type.name === 'comment' && mark.attrs.commentId != null) {
-                                // Skip resolved comments — they stay collapsed as a checkmark
-                                // marker unless the user explicitly clicks it. Otherwise the
-                                // sidebar fills up with old threads every time the cursor
-                                // passes through commented text.
-                                const commentId = mark.attrs.commentId as number;
-                                if (resolvedCommentIds.has(commentId)) continue;
-                                cursorSidebarItem = `comment-${commentId}`;
-                                break;
-                              }
-                              if (
-                                (mark.type.name === 'insertion' || mark.type.name === 'deletion') &&
-                                mark.attrs.revisionId != null
-                              ) {
-                                const revId = String(mark.attrs.revisionId);
-                                const prefix = `tc-${revId}-`;
-                                let match = commentSidebarItems.find((i) =>
-                                  i.id.startsWith(prefix)
-                                );
-                                // Insertion side of a replacement has a different revisionId;
-                                // check alias map to find the correct sidebar card.
-                                if (!match && revisionIdAliases) {
-                                  const aliasedId = revisionIdAliases.get(revId);
-                                  if (aliasedId) {
-                                    match = commentSidebarItems.find((i) => i.id === aliasedId);
-                                  }
-                                }
-                                if (match) {
-                                  cursorSidebarItem = match.id;
+                              // Detect comment/tracked-change marks at cursor to open sidebar card.
+                              // Collect marks from all sources — inclusive:false marks aren't
+                              // reported by $from.marks() at boundaries, and empty arrays are
+                              // truthy so an OR chain would short-circuit.
+                              const $from = view.state.selection.$from;
+                              const marks = [
+                                ...(view.state.storedMarks ?? []),
+                                ...($from.nodeAfter?.marks ?? []),
+                                ...($from.nodeBefore?.marks ?? []),
+                                ...$from.marks(),
+                              ];
+                              let cursorSidebarItem: string | null = null;
+                              for (const mark of marks) {
+                                if (mark.type.name === 'comment' && mark.attrs.commentId != null) {
+                                  // Skip resolved comments — they stay collapsed as a checkmark
+                                  // marker unless the user explicitly clicks it. Otherwise the
+                                  // sidebar fills up with old threads every time the cursor
+                                  // passes through commented text.
+                                  const commentId = mark.attrs.commentId as number;
+                                  if (resolvedCommentIds.has(commentId)) continue;
+                                  cursorSidebarItem = `comment-${commentId}`;
                                   break;
                                 }
-                              }
-                            }
-                            if (cursorSidebarItem) {
-                              setShowCommentsSidebar(true);
-                            }
-                            setExpandedSidebarItem(cursorSidebarItem);
-                          } else {
-                            handleSelectionChange(null);
-                          }
-                        }}
-                        externalPlugins={allExternalPlugins}
-                        onReady={(ref) => {
-                          const view = ref.getView();
-                          if (view) setPmState(view.state);
-                          if (view) onEditorViewReady?.(view);
-                        }}
-                        onRenderedDomContextReady={onRenderedDomContextReady}
-                        pluginOverlays={pluginOverlays}
-                        onHyperlinkClick={handleHyperlinkClick}
-                        onContextMenu={handleContextMenu}
-                        commentsSidebarOpen={sidebarOpen}
-                        onAnchorPositionsChange={setAnchorPositions}
-                        onTotalPagesChange={(totalPages) => {
-                          setScrollPageInfo((prev) =>
-                            prev.totalPages === totalPages ? prev : { ...prev, totalPages }
-                          );
-                        }}
-                        resolvedCommentIds={resolvedIdsForRender}
-                        scrollContainerRef={scrollContainerRef}
-                        sidebarOverlay={
-                          <>
-                            {allSidebarItems.length > 0 && (
-                              <UnifiedSidebar
-                                items={allSidebarItems}
-                                anchorPositions={anchorPositions}
-                                renderedDomContext={pluginRenderedDomContext ?? null}
-                                pageWidth={pageWidthPx}
-                                zoom={state.zoom}
-                                editorContainerRef={scrollContainerRef}
-                                onExpandedItemChange={setExpandedSidebarItem}
-                                activeItemId={expandedSidebarItem}
-                              />
-                            )}
-                            <CommentMarginMarkers
-                              comments={comments}
-                              anchorPositions={anchorPositions}
-                              zoom={state.zoom}
-                              pageWidth={pageWidthPx}
-                              sidebarOpen={sidebarOpen}
-                              resolvedCommentIds={resolvedCommentIds}
-                              onMarkerClick={() => {
-                                setShowCommentsSidebar(true);
-                              }}
-                            />
-                          </>
-                        }
-                      />
-
-                      {/* Floating "add comment" button — appears on right edge of page at selection */}
-                      {floatingCommentBtn != null && !isAddingComment && !readOnly && (
-                        <Tooltip content="Add comment" side="bottom" delayMs={300}>
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const view = pagedEditorRef.current?.getView();
-                              if (view) {
-                                const { from, to } = view.state.selection;
-                                if (from !== to) {
-                                  setCommentSelectionRange({ from, to });
-                                  const pendingMark = view.state.schema.marks.comment.create({
-                                    commentId: PENDING_COMMENT_ID,
-                                  });
-                                  const tr = view.state.tr.addMark(from, to, pendingMark);
-                                  tr.setSelection(TextSelection.create(tr.doc, to));
-                                  view.dispatch(tr);
+                                if (
+                                  (mark.type.name === 'insertion' ||
+                                    mark.type.name === 'deletion') &&
+                                  mark.attrs.revisionId != null
+                                ) {
+                                  const revId = String(mark.attrs.revisionId);
+                                  const prefix = `tc-${revId}-`;
+                                  let match = commentSidebarItems.find((i) =>
+                                    i.id.startsWith(prefix)
+                                  );
+                                  // Insertion side of a replacement has a different revisionId;
+                                  // check alias map to find the correct sidebar card.
+                                  if (!match && revisionIdAliases) {
+                                    const aliasedId = revisionIdAliases.get(revId);
+                                    if (aliasedId) {
+                                      match = commentSidebarItems.find((i) => i.id === aliasedId);
+                                    }
+                                  }
+                                  if (match) {
+                                    cursorSidebarItem = match.id;
+                                    break;
+                                  }
                                 }
                               }
-                              setAddCommentYPosition(floatingCommentBtn.top);
-                              setShowCommentsSidebar(true);
-                              setIsAddingComment(true);
-                              setFloatingCommentBtn(null);
-                            }}
+                              if (cursorSidebarItem) {
+                                setShowCommentsSidebar(true);
+                              }
+                              setExpandedSidebarItem(cursorSidebarItem);
+                            } else {
+                              handleSelectionChange(null);
+                            }
+                          }}
+                          externalPlugins={allExternalPlugins}
+                          onReady={(ref) => {
+                            const view = ref.getView();
+                            if (view) setPmState(view.state);
+                            if (view) onEditorViewReady?.(view);
+                          }}
+                          onRenderedDomContextReady={onRenderedDomContextReady}
+                          pluginOverlays={pluginOverlays}
+                          onHyperlinkClick={handleHyperlinkClick}
+                          onContextMenu={handleContextMenu}
+                          onOpenProperties={() => openRightPanel('properties')}
+                          onResizeTextBox={handleTextBoxSetSize}
+                          onEditFootnote={handleEditFootnote}
+                          onEditEndnote={handleEditEndnote}
+                          commentsSidebarOpen={sidebarOpen}
+                          onAnchorPositionsChange={setAnchorPositions}
+                          onTotalPagesChange={(totalPages) => {
+                            setScrollPageInfo((prev) =>
+                              prev.totalPages === totalPages ? prev : { ...prev, totalPages }
+                            );
+                          }}
+                          resolvedCommentIds={resolvedIdsForRender}
+                          scrollContainerRef={scrollContainerRef}
+                          sidebarOverlay={
+                            <>
+                              {/* Tracked-change navigation + accept/reject
+                                  controls. Surfaced whenever ANY tracked
+                                  change exists in the doc — gating on
+                                  `editingMode === 'suggesting'` hid the bar
+                                  for AI-inserted suggestions (which land in
+                                  Edit mode), leaving users with no obvious
+                                  way to act on them. The bar now shows for
+                                  the union of user-typed suggestions and
+                                  AI-staged ones. */}
+                              {trackedChanges.length > 0 && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: 6,
+                                    right: 12,
+                                    display: 'flex',
+                                    gap: 4,
+                                    padding: '4px 6px',
+                                    background: 'var(--doc-surface, white)',
+                                    border: '1px solid var(--doc-border)',
+                                    borderRadius: 6,
+                                    boxShadow: 'var(--doc-shadow, 0 2px 6px rgba(0,0,0,0.1))',
+                                    zIndex: 50,
+                                    fontSize: 12,
+                                  }}
+                                  data-testid="tracked-changes-action-bar"
+                                >
+                                  <Tooltip content={t('trackedChanges.previous')}>
+                                    <button
+                                      type="button"
+                                      onClick={handlePreviousChange}
+                                      style={trackedChangesActionBtnStyle}
+                                      aria-label={t('trackedChanges.previous')}
+                                    >
+                                      <MaterialSymbol name="navigate_before" size={16} />
+                                    </button>
+                                  </Tooltip>
+                                  <Tooltip content={t('trackedChanges.next')}>
+                                    <button
+                                      type="button"
+                                      onClick={handleNextChange}
+                                      style={trackedChangesActionBtnStyle}
+                                      aria-label={t('trackedChanges.next')}
+                                    >
+                                      <MaterialSymbol name="navigate_next" size={16} />
+                                    </button>
+                                  </Tooltip>
+                                  <span
+                                    style={{
+                                      width: 1,
+                                      background: 'var(--doc-border)',
+                                      margin: '0 2px',
+                                    }}
+                                  />
+                                  <Tooltip content={t('trackedChanges.acceptAll')}>
+                                    <button
+                                      type="button"
+                                      onClick={handleAcceptAllChanges}
+                                      style={trackedChangesActionBtnStyle}
+                                      aria-label={t('trackedChanges.acceptAll')}
+                                      data-testid="tracked-changes-accept-all"
+                                    >
+                                      <MaterialSymbol name="done_all" size={16} />
+                                    </button>
+                                  </Tooltip>
+                                  <Tooltip content={t('trackedChanges.rejectAll')}>
+                                    <button
+                                      type="button"
+                                      onClick={handleRejectAllChanges}
+                                      style={trackedChangesActionBtnStyle}
+                                      aria-label={t('trackedChanges.rejectAll')}
+                                      data-testid="tracked-changes-reject-all"
+                                    >
+                                      <MaterialSymbol name="block" size={16} />
+                                    </button>
+                                  </Tooltip>
+                                </div>
+                              )}
+                              {allSidebarItems.length > 0 && (
+                                <UnifiedSidebar
+                                  items={allSidebarItems}
+                                  anchorPositions={anchorPositions}
+                                  renderedDomContext={pluginRenderedDomContext ?? null}
+                                  pageWidth={pageWidthPx}
+                                  zoom={state.zoom}
+                                  editorContainerRef={scrollContainerRef}
+                                  onExpandedItemChange={setExpandedSidebarItem}
+                                  activeItemId={expandedSidebarItem}
+                                />
+                              )}
+                              <CommentMarginMarkers
+                                comments={comments}
+                                anchorPositions={anchorPositions}
+                                zoom={state.zoom}
+                                pageWidth={pageWidthPx}
+                                sidebarOpen={sidebarOpen}
+                                resolvedCommentIds={resolvedCommentIds}
+                                onMarkerClick={() => {
+                                  setShowCommentsSidebar(true);
+                                }}
+                              />
+                              {/* Version history is mounted as a flex sibling
+                                  of the scroll container (below this block),
+                                  not here — keeping it outside the scrolling
+                                  area means it stays pinned to the viewport
+                                  instead of riding along with document scroll. */}
+                            </>
+                          }
+                        />
+
+                        {/* Version preview overlay (Google-Docs model) — a
+                            read-only render of the selected version covering
+                            the live canvas. Separate editor instance: the
+                            live doc, its Yjs sync, and its undo stack are
+                            untouched, so nothing is broadcast to peers. */}
+                        {versionPreview && (
+                          <div
+                            data-testid="version-preview-overlay"
                             style={{
                               position: 'absolute',
-                              top: floatingCommentBtn.top,
-                              left: floatingCommentBtn.left,
-                              transform: 'translate(-50%, -50%)',
-                              zIndex: 50,
-                              width: 28,
-                              height: 28,
-                              borderRadius: 6,
-                              border: '1px solid rgba(26, 115, 232, 0.3)',
-                              backgroundColor: '#fff',
-                              color: '#1a73e8',
-                              cursor: 'pointer',
+                              inset: 0,
+                              zIndex: Z_INDEX.versionPreview,
                               display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              boxShadow: '0 1px 3px rgba(60,64,67,0.2)',
-                              transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
-                            }}
-                            onMouseOver={(e) => {
-                              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                                'rgba(26, 115, 232, 0.08)';
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                                '0 1px 4px rgba(26, 115, 232, 0.3)';
-                            }}
-                            onMouseOut={(e) => {
-                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#fff';
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                                '0 1px 3px rgba(60,64,67,0.2)';
+                              flexDirection: 'column',
+                              background: 'var(--doc-canvas-bg, #f1f3f4)',
                             }}
                           >
-                            <MaterialSymbol name="add_comment" size={16} />
-                          </button>
-                        </Tooltip>
-                      )}
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                padding: '8px 16px',
+                                background: 'var(--doc-surface, #fff)',
+                                borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+                                boxShadow: 'var(--doc-shadow, 0 1px 3px rgba(0,0,0,0.08))',
+                              }}
+                            >
+                              <Tooltip content="Back to editing">
+                                <button
+                                  type="button"
+                                  onClick={handleClosePreview}
+                                  data-testid="version-preview-back"
+                                  aria-label="Back to editing"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '4px 10px',
+                                    border: '1px solid var(--doc-border)',
+                                    borderRadius: 4,
+                                    background: 'transparent',
+                                    color: 'var(--doc-text)',
+                                    fontSize: 13,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <MaterialSymbol name="arrow_back" size={16} />
+                                  Back
+                                </button>
+                              </Tooltip>
+                              <span style={{ fontSize: 13, color: 'var(--doc-text-muted)' }}>
+                                Viewing{' '}
+                                <strong style={{ color: 'var(--doc-text)' }}>
+                                  {versionPreview.name}
+                                </strong>
+                                {' · '}
+                                {new Date(versionPreview.savedAt).toLocaleString()}
+                              </span>
+                              <label
+                                style={{
+                                  marginLeft: 'auto',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  fontSize: 13,
+                                  color: 'var(--doc-text)',
+                                  cursor: versionPreview.previousData ? 'pointer' : 'not-allowed',
+                                  opacity: versionPreview.previousData ? 1 : 0.5,
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={previewShowChanges}
+                                  disabled={!versionPreview.previousData}
+                                  onChange={(e) => setPreviewShowChanges(e.target.checked)}
+                                  data-testid="version-preview-show-changes"
+                                />
+                                Show changes
+                              </label>
+                              <button
+                                type="button"
+                                onClick={handleRestoreFromPreview}
+                                data-testid="version-preview-restore"
+                                style={{
+                                  padding: '6px 14px',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  background: 'var(--doc-primary, #1a73e8)',
+                                  color: '#fff',
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Restore this version
+                              </button>
+                            </div>
+                            <div
+                              ref={previewScrollRef}
+                              style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
+                            >
+                              {previewDocument ? (
+                                <PagedEditor
+                                  // Remount on version / show-changes change:
+                                  // the preview doc keeps the live doc's
+                                  // metadata identity, so PagedEditor's
+                                  // same-identity guard would otherwise skip
+                                  // the swap and keep painting the old marks.
+                                  key={`${versionPreview.savedAt}-${previewShowChanges}`}
+                                  ref={previewEditorRef}
+                                  document={previewDocument}
+                                  styles={previewDocument.package.styles}
+                                  theme={previewDocument.package.theme || theme}
+                                  sectionProperties={initialSectionProperties}
+                                  finalSectionProperties={finalSectionProperties}
+                                  headerContent={headerContent}
+                                  footerContent={footerContent}
+                                  firstPageHeaderContent={firstPageHeaderContent}
+                                  firstPageFooterContent={firstPageFooterContent}
+                                  zoom={state.zoom}
+                                  wordCompat={wordCompat}
+                                  readOnly
+                                  extensionManager={extensionManager}
+                                  contentLabel="Version preview"
+                                  scrollContainerRef={previewScrollRef}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    padding: 40,
+                                    textAlign: 'center',
+                                    color: 'var(--doc-text-muted)',
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Preview unavailable for this version.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                      {/* Inline Header/Footer Editor — positioned over the target area */}
-                      {hfEditPosition &&
-                        (() => {
-                          const activeHf = hfEditIsFirstPage
-                            ? hfEditPosition === 'header'
-                              ? firstPageHeaderContent
-                              : firstPageFooterContent
-                            : hfEditPosition === 'header'
-                              ? headerContent
-                              : footerContent;
-                          if (!activeHf) return null;
-                          const targetEl = getHfTargetElement(hfEditPosition);
-                          const parentEl = editorContentRef.current;
-                          if (!targetEl || !parentEl) return null;
-                          return (
-                            <InlineHeaderFooterEditor
-                              ref={hfEditorRef}
-                              headerFooter={activeHf}
-                              position={hfEditPosition}
-                              styles={history.state?.package.styles}
-                              targetElement={targetEl}
-                              parentElement={parentEl}
-                              onSave={handleHeaderFooterSave}
-                              onClose={() => setHfEditPosition(null)}
-                              onSelectionChange={handleSelectionChange}
-                              onRemove={handleRemoveHeaderFooter}
-                            />
-                          );
-                        })()}
+                        {/* Floating "add comment" button — appears on right edge of page at selection */}
+                        {floatingCommentBtn != null && !isAddingComment && !readOnly && (
+                          <Tooltip content="Add comment" side="bottom" delayMs={300}>
+                            <button
+                              type="button"
+                              data-testid="floating-add-comment-button"
+                              aria-label="Add comment"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const view = pagedEditorRef.current?.getView();
+                                if (view) {
+                                  const { from, to } = view.state.selection;
+                                  if (from !== to) {
+                                    setCommentSelectionRange({ from, to });
+                                    const pendingMark = view.state.schema.marks.comment.create({
+                                      commentId: PENDING_COMMENT_ID,
+                                    });
+                                    const tr = view.state.tr.addMark(from, to, pendingMark);
+                                    tr.setSelection(TextSelection.create(tr.doc, to));
+                                    view.dispatch(tr);
+                                  }
+                                }
+                                setAddCommentYPosition(floatingCommentBtn.top);
+                                setShowCommentsSidebar(true);
+                                setIsAddingComment(true);
+                                setFloatingCommentBtn(null);
+                              }}
+                              style={{
+                                position: 'absolute',
+                                top: floatingCommentBtn.top,
+                                left: floatingCommentBtn.left,
+                                transform: 'translate(-50%, -50%)',
+                                zIndex: 50,
+                                width: 28,
+                                height: 28,
+                                borderRadius: 6,
+                                border: '1px solid rgba(26, 115, 232, 0.3)',
+                                backgroundColor: 'var(--doc-surface, #fff)',
+                                color: 'var(--doc-primary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 1px 3px rgba(60,64,67,0.2)',
+                                transition:
+                                  'background-color var(--doc-anim-base), box-shadow var(--doc-anim-base)',
+                              }}
+                              onMouseOver={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                                  'rgba(26, 115, 232, 0.08)';
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                                  '0 1px 4px rgba(26, 115, 232, 0.3)';
+                              }}
+                              onMouseOut={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                                  'var(--doc-surface, #fff)';
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                                  '0 1px 3px rgba(60,64,67,0.2)';
+                              }}
+                            >
+                              <MaterialSymbol name="add_comment" size={16} />
+                            </button>
+                          </Tooltip>
+                        )}
+
+                        {/* Inline Header/Footer Editor — positioned over the target area */}
+                        {hfEditPosition &&
+                          (() => {
+                            const activeHf = hfEditIsFirstPage
+                              ? hfEditPosition === 'header'
+                                ? firstPageHeaderContent
+                                : firstPageFooterContent
+                              : hfEditPosition === 'header'
+                                ? headerContent
+                                : footerContent;
+                            if (!activeHf) return null;
+                            const targetEl = getHfTargetElement(hfEditPosition);
+                            const parentEl = editorContentRef.current;
+                            if (!targetEl || !parentEl) return null;
+                            return (
+                              <InlineHeaderFooterEditor
+                                ref={hfEditorRef}
+                                headerFooter={activeHf}
+                                position={hfEditPosition}
+                                styles={history.state?.package.styles}
+                                targetElement={targetEl}
+                                parentElement={parentEl}
+                                onSave={handleHeaderFooterSave}
+                                onClose={() => setHfEditPosition(null)}
+                                onSelectionChange={handleSelectionChange}
+                                onRemove={handleRemoveHeaderFooter}
+                                titlePg={
+                                  history.state?.package.document?.finalSectionProperties?.titlePg
+                                }
+                                evenAndOddHeaders={
+                                  history.state?.package.document?.finalSectionProperties
+                                    ?.evenAndOddHeaders
+                                }
+                                onToggleTitlePg={handleToggleTitlePg}
+                                onToggleEvenAndOdd={handleToggleEvenAndOddHeaders}
+                              />
+                            );
+                          })()}
+                      </div>
                     </div>
+                    {/* end editor flex wrapper */}
                   </div>
-                  {/* end editor flex wrapper */}
+                  {/* end scroll container */}
+
+                  {/* Version history panel — flex sibling of the scroll
+                      container so it stays pinned to the viewport
+                      instead of riding along with document scroll. The
+                      page area auto-shrinks because the scroll
+                      container is `flex: 1` and this column has a
+                      fixed width. */}
+                  {showVersionHistory && (
+                    <VersionHistoryPanel
+                      history={editHistory}
+                      docId={documentName?.trim() || 'Untitled'}
+                      saveNamedVersion={versionCapture.saveNamedVersion}
+                      onRestoreSnapshot={handleRestoreSnapshot}
+                      onPreviewVersion={handlePreviewVersion}
+                      onShowCurrent={handleClosePreview}
+                      isPreviewing={versionPreview != null}
+                      serverBackend={versionBackend}
+                      onRestoreServerVersion={handleRestoreServerVersion}
+                      onClose={() => setShowVersionHistory(false)}
+                    />
+                  )}
+
+                  {showProperties &&
+                    (() => {
+                      // Flex sibling — IDENTICAL to VersionHistoryPanel above:
+                      // the page area auto-shrinks (flex:1 scroll container +
+                      // this fixed-width column), so it sits BESIDE the doc and
+                      // never overlaps it. Kind derived from the live selection.
+                      const propsKind: PropertiesTargetKind | null = state.pmImageContext
+                        ? 'image'
+                        : state.pmTextBoxContext
+                          ? 'textbox'
+                          : state.pmTableContext?.isInTable
+                            ? 'table'
+                            : null;
+                      return (
+                        <PropertiesPanel kind={propsKind} onClose={() => openRightPanel('none')}>
+                          {propsKind === 'image' && state.pmImageContext && (
+                            <ImagePropertiesSection
+                              wrapType={state.pmImageContext.wrapType}
+                              width={state.pmImageContext.width}
+                              height={state.pmImageContext.height}
+                              borderWidth={state.pmImageContext.borderWidth}
+                              borderColor={state.pmImageContext.borderColor}
+                              alt={state.pmImageContext.alt}
+                              distTop={state.pmImageContext.distTop}
+                              distBottom={state.pmImageContext.distBottom}
+                              distLeft={state.pmImageContext.distLeft}
+                              distRight={state.pmImageContext.distRight}
+                              onSetWrap={handleImageWrapType}
+                              onSetSize={handleImageSetSize}
+                              onTransform={handleImageTransform}
+                              onSetBorder={handleImageSetBorder}
+                              onSetAlt={handleImageSetAlt}
+                              onSetDist={handleImageSetDist}
+                            />
+                          )}
+                          {propsKind === 'table' && (
+                            <TablePropertiesSection onAction={handleTableAction} />
+                          )}
+                          {propsKind === 'textbox' && state.pmTextBoxContext && (
+                            <TextBoxPropertiesSection
+                              width={state.pmTextBoxContext.width}
+                              height={state.pmTextBoxContext.height}
+                              fillColor={state.pmTextBoxContext.fillColor}
+                              outlineWidth={state.pmTextBoxContext.outlineWidth}
+                              outlineColor={state.pmTextBoxContext.outlineColor}
+                              posOffsetH={state.pmTextBoxContext.posOffsetH}
+                              posOffsetV={state.pmTextBoxContext.posOffsetV}
+                              onSetSize={handleTextBoxSetSize}
+                              onSetFill={handleTextBoxSetFill}
+                              onSetOutline={handleTextBoxSetOutline}
+                              onSetPosition={handleTextBoxSetPosition}
+                            />
+                          )}
+                        </PropertiesPanel>
+                      );
+                    })()}
+
+                  {/* Comments use the anchored-cards approach (UnifiedSidebar
+                      paints a floating card next to each commented span).
+                      There is intentionally no solid docked comments panel —
+                      the empty-doc case is handled by a toast hint in
+                      handleToggleComments. */}
+
+                  {/* AI right-side panels — laid out as flex siblings of
+                      the scroll container so they share the exact same
+                      geometry as Version history (start below the
+                      toolbar, end above the status bar, sit left of the
+                      rail). Each panel's root is `RightDockPanel`
+                      which sets the canonical RIGHT_PANEL_WIDTH so the
+                      doc area shifts by a uniform amount regardless of
+                      which panel the user opens. */}
+                  {/* AI surfaces gated off until WebLLM has a yielding
+                      inference path. <AISuggestionPanel>, <WritingAssistantSheet>,
+                      <ChatPanel> render blocks intentionally removed
+                      to prevent the long-doc freeze the user kept
+                      hitting. Hooks / state / handlers preserved so
+                      restoring is a copy-paste of the JSX back in
+                      from git history. */}
+
+                  {/* Right-edge PanelRail (X7) — always-visible activity bar
+                    with toggles for Outline / Comments / Version history.
+                    Lives inside the below-toolbar flex row so it spans only
+                    the editor body's height, not the toolbar's. */}
+                  {showPanelRail && !focusMode && (
+                    <PanelRail
+                      outlineVisible={showOutline}
+                      commentsVisible={showCommentsSidebar}
+                      historyVisible={showVersionHistory}
+                      onToggleOutline={handleToggleOutline}
+                      onToggleComments={handleToggleComments}
+                      propertiesVisible={showProperties}
+                      onToggleProperties={() =>
+                        openRightPanel(showProperties ? 'none' : 'properties')
+                      }
+                      onToggleHistory={() =>
+                        openRightPanel(showVersionHistory ? 'none' : 'history')
+                      }
+                      // Writer + chat rail toggles unwired — LLM
+                      // gating. Restore: writerVisible={showWritingAssistant}
+                      //   onToggleWriter={() => openRightPanel(showWritingAssistant ? 'none' : 'writer')}
+                      //   chatVisible={showChatPanel}
+                      //   onToggleChat={() => openRightPanel(showChatPanel ? 'none' : 'chat')}
+                    />
+                  )}
                 </div>
-                {/* end scroll container */}
+                {/* end below-toolbar flex row */}
+
+                {showStatusBar && !readOnlyProp && !focusMode && (
+                  <StatusBar
+                    currentPage={scrollPageInfo.currentPage}
+                    totalPages={scrollPageInfo.totalPages}
+                    wordCount={wordCount}
+                    charCount={charCount}
+                    docText={docPlainText}
+                    zoom={state.zoom}
+                    onZoomChange={handleZoomChange}
+                  />
+                )}
+
+                {/* Focus mode signature bar — pinned to the viewport
+                    bottom-center, fades on idle, replaces the entire
+                    chrome stack while focusMode is on. */}
+                <FocusModeBar wordCount={wordCount ?? 0} isActive={focusMode} />
 
                 {/* Floating page indicator next to the scrollbar */}
                 {scrollPageInfo.totalPages > 1 && (
@@ -5499,6 +9153,7 @@ body { background: white; }
                 {showOutline && (
                   <DocumentOutline
                     headings={outlineHeadings}
+                    activeIndex={activeOutlineIndex}
                     onHeadingClick={handleHeadingInfoClick}
                     onClose={() => setShowOutline(false)}
                     topOffset={toolbarHeight}
@@ -5508,17 +9163,12 @@ body { background: white; }
 
                 {/* Unified sidebar (comments + plugin items) rendered inside PagedEditor via sidebarOverlay prop */}
 
-                {/* Outline toggle button — absolutely positioned below toolbar */}
-                {showOutlineButton && !showOutline && (
-                  <OutlineToggleButton
-                    onClick={handleToggleOutline}
-                    // Aligns with the page top: toolbar + horizontal ruler row
-                    // (22 ruler + 8 py-1 padding) + PagedEditor viewport
-                    // padding-top (24) + pages container padding (24).
-                    topPx={toolbarHeight + (showRuler ? 30 : 0) + 48}
-                    scrollLeft={editorScrollLeft}
-                  />
-                )}
+                {/* Outline now lives in the right-edge PanelRail —
+                    the floating button shipped before the rail existed
+                    and is redundant. `showOutlineButton` is retained as
+                    a prop for hosts that explicitly turn the entire
+                    panel system off; the rail respects it via the
+                    onToggleOutline plumbing in the host. */}
               </div>
               {/* end wrapper for scroll container + outline */}
 
@@ -5562,6 +9212,20 @@ body { background: white; }
               onClose={handleContextMenuClose}
             />
 
+            {/* Spell-check suggestions menu — shown only when the right-
+                click landed on a misspelled-word decoration. */}
+            {spellMenu && (
+              <SpellSuggestionsMenu
+                isOpen={true}
+                position={{ x: spellMenu.x, y: spellMenu.y }}
+                word={spellMenu.word}
+                suggestions={spellMenu.suggestions}
+                onPick={handlePickSpellSuggestion}
+                onIgnore={handleIgnoreSpell}
+                onClose={() => setSpellMenu(null)}
+              />
+            )}
+
             {/* Image-specific right-click menu — layout options + text actions */}
             <ImageContextMenu
               isOpen={imageContextMenu.isOpen}
@@ -5572,6 +9236,185 @@ body { background: white; }
               textActions={imageContextMenuTextActions}
               onTextAction={handleContextMenuAction}
               onClose={imageContextMenu.closeMenu}
+            />
+
+            {/* Inline AI preview popover — staged proposal from a chat
+                tool (insertTable, future rewrite/outline/translate)
+                with Replace / Insert below / Try again / Discard. Per
+                research §3 + §1, AI output never enters the doc body
+                without explicit accept. */}
+            {activeProposal && (
+              <InlinePreviewPopover
+                proposal={activeProposal}
+                getView={() => getActiveEditorView() ?? null}
+                onReplace={() => {
+                  const view = getActiveEditorView();
+                  if (!view || !activeProposal.replaceRange) {
+                    setActiveProposal(null);
+                    return;
+                  }
+                  const { from, to } = activeProposal.replaceRange;
+                  if (activeProposal.asTrackedChange) {
+                    // Same tracked-change path the AISuggestionPanel
+                    // uses — original range becomes a `deletion` mark
+                    // (red strikethrough) and the new fragment lands
+                    // after `to` with `insertion` marks (green
+                    // underline). User accepts/rejects via the doc-
+                    // body review bar.
+                    applyRewriteAsSuggestion({
+                      view,
+                      from,
+                      to,
+                      replacement: activeProposal.fragment,
+                    });
+                  } else {
+                    const tr = view.state.tr.replaceWith(from, to, activeProposal.fragment);
+                    view.dispatch(tr);
+                  }
+                  view.focus();
+                  setActiveProposal(null);
+                }}
+                onInsertBelow={() => {
+                  const view = getActiveEditorView();
+                  if (!view) {
+                    setActiveProposal(null);
+                    return;
+                  }
+                  // Walk up to the nearest block boundary so the
+                  // fragment lands as a sibling, not inside an inline.
+                  const { $from } = view.state.selection;
+                  let insertPos = $from.pos;
+                  for (let d = $from.depth; d > 0; d--) {
+                    const node = $from.node(d);
+                    if (node.type.name === 'paragraph' || node.type.name === 'table') {
+                      insertPos = $from.after(d);
+                      break;
+                    }
+                  }
+                  if (activeProposal.asTrackedChange) {
+                    applyFragmentAsSuggestion({
+                      view,
+                      at: insertPos,
+                      fragment: activeProposal.fragment,
+                    });
+                  } else {
+                    const tr = view.state.tr.insert(insertPos, activeProposal.fragment);
+                    view.dispatch(tr);
+                  }
+                  view.focus();
+                  setActiveProposal(null);
+                }}
+                busy={proposalBusy}
+                onTryAgain={(refinePrompt) => {
+                  const view = getActiveEditorView();
+                  if (!view) return;
+                  const schema = view.state.schema;
+                  // Combine the original prompt with the refine
+                  // instruction. The classifier re-routes to the same
+                  // intent because the original intent verb is still
+                  // first; the refine line tunes the result.
+                  const combined = lastProposalPrompt
+                    ? `${lastProposalPrompt}\n\nRefine: ${refinePrompt}`
+                    : refinePrompt;
+                  setProposalBusy(true);
+                  void runPipeline(
+                    {
+                      message: combined,
+                      includeDocContext: true,
+                      includeSelection: !!activeProposal.replaceRange,
+                    },
+                    {
+                      getDocText: () =>
+                        view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n'),
+                      getSelectionText: () => {
+                        const { from, to } = view.state.selection;
+                        if (from === to) return '';
+                        return view.state.doc.textBetween(from, to, '\n', ' ');
+                      },
+                      getView: () => view,
+                      schema,
+                    }
+                  )
+                    .then((result) => {
+                      if (result.kind === 'proposal') {
+                        setActiveProposal(result);
+                        setLastProposalPrompt(combined);
+                      } else if (result.kind === 'chat') {
+                        toast.message(result.text);
+                      } else {
+                        toast.error(result.message);
+                      }
+                    })
+                    .catch((err) => {
+                      toast.error(`Refine failed: ${(err as Error).message}`);
+                    })
+                    .finally(() => setProposalBusy(false));
+                }}
+                onDiscard={() => setActiveProposal(null)}
+              />
+            )}
+
+            {/* Selection-anchored Ask AI — Notion / Word Rewrite
+                pattern from research §1, §2b, §3. Shows the "Ask AI"
+                pill above the selection start when there's text
+                selected AND an LLM is loaded. Submit runs the pipeline
+                with the user's free-form prompt; the resulting
+                proposal goes into the inline preview popover (same
+                surface as chat-driven proposals). */}
+            {/* SelectionAskAi forced off — LLM gating. */}
+            <SelectionAskAi
+              isOpen={false}
+              getView={() => getActiveEditorView() ?? null}
+              busy={askAiBusy}
+              onDismiss={() => setHasTextSelection(false)}
+              onSubmit={(promptText, capturedSelectionText) => {
+                const view = getActiveEditorView();
+                if (!view) return;
+                const schema = view.state.schema;
+                setAskAiBusy(true);
+                void runPipeline(
+                  {
+                    message: promptText,
+                    includeDocContext: false,
+                    includeSelection: true,
+                  },
+                  {
+                    getDocText: () =>
+                      view.state.doc.textBetween(0, view.state.doc.content.size, '\n', '\n'),
+                    // Prefer the snapshot taken when the pill opened —
+                    // by submit time the textarea has focus and the
+                    // editor's selection may be collapsed (or look
+                    // like it is). Falls back to a live read for any
+                    // code path that didn't capture.
+                    getSelectionText: () => {
+                      if (capturedSelectionText) return capturedSelectionText;
+                      const { from, to } = view.state.selection;
+                      if (from === to) return '';
+                      return view.state.doc.textBetween(from, to, '\n', ' ');
+                    },
+                    getView: () => view,
+                    schema,
+                  }
+                )
+                  .then((result) => {
+                    if (result.kind === 'proposal') {
+                      setActiveProposal(result);
+                      setLastProposalPrompt(promptText);
+                    } else if (result.kind === 'chat') {
+                      // Surface short chat replies as a toast — the
+                      // user invoked from selection, not from chat, so
+                      // routing back into the chat history would be
+                      // jarring.
+                      toast.message(result.text);
+                    } else {
+                      toast.error(result.message);
+                    }
+                  })
+                  .catch((err) => {
+                    toast.error(`AI request failed: ${(err as Error).message}`);
+                  })
+                  .finally(() => setAskAiBusy(false));
+              }}
             />
 
             {/* Toast notifications */}
@@ -5619,6 +9462,137 @@ body { background: white; }
                   }
                 />
               )}
+              {bookmarksDialogOpen && (
+                <BookmarksDialog
+                  isOpen={bookmarksDialogOpen}
+                  onClose={() => setBookmarksDialogOpen(false)}
+                  bookmarks={(() => {
+                    const list: Array<{ paraId: string; name: string }> = [];
+                    const view = pagedEditorRef.current?.getView();
+                    const doc = view?.state.doc;
+                    if (!doc) return list;
+                    doc.descendants((node) => {
+                      if (node.type.name !== 'paragraph') return;
+                      const paraId = node.attrs.paraId as string | undefined;
+                      const bms = node.attrs.bookmarks as
+                        | Array<{ id: number; name: string }>
+                        | undefined;
+                      if (!bms || !paraId) return;
+                      for (const bm of bms) list.push({ paraId, name: bm.name });
+                      return false;
+                    });
+                    return list;
+                  })()}
+                  onGoTo={(paraId) => {
+                    pagedEditorRef.current?.scrollToParaId(paraId);
+                  }}
+                  onAdd={(name) => {
+                    const view = getActiveEditorView();
+                    if (!view) return;
+                    const { $from } = view.state.selection;
+                    let paraNode = $from.parent;
+                    for (let d = $from.depth; d > 0 && paraNode.type.name !== 'paragraph'; d--) {
+                      paraNode = $from.node(d - 1);
+                    }
+                    if (paraNode.type.name !== 'paragraph') return;
+                    const existing =
+                      (paraNode.attrs.bookmarks as Array<{ id: number; name: string }> | null) ??
+                      [];
+                    if (existing.some((b) => b.name === name)) return;
+                    const nextId =
+                      existing.reduce((m, b) => Math.max(m, b.id), 0) +
+                      Math.floor(Math.random() * 1000) +
+                      1;
+                    setParagraphAttrs({
+                      bookmarks: [...existing, { id: nextId, name }],
+                    })(view.state, view.dispatch);
+                    focusActiveEditor();
+                  }}
+                  onDelete={(entry) => {
+                    const view = getActiveEditorView();
+                    if (!view) return;
+                    let targetPos: number | null = null;
+                    let targetNode: ReturnType<typeof view.state.doc.nodeAt> | null = null;
+                    view.state.doc.descendants((node, pos) => {
+                      if (targetPos !== null) return false;
+                      if (node.type.name !== 'paragraph') return;
+                      if (node.attrs.paraId === entry.paraId) {
+                        targetPos = pos;
+                        targetNode = node;
+                      }
+                      return false;
+                    });
+                    if (targetPos === null || !targetNode) return;
+                    const existing =
+                      ((targetNode as { attrs: Record<string, unknown> }).attrs.bookmarks as Array<{
+                        id: number;
+                        name: string;
+                      }> | null) ?? [];
+                    const next = existing.filter((b) => b.name !== entry.name);
+                    const tr = view.state.tr.setNodeMarkup(targetPos, undefined, {
+                      ...(targetNode as { attrs: Record<string, unknown> }).attrs,
+                      bookmarks: next.length > 0 ? next : null,
+                    });
+                    view.dispatch(tr);
+                    focusActiveEditor();
+                  }}
+                />
+              )}
+              {characterSpacingDialogOpen && (
+                <CharacterSpacingDialog
+                  isOpen={characterSpacingDialogOpen}
+                  onClose={() => setCharacterSpacingDialogOpen(false)}
+                  initialValue={characterSpacingInitial}
+                  onSubmit={handleSubmitCharacterSpacing}
+                />
+              )}
+              {insertSymbolOpen && (
+                <InsertSymbolDialog
+                  isOpen={insertSymbolOpen}
+                  onClose={() => setInsertSymbolOpen(false)}
+                  onInsert={handleInsertSymbol}
+                />
+              )}
+              {bordersShadingOpen && (
+                <BordersAndShadingDialog
+                  isOpen={bordersShadingOpen}
+                  onClose={() => setBordersShadingOpen(false)}
+                  initialValue={bordersShadingInitial}
+                  onSubmit={handleSubmitBordersShading}
+                />
+              )}
+              {paragraphDialogOpen && (
+                <CustomSpacingDialog
+                  isOpen={paragraphDialogOpen}
+                  onClose={() => setParagraphDialogOpen(false)}
+                  initialValue={{
+                    lineSpacingRule: 'auto',
+                    lineSpacing: state.selectionFormatting.lineSpacing ?? 240,
+                    spaceBefore: state.selectionFormatting.spaceBefore ?? 0,
+                    spaceAfter: state.selectionFormatting.spaceAfter ?? 0,
+                    contextualSpacing: false,
+                    keepNext: false,
+                    keepLines: false,
+                    widowControl: true,
+                    pageBreakBefore: false,
+                  }}
+                  onChange={(v) => {
+                    const view = getActiveEditorView();
+                    if (!view) return;
+                    setParagraphAttrs({
+                      lineSpacing: v.lineSpacing || null,
+                      lineSpacingRule: v.lineSpacingRule,
+                      spaceBefore: v.spaceBefore || null,
+                      spaceAfter: v.spaceAfter || null,
+                      contextualSpacing: v.contextualSpacing,
+                      keepNext: v.keepNext,
+                      keepLines: v.keepLines,
+                      widowControl: v.widowControl,
+                      pageBreakBefore: v.pageBreakBefore,
+                    })(view.state, view.dispatch);
+                  }}
+                />
+              )}
               {splitCellDialogState.isOpen && (
                 <SplitCellDialog
                   isOpen={splitCellDialogState.isOpen}
@@ -5637,6 +9611,15 @@ body { background: white; }
                   onApply={handleApplyImagePosition}
                 />
               )}
+              {noteEdit && (
+                <FootnoteEditDialog
+                  initialText={noteEdit.text}
+                  title={noteEdit.kind === 'endnote' ? 'Edit endnote' : 'Edit footnote'}
+                  onCancel={() => setNoteEdit(null)}
+                  onApply={(t) => handleApplyNoteEdit(noteEdit.kind, noteEdit.id, t)}
+                />
+              )}
+
               {imagePropsOpen && (
                 <ImagePropertiesDialog
                   isOpen={imagePropsOpen}
@@ -5660,6 +9643,12 @@ body { background: white; }
                   onClose={() => setShowPageSetup(false)}
                   onApply={handlePageSetupApply}
                   currentProps={history.state?.package.document?.finalSectionProperties}
+                  currentPageColor={
+                    history.state?.package.document?.background?.color?.rgb
+                      ? `#${history.state.package.document.background.color.rgb}`
+                      : undefined
+                  }
+                  onPageColorChange={handlePageColorChange}
                 />
               )}
               {footnotePropsOpen && (
@@ -5675,17 +9664,526 @@ body { background: white; }
                 <FilePropertiesDialog
                   isOpen={showFileProperties}
                   onClose={() => setShowFileProperties(false)}
+                  fileName={documentName}
+                  sizeBytes={loadedSizeRef.current ?? undefined}
                   current={history.state?.package?.properties}
-                  onApply={(edits) => {
-                    // Push edits onto the current package so the next save
-                    // writes them through `applyCorePropertiesToXml`. The
-                    // edits land on the live `Document` so the dialog can
-                    // re-open against the new values without a save.
-                    const pkg = history.state?.package;
-                    if (!pkg) return;
-                    const next = { ...(pkg.properties ?? {}), ...edits };
-                    pkg.properties = next;
+                  onApply={(edits) => handleApplyFileProperties(edits as Record<string, string>)}
+                />
+              )}
+              {showWordCount && (
+                <WordCountDialog
+                  isOpen={showWordCount}
+                  onClose={() => setShowWordCount(false)}
+                  stats={{
+                    words: wordCount ?? 0,
+                    characters: charCountWithSpaces ?? 0,
+                    charactersNoSpaces: charCount ?? 0,
+                    paragraphs: paragraphCount ?? 0,
+                    pages: scrollPageInfo.totalPages,
                   }}
+                />
+              )}
+              <VoiceTypingIndicator
+                isListening={voiceTyping.isListening}
+                interimText={voiceTyping.interimText}
+                error={voiceTyping.error}
+                onStop={voiceTyping.stop}
+              />
+              {showAbout && <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />}
+              {showKeyboardShortcuts && (
+                <KeyboardShortcutsDialog
+                  isOpen={showKeyboardShortcuts}
+                  onClose={() => setShowKeyboardShortcuts(false)}
+                />
+              )}
+              {showPreferences && (
+                <PreferencesDialog
+                  isOpen={showPreferences}
+                  onClose={() => setShowPreferences(false)}
+                  preferences={preferences}
+                  onChange={handlePreferenceChange}
+                />
+              )}
+              {showWatermarkDialog && (
+                <WatermarkDialog
+                  isOpen={showWatermarkDialog}
+                  onClose={() => setShowWatermarkDialog(false)}
+                  current={history.state?.package.document.watermark}
+                  onApply={handleWatermarkChange}
+                />
+              )}
+              {showAccessibility && (
+                <AccessibilityDialog
+                  isOpen={showAccessibility}
+                  onClose={() => setShowAccessibility(false)}
+                  issues={accessibilityIssues}
+                  onGoto={handleAccessibilityGoto}
+                />
+              )}
+              {showBuildingBlocks && (
+                <BuildingBlocksDialog
+                  isOpen={showBuildingBlocks}
+                  onClose={() => setShowBuildingBlocks(false)}
+                  blocks={buildingBlocks}
+                  pendingPreview={pendingBuildingBlock?.preview ?? null}
+                  onSaveSelection={handleSaveBuildingBlock}
+                  onInsert={handleInsertBuildingBlock}
+                  onDelete={handleDeleteBuildingBlock}
+                />
+              )}
+              {showDictionary && (
+                <DictionaryDialog
+                  isOpen={showDictionary}
+                  onClose={() => setShowDictionary(false)}
+                  initialWord={dictionaryWord}
+                />
+              )}
+              {showTranslate && (
+                <TranslateDialog
+                  isOpen={showTranslate}
+                  onClose={() => setShowTranslate(false)}
+                  initialText={translateText}
+                  onReplace={translateRange ? handleTranslateReplace : undefined}
+                />
+              )}
+              {showTranslateDocument && (
+                <TranslateDocumentDialog
+                  isOpen={showTranslateDocument}
+                  onClose={() => setShowTranslateDocument(false)}
+                  documentName={documentName ?? 'Untitled'}
+                  getView={() => getActiveEditorView() ?? null}
+                  onSave={() => handleSave({ selective: false })}
+                  renderPreview={(buffer) => (
+                    <DocxEditorAsPreview
+                      documentBuffer={buffer}
+                      readOnly
+                      showToolbar={false}
+                      showStatusBar={false}
+                      showZoomControl={false}
+                      showRuler={false}
+                      showOutlineButton={false}
+                      showPanelRail={false}
+                    />
+                  )}
+                />
+              )}
+              {/* WritingAssistantSheet + ChatPanel moved into the
+                  below-toolbar flex row so they share geometry with
+                  VersionHistoryPanel — see ~L7927. */}
+              {showExplore && (
+                <ExploreDialog
+                  isOpen={showExplore}
+                  onClose={() => setShowExplore(false)}
+                  initialQuery={exploreQuery}
+                  onCite={handleExploreCite}
+                />
+              )}
+              {showCitations && (
+                <CitationsDialog
+                  isOpen={showCitations}
+                  onClose={() => setShowCitations(false)}
+                  citations={citations}
+                  onAdd={handleAddCitation}
+                  onDelete={handleDeleteCitation}
+                  onInsert={handleInsertCitation}
+                />
+              )}
+              {showCommandPalette && (
+                <CommandPaletteDialog
+                  isOpen={showCommandPalette}
+                  onClose={() => setShowCommandPalette(false)}
+                  items={[
+                    ...(onNew
+                      ? [
+                          {
+                            id: 'file.new',
+                            label: 'New document',
+                            path: 'File',
+                            shortcut: '⌘N',
+                            run: onNew,
+                          },
+                        ]
+                      : []),
+                    {
+                      id: 'file.open',
+                      label: 'Open…',
+                      path: 'File',
+                      shortcut: '⌘O',
+                      run: handleOpenDocument,
+                    },
+                    {
+                      id: 'file.save',
+                      label: 'Save (download .docx)',
+                      path: 'File',
+                      shortcut: '⌘S',
+                      run: handleDownloadDocument,
+                    },
+                    {
+                      id: 'file.print',
+                      label: 'Print',
+                      path: 'File',
+                      shortcut: '⌘P',
+                      run: handleDirectPrint,
+                    },
+                    {
+                      id: 'file.export.pdf',
+                      label: 'Export as PDF',
+                      path: 'File · Export',
+                      run: handleExportPdf,
+                    },
+                    {
+                      id: 'file.export.odt',
+                      label: 'Export as ODT',
+                      path: 'File · Export',
+                      run: handleExportOdt,
+                    },
+                    {
+                      id: 'file.export.md',
+                      label: 'Export as Markdown',
+                      path: 'File · Export',
+                      run: handleExportMd,
+                    },
+                    {
+                      id: 'file.export.txt',
+                      label: 'Export as Plain Text',
+                      path: 'File · Export',
+                      run: handleExportTxt,
+                    },
+                    {
+                      id: 'file.pageSetup',
+                      label: 'Page Setup…',
+                      path: 'File',
+                      run: handleOpenPageSetup,
+                    },
+                    {
+                      id: 'file.properties',
+                      label: 'Properties…',
+                      path: 'File',
+                      run: handleOpenFileProperties,
+                    },
+                    {
+                      id: 'file.makeCopy',
+                      label: 'Make a copy',
+                      path: 'File',
+                      run: handleMakeCopy,
+                    },
+                    {
+                      id: 'file.email',
+                      label: 'Email as attachment…',
+                      path: 'File',
+                      run: handleEmailAsAttachment,
+                    },
+
+                    {
+                      id: 'edit.find',
+                      label: 'Find',
+                      path: 'Edit',
+                      shortcut: '⌘F',
+                      run: () => findReplace.openFind(''),
+                    },
+                    {
+                      id: 'edit.findReplace',
+                      label: 'Find and Replace',
+                      path: 'Edit',
+                      shortcut: '⌘H',
+                      run: () => findReplace.openReplace(''),
+                    },
+                    {
+                      id: 'edit.hyperlink',
+                      label: 'Insert link',
+                      path: 'Edit',
+                      shortcut: '⌘K',
+                      run: () => handleFormat('insertLink'),
+                    },
+                    {
+                      id: 'edit.selectAll',
+                      label: 'Select All',
+                      path: 'Edit',
+                      shortcut: '⌘A',
+                      run: () => handleFormat('selectAll'),
+                    },
+
+                    {
+                      id: 'format.bold',
+                      label: 'Bold',
+                      path: 'Format',
+                      shortcut: '⌘B',
+                      run: () => handleFormat('bold'),
+                    },
+                    {
+                      id: 'format.italic',
+                      label: 'Italic',
+                      path: 'Format',
+                      shortcut: '⌘I',
+                      run: () => handleFormat('italic'),
+                    },
+                    {
+                      id: 'format.underline',
+                      label: 'Underline',
+                      path: 'Format',
+                      shortcut: '⌘U',
+                      run: () => handleFormat('underline'),
+                    },
+                    {
+                      id: 'format.strike',
+                      label: 'Strikethrough',
+                      path: 'Format',
+                      shortcut: '⌘⇧X',
+                      run: () => handleFormat('strikethrough'),
+                    },
+                    {
+                      id: 'format.super',
+                      label: 'Superscript',
+                      path: 'Format',
+                      shortcut: '⌘.',
+                      run: () => handleFormat('superscript'),
+                    },
+                    {
+                      id: 'format.sub',
+                      label: 'Subscript',
+                      path: 'Format',
+                      shortcut: '⌘,',
+                      run: () => handleFormat('subscript'),
+                    },
+                    {
+                      id: 'format.smallCaps',
+                      label: 'Small Caps',
+                      path: 'Format',
+                      run: () => handleFormat('toggleSmallCaps'),
+                    },
+                    {
+                      id: 'format.allCaps',
+                      label: 'All Caps',
+                      path: 'Format',
+                      run: () => handleFormat('toggleAllCaps'),
+                    },
+                    {
+                      id: 'format.clear',
+                      label: 'Clear formatting',
+                      path: 'Format',
+                      shortcut: '⌘\\',
+                      run: () => handleFormat('clearFormatting'),
+                    },
+                    {
+                      id: 'format.ltr',
+                      label: 'Left-to-right text',
+                      path: 'Format',
+                      run: () => handleFormat('setLtr'),
+                    },
+                    {
+                      id: 'format.rtl',
+                      label: 'Right-to-left text',
+                      path: 'Format',
+                      run: () => handleFormat('setRtl'),
+                    },
+
+                    {
+                      id: 'view.focusMode',
+                      label: focusMode ? 'Exit focus mode' : 'Enter focus mode',
+                      path: 'View',
+                      shortcut: 'Ctrl+Shift+\\',
+                      run: () => setFocusMode((v) => !v),
+                    },
+                    {
+                      id: 'view.zoomIn',
+                      label: 'Zoom in',
+                      path: 'View',
+                      shortcut: '⌘=',
+                      run: () => handleZoomChange(Math.min(state.zoom * 1.1, 4)),
+                    },
+                    {
+                      id: 'view.zoomOut',
+                      label: 'Zoom out',
+                      path: 'View',
+                      shortcut: '⌘−',
+                      run: () => handleZoomChange(Math.max(state.zoom / 1.1, 0.25)),
+                    },
+                    {
+                      id: 'view.zoomReset',
+                      label: 'Reset zoom to 100%',
+                      path: 'View',
+                      shortcut: '⌘0',
+                      run: () => handleZoomChange(1),
+                    },
+                    {
+                      id: 'view.themeAuto',
+                      label: 'Theme: match system',
+                      path: 'View',
+                      run: () => handleSetColorTheme('auto'),
+                    },
+                    {
+                      id: 'view.themeLight',
+                      label: 'Theme: light',
+                      path: 'View',
+                      run: () => handleSetColorTheme('light'),
+                    },
+                    {
+                      id: 'view.themeDark',
+                      label: 'Theme: dark',
+                      path: 'View',
+                      run: () => handleSetColorTheme('dark'),
+                    },
+
+                    {
+                      id: 'insert.pageBreak',
+                      label: 'Insert page break',
+                      path: 'Insert',
+                      shortcut: '⌘↵',
+                      run: () => handleInsertPageBreak(),
+                    },
+                    {
+                      id: 'insert.toc',
+                      label: 'Insert table of contents',
+                      path: 'Insert',
+                      run: () => handleInsertTOC(),
+                    },
+                    {
+                      id: 'insert.image',
+                      label: 'Insert image',
+                      path: 'Insert',
+                      run: handleInsertImageClick,
+                    },
+                    {
+                      id: 'insert.watermark',
+                      label: 'Watermark…',
+                      path: 'Insert',
+                      run: () => setShowWatermarkDialog(true),
+                    },
+                    {
+                      id: 'insert.buildingBlocks',
+                      label: 'Building blocks…',
+                      path: 'Insert',
+                      run: handleOpenBuildingBlocks,
+                    },
+                    {
+                      id: 'insert.convertToTable',
+                      label: 'Convert selection to table',
+                      path: 'Insert',
+                      run: handleConvertSelectionToTable,
+                    },
+                    {
+                      id: 'insert.shape.rectangle',
+                      label: 'Shape · Rectangle',
+                      path: 'Insert',
+                      run: () => handleInsertShape('rectangle'),
+                    },
+                    {
+                      id: 'insert.shape.ellipse',
+                      label: 'Shape · Ellipse',
+                      path: 'Insert',
+                      run: () => handleInsertShape('ellipse'),
+                    },
+                    {
+                      id: 'insert.shape.line',
+                      label: 'Shape · Line',
+                      path: 'Insert',
+                      run: () => handleInsertShape('line'),
+                    },
+                    {
+                      id: 'insert.shape.arrow',
+                      label: 'Shape · Arrow',
+                      path: 'Insert',
+                      run: () => handleInsertShape('arrow'),
+                    },
+                    {
+                      id: 'insert.textbox',
+                      label: 'Text box',
+                      path: 'Insert',
+                      run: () => handleInsertTextBox('plain'),
+                    },
+                    {
+                      id: 'insert.callout',
+                      label: 'Callout',
+                      path: 'Insert',
+                      run: () => handleInsertTextBox('callout'),
+                    },
+
+                    {
+                      id: 'tools.wordCount',
+                      label: 'Word count',
+                      path: 'Tools',
+                      shortcut: '⌘⇧C',
+                      run: handleOpenWordCount,
+                    },
+                    {
+                      id: 'tools.dictionary',
+                      label: 'Dictionary',
+                      path: 'Tools',
+                      shortcut: '⌘⇧Y',
+                      run: handleOpenDictionary,
+                    },
+                    {
+                      id: 'tools.translate',
+                      label: 'Translate…',
+                      path: 'Tools',
+                      run: handleOpenTranslate,
+                    },
+                    {
+                      id: 'tools.explore',
+                      label: 'Explore…',
+                      path: 'Tools',
+                      run: handleOpenExplore,
+                    },
+                    {
+                      id: 'tools.citations',
+                      label: 'Citations…',
+                      path: 'Tools',
+                      run: handleOpenCitations,
+                    },
+                    {
+                      id: 'tools.preferences',
+                      label: 'Preferences…',
+                      path: 'Tools',
+                      run: () => setShowPreferences(true),
+                    },
+                    {
+                      id: 'tools.accessibility',
+                      label: 'Accessibility…',
+                      path: 'Tools',
+                      run: handleOpenAccessibility,
+                    },
+
+                    {
+                      id: 'view.showFormattingMarks',
+                      label: showFormattingMarks
+                        ? 'Hide non-printing characters'
+                        : 'Show non-printing characters',
+                      path: 'View',
+                      run: handleToggleShowFormattingMarks,
+                    },
+                    {
+                      id: 'view.showOutline',
+                      label: showOutline ? 'Hide document outline' : 'Show document outline',
+                      path: 'View',
+                      shortcut: '⌘⇧H',
+                      run: handleToggleOutline,
+                    },
+                    {
+                      id: 'view.showComments',
+                      label: showCommentsSidebar ? 'Hide comments' : 'Show comments',
+                      path: 'View',
+                      run: handleToggleComments,
+                    },
+                    {
+                      id: 'view.showVersionHistory',
+                      label: showVersionHistory ? 'Hide version history' : 'Show version history',
+                      path: 'View',
+                      run: handleToggleVersionHistory,
+                    },
+
+                    {
+                      id: 'help.report',
+                      label: 'Report a bug',
+                      path: 'Help',
+                      run: handleReportBug,
+                    },
+                    {
+                      id: 'help.about',
+                      label: 'About Casual Editor',
+                      path: 'Help',
+                      run: handleShowAbout,
+                    },
+                  ]}
                 />
               )}
             </Suspense>
@@ -5702,7 +10200,7 @@ body { background: white; }
             <input
               ref={docxInputRef}
               type="file"
-              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".docx,.odt,.md,.markdown,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               style={{ display: 'none' }}
               onChange={handleDocxFileChange}
             />
@@ -5718,3 +10216,9 @@ body { background: white; }
 // ============================================================================
 
 export default DocxEditor;
+
+// Type-only re-cast for the same DocxEditor component, suitable for
+// JSX use in places (like the Translate-document preview pane) where
+// forwardRef's stricter signature trips TypeScript. Renders the exact
+// same component — no ref forwarding is needed at the call site.
+const DocxEditorAsPreview = DocxEditor as unknown as React.FC<DocxEditorProps>;

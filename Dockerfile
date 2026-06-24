@@ -17,7 +17,7 @@
 # Three stages:
 #   1. web   — bun + vite build of the React editor, with collab
 #              enabled via VITE_COLLAB_ENABLED=true.
-#   2. build — Go 1.24, statically-linked gateway binary.
+#   2. build — Go 1.25, statically-linked gateway binary.
 #   3. run   — distroless-ish Alpine + ca-certs + binary + static.
 
 # ─── Stage 1: build the SPA ────────────────────────────────────────
@@ -39,7 +39,7 @@ ENV VITE_COLLAB_ENABLED=true
 RUN bun run build && bun run build:demo
 
 # ─── Stage 2: build the Go gateway ─────────────────────────────────
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 WORKDIR /src
 
 COPY backend/go.mod backend/go.sum* ./

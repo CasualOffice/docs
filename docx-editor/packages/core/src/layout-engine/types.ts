@@ -156,6 +156,10 @@ export type ImageRun = {
   alt?: string;
   /** CSS transform string (rotation, flip) */
   transform?: string;
+  /** Picture border (round-trips via image node attrs; painted by renderImage) */
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: string;
   /** Position for floating/anchored images */
   position?: ImageRunPosition;
   /** Wrap type from DOCX (inline, square, tight, through, topAndBottom, etc.) */
@@ -435,6 +439,10 @@ export type ImageBlock = {
   alt?: string;
   /** CSS transform string (rotation, flip) */
   transform?: string;
+  /** Picture border (round-trips via image node attrs; painted by renderImage) */
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: string;
   anchor?: {
     isAnchored?: boolean;
     offsetH?: number;
@@ -514,6 +522,37 @@ export type TextBoxBlock = {
    * when our font metrics disagree with Word's saved ext.cy.
    */
   autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
+  /**
+   * Anchored position (DrawingML wp:positionH / wp:positionV). Captured
+   * by `convertTextBoxNode` from the PM TextBox attrs and applied at
+   * render time as a `transform: translate()` so the box visually
+   * appears at its intended position WITHOUT changing in-flow space
+   * (pagination unchanged). Pre-fix, these attrs round-tripped through
+   * PM but the renderer ignored them, so anchored shapes rendered at
+   * the cursor regardless of where Word said they belonged.
+   *
+   * Scope: today we only honor `relFromH/V === 'paragraph'` (or
+   * undefined) — those are the most common cases. Page / margin /
+   * column anchors are preserved in the attrs but not visually
+   * applied because a transform from the in-flow origin would land
+   * the box at "wrong-place + offset" instead of "page-edge + offset".
+   * Properly honoring those needs the hybrid cursor-reservation
+   * layout work; until then, conservative non-application is strictly
+   * better than mis-application.
+   *
+   * `offsetH` / `offsetV` are in EMUs (DrawingML units, 914 400 per
+   * inch) — converted to pixels at render time via `emuToPixels`.
+   */
+  anchor?: {
+    offsetH?: number;
+    offsetV?: number;
+    relFromH?: string;
+    relFromV?: string;
+    alignH?: string;
+    alignV?: string;
+    /** VML `z-index` < 0 — paint behind body text. */
+    behindDoc?: boolean;
+  };
   pmStart?: number;
   pmEnd?: number;
 };
@@ -734,6 +773,14 @@ export type TextBoxFragment = FragmentBase & {
   kind: 'textBox';
   /** Height of the text box. */
   height: number;
+  /**
+   * True when positioned absolutely from its anchor (page/margin/column),
+   * NOT advancing the in-flow cursor. The renderer then places it from
+   * `x`/`y` directly instead of the paragraph-relative transform.
+   */
+  isAnchored?: boolean;
+  /** Stacking: negative paints behind body text (VML `z-index` < 0). */
+  zIndex?: number;
 };
 
 /**
@@ -801,6 +848,15 @@ export type ColumnLayout = {
   equalWidth?: boolean;
   /** Draw vertical separator line between columns (w:sep). */
   separator?: boolean;
+  /**
+   * Per-column geometry for unequal columns (`w:equalWidth="0"`), in pixels,
+   * in document order. Each entry's `width` is the column body width and
+   * `space` is the gap to the FOLLOWING column (the trailing column's `space`
+   * is unused). When present and `count` matches, the paginator uses these
+   * directly instead of splitting the content width equally. Absent / empty =
+   * equal columns.
+   */
+  columnWidths?: Array<{ width: number; space: number }>;
 };
 
 /**

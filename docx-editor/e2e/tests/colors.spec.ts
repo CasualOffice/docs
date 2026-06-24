@@ -373,9 +373,11 @@ test.describe('Border Color Picker', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
-    // Use the demo document which already contains tables
+    // Border-color picker is a table-context split-button — it only
+    // renders when the cursor is inside a table cell. Load the demo
+    // doc (which has tables) then click into one.
+    await editor.loadDocxFile('fixtures/demo/demo.docx');
     await editor.focus();
-    // Click on a table cell — use cell (0, 0, 0) which is "npm" text
     await editor.clickTableCell(0, 0, 0);
     await page.waitForTimeout(500);
   });

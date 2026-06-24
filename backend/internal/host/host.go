@@ -23,7 +23,47 @@ package host
 import (
 	"context"
 	"errors"
+	"time"
 )
+
+// RevisionMeta is one entry in a doc's save history. Lives in the
+// shared host package so every concrete implementation (inline,
+// local, future wopi / s3 / postgres) emits the same wire shape,
+// and the gateway's history handler can serialize it without per-
+// impl branching.
+type RevisionMeta struct {
+	// Version is the monotonic save counter at the time this
+	// revision was recorded.
+	Version uint64 `json:"version"`
+	// SavedAt is when this revision was recorded (doc creation for
+	// version 1, Snapshot time thereafter).
+	SavedAt time.Time `json:"savedAt"`
+	// SizeBytes is the .docx byte length at this revision.
+	SizeBytes int `json:"sizeBytes"`
+	// Author is the display name of whoever triggered the save,
+	// when known. Anonymous hosts (inline, local) leave this
+	// empty; an authenticated host populates it. JSON-omitted
+	// when empty so clients can render a generic "Saved" label.
+	Author string `json:"author,omitempty"`
+}
+
+// DocStore is the superset of host.Integration that the gateway
+// uses directly: upload + persistence + history + rename. Every
+// concrete store (inline, local, future remote backends) implements
+// this so cmd/gateway/main.go can pick one at startup from an env
+// var and pass it through to every handler without type-switching.
+type DocStore interface {
+	Integration
+
+	// Store ingests freshly-uploaded bytes and returns a new docId.
+	Store(fileName string, contents []byte) (string, error)
+
+	// Rename updates the user-visible filename for an existing doc.
+	Rename(docID, newName string) error
+
+	// History returns the revision-metadata log oldest-first.
+	History(docID string) ([]RevisionMeta, error)
+}
 
 // FileInfo carries the metadata the gateway needs about a doc
 // beyond its raw bytes. Hosts that don't expose all fields can
@@ -64,6 +104,57 @@ type Integration interface {
 	// room drain. The host's response carries a new Version that
 	// the caller logs but does not retain (we're stateless).
 	Snapshot(ctx context.Context, docID, authToken string, contents []byte) error
+}
+
+// Locker is the optional capability hosts implement when they need
+// the editor to claim a lock for the duration of an active room.
+// WOPI hosts use this so a second editor (Word Online, for instance)
+// can't open the same file concurrently and clobber the saves.
+//
+// The contract: the room manager calls Lock once on first client
+// join (with a freshly-minted lockID it remembers for the room's
+// lifetime), Unlock once on last client leave, and RefreshLock
+// periodically while the room is alive (the period is the room
+// manager's choice; WOPI hosts typically expect a refresh every
+// ~5-10 min). The same lockID is used for every call within a
+// room's lifetime.
+//
+// Hosts that don't have lock semantics (inline, local) simply don't
+// implement this interface; the room manager checks via type
+// assertion and skips the calls when the capability isn't there.
+//
+// Returning host.ErrConflict from Lock means the file is already
+// locked by a different client (Word Online has it open, etc.);
+// the room manager treats that as "refuse to open this room" and
+// surfaces a 409 to the WS join.
+type Locker interface {
+	// Lock claims the file for this editor. lockID is opaque to the
+	// host — it just round-trips through. authToken is the WOPI
+	// access_token of the user opening the file; the host
+	// authenticates the lock claim against it.
+	Lock(ctx context.Context, docID, lockID, authToken string) error
+
+	// Unlock releases a previously-acquired lock. lockID must match
+	// what was passed to Lock. Idempotent: if the lock has already
+	// expired host-side, the host typically returns 200 (or 409 with
+	// X-WOPI-Lock=""); either is fine here.
+	Unlock(ctx context.Context, docID, lockID, authToken string) error
+
+	// RefreshLock extends the lifetime of an existing lock by the
+	// host's TTL (typically 30 min for WOPI hosts). Called by a
+	// periodic ticker in the room manager.
+	RefreshLock(ctx context.Context, docID, lockID, authToken string) error
+}
+
+// RevisionStore is an optional host capability: it returns the .docx
+// bytes of a specific historical revision so the editor can restore a
+// past version. Hosts that retain per-revision bytes implement it;
+// callers type-assert for it (like Locker). Hosts that only keep
+// revision metadata, or where the host owns versioning (e.g. WOPI),
+// omit it — the gateway then surfaces 501 for the restore-download
+// route. Returns ErrNotFound when the doc or version is unknown.
+type RevisionStore interface {
+	FetchRevision(docID string, version uint64) ([]byte, error)
 }
 
 // Sentinel errors. Implementations either return these directly

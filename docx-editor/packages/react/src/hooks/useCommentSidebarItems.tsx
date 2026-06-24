@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Comment } from '@eigenpal/docx-core/types/content';
+// useMemo already imported above — knownAuthors uses it.
 import type { ReactSidebarItem } from '../plugin-api/types';
 import type { TrackedChangeEntry } from '../components/sidebar/cardUtils';
 import { CommentCard } from '../components/sidebar/CommentCard';
@@ -27,6 +28,9 @@ export interface UseCommentSidebarItemsProps {
   showResolved?: boolean;
   isAddingComment?: boolean;
   addCommentYPosition?: number | null;
+  /** Current author — included in @-mention suggestions so the
+   *  composer can mention themselves in a doc with no other peers. */
+  currentAuthor?: string;
 }
 
 export function useCommentSidebarItems({
@@ -36,7 +40,28 @@ export function useCommentSidebarItems({
   showResolved = false,
   isAddingComment = false,
   addCommentYPosition = null,
+  currentAuthor,
 }: UseCommentSidebarItemsProps): ReactSidebarItem[] {
+  // Distinct author names from every comment + tracked-change + the
+  // current author. Drives the @-mention typeahead in AddCommentCard
+  // and the chip rendering inside CommentCard. We don't have a live
+  // presence-graph (single-user / loose collab), so the historical
+  // authors list is the best signal we have.
+  const knownAuthors = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const push = (name?: string | null): void => {
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(name);
+    };
+    push(currentAuthor);
+    for (const c of comments) push(c.author);
+    for (const tc of trackedChanges) push(tc.author);
+    return out;
+  }, [comments, trackedChanges, currentAuthor]);
   // Active comments always, resolved only when showResolved
   const visibleComments = useMemo(
     () =>
@@ -78,6 +103,7 @@ export function useCommentSidebarItems({
             {...props}
             onSubmit={callbacks.onAddComment}
             onCancel={callbacks.onCancelAddComment}
+            knownAuthors={knownAuthors}
           />
         ),
       });
@@ -104,6 +130,7 @@ export function useCommentSidebarItems({
               onResolve={callbacks.onCommentResolve}
               onUnresolve={callbacks.onCommentUnresolve}
               onDelete={callbacks.onCommentDelete}
+              knownAuthors={knownAuthors}
             />
           ),
       });
@@ -139,5 +166,6 @@ export function useCommentSidebarItems({
     callbacks,
     isAddingComment,
     addCommentYPosition,
+    knownAuthors,
   ]);
 }
