@@ -11,6 +11,7 @@ import {
   setStrictCoEditing,
   isStrictCoEditingEnabled,
   peerLocks,
+  strictCoEditingKey,
   type PeerLock,
 } from './strictCoEditing';
 
@@ -56,9 +57,7 @@ function tryTypeAt(state: EditorState, pos: number): boolean {
 describe('strict co-editing', () => {
   test('disabled by default — no locks, all edits allowed', () => {
     const { ranges } = makeDoc();
-    const state = makeState([
-      { ...ranges[1]!, name: 'Bob', color: '#ff0000', clientId: 2 },
-    ]);
+    const state = makeState([{ ...ranges[1]!, name: 'Bob', color: '#ff0000', clientId: 2 }]);
     expect(isStrictCoEditingEnabled(state)).toBe(false);
     expect(peerLocks(state)).toHaveLength(0);
     // Edit inside the (would-be) locked second paragraph is allowed.
@@ -109,6 +108,16 @@ describe('strict co-editing', () => {
     // A doc edit inside the locked block is allowed because it's "remote".
     const { state: next } = state.applyTransaction(state.tr.insertText('X', ranges[1]!.from + 1));
     expect(next.doc.textContent).not.toBe(state.doc.textContent);
+  });
+
+  test('enabled with locks produces decorations (dashed border + badge)', () => {
+    const { ranges } = makeDoc();
+    const lock: PeerLock = { ...ranges[1]!, name: 'Bob', color: '#abcdef', clientId: 2 };
+    const state = makeState([lock], { enabled: true });
+    const ps = strictCoEditingKey.getState(state);
+    expect(ps).toBeTruthy();
+    // A node decoration on the locked paragraph + a badge widget.
+    expect(ps!.decorations.find().length).toBeGreaterThanOrEqual(1);
   });
 
   test('disabling clears locks and re-allows edits', () => {

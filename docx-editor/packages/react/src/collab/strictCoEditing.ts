@@ -93,9 +93,12 @@ function buildDecorations(doc: EditorState['doc'], locks: PeerLock[]): Decoratio
   for (const lock of locks) {
     if (lock.from < 0 || lock.to > doc.content.size || lock.from >= lock.to) continue;
     decos.push(
+      // OnlyOffice Strict-mode representation: a dashed rectangle in the
+      // editing peer's colour + a faint tint of the same colour (no heavy
+      // dimming — the paragraph stays readable, just clearly "theirs").
       Decoration.node(lock.from, lock.to, {
         class: 'docx-peer-locked',
-        style: `outline: 2px solid ${lock.color}; outline-offset: 1px; opacity: 0.7;`,
+        style: `outline: 1.5px dashed ${lock.color}; outline-offset: 2px; background-color: ${lock.color}14;`,
         'data-locked-by': lock.name,
       })
     );
