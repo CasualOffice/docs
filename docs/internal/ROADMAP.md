@@ -6,7 +6,12 @@ Consolidates the resolved fidelity/editability/collab trackers (now in
 phase-wise plan. Living reference/design docs (backend, storage, SDK, iframe,
 writing-assistant, snapshot, collab-scale) stay as-is alongside this.
 
-Last updated: 2026-06-24.
+Last updated: 2026-06-25.
+
+**Recently shipped (2026-06-24→25):** Phase A is **complete** (track-changes, version history +
+Google-Docs preview/panel, Strict co-editing). Phase D **equations** is complete (render +
+author + edit + OMML round-trip). Desktop (Tauri) web-bridge folded into `main`, offline-first.
+Fixes: context-menu clamp, vertical-ruler margin-drag, kebab positioning, star icon.
 
 ---
 
@@ -94,14 +99,25 @@ calibration is **exhausted** (Calibri/empty-para shipped; Arial null because SDS
 
 ### Phase D — Feature breadth (close gaps vs LibreOffice)
 From the competitive matrix — the capabilities desktop suites have that we don't:
-native **equations / LaTeX** (a cheap differentiator the cloud editors lack), **mail
-merge**, **forms**, broader styles/sections. Prioritize by user demand.
+- **Equations / LaTeX** — ✅ **SHIPPED** (2026-06-25). Existing OMML equations render as real
+  math (#92); authoring round-trips MathML→OMML via a dependency-free converter (#94);
+  Insert → Equation UI with LaTeX input + live KaTeX preview + Alt+= + inline/display (#95);
+  double-click an equation to edit it in place (#96). `ommlToMathml`/`mathmlToOmml` unit-tested;
+  insert/edit/render e2e. The cheap differentiator cloud editors lack. *Known gap:* editing a
+  Word-IMPORTED equation opens the dialog blank (no OMML→LaTeX yet — you can replace, not see
+  the source).
+- **Mail merge**, **forms** (content controls / SDT), broader styles/sections — ⬜ remaining.
+  Prioritize by user demand.
 
 ### Phase E — Platform & reach
 1. **File System Access folder integration** (Chromium progressive enhancement).
 2. **Accessibility on by default** — screen-reader/braille support without manual enable
    (beats all three competitors on first run).
-3. **Tauri desktop binary** — *paused by directive*; ships once the team signals.
+3. **Tauri desktop binary** — the desktop shell lives in the separate `CasualOffice/desktop`
+   repo (Tauri 2). The editor-side web bridge (`window.__deskApp__`) + offline-first flag
+   (collab fully off in desktop; history etc. on) are folded into `main` (#93); the desktop
+   CI builds the editor from `main`. Active desktop *feature* dev stays paused by directive —
+   the fold just ended the separate-branch maintenance.
 
 ---
 
