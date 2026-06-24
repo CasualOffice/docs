@@ -57,11 +57,17 @@ The features that close the gap with Google Docs / OnlyOffice for `.docx` workfl
      (⋮) menu (Restore / Rename / Delete), "Only named versions" filter, row hover affordance.
      Per-author colour dots deferred — local snapshots carry no author field yet (would need a
      `VersionSnapshot.author` store change). e2e: `version-panel-layout.spec.ts`.
-3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — ⬜ **the one
-   genuinely-unbuilt Phase-A item.** Focusing a paragraph locks it for peers (Yjs awareness);
-   others see it locked / read-only. Prevents distant concurrent reflow on long docs; *also*
-   mitigates the large-doc drift in Phase B. Collab-only, so verify with a 2-Y.Doc convergence
-   test at the data layer (multi-peer UI e2e is impractical without a live server).
+3. **Opt-in Strict / paragraph-lock co-editing mode** (OnlyOffice pattern) — ✅ **SHIPPED**
+   (PR #90, 2026-06-25). A peer's cursor locks its paragraph for the local user: dashed outline
+   + faint tint in the peer's colour + name badge (OnlyOffice representation, researched);
+   local edits to it are blocked, remote sync never is. Local policy derived from existing
+   cursor awareness (`peerLocks.ts`); enforcement core (`strictCoEditing.ts`) is unit-tested
+   with injected locks (the data-layer verification — multi-peer UI e2e needs a live server).
+   View-menu toggle "Strict co-editing: on/off" (shown only in collab); public API
+   `setStrictCoEditing` / `isStrictCoEditingEnabled` for host toggles.
+
+**Phase A is COMPLETE** — track-changes (#84/#85), version history + Google-Docs preview
+(#87), and Strict co-editing (#90) all shipped.
 
 **Reality check (2026-06-24 audit):** the editor is far more complete than a from-scratch
 roadmap implies — Phase A #1 and #2 were already built; only #3 (Strict mode) remains. The
