@@ -378,8 +378,7 @@ export function App() {
   // collaboration is intentionally disabled there (no Share, no presence,
   // no WS) — see `collabParams` / `collabEnabled` below. Editor features
   // like version history are NOT gated and work the same as on the web.
-  const isDesktop =
-    typeof window !== 'undefined' && window.__deskApp__?.isDesktop === true;
+  const isDesktop = typeof window !== 'undefined' && window.__deskApp__?.isDesktop === true;
 
   // URL → view sync. Phase 1 IA mirror: pathname is the source of
   // truth for which surface is rendered, so browser back / refresh /
@@ -814,9 +813,13 @@ export function App() {
     let cancelled = false;
     bridge
       .getProfile()
-      .then((p) => { if (!cancelled) setDeskProfile(p); })
+      .then((p) => {
+        if (!cancelled) setDeskProfile(p);
+      })
       .catch(() => undefined);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isDesktop]);
 
   const handleError = useCallback((error: Error) => {
@@ -1045,31 +1048,36 @@ export function App() {
           onNew={handleNewDocument}
           renderLogo={renderLogo}
           renderTitleBarRight={renderTitleBarRight}
-          onSave={async (buffer) => {
-            // Tauri shell: route every Save (toolbar button, File→Save,
-            // Ctrl+S) through the bridge so it overwrites the bound
-            // filesystem path instead of producing a phantom download.
-            // Web mode: DocxEditor falls back to its own blob-download
-            // path because no onSave handler is registered here.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const bridge = typeof window !== 'undefined' ? (window as any).__deskApp__ : undefined;
-            if (!bridge?.isDesktop) return;
-            setStatus('Saving…');
-            try {
-              const written = await bridge.save(buffer);
-              if (typeof written === 'string') {
-                const name = written.split(/[\\/]/).pop();
-                if (name) setFileName(name);
-              }
-              setStatus('Saved');
-              setTimeout(() => setStatus(''), 1500);
-            } catch (err) {
-              // eslint-disable-next-line no-console
-              console.error('desktop save failed', err);
-              setStatus('Save failed');
-              setTimeout(() => setStatus(''), 2500);
-            }
-          }}
+          // Tauri shell: route every Save (toolbar button, File→Save,
+          // Ctrl+S) through the bridge so it overwrites the bound
+          // filesystem path instead of producing a phantom download.
+          // Web mode: leave onSave UNSET so DocxEditor falls back to its
+          // own blob-download path. Passing a handler that no-ops in web
+          // mode still counts as "host owns save" inside the editor, which
+          // suppresses the download entirely (and breaks the e2e save flow).
+          onSave={
+            isDesktop
+              ? async (buffer) => {
+                  const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+                  if (!bridge?.isDesktop) return;
+                  setStatus('Saving…');
+                  try {
+                    const written = await bridge.save(buffer);
+                    if (typeof written === 'string') {
+                      const name = written.split(/[\\/]/).pop();
+                      if (name) setFileName(name);
+                    }
+                    setStatus('Saved');
+                    setTimeout(() => setStatus(''), 1500);
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error('desktop save failed', err);
+                    setStatus('Save failed');
+                    setTimeout(() => setStatus(''), 2500);
+                  }
+                }
+              : undefined
+          }
         />
       </main>
       <ShareDialog
