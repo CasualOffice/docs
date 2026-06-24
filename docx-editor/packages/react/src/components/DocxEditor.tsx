@@ -2495,6 +2495,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showPreferences, setShowPreferences] = useState(false);
   const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
   const [showEquationDialog, setShowEquationDialog] = useState(false);
+  // Equation dialog prefill — empty for a new insert, or the selected math
+  // node's LaTeX/display when editing an existing equation.
+  const [equationInitial, setEquationInitial] = useState<{
+    latex: string;
+    display: 'inline' | 'block';
+  }>({ latex: '', display: 'inline' });
   const [showAccessibility, setShowAccessibility] = useState(false);
   const [accessibilityIssues, setAccessibilityIssues] = useState<AccessibilityIssue[]>([]);
   // Building blocks (C6): persisted snippet list + a snapshot of whatever
@@ -3355,9 +3361,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         }
       }
 
-      // Alt+= → Insert equation (Word / OnlyOffice convention).
+      // Alt+= → equation dialog (Word / OnlyOffice). Prefill when a math
+      // node is selected so it edits in place; otherwise insert new.
       if (e.altKey && !cmdOrCtrl && !e.shiftKey && (e.key === '=' || e.code === 'Equal')) {
         e.preventDefault();
+        const eqView = getActiveEditorView();
+        const eqSel = eqView?.state.selection;
+        if (eqView && eqSel instanceof NodeSelection && eqSel.node.type.name === 'math') {
+          setEquationInitial({
+            latex: (eqSel.node.attrs.latex as string) || '',
+            display: (eqSel.node.attrs.display as string) === 'block' ? 'block' : 'inline',
+          });
+        } else {
+          setEquationInitial({ latex: '', display: 'inline' });
+        }
         setShowEquationDialog(true);
         return;
       }
@@ -6107,9 +6124,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     [getActiveEditorView, focusActiveEditor]
   );
 
-  // Insert an authored equation as a math node. It carries its LaTeX
-  // source + MathML (for re-editing + rendering); on save the MathML is
-  // converted to native OMML so it round-trips as real math.
+  // Insert (or, when a math node is selected, REPLACE) an authored equation
+  // as a math node. It carries its LaTeX source + MathML (for re-editing +
+  // rendering); on save the MathML is converted to native OMML so it
+  // round-trips as real math.
   const handleInsertEquation = useCallback(
     (eq: EquationInsert) => {
       const view = getActiveEditorView();
@@ -6123,10 +6141,52 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         plainText: eq.plainText,
         ommlXml: '',
       });
-      view.dispatch(view.state.tr.replaceSelectionWith(node, false).scrollIntoView());
+      const sel = view.state.selection;
+      const tr =
+        sel instanceof NodeSelection && sel.node.type.name === 'math'
+          ? view.state.tr.replaceWith(sel.from, sel.to, node) // edit existing
+          : view.state.tr.replaceSelectionWith(node, false); // insert new
+      view.dispatch(tr.scrollIntoView());
       focusActiveEditor();
     },
     [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Open the equation dialog. If a math node is selected, prefill it (edit);
+  // otherwise start blank (insert).
+  const openEquationDialog = useCallback(() => {
+    const view = getActiveEditorView();
+    const sel = view?.state.selection;
+    if (view && sel instanceof NodeSelection && sel.node.type.name === 'math') {
+      setEquationInitial({
+        latex: (sel.node.attrs.latex as string) || '',
+        display: (sel.node.attrs.display as string) === 'block' ? 'block' : 'inline',
+      });
+    } else {
+      setEquationInitial({ latex: '', display: 'inline' });
+    }
+    setShowEquationDialog(true);
+  }, [getActiveEditorView]);
+
+  // Double-click a painted equation → select it + open the dialog prefilled.
+  const handleEditEquation = useCallback(
+    (pos: number) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const node = view.state.doc.nodeAt(pos);
+      if (!node || node.type.name !== 'math') return;
+      try {
+        view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, pos)));
+      } catch {
+        return;
+      }
+      setEquationInitial({
+        latex: (node.attrs.latex as string) || '',
+        display: (node.attrs.display as string) === 'block' ? 'block' : 'inline',
+      });
+      setShowEquationDialog(true);
+    },
+    [getActiveEditorView]
   );
 
   const handleInsertCitation = useCallback(
@@ -8682,6 +8742,7 @@ body { background: white; }
                           onOpenProperties={() => openRightPanel('properties')}
                           onResizeTextBox={handleTextBoxSetSize}
                           onEditFootnote={handleEditFootnote}
+                          onEditEquation={handleEditEquation}
                           onEditEndnote={handleEditEndnote}
                           commentsSidebarOpen={sidebarOpen}
                           onAnchorPositionsChange={setAnchorPositions}
@@ -9779,6 +9840,8 @@ body { background: white; }
                   isOpen={showEquationDialog}
                   onClose={() => setShowEquationDialog(false)}
                   onInsert={handleInsertEquation}
+                  initialLatex={equationInitial.latex}
+                  initialDisplay={equationInitial.display}
                 />
               )}
               {showAccessibility && (
@@ -10185,7 +10248,7 @@ body { background: white; }
                       label: 'Equation',
                       path: 'Insert',
                       shortcut: 'Alt+=',
-                      run: () => setShowEquationDialog(true),
+                      run: openEquationDialog,
                     },
 
                     {

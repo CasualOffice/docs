@@ -358,6 +358,9 @@ export interface PagedEditorProps {
   onResizeTextBox?: (width: number, height: number) => void;
   /** Open the footnote text editor for the footnote double-clicked at page bottom. */
   onEditFootnote?: (footnoteId: number) => void;
+  /** Double-click a painted equation → edit it. Receives the math node's
+   *  ProseMirror position (from the painted span's data-pm-start). */
+  onEditEquation?: (pmPos: number) => void;
   /** Open the endnote text editor for the endnote double-clicked at document end. */
   onEditEndnote?: (endnoteId: number) => void;
   /** Callback with pre-computed Y positions for comment/tracked-change anchors (for sidebar positioning without DOM queries). */
@@ -1402,6 +1405,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
       onOpenProperties,
       onResizeTextBox,
       onEditFootnote,
+      onEditEquation,
       onEditEndnote,
       onAnchorPositionsChange,
       onTotalPagesChange,
@@ -1478,20 +1482,33 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     documentRef.current = document;
     const onEditFootnoteRef = useRef(onEditFootnote);
     onEditFootnoteRef.current = onEditFootnote;
+    const onEditEquationRef = useRef(onEditEquation);
+    onEditEquationRef.current = onEditEquation;
     // Double-click a painted footnote at page bottom → open its text editor.
+    // Double-click a painted equation → re-open the equation editor.
     useEffect(() => {
       const el = pagesContainerRef.current;
       if (!el) return;
       const onDbl = (e: MouseEvent) => {
-        const fnEl = (e.target as HTMLElement | null)?.closest(
-          '.layout-footnote[data-footnote-id]'
-        ) as HTMLElement | null;
-        if (!fnEl) return;
-        const id = Number(fnEl.dataset.footnoteId);
-        if (!Number.isNaN(id)) {
-          e.preventDefault();
-          e.stopPropagation();
-          onEditFootnoteRef.current?.(id);
+        const target = e.target as HTMLElement | null;
+        const fnEl = target?.closest('.layout-footnote[data-footnote-id]') as HTMLElement | null;
+        if (fnEl) {
+          const id = Number(fnEl.dataset.footnoteId);
+          if (!Number.isNaN(id)) {
+            e.preventDefault();
+            e.stopPropagation();
+            onEditFootnoteRef.current?.(id);
+          }
+          return;
+        }
+        const mathEl = target?.closest('.docx-math[data-pm-start]') as HTMLElement | null;
+        if (mathEl) {
+          const pos = Number(mathEl.dataset.pmStart);
+          if (!Number.isNaN(pos)) {
+            e.preventDefault();
+            e.stopPropagation();
+            onEditEquationRef.current?.(pos);
+          }
         }
       };
       el.addEventListener('dblclick', onDbl);
