@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
-import { WopiFileSource, WopiNotSupportedError } from './wopi';
+import { WopiFileSource, WopiNotSupportedError, WopiSaveConflictError } from './wopi';
 
 type Call = { url: string; init: RequestInit | undefined };
 
@@ -76,13 +76,15 @@ describe('WopiFileSource', () => {
     });
   });
 
-  it('open() proxies through the gateway download with the access_token query', async () => {
+  it('open() GETs collab /wopi/files/:id/contents with the access_token query', async () => {
     const h = makeHarness({ fileName: 'Notes.docx' });
     const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
-    h.setRespond(() => new Response(bytes, { status: 200, headers: { ETag: 'v7' } }));
+    h.setRespond(
+      () => new Response(bytes, { status: 200, headers: { 'X-WOPI-ItemVersion': 'v7' } })
+    );
     const result = await h.source.open('aHR0cDovL2hvc3QvZmlsZXMvYWJj');
     expect(h.calls[0].url).toContain(
-      '/api/docs/aHR0cDovL2hvc3QvZmlsZXMvYWJj/download?access_token=tok-jwt'
+      '/wopi/files/aHR0cDovL2hvc3QvZmlsZXMvYWJj/contents?access_token=tok-jwt'
     );
     expect(result.name).toBe('Notes.docx');
     expect(result.etag).toBe('v7');
@@ -99,9 +101,9 @@ describe('WopiFileSource', () => {
     }
   });
 
-  it('save() / rename() / delete() throw WopiNotSupportedError', async () => {
+  it('rename() / delete() throw WopiNotSupportedError (host owns lifecycle)', async () => {
     const { source } = makeHarness();
-    for (const op of [() => source.save(), () => source.rename(), () => source.delete()] as Array<
+    for (const op of [() => source.rename(), () => source.delete()] as Array<
       () => Promise<unknown>
     >) {
       try {
@@ -110,6 +112,60 @@ describe('WopiFileSource', () => {
       } catch (err) {
         expect(err).toBeInstanceOf(WopiNotSupportedError);
       }
+    }
+  });
+
+  it('save() POSTs PutFile and sends the opened version as X-WOPI-ItemVersion', async () => {
+    const h = makeHarness({ fileName: 'Notes.docx' });
+    // First open so the source retains the item version for If-Match.
+    h.setRespond(
+      () =>
+        new Response(new Uint8Array([1]), { status: 200, headers: { 'X-WOPI-ItemVersion': 'v1' } })
+    );
+    await h.source.open('aHR0cDovL2hvc3QvZmlsZXMvYWJj');
+
+    h.setRespond(
+      () => new Response(JSON.stringify({ ok: true, version: 'v2', bytes: 4 }), { status: 200 })
+    );
+    const out = new Uint8Array([0x50, 0x4b, 0x03, 0x04]).buffer;
+    const result = await h.source.save('aHR0cDovL2hvc3QvZmlsZXMvYWJj', out);
+
+    const putCall = h.calls[1];
+    expect(putCall.url).toContain(
+      '/wopi/files/aHR0cDovL2hvc3QvZmlsZXMvYWJj/contents?access_token=tok-jwt'
+    );
+    expect(putCall.init?.method).toBe('POST');
+    const headers = putCall.init?.headers as Record<string, string>;
+    expect(headers['X-WOPI-ItemVersion']).toBe('v1');
+    expect(headers['Content-Type']).toBe('application/octet-stream');
+    expect(result).toEqual({ id: 'aHR0cDovL2hvc3QvZmlsZXMvYWJj', etag: 'v2' });
+  });
+
+  it('save() surfaces a 409 as WopiSaveConflictError with expected/actual', async () => {
+    const h = makeHarness();
+    h.setRespond(
+      () =>
+        new Response(JSON.stringify({ error: 'version_mismatch', expected: 'v3', actual: 'v9' }), {
+          status: 409,
+        })
+    );
+    try {
+      await h.source.save('aHR0cDovL2hvc3QvZmlsZXMvYWJj', new Uint8Array([1]).buffer);
+      throw new Error('expected throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(WopiSaveConflictError);
+      expect((err as WopiSaveConflictError).expected).toBe('v3');
+      expect((err as WopiSaveConflictError).actual).toBe('v9');
+    }
+  });
+
+  it('save() with a foreign docId throws WopiNotSupportedError', async () => {
+    const { source } = makeHarness();
+    try {
+      await source.save('some-other-id', new Uint8Array([1]).buffer);
+      throw new Error('expected throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(WopiNotSupportedError);
     }
   });
 
