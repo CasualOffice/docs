@@ -98,6 +98,7 @@ import {
   type FindResult,
 } from './dialogs/findReplaceUtils';
 import { useHyperlinkDialog, type HyperlinkData } from './dialogs/useHyperlinkDialog';
+import { EquationDialog, type EquationInsert } from './EquationDialog';
 import type { ImagePositionData } from './dialogs/ImagePositionDialog';
 import type { BordersAndShadingValue } from './dialogs/BordersAndShadingDialog';
 import type { ImagePropertiesData } from './dialogs/ImagePropertiesDialog';
@@ -2493,6 +2494,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showWatermarkDialog, setShowWatermarkDialog] = useState(false);
+  const [showEquationDialog, setShowEquationDialog] = useState(false);
   const [showAccessibility, setShowAccessibility] = useState(false);
   const [accessibilityIssues, setAccessibilityIssues] = useState<AccessibilityIssue[]>([]);
   // Building blocks (C6): persisted snippet list + a snapshot of whatever
@@ -3351,6 +3353,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             return;
           }
         }
+      }
+
+      // Alt+= → Insert equation (Word / OnlyOffice convention).
+      if (e.altKey && !cmdOrCtrl && !e.shiftKey && (e.key === '=' || e.code === 'Equal')) {
+        e.preventDefault();
+        setShowEquationDialog(true);
+        return;
       }
 
       if (cmdOrCtrl && !e.shiftKey && !e.altKey) {
@@ -6093,6 +6102,28 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         // off for an unusual schema configuration.
       }
       view.dispatch(tr.scrollIntoView());
+      focusActiveEditor();
+    },
+    [getActiveEditorView, focusActiveEditor]
+  );
+
+  // Insert an authored equation as a math node. It carries its LaTeX
+  // source + MathML (for re-editing + rendering); on save the MathML is
+  // converted to native OMML so it round-trips as real math.
+  const handleInsertEquation = useCallback(
+    (eq: EquationInsert) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const mathType = view.state.schema.nodes.math;
+      if (!mathType) return;
+      const node = mathType.create({
+        display: eq.display,
+        latex: eq.latex,
+        mathml: eq.mathml,
+        plainText: eq.plainText,
+        ommlXml: '',
+      });
+      view.dispatch(view.state.tr.replaceSelectionWith(node, false).scrollIntoView());
       focusActiveEditor();
     },
     [getActiveEditorView, focusActiveEditor]
@@ -9743,6 +9774,13 @@ body { background: white; }
                   onApply={handleWatermarkChange}
                 />
               )}
+              {showEquationDialog && (
+                <EquationDialog
+                  isOpen={showEquationDialog}
+                  onClose={() => setShowEquationDialog(false)}
+                  onInsert={handleInsertEquation}
+                />
+              )}
               {showAccessibility && (
                 <AccessibilityDialog
                   isOpen={showAccessibility}
@@ -10141,6 +10179,13 @@ body { background: white; }
                       label: 'Callout',
                       path: 'Insert',
                       run: () => handleInsertTextBox('callout'),
+                    },
+                    {
+                      id: 'insert.equation',
+                      label: 'Equation',
+                      path: 'Insert',
+                      shortcut: 'Alt+=',
+                      run: () => setShowEquationDialog(true),
                     },
 
                     {
