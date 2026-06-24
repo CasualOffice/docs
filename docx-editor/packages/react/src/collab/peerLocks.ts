@@ -17,7 +17,10 @@ import type { PeerLock } from './strictCoEditing';
 
 /** Minimal structural view of a Yjs Awareness — avoids a hard type import. */
 interface AwarenessLike {
-  getStates(): Map<number, { cursor?: { head: unknown }; user?: { name?: string; color?: string } }>;
+  getStates(): Map<
+    number,
+    { cursor?: { head: unknown }; user?: { name?: string; color?: string } }
+  >;
   on(event: 'change', cb: () => void): void;
   off(event: 'change', cb: () => void): void;
 }
