@@ -9917,6 +9917,7 @@ body { background: white; }
                   documentName={documentName ?? 'Untitled'}
                   getView={() => getActiveEditorView() ?? null}
                   onSave={() => handleSave({ selective: false })}
+                  onExport={onExport}
                   renderPreview={(buffer) => (
                     <DocxEditorAsPreview
                       documentBuffer={buffer}
