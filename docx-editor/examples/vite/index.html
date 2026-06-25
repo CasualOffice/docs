@@ -140,15 +140,15 @@
       }
     </script>
 
-    <!-- Preconnect to Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
-    <!-- Load Material Symbols font early with display=block to prevent FOUT -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
-    />
+    <!--
+      Material Symbols ships fully self-hosted via the @font-face above (a
+      ~88 KB subset containing only the icon ligatures this app actually
+      renders — HarfBuzz-verified coverage). The Google Fonts CDN stylesheet
+      was removed: it pulled the full ~3.8 MB variable font over the network
+      and registered the same `font-family`, defeating both the offline-first
+      goal and the subset. Text fonts (Inter / Manrope / JetBrains Mono) are
+      still loaded by the design-system tokens stylesheet.
+    -->
 
     <style>
       * {

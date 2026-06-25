@@ -218,6 +218,8 @@ export function AlignmentButtons({
                   key={option.value}
                   type="button"
                   title={`${optLabel}${optShortcut ? ` (${optShortcut})` : ''}`}
+                  aria-label={optLabel}
+                  aria-pressed={isActive}
                   data-testid={`alignment-${option.value}`}
                   style={{
                     display: 'flex',

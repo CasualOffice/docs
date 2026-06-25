@@ -40,6 +40,14 @@ export interface TranslateDocumentDialogProps {
    * is not a function" at boot.
    */
   renderPreview: (buffer: ArrayBuffer) => ReactNode;
+  /**
+   * Host export hook — mirrors `DocxEditor`'s `onExport`. In the desktop
+   * shell this routes the translated `.docx` through the native Save
+   * dialog instead of a phantom browser download. Returns `true` when the
+   * host handled the save; falsy (or unset, e.g. on the web) falls back to
+   * the `<a download>` blob path below.
+   */
+  onExport?: (blob: Blob, suggestedName: string) => boolean | Promise<boolean>;
 }
 
 const overlayStyle: CSSProperties = {
@@ -232,6 +240,7 @@ export function TranslateDocumentDialog({
   getView,
   onSave,
   renderPreview,
+  onExport,
 }: TranslateDocumentDialogProps) {
   const [source, setSource] = useState('en');
   const [target, setTarget] = useState('es');
@@ -396,11 +405,22 @@ export function TranslateDocumentDialog({
     setTarget(source);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!translatedBuffer) return;
     setExporting(true);
     try {
-      downloadBuffer(translatedBuffer, translatedFilename(documentName, target));
+      const fileName = translatedFilename(documentName, target);
+      // Desktop shell: hand the bytes to the host's native Save dialog so the
+      // user picks where the translated copy lands, instead of dropping a
+      // phantom blob in ~/Downloads. Web (onExport unset / returns false)
+      // falls back to the <a download> path.
+      const blob = new Blob([translatedBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      const savedViaHost = onExport ? await onExport(blob, fileName) : false;
+      if (!savedViaHost) {
+        downloadBuffer(translatedBuffer, fileName);
+      }
       onClose();
     } finally {
       setExporting(false);
