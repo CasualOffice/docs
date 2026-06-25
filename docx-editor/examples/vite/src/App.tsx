@@ -1173,6 +1173,29 @@ export function App() {
                 }
               : undefined
           }
+          // Tauri shell: File → Export (ODT/MD/TXT), Make a copy, and
+          // Email-as-attachment hand their bytes here so they open the native
+          // Save dialog (picker) instead of a phantom ~/Downloads blob.
+          // Returns true when the user picked a location (handled), false on
+          // cancel/error so the editor doesn't claim success. Web: unset →
+          // editor keeps its own blob download.
+          onExport={
+            isDesktop
+              ? async (blob: Blob, suggestedName: string) => {
+                  const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+                  if (!bridge?.isDesktop) return false;
+                  try {
+                    const buf = await blob.arrayBuffer();
+                    const written = await bridge.saveAs(suggestedName, buf);
+                    return written != null;
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error('desktop export failed', err);
+                    return false;
+                  }
+                }
+              : undefined
+          }
         />
       </main>
       <ShareDialog

@@ -157,14 +157,30 @@ export function MarkdownEditor({
   // Download the current source as its file. The visible CodeMirror state is
   // the source of truth (it mirrors the shared Y.Text in collab mode), so read
   // straight from the view to avoid a stale React-state snapshot.
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     const text = viewRef.current?.state.doc.toString() ?? docText;
     const mime = kind === 'markdown' ? 'text/markdown' : 'text/plain';
+    const suggested = fileName || (kind === 'markdown' ? 'document.md' : 'document.txt');
+    // Desktop shell: write through the native bridge — overwrite the bound
+    // file path (or open the native Save dialog when untitled) — never a
+    // phantom ~/Downloads blob. The web build keeps the `<a download>` flow.
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (bridge?.isDesktop) {
+      const buf = new TextEncoder().encode(text).buffer;
+      try {
+        if (bridge.filePath) await bridge.save(buf);
+        else await bridge.saveAs(suggested, buf);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('desktop markdown save failed', err);
+      }
+      return;
+    }
     const blob = new Blob([text], { type: `${mime};charset=utf-8` });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = fileName || (kind === 'markdown' ? 'document.md' : 'document.txt');
+    a.download = suggested;
     document.body.appendChild(a);
     a.click();
     a.remove();
