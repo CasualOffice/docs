@@ -21,6 +21,7 @@ export type {
 export type {
   TextColorAttrs,
   UnderlineAttrs,
+  RunShadingAttrs,
   FontSizeAttrs,
   FontFamilyAttrs,
   HyperlinkAttrs,

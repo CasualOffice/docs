@@ -6,7 +6,7 @@
  * to the extension system (extensions/marks/).
  */
 
-import type { UnderlineStyle, ThemeColorSlot } from '../../types/document';
+import type { UnderlineStyle, ThemeColorSlot, ShadingProperties } from '../../types/document';
 
 /**
  * Text color mark attributes
@@ -29,6 +29,13 @@ export interface TextColorAttrs {
 export interface UnderlineAttrs {
   style?: UnderlineStyle;
   color?: TextColorAttrs;
+}
+
+/**
+ * Internal run shading mark attributes.
+ */
+export interface RunShadingAttrs {
+  shading?: ShadingProperties;
 }
 
 /**

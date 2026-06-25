@@ -9,18 +9,10 @@
  * `<w:shd w:val="clear" w:color="auto" w:fill="HEX"/>` (run-level
  * shading), which Word preserves.
  *
- * The parser used to read `<w:shd>` ONLY into `formatting.shading` —
- * NOT back into `formatting.highlight`. The user's "highlight" lost its
- * semantic label inside the model so the highlight toolbar button
- * couldn't show "active" and toggling highlight off didn't clear it.
- *
- * Fix: when run-level `<w:shd>` is parsed and no explicit `<w:highlight>`
- * is present alongside it, the parser also sets `formatting.highlight`
- * to the shading fill's rgb. The fill stays in `formatting.shading`
- * verbatim too (so any code that reads shading directly is unaffected).
- *
- * These tests pin the round-trip: custom-color highlight in → custom-
- * color highlight out.
+ * Imported run-level `<w:shd>` must remain character shading, not become a
+ * highlight mark. LibreOffice does not surface many of these fills as text
+ * highlight, and promoting them made ordinary DOCX text look falsely
+ * highlighted in our editor.
  */
 
 import { describe, test, expect } from 'bun:test';
@@ -61,7 +53,7 @@ describe('Custom-hex highlight roundtrip (openspec ooxml-roundtrip-fidelity #1)'
     expect(serialized).toContain('w:fill="FFEB3B"');
   });
 
-  test('a serialized custom-hex highlight round-trips back to formatting.highlight', () => {
+  test('a serialized custom-hex highlight parses back as run shading, not false highlight', () => {
     const original = {
       highlight: 'FFEB3B' as TextFormatting['highlight'],
     } as TextFormatting;
@@ -69,7 +61,8 @@ describe('Custom-hex highlight roundtrip (openspec ooxml-roundtrip-fidelity #1)'
 
     const rPr = parseWrappedRPr(serialized);
     const reparsed = parseRunProperties(rPr, null);
-    expect(reparsed?.highlight).toBe('FFEB3B');
+    expect(reparsed?.shading?.fill?.rgb).toBe('FFEB3B');
+    expect(reparsed?.highlight).toBeUndefined();
   });
 
   test('a named highlight + a separate custom run-shading both round-trip independently', () => {
@@ -81,7 +74,7 @@ describe('Custom-hex highlight roundtrip (openspec ooxml-roundtrip-fidelity #1)'
     expect(parsed?.shading?.fill?.rgb).toBe('ABCDEF');
   });
 
-  test('lowercase hex round-trips stably (case-insensitive equality)', () => {
+  test('lowercase hex serializes as shading and does not rehydrate highlight', () => {
     const formatting = {
       highlight: 'ffeb3b' as TextFormatting['highlight'],
     } as TextFormatting;
@@ -89,16 +82,14 @@ describe('Custom-hex highlight roundtrip (openspec ooxml-roundtrip-fidelity #1)'
     expect(serialized).toContain('<w:shd');
     const rPr = parseWrappedRPr(serialized);
     const reparsed = parseRunProperties(rPr, null);
-    expect(reparsed?.highlight?.toLowerCase()).toBe('ffeb3b');
+    expect(reparsed?.shading?.fill?.rgb?.toLowerCase()).toBe('ffeb3b');
+    expect(reparsed?.highlight).toBeUndefined();
   });
 
-  test('shd alone (without highlight) is also exposed as highlight on parse', () => {
-    // The case that triggers the round-trip fix directly: parser sees
-    // run-level <w:shd> with no <w:highlight> sibling — should populate
-    // both formatting.shading and formatting.highlight.
+  test('shd alone (without highlight) is preserved only as shading', () => {
     const rPr = parseInnerRPr('<w:shd w:val="clear" w:color="auto" w:fill="FFEB3B"/>');
     const parsed = parseRunProperties(rPr, null);
     expect(parsed?.shading?.fill?.rgb).toBe('FFEB3B');
-    expect(parsed?.highlight).toBe('FFEB3B');
+    expect(parsed?.highlight).toBeUndefined();
   });
 });

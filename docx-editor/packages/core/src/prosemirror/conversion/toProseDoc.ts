@@ -1740,6 +1740,17 @@ function textFormattingToMarks(
     );
   }
 
+  // Character shading. This is intentionally separate from highlight:
+  // LibreOffice/Word documents commonly use <w:shd> for run-level shading that
+  // should round-trip but should not light up as user text-highlight.
+  if (formatting.shading) {
+    marks.push(
+      schema.mark('runShading', {
+        shading: formatting.shading,
+      })
+    );
+  }
+
   // Font size
   if (formatting.fontSize) {
     marks.push(
