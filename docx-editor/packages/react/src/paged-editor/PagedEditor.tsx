@@ -2432,7 +2432,15 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               if (tableEl) {
                 const tRect = tableEl.getBoundingClientRect();
                 const vRect = viewportEl.getBoundingClientRect();
-                nextChip = { x: tRect.right - vRect.left, y: tRect.top - vRect.top };
+                // Both rects are post-`scale(zoom)` screen boxes, but this chip
+                // is a child of the scaled viewport, so the browser re-scales by
+                // zoom on paint. Divide the screen-space delta by zoom (same as
+                // the selection-overlay math) or the chip double-scales and
+                // drifts away from the table proportional to (zoom − 1).
+                nextChip = {
+                  x: (tRect.right - vRect.left) / zoom,
+                  y: (tRect.top - vRect.top) / zoom,
+                };
               }
             }
           }
@@ -2458,13 +2466,17 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               if (!Number.isNaN(s) && !Number.isNaN(e) && from >= s && from < e) {
                 const r = htmlEl.getBoundingClientRect();
                 const v = viewportEl.getBoundingClientRect();
+                // Divide screen-space deltas + dims by zoom: this box is a child
+                // of the scaled viewport, so the browser re-scales on paint.
+                // Without it the chip + resize handles double-scale and drift
+                // off the text box proportional to (zoom − 1).
                 nextTb = {
-                  x: r.right - v.left,
-                  y: r.top - v.top,
-                  left: r.left - v.left,
-                  top: r.top - v.top,
-                  width: r.width,
-                  height: r.height,
+                  x: (r.right - v.left) / zoom,
+                  y: (r.top - v.top) / zoom,
+                  left: (r.left - v.left) / zoom,
+                  top: (r.top - v.top) / zoom,
+                  width: r.width / zoom,
+                  height: r.height / zoom,
                 };
                 break;
               }
@@ -4546,7 +4558,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               return parts.length > 0 ? parts.join(' ') : undefined;
             })(),
             transformOrigin: 'top center',
-            transition: 'transform 0.2s ease',
+            // No transform transition: an animated `scale()` makes the overlay
+            // recompute (which samples getBoundingClientRect) land mid-animation,
+            // leaving the selection highlight / caret offset from the text until
+            // the next selection change. Snapping zoom keeps the measured scale
+            // and the rendered scale in lock-step (and matches Word/Docs).
           }}
         >
           {/* Pages container */}
