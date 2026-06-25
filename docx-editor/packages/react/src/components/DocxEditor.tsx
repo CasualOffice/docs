@@ -476,6 +476,14 @@ export interface DocxEditorProps {
   document?: Document | null;
   /** Callback when document is saved */
   onSave?: (buffer: ArrayBuffer) => void;
+  /** Optional host-provided file deliverer for File → Export (ODT/MD/TXT),
+   *  Make a copy, and Email-as-attachment. When set, the editor hands the
+   *  produced blob + a suggested filename here instead of doing a browser
+   *  blob download, and skips the download if it returns true. The Casual
+   *  Office desktop shell wires this to a native Save dialog so exports open
+   *  a picker (never a phantom ~/Downloads file); the web build leaves it
+   *  unset and falls back to the `<a download>` blob. */
+  onExport?: (blob: Blob, suggestedName: string) => boolean | Promise<boolean>;
   /** Callback invoked when the user picks File → New. Host should
    *  replace the loaded document with a blank one. */
   onNew?: () => void;
@@ -1552,6 +1560,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     documentBuffer,
     document: initialDocument,
     onSave,
+    onExport,
     onNew,
     author = 'User',
     onChange,
@@ -6803,25 +6812,35 @@ body { background: white; }
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
-      const url = URL.createObjectURL(blob);
-      const a = window.document.createElement('a');
-      a.href = url;
       const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
       const fileName = `${base}.docx`;
-      a.download = fileName;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      // Desktop shell: save via the native dialog (picker) so the user
+      // controls where the attachment lands; web falls back to a download.
+      const savedViaHost = onExport ? await onExport(blob, fileName) : false;
+      if (!savedViaHost) {
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
 
       const subject = encodeURIComponent(base);
+      const where = savedViaHost ? 'saved to your chosen location' : 'downloaded to your machine';
       const body = encodeURIComponent(
-        `Attached: ${fileName}\n\n(The file was downloaded to your machine — please attach it to this email.)`
+        `Attached: ${fileName}\n\n(The file was ${where} — please attach it to this email.)`
       );
       window.open(`mailto:?subject=${subject}&body=${body}`, '_blank', 'noopener');
-      toast.success(`Downloaded ${fileName}. Drag it into the email window to attach.`);
+      toast.success(
+        savedViaHost
+          ? `Saved ${fileName}. Attach it to the email window.`
+          : `Downloaded ${fileName}. Drag it into the email window to attach.`
+      );
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName]);
+  }, [handleSave, documentName, onExport]);
 
   const handleMakeCopy = useCallback(async () => {
     setIsSaving(true);
@@ -6831,11 +6850,16 @@ body { background: white; }
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
+      const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
+      const fileName = `Copy of ${base}.docx`;
+      // Desktop shell: native Save dialog instead of a phantom download.
+      if (onExport && (await onExport(blob, fileName))) {
+        toast.success(`Saved ${fileName}`);
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
-      const base = (documentName?.trim() || 'document').replace(/\.docx$/i, '');
-      const fileName = `Copy of ${base}.docx`;
       a.download = fileName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 0);
@@ -6843,7 +6867,7 @@ body { background: white; }
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName]);
+  }, [handleSave, documentName, onExport]);
 
   const handleExportAs = useCallback(
     async (target: 'odt' | 'md' | 'txt') => {
@@ -6871,19 +6895,27 @@ body { background: white; }
           typeof out === 'string'
             ? new Blob([out], { type: mime })
             : new Blob([out as BlobPart], { type: mime });
+        const fileName = `${base}.${target}`;
+        // Desktop shell: hand the bytes to the host's native Save dialog
+        // (picker) instead of a phantom ~/Downloads blob. Falls through to
+        // the browser download on the web (onExport unset / returned false).
+        if (onExport && (await onExport(blob, fileName))) {
+          toast.success(`Saved ${fileName}`, { id: toastId });
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const a = window.document.createElement('a');
         a.href = url;
-        a.download = `${base}.${target}`;
+        a.download = fileName;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 0);
-        toast.success(`Downloaded ${base}.${target}`, { id: toastId });
+        toast.success(`Downloaded ${fileName}`, { id: toastId });
       } catch (error) {
         toast.error(`Failed to export as ${label}`, { id: toastId });
         onError?.(error instanceof Error ? error : new Error(`Failed to export as ${target}`));
       }
     },
-    [handleSave, documentName, onError]
+    [handleSave, documentName, onError, onExport]
   );
   const handleExportOdt = useCallback(() => handleExportAs('odt'), [handleExportAs]);
   const handleExportMd = useCallback(() => handleExportAs('md'), [handleExportAs]);
