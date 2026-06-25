@@ -85,8 +85,8 @@ No production-grade release until all gates below are green.
 
 | ID | Task | Acceptance gate | Status |
 | --- | --- | --- | --- |
-| P1.1 | Make persistent collab storage mandatory for production. | Server logs fatal or readiness fails when `NODE_ENV=production` and storage is in-memory, unless an explicit unsafe override is set. | Partial — prod compose sets `CASUAL_STORAGE=local`; server still falls back to in-memory. |
-| P1.2 | Define storage backend contract for Y.Doc snapshots. | `memory`, `local`, `s3`, `postgres`, and Redis/Yjs snapshot storage have documented durability, TTL, backup, and recovery guarantees. | Partial — host/file backends are tested; Y.Doc storage contract is currently memory/Redis in `collab/src/storage.ts`. |
+| P1.1 | Make persistent collab storage mandatory for production. | Server logs fatal or readiness fails when `NODE_ENV=production` and storage is in-memory, unless an explicit unsafe override is set. | Todo — actual code uses in-memory Y.Doc storage unless `REDIS_URL` is set (`collab/src/storage.ts`). `deploy/docker-compose.prod.yml` sets `CASUAL_STORAGE=local`, but that only selects workbook file storage via `createHost()`. |
+| P1.2 | Define storage backend contract for Y.Doc snapshots. | `memory`, `local`, `s3`, `postgres`, and Redis/Yjs snapshot storage have documented durability, TTL, backup, and recovery guarantees. | Partial — workbook host backends are memory/local/s3/postgres; Y.Doc storage is only memory/Redis and Redis has a 7-day idle TTL. Docs currently blur these two storage systems. |
 | P1.3 | Add collab health and readiness checks. | Readiness separately reports HTTP, Hocuspocus upgrade, storage load/save/delete, auth resolver, and room registry. | Partial — `/health` exists with room count; deeper readiness is not complete. |
 | P1.4 | Add same-origin `/yjs` smoke test. | Script starts gateway + collab + proxy, opens two clients, verifies sync, view-only, reconnect, and snapshot reload. | Todo |
 | P1.5 | Add multi-peer Docs convergence tests against real collab server. | Tests cover text, formatting, tables, images, comments, footnotes/endnotes, props, track changes, strict co-editing. | Partial — unit transport coverage exists for comments/footnotes/props/strict mode; real live-server Docs e2e still needed. |
@@ -95,6 +95,7 @@ No production-grade release until all gates below are green.
 | P1.8 | Define room lifecycle rules. | TTL, max rooms, eviction, password/share-token behavior, and persisted-room retention are documented and tested. | Covered — `rooms.unit.test.ts` and join-role/share tests cover caps, eviction, protected rooms, tokens, expiry, password checks. |
 | P1.9 | Unify role model across suite. | Docs and Sheets use the same role names, role precedence, share-token binding, and URL parameters. | Partial — collab join-role and personal share APIs are tested; suite-level contract still needs formalization. |
 | P1.10 | Build collab operational dashboard endpoint. | Admin/health output shows room count, connected peers, storage backend, pending saves, and recent errors without leaking document content. | Partial — admin config and `/api/rooms` exist; production-safe ops dashboard is not complete. |
+| P1.11 | Flush debounced Y.Doc saves on shutdown. | SIGTERM/server close persists every queued room update before destroying Hocuspocus/storage, with a bounded timeout and test. | Todo — `attachHocuspocus().close()` clears pending save timers but stores only timer handles, so edits inside the 500 ms debounce window can be dropped on shutdown. |
 
 **Exit criteria:** A production deploy can run collab for Docs with persistent state, tested reconnection, tested view-only enforcement, and no dependency on the legacy Go realtime path.
 
@@ -107,12 +108,12 @@ No production-grade release until all gates below are green.
 | ID | Task | Acceptance gate | Status |
 | --- | --- | --- | --- |
 | P2.1 | Define authoritative save model. | Clear spec for client `.docx` bytes, server Y.Doc state, host file bytes, version history, and conflict resolution. | Todo |
-| P2.2 | Add crash-safe autosave tests. | Browser page crash/reload retains latest acknowledged edits or shows clear recovery UI for pending local edits. | Todo |
-| P2.3 | Add pagehide/beforeunload save behavior audit. | Large docs either save safely before unload or communicate “sync pending” without pretending success. | Todo |
+| P2.2 | Add crash-safe autosave tests. | Browser page crash/reload retains latest acknowledged edits or shows clear recovery UI for pending local edits. | Partial — local autosave restore/banner and autosave indicator tests exist; real browser crash + collab/server recovery gate remains. |
+| P2.3 | Add pagehide/beforeunload save behavior audit. | Large docs either save safely before unload or communicate “sync pending” without pretending success. | Partial — `useFileSourceAutoSave` flushes on `visibilitychange` and `pagehide`, with unit coverage; large-doc/server-backed reliability still needs proof. |
 | P2.4 | Add host version conflict UX. | If `If-Match`/WOPI/local version mismatches, user sees conflict flow, not silent overwrite. | Partial — backend/collab tests cover stale etag/version mismatch; end-user conflict UX needs verification. |
 | P2.5 | Make version history production-grade. | Named versions, auto versions, restore, delete, rename, preview, and diff are tested with collab and storage restart. | Partial — version history, audit, preview, and panel layout Playwright tests exist; storage-restart/collab integration remains. |
 | P2.6 | Add backup/restore runbook. | Operator can restore collab Y.Doc snapshot and host file bytes to a previous known-good version. | Todo |
-| P2.7 | Add “last saved / saving / offline / error” status model. | Status is consistent across title bar, file source, collab, and version history. | Todo |
+| P2.7 | Add “last saved / saving / offline / error” status model. | Status is consistent across title bar, file source, collab, and version history. | Partial — `AutosaveStatus` exposes saving/saved/error with `aria-live`; it is not yet unified with collab connection and version-history status. |
 | P2.8 | Define final-drain snapshot strategy. | Either server can produce final file snapshot, or product explicitly guarantees client-push only with UI/ops safeguards. No vague middle state. | Todo |
 | P2.9 | Add data-loss incident tests. | Kill browser, collab, gateway, and storage in separate tests; assert exact expected recovery behavior. | Todo |
 
@@ -131,7 +132,7 @@ No production-grade release until all gates below are green.
 | P3.3 | Build extreme-corpus tracker. | CJK SDS, dense forms, table-heavy docs, image-heavy docs, and legal/medical templates have named scores and owners. | Todo |
 | P3.4 | Fix exact line-height model for dense/CJK docs. | Target fixtures improve without regressing everyday corpus or round-trip audit. | Todo |
 | P3.5 | Fix measured table row geometry. | Dense forms do not drift by accumulated row-height error across pages. | Todo |
-| P3.6 | Preserve drawings/images through collab save paths. | Multi-peer edit/save/reopen tests verify images, shapes, textboxes, anchors, wraps, and raw XML envelopes survive. | Partial — raw XML/image/shape round-trip tests exist; multi-peer save/reopen path remains the gate. |
+| P3.6 | Preserve drawings/images through collab save paths. | Multi-peer edit/save/reopen tests verify images, shapes, textboxes, anchors, wraps, and raw XML envelopes survive. | Partial — shapes and text boxes carry `rawXml`/`envelopeKey` through PM/Yjs; images have serializer support but the PM image schema/conversion path does not carry those fields yet. |
 | P3.7 | Expand imported equation editability. | Imported Word equation opens with meaningful editable representation or clear replace-only UX. | Partial — equation render/insert/edit tests exist; imported OMML-to-edit-source gap remains. |
 | P3.8 | Add document safety warnings. | If a feature is unsupported or degraded on import, user gets a non-alarming but clear warning before save/export when risk is real. | Todo |
 | P3.9 | Add real-world fixture intake process. | New customer/user docs can be anonymized, scored, classified, and tracked without ad hoc one-off debugging. | Todo |
@@ -207,7 +208,7 @@ No production-grade release until all gates below are green.
 
 | ID | Task | Acceptance gate | Status |
 | --- | --- | --- | --- |
-| P7.1 | Official Docker Compose production stack. | Gateway, collab, storage, reverse proxy, volumes, health checks, restart policy, and example env are complete. | Covered — `deploy/docker-compose.prod.yml`, `deploy/Caddyfile`, and `deploy/README.md` exist. |
+| P7.1 | Official Docker Compose production stack. | Gateway, collab, storage, reverse proxy, volumes, health checks, restart policy, and example env are complete. | Partial — stack/proxy files exist, but production Y.Doc persistence is misconfigured (`CASUAL_STORAGE=local` does not affect `DocStorage`) and readiness/health checks are insufficient. |
 | P7.2 | Kubernetes reference manifest. | Optional but production-ready: deployments, services, ingress, probes, secrets, persistent volumes. | Todo |
 | P7.3 | Backup and restore docs. | Host files, collab snapshots, user DB, admin config, and version history backup/restore are covered. | Todo |
 | P7.4 | Observability package. | Structured logs, request IDs, room IDs, user/session IDs where safe, metrics, and health dashboard. | Todo |
@@ -304,24 +305,38 @@ Every production task must satisfy all applicable items:
 The next sprint should not add new flashy features. It should remove production ambiguity.
 
 1. Update README, Dockerfile comments, and architecture docs to make Node/Hocuspocus collab the canonical backend.
-2. Add production readiness failure for in-memory collab storage.
-3. Add same-origin `/yjs` two-peer smoke test.
-4. Add dark-mode contrast audit script for design tokens and rendered core chrome.
-5. Add axe checks for editor, share dialog, comments, version history, and properties dialog.
-6. Add crash/reconnect autosave test for Docs against the real collab server.
-7. Create CI/test ownership map and label existing Playwright suites by blast radius.
-8. Create release checklist template and require it for any “production” release candidate.
+2. Fix production collab persistence: either require `REDIS_URL` in prod compose/docs or implement a real local/s3/postgres `DocStorage` path for Y.Doc updates.
+3. Add production readiness failure for in-memory collab storage and a storage write/read/delete probe.
+4. Fix Hocuspocus shutdown drain so queued debounced saves are persisted before process exit.
+5. Add same-origin `/yjs` two-peer smoke test.
+6. Add image `rawXml`/`envelopeKey` carriage through the PM/Yjs image node path, then test save/reopen through collab.
+7. Add dark-mode contrast audit script for design tokens and rendered core chrome.
+8. Add axe checks for editor, share dialog, comments, version history, and properties dialog.
+9. Add crash/reconnect autosave test for Docs against the real collab server.
+10. Create CI/test ownership map and label existing Playwright suites by blast radius.
+11. Create release checklist template and require it for any “production” release candidate.
 
 ---
 
-## Existing Coverage Counted In This Tracker
+## Implementation Evidence Counted In This Tracker
 
-This section exists to prevent duplicate work and to keep the tracker honest.
+This section exists to prevent duplicate work and to keep the tracker honest. The status calls above are based on implementation paths, not only workflow names.
 
+- **Collab server boot path:** `collab/src/index.ts` creates `DocStorage` first, logs Redis vs in-memory storage, then creates separate workbook file hosting via `createHost()`. This proves collab Y.Doc storage and workbook file storage are different systems.
+- **Y.Doc persistence:** `collab/src/storage.ts` implements only `InMemoryStorage` and `RedisStorage`; `createStorage()` ignores `CASUAL_STORAGE` and selects Redis only when `REDIS_URL` exists.
+- **Production deploy mismatch:** `deploy/docker-compose.prod.yml` sets `CASUAL_STORAGE=local` and `CASUAL_LOCAL_PATH=/data` under a comment that says it persists Y.Doc snapshots, but those env vars are consumed by `collab/src/host/index.ts`, not by `DocStorage`.
+- **Hocuspocus lifecycle:** `collab/src/yjs.ts` loads seed + persisted updates, enforces share-token/view-only roles server-side, queues debounced saves on change, and currently clears pending timers on close without flushing the underlying Y.Doc update.
+- **Docs collab wiring:** `docx-editor/packages/react/src/collab/useCollab.ts` wires HocuspocusProvider, `ySyncPlugin`, cursors, strict co-editing, `yUndoPlugin`, and Y.Maps for metadata, comments, footnotes, endnotes, and document properties.
+- **Docs collab host:** `docx-editor/packages/react/src/components/CasualEditor.tsx` passes collab plugins as external content and bridges comments/footnotes/endnotes/properties through the Y.Maps.
+- **Save pipeline:** `docx-editor/packages/react/src/components/DocxEditor.tsx` serializes current PM state through `DocumentAgent.toBuffer`; `docx-editor/packages/core/src/agent/DocumentAgent.ts` attempts selective save when possible and falls back to full repack.
+- **Autosave:** `docx-editor/packages/react/src/file-source/useFileSourceAutoSave.ts` has interval save, `visibilitychange`/`pagehide` flush, status/error tracking, and focused unit tests; `AutosaveStatus.tsx` exposes an `aria-live` status indicator.
+- **Drawing fidelity through PM/Yjs:** shape and text box extensions/conversions carry `rawXml`/`envelopeKey`; image conversion currently does not carry these attributes even though the serializer can emit `Image.rawXml`.
+- **Accessibility baseline:** `docx-editor/packages/react/src/paged-editor/HiddenProseMirror.tsx` keeps the real contenteditable screen-reader accessible with `role="textbox"`, `aria-multiline`, and an accessible name while visual pages stay separate.
+- **Dark theme implementation:** `DocxEditor.tsx` applies `data-theme` from persisted light/dark/auto mode and `TitleBar.tsx` exposes the theme toggle; the missing gate is measured WCAG contrast across rendered chrome, not absence of a theme switch.
 - **Main CI:** `.github/workflows/ci.yml` runs format, lint, typecheck, unit tests, build, round-trip audit, sharded Chromium Playwright, and Go vet/race/build.
 - **Visual fidelity:** `.github/workflows/visual-fidelity.yml` renders representative `.docx` fixtures against LibreOffice references and enforces the configured floor.
 - **Fidelity comparison:** `.github/workflows/fidelity-compare.yml` compares against LibreOffice and OnlyOffice DocumentBuilder on demand/main-path changes and uploads reports.
-- **Deployment topology:** `deploy/docker-compose.prod.yml`, `deploy/Caddyfile`, and `deploy/README.md` define the two-service gateway + collab + same-origin `/yjs` production shape.
+- **Deployment topology:** `deploy/docker-compose.prod.yml`, `deploy/Caddyfile`, and `deploy/README.md` define the two-service gateway + collab + same-origin `/yjs` shape, but the current storage env/docs must be corrected before calling it production-complete.
 - **Collab unit coverage:** `collab/src/**.unit.test.ts` covers room caps/eviction, personal files, share links, ACLs, auth/JWT, join-role resolution, WOPI routes, host backends, admin config, and webhooks.
 - **Docs collab transport coverage:** `packages/react/src/collab/*Sync.test.ts` and `strictCoEditing.test.ts` cover props, comments, footnotes, and strict co-editing behavior at unit level.
 - **Accessibility/focus/IME coverage:** `editor-a11y.spec.ts`, `accessibility-dialog.spec.ts`, `editor-focus-recapture.spec.ts`, `cursor-focus.spec.ts`, and `ime-caret-sync.spec.ts` cover important baseline contracts, but not a full WCAG/AT matrix.
