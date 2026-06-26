@@ -6808,6 +6808,12 @@ body { background: white; }
   // would never snapshot again. An interval gates on the ref so the
   // serializer (`handleSave` re-walks the PM doc + re-packs the .docx)
   // only runs when there's actually work to do.
+  //
+  // After a successful autosave we clear dirty so the next tick skips
+  // serialization when nothing has changed. Without this, isDirty stays
+  // true after each write and every subsequent tick re-serializes and
+  // re-writes identical bytes (in desktop mode: real disk writes every
+  // 30 s even with no user edits after the first save).
   const isDirtyRefAuto = useRef(false);
   isDirtyRefAuto.current = isDirty;
   useEffect(() => {
@@ -6817,6 +6823,10 @@ body { background: white; }
         try {
           const buffer = await handleSave();
           if (!buffer) return;
+          // Mark clean before the IndexedDB write — if the write
+          // fails the next tick can retry (isDirty will be set again
+          // by any subsequent edit, or stays false until one occurs).
+          markDirty(false);
           await writeAutosave({
             name: documentName?.trim() || 'Untitled',
             buffer,
@@ -6830,7 +6840,7 @@ body { background: white; }
     };
     const interval = window.setInterval(tick, 30_000);
     return () => window.clearInterval(interval);
-  }, [handleSave, documentName]);
+  }, [handleSave, documentName, markDirty]);
 
   // File → Make a copy: download the current content as "Copy of <name>.docx".
   // The original document is unchanged, so we don't touch the dirty flag.
