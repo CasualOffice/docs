@@ -510,8 +510,12 @@ export function FindReplaceDialog({
     if (success) {
       const newResult = onFind(searchText, { matchCase, matchWholeWord, useRegex });
       setResult(newResult);
-      if (newResult?.matches && onHighlightMatches) {
-        onHighlightMatches(newResult.matches);
+      if (newResult?.matches && newResult.matches.length > 0) {
+        onHighlightMatches?.(newResult.matches);
+      } else {
+        // Replacing the last match leaves no matches — clear the stale
+        // highlight instead of leaving it painted on the now-replaced text.
+        onClearHighlights?.();
       }
     }
   }, [
@@ -524,6 +528,7 @@ export function FindReplaceDialog({
     onReplace,
     onFind,
     onHighlightMatches,
+    onClearHighlights,
   ]);
 
   const handleReplaceAll = useCallback(() => {
