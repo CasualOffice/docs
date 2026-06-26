@@ -944,6 +944,16 @@ export function App() {
     }
   }, []); // bridge.saveAs is stable
 
+  // Forward DocxEditor's authoritative document-change signal to the desktop
+  // bridge so the Rust close-guard sees a dirty window for EVERY real edit —
+  // including mouse/toolbar/menu edits (bold, tables, format painter, accept/
+  // reject) that the bridge's old DOM keystroke heuristic missed. save()/saveAs()
+  // clear the flag. No-op on web (no bridge).
+  const onDocChangeDesktop = useCallback(() => {
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    bridge?.setDirty?.(true);
+  }, []);
+
   // Dismiss the boot overlay once DocxEditor's PM view is live and the
   // first layout paint is imminent. This fires AFTER parseDocx completes,
   // avoiding the blank-editor flash that occurred when dismissBoot was called
@@ -1220,6 +1230,9 @@ export function App() {
           // internal handleSave/handleExport don't re-reference on every status change.
           onSave={isDesktop ? onSaveDesktop : undefined}
           onExport={isDesktop ? onExportDesktop : undefined}
+          // Desktop only: mark the window dirty on every real document change
+          // so the unsaved-changes close-guard fires for mouse/toolbar edits.
+          onChange={isDesktop ? onDocChangeDesktop : undefined}
           // Dismiss the boot splash after DocxEditor has parsed the DOCX and
           // created its PM view, avoiding the blank-editor flash that occurred
           // when dismissBoot fired immediately after setDocumentBuffer.

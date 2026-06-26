@@ -57,6 +57,13 @@ declare global {
        */
       saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null>;
       /**
+       * Editor → bridge dirty signal for the Rust unsaved-changes close-guard.
+       * App.tsx forwards DocxEditor's `onChange` here so every real document
+       * change (mouse/toolbar/menu edits included) marks the window dirty;
+       * save()/saveAs() clear it.
+       */
+      setDirty?(dirty: boolean): void;
+      /**
        * Dismiss the cold-start boot overlay the bootstrap paints before React
        * mounts (top-level desktop windows only). Fades it out then removes it.
        * Idempotent and safe to call from both the document-load success and

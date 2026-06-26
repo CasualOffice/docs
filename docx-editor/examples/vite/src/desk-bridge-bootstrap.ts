@@ -324,6 +324,7 @@ if (isDesktop) {
         loadText?(p?: string): Promise<string>;
         save(bytes: ArrayBuffer): Promise<string | null>;
         saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
+        setDirty?(dirty: boolean): void;
       }
     | undefined;
 
@@ -411,27 +412,14 @@ if (isDesktop) {
         /* best-effort */
       }
     }
-    // Mark dirty on any user edit. Capture phase so we see the event even
-    // if the editor stops propagation. Heuristic: any input = dirty.
-    const markDirty = () => {
-      editSeq++;
-      setWindowDirty(true);
-    };
-    document.addEventListener('input', markDirty, true);
-    document.addEventListener('beforeinput', markDirty, true);
-    document.addEventListener(
-      'keydown',
-      (e) => {
-        // Only printable / editing keys imply a content change; ignore
-        // pure navigation / modifier chords so we don't flag dirty on
-        // Ctrl+S, arrow keys, etc.
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
-        if (e.key.length === 1 || e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete') {
-          markDirty();
-        }
-      },
-      true,
-    );
+    // The dirty signal is driven by the editor's authoritative document-change
+    // callback, not a DOM keystroke heuristic: App.tsx forwards DocxEditor's
+    // `onChange` to `bridge.setDirty(true)`. The old heuristic (input/beforeinput
+    // /printable-keydown listeners) missed every mouse/toolbar/menu edit — bold,
+    // table ops, format painter, accept/reject changes, paste via the menu —
+    // because ProseMirror dispatches those as transactions with no keyboard or
+    // input event, so the close-guard saw a "clean" window and discarded the
+    // work with no prompt. `setDirty` (below) is the single entry point now.
 
     // Chunked read in 1 MB slices to avoid IPC payload truncation for big
     // files (the default JSON number-array path silently drops the file's
@@ -460,6 +448,15 @@ if (isDesktop) {
       // @ts-expect-error setter on getter via Object.defineProperty pattern
       set filePath(v: string | null) { filePath = v; },
       get fileKind() { return fileKindFor(filePath); },
+      // Editor → bridge dirty signal. App.tsx forwards DocxEditor's `onChange`
+      // here, so every real document change (mouse/toolbar/menu edits included)
+      // marks the window dirty for the Rust close-guard. save()/saveAs() clear it.
+      setDirty(dirty: boolean) {
+        // Bump editSeq on every edit signal (even while already dirty) so an
+        // in-flight save can detect a change that landed during the write.
+        if (dirty) editSeq++;
+        setWindowDirty(dirty);
+      },
       async loadText(p?: string): Promise<string> {
         const path = p ?? filePath;
         if (!path) throw new Error('no file path bound to this window');
