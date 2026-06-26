@@ -55,6 +55,18 @@ function plainText(doc: PMNode): string {
   return out;
 }
 
+/** Index of the top-level block that contains the deletion mark (or -1). */
+function deletionBlockIndex(doc: PMNode): number {
+  let idx = -1;
+  doc.forEach((block, _offset, i) => {
+    if (idx !== -1) return;
+    block.descendants((n) => {
+      if (n.isText && n.marks.some((m) => m.type.name === 'deletion')) idx = i;
+    });
+  });
+  return idx;
+}
+
 describe('buildVersionDiffDoc', () => {
   test('no previous version → clean doc, no changes', () => {
     const { doc, hasChanges } = buildVersionDiffDoc(null, docJSON('hello world'), schema);
@@ -123,6 +135,24 @@ describe('buildVersionDiffDoc', () => {
     );
     expect(hasChanges).toBe(true);
     expect(markedText(doc, 'insertion')).toContain('second');
+  });
+
+  test('erased trailing words stay struck through in their own paragraph, not dumped at doc end', () => {
+    // Regression: deleting the end of a paragraph (the paragraph break is
+    // kept) used to anchor the struck-through text at docEnd, so it appeared
+    // at the very bottom of the document instead of in place.
+    const { doc, hasChanges } = buildVersionDiffDoc(
+      docJSON('hello world', 'second para'),
+      docJSON('hello', 'second para'),
+      schema
+    );
+    expect(hasChanges).toBe(true);
+    expect(markedText(doc, 'deletion')).toContain('world');
+    // The deletion belongs to the FIRST paragraph, not the last.
+    expect(deletionBlockIndex(doc)).toBe(0);
+    // The last paragraph is untouched.
+    const lastBlock = doc.child(doc.childCount - 1);
+    expect(lastBlock.textContent).toBe('second para');
   });
 
   test('preview doc preserves the selected version content', () => {
