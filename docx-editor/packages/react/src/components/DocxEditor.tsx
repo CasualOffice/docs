@@ -5004,9 +5004,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Stable PagedEditor onTotalPagesChange — avoids breaking memo() on every render.
   const handleTotalPagesChange = useCallback((totalPages: number) => {
-    setScrollPageInfo((prev) =>
-      prev.totalPages === totalPages ? prev : { ...prev, totalPages },
-    );
+    setScrollPageInfo((prev) => (prev.totalPages === totalPages ? prev : { ...prev, totalPages }));
   }, []);
 
   // Stable PagedEditor onOpenProperties — avoids breaking memo() on every render.
@@ -5019,7 +5017,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (view) setPmState(view.state);
       if (view) onEditorViewReady?.(view);
     },
-    [onEditorViewReady],
+    [onEditorViewReady]
   );
 
   // Ref pattern for onSelectionChange: the implementation reads the latest
@@ -5027,13 +5025,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // while the _stable wrapper_ never changes reference, keeping PagedEditor's
   // memo() effective across every DocxEditor re-render caused by
   // pmState / isDirty / isSaving state flips.
-  const _pagedSelectionChangeImplRef = useRef<(from: number, to: number) => void>(
-    () => undefined,
-  );
+  const _pagedSelectionChangeImplRef = useRef<(from: number, to: number) => void>(() => undefined);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const _pagedOnSelectionChangeStable = useCallback(
     (from: number, to: number) => _pagedSelectionChangeImplRef.current(from, to),
-    [],
+    []
   );
 
   // Handle hyperlink dialog submit
@@ -8735,31 +8731,25 @@ body { background: white; }
                             ];
                             let cursorSidebarItem: string | null = null;
                             for (const mark of marks) {
-                              if (
-                                mark.type.name === 'comment' &&
-                                mark.attrs.commentId != null
-                              ) {
+                              if (mark.type.name === 'comment' && mark.attrs.commentId != null) {
                                 const commentId = mark.attrs.commentId as number;
                                 if (resolvedCommentIds.has(commentId)) continue;
                                 cursorSidebarItem = `comment-${commentId}`;
                                 break;
                               }
                               if (
-                                (mark.type.name === 'insertion' ||
-                                  mark.type.name === 'deletion') &&
+                                (mark.type.name === 'insertion' || mark.type.name === 'deletion') &&
                                 mark.attrs.revisionId != null
                               ) {
                                 const revId = String(mark.attrs.revisionId);
                                 const prefix = `tc-${revId}-`;
                                 let match = commentSidebarItems.find((i) =>
-                                  i.id.startsWith(prefix),
+                                  i.id.startsWith(prefix)
                                 );
                                 if (!match && revisionIdAliases) {
                                   const aliasedId = revisionIdAliases.get(revId);
                                   if (aliasedId) {
-                                    match = commentSidebarItems.find(
-                                      (i) => i.id === aliasedId,
-                                    );
+                                    match = commentSidebarItems.find((i) => i.id === aliasedId);
                                   }
                                 }
                                 if (match) {
