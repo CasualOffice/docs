@@ -53,8 +53,16 @@ function isLegacyForcedEditor(): boolean {
 }
 
 function getInitialView(): 'home' | 'editor' {
-  if (isLegacyForcedEditor()) return 'editor';
   if (typeof window === 'undefined') return 'home';
+  const params = new URLSearchParams(window.location.search);
+  // Desktop (Tauri shell): a file-bound window boots straight into the
+  // document, but a blank "New document" window (no `file`) shows the editor's
+  // template gallery instead of an empty page. isLegacyForcedEditor() still
+  // reports true for desk mode so the web route-sync effect stays suppressed.
+  if (params.get('desk') === '1') {
+    return params.get('file') ? 'editor' : 'home';
+  }
+  if (isLegacyForcedEditor()) return 'editor';
   // Route-driven. `/` and `/home` → home; `/document/*` → editor.
   if (window.location.pathname === '/' || window.location.pathname === '/home') {
     return 'home';
