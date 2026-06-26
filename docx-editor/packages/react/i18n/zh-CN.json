@@ -737,7 +737,10 @@
   "titleBar": {
     "untitled": "未命名",
     "documentNameAriaLabel": "文档名称",
-    "menuBarAriaLabel": "菜单栏"
+    "menuBarAriaLabel": "菜单栏",
+    "allChangesSaved": null,
+    "saving": null,
+    "unsavedChanges": null
   },
   "errors": {
     "loadingDocument": "正在加载文档...",
@@ -976,5 +979,23 @@
     "body": null,
     "switchToEditing": null,
     "title": null
+  },
+  "statusBar": {
+    "readabilityUnknown": null,
+    "readingTime": null,
+    "readingTimeAria": null
+  },
+  "writerStatus": {
+    "ariaLabel": null,
+    "checking": null,
+    "confirmDownload": null,
+    "loading": null,
+    "loadingProgress": null,
+    "paused": null,
+    "ready": null,
+    "readyTiming": null,
+    "readyToLoad": null,
+    "running": null,
+    "unloading": null
   }
 }

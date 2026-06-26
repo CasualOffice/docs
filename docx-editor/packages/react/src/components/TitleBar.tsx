@@ -155,6 +155,7 @@ function WriterStatusPillSlot() {
 
 function SaveStatusIndicator() {
   const ctx = useEditorToolbar();
+  const { t } = useTranslation();
   const { isDirty, isSaving } = ctx;
   if (isSaving) {
     return (
@@ -174,7 +175,7 @@ function SaveStatusIndicator() {
             display: 'inline-block',
           }}
         />
-        Saving…
+        {t('titleBar.saving')}
       </span>
     );
   }
@@ -182,10 +183,10 @@ function SaveStatusIndicator() {
     return (
       <span
         className="text-xs text-[color:var(--doc-text-on-surface-muted,#5f6368)]"
-        title="Unsaved changes"
-        aria-label="Unsaved changes"
+        title={t('titleBar.unsavedChanges')}
+        aria-label={t('titleBar.unsavedChanges')}
       >
-        Unsaved changes
+        {t('titleBar.unsavedChanges')}
       </span>
     );
   }
@@ -194,7 +195,7 @@ function SaveStatusIndicator() {
       className="text-xs text-[color:var(--doc-text-on-surface-muted,#5f6368)]"
       aria-live="polite"
     >
-      All changes saved
+      {t('titleBar.allChangesSaved')}
     </span>
   );
 }

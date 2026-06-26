@@ -12,6 +12,7 @@ import { MaterialSymbol } from './ui/Icons';
 import { Tooltip } from './ui/Tooltip';
 import { STAT_LABELS, useStatPrefs, type StatKey } from './statbar-prefs';
 import { computeReadability, formatReadingTime, gradeLabel } from '../lib/quality/readability';
+import { useTranslation } from '../i18n';
 
 const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -201,6 +202,7 @@ export function StatusBar({
   // run BEFORE the `!visible` early return below, or React will see a
   // different hook order between visible and hidden renders.
   const { prefs, toggle } = useStatPrefs();
+  const { t } = useTranslation();
   const [checklistOpen, setChecklistOpen] = useState(false);
   const checklistWrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -268,10 +270,10 @@ export function StatusBar({
           return (
             <span
               style={cellStyle}
-              aria-label={`Estimated ${minutes} minute read`}
+              aria-label={t('statusBar.readingTimeAria', { minutes })}
               data-testid="status-reading-time"
             >
-              ~{minutes} min read
+              {t('statusBar.readingTime', { minutes })}
             </span>
           );
         })()}
@@ -390,9 +392,10 @@ export function StatusBar({
  * passes a fresh snapshot when the doc actually changes).
  */
 function ReadabilityCell({ docText }: { docText: string }) {
+  const { t } = useTranslation();
   const stats = useMemo(() => computeReadability(docText), [docText]);
   const compact = (() => {
-    if (stats.gradeLevel == null) return 'Readability: —';
+    if (stats.gradeLevel == null) return t('statusBar.readabilityUnknown');
     return `${gradeLabel(stats.gradeLevel)}`;
   })();
   const detailLines: string[] = [

@@ -737,7 +737,10 @@
   "titleBar": {
     "untitled": "ללא שם",
     "documentNameAriaLabel": "שם המסמך",
-    "menuBarAriaLabel": "שורת התפריטים"
+    "menuBarAriaLabel": "שורת התפריטים",
+    "allChangesSaved": null,
+    "saving": null,
+    "unsavedChanges": null
   },
   "errors": {
     "loadingDocument": "טוען מסמך...",
@@ -976,5 +979,23 @@
     "body": null,
     "switchToEditing": null,
     "title": null
+  },
+  "statusBar": {
+    "readabilityUnknown": null,
+    "readingTime": null,
+    "readingTimeAria": null
+  },
+  "writerStatus": {
+    "ariaLabel": null,
+    "checking": null,
+    "confirmDownload": null,
+    "loading": null,
+    "loadingProgress": null,
+    "paused": null,
+    "ready": null,
+    "readyTiming": null,
+    "readyToLoad": null,
+    "running": null,
+    "unloading": null
   }
 }
