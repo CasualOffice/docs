@@ -70,5 +70,12 @@ test.describe('Export as PDF', () => {
     // strips a trailing `.docx` and uses the remainder as the title.
     expect(captured!).toContain('<title>core-properties</title>');
     expect(captured!).toContain('class="layout-page"');
+
+    // The printed page box must be pinned to the document's actual page
+    // size (read from the .layout-page px dimensions), NOT `size: auto`
+    // which would let the print dialog's default paper drive the PDF.
+    const pageRule = captured!.match(/@page\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(pageRule).not.toContain('size: auto');
+    expect(pageRule).toMatch(/size:\s*\d+(?:\.\d+)?px\s+\d+(?:\.\d+)?px/);
   });
 });
