@@ -35,8 +35,6 @@ async function insertImageFiles(view: EditorView, files: File[]): Promise<void> 
   const imageType = view.state.schema.nodes.image;
   if (!imageType) return;
 
-  let insertPos = view.state.selection.from;
-
   for (const file of files) {
     let dataUrl: string;
     try {
@@ -74,9 +72,15 @@ async function insertImageFiles(view: EditorView, files: File[]): Promise<void> 
       displayMode: 'inline',
     });
 
+    // Re-read the insertion point against the CURRENT state for every file:
+    // reading the file is async, so the document (and selection) may have
+    // moved — from the user typing, a collab peer's edit, or our own previous
+    // insert in this loop. Clamp to the live doc size so a shrunk document
+    // can't throw a RangeError from tr.insert.
+    const insertPos = Math.min(view.state.selection.from, view.state.doc.content.size);
     const tr = view.state.tr.insert(insertPos, imageNode);
-    insertPos += imageNode.nodeSize;
-    tr.setSelection(TextSelection.create(tr.doc, insertPos));
+    const afterPos = Math.min(insertPos + imageNode.nodeSize, tr.doc.content.size);
+    tr.setSelection(TextSelection.create(tr.doc, afterPos));
     view.dispatch(tr.scrollIntoView());
   }
 

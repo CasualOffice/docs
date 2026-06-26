@@ -48,23 +48,31 @@ export function peerLocksFromAwareness(
     awareness.getStates().forEach((aw, clientId) => {
       if (clientId === ydoc.clientID) return; // skip self
       if (!aw.cursor) return;
-      const head = relativePositionToAbsolutePosition(
-        ydoc,
-        ystate.type,
-        Y.createRelativePositionFromJSON(aw.cursor.head),
-        ystate.binding.mapping
-      );
-      if (head == null) return;
-      const size = state.doc.content.size;
-      const $pos = state.doc.resolve(Math.max(0, Math.min(head, size)));
-      if ($pos.depth < 1) return; // not inside a block
-      out.push({
-        from: $pos.before(1),
-        to: $pos.after(1),
-        name: aw.user?.name ?? 'Someone',
-        color: normalizeColor(aw.user?.color),
-        clientId,
-      });
+      // A peer's `cursor.head` is untrusted wire data — a buggy or crafted
+      // client can publish a malformed relative position that throws inside
+      // Yjs. Isolate each peer so one bad payload doesn't blow up lock
+      // computation (and strict co-editing) for everyone else.
+      try {
+        const head = relativePositionToAbsolutePosition(
+          ydoc,
+          ystate.type,
+          Y.createRelativePositionFromJSON(aw.cursor.head),
+          ystate.binding.mapping
+        );
+        if (head == null) return;
+        const size = state.doc.content.size;
+        const $pos = state.doc.resolve(Math.max(0, Math.min(head, size)));
+        if ($pos.depth < 1) return; // not inside a block
+        out.push({
+          from: $pos.before(1),
+          to: $pos.after(1),
+          name: aw.user?.name ?? 'Someone',
+          color: normalizeColor(aw.user?.color),
+          clientId,
+        });
+      } catch {
+        // Skip this peer; its cursor data is unusable this tick.
+      }
     });
     return out;
   };
