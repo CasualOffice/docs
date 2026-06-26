@@ -406,3 +406,15 @@ A 2026-06-27 multi-agent bug hunt produced ~18 candidates; most did not survive 
 - **suggestionMode insert-at-`to` ordering** — not a bug: insertion-after-deletion is a valid track-changes convention; changing it needs a Word/GDocs spec + visual verification.
 - **`htmlToRuns` "drops trailing break"** — not a bug: omitting the trailing break is correct inline-paste behavior (a forced break would add a stray empty paragraph).
 - **`goToNextCell`/`goToPrevCell` "hardcoded offsets break multi-paragraph cells"** — false: Tab moves to the next _cell_ (first paragraph via `Selection.near`); the offsets walk structural nesting, not a single-paragraph assumption.
+- **`calculateHeaderFooterVisualBounds` `visualTop = 0` "should be Infinity"** — false AND harmful: `cursorY` starts at 0 so the first block yields `visualTop = 0`; the inits (`0` / `flowHeight`) are deliberate so an empty block list can't produce a negative-height box. The `Infinity`/`-Infinity` "fix" breaks that.
+- **Footnote serializer "regex id not escaped"** — non-issue: `note.id` is numeric, so no regex metacharacters are possible.
+- **core.xml "fields inserted in reverse order"** — non-issue: OOXML element order is not significant for core properties.
+
+### Behavioral analysis — candidates needing verification (not yet actioned)
+
+Plausible but require visual verification or are feature gaps, not clean safe fixes — left here so they're not lost:
+
+- **Print `@page { size: auto }`** (P2, export) — exported/printed PDF pages may follow the print dialog's paper size rather than the document's page size (`DocxEditor.tsx` print path). Setting `@page size` from the doc's page dimensions would improve WYSIWYG, but needs real PDF-output verification and care for mixed page sizes (landscape sections). Do NOT change blind.
+- **Even/odd headers (`evenAndOddHeaders`)** (feature gap, not a regression) — `layout-engine/index.ts` accepts the flag but `void`s it; even-page headers/footers are not rendered. This is an unimplemented feature, scoped separately.
+- **Footnote definition orphaned on reference delete** (P2) — deleting a footnote reference may leave its definition in `footnotes.xml`; needs care around the footnote data model + collab `footnoteSync` before fixing.
+- **PAGE/NUMPAGES field `displayText` stale on export** (P2) — serialized field result can carry the load-time page number; Word recomputes on field update, so cosmetic until then. Post-pagination attr sync is the fix, non-trivial.
