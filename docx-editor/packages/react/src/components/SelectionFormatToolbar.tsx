@@ -8,12 +8,25 @@
  * competitive analysis (docs/internal/29) flagged as expected — Google Docs and
  * Word ship it; OnlyOffice's absence is a documented complaint.
  *
- * It anchors with the same `coordsAtPos` approach as SelectionAskAi, but prefers
- * ABOVE the selection (Word's mini-toolbar placement) and falls back below when
- * there isn't room. Every button uses `onMouseDown` preventDefault so clicking
- * never collapses the PM selection (the documented focus-stealing pitfall).
+ * Buttons use `onMouseDown` preventDefault so clicking never collapses the PM
+ * selection (the documented focus-stealing pitfall). Functional behaviour is
+ * verified (applies formatting, opens the link dialog, hides on collapse).
+ *
+ * KNOWN LIMITATION (blocks merge — PR is draft): positioning is WRONG. This
+ * anchors via `view.coordsAtPos`, but in this editor the EditorView is the
+ * HIDDEN ProseMirror painted off-screen at `left:-9999px` (the dual-render
+ * architecture — see docx-editor/CLAUDE.md). So coordsAtPos returns the
+ * off-screen coordinates and the bar lands in the top-left corner instead of
+ * above the visible selection. (SelectionAskAi shares this approach but is
+ * force-disabled, so its placement was never validated either.)
+ *
+ * FIX PATH: expose a `getSelectionScreenRect()` on PagedEditorRef that maps the
+ * selection's `from` to VISIBLE coordinates using the layout-painter's
+ * `getCaretPosition` (the same function comment-anchoring uses), converting
+ * page-relative y → viewport via the page offset + scroll + zoom, then anchor
+ * to that rect instead of coordsAtPos.
  */
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { EditorView } from 'prosemirror-view';
 import { MaterialSymbol } from './ui/Icons';
 import { useTranslation } from '../i18n';
@@ -52,10 +65,12 @@ const barStyle: CSSProperties = {
 
 interface BtnDef {
   /** String-literal subset of FormattingAction (all assignable to it). */
-  action: 'bold' | 'italic' | 'underline' | 'strikethrough';
+  action: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'insertLink';
   icon: string;
   active: boolean;
   labelKey: string;
+  /** Render a thin separator before this button (groups marks vs actions). */
+  divider?: boolean;
 }
 
 export function SelectionFormatToolbar({
@@ -144,6 +159,13 @@ export function SelectionFormatToolbar({
       active: !!formatting.strike,
       labelKey: 'formattingBar.strikethrough',
     },
+    {
+      action: 'insertLink',
+      icon: 'link',
+      active: false,
+      labelKey: 'formattingBar.insertLink',
+      divider: true,
+    },
   ];
 
   return (
@@ -157,30 +179,44 @@ export function SelectionFormatToolbar({
       onMouseDown={(e) => e.preventDefault()}
     >
       {buttons.map((b) => (
-        <button
-          key={b.action}
-          type="button"
-          aria-label={t(b.labelKey as never)}
-          aria-pressed={b.active}
-          title={t(b.labelKey as never)}
-          data-testid={`selection-format-${b.action}`}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onFormat(b.action)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 30,
-            height: 30,
-            borderRadius: 6,
-            border: 'none',
-            cursor: 'pointer',
-            color: b.active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text-on-surface, #1f2937)',
-            background: b.active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
-          }}
-        >
-          <MaterialSymbol name={b.icon} size={18} />
-        </button>
+        <Fragment key={b.action}>
+          {b.divider && (
+            <span
+              aria-hidden
+              style={{
+                width: 1,
+                height: 18,
+                margin: '0 2px',
+                background: 'var(--doc-border, #e0e0e0)',
+              }}
+            />
+          )}
+          <button
+            type="button"
+            aria-label={t(b.labelKey as never)}
+            aria-pressed={b.active}
+            title={t(b.labelKey as never)}
+            data-testid={`selection-format-${b.action}`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onFormat(b.action)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              borderRadius: 6,
+              border: 'none',
+              cursor: 'pointer',
+              color: b.active
+                ? 'var(--doc-primary, #1a73e8)'
+                : 'var(--doc-text-on-surface, #1f2937)',
+              background: b.active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
+            }}
+          >
+            <MaterialSymbol name={b.icon} size={18} />
+          </button>
+        </Fragment>
       ))}
     </div>
   );

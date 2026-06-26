@@ -27,6 +27,9 @@ test.describe('Selection format toolbar', () => {
 
     const bar = page.getByTestId('selection-format-toolbar');
     await expect(bar).toBeVisible();
+    // B / I / U / S + Link = 5 buttons.
+    await expect(bar.locator('button')).toHaveCount(5);
+    await expect(page.getByTestId('selection-format-insertLink')).toBeVisible();
 
     // Apply bold via the mini toolbar button.
     await page.getByTestId('selection-format-bold').click();
@@ -37,6 +40,17 @@ test.describe('Selection format toolbar', () => {
     await expect(page.getByTestId('selection-format-bold')).toHaveAttribute('aria-pressed', 'true');
 
     await page.screenshot({ path: 'screenshots/selection-format-toolbar.png' });
+  });
+
+  test('link button opens the hyperlink dialog for the selection', async ({ page }) => {
+    await editor.typeText('Link this word');
+    await editor.selectText('word');
+
+    await expect(page.getByTestId('selection-format-toolbar')).toBeVisible();
+    await page.getByTestId('selection-format-insertLink').click();
+
+    await expect(page.getByTestId('hyperlink-dialog')).toBeVisible();
+    await page.screenshot({ path: 'screenshots/selection-format-toolbar-link.png' });
   });
 
   test('hides when the selection collapses', async ({ page }) => {
