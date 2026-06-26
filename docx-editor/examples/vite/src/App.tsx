@@ -49,11 +49,7 @@ function isLegacyForcedEditor(): boolean {
   // home screen, so the editor must boot straight into the document and never
   // flash its own web home/dashboard. Treat it like skipHome — forces
   // view='editor' on mount and suppresses the navigate('/home') routing.
-  return (
-    params.get('e2e') === '1' ||
-    params.get('skipHome') === '1' ||
-    params.get('desk') === '1'
-  );
+  return params.get('e2e') === '1' || params.get('skipHome') === '1' || params.get('desk') === '1';
 }
 
 function getInitialView(): 'home' | 'editor' {
@@ -423,8 +419,7 @@ export function App() {
   // theme-aware child) follows the launcher live. On the web this stays
   // 'system' and nothing dispatches the event.
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(
-    () =>
-      (typeof window !== 'undefined' && window.__deskApp__?.themeMode) || 'system'
+    () => (typeof window !== 'undefined' && window.__deskApp__?.themeMode) || 'system'
   );
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -953,6 +948,28 @@ export function App() {
     setStatus(`Error: ${error.message}`);
   }, []);
 
+  // Reload when the open file is modified by another process (e.g. the user
+  // saves from Word). The bootstrap translates the Rust watcher's Tauri event
+  // into a DOM CustomEvent. Only 'modified' triggers a reload; 'removed' and
+  // 'renamed' are handled on the Rust side (removed from recents) and surfaced
+  // to the user as a future notification — for now they are no-ops here.
+  useEffect(() => {
+    if (!isDesktop) return;
+    const onFileChanged = (e: Event) => {
+      const { kind, path } = (e as CustomEvent<{ kind: string; path: string }>).detail ?? {};
+      if (kind !== 'modified') return;
+      const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+      if (!bridge?.isDesktop || !bridge.filePath) return;
+      if (path !== bridge.filePath) return;
+      void bridge
+        .loadDocument()
+        .then((buffer) => setDocumentBuffer(buffer))
+        .catch((err) => console.error('[deskApp] file-changed reload failed', err));
+    };
+    window.addEventListener('deskapp:file-changed', onFileChanged);
+    return () => window.removeEventListener('deskapp:file-changed', onFileChanged);
+  }, [isDesktop]);
+
   const handleFontsLoaded = useCallback(() => {
     console.log('Fonts loaded');
   }, []);
@@ -998,12 +1015,11 @@ export function App() {
   // Home page mark, the favicon, and the README badge all render the
   // exact same SVG — no more drift between hand-coded inline icons
   // and the branded asset.
-  const renderLogo = useCallback(
-    () => {
-      // In Casual Office the logo brings the launcher window forward rather
-      // than navigating to a (nonexistent) web home, so label it accordingly.
-      const logoLabel = isDesktop ? 'Back to Casual Office' : 'Return to home';
-      return (
+  const renderLogo = useCallback(() => {
+    // In Casual Office the logo brings the launcher window forward rather
+    // than navigating to a (nonexistent) web home, so label it accordingly.
+    const logoLabel = isDesktop ? 'Back to Casual Office' : 'Return to home';
+    return (
       <button
         type="button"
         onClick={handleGoHome}
@@ -1046,10 +1062,8 @@ export function App() {
           aria-hidden="true"
         />
       </button>
-      );
-    },
-    [handleGoHome, isDesktop]
-  );
+    );
+  }, [handleGoHome, isDesktop]);
 
   // Top-right area: just Share (Google Docs pattern). Open / Save / New
   // live in the File menu and are driven by <DocxEditor>'s internal
