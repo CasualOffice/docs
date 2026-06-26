@@ -85,7 +85,9 @@ const menuItemStyle: CSSProperties = {
 
 const menuItemDisabledStyle: CSSProperties = {
   ...menuItemStyle,
-  opacity: 0.4,
+  // Use the disabled-text token (≥3.55:1) rather than opacity, which would
+  // dim the label below readable contrast (audit: disabled-opacity-contrast).
+  color: 'var(--color-text-disabled, #8a8886)',
   cursor: 'default',
 };
 

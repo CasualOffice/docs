@@ -32,14 +32,24 @@
  *     fine for single-user Mode 3; multi-user co-edit through a
  *     single FileSource is a separate design problem.
  *
- *   - One save in flight at a time. A tick that lands while the
- *     previous save is still resolving is skipped — the next tick
- *     picks up the latest state.
+ *   - One save in flight at a time, but never lossy: a request that
+ *     lands while a save is resolving is queued, and the in-flight
+ *     drain loop re-runs once more for it. This matters on tab close —
+ *     a hide flush racing an interval tick must not be silently
+ *     dropped. A hung save is bounded by SAVE_TIMEOUT_MS so it can't
+ *     pin the in-flight guard and halt all future autosaves.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { FileSource } from './types';
+
+/**
+ * Upper bound on a single save round-trip. If FileSource.save() hangs
+ * past this, the tick resolves as an error so the in-flight guard is
+ * released and later autosaves keep working instead of deadlocking.
+ */
+const SAVE_TIMEOUT_MS = 30000;
 
 // ---------------------------------------------------------------
 // Pure controller — extracted so it's bun-unit-testable without a
@@ -179,6 +189,16 @@ export function useFileSourceAutoSave(
   // doesn't help because React batches updates; a plain mutable ref
   // gives us reliable in-flight detection.
   const inFlightRef = useRef(false);
+  // "A save was requested while one was already running." The drain
+  // loop in runSave re-runs once more when this is set, so a flush or
+  // hide-triggered save is never silently dropped just because an
+  // interval tick happened to be mid-flight (audit: autosave-flush-no-queue).
+  const pendingRef = useRef(false);
+  // The promise for the currently-draining save loop. flush() callers
+  // join this so an awaited flush() resolves only once their requested
+  // save has actually run, even if another save was in flight when they
+  // called (audit: autosave-pagehide-no-await coupling).
+  const inFlightPromiseRef = useRef<Promise<void> | null>(null);
 
   // Callbacks captured via ref so the tick effect doesn't restart
   // when the host passes a fresh arrow on every render. Same trick
@@ -198,21 +218,33 @@ export function useFileSourceAutoSave(
   }, [fileSource, docId, editorRef, name]);
 
   /**
-   * Performs one save round-trip. Returns the etag on success.
-   * Sets status / lastSavedAt / lastError as a side effect.
+   * Performs exactly one save round-trip and reflects the outcome in
+   * status / lastSavedAt / lastError. Bounded by SAVE_TIMEOUT_MS: a
+   * FileSource.save() that hangs (network stall, unresponsive host)
+   * resolves as an error instead of pinning the in-flight flag forever
+   * and silently halting all future autosaves (audit:
+   * autosave-inflight-deadlock).
    */
-  const runSave = useCallback(async (): Promise<void> => {
-    if (inFlightRef.current) return;
+  const executeOne = useCallback(async (): Promise<void> => {
     const cfg = cfgRef.current;
-    inFlightRef.current = true;
     setStatus('saving');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<AutoSaveTickResult>((resolve) => {
+      timer = setTimeout(
+        () => resolve({ kind: 'err', err: new Error('autosave timed out') }),
+        SAVE_TIMEOUT_MS
+      );
+    });
     try {
-      const result = await performAutoSave({
-        getRef: () => cfg.editorRef.current,
-        fileSource: cfg.fileSource,
-        docId: cfg.docId,
-        name: cfg.name,
-      });
+      const result = await Promise.race([
+        performAutoSave({
+          getRef: () => cfg.editorRef.current,
+          fileSource: cfg.fileSource,
+          docId: cfg.docId,
+          name: cfg.name,
+        }),
+        timeout,
+      ]);
       switch (result.kind) {
         case 'ok':
           setLastSavedAt(result.savedAt);
@@ -234,9 +266,40 @@ export function useFileSourceAutoSave(
           break;
       }
     } finally {
-      inFlightRef.current = false;
+      if (timer) clearTimeout(timer);
     }
   }, []);
+
+  /**
+   * Public save entry point. Coalescing + guaranteed-flush: requests a
+   * save and drains every pending request through a single loop so
+   * concurrent callers (interval tick + hide flush + host "Save & close")
+   * never drop each other's intent. Returns a promise that resolves once
+   * the requested save has actually run, even when another save was in
+   * flight at call time.
+   */
+  const runSave = useCallback((): Promise<void> => {
+    // Register intent first, so a call that arrives mid-flight is picked
+    // up by the running drain loop rather than skipped.
+    pendingRef.current = true;
+    if (inFlightRef.current && inFlightPromiseRef.current) {
+      return inFlightPromiseRef.current;
+    }
+    inFlightRef.current = true;
+    const drain = (async () => {
+      try {
+        while (pendingRef.current) {
+          pendingRef.current = false;
+          await executeOne();
+        }
+      } finally {
+        inFlightRef.current = false;
+        inFlightPromiseRef.current = null;
+      }
+    })();
+    inFlightPromiseRef.current = drain;
+    return drain;
+  }, [executeOne]);
 
   // Interval ticker. Re-arms when `enabled` or `interval` change;
   // every other dep is read via ref so the timer survives parent
