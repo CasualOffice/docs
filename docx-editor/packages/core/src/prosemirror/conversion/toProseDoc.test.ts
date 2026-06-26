@@ -11,7 +11,15 @@ import { DOMSerializer } from 'prosemirror-model';
 import { toProseDoc } from './toProseDoc';
 import { fromProseDoc } from './fromProseDoc';
 import { schema } from '../schema';
-import type { Document, Table, TableRow, TableCell, Theme } from '../../types/document';
+import type {
+  Document,
+  Paragraph,
+  Run,
+  Table,
+  TableRow,
+  TableCell,
+  Theme,
+} from '../../types/document';
 
 beforeAll(() => GlobalRegistrator.register());
 afterAll(() => GlobalRegistrator.unregister());
@@ -267,5 +275,31 @@ describe('toProseDoc ↔ fromProseDoc round-trip — theme shading preservation'
     const shading = firstCellShading(fromProseDoc(edited, inDoc));
     expect(shading?.fill?.rgb).toBe('FF00FF');
     expect(shading?.fill?.themeColor).toBeUndefined();
+  });
+});
+
+describe('toProseDoc ↔ fromProseDoc round-trip — run shading is not highlight', () => {
+  test('run-level shd survives without creating a visible highlight mark', () => {
+    const run: Run = {
+      type: 'run',
+      content: [{ type: 'text', text: 'shaded' }],
+      formatting: { shading: { pattern: 'clear', fill: { rgb: 'FFEB3B' } } },
+    };
+    const paragraph: Paragraph = { type: 'paragraph', content: [run] };
+    const inDoc: Document = { package: { document: { content: [paragraph] } } };
+
+    const pmDoc = toProseDoc(inDoc);
+    const textNode = pmDoc.firstChild?.firstChild;
+    const markNames = textNode?.marks.map((mark) => mark.type.name) ?? [];
+
+    expect(markNames).toContain('runShading');
+    expect(markNames).not.toContain('highlight');
+
+    const outDoc = fromProseDoc(pmDoc, inDoc);
+    const outParagraph = outDoc.package.document.content[0] as Paragraph;
+    const outRun = outParagraph.content[0] as Run;
+
+    expect(outRun.formatting?.shading?.fill?.rgb).toBe('FFEB3B');
+    expect(outRun.formatting?.highlight).toBeUndefined();
   });
 });

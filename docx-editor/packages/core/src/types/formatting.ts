@@ -101,9 +101,9 @@ export interface TextFormatting {
    *    ECMA-376 §17.18.40). Serializes verbatim.
    *  - A 6-digit hex string (e.g. `"FFEB3B"`). Custom hex colors are NOT
    *    valid for `<w:highlight>` — the serializer emits
-   *    `<w:shd w:val="clear" w:color="auto" w:fill="HEX"/>` instead, and
-   *    the parser rehydrates the highlight semantic from that on read
-   *    (openspec `ooxml-roundtrip-fidelity` #1).
+   *    `<w:shd w:val="clear" w:color="auto" w:fill="HEX"/>` instead.
+   *    Imported `<w:shd>` is preserved separately as character shading so
+   *    documents do not show false text highlights.
    */
   highlight?:
     | 'black'

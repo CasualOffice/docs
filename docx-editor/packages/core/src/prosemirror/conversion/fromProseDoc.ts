@@ -52,7 +52,12 @@ import type {
   TableRowAttrs,
   TableCellAttrs,
 } from '../schema/nodes';
-import type { TextColorAttrs, UnderlineAttrs, FontFamilyAttrs } from '../schema/marks';
+import type {
+  TextColorAttrs,
+  UnderlineAttrs,
+  RunShadingAttrs,
+  FontFamilyAttrs,
+} from '../schema/marks';
 
 /**
  * Convert a ProseMirror document to our Document type
@@ -1091,6 +1096,14 @@ function marksToTextFormatting(marks: readonly Mark[]): TextFormatting {
       case 'highlight':
         formatting.highlight = mark.attrs.color;
         break;
+
+      case 'runShading': {
+        const attrs = mark.attrs as RunShadingAttrs;
+        if (attrs.shading) {
+          formatting.shading = attrs.shading;
+        }
+        break;
+      }
 
       case 'fontSize':
         formatting.fontSize = mark.attrs.size;

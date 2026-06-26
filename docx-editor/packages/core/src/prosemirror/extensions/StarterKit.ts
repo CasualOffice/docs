@@ -24,6 +24,7 @@ import { UnderlineExtension } from './marks/UnderlineExtension';
 import { StrikeExtension } from './marks/StrikeExtension';
 import { TextColorExtension } from './marks/TextColorExtension';
 import { HighlightExtension } from './marks/HighlightExtension';
+import { RunShadingExtension } from './marks/RunShadingExtension';
 import { FontSizeExtension } from './marks/FontSizeExtension';
 import { FontFamilyExtension } from './marks/FontFamilyExtension';
 import { SuperscriptExtension } from './marks/SuperscriptExtension';
@@ -118,6 +119,7 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   add('strike', StrikeExtension());
   add('textColor', TextColorExtension());
   add('highlight', HighlightExtension());
+  add('runShading', RunShadingExtension());
   add('fontSize', FontSizeExtension());
   add('fontFamily', FontFamilyExtension());
   add('superscript', SuperscriptExtension());

@@ -249,15 +249,6 @@ export function parseRunProperties(
   const shd = findChild(rPr, 'w', 'shd');
   if (shd) {
     formatting.shading = parseShadingProperties(shd);
-    // OOXML `<w:highlight>` only accepts the named-color enum
-    // (§17.18.40). The serializer falls back to `<w:shd>` for custom
-    // hex colors so Word preserves the fill; rehydrate the highlight
-    // semantic on read when no explicit `<w:highlight>` exists, so the
-    // round-trip stays stable (openspec ooxml-roundtrip-fidelity #1).
-    const fillRgb = formatting.shading?.fill?.rgb;
-    if (!formatting.highlight && fillRgb) {
-      formatting.highlight = fillRgb as TextFormatting['highlight'];
-    }
   }
 
   // Font size in half-points (w:sz)
