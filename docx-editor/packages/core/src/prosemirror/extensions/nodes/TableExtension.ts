@@ -1375,23 +1375,35 @@ export const TablePluginExtension = createExtension({
 
       if (dispatch) {
         const tableStart = context.tablePos + 1;
-        // Find the cell at columnIndex in first and last row
+        const targetCol = context.columnIndex;
         const firstRow = context.table.child(0);
         const lastRow = context.table.child(context.table.childCount - 1);
 
-        let firstCellPos = tableStart + 1; // inside first row
-        for (let c = 0; c < context.columnIndex && c < firstRow.childCount; c++) {
-          firstCellPos += firstRow.child(c).nodeSize;
-        }
+        // `columnIndex` is a VISUAL column (getTableContext accumulates
+        // colspan). Walk each row's cells accumulating colspan to find the
+        // cell that COVERS the target column, instead of treating the
+        // visual column as a child index — which mis-selects in any row
+        // that has a merged (colspan) cell before the target.
+        const cellPosForColumn = (rowNode: PMNode, rowInnerStart: number): number => {
+          let pos = rowInnerStart;
+          let colIdx = 0;
+          for (let c = 0; c < rowNode.childCount; c++) {
+            const child = rowNode.child(c);
+            const span = child.attrs.colspan || 1;
+            if (targetCol < colIdx + span) return pos;
+            pos += child.nodeSize;
+            colIdx += span;
+          }
+          return pos;
+        };
+
+        const firstCellPos = cellPosForColumn(firstRow, tableStart + 1);
 
         let lastRowPos = tableStart;
         for (let r = 0; r < context.table.childCount - 1; r++) {
           lastRowPos += context.table.child(r).nodeSize;
         }
-        let lastCellPos = lastRowPos + 1; // inside last row
-        for (let c = 0; c < context.columnIndex && c < lastRow.childCount; c++) {
-          lastCellPos += lastRow.child(c).nodeSize;
-        }
+        const lastCellPos = cellPosForColumn(lastRow, lastRowPos + 1);
 
         const cellSel = CellSelection.create(state.doc, firstCellPos, lastCellPos);
         dispatch(state.tr.setSelection(cellSel));
