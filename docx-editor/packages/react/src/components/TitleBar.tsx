@@ -105,7 +105,7 @@ export function DocumentName({ value, onChange, placeholder, editable = true }: 
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={resolvedPlaceholder}
-        className={`absolute inset-0 w-full text-base font-normal text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent border-0 outline-none px-2 py-0 rounded hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-surface,white)] focus:ring-1 focus:ring-slate-300 leading-tight ${focused ? '' : 'truncate'}`}
+        className={`absolute inset-0 w-full text-base font-normal text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent border-0 outline-none px-2 py-0 rounded hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-surface,white)] focus:ring-2 focus:ring-[color:var(--doc-primary,#1a73e8)] leading-tight ${focused ? '' : 'truncate'}`}
         aria-label={t('titleBar.documentNameAriaLabel')}
       />
     </span>

@@ -216,6 +216,10 @@ export const ImageExtension = createNodeExtension({
       effectExtentRight: { default: null },
       layoutInCell: { default: null },
       allowOverlap: { default: null },
+      relativeSize: { default: null },
+      hlinkRId: { default: null },
+      rawXml: { default: null },
+      envelopeKey: { default: null },
     },
     parseDOM: [
       {
@@ -360,7 +364,16 @@ export const ImageExtension = createNodeExtension({
           return true;
         }
         if (dispatch) {
-          dispatch(state.tr.setNodeMarkup(pos, undefined, { ...attrs, ...next }));
+          // Changing wrap/anchor must persist via the model serializer, so drop
+          // any imported envelope (rawXml/envelopeKey) the image still carries.
+          dispatch(
+            state.tr.setNodeMarkup(pos, undefined, {
+              ...attrs,
+              ...next,
+              rawXml: null,
+              envelopeKey: null,
+            })
+          );
         }
         return true;
       };

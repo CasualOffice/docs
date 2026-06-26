@@ -1626,6 +1626,12 @@ function convertImage(image: Image): PMNode {
     effectExtentRight,
     layoutInCell: image.layoutInCell,
     allowOverlap: image.allowOverlap,
+    relativeSize: image.relativeSize ?? null,
+    hlinkRId: image.hlinkRId ?? null,
+    // Carry the captured envelope so a from-PM rebuild re-emits it verbatim
+    // rather than dropping it (mirrors the shape/text-box path).
+    rawXml: image.rawXml ?? null,
+    envelopeKey: image.envelopeKey ?? null,
   });
 }
 

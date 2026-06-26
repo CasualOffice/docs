@@ -956,6 +956,18 @@ function createImageRun(node: PMNode): Run {
     if (Object.keys(padding).length > 0) image.padding = padding;
   }
 
+  // Round-trip wp14 relative-size hints and the image hyperlink rId (pure
+  // metadata Word emits; carried so a rebuild re-references the existing rels
+  // entry rather than orphaning it).
+  if (attrs.relativeSize) image.relativeSize = attrs.relativeSize;
+  if (attrs.hlinkRId) image.hlinkRId = attrs.hlinkRId;
+
+  // Re-emit the captured envelope verbatim when the image still carries it
+  // (an unedited group/AlternateContent child). Editing clears these attrs
+  // upstream so model-based emission takes over — mirrors the shape path.
+  if (attrs.rawXml) image.rawXml = attrs.rawXml;
+  if (attrs.envelopeKey) image.envelopeKey = attrs.envelopeKey;
+
   const drawingContent: DrawingContent = {
     type: 'drawing',
     image,

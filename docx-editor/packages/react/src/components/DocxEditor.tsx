@@ -4100,6 +4100,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         ...node.attrs,
         width: w,
         height: h,
+        // Edited geometry must persist: drop the imported envelope so the
+        // model serializer (not the verbatim rawXml) emits the new size.
+        rawXml: null,
+        envelopeKey: null,
       });
       view.dispatch(tr);
       reselectImageNode(pos);
@@ -4126,6 +4130,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         borderWidth,
         borderColor,
         borderStyle,
+        rawXml: null,
+        envelopeKey: null,
       });
       view.dispatch(tr);
       reselectImageNode(pos);
@@ -4144,7 +4150,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const node = view.state.doc.nodeAt(pos);
       if (!node || node.type.name !== 'image') return;
       const v = Math.max(0, Math.min(200, Math.round(value)));
-      const tr = view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, [side]: v });
+      const tr = view.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        [side]: v,
+        rawXml: null,
+        envelopeKey: null,
+      });
       view.dispatch(tr);
       reselectImageNode(pos);
       focusActiveEditor();
@@ -4163,6 +4174,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const tr = view.state.tr.setNodeMarkup(pos, undefined, {
         ...node.attrs,
         alt: alt.trim() ? alt : null,
+        rawXml: null,
+        envelopeKey: null,
       });
       view.dispatch(tr);
       reselectImageNode(pos);
@@ -4397,6 +4410,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const tr = view.state.tr.setNodeMarkup(pos, undefined, {
         ...node.attrs,
         transform: newTransform,
+        rawXml: null,
+        envelopeKey: null,
       });
       view.dispatch(tr.scrollIntoView());
       // Keep the image selected so the Format panel stays on it after the edit.
@@ -4426,6 +4441,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         distBottom: data.distBottom ?? node.attrs.distBottom,
         distLeft: data.distLeft ?? node.attrs.distLeft,
         distRight: data.distRight ?? node.attrs.distRight,
+        rawXml: null,
+        envelopeKey: null,
       });
       view.dispatch(tr.scrollIntoView());
       focusActiveEditor();
@@ -4454,6 +4471,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         borderWidth: data.borderWidth ?? null,
         borderColor: data.borderColor ?? null,
         borderStyle: data.borderStyle ?? null,
+        rawXml: null,
+        envelopeKey: null,
       });
       view.dispatch(tr.scrollIntoView());
       focusActiveEditor();

@@ -215,6 +215,28 @@ export interface ImageAttrs {
   layoutInCell?: boolean;
   /** `wp:anchor allowOverlap`. Same tri-state convention as `layoutInCell`. */
   allowOverlap?: boolean;
+  /**
+   * Relative-size hints (`wp14:sizeRelH` / `wp14:sizeRelV`). Pure round-trip
+   * metadata — carried through PM so a from-PM rebuild re-emits Word's
+   * percentage-of-anchor sizing rule instead of dropping it.
+   */
+  relativeSize?: import('../../types/content').Image['relativeSize'] | null;
+  /**
+   * Source `r:id` of the image's `<a:hlinkClick>`. Preserved so a rebuild
+   * re-references the existing rels entry rather than orphaning it.
+   */
+  hlinkRId?: string | null;
+  /**
+   * Raw `<w:drawing>` / `<mc:AlternateContent>` envelope XML captured at parse
+   * time for images extracted from a group/AlternateContent envelope (see
+   * textBoxEnricher). Threaded through PM so a from-PM rebuild (collab sync,
+   * full repack) re-emits the envelope verbatim instead of losing it —
+   * mirroring the shape/text-box path. Cleared on edit so model-based
+   * emission takes over and the edit actually persists.
+   */
+  rawXml?: string | null;
+  /** Envelope group key — shared by all items extracted from one envelope. */
+  envelopeKey?: string | null;
 }
 
 /**

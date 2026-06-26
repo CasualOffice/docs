@@ -20,7 +20,19 @@ consolidation collapsing rPr/r/t neighbors) is excluded.
 
 No round-trip drops.
 
+### repr-memo
+
+No round-trip drops.
+
 ### core-properties
+
+No round-trip drops.
+
+### repr-essay
+
+No round-trip drops.
+
+### repr-travel-itinerary
 
 No round-trip drops.
 
@@ -32,6 +44,10 @@ No round-trip drops.
 
 
 No tags vanished on round-trip.
+
+### repr-recipe
+
+No round-trip drops.
 
 ### table-indent
 
@@ -58,11 +74,19 @@ No round-trip drops.
 
 No round-trip drops.
 
+### repr-syllabus
+
+No round-trip drops.
+
 ### with-tables
 
 No round-trip drops.
 
 ### merged-cells
+
+No round-trip drops.
+
+### repr-weekly-status
 
 No round-trip drops.
 
@@ -74,6 +98,11 @@ No round-trip drops.
 
 No round-trip drops.
 
+### sds-anti-t-zh
+
+
+No tags vanished on round-trip.
+
 ### drawing-fidelity
 
 No round-trip drops.
@@ -82,6 +111,10 @@ No round-trip drops.
 
 
 No tags vanished on round-trip.
+
+### equations
+
+No round-trip drops.
 
 ### theme-color-auto
 
@@ -92,6 +125,10 @@ No round-trip drops.
 No round-trip drops.
 
 ### oversized-header-image
+
+No round-trip drops.
+
+### repr-meeting-notes
 
 No round-trip drops.
 
@@ -116,6 +153,14 @@ No round-trip drops.
 No round-trip drops.
 
 ### image-layout-modes-demo
+
+No round-trip drops.
+
+### repr-resume
+
+No round-trip drops.
+
+### repr-cover-letter
 
 No round-trip drops.
 
@@ -147,6 +192,10 @@ No tags vanished on round-trip.
 
 No tags vanished on round-trip.
 
+### repr-letter
+
+No round-trip drops.
+
 ### template-with-hf-rule
 
 No round-trip drops.
@@ -176,6 +225,19 @@ No round-trip drops.
 
 No round-trip drops.
 
+### repr-lab-report
+
+No round-trip drops.
+
+### repr-press-release
+
+
+No tags vanished on round-trip.
+
+### table-float-image-test
+
+No round-trip drops.
+
 ### issue-68-large
 
 No round-trip drops.
@@ -195,6 +257,10 @@ No tags vanished on round-trip.
 No round-trip drops.
 
 ### wpg-group
+
+No round-trip drops.
+
+### repr-project-proposal
 
 No round-trip drops.
 

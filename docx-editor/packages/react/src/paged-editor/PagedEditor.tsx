@@ -4078,6 +4078,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           ...node.attrs,
           width: newWidth,
           height: newHeight,
+          // Drop the imported envelope so the resized geometry is emitted from
+          // the model rather than the verbatim rawXml.
+          rawXml: null,
+          envelopeKey: null,
         });
         view.dispatch(tr);
 

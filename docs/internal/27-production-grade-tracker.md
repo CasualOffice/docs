@@ -342,3 +342,45 @@ This section exists to prevent duplicate work and to keep the tracker honest. Th
 - **Accessibility/focus/IME coverage:** `editor-a11y.spec.ts`, `accessibility-dialog.spec.ts`, `editor-focus-recapture.spec.ts`, `cursor-focus.spec.ts`, and `ime-caret-sync.spec.ts` cover important baseline contracts, but not a full WCAG/AT matrix.
 - **Feature workflow coverage:** Playwright specs exist for version history/preview, track changes, equations, comments, tables, images, find/replace, formatting, markdown, auth gate, export PDF, mobile behavior, and many document-fidelity regressions.
 - **Performance coverage:** `performance-large-docs.spec.ts` exists, but production budgets/trend reporting still need to be formalized.
+
+
+---
+
+## Concrete Audit Findings — 2026-06-27
+
+| ID | Severity | Dimension | Title | Files | Fix | Status |
+|----|----------|-----------|-------|-------|-----|--------|
+| autosave-flush-no-queue | P0 | Save reliability / race | Flush/runSave drops save when interval tick in-flight (no queue) | useFileSourceAutoSave.ts:204-239,244-276 | Add deferred-save queue; re-run on finally if a flush was requested | **Fixed 2026-06-27** — drain loop + pendingRef coalescing; queue.test.ts |
+| autosave-pagehide-no-await | P0 | Save reliability / unload | pagehide fires void runSave() without awaiting | useFileSourceAutoSave.ts:264-281 | sendBeacon fallback + timeout-bounded await; couple with queue | **Partial 2026-06-27** — hide flush now always enqueues via drain loop; sendBeacon fallback deferred (needs FileSource support) |
+| image-rawxml-envelope-drop | P1 | OOXML round-trip | Images drop rawXml/envelopeKey through PM (shapes don't); selective save compounds | toProseDoc.ts:1462-1629; schema/nodes.ts; fromProseDoc.ts:816-968; selectiveSave.ts:37-60 | Add fields to ImageAttrs; thread in convertImage/createImageRun (mirror shapes) | **Fixed 2026-06-27** — threaded + cleared on every image edit site; image-envelope-roundtrip.test.ts |
+| textbox-rawxml-envelope-attrs | P1 | OOXML round-trip | TextBox/Shape rawXml/envelopeKey not (de)serialized via toDOM/parseDOM | schema/nodes.ts; toProseDoc.ts:2030-2112; fromProseDoc.ts | Emit data-raw-xml/data-envelope-key in toDOM; read in parseDOM | Todo |
+| tracked-changes-rprchange-drop | P1 | OOXML round-trip | Run-level tracked changes (w:rPrChange) lost through PM | content.ts; toProseDoc.ts:1224-1253; fromProseDoc.ts:335-651 | Model rPrChange as PM mark/attr; map back on serialize | Todo |
+| autosave-inflight-deadlock | P1 | Save reliability / deadlock | inFlightRef never resets if save hangs, halting all autosaves | useFileSourceAutoSave.ts:204-239; personal.ts:108-140 | Timeout/AbortController resets inFlightRef + sets error | **Fixed 2026-06-27** — SAVE_TIMEOUT_MS (30s) races the save; guard released + status=error |
+| autosave-skip-hides-failures | P1 | Error handling / status | Save serialization failure returns null, treated as 'no changes' | useFileSourceAutoSave.ts:75-86; DocxEditor.tsx:6638-6640 | save() throws on failure; map exceptions to err, null to skip | Todo |
+| autosave-flushsave-unload-integration | P1 | Save reliability / integration | flushSave() exposed but not wired into unload lifecycle | CasualEditor.tsx:285-296; DocxEditor.tsx:2996-3007 | Harden internal pagehide path; document host pattern | Todo |
+| selection-tracker-double-fire | P1 | Selection handling | onSelectionChange fires twice per state change | selectionTracker.ts:312-346 | Remove one source; add contextsEqual check to view().update() | Todo |
+| selection-tracker-boundary-marks | P1 | Selection & caret | Wrong toolbar formatting state at mark/block boundaries | selectionTracker.ts:177-204 | Prefer rightMarks; dedupe by mark type only | Todo |
+| image-paste-stale-position | P1 | Paste handling | Image paste uses stale insertion position across async reads | ImagePasteExtension.ts:34-81 | Re-capture + clamp position before each insert | Todo |
+| i18n-savestatus | P1 | i18n & UX | SaveStatusIndicator strings not internationalized | TitleBar.tsx:177,188,197 | Wrap in t() with titleBar.* keys | Todo |
+| i18n-writerstatuspill | P1 | i18n & UX | WriterStatusPill labels not internationalized | WriterStatusPill.tsx:39-64 | useTranslation + writerStatus.* keys | Todo |
+| i18n-equationdialog | P1 | i18n & UX | EquationDialog UI/error strings not internationalized | EquationDialog.tsx:89,91,112,115,174,192 | useTranslation + dialogs.equation.* keys | Todo |
+| image-attrs-extra-drop | P2 | OOXML round-trip | Image relativeSize (wp14) and hlinkRId dropped through PM | content.ts:466-478; toProseDoc.ts:1462-1629; fromProseDoc.ts:816-968 | Add fields to ImageAttrs; thread both directions | **Fixed 2026-06-27** — relativeSize + hlinkRId threaded through convertImage/createImageRun |
+| empty-run-formatting-consolidated | P2 | OOXML round-trip | Empty runs with formatting merged away by consolidateRuns | paragraphParser.ts:249-278; paragraphSerializer.ts | Preserve all empty runs regardless of formatting | Todo |
+| cjk-line-height-ratio | P2 | Visual/layout | All CJK fonts fall back to default singleLineRatio | fontResolver.ts:183-212; measureContainer.ts:169-221 | Measure Noto metrics; store calibrated ratios + CI fixture | Todo |
+| block-image-double-spacing | P2 | Visual/layout | Block images double-apply distTop/distBottom | measureParagraph.ts:706-727,559-570 | Drop dist from line-714 block case; let CSS+buffer own it | Todo |
+| suppress-empty-para-spacing | P2 | Visual/layout | suppressEmptyParagraphHeight discards before/after spacing | measureParagraph.ts:453-468 | Accumulate spacing into totalHeight before return | Todo |
+| inline-image-lineheight-unclamped | P2 | Visual/layout | Inline image line height unclamped in narrow cells | measureParagraph.ts:722-738 | Clamp imageHeight (e.g. fontSizePx*3) | Todo |
+| peerlock-malformed-cursor | P2 | Collab correctness | Malformed peer cursor crashes peerLocksFromAwareness | peerLocks.ts:48-68 | try/catch around relativePositionToAbsolutePosition | Todo |
+| storedmarks-uncoordinated-plugins | P2 | Mark restoration | Two appendTransaction plugins set storedMarks uncoordinated | BaseKeymapExtension.ts:254-278; StoredMarksRestoreExtension.ts:41-75 | Consolidate to one plugin or add setMeta coordination | Todo |
+| smartquotes-autocorrect-conflict | P2 | Input handling | SmartQuotes and Autocorrect both dispatch on same keystroke | SmartQuotesExtension.ts:68-114; AutocorrectExtension.ts:100-151 | Centralize replacement or tag transaction to skip second | Todo |
+| autosave-stale-error-status | P2 | UX / status | Stale 'Save failed' persists without clearing | useFileSourceAutoSave.ts:216-234 | Clear lastError on success or 60s timeout | Todo |
+| autosave-dual-systems-uncoordinated | P2 | Architecture / UX | IndexedDB + FileSource autosaves run uncoordinated | DocxEditor.tsx:6815-6839; CasualEditor.tsx:269-275 | Coordinate as fallback or unify error reporting | Todo |
+| i18n-chatpanel | P2 | i18n & UX | ChatPanel UI/error strings not internationalized | ChatPanel.tsx:593,649,683,715,743,779-783 | useTranslation + chat.* keys | Todo |
+| i18n-rightdockpanel-aria | P2 | A11y & i18n | RightDockPanel close aria-label not internationalized | RightDockPanel.tsx:197 | t('rightPanel.closeButton') + locale files | Todo |
+| i18n-footnotedialog | P2 | i18n & UX | FootnoteEditDialog controls not internationalized | FootnoteEditDialog.tsx:73,105,113 | useTranslation + footnote.* / common.* keys | Todo |
+| i18n-selectionaskai | P2 | i18n & discoverability | SelectionAskAi prompts/status not internationalized | SelectionAskAi.tsx:173-179,339 | useTranslation; t() QUICK_PROMPTS and labels | Todo |
+| i18n-statusbar | P2 | i18n & UX | StatusBar reading-time/readability labels not internationalized | StatusBar.tsx:274,395 | Add statusBar.readingTime / readability.unknown | Todo |
+| documentname-focus-ring | P2 | Focus visibility | DocumentName focus ring hardcoded + weak fallback | TitleBar.tsx:108 | Use --doc-primary ring + transparent outline fallback | **Fixed 2026-06-27** — ring-2 ring-[--doc-primary], theme-adaptive |
+| disabled-opacity-contrast | P2 | Color contrast | Disabled controls use opacity instead of disabled-color token | Button.tsx:158; IconButton.tsx:93; MenuDropdown.tsx:88 | Use --color-text-disabled token | **Partial 2026-06-27** — MenuDropdown swapped to --color-text-disabled; vendor/design-system Button/IconButton left to DesignSync + visual verify |
+| theme-toggle-touch-target | P2 | Touch target | Theme toggle 32px below 44px AAA minimum | TitleBar.tsx:230 | Increase to w-11 h-11 (44px) | Todo — AAA-only; bumping one toolbar button to 44px breaks 32px row density, needs Playwright visual pass first |
+| reduced-motion-animations | P3 | Motion a11y | Animations rely on global reduced-motion reset, not explicit handling | TitleBar.tsx:173; AISuggestionPanel.tsx:127; SelectionAskAi.tsx:170; LoadingIndicator.tsx:162; editor.css:1058-1067 | Optional explicit matchMedia gate; verify global scope coverage | Todo |
