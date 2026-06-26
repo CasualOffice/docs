@@ -664,17 +664,18 @@ export function App() {
               setDocumentBuffer(null);
               setCurrentDocument(null);
               setTextDoc({ text, fileName: name, kind });
+              // Markdown/text renders immediately (no async DOCX parse step),
+              // so the boot splash can be dismissed as soon as the state lands.
+              window.__deskApp__?.dismissBoot?.();
             })
             .catch((err) => {
               console.error('deskApp loadText failed', err);
               setCurrentDocument(createEmptyDocument());
               setFileName(name);
               setStatus(`Could not open file: ${err}`);
-            })
-            // The document is now in the editor view (or we surfaced a load
-            // error) — drop the cold-start splash either way so it can never
-            // stick. Idempotent; no-op on web.
-            .finally(() => window.__deskApp__?.dismissBoot?.());
+              // Error path — dismiss immediately so the user can see the error.
+              window.__deskApp__?.dismissBoot?.();
+            });
           return;
         }
         bridge
@@ -682,15 +683,20 @@ export function App() {
           .then((buffer) => {
             setDocumentBuffer(buffer);
             setFileName(name);
+            // Do NOT dismiss the boot splash here — the buffer is set but
+            // DocxEditor still needs to run parseDocx (~100–500 ms async) and
+            // paint the first layout before the document is visible. Dismissing
+            // now would reveal a blank editor. onEditorViewReady below handles
+            // the dismiss after the PM view is created and the first paint lands.
           })
           .catch((err) => {
             console.error('deskApp loadDocument failed', err);
             setCurrentDocument(createEmptyDocument());
             setFileName(name);
             setStatus(`Could not open file: ${err}`);
-          })
-          // Dismiss the boot splash on both success and load-error paths.
-          .finally(() => window.__deskApp__?.dismissBoot?.());
+            // Error path — dismiss immediately so the user can see the error.
+            window.__deskApp__?.dismissBoot?.();
+          });
       } else {
         setCurrentDocument(createEmptyDocument());
         setFileName('Untitled.docx');
@@ -896,6 +902,50 @@ export function App() {
     return () => {
       cancelled = true;
     };
+  }, [isDesktop]);
+
+  // Stable desktop save/export handlers — defined outside the JSX render so
+  // DocxEditor's handleSave useCallback (which lists onSave in its deps) does
+  // NOT get a new reference every time status changes (Saving → Saved → '').
+  // Accessing bridge via window avoids closing over a stale reference.
+  const onSaveDesktop = useCallback(async (buffer: ArrayBuffer) => {
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (!bridge?.isDesktop) return;
+    setStatus('Saving…');
+    try {
+      const written = await bridge.save(buffer);
+      if (typeof written === 'string') {
+        const name = written.split(/[\\/]/).pop();
+        if (name) setFileName(name);
+      }
+      setStatus('Saved');
+      setTimeout(() => setStatus(''), 1500);
+    } catch (err) {
+      console.error('desktop save failed', err);
+      setStatus('Save failed');
+      setTimeout(() => setStatus(''), 2500);
+    }
+  }, []); // bridge.save, setStatus, setFileName are all stable across renders
+
+  const onExportDesktop = useCallback(async (blob: Blob, suggestedName: string) => {
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (!bridge?.isDesktop) return false;
+    try {
+      const buf = await blob.arrayBuffer();
+      const written = await bridge.saveAs(suggestedName, buf);
+      return written != null;
+    } catch (err) {
+      console.error('desktop export failed', err);
+      return false;
+    }
+  }, []); // bridge.saveAs is stable
+
+  // Dismiss the boot overlay once DocxEditor's PM view is live and the
+  // first layout paint is imminent. This fires AFTER parseDocx completes,
+  // avoiding the blank-editor flash that occurred when dismissBoot was called
+  // immediately after setDocumentBuffer (before async parse + first paint).
+  const handleEditorViewReady = useCallback(() => {
+    if (isDesktop) window.__deskApp__?.dismissBoot?.();
   }, [isDesktop]);
 
   const handleError = useCallback((error: Error) => {
@@ -1143,59 +1193,14 @@ export function App() {
           onNew={handleNewDocument}
           renderLogo={renderLogo}
           renderTitleBarRight={renderTitleBarRight}
-          // Tauri shell: route every Save (toolbar button, File→Save,
-          // Ctrl+S) through the bridge so it overwrites the bound
-          // filesystem path instead of producing a phantom download.
-          // Web mode: leave onSave UNSET so DocxEditor falls back to its
-          // own blob-download path. Passing a handler that no-ops in web
-          // mode still counts as "host owns save" inside the editor, which
-          // suppresses the download entirely (and breaks the e2e save flow).
-          onSave={
-            isDesktop
-              ? async (buffer) => {
-                  const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
-                  if (!bridge?.isDesktop) return;
-                  setStatus('Saving…');
-                  try {
-                    const written = await bridge.save(buffer);
-                    if (typeof written === 'string') {
-                      const name = written.split(/[\\/]/).pop();
-                      if (name) setFileName(name);
-                    }
-                    setStatus('Saved');
-                    setTimeout(() => setStatus(''), 1500);
-                  } catch (err) {
-                    // eslint-disable-next-line no-console
-                    console.error('desktop save failed', err);
-                    setStatus('Save failed');
-                    setTimeout(() => setStatus(''), 2500);
-                  }
-                }
-              : undefined
-          }
-          // Tauri shell: File → Export (ODT/MD/TXT), Make a copy, and
-          // Email-as-attachment hand their bytes here so they open the native
-          // Save dialog (picker) instead of a phantom ~/Downloads blob.
-          // Returns true when the user picked a location (handled), false on
-          // cancel/error so the editor doesn't claim success. Web: unset →
-          // editor keeps its own blob download.
-          onExport={
-            isDesktop
-              ? async (blob: Blob, suggestedName: string) => {
-                  const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
-                  if (!bridge?.isDesktop) return false;
-                  try {
-                    const buf = await blob.arrayBuffer();
-                    const written = await bridge.saveAs(suggestedName, buf);
-                    return written != null;
-                  } catch (err) {
-                    // eslint-disable-next-line no-console
-                    console.error('desktop export failed', err);
-                    return false;
-                  }
-                }
-              : undefined
-          }
+          // Stable callbacks — defined as useCallback above so DocxEditor's
+          // internal handleSave/handleExport don't re-reference on every status change.
+          onSave={isDesktop ? onSaveDesktop : undefined}
+          onExport={isDesktop ? onExportDesktop : undefined}
+          // Dismiss the boot splash after DocxEditor has parsed the DOCX and
+          // created its PM view, avoiding the blank-editor flash that occurred
+          // when dismissBoot fired immediately after setDocumentBuffer.
+          onEditorViewReady={isDesktop ? handleEditorViewReady : undefined}
         />
       </main>
       <ShareDialog
