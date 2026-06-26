@@ -244,6 +244,7 @@ import { AISuggestionPanel } from './AISuggestionPanel';
 import { ChatPanel } from './ChatPanel';
 import { InlinePreviewPopover } from './InlinePreviewPopover';
 import { SelectionAskAi } from './SelectionAskAi';
+import { SelectionFormatToolbar } from './SelectionFormatToolbar';
 import { runPipeline } from '../lib/writer/pipeline';
 // WriterStatusPill is built and exported; rendering it inside
 // `TitleBarRight` is queued for P2 along with the active-feature
@@ -9579,6 +9580,15 @@ body { background: white; }
                 with the user's free-form prompt; the resulting
                 proposal goes into the inline preview popover (same
                 surface as chat-driven proposals). */}
+            {/* On-selection mini formatting toolbar (Google Docs / Word style).
+                Anchored above the body selection; reuses the toolbar's own
+                format handler + the live selection's active marks. */}
+            <SelectionFormatToolbar
+              isOpen={hasTextSelection}
+              getView={() => getActiveEditorView() ?? null}
+              formatting={state.selectionFormatting}
+              onFormat={handleFormat}
+            />
             {/* SelectionAskAi forced off — LLM gating. */}
             <SelectionAskAi
               isOpen={false}

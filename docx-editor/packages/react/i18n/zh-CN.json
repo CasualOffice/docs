@@ -997,5 +997,8 @@
     "readyToLoad": null,
     "running": null,
     "unloading": null
+  },
+  "selectionToolbar": {
+    "ariaLabel": null
   }
 }
