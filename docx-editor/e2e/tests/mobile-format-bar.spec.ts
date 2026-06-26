@@ -50,6 +50,20 @@ test.describe('Mobile floating format bar', () => {
         'true'
       );
     });
+
+    test('link button on the desktop bar opens the hyperlink dialog', async ({ page }) => {
+      await page.goto('/?e2e=1');
+      await page.waitForSelector('[data-testid="docx-editor"]');
+      await page.waitForTimeout(500);
+      await page.locator('.ProseMirror').focus();
+      await page.keyboard.type('Link this');
+      await page.keyboard.press(`${await modifierKey(page)}+a`);
+      await expect(page.locator('[data-testid="desktop-format-bar"]')).toBeVisible({
+        timeout: 2000,
+      });
+      await page.locator('[data-testid="desktop-format-insertLink"]').click();
+      await expect(page.locator('[data-testid="hyperlink-dialog"]')).toBeVisible();
+    });
   });
 
   test.describe('phone viewport — chip appears + tap formats', () => {

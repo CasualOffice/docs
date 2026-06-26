@@ -22,9 +22,18 @@
  * parent's scale transform).
  */
 
-import React, { useEffect, useState, useMemo, type CSSProperties } from 'react';
+import React, { Fragment, useEffect, useState, useMemo, type CSSProperties } from 'react';
 import type { SelectionRect } from '@eigenpal/docx-core/layout-bridge';
 import type { SelectionFormatting, FormattingAction } from '../Toolbar';
+import { MaterialSymbol } from './MaterialSymbol';
+
+const dividerStyle: CSSProperties = {
+  width: 1,
+  height: 16,
+  margin: '0 2px',
+  background: 'var(--doc-border, #e0e0e0)',
+  flexShrink: 0,
+};
 
 export interface MobileFormatBarProps {
   /** Selection rectangles in *overlay-local* coordinates (unscaled).
@@ -119,10 +128,15 @@ const btnActive: CSSProperties = {
 };
 
 interface FormatButton {
-  cmd: FormattingAction;
+  cmd: 'bold' | 'italic' | 'underline' | 'strikethrough' | 'insertLink';
   label: string;
-  glyph: string;
+  /** Text glyph (B/I/U/S). Mutually exclusive with `icon`. */
+  glyph?: string;
+  /** MaterialSymbol name — used for actions with no good text glyph (link). */
+  icon?: string;
   active: (f: SelectionFormatting) => boolean;
+  /** Render a thin separator before this button (groups marks vs actions). */
+  divider?: boolean;
 }
 
 const BUTTONS: FormatButton[] = [
@@ -136,6 +150,13 @@ const BUTTONS: FormatButton[] = [
     // SelectionFormatting calls it `strike` (matches PM mark name);
     // the FormattingAction uses `strikethrough` for the command.
     active: (f) => !!f.strike,
+  },
+  {
+    cmd: 'insertLink',
+    label: 'Insert link',
+    icon: 'link',
+    active: () => false,
+    divider: true,
   },
 ];
 
@@ -205,10 +226,7 @@ function MobileFormatBarInner({
     >
       {BUTTONS.map((b) => {
         const on = b.active(formatting);
-        // We know cmd is one of the four string literals in this
-        // file's BUTTONS table; the FormattingAction union also
-        // carries object variants we never construct here.
-        const cmd = b.cmd as 'bold' | 'italic' | 'underline' | 'strikethrough';
+        const cmd = b.cmd;
         const glyphStyle: CSSProperties = {
           fontWeight: cmd === 'bold' ? 700 : 600,
           fontStyle: cmd === 'italic' ? 'italic' : 'normal',
@@ -216,19 +234,25 @@ function MobileFormatBarInner({
             cmd === 'underline' ? 'underline' : cmd === 'strikethrough' ? 'line-through' : 'none',
         };
         return (
-          <button
-            key={b.label}
-            type="button"
-            style={{ ...btnBase, ...(on ? btnActive : null) }}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onFormat(b.cmd)}
-            aria-pressed={on}
-            aria-label={b.label}
-            title={b.label}
-            data-testid={`${variant}-format-${cmd}`}
-          >
-            <span style={glyphStyle}>{b.glyph}</span>
-          </button>
+          <Fragment key={b.label}>
+            {b.divider && <span aria-hidden style={dividerStyle} />}
+            <button
+              type="button"
+              style={{ ...btnBase, ...(on ? btnActive : null) }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onFormat(b.cmd)}
+              aria-pressed={on}
+              aria-label={b.label}
+              title={b.label}
+              data-testid={`${variant}-format-${cmd}`}
+            >
+              {b.icon ? (
+                <MaterialSymbol name={b.icon} size={variant === 'mobile' ? 18 : 16} />
+              ) : (
+                <span style={glyphStyle}>{b.glyph}</span>
+              )}
+            </button>
+          </Fragment>
         );
       })}
     </div>
