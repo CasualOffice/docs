@@ -724,6 +724,15 @@ export function App() {
     setDocumentBuffer(null);
     setFileName('Untitled.docx');
     setStatus('');
+    // Desktop: a brand-new blank document must NOT stay bound to the path of
+    // the file this window previously had open — otherwise the next Save would
+    // overwrite that file on disk with the blank content. Clear the bound path
+    // so save() falls through to saveAs() (prompts for a location), matching
+    // the untitled-document save semantics.
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (bridge?.isDesktop) {
+      bridge.filePath = null;
+    }
     // Navigate to the canonical draft URL so back / refresh / bookmark
     // converge. The route effect picks this up and flips view='editor'.
     // The legacy-flag check inside that effect ensures `?e2e=1` specs
