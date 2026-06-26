@@ -357,6 +357,13 @@ if (isDesktop) {
      * reports a failed save — never swallow it here.
      */
     async function chunkedWrite(path: string, buf: ArrayBuffer) {
+      // Never atomically replace a good file with an empty one. A degenerate
+      // or failed serialization that yielded 0 bytes would otherwise commit
+      // over the original on disk — silent data loss. Surface it as an error
+      // (the caller re-throws so the editor shows "Save failed") instead.
+      if (buf.byteLength === 0) {
+        throw new Error(`refusing to write an empty document to ${path}`);
+      }
       await inv('begin_save_document', { path });
       const view = new Uint8Array(buf);
       const CHUNK = 1 << 20; // 1 MB
@@ -390,6 +397,11 @@ if (isDesktop) {
     // The Rust `set_window_dirty` command infers the window from the
     // caller. All calls are best-effort and must never throw.
     let isDirty = false;
+    // Monotonic edit counter — bumped on every edit signal, not just the
+    // clean→dirty transition. A save snapshots this before writing and
+    // re-checks it after the commit, so an edit that lands mid-write keeps
+    // the window dirty instead of being cleared (and silently lost on close).
+    let editSeq = 0;
     function setWindowDirty(dirty: boolean) {
       if (dirty === isDirty) return;
       isDirty = dirty;
@@ -401,7 +413,10 @@ if (isDesktop) {
     }
     // Mark dirty on any user edit. Capture phase so we see the event even
     // if the editor stops propagation. Heuristic: any input = dirty.
-    const markDirty = () => setWindowDirty(true);
+    const markDirty = () => {
+      editSeq++;
+      setWindowDirty(true);
+    };
     document.addEventListener('input', markDirty, true);
     document.addEventListener('beforeinput', markDirty, true);
     document.addEventListener(
@@ -485,13 +500,16 @@ if (isDesktop) {
       },
       async save(bytes: ArrayBuffer): Promise<string | null> {
         if (filePath) {
+          const seqAtStart = editSeq;
           try {
             await chunkedWrite(filePath, bytes);
           } catch (err) {
             console.error('[deskApp] save failed for', filePath, err);
             throw err;
           }
-          setWindowDirty(false);
+          // Only mark clean if no edit landed while the write was in flight;
+          // otherwise the window would read "saved" with unsaved changes.
+          if (editSeq === seqAtStart) setWindowDirty(false);
           return filePath;
         }
         return bridge!.saveAs('Untitled.docx', bytes);
@@ -499,6 +517,7 @@ if (isDesktop) {
       async saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null> {
         const newPath = (await inv('pick_save_path', { suggestedName })) as string | null;
         if (!newPath) return null;
+        const seqAtStart = editSeq;
         try {
           await chunkedWrite(newPath, bytes);
         } catch (err) {
@@ -512,7 +531,8 @@ if (isDesktop) {
           /* recents persistence is best-effort */
         }
         filePath = newPath;
-        setWindowDirty(false);
+        // Only mark clean if no edit landed while the write was in flight.
+        if (editSeq === seqAtStart) setWindowDirty(false);
         await updateWindowTitleFromPath(newPath);
         return newPath;
       },
