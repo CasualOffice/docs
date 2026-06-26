@@ -6,6 +6,11 @@ Consolidates the resolved fidelity/editability/collab trackers (now in
 phase-wise plan. Living reference/design docs (backend, storage, SDK, iframe,
 writing-assistant, snapshot, collab-scale) stay as-is alongside this.
 
+For the strict production execution checklist, use
+[`27-production-grade-tracker.md`](27-production-grade-tracker.md). The roadmap
+describes direction; the tracker defines release gates, phase tasks, and
+"done means done" acceptance criteria.
+
 Last updated: 2026-06-25.
 
 **Recently shipped (2026-06-24→25):** Phase A is **complete** (track-changes, version history +
