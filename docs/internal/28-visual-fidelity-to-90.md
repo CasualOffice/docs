@@ -63,6 +63,15 @@ Built `scripts/visual-fidelity/band-compare.py` (plan step #1: reference-row ext
 
 **Next fix (measured):** (a) reconcile header-content height vs LibreOffice for the negative-top-margin case; (b) audit per-band paragraph spacing (before/after, 1.5× line) for the small per-row excess. Re-run `band-compare` + VF after each; gate on representative corpus.
 
+## LibreOffice ground-truth probe + CJK finding (2026-06-27)
+
+`scripts/visual-fidelity/lo-probe.py` generates a controlled `.docx`, renders it in LibreOffice, and measures exact line pitch / empty-paragraph height — so calibration targets are **measured, not guessed**. Findings:
+
+- **Arial line-height confirmed correct.** LO Arial pitch matches the editor's `1.1172` within measurement noise — Arial is not the form drift.
+- **CJK isolated-probe is misleading.** LO renders pure **Microsoft JhengHei** at single-line ratio **1.700** (consistent across 1.5×/2.0×/3.0×). But setting the editor's JhengHei ratio to 1.70 **regressed** the SDS doc: score 60.4 → 31.2 and page count 16 → 23. Reason: the SDS doc mixes **Arial (ascii) + JhengHei (eastAsia) on the same lines**, so the effective line height is near Arial's (~1.12), not pure-CJK 1.70 — and the editor's `1.15` default already yields LibreOffice's 16-page count. **Conclusion:** the CJK gap is _not_ a gross line-height error; it is finer (row positions within pages). A pure-CJK ratio bump is the wrong lever for mixed-script docs. The proper fix is **per-run mixed-script line-height resolution** (use the dominant/ascii font's metric for mixed lines), measured per doc — not a blanket CJK ratio.
+
+**Meta-lesson for this initiative:** every calibration hypothesis must be re-measured against the _real_ fixture, not an isolated probe — isolated probes over/under-state because real docs mix scripts, spacing, and tables. The font ratios are already approximately right; the remaining gap to ≥90 is fine-grained and treacherous (each lever needs a measured before/after + corpus regression check).
+
 ## Tooling notes
 
 - Run VF: `node scripts/visual-fidelity/run.mjs` (full) or `VF_ONLY=a,b node scripts/visual-fidelity/run.mjs`. Needs `soffice` on PATH (present locally).
