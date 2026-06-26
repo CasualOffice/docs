@@ -41,7 +41,7 @@ Web research (sources cited in the research log) + direct engine verification es
 - **`medical-incident-form` drift is table/empty-row geometry, not font metrics.** Cell margins default to `0` correctly; the form uses `w:line=360` (1.5×) spacing and many empty spacer paragraphs/rows + `w:trHeight` (atLeast). The accumulated excess (~a full section by p3) is larger than a 1–2 % line-height delta — it points at empty-paragraph/row height or `trHeight` interaction. **Needs reference-row-height extraction** (the harness currently scores row _correlation_, not absolute reference heights) to pinpoint without guessing.
 - **CJK (`sds-anti-t-zh`)** uses **Microsoft JhengHei** (no calibrated entry → 1.15 default). The hard part is font _substitution_: JhengHei isn't installed, so soffice and Chromium each pick a macOS CJK substitute that may differ — calibrating blindly risks matching neither. Noto CJK in particular ships `hhea` inflated ~45 % (1.448 vs 1.0 typo); whatever substitute is used must be measured, not assumed.
 
-Key technical references for the eventual fixes: OS/2 `usWin`/`sTypo`/`hhea` sets + `fsSelection` USE_TYPO_METRICS bit; CJK `hhea` inflation (Noto 1160/−288); OOXML `w:trHeight` auto/atLeast/exact; `w:tblCellMar` default top/bottom = 0; `w:spacing` `lineRule` auto(240ths)/atLeast/exact; `w:contextualSpacing`. Round line heights _late_ (accumulate fractional, round once at paint).
+Key technical references for the eventual fixes: OS/2 `usWin`/`sTypo`/`hhea` sets + `fsSelection` USE*TYPO_METRICS bit; CJK `hhea` inflation (Noto 1160/−288); OOXML `w:trHeight` auto/atLeast/exact; `w:tblCellMar` default top/bottom = 0; `w:spacing` `lineRule` auto(240ths)/atLeast/exact; `w:contextualSpacing`. Round line heights \_late* (accumulate fractional, round once at paint).
 
 ## Plan (production-grade, measured at each step)
 
@@ -52,8 +52,20 @@ Key technical references for the eventual fixes: OS/2 `usWin`/`sTypo`/`hhea` set
 5. **Re-run the full VF harness** after each fix; track the mean upward; gate on round-trip audit + representative-corpus VF (no regressions).
 6. **Editing UX** — separate workstream, see `docs/internal/29-editing-ux-competitive-bar.md`.
 
+## Pinpoint diagnosis — medical-incident-form (via `band-compare.py`, 2026-06-27)
+
+Built `scripts/visual-fidelity/band-compare.py` (plan step #1: reference-row extraction) — it detects horizontal ink bands (top/height) in the editor and reference PNGs of the same page and prints them side by side. Result on the worst fixture:
+
+- **p1:** both 13 bands, editor ends ~72px _higher_ (slightly tighter) — p1 is not where it breaks.
+- **p2:** reference fits **19 bands**, editor only **14** → reference is more compact / **editor is taller** (confirmed numerically). Two additive causes:
+  1. **~20-25px per-page top offset** — editor body content starts lower on every page (p1 band0 +19px, p2 band0 +25px). Cause: the form has **`w:top="-270"` (negative top margin) + a default header** (`w:header="726"`). With a negative top margin, Word/LO drive body-top from the header (`max(top, headerDist + headerHeight)`). The layout engine `void`s `headerContentHeights` (index.ts:266) and relies on the upstream effective-margin calc, so the offset means **our header renders ~20px taller than LibreOffice's**.
+  2. **~1.8px/band spacing accumulation** across the page (paragraph before/after or the `w:line=360` 1.5× spacing computed marginally tall) — compounds with the offset so the tightly-packed trailing rows spill to the next page.
+
+**Next fix (measured):** (a) reconcile header-content height vs LibreOffice for the negative-top-margin case; (b) audit per-band paragraph spacing (before/after, 1.5× line) for the small per-row excess. Re-run `band-compare` + VF after each; gate on representative corpus.
+
 ## Tooling notes
 
 - Run VF: `node scripts/visual-fidelity/run.mjs` (full) or `VF_ONLY=a,b node scripts/visual-fidelity/run.mjs`. Needs `soffice` on PATH (present locally).
-- Per-row probe: `BASE_URL=http://localhost:5173 node scripts/visual-fidelity/row-geometry.mjs <fixture>`.
+- Per-row probe (editor DOM): `BASE_URL=http://localhost:5173 node scripts/visual-fidelity/row-geometry.mjs <fixture>`.
+- **Reference-vs-editor band compare:** `python3 scripts/visual-fidelity/band-compare.py <editor.png> <reference.png>` — localises which band first drifts and by how much.
 - Output: `visual-fidelity-out/visual-fidelity-report.md` + per-page PNGs under `editor/` and `reference/` (read them to diagnose visually).
