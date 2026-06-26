@@ -737,7 +737,10 @@
   "titleBar": {
     "untitled": "Sem título",
     "documentNameAriaLabel": "Nome do documento",
-    "menuBarAriaLabel": "Barra de menu"
+    "menuBarAriaLabel": "Barra de menu",
+    "allChangesSaved": null,
+    "saving": null,
+    "unsavedChanges": null
   },
   "errors": {
     "loadingDocument": "Carregando documento...",
@@ -976,5 +979,23 @@
     "body": null,
     "switchToEditing": null,
     "title": null
+  },
+  "statusBar": {
+    "readabilityUnknown": null,
+    "readingTime": null,
+    "readingTimeAria": null
+  },
+  "writerStatus": {
+    "ariaLabel": null,
+    "checking": null,
+    "confirmDownload": null,
+    "loading": null,
+    "loadingProgress": null,
+    "paused": null,
+    "ready": null,
+    "readyTiming": null,
+    "readyToLoad": null,
+    "running": null,
+    "unloading": null
   }
 }

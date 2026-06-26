@@ -740,7 +740,10 @@
   "titleBar": {
     "untitled": "Adsız",
     "documentNameAriaLabel": "Belge adı",
-    "menuBarAriaLabel": "Menü çubuğu"
+    "menuBarAriaLabel": "Menü çubuğu",
+    "allChangesSaved": null,
+    "saving": null,
+    "unsavedChanges": null
   },
   "errors": {
     "loadingDocument": "Belge yükleniyor...",
@@ -976,5 +979,23 @@
     "body": null,
     "switchToEditing": null,
     "title": null
+  },
+  "statusBar": {
+    "readabilityUnknown": null,
+    "readingTime": null,
+    "readingTimeAria": null
+  },
+  "writerStatus": {
+    "ariaLabel": null,
+    "checking": null,
+    "confirmDownload": null,
+    "loading": null,
+    "loadingProgress": null,
+    "paused": null,
+    "ready": null,
+    "readyTiming": null,
+    "readyToLoad": null,
+    "running": null,
+    "unloading": null
   }
 }

@@ -9,6 +9,7 @@
 
 import type { CSSProperties } from 'react';
 import { useWriterState } from '../lib/writer/controller';
+import { useTranslation } from '../i18n';
 import { MaterialSymbol } from './ui/Icons';
 
 export interface WriterStatusPillProps {
@@ -31,36 +32,40 @@ const baseStyle: CSSProperties = {
 
 export function WriterStatusPill({ onClick }: WriterStatusPillProps) {
   const state = useWriterState();
+  const { t } = useTranslation();
   if (state.enabledFeatures.length === 0 && state.phase === 'idle') return null;
 
   let label = '';
   switch (state.phase) {
     case 'idle':
-      label = 'Ready to load';
+      label = t('writerStatus.readyToLoad');
       break;
     case 'checking-caps':
-      label = 'Checking…';
+      label = t('writerStatus.checking');
       break;
     case 'confirming':
-      label = 'Confirm download';
+      label = t('writerStatus.confirmDownload');
       break;
     case 'downloading':
-      label = `Loading ${Math.round(state.progress * 100)}%`;
+      label = t('writerStatus.loadingProgress', { percent: Math.round(state.progress * 100) });
       break;
     case 'loading':
-      label = 'Loading…';
+      label = t('writerStatus.loading');
       break;
     case 'ready':
-      label = state.lastInferenceMs !== null ? `Ready · ${state.lastInferenceMs} ms` : 'Ready';
+      label =
+        state.lastInferenceMs !== null
+          ? t('writerStatus.readyTiming', { ms: state.lastInferenceMs })
+          : t('writerStatus.ready');
       break;
     case 'busy':
-      label = 'Running…';
+      label = t('writerStatus.running');
       break;
     case 'evicting':
-      label = 'Unloading…';
+      label = t('writerStatus.unloading');
       break;
     case 'error':
-      label = 'Paused';
+      label = t('writerStatus.paused');
       break;
   }
 
@@ -70,7 +75,7 @@ export function WriterStatusPill({ onClick }: WriterStatusPillProps) {
       style={baseStyle}
       onClick={onClick}
       data-testid="writer-status-pill"
-      aria-label="Writing Assistant status — click to open settings"
+      aria-label={t('writerStatus.ariaLabel')}
       title={state.errorMessage ?? label}
     >
       <MaterialSymbol name={state.phase === 'error' ? 'warning' : 'auto_awesome'} size={14} />

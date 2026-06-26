@@ -749,7 +749,28 @@
   "titleBar": {
     "untitled": "Untitled",
     "documentNameAriaLabel": "Document name",
-    "menuBarAriaLabel": "Menu bar"
+    "menuBarAriaLabel": "Menu bar",
+    "saving": "Saving…",
+    "unsavedChanges": "Unsaved changes",
+    "allChangesSaved": "All changes saved"
+  },
+  "writerStatus": {
+    "readyToLoad": "Ready to load",
+    "checking": "Checking…",
+    "confirmDownload": "Confirm download",
+    "loadingProgress": "Loading {percent}%",
+    "loading": "Loading…",
+    "ready": "Ready",
+    "readyTiming": "Ready · {ms} ms",
+    "running": "Running…",
+    "unloading": "Unloading…",
+    "paused": "Paused",
+    "ariaLabel": "Writing Assistant status — click to open settings"
+  },
+  "statusBar": {
+    "readingTime": "~{minutes} min read",
+    "readingTimeAria": "Estimated {minutes} minute read",
+    "readabilityUnknown": "Readability: —"
   },
   "errors": {
     "loadingDocument": "Loading document...",
