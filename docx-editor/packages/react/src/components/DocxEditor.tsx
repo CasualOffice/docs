@@ -5002,6 +5002,40 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     setState((prev) => ({ ...prev, zoom }));
   }, []);
 
+  // Stable PagedEditor onTotalPagesChange — avoids breaking memo() on every render.
+  const handleTotalPagesChange = useCallback((totalPages: number) => {
+    setScrollPageInfo((prev) =>
+      prev.totalPages === totalPages ? prev : { ...prev, totalPages },
+    );
+  }, []);
+
+  // Stable PagedEditor onOpenProperties — avoids breaking memo() on every render.
+  const handleOpenProperties = useCallback(() => openRightPanel('properties'), [openRightPanel]);
+
+  // Stable PagedEditor onReady — avoids breaking memo() on every render.
+  const handlePagedEditorReady = useCallback(
+    (ref: PagedEditorRef) => {
+      const view = ref.getView();
+      if (view) setPmState(view.state);
+      if (view) onEditorViewReady?.(view);
+    },
+    [onEditorViewReady],
+  );
+
+  // Ref pattern for onSelectionChange: the implementation reads the latest
+  // closure values on every call (resolvedCommentIds, commentSidebarItems…)
+  // while the _stable wrapper_ never changes reference, keeping PagedEditor's
+  // memo() effective across every DocxEditor re-render caused by
+  // pmState / isDirty / isSaving state flips.
+  const _pagedSelectionChangeImplRef = useRef<(from: number, to: number) => void>(
+    () => undefined,
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const _pagedOnSelectionChangeStable = useCallback(
+    (from: number, to: number) => _pagedSelectionChangeImplRef.current(from, to),
+    [],
+  );
+
   // Handle hyperlink dialog submit
   const handleHyperlinkSubmit = useCallback(
     (data: HyperlinkData) => {
@@ -6774,6 +6808,12 @@ body { background: white; }
   // would never snapshot again. An interval gates on the ref so the
   // serializer (`handleSave` re-walks the PM doc + re-packs the .docx)
   // only runs when there's actually work to do.
+  //
+  // After a successful autosave we clear dirty so the next tick skips
+  // serialization when nothing has changed. Without this, isDirty stays
+  // true after each write and every subsequent tick re-serializes and
+  // re-writes identical bytes (in desktop mode: real disk writes every
+  // 30 s even with no user edits after the first save).
   const isDirtyRefAuto = useRef(false);
   isDirtyRefAuto.current = isDirty;
   useEffect(() => {
@@ -6783,6 +6823,10 @@ body { background: white; }
         try {
           const buffer = await handleSave();
           if (!buffer) return;
+          // Mark clean before the IndexedDB write — if the write
+          // fails the next tick can retry (isDirty will be set again
+          // by any subsequent edit, or stays false until one occurs).
+          markDirty(false);
           await writeAutosave({
             name: documentName?.trim() || 'Untitled',
             buffer,
@@ -6796,7 +6840,7 @@ body { background: white; }
     };
     const interval = window.setInterval(tick, 30_000);
     return () => window.clearInterval(interval);
-  }, [handleSave, documentName]);
+  }, [handleSave, documentName, markDirty]);
 
   // File → Make a copy: download the current content as "Copy of <name>.docx".
   // The original document is unchanged, so we don't touch the dirty flag.
@@ -8674,6 +8718,62 @@ body { background: white; }
                           `}</style>
                             );
                           })()}
+                        {/* Update the selection-change impl ref on each render so
+                            it always captures the latest closure values, while
+                            the stable wrapper keeps PagedEditor memo() intact. */}
+                        {(_pagedSelectionChangeImplRef.current = (_from, _to) => {
+                          const view = pagedEditorRef.current?.getView();
+                          if (view) {
+                            const selectionState = extractSelectionState(view.state);
+                            handleSelectionChange(selectionState);
+                            const $from = view.state.selection.$from;
+                            const marks = [
+                              ...(view.state.storedMarks ?? []),
+                              ...($from.nodeAfter?.marks ?? []),
+                              ...($from.nodeBefore?.marks ?? []),
+                              ...$from.marks(),
+                            ];
+                            let cursorSidebarItem: string | null = null;
+                            for (const mark of marks) {
+                              if (
+                                mark.type.name === 'comment' &&
+                                mark.attrs.commentId != null
+                              ) {
+                                const commentId = mark.attrs.commentId as number;
+                                if (resolvedCommentIds.has(commentId)) continue;
+                                cursorSidebarItem = `comment-${commentId}`;
+                                break;
+                              }
+                              if (
+                                (mark.type.name === 'insertion' ||
+                                  mark.type.name === 'deletion') &&
+                                mark.attrs.revisionId != null
+                              ) {
+                                const revId = String(mark.attrs.revisionId);
+                                const prefix = `tc-${revId}-`;
+                                let match = commentSidebarItems.find((i) =>
+                                  i.id.startsWith(prefix),
+                                );
+                                if (!match && revisionIdAliases) {
+                                  const aliasedId = revisionIdAliases.get(revId);
+                                  if (aliasedId) {
+                                    match = commentSidebarItems.find(
+                                      (i) => i.id === aliasedId,
+                                    );
+                                  }
+                                }
+                                if (match) {
+                                  cursorSidebarItem = match.id;
+                                  break;
+                                }
+                              }
+                            }
+                            if (cursorSidebarItem) setShowCommentsSidebar(true);
+                            setExpandedSidebarItem(cursorSidebarItem);
+                          } else {
+                            handleSelectionChange(null);
+                          }
+                        }) && null}
                         <PagedEditor
                           ref={pagedEditorRef}
                           document={history.state}
@@ -8699,90 +8799,21 @@ body { background: white; }
                           onFormat={handleFormat}
                           onZoomChange={handleZoomChange}
                           onDocumentChange={handleDocumentChange}
-                          onSelectionChange={(_from, _to) => {
-                            // Extract full selection state from PM and use the standard handler
-                            const view = pagedEditorRef.current?.getView();
-                            if (view) {
-                              const selectionState = extractSelectionState(view.state);
-                              handleSelectionChange(selectionState);
-
-                              // Detect comment/tracked-change marks at cursor to open sidebar card.
-                              // Collect marks from all sources — inclusive:false marks aren't
-                              // reported by $from.marks() at boundaries, and empty arrays are
-                              // truthy so an OR chain would short-circuit.
-                              const $from = view.state.selection.$from;
-                              const marks = [
-                                ...(view.state.storedMarks ?? []),
-                                ...($from.nodeAfter?.marks ?? []),
-                                ...($from.nodeBefore?.marks ?? []),
-                                ...$from.marks(),
-                              ];
-                              let cursorSidebarItem: string | null = null;
-                              for (const mark of marks) {
-                                if (mark.type.name === 'comment' && mark.attrs.commentId != null) {
-                                  // Skip resolved comments — they stay collapsed as a checkmark
-                                  // marker unless the user explicitly clicks it. Otherwise the
-                                  // sidebar fills up with old threads every time the cursor
-                                  // passes through commented text.
-                                  const commentId = mark.attrs.commentId as number;
-                                  if (resolvedCommentIds.has(commentId)) continue;
-                                  cursorSidebarItem = `comment-${commentId}`;
-                                  break;
-                                }
-                                if (
-                                  (mark.type.name === 'insertion' ||
-                                    mark.type.name === 'deletion') &&
-                                  mark.attrs.revisionId != null
-                                ) {
-                                  const revId = String(mark.attrs.revisionId);
-                                  const prefix = `tc-${revId}-`;
-                                  let match = commentSidebarItems.find((i) =>
-                                    i.id.startsWith(prefix)
-                                  );
-                                  // Insertion side of a replacement has a different revisionId;
-                                  // check alias map to find the correct sidebar card.
-                                  if (!match && revisionIdAliases) {
-                                    const aliasedId = revisionIdAliases.get(revId);
-                                    if (aliasedId) {
-                                      match = commentSidebarItems.find((i) => i.id === aliasedId);
-                                    }
-                                  }
-                                  if (match) {
-                                    cursorSidebarItem = match.id;
-                                    break;
-                                  }
-                                }
-                              }
-                              if (cursorSidebarItem) {
-                                setShowCommentsSidebar(true);
-                              }
-                              setExpandedSidebarItem(cursorSidebarItem);
-                            } else {
-                              handleSelectionChange(null);
-                            }
-                          }}
+                          onSelectionChange={_pagedOnSelectionChangeStable}
                           externalPlugins={allExternalPlugins}
-                          onReady={(ref) => {
-                            const view = ref.getView();
-                            if (view) setPmState(view.state);
-                            if (view) onEditorViewReady?.(view);
-                          }}
+                          onReady={handlePagedEditorReady}
                           onRenderedDomContextReady={onRenderedDomContextReady}
                           pluginOverlays={pluginOverlays}
                           onHyperlinkClick={handleHyperlinkClick}
                           onContextMenu={handleContextMenu}
-                          onOpenProperties={() => openRightPanel('properties')}
+                          onOpenProperties={handleOpenProperties}
                           onResizeTextBox={handleTextBoxSetSize}
                           onEditFootnote={handleEditFootnote}
                           onEditEquation={handleEditEquation}
                           onEditEndnote={handleEditEndnote}
                           commentsSidebarOpen={sidebarOpen}
                           onAnchorPositionsChange={setAnchorPositions}
-                          onTotalPagesChange={(totalPages) => {
-                            setScrollPageInfo((prev) =>
-                              prev.totalPages === totalPages ? prev : { ...prev, totalPages }
-                            );
-                          }}
+                          onTotalPagesChange={handleTotalPagesChange}
                           resolvedCommentIds={resolvedIdsForRender}
                           scrollContainerRef={scrollContainerRef}
                           sidebarOverlay={
