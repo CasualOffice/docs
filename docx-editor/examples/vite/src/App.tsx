@@ -402,6 +402,10 @@ export function App() {
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
   const [status, setStatus] = useState<string>('');
+  // Desktop: set when the opened file can't be read/parsed. We render a
+  // read-only error surface instead of a blank editable document so a stray
+  // Ctrl+S can't overwrite a merely-unreadable original with empty content.
+  const [loadError, setLoadError] = useState<{ message: string; fileName: string } | null>(null);
   // Plain-text / markdown documents (.md / .markdown / .txt) open in the
   // dedicated source+preview editor, not the DOCX surface — they're never
   // flattened to DOCX. Null when a DOCX-family doc is open.
@@ -665,10 +669,11 @@ export function App() {
             })
             .catch((err) => {
               console.error('deskApp loadText failed', err);
-              setCurrentDocument(createEmptyDocument());
-              setFileName(name);
-              setStatus(`Could not open file: ${err}`);
-              // Error path — dismiss immediately so the user can see the error.
+              // Do NOT open a blank editable doc bound to the source path — a
+              // stray save would overwrite the unreadable original. Unbind the
+              // path and show a read-only error surface instead.
+              if (window.__deskApp__) window.__deskApp__.filePath = null;
+              setLoadError({ message: String(err), fileName: name });
               window.__deskApp__?.dismissBoot?.();
             });
           return;
@@ -686,10 +691,11 @@ export function App() {
           })
           .catch((err) => {
             console.error('deskApp loadDocument failed', err);
-            setCurrentDocument(createEmptyDocument());
-            setFileName(name);
-            setStatus(`Could not open file: ${err}`);
-            // Error path — dismiss immediately so the user can see the error.
+            // Do NOT open a blank editable doc bound to the source path — a
+            // stray save would overwrite the unreadable original. Unbind the
+            // path and show a read-only error surface instead.
+            if (window.__deskApp__) window.__deskApp__.filePath = null;
+            setLoadError({ message: String(err), fileName: name });
             window.__deskApp__?.dismissBoot?.();
           });
       } else {
@@ -1201,6 +1207,64 @@ export function App() {
         onBack={handleGoHome}
         renderLogo={renderLogo}
       />
+    );
+  }
+
+  // Desktop load failure: a read-only surface, never an editable document. No
+  // <DocxEditor> mounts here, so there is no Save path that could overwrite the
+  // original file. The bound path was already unbound in the load catch.
+  if (loadError) {
+    return (
+      <div
+        data-testid="load-error"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          gap: 14,
+          padding: 24,
+          textAlign: 'center',
+          fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+          background: 'var(--doc-bg, #f8fafc)',
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--doc-fg, #1f2937)' }}>
+          Couldn’t open {loadError.fileName}
+        </div>
+        <div style={{ fontSize: 14, color: '#64748b', maxWidth: 520, lineHeight: 1.5 }}>
+          {loadError.message}
+        </div>
+        <div style={{ fontSize: 13, color: '#94a3b8', maxWidth: 520 }}>
+          The file was left unchanged — nothing was saved over it.
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          <button
+            type="button"
+            data-testid="load-error-retry"
+            onClick={() => window.location.reload()}
+            style={{ ...styles.button, background: '#2563eb', color: '#fff', border: 'none' }}
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            data-testid="load-error-close"
+            onClick={() => {
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (window as any).__TAURI__?.window?.getCurrentWindow?.()?.close?.();
+              } catch {
+                /* best-effort — no-op outside the shell */
+              }
+            }}
+            style={styles.button}
+          >
+            Close
+          </button>
+        </div>
+      </div>
     );
   }
 
