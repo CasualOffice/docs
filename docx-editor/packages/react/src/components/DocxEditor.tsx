@@ -6724,6 +6724,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         el.style.margin = '0';
       }
 
+      // Pin the printed page box to the document's actual page size. Each
+      // `.layout-page` carries the WYSIWYG page dimensions as inline px
+      // width/height; without this, `@page { size: auto }` lets the print
+      // dialog's default paper (often Letter) drive the PDF, so an A4 (or
+      // landscape) document exports at the wrong size. Uniform page size is
+      // the overwhelmingly common case; mixed-size docs fall back no worse
+      // than `auto` did.
+      const firstPrintPage = pagesClone.querySelector('.layout-page') as HTMLElement | null;
+      const pageSizeRule =
+        firstPrintPage?.style.width && firstPrintPage?.style.height
+          ? `${firstPrintPage.style.width} ${firstPrintPage.style.height}`
+          : 'auto';
+
       // Restore memory-efficient virtualization after the clone is done.
       requestAnimationFrame(() => {
         restoreVirtualization(pagesEl as HTMLElement);
@@ -6741,7 +6754,7 @@ ${fontFaceRules.join('\n')}
 body { background: white; }
 .layout-page { break-after: page; }
 .layout-page:last-child { break-after: auto; }
-@page { margin: 0; size: auto; }
+@page { margin: 0; size: ${pageSizeRule}; }
 </style>
 </head><body>${pagesClone.outerHTML}</body></html>`);
       printWindow.document.close();
