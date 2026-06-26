@@ -487,6 +487,11 @@ export interface DocxEditorProps {
   /** Callback invoked when the user picks File → New. Host should
    *  replace the loaded document with a blank one. */
   onNew?: () => void;
+  /** Callback invoked after the user opens a file in-window via File → Open
+   *  (the editor has already loaded it). Lets a host react to the document
+   *  being replaced — e.g. the desktop shell unbinds the previous file path so
+   *  a later Save can't overwrite the old file with the newly-opened content. */
+  onFileOpened?: () => void;
   /** Author name used for comments and track changes */
   author?: string;
   /** Callback when document changes */
@@ -1562,6 +1567,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onSave,
     onExport,
     onNew,
+    onFileOpened,
     author = 'User',
     onChange,
     onSelectionChange,
@@ -7035,6 +7041,10 @@ body { background: white; }
         await loadBuffer(docxBuffer);
         const cleanName = file.name.replace(/\.(docx|odt|md|markdown|txt)$/i, '');
         onDocumentNameChange?.(cleanName);
+        // The in-window document was replaced by a newly-opened file. Notify the
+        // host so it can react (the desktop shell unbinds the old file path so a
+        // later Save can't overwrite the previous file with this content).
+        onFileOpened?.();
         // Record in the recent-files list so the Home screen can show
         // a one-click reopen tile. Best-effort — failures are logged
         // inside the helper and don't surface to the user.
@@ -7048,7 +7058,7 @@ body { background: white; }
         onError?.(error instanceof Error ? error : new Error('Failed to open document'));
       }
     },
-    [loadBuffer, onDocumentNameChange, onError]
+    [loadBuffer, onDocumentNameChange, onError, onFileOpened]
   );
 
   // ============================================================================

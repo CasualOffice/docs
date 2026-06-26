@@ -960,6 +960,17 @@ export function App() {
     bridge?.setDirty?.(true);
   }, []);
 
+  // Desktop only: the user opened a file in-window via File → Open. A browser-
+  // picked file has no real filesystem path, so the window must NOT stay bound
+  // to the previously-open file — otherwise the next Save would overwrite that
+  // file with the newly-opened content. Unbind the path so Save behaves like
+  // Save As (prompts for a location).
+  const onFileOpenedDesktop = useCallback(() => {
+    if (typeof window !== 'undefined' && window.__deskApp__) {
+      window.__deskApp__.filePath = null;
+    }
+  }, []);
+
   // Dismiss the boot overlay once DocxEditor's PM view is live and the
   // first layout paint is imminent. This fires AFTER parseDocx completes,
   // avoiding the blank-editor flash that occurred when dismissBoot was called
@@ -1297,6 +1308,9 @@ export function App() {
           // Desktop only: mark the window dirty on every real document change
           // so the unsaved-changes close-guard fires for mouse/toolbar edits.
           onChange={isDesktop ? onDocChangeDesktop : undefined}
+          // Desktop only: unbind the old file path when a file is opened
+          // in-window, so a later Save can't overwrite the previous file.
+          onFileOpened={isDesktop ? onFileOpenedDesktop : undefined}
           // Dismiss the boot splash after DocxEditor has parsed the DOCX and
           // created its PM view, avoiding the blank-editor flash that occurred
           // when dismissBoot fired immediately after setDocumentBuffer.
