@@ -15,6 +15,33 @@ function toHref(url: string): string {
   return /^www\./i.test(url) ? `http://${url}` : url;
 }
 
+/**
+ * Trim trailing characters that punctuate the surrounding sentence rather than
+ * belong to the URL — so "see http://example.com." links the URL but not the
+ * period, and "(http://example.com)" doesn't swallow the closing paren. Matches
+ * the linkify convention used by Google Docs / GitHub / Slack: strip trailing
+ * `.,;:!?` always, and a trailing `)]}` only when it has no matching opener in
+ * the token (keeps balanced URLs like `…/Foo_(bar)` intact).
+ */
+function trimTrailingUrlPunct(url: string): string {
+  let s = url;
+  for (;;) {
+    const next = s.replace(/[.,;:!?]+$/, '');
+    const close = next[next.length - 1];
+    if (close === ')' || close === ']' || close === '}') {
+      const open = close === ')' ? '(' : close === ']' ? '[' : '{';
+      const opens = next.split(open).length - 1;
+      const closes = next.split(close).length - 1;
+      if (closes > opens) {
+        s = next.slice(0, -1);
+        continue;
+      }
+    }
+    if (next === s) return next;
+    s = next;
+  }
+}
+
 // ============================================================================
 // HYPERLINK QUERY HELPERS (exported for toolbar)
 // ============================================================================
@@ -195,17 +222,22 @@ export const HyperlinkExtension = createMarkExtension({
           const m = before.match(/(\S+)$/);
           if (!m || !URL_TOKEN_RE.test(m[1])) return false;
           const token = m[1];
+          // Link the URL but not the punctuation that ends the sentence around
+          // it ("see http://x.com." → link drops the period).
+          const linked = trimTrailingUrlPunct(token);
+          if (!URL_TOKEN_RE.test(linked)) return false;
           const tokenStart = from - token.length;
+          const linkEnd = tokenStart + linked.length;
           // Skip if the token is already (partly) linked.
           let alreadyLinked = false;
           state.doc.nodesBetween(tokenStart, from, (node) => {
             if (node.marks.some((mk) => mk.type === hlType)) alreadyLinked = true;
           });
           if (alreadyLinked) return false;
-          const mark = hlType.create({ href: toHref(token), tooltip: null });
+          const mark = hlType.create({ href: toHref(linked), tooltip: null });
           const tr = state.tr
             .insertText(text, from, to)
-            .addMark(tokenStart, from, mark)
+            .addMark(tokenStart, linkEnd, mark)
             .removeStoredMark(hlType); // don't carry the link onto further typing
           view.dispatch(tr);
           return true;
