@@ -381,6 +381,12 @@ export function App() {
     () => `Docx Editor User ${Math.floor(Math.random() * 900) + 100}`,
     []
   );
+  // Demo stand-in for the people the host (Drive) would supply — surfaces them
+  // in the comment @-mention typeahead even before they've commented.
+  const mentionableUsers = useMemo(
+    () => ['Alex Morgan', 'Jordan Lee', 'Sam Rivera', 'Priya Nair', 'Chen Wei'],
+    []
+  );
   const editorRef = useRef<DocxEditorRef>(null);
   const suppressSeedDocumentRef = useRef(false);
   const [view, setView] = useState<'home' | 'editor'>(getInitialView);
@@ -1453,6 +1459,7 @@ export function App() {
           document={documentBuffer ? undefined : currentDocument}
           documentBuffer={documentBuffer}
           author={randomAuthor}
+          mentionableUsers={mentionableUsers}
           onError={handleError}
           onFontsLoaded={handleFontsLoaded}
           showToolbar={true}

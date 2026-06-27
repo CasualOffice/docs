@@ -31,6 +31,9 @@ export interface UseCommentSidebarItemsProps {
   /** Current author — included in @-mention suggestions so the
    *  composer can mention themselves in a doc with no other peers. */
   currentAuthor?: string;
+  /** People the host (e.g. Drive) knows about, so @-mentions can reach
+   *  collaborators who haven't commented yet — not just historical authors. */
+  mentionableUsers?: readonly string[];
 }
 
 export function useCommentSidebarItems({
@@ -41,6 +44,7 @@ export function useCommentSidebarItems({
   isAddingComment = false,
   addCommentYPosition = null,
   currentAuthor,
+  mentionableUsers,
 }: UseCommentSidebarItemsProps): ReactSidebarItem[] {
   // Distinct author names from every comment + tracked-change + the
   // current author. Drives the @-mention typeahead in AddCommentCard
@@ -60,8 +64,11 @@ export function useCommentSidebarItems({
     push(currentAuthor);
     for (const c of comments) push(c.author);
     for (const tc of trackedChanges) push(tc.author);
+    // Host-supplied people (Drive) come last so collaborators who haven't
+    // commented yet are still mentionable, deduped against the live authors.
+    if (mentionableUsers) for (const name of mentionableUsers) push(name);
     return out;
-  }, [comments, trackedChanges, currentAuthor]);
+  }, [comments, trackedChanges, currentAuthor, mentionableUsers]);
   // Active comments always, resolved only when showResolved
   const visibleComments = useMemo(
     () =>
