@@ -528,6 +528,16 @@ if (isDesktop) {
         } catch {
           /* recents persistence is best-effort */
         }
+        // The window rebinds from the old file to newPath. Clear the OLD file's
+        // recovery sidecar so it isn't orphaned — App's post-saveAs clearRecovery
+        // only targets the (now new) bound path.
+        if (filePath && filePath !== newPath) {
+          try {
+            await inv('clear_recovery', { path: filePath });
+          } catch {
+            /* best-effort */
+          }
+        }
         filePath = newPath;
         // Only mark clean if no edit landed while the write was in flight.
         if (editSeq === seqAtStart) setWindowDirty(false);
