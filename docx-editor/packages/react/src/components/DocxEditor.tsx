@@ -507,6 +507,10 @@ export interface DocxEditorProps {
   onRequestOpen?: () => void;
   /** Author name used for comments and track changes */
   author?: string;
+  /** People the host (e.g. Drive) knows about, surfaced in the comment
+   *  @-mention typeahead so collaborators who haven't commented yet are still
+   *  mentionable. When omitted, only historical comment authors are suggested. */
+  mentionableUsers?: readonly string[];
   /** Callback when document changes */
   onChange?: (document: Document) => void;
   /** Callback when selection changes */
@@ -1584,6 +1588,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onRequestOpen,
     onExportPdf,
     author = 'User',
+    mentionableUsers,
     onChange,
     onSelectionChange,
     onError,
@@ -8304,6 +8309,7 @@ body { background: white; }
     isAddingComment: showCommentsSidebar ? isAddingComment : false,
     addCommentYPosition,
     currentAuthor: author,
+    mentionableUsers,
   });
 
   const allSidebarItems = useMemo(() => {
