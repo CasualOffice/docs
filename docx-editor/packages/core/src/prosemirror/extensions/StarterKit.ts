@@ -60,6 +60,7 @@ import { createTableExtensions } from './nodes/TableExtension';
 
 // Features
 import { ListExtension } from './features/ListExtension';
+import { InlineMarkdownExtension } from './features/InlineMarkdownExtension';
 import { BaseKeymapExtension } from './features/BaseKeymapExtension';
 import { SelectionTrackerExtension } from './features/SelectionTrackerExtension';
 import { ImageDragExtension } from './features/ImageDragExtension';
@@ -164,6 +165,7 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // Features
   add('pasteStyleInliner', PasteStyleInlinerExtension());
   add('list', ListExtension());
+  add('inlineMarkdown', InlineMarkdownExtension());
   add('baseKeymap', BaseKeymapExtension());
   add(
     'selectionTracker',
