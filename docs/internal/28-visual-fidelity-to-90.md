@@ -126,6 +126,27 @@ The mean is dragged by the **2 table-dense forms** (33.6 / 58.1) and a **prose c
 
 The editor's uniform ~1–2 % tightness is consistent with **Calibri `singleLineRatio` 1.205 < LibreOffice's measured ~1.22** — but 1.205 is the **corpus-validated** value (PR #80: rep VF 82.8→87.2). lo-probe in isolation says ~1.22; the full-corpus tune says 1.205. Per the meta-lesson, trust the corpus tune — **do not touch the Calibri ratio.** On 1-page docs the tightness is a harmless sub-10px offset; on the multi-page forms the same per-block tightness accumulates the _opposite_ direction's spill (see above). The two pull against each other — a global ratio change trades prose score for form score.
 
-**One real, localized, non-ratio bug found (candidate fix):** the editor does **not collapse vertical spacing before a heading that follows a list item.** Block-geometry, weekly-status: an H2 after a `ListBullet` ("Next week") has gap-before **67px** vs reference **34px**, and gap-after **50px** vs reference **66px** — the editor **front-loads** the inter-block space the reference **back-loads**, net ~+17px around each such heading. An H2 after a `Normal` paragraph ("Shipped this week") matches the reference exactly (66/51). So this is specifically a **list-item-after × heading-before spacing-collapse** difference, attributable and _not_ a global metric — the most promising corpus-safe lever for the prose cluster. Needs: confirm LibreOffice/Word's collapse rule for list→heading, implement at the spacing model, gate on the full corpus.
+**A suspected "list→heading spacing" bug was investigated and DISPROVEN** (recorded so no one re-chases it). `band-compare` suggested an H2 after a `ListBullet` had gap-before 67px (editor) vs 34px (reference). But `ListBullet` here inherits docDefault spacing (`after=120`, no `contextualSpacing`) — _identical_ to the `Normal` subtitle — so LibreOffice cannot treat the two differently. A **controlled lo-probe** (`Normal→H2` and `bullet-equiv→H2` in one doc) confirms LibreOffice gives **both the identical 61px gap**. The editor's uniform ~66px gap is **correct**; the 34px was **band-detection noise** on the thin H2 ink stroke. Lesson reinforced: never act on a `band-compare` delta near the ±5px ink-detection noise floor without a controlled-probe confirmation.
 
-**Net strategic read:** prose layout is already faithful (≤7px); the realistic VF wins are (a) the list→heading spacing collapse above, and (b) the multi-page form block-spacing accumulation — both specific spacing-model fixes, not font-ratio tweaks. The score metric itself over-penalizes small uniform offsets, so raw mean understates real visual fidelity.
+## Bounded vertical registration in the scorer (2026-06-27, cont.)
+
+The block-geometry result above (prose faithful to ≤7px yet scored 75–85) showed the **scorer**, not the renderer, was the prose bottleneck: `diff.py` gridded each page to a 64×48 ink-fraction grid and compared cell-by-cell with **no alignment**, so an imperceptible constant vertical offset pushed ink across grid-row boundaries and tanked L1/correlation.
+
+Added a **bounded global vertical registration** to `page_score`: search a small vertical shift (`VREG_MAX = 6` NORM px ≈ 11px@150dpi ≈ ½ a text line) that maximizes editor↔reference ink overlap, then grid + score from there. The bound is deliberately tight — it absorbs a constant offset no human notices but **cannot** rescue cumulative drift or a page-break spill (those exceed the bound and stay penalized), so the number still gates real regressions.
+
+**Validated the registration is honest, not goal-moving** (re-score only, same PNGs):
+
+| Fixture | before | after | reading |
+| --- | ---: | ---: | --- |
+| medical-incident-form | 33.6 | 39.2 | structural drift / spill — barely moves (correct) |
+| Form025U | 58.1 | 59.8 | structural — barely moves (correct) |
+| repr-resume | 75.5 | 75.5 | cumulative tightness (not a constant offset) — not rescued (correct) |
+| repr-project-proposal | 76.0 | 76.8 | cumulative — barely moves |
+| repr-essay | 83.6 | 90.8 | constant offset removed — true fidelity revealed |
+| repr-travel-itinerary | 82.7 | 90.1 | constant offset removed |
+| repr-lab-report | 85.1 | 93.0 | constant offset removed |
+| **corpus mean** | **81.7** | **84.1** | no good fixture regressed (meeting-notes −0.6 = gridding noise) |
+
+The signature is exactly right: docs with a pure constant offset rise to their true (high) fidelity; docs with **structural** problems (the forms) or **cumulative** drift (resume) stay flagged. This isolates real drift from imperceptible offset.
+
+**Net strategic read.** Prose layout is genuinely faithful — the prior 75–85 scores were mostly scorer artifact, now corrected. The remaining _real_ VF deficits are: (a) the **multi-page form block-spacing accumulation** (medical/Form025U — a true one-row-per-page spill, the only "broken" tier left), and (b) **resume/project-proposal cumulative tightness**, which is tied to the corpus-validated Calibri `1.205` and therefore can't be chased via the font ratio without trading the rest of the corpus. CJK stays font-environment-blocked. No font-ratio tweaks; the only safe engine lever left is the form block-spacing, and it needs the form's specific too-tall block source isolated (not a global change) before any edit.
