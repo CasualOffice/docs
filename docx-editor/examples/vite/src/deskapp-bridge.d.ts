@@ -63,6 +63,10 @@ declare global {
        * save()/saveAs() clear it.
        */
       setDirty?(dirty: boolean): void;
+      /** Native webview print-to-PDF: opens the OS save dialog and renders this
+       *  window to a selectable-text PDF via the shell's export_pdf command.
+       *  Returns the written path, or null if cancelled. */
+      exportPdf?(suggestedName: string): Promise<string | null>;
       /**
        * Dismiss the cold-start boot overlay the bootstrap paints before React
        * mounts (top-level desktop windows only). Fades it out then removes it.

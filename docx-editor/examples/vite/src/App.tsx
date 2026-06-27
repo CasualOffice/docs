@@ -958,6 +958,22 @@ export function App() {
     }
   }, []); // bridge.saveAs is stable
 
+  // Export as PDF via the shell's native webview print-to-PDF (selectable text,
+  // reliable on WebKitGTK). Returns true when handled so the editor skips the
+  // browser print-dialog fallback; false on web, missing host support, or a
+  // cancelled save dialog (export_pdf returns null) so the fallback still runs.
+  const onExportPdfDesktop = useCallback(async (suggestedName: string) => {
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (!bridge?.isDesktop || !bridge.exportPdf) return false;
+    try {
+      const written = await bridge.exportPdf(suggestedName);
+      return written != null;
+    } catch (err) {
+      console.error('desktop PDF export failed', err);
+      return false;
+    }
+  }, []);
+
   // Forward DocxEditor's authoritative document-change signal to the desktop
   // bridge so the Rust close-guard sees a dirty window for EVERY real edit —
   // including mouse/toolbar/menu edits (bold, tables, format painter, accept/
@@ -1313,6 +1329,7 @@ export function App() {
           // internal handleSave/handleExport don't re-reference on every status change.
           onSave={isDesktop ? onSaveDesktop : undefined}
           onExport={isDesktop ? onExportDesktop : undefined}
+          onExportPdf={isDesktop ? onExportPdfDesktop : undefined}
           // Desktop only: mark the window dirty on every real document change
           // so the unsaved-changes close-guard fires for mouse/toolbar edits.
           onChange={isDesktop ? onDocChangeDesktop : undefined}
