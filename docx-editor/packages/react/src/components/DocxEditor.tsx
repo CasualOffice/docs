@@ -20,6 +20,7 @@ import {
   lazy,
   Suspense,
 } from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 import type {
   Document,
@@ -2166,6 +2167,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const docxInputRef = useRef<HTMLInputElement>(null);
   const editorContentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Viewport-height column wrapping the scroll container. The version-preview
+  // overlay is portaled here so its banner stays pinned to the viewport instead
+  // of riding the document scroll (the overlay must NOT live inside the
+  // document-height scrolled content — that made the "Viewing …" bar scroll
+  // away, leaving no cue you were on a past version).
+  const editorColumnRef = useRef<HTMLDivElement>(null);
   // True while a ruler margin marker is being dragged. Threaded to PagedEditor
   // so its post-reflow scroll-restore freezes the viewport instead of chasing
   // the moved content (which made the page scroll out from under the marker).
@@ -8653,296 +8660,306 @@ body { background: white; }
                     position: 'relative',
                   }}
                 >
-                  {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
+                  {/* Viewport-height column: holds the scroll container plus the
+                      portaled version-preview overlay, so the preview banner pins
+                      to the viewport instead of scrolling with the document. */}
                   <div
-                    ref={scrollContainerRef}
-                    style={editorContainerStyle}
-                    onMouseDown={(e) => {
-                      // Click in the grey gutter around the page → collapse any
-                      // expanded sidebar card. Clicks on the doc body already
-                      // collapse via the cursor-mark detector; clicks inside the
-                      // sidebar are user interactions with the card itself.
-                      const target = e.target as HTMLElement;
-                      if (
-                        target.closest('.paged-editor__pages') ||
-                        target.closest('.docx-unified-sidebar') ||
-                        target.closest('.docx-comment-margin-markers')
-                      ) {
-                        return;
-                      }
-                      setExpandedSidebarItem(null);
-                    }}
+                    ref={editorColumnRef}
+                    style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex' }}
                   >
-                    {/* Horizontal Ruler - inside the scroll container so it
+                    {/* Editor container - this is the scroll container (toolbar is above, not inside) */}
+                    <div
+                      ref={scrollContainerRef}
+                      style={editorContainerStyle}
+                      onMouseDown={(e) => {
+                        // Click in the grey gutter around the page → collapse any
+                        // expanded sidebar card. Clicks on the doc body already
+                        // collapse via the cursor-mark detector; clicks inside the
+                        // sidebar are user interactions with the card itself.
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.closest('.paged-editor__pages') ||
+                          target.closest('.docx-unified-sidebar') ||
+                          target.closest('.docx-comment-margin-markers')
+                        ) {
+                          return;
+                        }
+                        setExpandedSidebarItem(null);
+                      }}
+                    >
+                      {/* Horizontal Ruler - inside the scroll container so it
                       scrolls horizontally with the doc, sticky-top so it stays
                       visible during vertical scroll. min-width keeps the ruler
                       and the page area on the same horizontal axis when the
                       viewport is too narrow to fit page + outline + sidebar. */}
-                    {showRulerEffective && !versionPreview && (
-                      <div
-                        className="flex justify-center py-1 flex-shrink-0 bg-doc-bg"
-                        style={{
-                          position: 'sticky',
-                          top: 0,
-                          // Must sit above the inline header/footer editor
-                          // (Z_INDEX.hfInlineEditor) so the ruler stays readable
-                          // when the HF editor is active near the viewport top.
-                          zIndex: Z_INDEX.ruler,
-                          // paddingRight biases the centered ruler so it tracks
-                          // the page when the comments sidebar (translateX)
-                          // shifts the page left. Outline doesn't bias here —
-                          // the page stays centered until minLayoutWidth forces
-                          // horizontal scroll, and the ruler centers with it.
-                          paddingLeft: 20,
-                          paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
-                          minWidth: minLayoutWidth,
-                          transition: 'padding var(--doc-anim-slow)',
-                        }}
-                      >
-                        <HorizontalRuler
-                          sectionProps={history.state?.package.document?.finalSectionProperties}
-                          zoom={state.zoom}
-                          unit={rulerUnit}
-                          editable={!readOnly}
-                          onLeftMarginChange={handleLeftMarginChange}
-                          onRightMarginChange={handleRightMarginChange}
-                          indentLeft={state.paragraphIndentLeft}
-                          indentRight={state.paragraphIndentRight}
-                          onIndentLeftChange={handleIndentLeftChange}
-                          onIndentRightChange={handleIndentRightChange}
-                          showFirstLineIndent={true}
-                          firstLineIndent={state.paragraphFirstLineIndent}
-                          hangingIndent={state.paragraphHangingIndent}
-                          onFirstLineIndentChange={handleFirstLineIndentChange}
-                          tabStops={state.paragraphTabs}
-                          onTabStopRemove={handleTabStopRemove}
-                          onDragStateChange={(d) => {
-                            marginDraggingRef.current = d;
+                      {showRulerEffective && !versionPreview && (
+                        <div
+                          className="flex justify-center py-1 flex-shrink-0 bg-doc-bg"
+                          style={{
+                            position: 'sticky',
+                            top: 0,
+                            // Must sit above the inline header/footer editor
+                            // (Z_INDEX.hfInlineEditor) so the ruler stays readable
+                            // when the HF editor is active near the viewport top.
+                            zIndex: Z_INDEX.ruler,
+                            // paddingRight biases the centered ruler so it tracks
+                            // the page when the comments sidebar (translateX)
+                            // shifts the page left. Outline doesn't bias here —
+                            // the page stays centered until minLayoutWidth forces
+                            // horizontal scroll, and the ruler centers with it.
+                            paddingLeft: 20,
+                            paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
+                            minWidth: minLayoutWidth,
+                            transition: 'padding var(--doc-anim-slow)',
                           }}
-                        />
-                      </div>
-                    )}
-                    {/* Editor content wrapper. min-width matches the ruler so
+                        >
+                          <HorizontalRuler
+                            sectionProps={history.state?.package.document?.finalSectionProperties}
+                            zoom={state.zoom}
+                            unit={rulerUnit}
+                            editable={!readOnly}
+                            onLeftMarginChange={handleLeftMarginChange}
+                            onRightMarginChange={handleRightMarginChange}
+                            indentLeft={state.paragraphIndentLeft}
+                            indentRight={state.paragraphIndentRight}
+                            onIndentLeftChange={handleIndentLeftChange}
+                            onIndentRightChange={handleIndentRightChange}
+                            showFirstLineIndent={true}
+                            firstLineIndent={state.paragraphFirstLineIndent}
+                            hangingIndent={state.paragraphHangingIndent}
+                            onFirstLineIndentChange={handleFirstLineIndentChange}
+                            tabStops={state.paragraphTabs}
+                            onTabStopRemove={handleTabStopRemove}
+                            onDragStateChange={(d) => {
+                              marginDraggingRef.current = d;
+                            }}
+                          />
+                        </div>
+                      )}
+                      {/* Editor content wrapper. min-width matches the ruler so
                       the page and ruler scroll horizontally as a single unit
                       when the viewport is too narrow to fit them. When the
                       outline is open, min-width grows to keep the centered
                       page clear of the panel — but on wide viewports the
                       page stays put (centered, or translated left by the
                       comments sidebar) instead of shifting. */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        flex: 1,
-                        minHeight: 0,
-                        position: 'relative',
-                        minWidth: minLayoutWidth,
-                      }}
-                    >
-                      {/* Editor content area */}
                       <div
-                        ref={editorContentRef}
                         style={{
-                          position: 'relative',
+                          display: 'flex',
                           flex: 1,
-                          minWidth: 0,
+                          minHeight: 0,
+                          position: 'relative',
+                          minWidth: minLayoutWidth,
                         }}
-                        onMouseDown={(e) => {
-                          // Focus editor when clicking on the background area (not the editor itself)
-                          // Using mouseDown for immediate response before focus can be lost
-                          if (e.target === e.currentTarget) {
-                            e.preventDefault();
-                            pagedEditorRef.current?.focus();
-                          }
-                        }}
-                        onContextMenu={handleEditorContextMenu}
                       >
-                        {/* Vertical Ruler - hangs off the left edge of the
+                        {/* Editor content area */}
+                        <div
+                          ref={editorContentRef}
+                          style={{
+                            position: 'relative',
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                          onMouseDown={(e) => {
+                            // Focus editor when clicking on the background area (not the editor itself)
+                            // Using mouseDown for immediate response before focus can be lost
+                            if (e.target === e.currentTarget) {
+                              e.preventDefault();
+                              pagedEditorRef.current?.focus();
+                            }
+                          }}
+                          onContextMenu={handleEditorContextMenu}
+                        >
+                          {/* Vertical Ruler - hangs off the left edge of the
                           centered page (Google Docs style) instead of floating
                           against the content area's far-left edge. It reuses the
                           horizontal ruler's centering (same padding + sidebar
                           bias) so a page-width spacer lands exactly under the
                           page, and the ruler is pinned to that spacer's left
                           edge. */}
-                        {showRulerEffective && !readOnlyProp && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: 0,
-                              right: 0,
-                              top: 0,
-                              // Above the inline HF editor (Z_INDEX.hfInlineEditor)
-                              // so it stays readable on horizontal scroll.
-                              zIndex: Z_INDEX.ruler,
-                              // Must match `.paged-editor__pages` padding-top in
-                              // editor.css (24 viewport + 24 pages container).
-                              // That padding scales with zoom, so the ruler's
-                              // top offset has to scale too or it drifts off the
-                              // page top at non-100% zoom.
-                              paddingTop: 48 * state.zoom,
-                              // Same horizontal centering as the horizontal ruler
-                              // so the vertical ruler tracks the centered page
-                              // (and its comment-sidebar bias).
-                              paddingLeft: 20,
-                              paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
-                              display: 'flex',
-                              justifyContent: 'center',
-                              // Only the ruler itself is interactive; the wrapper
-                              // must not swallow clicks over the gutter/page.
-                              pointerEvents: 'none',
-                              transition: 'padding var(--doc-anim-slow)',
-                            }}
-                          >
-                            {/* Invisible page-width spacer; the ruler is pinned
-                              to its left edge (right: 100%) so it sits just left
-                              of the page. */}
+                          {showRulerEffective && !readOnlyProp && (
                             <div
                               style={{
-                                width: pageWidthPx * state.zoom,
-                                flexShrink: 0,
-                                position: 'relative',
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                top: 0,
+                                // Above the inline HF editor (Z_INDEX.hfInlineEditor)
+                                // so it stays readable on horizontal scroll.
+                                zIndex: Z_INDEX.ruler,
+                                // Must match `.paged-editor__pages` padding-top in
+                                // editor.css (24 viewport + 24 pages container).
+                                // That padding scales with zoom, so the ruler's
+                                // top offset has to scale too or it drifts off the
+                                // page top at non-100% zoom.
+                                paddingTop: 48 * state.zoom,
+                                // Same horizontal centering as the horizontal ruler
+                                // so the vertical ruler tracks the centered page
+                                // (and its comment-sidebar bias).
+                                paddingLeft: 20,
+                                paddingRight: 20 + (sidebarOpen ? SIDEBAR_DOCUMENT_SHIFT * 2 : 0),
+                                display: 'flex',
+                                justifyContent: 'center',
+                                // Only the ruler itself is interactive; the wrapper
+                                // must not swallow clicks over the gutter/page.
+                                pointerEvents: 'none',
+                                transition: 'padding var(--doc-anim-slow)',
                               }}
                             >
+                              {/* Invisible page-width spacer; the ruler is pinned
+                              to its left edge (right: 100%) so it sits just left
+                              of the page. */}
                               <div
                                 style={{
-                                  position: 'absolute',
-                                  right: '100%',
-                                  top: 0,
-                                  marginRight: 6,
-                                  pointerEvents: 'auto',
+                                  width: pageWidthPx * state.zoom,
+                                  flexShrink: 0,
+                                  position: 'relative',
                                 }}
                               >
-                                <VerticalRuler
-                                  // Live section props (NOT initialSectionProperties):
-                                  // margin drags write to finalSectionProperties, and the
-                                  // horizontal ruler reads the same. initialSectionProperties
-                                  // resolves to sections[0].properties for docs that have a
-                                  // section, which the drag never updates — so the top/bottom
-                                  // margin marker stayed pinned while the page reflowed.
-                                  sectionProps={finalSectionProperties ?? initialSectionProperties}
-                                  zoom={state.zoom}
-                                  unit={rulerUnit}
-                                  editable={!readOnly}
-                                  onTopMarginChange={handleTopMarginChange}
-                                  onBottomMarginChange={handleBottomMarginChange}
-                                  onDragStateChange={(d) => {
-                                    marginDraggingRef.current = d;
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    right: '100%',
+                                    top: 0,
+                                    marginRight: 6,
+                                    pointerEvents: 'auto',
                                   }}
-                                />
+                                >
+                                  <VerticalRuler
+                                    // Live section props (NOT initialSectionProperties):
+                                    // margin drags write to finalSectionProperties, and the
+                                    // horizontal ruler reads the same. initialSectionProperties
+                                    // resolves to sections[0].properties for docs that have a
+                                    // section, which the drag never updates — so the top/bottom
+                                    // margin marker stayed pinned while the page reflowed.
+                                    sectionProps={
+                                      finalSectionProperties ?? initialSectionProperties
+                                    }
+                                    zoom={state.zoom}
+                                    unit={rulerUnit}
+                                    editable={!readOnly}
+                                    onTopMarginChange={handleTopMarginChange}
+                                    onBottomMarginChange={handleBottomMarginChange}
+                                    onDragStateChange={(d) => {
+                                      marginDraggingRef.current = d;
+                                    }}
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                        {/* Brighten highlight for the focused/expanded sidebar item */}
-                        {expandedSidebarItem && expandedSidebarItem.startsWith('comment-') && (
-                          <style>{`.paged-editor__pages [data-comment-id="${expandedSidebarItem.replace('comment-', '')}"] { background-color: rgba(255, 212, 0, 0.35) !important; border-bottom: 2px solid rgba(255, 212, 0, 0.7) !important; }`}</style>
-                        )}
-                        {expandedSidebarItem?.startsWith('tc-') &&
-                          (() => {
-                            const revId = expandedSidebarItem.split('-')[1];
-                            const tc = trackedChanges.find((c) => String(c.revisionId) === revId);
-                            const insRevId = tc?.insertionRevisionId;
-                            return (
-                              <style>{`
+                          )}
+                          {/* Brighten highlight for the focused/expanded sidebar item */}
+                          {expandedSidebarItem && expandedSidebarItem.startsWith('comment-') && (
+                            <style>{`.paged-editor__pages [data-comment-id="${expandedSidebarItem.replace('comment-', '')}"] { background-color: rgba(255, 212, 0, 0.35) !important; border-bottom: 2px solid rgba(255, 212, 0, 0.7) !important; }`}</style>
+                          )}
+                          {expandedSidebarItem?.startsWith('tc-') &&
+                            (() => {
+                              const revId = expandedSidebarItem.split('-')[1];
+                              const tc = trackedChanges.find((c) => String(c.revisionId) === revId);
+                              const insRevId = tc?.insertionRevisionId;
+                              return (
+                                <style>{`
                             .paged-editor__pages .docx-insertion[data-revision-id="${insRevId ?? revId}"] { background-color: rgba(52, 168, 83, 0.2) !important; border-bottom: 2px solid #2e7d32 !important; }
                             .paged-editor__pages .docx-deletion[data-revision-id="${revId}"] { background-color: rgba(211, 47, 47, 0.2) !important; text-decoration-thickness: 2px !important; }
                           `}</style>
-                            );
-                          })()}
-                        {/* Update the selection-change impl ref on each render so
+                              );
+                            })()}
+                          {/* Update the selection-change impl ref on each render so
                             it always captures the latest closure values, while
                             the stable wrapper keeps PagedEditor memo() intact. */}
-                        {(_pagedSelectionChangeImplRef.current = (_from, _to) => {
-                          const view = pagedEditorRef.current?.getView();
-                          if (view) {
-                            const selectionState = extractSelectionState(view.state);
-                            handleSelectionChange(selectionState);
-                            const $from = view.state.selection.$from;
-                            const marks = [
-                              ...(view.state.storedMarks ?? []),
-                              ...($from.nodeAfter?.marks ?? []),
-                              ...($from.nodeBefore?.marks ?? []),
-                              ...$from.marks(),
-                            ];
-                            let cursorSidebarItem: string | null = null;
-                            for (const mark of marks) {
-                              if (mark.type.name === 'comment' && mark.attrs.commentId != null) {
-                                const commentId = mark.attrs.commentId as number;
-                                if (resolvedCommentIds.has(commentId)) continue;
-                                cursorSidebarItem = `comment-${commentId}`;
-                                break;
-                              }
-                              if (
-                                (mark.type.name === 'insertion' || mark.type.name === 'deletion') &&
-                                mark.attrs.revisionId != null
-                              ) {
-                                const revId = String(mark.attrs.revisionId);
-                                const prefix = `tc-${revId}-`;
-                                let match = commentSidebarItems.find((i) =>
-                                  i.id.startsWith(prefix)
-                                );
-                                if (!match && revisionIdAliases) {
-                                  const aliasedId = revisionIdAliases.get(revId);
-                                  if (aliasedId) {
-                                    match = commentSidebarItems.find((i) => i.id === aliasedId);
-                                  }
-                                }
-                                if (match) {
-                                  cursorSidebarItem = match.id;
+                          {(_pagedSelectionChangeImplRef.current = (_from, _to) => {
+                            const view = pagedEditorRef.current?.getView();
+                            if (view) {
+                              const selectionState = extractSelectionState(view.state);
+                              handleSelectionChange(selectionState);
+                              const $from = view.state.selection.$from;
+                              const marks = [
+                                ...(view.state.storedMarks ?? []),
+                                ...($from.nodeAfter?.marks ?? []),
+                                ...($from.nodeBefore?.marks ?? []),
+                                ...$from.marks(),
+                              ];
+                              let cursorSidebarItem: string | null = null;
+                              for (const mark of marks) {
+                                if (mark.type.name === 'comment' && mark.attrs.commentId != null) {
+                                  const commentId = mark.attrs.commentId as number;
+                                  if (resolvedCommentIds.has(commentId)) continue;
+                                  cursorSidebarItem = `comment-${commentId}`;
                                   break;
                                 }
+                                if (
+                                  (mark.type.name === 'insertion' ||
+                                    mark.type.name === 'deletion') &&
+                                  mark.attrs.revisionId != null
+                                ) {
+                                  const revId = String(mark.attrs.revisionId);
+                                  const prefix = `tc-${revId}-`;
+                                  let match = commentSidebarItems.find((i) =>
+                                    i.id.startsWith(prefix)
+                                  );
+                                  if (!match && revisionIdAliases) {
+                                    const aliasedId = revisionIdAliases.get(revId);
+                                    if (aliasedId) {
+                                      match = commentSidebarItems.find((i) => i.id === aliasedId);
+                                    }
+                                  }
+                                  if (match) {
+                                    cursorSidebarItem = match.id;
+                                    break;
+                                  }
+                                }
                               }
+                              if (cursorSidebarItem) setShowCommentsSidebar(true);
+                              setExpandedSidebarItem(cursorSidebarItem);
+                            } else {
+                              handleSelectionChange(null);
                             }
-                            if (cursorSidebarItem) setShowCommentsSidebar(true);
-                            setExpandedSidebarItem(cursorSidebarItem);
-                          } else {
-                            handleSelectionChange(null);
-                          }
-                        }) && null}
-                        <PagedEditor
-                          ref={pagedEditorRef}
-                          document={history.state}
-                          styles={history.state?.package.styles}
-                          theme={history.state?.package.theme || theme}
-                          sectionProperties={initialSectionProperties}
-                          finalSectionProperties={finalSectionProperties}
-                          headerContent={headerContent}
-                          footerContent={footerContent}
-                          firstPageHeaderContent={firstPageHeaderContent}
-                          firstPageFooterContent={firstPageFooterContent}
-                          onHeaderFooterDoubleClick={handleHeaderFooterDoubleClick}
-                          hfEditMode={hfEditPosition}
-                          onBodyClick={handleBodyClick}
-                          zoom={state.zoom}
-                          marginDraggingRef={marginDraggingRef}
-                          wordCompat={wordCompat}
-                          showFormattingMarks={showFormattingMarks}
-                          readOnly={readOnly}
-                          extensionManager={extensionManager}
-                          contentLabel={t('editor.contentLabel')}
-                          selectionFormatting={state.selectionFormatting}
-                          onFormat={handleFormat}
-                          onZoomChange={handleZoomChange}
-                          onDocumentChange={handleDocumentChange}
-                          onSelectionChange={_pagedOnSelectionChangeStable}
-                          externalPlugins={allExternalPlugins}
-                          onReady={handlePagedEditorReady}
-                          onRenderedDomContextReady={onRenderedDomContextReady}
-                          pluginOverlays={pluginOverlays}
-                          onHyperlinkClick={handleHyperlinkClick}
-                          onContextMenu={handleContextMenu}
-                          onOpenProperties={handleOpenProperties}
-                          onResizeTextBox={handleTextBoxSetSize}
-                          onEditFootnote={handleEditFootnote}
-                          onEditEquation={handleEditEquation}
-                          onEditEndnote={handleEditEndnote}
-                          commentsSidebarOpen={sidebarOpen}
-                          onAnchorPositionsChange={setAnchorPositions}
-                          onTotalPagesChange={handleTotalPagesChange}
-                          resolvedCommentIds={resolvedIdsForRender}
-                          scrollContainerRef={scrollContainerRef}
-                          sidebarOverlay={
-                            <>
-                              {/* Tracked-change navigation + accept/reject
+                          }) && null}
+                          <PagedEditor
+                            ref={pagedEditorRef}
+                            document={history.state}
+                            styles={history.state?.package.styles}
+                            theme={history.state?.package.theme || theme}
+                            sectionProperties={initialSectionProperties}
+                            finalSectionProperties={finalSectionProperties}
+                            headerContent={headerContent}
+                            footerContent={footerContent}
+                            firstPageHeaderContent={firstPageHeaderContent}
+                            firstPageFooterContent={firstPageFooterContent}
+                            onHeaderFooterDoubleClick={handleHeaderFooterDoubleClick}
+                            hfEditMode={hfEditPosition}
+                            onBodyClick={handleBodyClick}
+                            zoom={state.zoom}
+                            marginDraggingRef={marginDraggingRef}
+                            wordCompat={wordCompat}
+                            showFormattingMarks={showFormattingMarks}
+                            readOnly={readOnly}
+                            extensionManager={extensionManager}
+                            contentLabel={t('editor.contentLabel')}
+                            selectionFormatting={state.selectionFormatting}
+                            onFormat={handleFormat}
+                            onZoomChange={handleZoomChange}
+                            onDocumentChange={handleDocumentChange}
+                            onSelectionChange={_pagedOnSelectionChangeStable}
+                            externalPlugins={allExternalPlugins}
+                            onReady={handlePagedEditorReady}
+                            onRenderedDomContextReady={onRenderedDomContextReady}
+                            pluginOverlays={pluginOverlays}
+                            onHyperlinkClick={handleHyperlinkClick}
+                            onContextMenu={handleContextMenu}
+                            onOpenProperties={handleOpenProperties}
+                            onResizeTextBox={handleTextBoxSetSize}
+                            onEditFootnote={handleEditFootnote}
+                            onEditEquation={handleEditEquation}
+                            onEditEndnote={handleEditEndnote}
+                            commentsSidebarOpen={sidebarOpen}
+                            onAnchorPositionsChange={setAnchorPositions}
+                            onTotalPagesChange={handleTotalPagesChange}
+                            resolvedCommentIds={resolvedIdsForRender}
+                            scrollContainerRef={scrollContainerRef}
+                            sidebarOverlay={
+                              <>
+                                {/* Tracked-change navigation + accept/reject
                                   controls. Surfaced whenever ANY tracked
                                   change exists in the doc — gating on
                                   `editingMode === 'suggesting'` hid the bar
@@ -8951,359 +8968,370 @@ body { background: white; }
                                   way to act on them. The bar now shows for
                                   the union of user-typed suggestions and
                                   AI-staged ones. */}
-                              {trackedChanges.length > 0 && (
-                                <div
-                                  style={{
-                                    position: 'absolute',
-                                    top: 6,
-                                    right: 12,
-                                    display: 'flex',
-                                    gap: 4,
-                                    padding: '4px 6px',
-                                    background: 'var(--doc-surface, white)',
-                                    border: '1px solid var(--doc-border)',
-                                    borderRadius: 6,
-                                    boxShadow: 'var(--doc-shadow, 0 2px 6px rgba(0,0,0,0.1))',
-                                    zIndex: 50,
-                                    fontSize: 12,
-                                  }}
-                                  data-testid="tracked-changes-action-bar"
-                                >
-                                  <Tooltip content={t('trackedChanges.previous')}>
-                                    <button
-                                      type="button"
-                                      onClick={handlePreviousChange}
-                                      style={trackedChangesActionBtnStyle}
-                                      aria-label={t('trackedChanges.previous')}
-                                    >
-                                      <MaterialSymbol name="navigate_before" size={16} />
-                                    </button>
-                                  </Tooltip>
-                                  <Tooltip content={t('trackedChanges.next')}>
-                                    <button
-                                      type="button"
-                                      onClick={handleNextChange}
-                                      style={trackedChangesActionBtnStyle}
-                                      aria-label={t('trackedChanges.next')}
-                                    >
-                                      <MaterialSymbol name="navigate_next" size={16} />
-                                    </button>
-                                  </Tooltip>
-                                  <span
+                                {trackedChanges.length > 0 && (
+                                  <div
                                     style={{
-                                      width: 1,
-                                      background: 'var(--doc-border)',
-                                      margin: '0 2px',
+                                      position: 'absolute',
+                                      top: 6,
+                                      right: 12,
+                                      display: 'flex',
+                                      gap: 4,
+                                      padding: '4px 6px',
+                                      background: 'var(--doc-surface, white)',
+                                      border: '1px solid var(--doc-border)',
+                                      borderRadius: 6,
+                                      boxShadow: 'var(--doc-shadow, 0 2px 6px rgba(0,0,0,0.1))',
+                                      zIndex: 50,
+                                      fontSize: 12,
                                     }}
+                                    data-testid="tracked-changes-action-bar"
+                                  >
+                                    <Tooltip content={t('trackedChanges.previous')}>
+                                      <button
+                                        type="button"
+                                        onClick={handlePreviousChange}
+                                        style={trackedChangesActionBtnStyle}
+                                        aria-label={t('trackedChanges.previous')}
+                                      >
+                                        <MaterialSymbol name="navigate_before" size={16} />
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content={t('trackedChanges.next')}>
+                                      <button
+                                        type="button"
+                                        onClick={handleNextChange}
+                                        style={trackedChangesActionBtnStyle}
+                                        aria-label={t('trackedChanges.next')}
+                                      >
+                                        <MaterialSymbol name="navigate_next" size={16} />
+                                      </button>
+                                    </Tooltip>
+                                    <span
+                                      style={{
+                                        width: 1,
+                                        background: 'var(--doc-border)',
+                                        margin: '0 2px',
+                                      }}
+                                    />
+                                    <Tooltip content={t('trackedChanges.acceptAll')}>
+                                      <button
+                                        type="button"
+                                        onClick={handleAcceptAllChanges}
+                                        style={trackedChangesActionBtnStyle}
+                                        aria-label={t('trackedChanges.acceptAll')}
+                                        data-testid="tracked-changes-accept-all"
+                                      >
+                                        <MaterialSymbol name="done_all" size={16} />
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content={t('trackedChanges.rejectAll')}>
+                                      <button
+                                        type="button"
+                                        onClick={handleRejectAllChanges}
+                                        style={trackedChangesActionBtnStyle}
+                                        aria-label={t('trackedChanges.rejectAll')}
+                                        data-testid="tracked-changes-reject-all"
+                                      >
+                                        <MaterialSymbol name="block" size={16} />
+                                      </button>
+                                    </Tooltip>
+                                  </div>
+                                )}
+                                {allSidebarItems.length > 0 && (
+                                  <UnifiedSidebar
+                                    items={allSidebarItems}
+                                    anchorPositions={anchorPositions}
+                                    renderedDomContext={pluginRenderedDomContext ?? null}
+                                    pageWidth={pageWidthPx}
+                                    zoom={state.zoom}
+                                    editorContainerRef={scrollContainerRef}
+                                    onExpandedItemChange={setExpandedSidebarItem}
+                                    activeItemId={expandedSidebarItem}
                                   />
-                                  <Tooltip content={t('trackedChanges.acceptAll')}>
-                                    <button
-                                      type="button"
-                                      onClick={handleAcceptAllChanges}
-                                      style={trackedChangesActionBtnStyle}
-                                      aria-label={t('trackedChanges.acceptAll')}
-                                      data-testid="tracked-changes-accept-all"
-                                    >
-                                      <MaterialSymbol name="done_all" size={16} />
-                                    </button>
-                                  </Tooltip>
-                                  <Tooltip content={t('trackedChanges.rejectAll')}>
-                                    <button
-                                      type="button"
-                                      onClick={handleRejectAllChanges}
-                                      style={trackedChangesActionBtnStyle}
-                                      aria-label={t('trackedChanges.rejectAll')}
-                                      data-testid="tracked-changes-reject-all"
-                                    >
-                                      <MaterialSymbol name="block" size={16} />
-                                    </button>
-                                  </Tooltip>
-                                </div>
-                              )}
-                              {allSidebarItems.length > 0 && (
-                                <UnifiedSidebar
-                                  items={allSidebarItems}
+                                )}
+                                <CommentMarginMarkers
+                                  comments={comments}
                                   anchorPositions={anchorPositions}
-                                  renderedDomContext={pluginRenderedDomContext ?? null}
-                                  pageWidth={pageWidthPx}
                                   zoom={state.zoom}
-                                  editorContainerRef={scrollContainerRef}
-                                  onExpandedItemChange={setExpandedSidebarItem}
-                                  activeItemId={expandedSidebarItem}
+                                  pageWidth={pageWidthPx}
+                                  sidebarOpen={sidebarOpen}
+                                  resolvedCommentIds={resolvedCommentIds}
+                                  onMarkerClick={() => {
+                                    setShowCommentsSidebar(true);
+                                  }}
                                 />
-                              )}
-                              <CommentMarginMarkers
-                                comments={comments}
-                                anchorPositions={anchorPositions}
-                                zoom={state.zoom}
-                                pageWidth={pageWidthPx}
-                                sidebarOpen={sidebarOpen}
-                                resolvedCommentIds={resolvedCommentIds}
-                                onMarkerClick={() => {
-                                  setShowCommentsSidebar(true);
-                                }}
-                              />
-                              {/* Version history is mounted as a flex sibling
+                                {/* Version history is mounted as a flex sibling
                                   of the scroll container (below this block),
                                   not here — keeping it outside the scrolling
                                   area means it stays pinned to the viewport
                                   instead of riding along with document scroll. */}
-                            </>
-                          }
-                        />
+                              </>
+                            }
+                          />
 
-                        {/* Version preview overlay (Google-Docs model) — a
+                          {/* Version preview overlay (Google-Docs model) — a
                             read-only render of the selected version covering
                             the live canvas. Separate editor instance: the
                             live doc, its Yjs sync, and its undo stack are
-                            untouched, so nothing is broadcast to peers. */}
-                        {versionPreview && (
-                          <div
-                            data-testid="version-preview-overlay"
-                            style={{
-                              position: 'absolute',
-                              inset: 0,
-                              zIndex: Z_INDEX.versionPreview,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              background: 'var(--doc-canvas-bg, #f1f3f4)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 12,
-                                padding: '8px 16px',
-                                background: 'var(--doc-surface, #fff)',
-                                borderBottom: '1px solid var(--doc-border, #e0e0e0)',
-                                boxShadow: 'var(--doc-shadow, 0 1px 3px rgba(0,0,0,0.08))',
-                              }}
-                            >
-                              <Tooltip content="Back to editing">
-                                <button
-                                  type="button"
-                                  onClick={handleClosePreview}
-                                  data-testid="version-preview-back"
-                                  aria-label="Back to editing"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    padding: '4px 10px',
-                                    border: '1px solid var(--doc-border)',
-                                    borderRadius: 4,
-                                    background: 'transparent',
-                                    color: 'var(--doc-text)',
-                                    fontSize: 13,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  <MaterialSymbol name="arrow_back" size={16} />
-                                  Back
-                                </button>
-                              </Tooltip>
-                              <span style={{ fontSize: 13, color: 'var(--doc-text-muted)' }}>
-                                Viewing{' '}
-                                <strong style={{ color: 'var(--doc-text)' }}>
-                                  {versionPreview.name}
-                                </strong>
-                                {' · '}
-                                {new Date(versionPreview.savedAt).toLocaleString()}
-                              </span>
-                              <label
+                            untouched, so nothing is broadcast to peers.
+                            Portaled into the viewport-height editor column so
+                            the banner stays pinned (not riding document scroll);
+                            covers only the page column, leaving the version
+                            list panel visible beside it. */}
+                          {versionPreview &&
+                            editorColumnRef.current &&
+                            createPortal(
+                              <div
+                                data-testid="version-preview-overlay"
                                 style={{
-                                  marginLeft: 'auto',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  fontSize: 13,
-                                  color: 'var(--doc-text)',
-                                  cursor: versionPreview.previousData ? 'pointer' : 'not-allowed',
-                                  opacity: versionPreview.previousData ? 1 : 0.5,
+                                  position: 'absolute',
+                                  inset: 0,
+                                  zIndex: Z_INDEX.versionPreview,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  background: 'var(--doc-canvas-bg, #f1f3f4)',
                                 }}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={previewShowChanges}
-                                  disabled={!versionPreview.previousData}
-                                  onChange={(e) => setPreviewShowChanges(e.target.checked)}
-                                  data-testid="version-preview-show-changes"
-                                />
-                                Show changes
-                              </label>
-                              <button
-                                type="button"
-                                onClick={handleRestoreFromPreview}
-                                data-testid="version-preview-restore"
-                                style={{
-                                  padding: '6px 14px',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  background: 'var(--doc-primary, #1a73e8)',
-                                  color: '#fff',
-                                  fontSize: 13,
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Restore this version
-                              </button>
-                            </div>
-                            <div
-                              ref={previewScrollRef}
-                              style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
-                            >
-                              {previewDocument ? (
-                                <PagedEditor
-                                  // Remount on version / show-changes change:
-                                  // the preview doc keeps the live doc's
-                                  // metadata identity, so PagedEditor's
-                                  // same-identity guard would otherwise skip
-                                  // the swap and keep painting the old marks.
-                                  key={`${versionPreview.savedAt}-${previewShowChanges}`}
-                                  ref={previewEditorRef}
-                                  document={previewDocument}
-                                  styles={previewDocument.package.styles}
-                                  theme={previewDocument.package.theme || theme}
-                                  sectionProperties={initialSectionProperties}
-                                  finalSectionProperties={finalSectionProperties}
-                                  headerContent={headerContent}
-                                  footerContent={footerContent}
-                                  firstPageHeaderContent={firstPageHeaderContent}
-                                  firstPageFooterContent={firstPageFooterContent}
-                                  zoom={state.zoom}
-                                  wordCompat={wordCompat}
-                                  readOnly
-                                  extensionManager={extensionManager}
-                                  contentLabel="Version preview"
-                                  scrollContainerRef={previewScrollRef}
-                                />
-                              ) : (
                                 <div
                                   style={{
-                                    padding: 40,
-                                    textAlign: 'center',
-                                    color: 'var(--doc-text-muted)',
-                                    fontSize: 13,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    padding: '8px 16px',
+                                    background: 'var(--doc-surface, #fff)',
+                                    borderBottom: '1px solid var(--doc-border, #e0e0e0)',
+                                    boxShadow: 'var(--doc-shadow, 0 1px 3px rgba(0,0,0,0.08))',
                                   }}
                                 >
-                                  Preview unavailable for this version.
+                                  <Tooltip content="Back to editing">
+                                    <button
+                                      type="button"
+                                      onClick={handleClosePreview}
+                                      data-testid="version-preview-back"
+                                      aria-label="Back to editing"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        padding: '4px 10px',
+                                        border: '1px solid var(--doc-border)',
+                                        borderRadius: 4,
+                                        background: 'transparent',
+                                        color: 'var(--doc-text)',
+                                        fontSize: 13,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <MaterialSymbol name="arrow_back" size={16} />
+                                      Back
+                                    </button>
+                                  </Tooltip>
+                                  <span style={{ fontSize: 13, color: 'var(--doc-text-muted)' }}>
+                                    Viewing{' '}
+                                    <strong style={{ color: 'var(--doc-text)' }}>
+                                      {versionPreview.name}
+                                    </strong>
+                                    {' · '}
+                                    {new Date(versionPreview.savedAt).toLocaleString()}
+                                  </span>
+                                  <label
+                                    style={{
+                                      marginLeft: 'auto',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      fontSize: 13,
+                                      color: 'var(--doc-text)',
+                                      cursor: versionPreview.previousData
+                                        ? 'pointer'
+                                        : 'not-allowed',
+                                      opacity: versionPreview.previousData ? 1 : 0.5,
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={previewShowChanges}
+                                      disabled={!versionPreview.previousData}
+                                      onChange={(e) => setPreviewShowChanges(e.target.checked)}
+                                      data-testid="version-preview-show-changes"
+                                    />
+                                    Show changes
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={handleRestoreFromPreview}
+                                    data-testid="version-preview-restore"
+                                    style={{
+                                      padding: '6px 14px',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      background: 'var(--doc-primary, #1a73e8)',
+                                      color: '#fff',
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Restore this version
+                                  </button>
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                                <div
+                                  ref={previewScrollRef}
+                                  style={{ flex: 1, minHeight: 0, overflow: 'auto' }}
+                                >
+                                  {previewDocument ? (
+                                    <PagedEditor
+                                      // Remount on version / show-changes change:
+                                      // the preview doc keeps the live doc's
+                                      // metadata identity, so PagedEditor's
+                                      // same-identity guard would otherwise skip
+                                      // the swap and keep painting the old marks.
+                                      key={`${versionPreview.savedAt}-${previewShowChanges}`}
+                                      ref={previewEditorRef}
+                                      document={previewDocument}
+                                      styles={previewDocument.package.styles}
+                                      theme={previewDocument.package.theme || theme}
+                                      sectionProperties={initialSectionProperties}
+                                      finalSectionProperties={finalSectionProperties}
+                                      headerContent={headerContent}
+                                      footerContent={footerContent}
+                                      firstPageHeaderContent={firstPageHeaderContent}
+                                      firstPageFooterContent={firstPageFooterContent}
+                                      zoom={state.zoom}
+                                      wordCompat={wordCompat}
+                                      readOnly
+                                      extensionManager={extensionManager}
+                                      contentLabel="Version preview"
+                                      scrollContainerRef={previewScrollRef}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{
+                                        padding: 40,
+                                        textAlign: 'center',
+                                        color: 'var(--doc-text-muted)',
+                                        fontSize: 13,
+                                      }}
+                                    >
+                                      Preview unavailable for this version.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>,
+                              editorColumnRef.current
+                            )}
 
-                        {/* Floating "add comment" button — appears on right edge of page at selection */}
-                        {floatingCommentBtn != null && !isAddingComment && !readOnly && (
-                          <Tooltip content="Add comment" side="bottom" delayMs={300}>
-                            <button
-                              type="button"
-                              data-testid="floating-add-comment-button"
-                              aria-label="Add comment"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const view = pagedEditorRef.current?.getView();
-                                if (view) {
-                                  const { from, to } = view.state.selection;
-                                  if (from !== to) {
-                                    setCommentSelectionRange({ from, to });
-                                    const pendingMark = view.state.schema.marks.comment.create({
-                                      commentId: PENDING_COMMENT_ID,
-                                    });
-                                    const tr = view.state.tr.addMark(from, to, pendingMark);
-                                    tr.setSelection(TextSelection.create(tr.doc, to));
-                                    view.dispatch(tr);
+                          {/* Floating "add comment" button — appears on right edge of page at selection */}
+                          {floatingCommentBtn != null && !isAddingComment && !readOnly && (
+                            <Tooltip content="Add comment" side="bottom" delayMs={300}>
+                              <button
+                                type="button"
+                                data-testid="floating-add-comment-button"
+                                aria-label="Add comment"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const view = pagedEditorRef.current?.getView();
+                                  if (view) {
+                                    const { from, to } = view.state.selection;
+                                    if (from !== to) {
+                                      setCommentSelectionRange({ from, to });
+                                      const pendingMark = view.state.schema.marks.comment.create({
+                                        commentId: PENDING_COMMENT_ID,
+                                      });
+                                      const tr = view.state.tr.addMark(from, to, pendingMark);
+                                      tr.setSelection(TextSelection.create(tr.doc, to));
+                                      view.dispatch(tr);
+                                    }
                                   }
-                                }
-                                setAddCommentYPosition(floatingCommentBtn.top);
-                                setShowCommentsSidebar(true);
-                                setIsAddingComment(true);
-                                setFloatingCommentBtn(null);
-                              }}
-                              style={{
-                                position: 'absolute',
-                                top: floatingCommentBtn.top,
-                                left: floatingCommentBtn.left,
-                                transform: 'translate(-50%, -50%)',
-                                zIndex: 50,
-                                width: 28,
-                                height: 28,
-                                borderRadius: 6,
-                                border: '1px solid rgba(26, 115, 232, 0.3)',
-                                backgroundColor: 'var(--doc-surface, #fff)',
-                                color: 'var(--doc-primary)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 1px 3px rgba(60,64,67,0.2)',
-                                transition:
-                                  'background-color var(--doc-anim-base), box-shadow var(--doc-anim-base)',
-                              }}
-                              onMouseOver={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                                  'rgba(26, 115, 232, 0.08)';
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                                  '0 1px 4px rgba(26, 115, 232, 0.3)';
-                              }}
-                              onMouseOut={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                                  'var(--doc-surface, #fff)';
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                                  '0 1px 3px rgba(60,64,67,0.2)';
-                              }}
-                            >
-                              <MaterialSymbol name="add_comment" size={16} />
-                            </button>
-                          </Tooltip>
-                        )}
+                                  setAddCommentYPosition(floatingCommentBtn.top);
+                                  setShowCommentsSidebar(true);
+                                  setIsAddingComment(true);
+                                  setFloatingCommentBtn(null);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: floatingCommentBtn.top,
+                                  left: floatingCommentBtn.left,
+                                  transform: 'translate(-50%, -50%)',
+                                  zIndex: 50,
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 6,
+                                  border: '1px solid rgba(26, 115, 232, 0.3)',
+                                  backgroundColor: 'var(--doc-surface, #fff)',
+                                  color: 'var(--doc-primary)',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxShadow: '0 1px 3px rgba(60,64,67,0.2)',
+                                  transition:
+                                    'background-color var(--doc-anim-base), box-shadow var(--doc-anim-base)',
+                                }}
+                                onMouseOver={(e) => {
+                                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                                    'rgba(26, 115, 232, 0.08)';
+                                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                                    '0 1px 4px rgba(26, 115, 232, 0.3)';
+                                }}
+                                onMouseOut={(e) => {
+                                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                                    'var(--doc-surface, #fff)';
+                                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                                    '0 1px 3px rgba(60,64,67,0.2)';
+                                }}
+                              >
+                                <MaterialSymbol name="add_comment" size={16} />
+                              </button>
+                            </Tooltip>
+                          )}
 
-                        {/* Inline Header/Footer Editor — positioned over the target area */}
-                        {hfEditPosition &&
-                          (() => {
-                            const activeHf = hfEditIsFirstPage
-                              ? hfEditPosition === 'header'
-                                ? firstPageHeaderContent
-                                : firstPageFooterContent
-                              : hfEditPosition === 'header'
-                                ? headerContent
-                                : footerContent;
-                            if (!activeHf) return null;
-                            const targetEl = getHfTargetElement(hfEditPosition);
-                            const parentEl = editorContentRef.current;
-                            if (!targetEl || !parentEl) return null;
-                            return (
-                              <InlineHeaderFooterEditor
-                                ref={hfEditorRef}
-                                headerFooter={activeHf}
-                                position={hfEditPosition}
-                                styles={history.state?.package.styles}
-                                targetElement={targetEl}
-                                parentElement={parentEl}
-                                onSave={handleHeaderFooterSave}
-                                onClose={() => setHfEditPosition(null)}
-                                onSelectionChange={handleSelectionChange}
-                                onRemove={handleRemoveHeaderFooter}
-                                titlePg={
-                                  history.state?.package.document?.finalSectionProperties?.titlePg
-                                }
-                                evenAndOddHeaders={
-                                  history.state?.package.document?.finalSectionProperties
-                                    ?.evenAndOddHeaders
-                                }
-                                onToggleTitlePg={handleToggleTitlePg}
-                                onToggleEvenAndOdd={handleToggleEvenAndOddHeaders}
-                              />
-                            );
-                          })()}
+                          {/* Inline Header/Footer Editor — positioned over the target area */}
+                          {hfEditPosition &&
+                            (() => {
+                              const activeHf = hfEditIsFirstPage
+                                ? hfEditPosition === 'header'
+                                  ? firstPageHeaderContent
+                                  : firstPageFooterContent
+                                : hfEditPosition === 'header'
+                                  ? headerContent
+                                  : footerContent;
+                              if (!activeHf) return null;
+                              const targetEl = getHfTargetElement(hfEditPosition);
+                              const parentEl = editorContentRef.current;
+                              if (!targetEl || !parentEl) return null;
+                              return (
+                                <InlineHeaderFooterEditor
+                                  ref={hfEditorRef}
+                                  headerFooter={activeHf}
+                                  position={hfEditPosition}
+                                  styles={history.state?.package.styles}
+                                  targetElement={targetEl}
+                                  parentElement={parentEl}
+                                  onSave={handleHeaderFooterSave}
+                                  onClose={() => setHfEditPosition(null)}
+                                  onSelectionChange={handleSelectionChange}
+                                  onRemove={handleRemoveHeaderFooter}
+                                  titlePg={
+                                    history.state?.package.document?.finalSectionProperties?.titlePg
+                                  }
+                                  evenAndOddHeaders={
+                                    history.state?.package.document?.finalSectionProperties
+                                      ?.evenAndOddHeaders
+                                  }
+                                  onToggleTitlePg={handleToggleTitlePg}
+                                  onToggleEvenAndOdd={handleToggleEvenAndOddHeaders}
+                                />
+                              );
+                            })()}
+                        </div>
                       </div>
+                      {/* end editor flex wrapper */}
                     </div>
-                    {/* end editor flex wrapper */}
+                    {/* end scroll container */}
                   </div>
-                  {/* end scroll container */}
+                  {/* end viewport-height editor column */}
 
                   {/* Version history panel — flex sibling of the scroll
                       container so it stays pinned to the viewport
