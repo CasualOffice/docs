@@ -65,7 +65,9 @@ const sectionStyle: CSSProperties = {
 const labelStyle: CSSProperties = {
   display: 'block',
   fontSize: 12,
-  color: '#666',
+  // Theme token: this dialog sits on `--doc-surface` (dark under
+  // [data-theme="dark"]), so a hardcoded #666 label was dark-on-dark.
+  color: 'var(--doc-text-muted, #666)',
   marginBottom: 4,
 };
 
