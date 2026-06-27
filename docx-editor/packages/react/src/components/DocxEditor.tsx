@@ -2220,6 +2220,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const versionCapture = useVersionHistoryCapture({
     docId: documentName?.trim() || 'Untitled',
     view: bodyView,
+    author,
   });
 
   // Restore a snapshot's PM doc JSON into the live editor. Mirrors
@@ -2261,6 +2262,37 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (versionPreview) handleRestoreSnapshot(versionPreview.data);
     setVersionPreview(null);
   }, [versionPreview, handleRestoreSnapshot]);
+
+  // Step the preview between changes (Google-Docs ^ / v). Walks the painted
+  // diff marks (.docx-insertion / .docx-deletion) inside the preview scroll
+  // container, clustering marks that sit on the same line into one stop, and
+  // nudges scrollTop so the next/previous change lands near the top. Uses
+  // viewport-relative deltas (not scrollIntoView) so the zoom transform on the
+  // preview's pages doesn't throw the math off.
+  const stepPreviewChange = useCallback((dir: 'next' | 'prev') => {
+    const sc = previewScrollRef.current;
+    if (!sc) return;
+    const marks = Array.from(
+      sc.querySelectorAll('.docx-insertion, .docx-deletion')
+    ) as HTMLElement[];
+    if (marks.length === 0) return;
+    // Cluster by vertical position so a multi-mark edit on one line is a
+    // single stop. Sorted tops; a >24px gap starts a new cluster.
+    const tops = marks.map((m) => m.getBoundingClientRect().top).sort((a, b) => a - b);
+    const stops: number[] = [];
+    for (const t of tops) {
+      if (stops.length === 0 || t - stops[stops.length - 1] > 24) stops.push(t);
+    }
+    const scRect = sc.getBoundingClientRect();
+    const refY = scRect.top + 90; // reference line just below the banner
+    let targetTop: number | undefined;
+    if (dir === 'next') {
+      targetTop = stops.find((t) => t > refY + 4) ?? stops[stops.length - 1];
+    } else {
+      targetTop = [...stops].reverse().find((t) => t < refY - 4) ?? stops[0];
+    }
+    if (targetTop != null) sc.scrollTop += targetTop - refY;
+  }, []);
 
   // Detect whether the collab session wired the Strict co-editing plugin
   // into the body view (only then does the View-menu toggle appear).
@@ -6898,6 +6930,10 @@ body { background: white; }
     try {
       const buffer = await handleSave();
       if (!buffer) return;
+      // Checkpoint a version on explicit save (Google-Docs parity). No-op
+      // when nothing changed since the last capture, so repeated saves don't
+      // pile up identical entries.
+      void versionCapture.captureOnSave();
       // When a parent supplied `onSave`, it owns persistence — `handleSave`
       // has already passed it the buffer. A browser blob download on top
       // of that would drop a duplicate file into ~/Downloads on every Save
@@ -6923,7 +6959,7 @@ body { background: white; }
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName, markDirty, onSave]);
+  }, [handleSave, documentName, markDirty, onSave, versionCapture]);
 
   // Autosave to IndexedDB (sheet parity). A periodic interval polls the
   // dirty flag every 30s; if dirty, it serializes and writes the buffer.
@@ -8383,6 +8419,20 @@ body { background: white; }
     return ids;
   }, [resolvedCommentIds, expandedSidebarItem]);
 
+  const PREVIEW_CHANGE_NAV_BTN_STYLE: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    padding: 0,
+    border: '1px solid var(--doc-border)',
+    borderRadius: 4,
+    background: 'transparent',
+    color: 'var(--doc-text)',
+    cursor: 'pointer',
+  };
+
   const editorContainerStyle: CSSProperties = {
     flex: 1,
     minHeight: 0,
@@ -9135,9 +9185,47 @@ body { background: white; }
                                     {' · '}
                                     {new Date(versionPreview.savedAt).toLocaleString()}
                                   </span>
+                                  {/* Step between changes (Google-Docs ^ / v).
+                                      Only meaningful while a diff is shown. */}
+                                  {previewShowChanges && versionPreview.previousData != null && (
+                                    <span
+                                      style={{
+                                        marginLeft: 'auto',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                      }}
+                                    >
+                                      <Tooltip content="Previous change">
+                                        <button
+                                          type="button"
+                                          onClick={() => stepPreviewChange('prev')}
+                                          data-testid="version-preview-prev-change"
+                                          aria-label="Previous change"
+                                          style={PREVIEW_CHANGE_NAV_BTN_STYLE}
+                                        >
+                                          <MaterialSymbol name="keyboard_arrow_up" size={18} />
+                                        </button>
+                                      </Tooltip>
+                                      <Tooltip content="Next change">
+                                        <button
+                                          type="button"
+                                          onClick={() => stepPreviewChange('next')}
+                                          data-testid="version-preview-next-change"
+                                          aria-label="Next change"
+                                          style={PREVIEW_CHANGE_NAV_BTN_STYLE}
+                                        >
+                                          <MaterialSymbol name="keyboard_arrow_down" size={18} />
+                                        </button>
+                                      </Tooltip>
+                                    </span>
+                                  )}
                                   <label
                                     style={{
-                                      marginLeft: 'auto',
+                                      marginLeft:
+                                        previewShowChanges && versionPreview.previousData != null
+                                          ? 8
+                                          : 'auto',
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       gap: 6,
@@ -9342,7 +9430,6 @@ body { background: white; }
                       fixed width. */}
                   {showVersionHistory && (
                     <VersionHistoryPanel
-                      history={editHistory}
                       docId={documentName?.trim() || 'Untitled'}
                       saveNamedVersion={versionCapture.saveNamedVersion}
                       onRestoreSnapshot={handleRestoreSnapshot}

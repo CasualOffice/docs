@@ -20,7 +20,7 @@ test.describe('Version history panel', () => {
     await editor.focus();
   });
 
-  test('toolbar toggle mounts the panel and captures edits', async ({ page }) => {
+  test('toolbar toggle mounts the single version timeline', async ({ page }) => {
     const toggle = page.getByRole('button', { name: 'Version history' });
     await expect(toggle).toBeVisible();
 
@@ -30,70 +30,18 @@ test.describe('Version history panel', () => {
     await toggle.click();
     await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
 
-    // The panel is a two-tab container — Versions (persisted IDB
-    // snapshots, default) + Activity (live edit feed). The per-edit
-    // entries this spec checks live in the Activity tab.
-    await page.getByTestId('version-history-tab-activity').click();
+    // One timeline now — no Versions/Activity tab split.
+    await expect(page.getByTestId('version-history-tab-activity')).toHaveCount(0);
 
-    // Type so the capture plugin records at least one entry. The hook
-    // coalesces rapid typing into one entry within a 2s idle window, so
-    // a single character is sufficient to produce one visible row.
-    await editor.typeText('hello');
-    await page.waitForTimeout(150);
-
-    // The panel renders an aria-labeled list (see VersionHistoryPanel).
-    // Just assert that *something* renders inside the panel body — the
-    // empty-state text disappears once entries exist.
+    // The auto-save explainer and the "Save version…" (name-only) action
+    // are the panel's anchors.
     const panel = page.locator('[data-testid="version-history-panel"]');
-    const entryCount = await panel.locator('li, [role="listitem"]').count();
-    expect(entryCount).toBeGreaterThan(0);
-  });
+    await expect(panel.getByTestId('version-history-caption')).toBeVisible();
+    await expect(panel.getByTestId('version-history-save-version')).toBeVisible();
 
-  test('Show changes reveals an inline word diff for the latest entry', async ({ page }) => {
-    const toggle = page.getByRole('button', { name: 'Version history' });
-    await toggle.click();
-    await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
-    await page.getByTestId('version-history-tab-activity').click();
-
-    // Type so an entry lands. The diff is computed against the live
-    // doc, so "hello world" landing as the latest entry produces a +2
-    // word stats pill on the row.
-    await editor.typeText('hello world');
-    await page.waitForTimeout(200);
-
-    const panel = page.locator('[data-testid="version-history-panel"]');
-    const showBtn = panel.getByTestId('version-history-toggle-diff').first();
-    await expect(showBtn).toBeVisible();
-    await showBtn.click();
-    const diffBox = panel.getByTestId('version-history-diff').first();
-    await expect(diffBox).toBeVisible();
-    // The diff should contain green INS marks for the new text.
-    const insCount = await diffBox.locator('ins').count();
-    expect(insCount).toBeGreaterThan(0);
-  });
-
-  test('inserted segments in the diff are interactive revert targets', async ({ page }) => {
-    const toggle = page.getByRole('button', { name: 'Version history' });
-    await toggle.click();
-    await expect(page.locator('[data-testid="version-history-panel"]')).toBeVisible();
-    await page.getByTestId('version-history-tab-activity').click();
-
-    await editor.typeText('alpha bravo');
-    await page.waitForTimeout(200);
-
-    const panel = page.locator('[data-testid="version-history-panel"]');
-    const showBtn = panel.getByTestId('version-history-toggle-diff').first();
-    await showBtn.click();
-    const insSpans = panel.getByTestId('version-history-diff-add');
-    await expect(insSpans.first()).toBeVisible();
-
-    // Phase B contract: inserted spans are clickable buttons with the
-    // right tooltip. Actual revert dispatch is exercised by manual
-    // verification — the test environment doesn't reliably round-trip
-    // PM dispatch + layout-painter repaint within timing windows.
-    const first = insSpans.first();
-    await expect(first).toHaveAttribute('role', 'button');
-    await expect(first).toHaveAttribute('title', /revert/i);
+    // A named save produces a row.
+    await editor.saveNamedVersion('Checkpoint');
+    await expect(panel.getByTestId('version-history-version-row').first()).toBeVisible();
   });
 
   test('toggling the panel off hides it', async ({ page }) => {

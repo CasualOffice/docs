@@ -25,8 +25,7 @@ test.describe('Version panel layout', () => {
     // One named version.
     await editor.focus();
     await editor.typeText('Draft body.');
-    page.once('dialog', (d) => d.accept('Milestone one'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Milestone one');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     // Pinned "Current version" row is present and active (not previewing).
@@ -67,8 +66,7 @@ test.describe('Version panel layout', () => {
     await page.getByRole('button', { name: 'Version history' }).click();
     await editor.focus();
     await editor.typeText('Some content here.');
-    page.once('dialog', (d) => d.accept('Named A'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Named A');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     // With only a manual version, the named-only filter is hidden (nothing

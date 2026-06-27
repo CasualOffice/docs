@@ -49,6 +49,9 @@ export interface UseVersionHistoryCaptureOptions {
   /** Optional source format passed through onto the snapshot record
    *  (`'docx'` today; here for forward compatibility). */
   sourceFormat?: string | null;
+  /** Display name of the local editor, stamped onto each captured
+   *  snapshot so the timeline can show who made the changes. */
+  author?: string | null;
 }
 
 export interface UseVersionHistoryCaptureReturn {
@@ -56,6 +59,9 @@ export interface UseVersionHistoryCaptureReturn {
    *  Returns the new snapshot id, or `null` if the view / docId
    *  isn't ready. */
   saveNamedVersion: (name: string) => Promise<number | null>;
+  /** Capture an automatic snapshot on an explicit save. No-op (returns
+   *  `null`) when nothing changed since the last capture. */
+  captureOnSave: () => Promise<number | null>;
 }
 
 /** Imperative escape hatch outside React — the File menu can wire
@@ -76,6 +82,7 @@ export function useVersionHistoryCapture(
     enabled = true,
     idleIntervalMs = DEFAULT_IDLE_INTERVAL_MS,
     sourceFormat = null,
+    author = null,
   } = options;
 
   // Ensure the live feed exists before any subscriber mounts.
@@ -87,9 +94,10 @@ export function useVersionHistoryCapture(
   const optsRef = useRef<{
     docId: string | null;
     sourceFormat: string | null;
+    author: string | null;
     view: EditorView | null;
-  }>({ docId, sourceFormat, view });
-  optsRef.current = { docId, sourceFormat, view };
+  }>({ docId, sourceFormat, author, view });
+  optsRef.current = { docId, sourceFormat, author, view };
 
   // Module-scope dirty flag — set by the observe plugin, read by the
   // interval. A ref so re-renders don't reset it.
@@ -97,7 +105,12 @@ export function useVersionHistoryCapture(
 
   const doCapture = useRef(
     async (kind: 'auto' | 'manual', name: string): Promise<number | null> => {
-      const { view: liveView, docId: liveDocId, sourceFormat: liveFmt } = optsRef.current;
+      const {
+        view: liveView,
+        docId: liveDocId,
+        sourceFormat: liveFmt,
+        author: liveAuthor,
+      } = optsRef.current;
       if (!liveView || !liveDocId) return null;
       try {
         const data = liveView.state.doc.toJSON();
@@ -107,6 +120,7 @@ export function useVersionHistoryCapture(
           name,
           savedAt: Date.now(),
           sourceFormat: liveFmt,
+          author: liveAuthor ?? undefined,
           data,
         });
         return id;
@@ -189,6 +203,18 @@ export function useVersionHistoryCapture(
   return {
     saveNamedVersion: (name: string) =>
       doCapture.current('manual', name.trim() || 'Untitled version'),
+    // Capture an automatic snapshot on an explicit user save (Ctrl+S /
+    // File → Save), matching Google Docs' checkpoint-on-save. Gated on the
+    // dirty flag so repeated saves with no edits don't pile up identical
+    // versions; resets dirty so the idle interval won't immediately re-capture.
+    captureOnSave: async (): Promise<number | null> => {
+      if (!dirtyRef.current) return null;
+      const liveDocId = optsRef.current.docId;
+      if (!liveDocId) return null;
+      const id = await doCapture.current('auto', deriveAutoLabel(liveDocId));
+      if (id != null) dirtyRef.current = false;
+      return id;
+    },
   };
 }
 

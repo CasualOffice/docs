@@ -26,14 +26,12 @@ test.describe('Version preview — pinned banner', () => {
 
     await page.getByRole('button', { name: 'Version history' }).click();
     await page.waitForSelector('[data-testid="version-history-panel"]');
-    page.once('dialog', (d) => d.accept('v1'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('v1');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     await editor.focus();
     await editor.typeText('More edits. ');
-    page.once('dialog', (d) => d.accept('v2'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('v2');
     await page.waitForFunction(
       () => document.querySelectorAll('[data-testid="version-history-version-row"]').length >= 2
     );

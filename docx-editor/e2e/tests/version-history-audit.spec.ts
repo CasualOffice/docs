@@ -51,33 +51,19 @@ test.describe('Version history visual audit', () => {
       fullPage: false,
     });
 
-    // State 4: switch to Activity tab and expand the latest entry's diff.
-    await page.getByTestId('version-history-tab-activity').click();
-    await page.waitForTimeout(200);
-    const toggleDiff = page
-      .locator('[data-testid="version-history-toggle-diff"]')
-      .first();
-    await toggleDiff.click();
-    await page.waitForSelector('[data-testid="version-history-diff"]');
-    await page.waitForTimeout(200);
-    await page.screenshot({
-      path: 'screenshots/audit/vh-4-diff.png',
-      fullPage: false,
-    });
+    // State 4 (formerly the "Activity tab diff") was removed when the panel
+    // collapsed to a single auto-saved timeline — there is no separate
+    // recent-edits feed anymore.
 
-    // State 5: back to Versions tab — capture the persisted snapshot
-    // list. Trigger TWO manual snapshots with edits between so the
-    // newer one has a "previous" to diff against.
-    await page.getByTestId('version-history-tab-versions').click();
-    await page.waitForTimeout(200);
-    page.once('dialog', (d) => d.accept('Initial draft'));
-    await page.getByTestId('version-history-save-version').click();
+    // State 5: capture the persisted snapshot list. Trigger TWO manual
+    // snapshots with edits between so the newer one has a "previous" to
+    // diff against.
+    await editor.saveNamedVersion('Initial draft');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     await editor.focus();
     await editor.typeText(' Added a paragraph after the initial save.');
-    page.once('dialog', (d) => d.accept('Post-edit checkpoint'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Post-edit checkpoint');
     await page.waitForFunction(
       () => document.querySelectorAll('[data-testid="version-history-version-row"]').length >= 2
     );

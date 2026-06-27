@@ -28,14 +28,12 @@ test.describe('Version preview', () => {
     // previous version to diff against.
     await editor.focus();
     await editor.typeText('First draft of the memo.');
-    page.once('dialog', (d) => d.accept('Initial draft'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Initial draft');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     await editor.focus();
     await editor.typeText(' A freshly added sentence.');
-    page.once('dialog', (d) => d.accept('Post-edit checkpoint'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Post-edit checkpoint');
     await page.waitForFunction(
       () => document.querySelectorAll('[data-testid="version-history-version-row"]').length >= 2
     );
@@ -72,8 +70,7 @@ test.describe('Version preview', () => {
 
     await editor.focus();
     await editor.typeText('Only version.');
-    page.once('dialog', (d) => d.accept('Sole version'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Sole version');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     await page.getByText('Sole version').click();

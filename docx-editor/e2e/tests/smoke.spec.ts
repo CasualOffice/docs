@@ -91,12 +91,6 @@ test.describe('Smoke — editor + AI surfaces mount without runtime errors', () 
         await page.waitForTimeout(200);
         const panel = page.getByTestId('version-history-panel');
         await expect(panel).toBeVisible();
-        // Expand the diff toggle on the first entry if there is one.
-        const showBtn = panel.getByTestId('version-history-toggle-diff').first();
-        if (await showBtn.count()) {
-          await showBtn.click();
-          await page.waitForTimeout(150);
-        }
         await histBtn.first().click(); // close
       }
       // Comments.
