@@ -25,8 +25,6 @@ from collections import defaultdict
 import numpy as np
 from PIL import Image
 
-NORM_W = 680          # common width after registration
-NORM_H = 880          # common height after registration (≈ page aspect)
 INK_THRESH = 185      # grayscale < this = ink
 TOL = 3               # dilation tolerance (px) to absorb AA / sub-px offset
 out = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "visual-fidelity-out")
@@ -46,8 +44,44 @@ def pages_in(d):
 
 GX, GY = 48, 64       # density-grid resolution (cols, rows)
 
-def density_grid(path):
-    """Downsample a full page to a GY×GX grid of ink-fraction (0..1) per cell.
+# Bounded global vertical registration. Two correct renderers can sit a few
+# px apart vertically — a constant offset no human would notice (a paragraph
+# 4px lower down the whole page). Without alignment the cell-grid penalizes
+# that as if the layout were wrong, because ink crosses grid-row boundaries.
+# We search a SMALL vertical shift that best aligns the editor onto the
+# reference and score from there. The bound is deliberately tight (≈ half a
+# text line): it absorbs an imperceptible constant offset but CANNOT rescue
+# cumulative drift or a page-break spill (those exceed the bound and stay
+# penalized), so the metric still gates real fidelity regressions.
+NORM_W, NORM_H = 680, 880   # registration working resolution (page aspect)
+VREG_MAX = 6                # max vertical shift in NORM px (~11px@150dpi ≈ ½ line)
+
+
+def norm_mask(path):
+    """Full-page ink mask (0..1) at the common registration resolution."""
+    a = (np.asarray(Image.open(path).convert("L")) < INK_THRESH).astype("uint8") * 255
+    img = Image.fromarray(a).resize((NORM_W, NORM_H), Image.BILINEAR)
+    return np.asarray(img, dtype="float32") / 255.0
+
+
+def best_vshift(am, bm, max_shift=VREG_MAX):
+    """Vertical shift (NORM px) of editor mask `am` that maximizes ink overlap
+    with reference `bm`, searched within ±max_shift. Returns the best shift."""
+    best_s, best_o = 0, -1.0
+    for s in range(-max_shift, max_shift + 1):
+        sh = np.roll(am, s, axis=0)
+        if s > 0:
+            sh[:s] = 0
+        elif s < 0:
+            sh[s:] = 0
+        o = float(np.minimum(sh, bm).sum())  # overlapping ink mass
+        if o > best_o:
+            best_o, best_s = o, s
+    return best_s
+
+
+def grid(mask):
+    """Downsample a NORM-resolution ink mask to a GY×GX ink-fraction grid.
 
     We compare in the PAGE coordinate frame (no bbox trim): both the editor
     and the reference render one full page of the SAME aspect, so a paragraph
@@ -55,9 +89,7 @@ def density_grid(path):
     graining is what makes this robust across renderers — it captures 'a text
     block here, a blank line there, a table down there' without demanding
     glyph-level pixel overlap, which two different font engines never have."""
-    a = (np.asarray(Image.open(path).convert("L")) < INK_THRESH).astype("uint8") * 255
-    # PIL bilinear downsample of the 0/255 mask == per-cell mean ink fraction.
-    img = Image.fromarray(a).resize((GX, GY), Image.BILINEAR)
+    img = Image.fromarray((mask * 255).astype("uint8")).resize((GX, GY), Image.BILINEAR)
     return np.asarray(img, dtype="float32") / 255.0
 
 def corr(pa, pb):
@@ -67,8 +99,17 @@ def corr(pa, pb):
     return 1.0 if pa.sum() == 0 and pb.sum() == 0 else 0.0
 
 def page_score(ed_png, ref_png):
-    a = density_grid(ed_png)
-    b = density_grid(ref_png)
+    am = norm_mask(ed_png)
+    bm = norm_mask(ref_png)
+    # Bounded vertical registration before gridding (see VREG_MAX). Aligns out
+    # an imperceptible constant offset; too small to mask structural drift.
+    s = best_vshift(am, bm)
+    if s > 0:
+        am = np.roll(am, s, axis=0); am[:s] = 0
+    elif s < 0:
+        am = np.roll(am, s, axis=0); am[s:] = 0
+    a = grid(am)
+    b = grid(bm)
     # Both pages effectively blank → a match (avoid divide-by-near-zero noise).
     if a.sum() < 1.0 and b.sum() < 1.0:
         return 1.0, 100.0, 1.0, 1.0
