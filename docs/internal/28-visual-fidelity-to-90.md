@@ -103,3 +103,29 @@ Re-ran the harness after the merged harness fixes (font-wait #140, CJK fallback)
 - **p3 = the catastrophe (block-corr 0).** Confirmed by reading the PNGs: editor p3 opens with **"Describe the immediate actions…"**, a field the reference fit onto **p2**. One field-block spills per page, so every section below is offset by one block → block/row-corr collapse to 0. It is a **single-row page-break-timing miss**, not a global metric error.
 
 **Implication for the plan.** The lever is the per-page ~one-row excess in **inter-block / spacer spacing** on table-dense forms — find the specific source (paragraph before/after on section headers, empty spacer paragraphs between sections, or `w:line=360` paragraph-spacing interaction) and trim it so the page holds the same row count as LibreOffice. Gate hard on the representative corpus (syllabus 91.4 / lab-report 85.1 must not regress) — empty-paragraph/spacing height is universal, so any change is corpus-wide. The stray vertical bar is localized to the **anchored wpg-group host run** painting a ~3×35px inline sliver at the title's centered baseline (the floating logo itself renders correctly on the right); negligible IoU, deprioritized vs the spacing lever.
+
+## True corpus baseline + block-level attribution (2026-06-27, cont.)
+
+Ran the **full representative corpus** (13 repr-\* docs) + the 2 forms: **15 fixtures, mean 81.7**, 0 page-count mismatches. Distribution:
+
+| Bucket | Fixtures |
+| --- | --- |
+| ≥90 (good) | cover-letter 96.4, letter 96.2, meeting-notes 94.4, press-release 93.1, syllabus 91.4, memo 91.1 |
+| 85–90 | recipe 88.6, lab-report 85.1 |
+| 75–85 (fair) | essay 83.6, travel-itinerary 82.7, weekly-status 79.2, project-proposal 76.0, resume 75.5 |
+| broken/poor | Form025U 58.1, medical-incident-form 33.6 |
+
+The mean is dragged by the **2 table-dense forms** (33.6 / 58.1) and a **prose cluster at 75–85**. The CJK docs are excluded (font-environment blocked, see above).
+
+**New tooling:** `scripts/visual-fidelity/block-geometry.mjs <fixture> [page]` — dumps every painted block's page-relative top/height/style/text from the live editor DOM (`row-geometry.mjs` only sees table rows). This is the prose-side absolute attribution the plan's step #1 needed.
+
+**The prose cluster is NOT a rendering defect — it is metric over-sensitivity.** Block-geometry on the two 1-page prose laggards vs the reference bands:
+
+- **repr-resume (75.5):** every block position aligns with the reference to **within 5–7px** top-to-bottom (editor uniformly ~1–2 % _tighter_; Δ grows −3px→−7px down the page). There is **no large heading bug** — the earlier "band0 +59px" read was an **ink-band-detection artifact** (`band-compare` measures ink rows, which merge/split differently from block boxes; it is not a block-height measurement). The 75.5 score is the ink-IoU + row-correlation metric badly over-penalizing a visually-imperceptible ≤7px uniform offset.
+- **repr-weekly-status (79.2):** body + headings align to within a few px for most of the page.
+
+The editor's uniform ~1–2 % tightness is consistent with **Calibri `singleLineRatio` 1.205 < LibreOffice's measured ~1.22** — but 1.205 is the **corpus-validated** value (PR #80: rep VF 82.8→87.2). lo-probe in isolation says ~1.22; the full-corpus tune says 1.205. Per the meta-lesson, trust the corpus tune — **do not touch the Calibri ratio.** On 1-page docs the tightness is a harmless sub-10px offset; on the multi-page forms the same per-block tightness accumulates the _opposite_ direction's spill (see above). The two pull against each other — a global ratio change trades prose score for form score.
+
+**One real, localized, non-ratio bug found (candidate fix):** the editor does **not collapse vertical spacing before a heading that follows a list item.** Block-geometry, weekly-status: an H2 after a `ListBullet` ("Next week") has gap-before **67px** vs reference **34px**, and gap-after **50px** vs reference **66px** — the editor **front-loads** the inter-block space the reference **back-loads**, net ~+17px around each such heading. An H2 after a `Normal` paragraph ("Shipped this week") matches the reference exactly (66/51). So this is specifically a **list-item-after × heading-before spacing-collapse** difference, attributable and _not_ a global metric — the most promising corpus-safe lever for the prose cluster. Needs: confirm LibreOffice/Word's collapse rule for list→heading, implement at the spacing model, gate on the full corpus.
+
+**Net strategic read:** prose layout is already faithful (≤7px); the realistic VF wins are (a) the list→heading spacing collapse above, and (b) the multi-page form block-spacing accumulation — both specific spacing-model fixes, not font-ratio tweaks. The score metric itself over-penalizes small uniform offsets, so raw mean understates real visual fidelity.
