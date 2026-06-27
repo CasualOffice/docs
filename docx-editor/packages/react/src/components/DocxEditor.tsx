@@ -8521,6 +8521,9 @@ body { background: white; }
                       onSave={handleDownloadDocument}
                       onMakeCopy={handleMakeCopy}
                       onEmailAsAttachment={handleEmailAsAttachment}
+                      onOpenVersionHistory={() => {
+                        if (!showVersionHistory) handleToggleVersionHistory();
+                      }}
                       onNew={onNew}
                       showZoomControl={showZoomControl}
                       zoom={state.zoom}
@@ -10191,6 +10194,17 @@ body { background: white; }
                       label: 'Email as attachment…',
                       path: 'File',
                       run: handleEmailAsAttachment,
+                    },
+                    {
+                      // Discoverability: version history exists in the side rail,
+                      // but Google-Docs muscle memory looks for it in File. Open
+                      // (not toggle) so picking it from the menu always reveals it.
+                      id: 'file.versionHistory',
+                      label: 'Version history',
+                      path: 'File',
+                      run: () => {
+                        if (!showVersionHistory) handleToggleVersionHistory();
+                      },
                     },
 
                     {

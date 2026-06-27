@@ -253,6 +253,7 @@ export function MenuBar() {
     onSave,
     onMakeCopy,
     onEmailAsAttachment,
+    onOpenVersionHistory,
     onPageSetup,
     onFileProperties,
     onExportPdf,
@@ -414,7 +415,16 @@ export function MenuBar() {
                     } as MenuEntry,
                   ]
                 : []),
-              ...((onOpen || onSave || onMakeCopy || onEmailAsAttachment) &&
+              ...(onOpenVersionHistory
+                ? [
+                    {
+                      icon: 'history',
+                      label: t('toolbar.versionHistory'),
+                      onClick: onOpenVersionHistory,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...((onOpen || onSave || onMakeCopy || onEmailAsAttachment || onOpenVersionHistory) &&
               (hasPrintOrPageSetup || onFileProperties || hasExport)
                 ? [{ type: 'separator' as const } as MenuEntry]
                 : []),

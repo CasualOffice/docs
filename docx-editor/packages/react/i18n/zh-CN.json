@@ -89,7 +89,8 @@
     "shapeEllipse": null,
     "shapeLine": null,
     "shapeRectangle": null,
-    "showOutline": null
+    "showOutline": null,
+    "versionHistory": null
   },
   "formattingBar": {
     "groups": {
