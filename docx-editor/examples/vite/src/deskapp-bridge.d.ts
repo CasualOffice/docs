@@ -67,6 +67,11 @@ declare global {
        *  window to a selectable-text PDF via the shell's export_pdf command.
        *  Returns the written path, or null if cancelled. */
       exportPdf?(suggestedName: string): Promise<string | null>;
+      /** File → Open from the editor menu (desktop): native open dialog +
+       *  "this window or a new window?" prompt, honouring open_window_preference.
+       *  The bridge performs the open itself (new window, or navigating this
+       *  one), so the host's in-window open path is not used for it. */
+      openViaMenu?(): Promise<void>;
       /**
        * Crash-recovery sidecar I/O (desktop only), keyed by the window's bound
        * `filePath`. The editor calls `writeRecovery` on a debounced schedule

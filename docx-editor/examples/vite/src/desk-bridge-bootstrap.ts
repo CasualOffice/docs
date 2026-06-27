@@ -72,10 +72,7 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
       try {
         document.documentElement.dataset.theme = resolved;
         document.documentElement.style.colorScheme = resolved;
-        window.localStorage.setItem(
-          'casual-editor:color-theme',
-          mode === 'system' ? 'auto' : mode,
-        );
+        window.localStorage.setItem('casual-editor:color-theme', mode === 'system' ? 'auto' : mode);
       } catch {
         /* dataset / localStorage may be unavailable; hint is best-effort */
       }
@@ -92,9 +89,7 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
       lastMode = mode;
       lastResolved = resolved;
       try {
-        window.dispatchEvent(
-          new CustomEvent('deskapp:theme', { detail: { mode, resolved } }),
-        );
+        window.dispatchEvent(new CustomEvent('deskapp:theme', { detail: { mode, resolved } }));
       } catch {
         /* CustomEvent unsupported — nothing more we can do */
       }
@@ -108,16 +103,13 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tauriEvent = (window as any).__TAURI__?.event;
       if (tauriEvent?.listen) {
-        void tauriEvent.listen(
-          'deskapp://theme',
-          (e: { payload?: { theme?: string } }) => {
-            const next = e?.payload?.theme;
-            if (next && VALID.has(next)) {
-              mode = next as 'system' | 'light' | 'dark';
-              apply();
-            }
-          },
-        );
+        void tauriEvent.listen('deskapp://theme', (e: { payload?: { theme?: string } }) => {
+          const next = e?.payload?.theme;
+          if (next && VALID.has(next)) {
+            mode = next as 'system' | 'light' | 'dark';
+            apply();
+          }
+        });
       }
     } catch {
       /* no Tauri event bus (web/iframe) — launcher live-sync just won't run */
@@ -142,11 +134,7 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
 // desktop shell at `./fonts/` (relative to the editor's `--base` mount under
 // /docx/), NOT shipped in the web bundle. Body text already uses system fonts,
 // so only the icon font needs bundling. Mirrors the sheets bootstrap.
-if (
-  typeof window !== 'undefined' &&
-  isDesktop &&
-  !document.getElementById('__deskapp_fonts__')
-) {
+if (typeof window !== 'undefined' && isDesktop && !document.getElementById('__deskapp_fonts__')) {
   const css = `
 @font-face{font-family:'Material Symbols Outlined';font-style:normal;font-weight:100 700;font-display:block;src:local('Material Symbols Outlined'),url('./fonts/material-symbols-outlined.woff2') format('woff2');}`;
   const style = document.createElement('style');
@@ -204,8 +192,7 @@ let dismissBoot: () => void = () => undefined;
     // editor's own styles.
     const style = document.createElement('style');
     style.id = '__deskapp_boot_style__';
-    style.textContent =
-      '@keyframes __deskapp_boot_spin__{to{transform:rotate(360deg)}}';
+    style.textContent = '@keyframes __deskapp_boot_spin__{to{transform:rotate(360deg)}}';
     (document.head || document.documentElement).appendChild(style);
 
     const overlay = document.createElement('div');
@@ -294,6 +281,57 @@ let dismissBoot: () => void = () => undefined;
   }
 })();
 
+/** Bridge-rendered "open where?" prompt. The editor's React modals aren't
+ *  reachable from this bootstrap, so render a self-contained one. Resolves the
+ *  chosen target + whether to remember it as the default, or null if dismissed. */
+function askOpenWhere(path: string): Promise<{ where: 'same' | 'new'; remember: boolean } | null> {
+  return new Promise((resolve) => {
+    const name = path.split(/[\\/]/).pop() ?? path;
+    const esc = (s: string) =>
+      s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const backdrop = document.createElement('div');
+    backdrop.setAttribute(
+      'style',
+      'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font:14px system-ui,-apple-system,sans-serif;'
+    );
+    backdrop.innerHTML = `
+      <div role="dialog" aria-modal="true" style="background:#fff;color:#111;max-width:380px;width:90%;border-radius:12px;padding:22px 22px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3);">
+        <h2 style="margin:0 0 6px;font-size:17px;">Open &ldquo;${esc(name)}&rdquo;</h2>
+        <p style="margin:0 0 4px;color:#666;">Open it in this window or a new window?</p>
+        <label style="display:flex;align-items:center;gap:8px;margin:16px 0;color:#666;cursor:pointer;">
+          <input type="checkbox" data-act="remember" /> Remember my choice
+        </label>
+        <div style="display:flex;gap:8px;">
+          <button data-act="same" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;">This window</button>
+          <button data-act="new" style="flex:1;padding:9px;border-radius:8px;border:0;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;">New window</button>
+        </div>
+        <button data-act="cancel" style="margin-top:10px;width:100%;background:none;border:0;color:#888;cursor:pointer;padding:6px;">Cancel</button>
+      </div>`;
+    document.body.appendChild(backdrop);
+    const remember = () =>
+      (backdrop.querySelector('[data-act=remember]') as HTMLInputElement | null)?.checked ?? false;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') finish(null);
+    };
+    const finish = (result: { where: 'same' | 'new'; remember: boolean } | null) => {
+      window.removeEventListener('keydown', onKey);
+      backdrop.remove();
+      resolve(result);
+    };
+    window.addEventListener('keydown', onKey);
+    backdrop.addEventListener('mousedown', (e) => {
+      if (e.target === backdrop) finish(null);
+    });
+    backdrop
+      .querySelector('[data-act=same]')!
+      .addEventListener('click', () => finish({ where: 'same', remember: remember() }));
+    backdrop
+      .querySelector('[data-act=new]')!
+      .addEventListener('click', () => finish({ where: 'new', remember: remember() }));
+    backdrop.querySelector('[data-act=cancel]')!.addEventListener('click', () => finish(null));
+  });
+}
+
 if (isDesktop) {
   const isTopLevel = window.parent === window;
   let filePath = url.searchParams.get('file');
@@ -326,6 +364,7 @@ if (isDesktop) {
         saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
         setDirty?(dirty: boolean): void;
         exportPdf?(suggestedName: string): Promise<string | null>;
+        openViaMenu?(): Promise<void>;
       }
     | undefined;
 
@@ -433,9 +472,7 @@ if (isDesktop) {
       let offset = 0;
       while (offset < total) {
         const length = Math.min(CHUNK, total - offset);
-        const chunk = asArrayBuffer(
-          await inv('read_document_chunk', { path, offset, length }),
-        );
+        const chunk = asArrayBuffer(await inv('read_document_chunk', { path, offset, length }));
         out.set(new Uint8Array(chunk), offset);
         offset += chunk.byteLength;
         if (chunk.byteLength === 0) break;
@@ -445,10 +482,16 @@ if (isDesktop) {
 
     bridge = {
       isDesktop: true,
-      get filePath() { return filePath; },
+      get filePath() {
+        return filePath;
+      },
       // @ts-expect-error setter on getter via Object.defineProperty pattern
-      set filePath(v: string | null) { filePath = v; },
-      get fileKind() { return fileKindFor(filePath); },
+      set filePath(v: string | null) {
+        filePath = v;
+      },
+      get fileKind() {
+        return fileKindFor(filePath);
+      },
       // Editor → bridge dirty signal. App.tsx forwards DocxEditor's `onChange`
       // here, so every real document change (mouse/toolbar/menu edits included)
       // marks the window dirty for the Rust close-guard. save()/saveAs() clear it.
@@ -457,6 +500,52 @@ if (isDesktop) {
         // in-flight save can detect a change that landed during the write.
         if (dirty) editSeq++;
         setWindowDirty(dirty);
+      },
+      // File → Open from the editor menu (desktop). Uses the NATIVE dialog so
+      // the picked file has a real path (the browser picker doesn't), then
+      // honours the open-where preference: 'same' navigates this window, 'new'
+      // spawns another, 'ask' prompts (with a remember checkbox that updates
+      // the setting). A spreadsheet picked here always opens in a new window —
+      // this window hosts the doc editor.
+      async openViaMenu(): Promise<void> {
+        const path = (await inv('pick_open_document').catch(() => null)) as string | null;
+        if (!path) return; // user cancelled the dialog
+        const ext = path.split('.').pop()?.toLowerCase() ?? '';
+        const kind = ['xlsx', 'xlsm', 'ods', 'csv', 'tsv', 'tab'].includes(ext) ? 'sheets' : 'docx';
+        let settings: { open_window_preference?: 'ask' | 'same' | 'new' } = {};
+        try {
+          settings = (await inv('get_settings')) as typeof settings;
+        } catch {
+          /* fall through to 'ask' */
+        }
+        const pref = settings.open_window_preference ?? 'ask';
+        let where: 'same' | 'new';
+        if (kind !== 'docx') {
+          where = 'new';
+        } else if (pref === 'same' || pref === 'new') {
+          where = pref;
+        } else {
+          const choice = await askOpenWhere(path);
+          if (!choice) return; // dismissed
+          where = choice.where;
+          if (choice.remember) {
+            await inv('save_settings', {
+              settings: { ...settings, open_window_preference: where },
+            }).catch(() => undefined);
+          }
+        }
+        if (where === 'new') {
+          await inv('open_document_window', { kind, filePath: path }).catch((e) =>
+            console.error('[deskApp] open in new window failed', e)
+          );
+        } else {
+          // Same window: navigate this window to the picked file. The editor's
+          // bootstrap re-reads ?file= on load and binds the new path so Save
+          // overwrites it (no Save-As prompt).
+          const u = new URL(window.location.href);
+          u.searchParams.set('file', path);
+          window.location.href = u.toString();
+        }
       },
       async loadText(p?: string): Promise<string> {
         const path = p ?? filePath;
@@ -476,22 +565,30 @@ if (isDesktop) {
         // "Can't find end of central directory", a confusing error that
         // looks like a parse failure. Catch it earlier with a clear
         // message so the user knows the file itself is the problem.
-        if (out.byteLength < 4 ||
-            out[0] !== 0x50 || out[1] !== 0x4b ||
-            out[2] !== 0x03 || out[3] !== 0x04) {
+        if (
+          out.byteLength < 4 ||
+          out[0] !== 0x50 ||
+          out[1] !== 0x4b ||
+          out[2] !== 0x03 ||
+          out[3] !== 0x04
+        ) {
           // OLE compound signature for legacy .doc / encrypted .docx
-          const isOLE = out.byteLength >= 8 &&
-            out[0] === 0xd0 && out[1] === 0xcf && out[2] === 0x11 && out[3] === 0xe0;
+          const isOLE =
+            out.byteLength >= 8 &&
+            out[0] === 0xd0 &&
+            out[1] === 0xcf &&
+            out[2] === 0x11 &&
+            out[3] === 0xe0;
           if (isOLE) {
             throw new Error(
               "This file isn't a plain .docx — it's an OLE compound file " +
-              "(usually a password-protected .docx or a legacy .doc). " +
-              "Open it in Word or LibreOffice and Save As .docx (without a password), then try again."
+                '(usually a password-protected .docx or a legacy .doc). ' +
+                'Open it in Word or LibreOffice and Save As .docx (without a password), then try again.'
             );
           }
           throw new Error(
             "This file doesn't look like a valid .docx. It's missing the ZIP header " +
-            "(first bytes should be PK 03 04). It may be corrupted or not actually a Word document."
+              '(first bytes should be PK 03 04). It may be corrupted or not actually a Word document.'
           );
         }
         return out.buffer as ArrayBuffer;
@@ -589,7 +686,10 @@ if (isDesktop) {
     // Iframe mode — postMessage to launcher.
     type RequestMethod = 'loadDocument' | 'save' | 'saveAs';
     let nextId = 0;
-    const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>();
+    const pending = new Map<
+      number,
+      { resolve: (v: unknown) => void; reject: (e: unknown) => void }
+    >();
 
     function request<T>(method: RequestMethod, params: Record<string, unknown>): Promise<T> {
       return new Promise<T>((resolve, reject) => {
@@ -598,10 +698,7 @@ if (isDesktop) {
           resolve: resolve as (v: unknown) => void,
           reject,
         });
-        window.parent.postMessage(
-          { src: 'deskApp', kind: 'request', id, method, params },
-          '*',
-        );
+        window.parent.postMessage({ src: 'deskApp', kind: 'request', id, method, params }, '*');
       });
     }
 
@@ -618,7 +715,9 @@ if (isDesktop) {
     bridge = {
       isDesktop: true,
       filePath,
-      get fileKind() { return fileKindFor(filePath); },
+      get fileKind() {
+        return fileKindFor(filePath);
+      },
       async loadDocument(p?: string): Promise<ArrayBuffer> {
         const bytes = await request<number[]>('loadDocument', { path: p ?? filePath });
         return new Uint8Array(bytes).buffer;
@@ -685,20 +784,17 @@ if (isDesktop) {
       const tauriEvent = (window as any).__TAURI__?.event;
       if (tauriEvent?.listen) {
         void tauriEvent
-          .listen(
-            'deskapp://file-changed',
-            (e: { payload?: { kind?: string; path?: string } }) => {
-              const { kind, path } = e?.payload ?? {};
-              if (!kind || !path) return;
-              try {
-                window.dispatchEvent(
-                  new CustomEvent('deskapp:file-changed', { detail: { kind, path } })
-                );
-              } catch {
-                /* CustomEvent not supported */
-              }
+          .listen('deskapp://file-changed', (e: { payload?: { kind?: string; path?: string } }) => {
+            const { kind, path } = e?.payload ?? {};
+            if (!kind || !path) return;
+            try {
+              window.dispatchEvent(
+                new CustomEvent('deskapp:file-changed', { detail: { kind, path } })
+              );
+            } catch {
+              /* CustomEvent not supported */
             }
-          )
+          })
           .catch(() => undefined);
       }
     }
