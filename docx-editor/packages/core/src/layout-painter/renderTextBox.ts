@@ -50,12 +50,42 @@ export function renderTextBoxFragment(
   // Basic styling
   containerEl.style.position = 'absolute';
   containerEl.style.width = `${fragment.width}px`;
-  // Decorative hairlines (e.g. SDS box borders drawn as ~0.6px filled rects)
-  // would vanish after sub-pixel rounding; clamp filled boxes to ≥1px.
-  const paintedHeight =
+  // Internal padding (declared up-front so it factors into the auto-grow fit).
+  const margins = block.margins ?? DEFAULT_TEXTBOX_MARGINS;
+  const borderV = block.outlineWidth && block.outlineWidth > 0 ? 2 * block.outlineWidth : 0;
+  // Whether the box holds any real (non-whitespace) text. Decorative divider
+  // rules / spacers carry only empty paragraphs — they must keep their declared
+  // height and clip (see 2fe0382), never grow or overflow into a black bar.
+  const hasText = block.content.some((p) =>
+    p.runs?.some((r) => r.kind === 'text' && r.text.trim() !== '')
+  );
+  // Height the box's text actually needs (box-sizing is border-box, so include
+  // the vertical padding + border).
+  const contentHeight =
+    measure.innerMeasures.reduce((sum, m) => sum + (m?.totalHeight ?? 0), 0) +
+    margins.top +
+    margins.bottom +
+    borderV;
+  // The old fixed shape-height + overflow:hidden clipped trailing lines — e.g.
+  // CJK SDS header boxes showed only their first line (the declared height was
+  // ~one line short of the 2–3 line content). Match Word per the fit mode:
+  //   • spAutoFit  → the box GROWS to fit its text (border/fill grow with it).
+  //   • otherwise  → the box keeps its declared size and text OVERFLOWS visibly
+  //                  (VML / Word default for a fixed-size text box).
+  // Non-text boxes (dividers, spacers) are left exactly as before: declared
+  // height, clipped, with the ≥1px clamp for sub-pixel filled rules.
+  let paintedHeight =
     block.fillColor && fragment.height < 1 ? Math.max(fragment.height, 1) : fragment.height;
+  let overflow = 'hidden';
+  if (hasText) {
+    if (block.autoFit === 'spAutoFit') {
+      paintedHeight = Math.max(fragment.height, contentHeight);
+    } else if (contentHeight > fragment.height) {
+      overflow = 'visible';
+    }
+  }
   containerEl.style.height = `${paintedHeight}px`;
-  containerEl.style.overflow = 'hidden';
+  containerEl.style.overflow = overflow;
   containerEl.style.boxSizing = 'border-box';
   if (fragment.zIndex !== undefined) {
     containerEl.style.zIndex = String(fragment.zIndex);
@@ -73,8 +103,7 @@ export function renderTextBoxFragment(
     containerEl.style.border = `${block.outlineWidth}px ${style} ${color}`;
   }
 
-  // Internal padding
-  const margins = block.margins ?? DEFAULT_TEXTBOX_MARGINS;
+  // Internal padding (margins resolved above for the auto-grow fit).
   containerEl.style.padding = `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`;
 
   // Anchored position — apply DrawingML wp:positionH/V offsets as a

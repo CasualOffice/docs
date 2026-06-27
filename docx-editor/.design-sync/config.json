@@ -1,0 +1,7 @@
+{
+  "pkg": "@casualoffice/docs",
+  "globalName": "CasualOfficeDocs",
+  "projectId": "f665c70e-8fe9-4bb2-8a3c-5cb869858b54",
+  "shape": "package",
+  "buildCmd": "bun run --cwd packages/react build"
+}
