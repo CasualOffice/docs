@@ -114,14 +114,14 @@ export function SmartChipMenu({
         left: caret.x * zoom,
         top: (caret.y + caret.height) * zoom + 4,
         minWidth: 200,
-        background: '#fff',
-        border: '1px solid #dadce0',
+        background: 'var(--doc-surface, #fff)',
+        border: '1px solid var(--doc-border-light, #dadce0)',
         borderRadius: 8,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+        boxShadow: 'var(--doc-shadow, 0 2px 10px rgba(0,0,0,0.18))',
         padding: '6px 0',
         zIndex: 220,
         fontSize: 13,
-        color: '#202124',
+        color: 'var(--doc-text-on-surface, #202124)',
       }}
     >
       {filtered.map((it, i) => (
@@ -145,7 +145,7 @@ export function SmartChipMenu({
             height: ROW_HEIGHT,
             padding: '0 14px',
             border: 'none',
-            background: i === active ? '#e8f0fe' : 'transparent',
+            background: i === active ? 'var(--doc-primary-light, #e8f0fe)' : 'transparent',
             color: 'inherit',
             font: 'inherit',
             textAlign: 'left',
@@ -159,14 +159,18 @@ export function SmartChipMenu({
               display: 'inline-flex',
               width: 18,
               height: 18,
-              color: '#5f6368',
+              color: 'var(--doc-text-subtle, #5f6368)',
               flexShrink: 0,
             }}
           >
             {it.icon}
           </span>
           <span style={{ flex: 1 }}>{it.label}</span>
-          {it.hint && <span style={{ color: '#80868b', fontSize: 12 }}>{it.hint}</span>}
+          {it.hint && (
+            <span style={{ color: 'var(--doc-text-subtle, #80868b)', fontSize: 12 }}>
+              {it.hint}
+            </span>
+          )}
         </button>
       ))}
     </div>
