@@ -2695,10 +2695,20 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
      */
     const handleTransaction = useCallback(
       (transaction: Transaction, newState: EditorState) => {
-        // Bump on every transaction (including selection-only and meta-only
-        // ones) so DecorationLayer re-syncs — yCursorPlugin awareness updates
-        // arrive as meta transactions with no doc change.
-        setTransactionVersion((v) => v + 1);
+        // Re-sync DecorationLayer when decorations may actually have changed:
+        // doc edits (positions shift) and meta-only transactions (yCursorPlugin
+        // awareness pings carry remote-cursor decoration changes as meta, no doc
+        // change). A PURE local selection change — a click or arrow key, where
+        // the selection is set with no steps and no doc change — never alters
+        // decorations, so skip the bump there. Otherwise every cursor placement
+        // forces a full PagedEditor + DecorationLayer re-render; with no collab
+        // (e.g. the desktop build) that bump is pure overhead and shows up as
+        // flicker on every click. The selection overlay is still updated below.
+        const isPureSelectionChange =
+          !transaction.docChanged && transaction.selectionSet && transaction.steps.length === 0;
+        if (!isPureSelectionChange) {
+          setTransactionVersion((v) => v + 1);
+        }
 
         if (transaction.docChanged) {
           // Increment state sequence to signal document changed
