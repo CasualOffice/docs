@@ -2705,9 +2705,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         // (e.g. the desktop build) that bump is pure overhead and shows up as
         // flicker on every click. The selection overlay is still updated below.
         const isPureSelectionChange =
-          !transaction.docChanged &&
-          transaction.selectionSet &&
-          transaction.steps.length === 0;
+          !transaction.docChanged && transaction.selectionSet && transaction.steps.length === 0;
         if (!isPureSelectionChange) {
           setTransactionVersion((v) => v + 1);
         }
