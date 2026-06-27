@@ -9,8 +9,7 @@ test('preview change navigation scrolls between changes', async ({ page }) => {
   await page.waitForTimeout(2200);
   await page.getByRole('button', { name: 'Version history' }).click();
   await page.waitForSelector('[data-testid="version-history-panel"]');
-  page.once('dialog', (d) => d.accept('v1'));
-  await page.getByTestId('version-history-save-version').click();
+  await editor.saveNamedVersion('v1');
   await page.waitForSelector('[data-testid="version-history-version-row"]');
   // Edit near the top and near the bottom so changes are spread out.
   await editor.focus();
@@ -18,8 +17,7 @@ test('preview change navigation scrolls between changes', async ({ page }) => {
   await editor.typeText('EDITED-TOP paragraph one ');
   await editor.selectText('Original paragraph 18 ');
   await editor.typeText('EDITED-BOTTOM paragraph eighteen ');
-  page.once('dialog', (d) => d.accept('v2'));
-  await page.getByTestId('version-history-save-version').click();
+  await editor.saveNamedVersion('v2');
   await page.waitForFunction(() => document.querySelectorAll('[data-testid="version-history-version-row"]').length >= 2);
   // Preview the latest (v2) with show changes.
   await page.locator('[data-testid="version-history-version-row"]').first().click();

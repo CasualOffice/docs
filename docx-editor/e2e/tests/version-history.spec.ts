@@ -40,8 +40,7 @@ test.describe('Version history panel', () => {
     await expect(panel.getByTestId('version-history-save-version')).toBeVisible();
 
     // A named save produces a row.
-    page.once('dialog', (d) => d.accept('Checkpoint'));
-    await panel.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Checkpoint');
     await expect(panel.getByTestId('version-history-version-row').first()).toBeVisible();
   });
 

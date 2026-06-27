@@ -58,14 +58,12 @@ test.describe('Version history visual audit', () => {
     // State 5: capture the persisted snapshot list. Trigger TWO manual
     // snapshots with edits between so the newer one has a "previous" to
     // diff against.
-    page.once('dialog', (d) => d.accept('Initial draft'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Initial draft');
     await page.waitForSelector('[data-testid="version-history-version-row"]');
 
     await editor.focus();
     await editor.typeText(' Added a paragraph after the initial save.');
-    page.once('dialog', (d) => d.accept('Post-edit checkpoint'));
-    await page.getByTestId('version-history-save-version').click();
+    await editor.saveNamedVersion('Post-edit checkpoint');
     await page.waitForFunction(
       () => document.querySelectorAll('[data-testid="version-history-version-row"]').length >= 2
     );

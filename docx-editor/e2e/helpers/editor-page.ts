@@ -1453,6 +1453,20 @@ export class EditorPage {
     this.currentTableCell = null;
   }
 
+  /**
+   * Save a named version via the version-history panel. The panel must
+   * already be open. "Save version…" opens a styled prompt modal
+   * (`promptModal`, not a native dialog), so fill its input + confirm.
+   */
+  async saveNamedVersion(name: string): Promise<void> {
+    await this.page.getByTestId('version-history-save-version').click();
+    const input = this.page.locator('[data-act=input]');
+    await input.waitFor({ state: 'visible', timeout: 5000 });
+    await input.fill(name);
+    await this.page.locator('[data-act=ok]').click();
+    await this.page.locator('[data-act=input]').waitFor({ state: 'detached', timeout: 5000 });
+  }
+
   // ============================================================================
   // FIND & REPLACE
   // ============================================================================
