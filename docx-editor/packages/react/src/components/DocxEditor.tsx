@@ -66,7 +66,7 @@ import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
-import { NodeSelection } from 'prosemirror-state';
+import { NodeSelection, Plugin } from 'prosemirror-state';
 import type { Mark as PMMark } from 'prosemirror-model';
 import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
@@ -2098,9 +2098,39 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     () => createSuggestionModePlugin(editingMode === 'suggesting', author),
     [] // eslint-disable-line react-hooks/exhaustive-deps
   );
+  // Markdown heading shortcut: "# " / "## " / "### " at the start of a plain
+  // paragraph applies Heading 1/2/3. Lives at the React layer because applying
+  // a heading needs the document's RESOLVED style formatting (font/size/bold)
+  // — the resolver is React-side. The ref points at `applyHeadingStyle` below,
+  // which calls the applyStyle COMMAND directly (not handleFormat, whose
+  // selection-restoration clobbers the post-delete cursor).
+  const applyHeadingStyleRef = useRef<((styleId: string) => void) | null>(null);
+  const markdownHeadingPlugin = useMemo(
+    () =>
+      new Plugin({
+        props: {
+          handleTextInput(view, from, _to, text) {
+            if (text !== ' ') return false;
+            const apply = applyHeadingStyleRef.current;
+            if (!apply) return false;
+            const { state } = view;
+            const $from = state.doc.resolve(from);
+            if ($from.parent.type.name !== 'paragraph') return false;
+            if (($from.parent.attrs as { styleId?: string | null }).styleId) return false;
+            const before = state.doc.textBetween($from.start(), from);
+            const m = before.match(/^(#{1,3})$/);
+            if (!m) return false;
+            view.dispatch(state.tr.delete($from.start(), from));
+            apply(`Heading${m[1].length}`);
+            return true;
+          },
+        },
+      }),
+    []
+  );
   const allExternalPlugins = useMemo(
-    () => [suggestionPlugin, ...(externalPlugins ?? [])],
-    [suggestionPlugin, externalPlugins]
+    () => [suggestionPlugin, markdownHeadingPlugin, ...(externalPlugins ?? [])],
+    [suggestionPlugin, markdownHeadingPlugin, externalPlugins]
   );
 
   // Refs
@@ -4981,6 +5011,34 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     },
     [getActiveEditorView, openSplitCellDialog]
   );
+
+  // Apply a heading paragraph style at the cursor with its RESOLVED formatting
+  // (sets both styleId and the font/size/bold marks) — used by the markdown
+  // heading shortcut. Mirrors handleFormat's applyStyle case but calls the
+  // command directly so there's no selection restoration.
+  const applyHeadingStyle = useCallback(
+    (styleId: string) => {
+      const view = getActiveEditorView();
+      if (!view) return;
+      const currentDoc = historyStateRef.current;
+      const styleResolver = currentDoc?.package.styles
+        ? getCachedStyleResolver(currentDoc.package.styles)
+        : null;
+      if (styleResolver) {
+        const resolved = styleResolver.resolveParagraphStyle(styleId);
+        applyStyle(styleId, {
+          paragraphFormatting: resolved.paragraphFormatting,
+          runFormatting: resolved.runFormatting,
+        })(view.state, view.dispatch);
+      } else {
+        applyStyle(styleId)(view.state, view.dispatch);
+      }
+    },
+    [getActiveEditorView, getCachedStyleResolver]
+  );
+  useEffect(() => {
+    applyHeadingStyleRef.current = applyHeadingStyle;
+  }, [applyHeadingStyle]);
 
   const handleSplitCellDialogClose = useCallback(() => {
     setSplitCellDialogState((prev) => ({
