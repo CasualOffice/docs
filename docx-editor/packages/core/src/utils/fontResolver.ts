@@ -210,6 +210,45 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
     fallbackStack: ['Malgun Gothic', 'Noto Sans KR', 'sans-serif'],
     singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
   },
+  // Traditional-Chinese sans (Windows default). Unmapped, these fell through
+  // to an arbitrary browser CJK fallback whose ideographs measured WIDER than
+  // 1em, so long CJK runs (headings, table cells) over-wrapped and the whole
+  // doc drifted downward vs LibreOffice (which falls back at a 1em advance).
+  // Noto Sans TC sets ideographs at the canonical 1em advance — wrapping and
+  // row positions line up. `Light` shares the family (weight handled by the
+  // run's bold flag), so it maps to the same googleFont.
+  'microsoft jhenghei': {
+    googleFont: 'Noto Sans TC',
+    category: 'sans-serif',
+    fallbackStack: ['Microsoft JhengHei', 'Noto Sans TC', 'PingFang TC', 'sans-serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
+  'microsoft jhenghei light': {
+    googleFont: 'Noto Sans TC',
+    category: 'sans-serif',
+    fallbackStack: ['Microsoft JhengHei Light', 'Noto Sans TC', 'PingFang TC', 'sans-serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
+  // Simplified-Chinese sans (Windows default). Same 1em-advance rationale.
+  'microsoft yahei': {
+    googleFont: 'Noto Sans SC',
+    category: 'sans-serif',
+    fallbackStack: ['Microsoft YaHei', 'Noto Sans SC', 'PingFang SC', 'sans-serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
+  // Traditional-Chinese serif (older Office default).
+  pmingliu: {
+    googleFont: 'Noto Serif TC',
+    category: 'serif',
+    fallbackStack: ['PMingLiU', 'Noto Serif TC', 'PingFang TC', 'serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
+  mingliu: {
+    googleFont: 'Noto Serif TC',
+    category: 'serif',
+    fallbackStack: ['MingLiU', 'Noto Serif TC', 'PingFang TC', 'serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
 
   // Symbol / dingbat fonts. Their glyphs (form checkboxes, dingbats) have a
   // very tall ink box, so Word/LibreOffice give lines set in these fonts a

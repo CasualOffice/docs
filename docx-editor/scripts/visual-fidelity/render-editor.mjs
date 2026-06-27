@@ -77,6 +77,13 @@ for (const fixture of fixtures) {
     // window gives a false 0/low count. Poll until the count is non-zero
     // and unchanged across consecutive samples before capturing.
     await page.waitForSelector('.layout-page', { timeout: 30000 });
+    // Loading the doc triggers loadDocumentFonts() which fetches the mapped web
+    // fonts (e.g. Noto CJK) asynchronously; the layout re-measures + re-paginates
+    // once they land. The first fonts.ready (pre-fixture) resolved against the
+    // empty page, so wait again HERE — otherwise we screenshot the fallback-font
+    // intermediate, not the final rendered state a real user sees.
+    await page.evaluate(() => document.fonts.ready).catch(() => {});
+    await page.waitForTimeout(400);
     const pages = page.locator('.layout-page');
     let count = 0;
     let stable = 0;
