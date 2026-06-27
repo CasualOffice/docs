@@ -991,27 +991,30 @@ export function App() {
   // DocxEditor's handleSave useCallback (which lists onSave in its deps) does
   // NOT get a new reference every time status changes (Saving → Saved → '').
   // Accessing bridge via window avoids closing over a stale reference.
-  const onSaveDesktop = useCallback(async (buffer: ArrayBuffer) => {
-    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
-    if (!bridge?.isDesktop) return;
-    setStatus('Saving…');
-    try {
-      const written = await bridge.save(buffer);
-      if (typeof written === 'string') {
-        const name = written.split(/[\\/]/).pop();
-        if (name) setFileName(name);
+  const onSaveDesktop = useCallback(
+    async (buffer: ArrayBuffer) => {
+      const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+      if (!bridge?.isDesktop) return;
+      setStatus('Saving…');
+      try {
+        const written = await bridge.save(buffer);
+        if (typeof written === 'string') {
+          const name = written.split(/[\\/]/).pop();
+          if (name) setFileName(name);
+        }
+        // Clean save: the file on disk now IS the latest state, so drop the
+        // crash-recovery sidecar (and any pending snapshot timer).
+        clearRecovery();
+        setStatus('Saved');
+        setTimeout(() => setStatus(''), 1500);
+      } catch (err) {
+        console.error('desktop save failed', err);
+        setStatus('Save failed');
+        setTimeout(() => setStatus(''), 2500);
       }
-      // Clean save: the file on disk now IS the latest state, so drop the
-      // crash-recovery sidecar (and any pending snapshot timer).
-      clearRecovery();
-      setStatus('Saved');
-      setTimeout(() => setStatus(''), 1500);
-    } catch (err) {
-      console.error('desktop save failed', err);
-      setStatus('Save failed');
-      setTimeout(() => setStatus(''), 2500);
-    }
-  }, [clearRecovery]); // bridge.save, setStatus, setFileName are stable across renders
+    },
+    [clearRecovery]
+  ); // bridge.save, setStatus, setFileName are stable across renders
 
   const onExportDesktop = useCallback(async (blob: Blob, suggestedName: string) => {
     const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
@@ -1080,6 +1083,15 @@ export function App() {
     if (typeof window !== 'undefined' && window.__deskApp__) {
       window.__deskApp__.filePath = null;
     }
+  }, []);
+
+  // Desktop only: File → Open routes through the shell's native dialog +
+  // "this window or a new window?" prompt instead of the browser file picker,
+  // so a menu-opened file can be opened in its own window. The bridge handles
+  // the actual open (new window, or navigating this one), so the in-window
+  // onFileOpened path doesn't fire for it.
+  const onRequestOpenDesktop = useCallback(() => {
+    void window.__deskApp__?.openViaMenu?.();
   }, []);
 
   // Dismiss the boot overlay once DocxEditor's PM view is live and the
@@ -1466,6 +1478,7 @@ export function App() {
           // Desktop only: unbind the old file path when a file is opened
           // in-window, so a later Save can't overwrite the previous file.
           onFileOpened={isDesktop ? onFileOpenedDesktop : undefined}
+          onRequestOpen={isDesktop ? onRequestOpenDesktop : undefined}
           // Dismiss the boot splash after DocxEditor has parsed the DOCX and
           // created its PM view, avoiding the blank-editor flash that occurred
           // when dismissBoot fired immediately after setDocumentBuffer.

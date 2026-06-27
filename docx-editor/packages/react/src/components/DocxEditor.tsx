@@ -498,6 +498,13 @@ export interface DocxEditorProps {
    *  being replaced — e.g. the desktop shell unbinds the previous file path so
    *  a later Save can't overwrite the old file with the newly-opened content. */
   onFileOpened?: () => void;
+  /** When provided, File → Open (and the Ctrl/Cmd-O shortcut) calls this
+   *  instead of opening the browser file picker. The desktop shell uses it to
+   *  run a native open dialog + "this window or a new window?" prompt; if the
+   *  host opens the file itself (e.g. in a new window) it simply doesn't call
+   *  back into the editor. Falls back to the in-window browser picker when
+   *  absent (web). */
+  onRequestOpen?: () => void;
   /** Author name used for comments and track changes */
   author?: string;
   /** Callback when document changes */
@@ -1574,6 +1581,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onExport,
     onNew,
     onFileOpened,
+    onRequestOpen,
     onExportPdf,
     author = 'User',
     onChange,
@@ -7069,8 +7077,14 @@ body { background: white; }
   const handleExportTxt = useCallback(() => handleExportAs('txt'), [handleExportAs]);
 
   const handleOpenDocument = useCallback(() => {
+    // Host override (desktop shell): native dialog + open-where prompt. The
+    // host opens the file itself, so don't also trigger the browser picker.
+    if (onRequestOpen) {
+      onRequestOpen();
+      return;
+    }
     docxInputRef.current?.click();
-  }, []);
+  }, [onRequestOpen]);
 
   // Keep the global-keydown handler in sync with the latest file-op
   // callbacks without recreating the listener. `save` → handleDownloadDocument,
