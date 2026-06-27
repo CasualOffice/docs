@@ -93,7 +93,7 @@ const S_BUTTON: CSSProperties = {
 const S_DROPDOWN: CSSProperties = {
   padding: '10px',
   backgroundColor: 'var(--doc-surface, white)',
-  border: '1px solid #d0d0d0',
+  border: '1px solid var(--doc-border, #d0d0d0)',
   borderRadius: '6px',
   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
   width: 'auto',
@@ -101,14 +101,16 @@ const S_DROPDOWN: CSSProperties = {
 
 const S_SECTION_LABEL: CSSProperties = {
   fontSize: '11px',
-  color: '#666',
+  // Theme token, not a hardcoded gray: this dropdown sits on `--doc-surface`,
+  // which goes dark under [data-theme="dark"], leaving #666 text unreadable.
+  color: 'var(--doc-text-muted, #666)',
   marginBottom: '4px',
   fontWeight: 500,
 };
 
 const S_DIVIDER: CSSProperties = {
   height: '1px',
-  backgroundColor: '#e0e0e0',
+  backgroundColor: 'var(--doc-border, #e0e0e0)',
   margin: '8px 0',
 };
 
@@ -120,7 +122,7 @@ const S_GRID: CSSProperties = {
 const S_CELL: CSSProperties = {
   width: `${CELL_SIZE}px`,
   height: `${CELL_SIZE}px`,
-  border: '1px solid #c0c0c0',
+  border: '1px solid var(--doc-border, #c0c0c0)',
   borderRadius: '2px',
   cursor: 'pointer',
   padding: 0,
@@ -147,12 +149,12 @@ const S_AUTO_BUTTON: CSSProperties = {
   gap: '8px',
   width: '100%',
   padding: '5px 8px',
-  border: '1px solid #d0d0d0',
+  border: '1px solid var(--doc-border, #d0d0d0)',
   borderRadius: '4px',
   backgroundColor: 'var(--doc-surface, white)',
   cursor: 'pointer',
   fontSize: '12px',
-  color: '#333',
+  color: 'var(--doc-text-on-surface, #333)',
 };
 
 const S_CUSTOM_ROW: CSSProperties = {
@@ -713,7 +715,7 @@ export function ColorPicker({
             <div style={S_DIVIDER} />
             <div style={S_SECTION_LABEL}>{t('colorPicker.customColor')}</div>
             <div style={S_CUSTOM_ROW}>
-              <span style={{ fontSize: '12px', color: '#666' }}>#</span>
+              <span style={{ fontSize: '12px', color: 'var(--doc-text-muted, #666)' }}>#</span>
               <input
                 type="text"
                 style={S_HEX_INPUT}
