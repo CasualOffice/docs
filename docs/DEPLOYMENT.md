@@ -67,7 +67,7 @@ share-link flow today; WOPI / JWT-API later).
 |---|---|---|
 | **GitHub Pages** (`doc.schnsrw.live`) | off | You want to demo the editor, single-user only. No backend behind it. |
 | **Docker Hub image** (`casualoffice/docs`) | on | You want the share-link flow. Everyone hitting the same container co-edits in real time. |
-| **Tauri desktop** (in progress) | off | Offline / single-user / local-file workflows. No server, no browser tab. |
+| **Tauri desktop** (Casual Desktop, v0.0.2+) | off | Offline / single-user / local-file workflows. No server, no browser tab. |
 
 The same `examples/vite` Vite bundle ships to Pages and into the
 Docker image. The only build-time difference is
