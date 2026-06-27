@@ -337,9 +337,14 @@ function extractShapeFromWsp(
   const totalOff = { x: parentOffsetEmu.x + offX, y: parentOffsetEmu.y + offY };
   const childPosition = addOffsetToAnchor(anchorPosition, totalOff);
 
-  // Inner text content, if this wsp is text-bearing.
-  let content: Paragraph[] = [{ type: 'paragraph', content: [] }];
-  if (txbx) {
+  // Inner text content, if this wsp is text-bearing. A connector (line /
+  // divider) carries no text frame — give it EMPTY content so the empty
+  // placeholder paragraph's line height (+ the default text-box insets)
+  // don't inflate the thin line into a tall filled bar. Word's "Straight
+  // Connector" with a bg1+lumMod fill is a ~1px rule under a logo; without
+  // this it rendered as a ~10px gray block (medical-incident-form header).
+  let content: Paragraph[] = isConnector ? [] : [{ type: 'paragraph', content: [] }];
+  if (txbx && !isConnector) {
     const txbxContentEl = findDeep(txbx, 'w', 'txbxContent');
     if (txbxContentEl) {
       const parsed = parseTextBoxContent(
@@ -364,7 +369,10 @@ function extractShapeFromWsp(
     wrap: anchorWrap,
     fill,
     outline,
-    textBody: { content },
+    // Connectors get zero insets so the line thickness is exactly `cy`/`cx`.
+    textBody: isConnector
+      ? { content, margins: { top: 0, bottom: 0, left: 0, right: 0 } }
+      : { content },
   };
   if (id) shape.id = id;
   if (xform.rotation || xform.flipH || xform.flipV) {
