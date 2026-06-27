@@ -2025,7 +2025,11 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             // (font-load, rAF) uses the current document, not a stale closure.
             const currentDoc = documentRef.current;
             const docBgColor = currentDoc?.package.document.background?.color?.rgb ?? undefined;
-            const pageBackground = docBgColor ? `#${docBgColor}` : '#fff';
+            // Explicit doc backgrounds render verbatim (fidelity); the default
+            // "white paper" resolves through a token so dark mode can dim it to
+            // a soft off-white (display-only — `docBgColor` / the model is what
+            // serializes, so export is unaffected).
+            const pageBackground = docBgColor ? `#${docBgColor}` : 'var(--doc-page-paper, #fff)';
             // Document-level text watermark (C5). Painter draws it as a
             // rotated overlay behind the content on every page.
             const watermark = currentDoc?.package.document.watermark;
