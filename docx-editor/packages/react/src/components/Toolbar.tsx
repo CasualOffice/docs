@@ -292,6 +292,11 @@ export interface ToolbarProps {
   onOpenInsertSymbol?: () => void;
   /** Insert a footnote reference at the cursor (Docs: Insert > Footnote). */
   onInsertFootnote?: () => void;
+  /** Enter header editing (Docs: Insert > Headers & footers > Header). The
+   *  header was previously reachable only by double-clicking the header area. */
+  onEditHeader?: () => void;
+  /** Enter footer editing (Docs: Insert > Headers & footers > Footer). */
+  onEditFooter?: () => void;
   /** Toggle the document ruler visibility (Docs: View > Show ruler). */
   onToggleShowRuler?: () => void;
   /** Whether the ruler is currently visible (checkmark in View menu). */

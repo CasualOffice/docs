@@ -302,6 +302,8 @@ export function MenuBar() {
     onInsertPageBreak,
     onInsertSectionBreak,
     onInsertField,
+    onEditHeader,
+    onEditFooter,
     onInsertTOC,
     onOpenBookmarks,
     onOpenParagraphDialog,
@@ -921,6 +923,23 @@ export function MenuBar() {
               onClick: onInsertFootnote,
               disabled: !onInsertFootnote,
             },
+            ...(onEditHeader || onEditFooter
+              ? [
+                  { type: 'separator' as const } as MenuEntry,
+                  {
+                    icon: 'border_top',
+                    label: t('toolbar.editHeader'),
+                    onClick: onEditHeader,
+                    disabled: !onEditHeader,
+                  } as MenuEntry,
+                  {
+                    icon: 'border_bottom',
+                    label: t('toolbar.editFooter'),
+                    onClick: onEditFooter,
+                    disabled: !onEditFooter,
+                  } as MenuEntry,
+                ]
+              : []),
             { type: 'separator' as const } as MenuEntry,
             {
               icon: 'emoji_symbols',

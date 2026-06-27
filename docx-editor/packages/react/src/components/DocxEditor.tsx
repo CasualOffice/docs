@@ -8524,6 +8524,8 @@ body { background: white; }
                       onOpenVersionHistory={() => {
                         if (!showVersionHistory) handleToggleVersionHistory();
                       }}
+                      onEditHeader={() => handleHeaderFooterDoubleClick('header')}
+                      onEditFooter={() => handleHeaderFooterDoubleClick('footer')}
                       onNew={onNew}
                       showZoomControl={showZoomControl}
                       zoom={state.zoom}

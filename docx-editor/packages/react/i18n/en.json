@@ -82,6 +82,8 @@
     "convertToText": "Convert table to text",
     "emailAsAttachment": "Email as attachment…",
     "versionHistory": "Version history",
+    "editHeader": "Header",
+    "editFooter": "Footer",
     "dictionary": "Dictionary",
     "translate": "Translate…",
     "explore": "Explore…",

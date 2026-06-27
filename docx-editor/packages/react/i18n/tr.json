@@ -90,7 +90,9 @@
     "shapeLine": null,
     "shapeRectangle": null,
     "showOutline": null,
-    "versionHistory": null
+    "versionHistory": null,
+    "editFooter": null,
+    "editHeader": null
   },
   "formattingBar": {
     "groups": {
