@@ -26,6 +26,7 @@ import React, { Fragment, useEffect, useState, useMemo, type CSSProperties } fro
 import type { SelectionRect } from '@eigenpal/docx-core/layout-bridge';
 import type { SelectionFormatting, FormattingAction } from '../Toolbar';
 import { MaterialSymbol } from './MaterialSymbol';
+import { ColorPicker } from './ColorPicker';
 
 const dividerStyle: CSSProperties = {
   width: 1,
@@ -255,6 +256,24 @@ function MobileFormatBarInner({
           </Fragment>
         );
       })}
+      <span aria-hidden style={dividerStyle} />
+      {/* Text color + highlight — compact (non-split) pickers; the dropdown
+          opens on click and applies via the same onFormat the main toolbar
+          uses. onMouseDown preventDefault on the bar keeps the selection. */}
+      <ColorPicker
+        mode="text"
+        splitButton={false}
+        value={formatting.color?.replace(/^#/, '')}
+        onChange={(color) => onFormat({ type: 'textColor', value: color })}
+      />
+      <ColorPicker
+        mode="highlight"
+        splitButton={false}
+        value={formatting.highlight}
+        onChange={(color) =>
+          onFormat({ type: 'highlightColor', value: typeof color === 'string' ? color : '' })
+        }
+      />
     </div>
   );
 }

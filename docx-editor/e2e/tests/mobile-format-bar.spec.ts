@@ -64,6 +64,28 @@ test.describe('Mobile floating format bar', () => {
       await page.locator('[data-testid="desktop-format-insertLink"]').click();
       await expect(page.locator('[data-testid="hyperlink-dialog"]')).toBeVisible();
     });
+
+    test('text color picker on the desktop bar applies a color to the selection', async ({
+      page,
+    }) => {
+      await page.goto('/?e2e=1');
+      await page.waitForSelector('[data-testid="docx-editor"]');
+      await page.waitForTimeout(500);
+      await page.locator('.ProseMirror').focus();
+      await page.keyboard.type('Color me');
+      await page.keyboard.press(`${await modifierKey(page)}+a`);
+      const bar = page.locator('[data-testid="desktop-format-bar"]');
+      await bar.waitFor({ timeout: 2000 });
+
+      // Open the text-color picker (it lives inside the bar) and pick Red.
+      await bar.getByRole('button', { name: 'Font Color' }).click();
+      await page.getByRole('button', { name: 'Red', exact: true }).first().click();
+
+      // The selected text now carries a colour mark.
+      await expect(page.locator('.ProseMirror span[style*="color"]')).toHaveCount(1, {
+        timeout: 2000,
+      });
+    });
   });
 
   test.describe('phone viewport — chip appears + tap formats', () => {
