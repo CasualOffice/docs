@@ -21,6 +21,7 @@
  * cross-peer log is the Yjs op-log (out of scope for v1).
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { confirmModal, promptModal } from '../../utils/modals';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { PanelState } from '../ui/PanelState';
 import { Tooltip } from '../ui/Tooltip';
@@ -542,11 +543,7 @@ function VersionsTab({
 
   const handleSaveVersion = useCallback(async () => {
     if (!saveNamedVersion) return;
-    // Native prompt — small, deterministic, works in Playwright.
-    // A future iteration can replace it with the styled
-    // InlineRenameDialog used elsewhere in the editor.
-    // eslint-disable-next-line no-alert
-    const raw = window.prompt('Name this version', '');
+    const raw = await promptModal({ title: 'Name this version', confirmLabel: 'Save' });
     if (raw == null) return;
     const trimmed = raw.trim();
     if (!trimmed) return;
@@ -571,8 +568,11 @@ function VersionsTab({
 
   const handleRename = useCallback(async (snap: VersionSnapshot) => {
     if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
-    // eslint-disable-next-line no-alert
-    const next = window.prompt('Rename version', snap.name);
+    const next = await promptModal({
+      title: 'Rename version',
+      defaultValue: snap.name,
+      confirmLabel: 'Rename',
+    });
     if (next == null) return;
     const trimmed = next.trim();
     if (!trimmed || trimmed === snap.name) return;
@@ -582,7 +582,13 @@ function VersionsTab({
   const handleDelete = useCallback(async (snap: VersionSnapshot) => {
     if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
     // eslint-disable-next-line no-alert
-    if (!window.confirm(`Delete "${snap.name}"? This cannot be undone.`)) return;
+    const ok = await confirmModal({
+      title: 'Delete version',
+      body: `Delete "${snap.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     await deleteVersion(snap.id);
   }, []);
 
