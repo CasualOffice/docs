@@ -997,5 +997,9 @@
     "readyToLoad": null,
     "running": null,
     "unloading": null
+  },
+  "smartChip": {
+    "date": null,
+    "dateHint": null
   }
 }
