@@ -891,7 +891,6 @@ export function measureTableBlock(tableBlock: TableBlock, contentWidth: number):
     const sourceRowCells = tableBlock.rows[rowIdx]?.cells;
     let maxHeight = 0;
     let maxVerticalBorderHeight = 0;
-    let maxVerticalPadding = 0;
     for (let cellIdx = 0; cellIdx < row.cells.length; cellIdx++) {
       const cell = row.cells[cellIdx];
       const sourceCell = sourceRowCells?.[cellIdx];
@@ -912,7 +911,6 @@ export function measureTableBlock(tableBlock: TableBlock, contentWidth: number):
       const padBottom = sourceCell?.padding?.bottom ?? DEFAULT_CELL_PADDING_Y;
       cell.height += padTop + padBottom;
       maxHeight = Math.max(maxHeight, cell.height);
-      maxVerticalPadding = Math.max(maxVerticalPadding, padTop + padBottom);
       maxVerticalBorderHeight = Math.max(
         maxVerticalBorderHeight,
         getTableCellVerticalBorderHeight(sourceCell)
@@ -928,13 +926,8 @@ export function measureTableBlock(tableBlock: TableBlock, contentWidth: number):
       row.height = explicitHeight;
     } else if (explicitHeight) {
       // Both 'atLeast' and 'auto' (OOXML default) treat the value as minimum height.
-      // ECMA-376 §17.4.81 reads `trHeight` as the TOTAL row height, but Word and
-      // LibreOffice render the value as the minimum CONTENT-box height and add the
-      // cell's top+bottom insets on top — so a short cell in a `trHeight=737`
-      // (49px) row paints ~57+57twips taller than a literal reading. Match that:
-      // when the authored minimum dominates, layer the cell padding above it.
-      row.height =
-        Math.max(maxHeight, explicitHeight + maxVerticalPadding) + maxVerticalBorderHeight;
+      // ECMA-376 §17.4.81: when hRule is absent or "auto", val is the minimum row height.
+      row.height = Math.max(maxHeight + maxVerticalBorderHeight, explicitHeight);
     } else {
       // No explicit height — use content height directly.
       row.height = maxHeight + maxVerticalBorderHeight;
