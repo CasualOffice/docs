@@ -17,13 +17,11 @@ test.describe('PanelState (X5)', () => {
 
     const panel = page.locator('[data-testid="version-history-panel"]');
     await expect(panel).toBeVisible();
-    // Phase 7 split the panel into Versions (persisted, default) +
-    // Activity (live edit feed). 'No edits yet' lives on the Activity
-    // tab; switch there before asserting.
-    await page.getByTestId('version-history-tab-activity').click();
+    // Single auto-saved timeline: a fresh doc has no versions yet, so the
+    // empty state explains how versions get created.
     const empty = panel.locator('[data-testid="panel-state-empty"]');
     await expect(empty).toBeVisible();
-    await expect(empty).toContainText(/No edits yet/);
+    await expect(empty).toContainText(/No saved versions yet/);
     // PanelState marks itself role="status" so screen readers don't
     // interrupt, but assistive tech still announces it on focus.
     await expect(empty).toHaveAttribute('role', 'status');

@@ -54,6 +54,9 @@ export interface VersionSnapshot {
   /** Source format at capture, for round-trip on later "Save as" from
    *  a preview. Currently always `'docx'`; here as a forward hook. */
   sourceFormat: string | null;
+  /** Display name of who captured this version (the local editor). Absent
+   *  on older records and server-backed entries. */
+  author?: string;
   /** Full ProseMirror doc JSON — `view.state.doc.toJSON()` output.
    *  Undefined for server-backed entries (their bytes are fetched on
    *  restore, not held in the list). */
