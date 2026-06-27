@@ -484,6 +484,12 @@ export interface DocxEditorProps {
    *  a picker (never a phantom ~/Downloads file); the web build leaves it
    *  unset and falls back to the `<a download>` blob. */
   onExport?: (blob: Blob, suggestedName: string) => boolean | Promise<boolean>;
+  /** Export as PDF hook. When set and it resolves true, the host handled the
+   *  PDF export (e.g. the desktop shell's native webview print-to-PDF, which
+   *  yields selectable text and is reliable on WebKitGTK) and the browser
+   *  print-dialog fallback is skipped. Returns false / unset → fall back to the
+   *  print pipeline's "Save as PDF". */
+  onExportPdf?: (suggestedName: string) => boolean | Promise<boolean>;
   /** Callback invoked when the user picks File → New. Host should
    *  replace the loaded document with a blank one. */
   onNew?: () => void;
@@ -1568,6 +1574,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onExport,
     onNew,
     onFileOpened,
+    onExportPdf,
     author = 'User',
     onChange,
     onSelectionChange,
@@ -6798,10 +6805,14 @@ body { background: white; }
   // (or a sensible default) so the saved file is `<doc>.pdf` rather
   // than `Print.pdf`. There is no JS API to preselect the PDF
   // destination — the user picks it once in the print dialog.
-  const handleExportPdf = useCallback(() => {
+  const handleExportPdf = useCallback(async () => {
     const base = (documentName?.trim() || 'Document').replace(/\.docx$/i, '');
+    // Desktop: route through the host's native print-to-PDF (selectable text,
+    // reliable on WebKitGTK) instead of the browser print dialog. If the host
+    // didn't handle it (web, or user cancelled the save dialog), fall back.
+    if (onExportPdf && (await onExportPdf(`${base}.pdf`))) return;
     triggerPrintFlow(base);
-  }, [triggerPrintFlow, documentName]);
+  }, [triggerPrintFlow, documentName, onExportPdf]);
 
   const handleDownloadDocument = useCallback(async () => {
     setIsSaving(true);

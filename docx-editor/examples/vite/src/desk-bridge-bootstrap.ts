@@ -325,6 +325,7 @@ if (isDesktop) {
         save(bytes: ArrayBuffer): Promise<string | null>;
         saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
         setDirty?(dirty: boolean): void;
+        exportPdf?(suggestedName: string): Promise<string | null>;
       }
     | undefined;
 
@@ -545,6 +546,12 @@ if (isDesktop) {
           email: string | null;
           avatar_path: string | null;
         } | null;
+      },
+      // Native webview print-to-PDF (selectable text). Opens the OS save dialog
+      // and renders this window to PDF via the shell's export_pdf command.
+      // Returns the written path, or null if the user cancelled.
+      async exportPdf(suggestedName: string): Promise<string | null> {
+        return (await inv('export_pdf', { suggestedName })) as string | null;
       },
     };
   } else {
