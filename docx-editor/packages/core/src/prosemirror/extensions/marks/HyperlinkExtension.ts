@@ -5,8 +5,15 @@
 import { createMarkExtension } from '../create';
 import { isMarkActive } from './markUtils';
 import type { HyperlinkAttrs } from '../../schema/marks';
-import type { Command, EditorState } from 'prosemirror-state';
+import { Plugin, type Command, type EditorState } from 'prosemirror-state';
 import type { ExtensionContext, ExtensionRuntime } from '../types';
+
+/** A whole token is a URL: http(s):// or www. followed by non-space. */
+const URL_TOKEN_RE = /^(?:https?:\/\/|www\.)[^\s]+$/i;
+/** Normalise a bare `www.` URL to an absolute href. */
+function toHref(url: string): string {
+  return /^www\./i.test(url) ? `http://${url}` : url;
+}
 
 // ============================================================================
 // HYPERLINK QUERY HELPERS (exported for toolbar)
@@ -172,12 +179,56 @@ export const HyperlinkExtension = createMarkExtension({
       };
     };
 
+    // Auto-link plugin: (1) typing a space/enter after a URL token wraps it in
+    // a hyperlink (Word/GDocs autoformat); (2) pasting a bare URL over a
+    // non-empty selection wraps the SELECTED text in a link to that URL
+    // (Google Docs behaviour) instead of replacing it.
+    const autoLinkPlugin = new Plugin({
+      props: {
+        handleTextInput(view, from, to, text) {
+          // Trigger only on a space; the URL is the token immediately before.
+          if (text !== ' ') return false;
+          const { state } = view;
+          const $from = state.doc.resolve(from);
+          if (!$from.parent.isTextblock) return false;
+          const before = state.doc.textBetween($from.start(), from, undefined, '￼');
+          const m = before.match(/(\S+)$/);
+          if (!m || !URL_TOKEN_RE.test(m[1])) return false;
+          const token = m[1];
+          const tokenStart = from - token.length;
+          // Skip if the token is already (partly) linked.
+          let alreadyLinked = false;
+          state.doc.nodesBetween(tokenStart, from, (node) => {
+            if (node.marks.some((mk) => mk.type === hlType)) alreadyLinked = true;
+          });
+          if (alreadyLinked) return false;
+          const mark = hlType.create({ href: toHref(token), tooltip: null });
+          const tr = state.tr
+            .insertText(text, from, to)
+            .addMark(tokenStart, from, mark)
+            .removeStoredMark(hlType); // don't carry the link onto further typing
+          view.dispatch(tr);
+          return true;
+        },
+        handlePaste(view, event) {
+          const raw = event.clipboardData?.getData('text/plain')?.trim();
+          if (!raw || /\s/.test(raw) || !URL_TOKEN_RE.test(raw)) return false;
+          const { from, to, empty } = view.state.selection;
+          if (empty) return false; // only wrap an existing selection
+          const mark = hlType.create({ href: toHref(raw), tooltip: null });
+          view.dispatch(view.state.tr.addMark(from, to, mark).scrollIntoView());
+          return true; // handled — keep the selected text, just link it
+        },
+      },
+    });
+
     return {
       commands: {
         setHyperlink,
         removeHyperlink: () => removeHyperlink,
         insertHyperlink,
       },
+      plugins: [autoLinkPlugin],
     };
   },
 });
