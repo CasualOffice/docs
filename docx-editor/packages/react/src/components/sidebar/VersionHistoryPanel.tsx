@@ -96,6 +96,13 @@ const TABS_STYLE: CSSProperties = {
   borderBottom: '1px solid var(--doc-border, #e0e0e0)',
 };
 
+const TAB_CAPTION_STYLE: CSSProperties = {
+  padding: '8px 16px 0',
+  fontSize: 11.5,
+  lineHeight: 1.4,
+  color: 'var(--doc-text-muted)',
+};
+
 const SUBHEADER_STYLE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -391,8 +398,16 @@ export function VersionHistoryPanel({
           onClick={() => setTab('activity')}
           style={tabButtonStyle(tab === 'activity')}
         >
-          Activity
+          Recent edits
         </button>
+      </div>
+      {/* One-line explainer so the two timelines aren't mistaken for each
+          other: Versions are durable, named, restorable snapshots; Recent
+          edits is the live, this-session change feed (cleared on reload). */}
+      <div style={TAB_CAPTION_STYLE} data-testid="version-history-caption">
+        {tab === 'versions'
+          ? 'Saved snapshots you can name, preview, and restore.'
+          : 'Edits from this session — cleared when the document is closed.'}
       </div>
       {tab === 'versions' ? (
         <VersionsTab
@@ -444,7 +459,7 @@ function ActivityTab({ history, emptyHint }: { history: UseEditHistoryReturn; em
   return (
     <>
       <div style={SUBHEADER_STYLE}>
-        <span>Activity</span>
+        <span>Recent edits</span>
         <span style={COUNT_STYLE} data-testid="version-history-count">
           {history.entries.length}
         </span>
