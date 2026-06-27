@@ -86,6 +86,12 @@
      with the suite chrome strip. */
   --doc-bg: var(--color-surface-strip);
 
+  /* The page "paper" fill for the DEFAULT (no explicit `<w:background>`) case.
+     White in light mode; dark mode dims it to a soft off-white so a bright
+     page doesn't glare against the dark desk. Display-only — the document
+     model / export is unaffected (see PagedEditor `pageBackground`). */
+  --doc-page-paper: #ffffff;
+
   /* Chrome strips (title bar, toolbar, status bar) — one consistent suite
      grey so only the page + floating panels read as white cards. */
   --doc-chrome: var(--color-surface-strip);
@@ -188,6 +194,11 @@
   --color-text-muted: #969aa3;
   --color-text-disabled: #8b8e96;
   --color-border-strong: #646a76;
+  /* Dim the white page to a soft off-white and deepen the desk to near-black
+     so the page reads as a calm card instead of a glaring panel. Paper stays
+     light (text unchanged); display-only, export keeps the real colors. */
+  --doc-page-paper: #ececec;
+  --doc-bg: #1b1c1e;
   /* shadcn vars — used by ui/Button.tsx and any consumer of
      bg-background / bg-card / bg-popover / bg-muted / text-foreground. */
   --background: 220 6% 19%; /* #2d2f31 in HSL */
