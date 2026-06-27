@@ -5,7 +5,7 @@
  * Provides: toggle bullet/number, indent/outdent, enter/backspace handling.
  */
 
-import type { Command, EditorState } from 'prosemirror-state';
+import { Plugin, type Command, type EditorState } from 'prosemirror-state';
 import { createExtension } from '../create';
 import { Priority } from '../types';
 import type { ExtensionRuntime } from '../types';
@@ -409,11 +409,39 @@ import { goToNextCell, goToPrevCell } from '../nodes/TableExtension';
 // EXTENSION
 // ============================================================================
 
+// Auto-list: typing a list marker at the very start of a non-list paragraph
+// followed by a space converts it to a list (Word/Google Docs autoformat).
+//   "-", "*", "+"  → bullet list
+//   "1.", "1)"     → numbered list
+const autoListPlugin = new Plugin({
+  props: {
+    handleTextInput(view, from, _to, text) {
+      if (text !== ' ') return false;
+      const { state } = view;
+      const $from = state.doc.resolve(from);
+      if (!$from.parent.isTextblock) return false;
+      // Already a list paragraph → don't toggle it off.
+      if (($from.parent.attrs as { numPr?: { numId?: number } }).numPr?.numId != null) return false;
+      // The marker must be the ENTIRE content before the cursor (line start).
+      const before = state.doc.textBetween($from.start(), from);
+      let cmd: Command | null = null;
+      if (/^[-*+]$/.test(before)) cmd = toggleBulletList;
+      else if (/^\d{1,3}[.)]$/.test(before)) cmd = toggleNumberedList;
+      if (!cmd) return false;
+      // Remove the typed marker, then apply the list to the now-empty paragraph.
+      view.dispatch(state.tr.delete($from.start(), from));
+      cmd(view.state, view.dispatch);
+      return true; // consume the space
+    },
+  },
+});
+
 export const ListExtension = createExtension({
   name: 'list',
   priority: Priority.High, // Must be before base keymap
   onSchemaReady(): ExtensionRuntime {
     return {
+      plugins: [autoListPlugin],
       commands: {
         toggleBulletList: () => toggleBulletList,
         toggleNumberedList: () => toggleNumberedList,
