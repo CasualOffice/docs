@@ -8,7 +8,7 @@
  * - Undo/redo for color changes
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
 import * as assertions from '../helpers/assertions';
 
@@ -365,6 +365,7 @@ test.describe('Color Edge Cases', () => {
 
 test.describe('Border Color Picker', () => {
   let editor: EditorPage;
+  let section: Locator;
 
   // Use wider viewport for table toolbar tests
   test.use({ viewport: { width: 1400, height: 900 } });
@@ -373,22 +374,22 @@ test.describe('Border Color Picker', () => {
     editor = new EditorPage(page);
     await editor.goto();
     await editor.waitForReady();
-    // Border-color picker is a table-context split-button — it only
-    // renders when the cursor is inside a table cell. Load the demo
-    // doc (which has tables) then click into one.
+    // Border-color picker is a table-appearance control. It lives in the
+    // table Format panel (not the toolbar), which only mounts after the
+    // caret is in a table cell and the Format chip is clicked. Load the demo
+    // doc (which has tables), click into one, then open the panel.
     await editor.loadDocxFile('fixtures/demo/demo.docx');
     await editor.focus();
     await editor.clickTableCell(0, 0, 0);
     await page.waitForTimeout(500);
+    section = await editor.openTableFormatPanel();
   });
 
   test('border color picker shows theme matrix in table context', async ({ page }) => {
     // The table-context color pickers render as split-button — an `apply`
     // half (left, applies the current swatch) and an `arrow` half (right,
     // opens the dropdown). The dropdown trigger is the arrow.
-    const borderColorBtn = page.locator(
-      '.docx-color-picker-arrow[title="Border Color"]'
-    );
+    const borderColorBtn = section.locator('.docx-color-picker-arrow[title="Border Color"]');
     await expect(borderColorBtn).toBeVisible({ timeout: 5000 });
     await borderColorBtn.click();
 
@@ -405,9 +406,7 @@ test.describe('Border Color Picker', () => {
 
   test('apply border color from standard colors', async ({ page }) => {
     // Open border color picker (dropdown arrow half of the split button)
-    const borderColorBtn = page.locator(
-      '.docx-color-picker-arrow[title="Border Color"]'
-    );
+    const borderColorBtn = section.locator('.docx-color-picker-arrow[title="Border Color"]');
     await expect(borderColorBtn).toBeVisible({ timeout: 5000 });
     await borderColorBtn.click();
 

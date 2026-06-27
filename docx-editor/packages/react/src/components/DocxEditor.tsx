@@ -9341,10 +9341,10 @@ body { background: white; }
                           {propsKind === 'table' && (
                             <TablePropertiesSection
                               onAction={handleTableAction}
-                              theme={theme}
+                              theme={history.state?.package.theme || theme}
                               borderColorHex={resolveColorToHex(
                                 state.pmTableContext?.cellBorderColor,
-                                theme
+                                history.state?.package.theme || theme
                               )}
                               cellBackgroundColor={state.pmTableContext?.cellBackgroundColor}
                             />

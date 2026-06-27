@@ -678,14 +678,17 @@ export class EditorPage {
    * Shared helper: pick a color from an AdvancedColorPicker dropdown.
    * Opens the picker, finds/clicks a matching color button, or falls back to custom hex input.
    */
-  private async pickColorFromDropdown(buttonTitle: string, hexColor: string): Promise<void> {
+  private async pickColorFromDropdown(
+    buttonTitle: string,
+    hexColor: string,
+    scope: Locator = this.toolbar
+  ): Promise<void> {
     // Split-button picker (default): two buttons share the same title — apply
     // half on the left, arrow half on the right (aria-haspopup="true"). Click
     // the arrow to open the dropdown. Falls through to a single picker for
-    // legacy single-button mode (splitButton={false}).
-    const arrowOrSingle = this.toolbar
-      .locator(`[title="${buttonTitle}"][aria-haspopup="true"]`)
-      .first();
+    // legacy single-button mode (splitButton={false}). `scope` defaults to the
+    // toolbar; the table cell-fill picker lives in the Format panel instead.
+    const arrowOrSingle = scope.locator(`[title="${buttonTitle}"][aria-haspopup="true"]`).first();
     await arrowOrSingle.click();
 
     await this.page.waitForSelector('.docx-color-picker-dropdown', {
@@ -1293,6 +1296,26 @@ export class EditorPage {
   }
 
   /**
+   * Open the table Format panel and return its properties section. The
+   * border / border-color / width / cell-fill pickers live here now (not in
+   * the toolbar). Clicking the chip is idempotent enough — if the section is
+   * already showing we skip the click so a second call doesn't toggle it shut.
+   */
+  async openTableFormatPanel(): Promise<Locator> {
+    const section = this.page.locator('[data-testid="properties-table-section"]');
+    if ((await section.count()) === 0 || !(await section.first().isVisible())) {
+      // The chip only renders once the caret-in-table state has settled; under
+      // parallel CI load it can lag the cell click. Wait for it before clicking
+      // so we don't click into the void and time out on the section instead.
+      const chip = this.page.locator('[data-testid="table-format-chip"]');
+      await chip.waitFor({ state: 'visible', timeout: 5_000 });
+      await chip.click();
+      await section.first().waitFor({ state: 'visible', timeout: 5_000 });
+    }
+    return section.first();
+  }
+
+  /**
    * Set all borders on current cell. The borders flyout renders in a
    * portal that can land outside the viewport on CI runner sizes;
    * Playwright refuses to click off-screen elements even with
@@ -1302,7 +1325,8 @@ export class EditorPage {
    * cursor's ability to reach the button.
    */
   async setAllBorders(): Promise<void> {
-    await this.page.locator('[data-testid="toolbar-table-borders"]').click();
+    const section = await this.openTableFormatPanel();
+    await section.locator('[data-testid="toolbar-table-borders"]').click();
     const target = this.page.locator('button[title="All borders"]');
     await target.waitFor({ state: 'visible', timeout: 5_000 });
     await target.dispatchEvent('click');
@@ -1313,18 +1337,21 @@ export class EditorPage {
    * dispatchEvent rationale.
    */
   async removeBorders(): Promise<void> {
-    await this.page.locator('[data-testid="toolbar-table-borders"]').click();
+    const section = await this.openTableFormatPanel();
+    await section.locator('[data-testid="toolbar-table-borders"]').click();
     const target = this.page.locator('button[title="No borders"]');
     await target.waitFor({ state: 'visible', timeout: 5_000 });
     await target.dispatchEvent('click');
   }
 
   /**
-   * Set cell fill color
+   * Set cell fill color. The cell-fill picker moved from the toolbar into the
+   * table Format panel, so scope the dropdown lookup to the panel section.
    */
   async setCellFillColor(color: string): Promise<void> {
     const hexColor = color.replace(/^#/, '').toUpperCase();
-    await this.pickColorFromDropdown('Cell Fill Color', hexColor);
+    const section = await this.openTableFormatPanel();
+    await this.pickColorFromDropdown('Cell Fill Color', hexColor, section);
   }
 
   /**
