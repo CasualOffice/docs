@@ -68,6 +68,18 @@ Playwright probes (used during diagnosis; promote to `e2e/` for the project):
 
 ## Status / next
 
-- [x] Phase 1 — this design + root cause + repro (done).
-- [ ] Phase 2 — faithful read-only positioned render in the overlay (next PR).
-- [ ] Phase 3 — editability of positioned content (gated).
+- [x] **Phase 1** — design + root cause + repro (#155).
+- [x] **Phase 2a** — divider rules render as thin rules, not black bars (#156).
+- [x] **Phase 2b** — positioned text boxes + the floating logo placed faithfully in the overlay (#158). Approach: copy the positions the layout-painter already computed (the view header stays laid out under the overlay, only `visibility:hidden`), matched 1:1 by order and keyed on stable `data-textbox-id`, applied through a `.hf-editor-pm`-scoped stylesheet (PM reverts foreign inline writes but not a stylesheet). Render-only ⇒ body pagination + round-trip untouched.
+- [x] **Bonus** — `End` key in the header editor no longer swallows the next keystrokes (#159; pre-existing, found via the overflow-diagnostic test).
+
+**Outcome:** editing a complex positioned header (the SDS-letterhead case reported as "pathetic") now renders faithfully — boxes and logo at their authored positions, no mangling. **Text inside positioned boxes is editable** (verified: typing inserts correctly), and simple headers are unaffected (no positioned content ⇒ no rules ⇒ normal flow).
+
+### Phase 3 — drag-repositioning — DEFERRED (low ROI)
+
+The remaining capability is letting the user **drag** a positioned box to a new offset (and persist it through `fromProseDoc`). Deferred deliberately:
+
+- The functional need is met — positioned content renders faithfully and its **text is editable**. Drag-repositioning header logos/boxes is niche (Google Docs doesn't offer free-form header positioning either).
+- It's the larger, riskier half: dragging must write back `posOffsetH/V` and re-sync against the (currently static, copied-from-view) positions, with round-trip + pagination gates.
+
+Pick it up only if a concrete need surfaces; the faithful-render + editable-text result already resolves the reported problem.
