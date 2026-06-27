@@ -166,6 +166,21 @@ export const InlineHeaderFooterEditor = forwardRef<
   const viewRef = useRef<EditorView | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Stylesheet that carries the faithful positions for the overlay's text
+  // boxes (see syncBoxPositions). Kept in <head> — appending it inside the PM
+  // contentDOM would make ProseMirror revert it.
+  const posStyleRef = useRef<HTMLStyleElement | null>(null);
+  useEffect(() => {
+    const el = document.createElement('style');
+    el.setAttribute('data-hf-pos', '');
+    document.head.appendChild(el);
+    posStyleRef.current = el;
+    return () => {
+      el.remove();
+      posStyleRef.current = null;
+    };
+  }, []);
+
   // Keep the latest `onSelectionChange` in a ref so `dispatchTransaction`
   // (closed over once when the HF EditorView is created) always calls the
   // current callback. Without this, the parent's `handleSelectionChange`
@@ -225,6 +240,74 @@ export const InlineHeaderFooterEditor = forwardRef<
     return () => targetElement.classList.remove('hf-edit-target');
   }, [targetElement]);
 
+  // Phase 2b (docs/internal/30): place positioned text boxes faithfully in the
+  // edit overlay. Rather than re-derive the page→header coordinate mapping, we
+  // copy the positions the layout-painter already computed: the view header
+  // (`targetElement`) is still laid out under the overlay (only
+  // `visibility:hidden`), so its `.layout-textbox` rects are the ground truth.
+  // The two paths emit boxes in the same order, so we map them 1:1 by index and
+  // only reposition when the counts agree — otherwise we leave the boxes in
+  // flow rather than risk a mismatched placement.
+  const syncBoxPositions = useCallback(() => {
+    const container = editorContainerRef.current;
+    const styleEl = posStyleRef.current;
+    if (!container || !styleEl) return;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = targetElement.getBoundingClientRect();
+    const rel = (r: DOMRect) => ({
+      left: Math.round(r.left - containerRect.left),
+      top: Math.round(r.top - containerRect.top),
+      width: Math.round(r.width),
+    });
+    // Drive the positions through a STYLESHEET (keyed on each box's stable
+    // data-textbox-id), NOT inline styles: ProseMirror runs its own
+    // MutationObserver and reverts foreign inline-style writes on its nodes, but
+    // it leaves a document stylesheet alone. `!important` is required because
+    // the node's toDOM writes `position: relative` inline, which outranks a
+    // normal rule. The `.hf-editor-pm` scope keeps these rules off the
+    // off-screen body PM (which renders the same node types).
+    const rules: string[] = [];
+
+    // Text boxes — matched 1:1 by order to the faithful (hidden) view boxes.
+    // Only when the counts agree, else leave them in flow rather than mis-place.
+    const viewBoxes = Array.from(targetElement.querySelectorAll<HTMLElement>('.layout-textbox'));
+    const overlayBoxes = Array.from(container.querySelectorAll<HTMLElement>('.docx-textbox'));
+    if (viewBoxes.length > 0 && viewBoxes.length === overlayBoxes.length) {
+      viewBoxes.forEach((vb, i) => {
+        const id = overlayBoxes[i].dataset.textboxId;
+        if (!id) return;
+        const p = rel(vb.getBoundingClientRect());
+        rules.push(
+          `.hf-editor-pm .docx-textbox[data-textbox-id="${CSS.escape(id)}"]` +
+            `{position:absolute!important;left:${p.left}px!important;top:${p.top}px!important;` +
+            `width:${p.width}px!important;margin:0!important;}`
+        );
+      });
+    }
+
+    // Floating image (header logo) — handle the common single-image case
+    // robustly; multiple images would need stable per-image keys, so skip those.
+    const viewImgs = Array.from(targetElement.querySelectorAll<HTMLImageElement>('img')).filter(
+      (i) => i.getBoundingClientRect().width > 0
+    );
+    const ovImgs = Array.from(container.querySelectorAll<HTMLImageElement>('img.docx-image'));
+    if (viewImgs.length === 1 && ovImgs.length === 1) {
+      const p = rel(viewImgs[0].getBoundingClientRect());
+      rules.push(
+        `.hf-editor-pm img.docx-image{position:absolute!important;` +
+          `left:${p.left}px!important;top:${p.top}px!important;margin:0!important;}`
+      );
+    }
+
+    // Positioned content is out of flow, so the editable in-flow text collapses;
+    // keep the overlay as tall as the header so the boxes stay visible.
+    if (rules.length > 0) {
+      container.style.position = 'relative';
+      container.style.minHeight = `${targetRect.height}px`;
+    }
+    styleEl.textContent = rules.join('\n');
+  }, [targetElement]);
+
   // Create ProseMirror editor when the container is available
   // (overlayPos starts null → first render returns null → container ref not set)
   useEffect(() => {
@@ -255,6 +338,9 @@ export const InlineHeaderFooterEditor = forwardRef<
         view.updateState(newState);
         if (tr.docChanged) {
           setIsDirty(true);
+          // The box set (count/order/ids) can change on edit — recompute the
+          // position rules after the DOM settles.
+          requestAnimationFrame(() => syncBoxPositions());
         }
         // Report selection changes for toolbar sync
         if (tr.selectionSet || tr.docChanged) {
@@ -269,6 +355,7 @@ export const InlineHeaderFooterEditor = forwardRef<
     // Auto-focus
     requestAnimationFrame(() => {
       view.focus();
+      syncBoxPositions();
       // Report initial selection state
       const selState = extractSelectionState(view.state);
       onSelectionChangeRef.current?.(selState);
