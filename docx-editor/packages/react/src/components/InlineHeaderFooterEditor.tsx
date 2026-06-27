@@ -17,7 +17,8 @@ import React, {
   forwardRef,
 } from 'react';
 import type { CSSProperties } from 'react';
-import { EditorState } from 'prosemirror-state';
+import { EditorState, TextSelection } from 'prosemirror-state';
+import { keymap } from 'prosemirror-keymap';
 import { useTranslation } from '../i18n';
 import { EditorView } from 'prosemirror-view';
 import { undo, redo } from 'prosemirror-history';
@@ -323,7 +324,24 @@ export const InlineHeaderFooterEditor = forwardRef<
     const hfMgr = new ExtensionManager(createStarterKit());
     hfMgr.buildSchema();
     hfMgr.initializeRuntime();
-    const plugins = hfMgr.getPlugins();
+    // Take `End` over from the browser. Native `End` in this clipped/positioned
+    // overlay desynced ProseMirror's selection from the DOM and then silently
+    // swallowed the following keystrokes (Home / arrows were unaffected). Map it
+    // to a real PM command that moves the caret to the end of the current
+    // textblock, so the selection stays valid. `keymap` is prepended so it wins
+    // over PM's built-in key capture.
+    const endKeymap = keymap({
+      End: (state, dispatch) => {
+        const { $head, empty } = state.selection;
+        if (!empty) return false; // let the browser extend/collapse a range
+        const pos = $head.end();
+        if (dispatch) {
+          dispatch(state.tr.setSelection(TextSelection.create(state.doc, pos)).scrollIntoView());
+        }
+        return true;
+      },
+    });
+    const plugins = [endKeymap, ...hfMgr.getPlugins()];
 
     const state = EditorState.create({
       doc: pmDoc,
@@ -333,6 +351,12 @@ export const InlineHeaderFooterEditor = forwardRef<
 
     const view = new EditorView(editorContainerRef.current, {
       state,
+      // The overlay owns its own layout; never let ProseMirror scroll the
+      // viewport/ancestors to reveal the selection. Without this, `End` (which
+      // requests a scroll-to-selection) desynced the selection in this
+      // clipped/positioned overlay and silently swallowed the next keystrokes.
+      // The body editor (HiddenProseMirror) suppresses this for the same reason.
+      handleScrollToSelection: () => true,
       dispatchTransaction(tr) {
         const newState = view.state.apply(tr);
         view.updateState(newState);
