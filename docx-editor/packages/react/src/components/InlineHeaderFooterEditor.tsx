@@ -216,6 +216,15 @@ export const InlineHeaderFooterEditor = forwardRef<
     };
   }, [targetElement, parentElement]);
 
+  // Mark ONLY the header/footer element this overlay covers so the CSS that
+  // hides the original layout-painter content (`.hf-edit-target > *`) applies
+  // to just this one — not every page's header/footer (which left other pages
+  // blank during edit). Cleaned up when the edit session ends.
+  useEffect(() => {
+    targetElement.classList.add('hf-edit-target');
+    return () => targetElement.classList.remove('hf-edit-target');
+  }, [targetElement]);
+
   // Create ProseMirror editor when the container is available
   // (overlayPos starts null → first render returns null → container ref not set)
   useEffect(() => {
@@ -371,11 +380,14 @@ export const InlineHeaderFooterEditor = forwardRef<
         </div>
       )}
 
-      {/* ProseMirror editor area. Opaque page-colored background so the body
-          content BEHIND the overlay doesn't bleed through — a complex header
-          (e.g. an SDS letterhead with many positioned boxes) grows tall and the
-          overlay extends over the body region; a transparent overlay let the
-          grayed body text show through and read as "broken". */}
+      {/* ProseMirror editor area. Opaque PAGE-colored background + text so the
+          overlay matches the white paper the body renders on — NOT the app
+          surface. `--doc-surface` swaps to a dark value under [data-theme=dark],
+          which turned the whole header black with white (invisible-on-paper)
+          text and made transparent logos show only their opaque pixels. The
+          page is always #fff/#000 (see renderPage.ts), so pin those here. The
+          opaque background also stops grayed body content behind the overlay
+          (a tall SDS letterhead) from bleeding through and reading as broken. */}
       <div
         ref={editorContainerRef}
         className="hf-editor-pm prosemirror-editor"
@@ -383,7 +395,8 @@ export const InlineHeaderFooterEditor = forwardRef<
           minHeight: 40,
           outline: 'none',
           fontSize: `${defaultFontSizePt}pt`,
-          background: 'var(--doc-surface, #ffffff)',
+          background: '#ffffff',
+          color: '#000000',
         }}
       />
 
