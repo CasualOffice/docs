@@ -105,7 +105,10 @@ function FootnoteTooltip({
         zIndex: 1000,
         maxWidth: '300px',
         padding: '8px 12px',
-        backgroundColor: 'var(--doc-surface, white)',
+        // Paper colors: the tooltip shows footnote/endnote document text with a
+        // hardcoded dark color below, so a theme-swapping --doc-surface made it
+        // dark-on-dark (unreadable) in dark mode.
+        backgroundColor: '#fff',
         border: '1px solid #ccc',
         borderRadius: '4px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',

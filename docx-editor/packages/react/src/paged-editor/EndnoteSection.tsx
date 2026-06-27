@@ -23,7 +23,10 @@ const WRAP: CSSProperties = {
 };
 
 const CARD: CSSProperties = {
-  background: 'var(--doc-surface, #fff)',
+  // Paper colors, not app-surface tokens: this card is document content on
+  // the page. `--doc-surface` swaps dark under [data-theme="dark"], which put
+  // black endnote text (color below) on a dark card — invisible.
+  background: '#fff',
   boxShadow: '0 1px 3px rgba(60,64,67,0.15)',
   padding: '24px 48px',
   fontSize: '10px',
