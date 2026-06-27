@@ -32,6 +32,30 @@ test.describe('Auto-hyperlink', () => {
     ).toHaveCount(1, { timeout: 2000 });
   });
 
+  test('trailing sentence punctuation is left out of the link', async ({ page }) => {
+    await editor.typeText('see http://example.com. ');
+    const link = page.locator('.paged-editor__hidden-pm .ProseMirror a[href="http://example.com"]');
+    await expect(link).toHaveCount(1, { timeout: 2000 });
+    await expect(link).toHaveText('http://example.com'); // not "http://example.com."
+    // the period survives as plain text after the link
+    await expect(page.locator('.paged-editor__hidden-pm .ProseMirror')).toContainText('com.');
+  });
+
+  test('a trailing unbalanced closing paren is left out of the link', async ({ page }) => {
+    await editor.typeText('link http://example.com) ');
+    const link = page.locator('.paged-editor__hidden-pm .ProseMirror a[href="http://example.com"]');
+    await expect(link).toHaveCount(1, { timeout: 2000 });
+    await expect(link).toHaveText('http://example.com');
+  });
+
+  test('a balanced paren inside the URL is kept', async ({ page }) => {
+    await editor.typeText('ref www.example.org/a_(b) ');
+    const link = page.locator(
+      '.paged-editor__hidden-pm .ProseMirror a[href="http://www.example.org/a_(b)"]'
+    );
+    await expect(link).toHaveCount(1, { timeout: 2000 });
+  });
+
   test('pasting a URL over a selection links the selection (keeps the text)', async ({ page }) => {
     await editor.typeText('Anchor text');
     await editor.selectText('Anchor text');
