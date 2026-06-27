@@ -408,6 +408,10 @@ export function App() {
   }, [route.kind, legacyForcedEditor]);
   const [currentDocument, setCurrentDocument] = useState<DocxDocument | null>(null);
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
+  // Desktop crash-recovery: holds the unsaved-changes snapshot the host found
+  // for this file when it was reopened after a crash/kill. Non-null drives the
+  // "Restore unsaved changes?" banner; the user applies or discards it.
+  const [recoveryBuffer, setRecoveryBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
   const [status, setStatus] = useState<string>('');
   // Desktop: set when the opened file can't be read/parsed. We render a
@@ -696,6 +700,15 @@ export function App() {
             // paint the first layout before the document is visible. Dismissing
             // now would reveal a blank editor. onEditorViewReady below handles
             // the dismiss after the PM view is created and the first paint lands.
+            // Crash-recovery: a sidecar for this file means the previous session
+            // ended with unsaved changes (a clean Save clears it). Offer to
+            // restore it via the banner; the disk buffer stays staged meanwhile.
+            window.__deskApp__
+              ?.readRecovery?.()
+              .then((rec) => {
+                if (rec && rec.byteLength > 0) setRecoveryBuffer(rec);
+              })
+              .catch(() => undefined);
           })
           .catch((err) => {
             console.error('deskApp loadDocument failed', err);
@@ -835,6 +848,45 @@ export function App() {
     [handleOpenFromHome]
   );
 
+  // --- Desktop crash-recovery -----------------------------------------------
+  // On a debounced schedule after edits, serialize the current document to
+  // .docx bytes and hand them to the host's recovery sidecar. Uses the agent's
+  // side-effect-free toBuffer() — NOT editorRef.save(), which fires onSave and
+  // clears tracked changes. A clean Save clears the sidecar; if the app is
+  // killed mid-edit the sidecar survives and the next open offers to restore it.
+  // Declared before the save handlers since they list clearRecovery as a dep.
+  const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const writeRecoverySnapshot = useCallback(async () => {
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (!bridge?.isDesktop || !bridge.writeRecovery || !bridge.filePath) return;
+    try {
+      const agent = editorRef.current?.getAgent();
+      if (!agent) return;
+      const buffer = await agent.toBuffer();
+      await bridge.writeRecovery(buffer);
+    } catch (err) {
+      // Best-effort — a recovery snapshot must never disrupt editing.
+      console.debug('[deskApp] recovery snapshot failed', err);
+    }
+  }, []);
+  const scheduleRecoverySnapshot = useCallback(() => {
+    if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+    recoveryTimerRef.current = setTimeout(() => {
+      recoveryTimerRef.current = null;
+      void writeRecoverySnapshot();
+    }, 4000);
+  }, [writeRecoverySnapshot]);
+  // Drop any pending snapshot and the on-disk sidecar — called after a clean
+  // Save (the saved file IS the recovery now) and on Discard.
+  const clearRecovery = useCallback(() => {
+    if (recoveryTimerRef.current) {
+      clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = null;
+    }
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    bridge?.clearRecovery?.().catch(() => undefined);
+  }, []);
+
   const handleSave = useCallback(async () => {
     if (!editorRef.current) return;
     try {
@@ -846,6 +898,7 @@ export function App() {
         const written = await bridge.save(buffer);
         const name = written.split(/[\\/]/).pop();
         if (name) setFileName(name);
+        clearRecovery();
         setStatus('Saved');
         setTimeout(() => setStatus(''), 1500);
         return;
@@ -868,7 +921,7 @@ export function App() {
       console.error('save failed', err);
       setStatus('Save failed');
     }
-  }, [fileName]);
+  }, [fileName, clearRecovery]);
 
   const handleSaveAs = useCallback(async () => {
     if (!editorRef.current) return;
@@ -885,6 +938,7 @@ export function App() {
       if (written) {
         const name = written.split(/[\\/]/).pop();
         if (name) setFileName(name);
+        clearRecovery();
         setStatus('Saved');
         setTimeout(() => setStatus(''), 1500);
       } else {
@@ -894,7 +948,7 @@ export function App() {
       console.error('saveAs failed', err);
       setStatus('Save As failed');
     }
-  }, [fileName, handleSave]);
+  }, [fileName, handleSave, clearRecovery]);
 
   // Local-user profile shown in the title bar (replaces the Share
   // button slot when running inside Casual Office). Fetched once on
@@ -936,6 +990,9 @@ export function App() {
         const name = written.split(/[\\/]/).pop();
         if (name) setFileName(name);
       }
+      // Clean save: the file on disk now IS the latest state, so drop the
+      // crash-recovery sidecar (and any pending snapshot timer).
+      clearRecovery();
       setStatus('Saved');
       setTimeout(() => setStatus(''), 1500);
     } catch (err) {
@@ -943,7 +1000,7 @@ export function App() {
       setStatus('Save failed');
       setTimeout(() => setStatus(''), 2500);
     }
-  }, []); // bridge.save, setStatus, setFileName are all stable across renders
+  }, [clearRecovery]); // bridge.save, setStatus, setFileName are stable across renders
 
   const onExportDesktop = useCallback(async (blob: Blob, suggestedName: string) => {
     const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
@@ -982,7 +1039,26 @@ export function App() {
   const onDocChangeDesktop = useCallback(() => {
     const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
     bridge?.setDirty?.(true);
+    scheduleRecoverySnapshot();
+  }, [scheduleRecoverySnapshot]);
+
+  // Restore the recovered snapshot into the editor: re-parse those bytes as the
+  // live document and mark dirty so a Save writes them back to the original
+  // path. Keep the sidecar until that Save succeeds (in case of a second crash).
+  const handleRestoreRecovery = useCallback(() => {
+    setRecoveryBuffer((rec) => {
+      if (rec) {
+        setDocumentBuffer(rec);
+        const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+        bridge?.setDirty?.(true);
+      }
+      return null;
+    });
   }, []);
+  const handleDiscardRecovery = useCallback(() => {
+    setRecoveryBuffer(null);
+    clearRecovery();
+  }, [clearRecovery]);
 
   // Desktop only: the user opened a file in-window via File → Open. A browser-
   // picked file has no real filesystem path, so the window must NOT stay bound
@@ -1306,6 +1382,49 @@ export function App() {
   return (
     <div style={styles.container}>
       <main style={styles.main}>
+        {recoveryBuffer && (
+          <div
+            data-testid="recovery-banner"
+            role="status"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 16px',
+              background: '#fef9c3',
+              borderBottom: '1px solid #fde047',
+              color: '#713f12',
+              fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+              fontSize: 13,
+            }}
+          >
+            <span style={{ flex: 1 }}>
+              This document had unsaved changes from a previous session. Restore them?
+            </span>
+            <button
+              type="button"
+              data-testid="recovery-restore"
+              onClick={handleRestoreRecovery}
+              style={{
+                ...styles.button,
+                background: '#2563eb',
+                color: '#fff',
+                border: 'none',
+                padding: '6px 14px',
+              }}
+            >
+              Restore
+            </button>
+            <button
+              type="button"
+              data-testid="recovery-discard"
+              onClick={handleDiscardRecovery}
+              style={{ ...styles.button, padding: '6px 14px' }}
+            >
+              Discard
+            </button>
+          </div>
+        )}
         <DocxEditor
           ref={editorRef}
           document={documentBuffer ? undefined : currentDocument}

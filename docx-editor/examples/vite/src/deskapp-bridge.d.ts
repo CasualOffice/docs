@@ -68,6 +68,19 @@ declare global {
        *  Returns the written path, or null if cancelled. */
       exportPdf?(suggestedName: string): Promise<string | null>;
       /**
+       * Crash-recovery sidecar I/O (desktop only), keyed by the window's bound
+       * `filePath`. The editor calls `writeRecovery` on a debounced schedule
+       * with the latest serialized `.docx` bytes, `clearRecovery` after a clean
+       * Save, and `readRecovery` on open. A non-null `readRecovery` result means
+       * the previous session ended (crash/kill) with unsaved changes the user
+       * can restore. All three no-op for an untitled (path-less) window, since
+       * there is nothing to key the sidecar on. Best-effort: a failed
+       * `writeRecovery` must never surface as a save error.
+       */
+      writeRecovery?(bytes: ArrayBuffer): Promise<void>;
+      readRecovery?(): Promise<ArrayBuffer | null>;
+      clearRecovery?(): Promise<void>;
+      /**
        * Dismiss the cold-start boot overlay the bootstrap paints before React
        * mounts (top-level desktop windows only). Fades it out then removes it.
        * Idempotent and safe to call from both the document-load success and
