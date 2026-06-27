@@ -225,6 +225,9 @@ export interface ToolbarProps {
   onSave?: () => void;
   /** File → Make a copy — download the doc as "Copy of <name>.docx". */
   onMakeCopy?: () => void;
+  /** File → Version history — open the version-history panel (Google-Docs
+   *  muscle memory looks for it in File, not just the side rail). */
+  onOpenVersionHistory?: () => void;
   /** Callback to start a fresh blank document (File → New) */
   onNew?: () => void;
   /** Whether to show zoom control (default: true) */
