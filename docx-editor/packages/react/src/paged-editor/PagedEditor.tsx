@@ -41,6 +41,11 @@ import { EndnoteSection } from './EndnoteSection';
 import { DecorationLayer } from './DecorationLayer';
 import { spellcheckPluginKey } from '@eigenpal/docx-core/prosemirror/extensions';
 import { getTableContext } from '@eigenpal/docx-core/prosemirror';
+import {
+  smartChipKey,
+  insertSmartChipDate,
+  type SmartChipTrigger,
+} from '@eigenpal/docx-core/prosemirror';
 
 // Layout engine
 import {
@@ -120,6 +125,8 @@ import {
 
 // Selection sync
 import { LayoutSelectionGate } from './LayoutSelectionGate';
+import { SmartChipMenu, type SmartChipMenuItem } from './SmartChipMenu';
+import { useTranslation } from '../i18n';
 
 // Visual line navigation hook
 import { useVisualLineNavigation } from './useVisualLineNavigation';
@@ -1449,6 +1456,33 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const hiddenPMRef = useRef<HiddenProseMirrorRef>(null);
     const painterRef = useRef<LayoutPainter | null>(null);
 
+    const { t } = useTranslation();
+
+    // Smart-chip menu items. Selecting one dispatches the matching insertion on
+    // the hidden PM view, then refocuses so typing continues seamlessly.
+    const smartChipItems = useMemo<SmartChipMenuItem[]>(() => {
+      const insertDate = (): void => {
+        const view = hiddenPMRef.current?.getView();
+        if (!view) return;
+        insertSmartChipDate(view.state, view.dispatch);
+        view.focus();
+      };
+      return [
+        {
+          id: 'date',
+          label: t('smartChip.date'),
+          hint: t('smartChip.dateHint'),
+          keywords: ['date', 'today'],
+          icon: (
+            <svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor">
+              <path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" />
+            </svg>
+          ),
+          onSelect: insertDate,
+        },
+      ];
+    }, [t]);
+
     // Visual line navigation (ArrowUp/ArrowDown with sticky X)
     const { handlePMKeyDown } = useVisualLineNavigation({ pagesContainerRef });
 
@@ -1534,6 +1568,9 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
     const [isFocused, setIsFocused] = useState(false);
     const [selectionRects, setSelectionRects] = useState<SelectionRect[]>([]);
     const [caretPosition, setCaretPosition] = useState<CaretPosition | null>(null);
+    // Active `@` smart-chip trigger (Google-Docs "@" menu), or null. Read from
+    // the core SmartChipExtension's plugin state on every selection change.
+    const [smartChip, setSmartChip] = useState<SmartChipTrigger | null>(null);
 
     // Image selection state
     const [selectedImageInfo, setSelectedImageInfo] = useState<ImageSelectionInfo | null>(null);
@@ -2361,6 +2398,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           lastNotifiedStateRef.current = state;
           onSelectionChangeRef.current?.(from, to);
         }
+
+        // Smart-chip `@` trigger — surfaced by the core SmartChipExtension. The
+        // caret-anchored menu (rendered below) reads this to decide what to show.
+        setSmartChip(smartChipKey.getState(state) ?? null);
 
         // Update visual cell selection highlighting on visible layout table cells
         if (pagesContainerRef.current) {
@@ -4635,6 +4676,18 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                 variant="desktop"
               />
             </>
+          )}
+
+          {/* Smart-chip `@` menu — anchored just below the caret while an
+           *  `@query` trigger is active in the body. */}
+          {!readOnly && (
+            <SmartChipMenu
+              trigger={smartChip}
+              caret={caretPosition}
+              isFocused={isFocused}
+              zoom={zoom}
+              items={smartChipItems}
+            />
           )}
 
           {/* Image selection overlay */}

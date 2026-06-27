@@ -274,6 +274,13 @@ export function hashParagraphBlock(block: ParagraphBlock): string {
       parts.push(`img:${run.width}x${run.height}`);
     } else if (run.kind === 'lineBreak') {
       parts.push('br');
+    } else if (run.kind === 'field') {
+      // Field runs are measured by their fallback text (the dynamic value is
+      // substituted only at paint). Two paragraphs that differ ONLY by a field
+      // run — e.g. inserting a DATE field where there was just a space — must
+      // not collide on this key, or the freshly-inserted field gets a stale
+      // (field-less) cached measure and never paints until the next edit.
+      parts.push(`fld:${run.fieldType}|${run.fallback}|${run.fontFamily}|${run.fontSize}`);
     }
   }
 

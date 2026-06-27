@@ -73,6 +73,7 @@ import { BidiShortcutExtension } from './features/BidiShortcutExtension';
 import { PasteStyleInlinerExtension } from './features/PasteStyleInlinerExtension';
 import { SmartQuotesExtension } from './features/SmartQuotesExtension';
 import { AutocorrectExtension } from './features/AutocorrectExtension';
+import { SmartChipExtension } from './features/SmartChipExtension';
 import { SpellcheckExtension } from './features/SpellcheckExtension';
 import { WordNavigationExtension } from './features/WordNavigationExtension';
 
@@ -195,6 +196,9 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // quotes, single-transaction so Ctrl+Z reverts. Defaults on;
   // disable via createStarterKit({ disable: ['autocorrect'] }).
   add('autocorrect', AutocorrectExtension());
+  // Smart-chip trigger: tracks an active `@query` so the React layer can show
+  // a caret-anchored chip menu (currently `@date` → DATE field).
+  add('smartChip', SmartChipExtension());
   // Spell-check decorations — inert until the React side calls
   // `setSpellChecker(...)` with an nspell-backed engine + the user
   // toggles it on. Off by default so the ~500 KB dictionary download

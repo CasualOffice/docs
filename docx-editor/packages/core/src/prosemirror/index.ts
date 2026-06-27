@@ -182,6 +182,9 @@ export {
   generateTOC,
 } from './commands';
 export type { TableContextInfo, BorderPreset, InsertableFieldType } from './commands';
+// Smart-chip trigger (`@` menu): plugin state key + the date-chip command.
+export { smartChipKey, insertSmartChipDate } from './extensions/features/SmartChipExtension';
+export type { SmartChipTrigger } from './extensions/features/SmartChipExtension';
 
 /** Word `w14:paraId` → ProseMirror position before matching paragraph. */
 export { findStartPosForParaId } from './utils/findStartPosForParaId';
