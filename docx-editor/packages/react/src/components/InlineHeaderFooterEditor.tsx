@@ -216,6 +216,15 @@ export const InlineHeaderFooterEditor = forwardRef<
     };
   }, [targetElement, parentElement]);
 
+  // Mark ONLY the header/footer element this overlay covers so the CSS that
+  // hides the original layout-painter content (`.hf-edit-target > *`) applies
+  // to just this one — not every page's header/footer (which left other pages
+  // blank during edit). Cleaned up when the edit session ends.
+  useEffect(() => {
+    targetElement.classList.add('hf-edit-target');
+    return () => targetElement.classList.remove('hf-edit-target');
+  }, [targetElement]);
+
   // Create ProseMirror editor when the container is available
   // (overlayPos starts null → first render returns null → container ref not set)
   useEffect(() => {

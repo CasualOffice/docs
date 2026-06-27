@@ -723,11 +723,14 @@
   border-top: 1px dotted #4285f4;
 }
 
-/* Hide the original layout-painter content in the area being edited */
-.paged-editor--editing-header .layout-page-header > * {
+/* Hide the original layout-painter content ONLY in the specific header/footer
+   being edited (marked .hf-edit-target by InlineHeaderFooterEditor). Without
+   the scope this matched EVERY page's header, blanking all other pages while
+   editing one. */
+.paged-editor--editing-header .layout-page-header.hf-edit-target > * {
   visibility: hidden;
 }
-.paged-editor--editing-footer .layout-page-footer > * {
+.paged-editor--editing-footer .layout-page-footer.hf-edit-target > * {
   visibility: hidden;
 }
 
