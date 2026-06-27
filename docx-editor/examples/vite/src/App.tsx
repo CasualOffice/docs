@@ -856,13 +856,22 @@ export function App() {
   // killed mid-edit the sidecar survives and the next open offers to restore it.
   // Declared before the save handlers since they list clearRecovery as a dep.
   const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bumped on every clearRecovery(). A snapshot captures the generation (and the
+  // bound path) before its async serialize and re-checks both after: if a Save
+  // cleared the sidecar, or the window rebound to a different file, while we
+  // were serializing, the write is dropped — otherwise a late snapshot would
+  // resurrect a just-cleared sidecar or write to the wrong file's sidecar.
+  const recoveryGenRef = useRef(0);
   const writeRecoverySnapshot = useCallback(async () => {
     const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
     if (!bridge?.isDesktop || !bridge.writeRecovery || !bridge.filePath) return;
+    const gen = recoveryGenRef.current;
+    const keyPath = bridge.filePath;
     try {
       const agent = editorRef.current?.getAgent();
       if (!agent) return;
       const buffer = await agent.toBuffer();
+      if (recoveryGenRef.current !== gen || bridge.filePath !== keyPath) return;
       await bridge.writeRecovery(buffer);
     } catch (err) {
       // Best-effort — a recovery snapshot must never disrupt editing.
@@ -877,8 +886,10 @@ export function App() {
     }, 4000);
   }, [writeRecoverySnapshot]);
   // Drop any pending snapshot and the on-disk sidecar — called after a clean
-  // Save (the saved file IS the recovery now) and on Discard.
+  // Save (the saved file IS the recovery now) and on Discard. Bumping the
+  // generation invalidates any snapshot whose serialize is already in flight.
   const clearRecovery = useCallback(() => {
+    recoveryGenRef.current += 1;
     if (recoveryTimerRef.current) {
       clearTimeout(recoveryTimerRef.current);
       recoveryTimerRef.current = null;
