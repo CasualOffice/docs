@@ -244,6 +244,17 @@ let dismissBoot: () => void = () => undefined;
     overlay.appendChild(text);
     (document.body || document.documentElement).appendChild(overlay);
 
+    // The shell builds doc windows hidden (so the first visible frame isn't
+    // WebKitGTK's small initial render + maximize settle). Now that the
+    // full-window overlay is painted, reveal the window. Best-effort; the shell
+    // also reveals it on page-load as a fallback.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__TAURI__?.window?.getCurrentWindow?.()?.show?.();
+    } catch {
+      /* not in the desktop shell, or window API unavailable — no-op */
+    }
+
     let dismissed = false;
     let safetyTimer: ReturnType<typeof setTimeout> | undefined;
     dismissBoot = () => {

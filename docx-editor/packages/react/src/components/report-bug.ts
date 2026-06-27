@@ -4,6 +4,8 @@
  * lives at `.github/ISSUE_TEMPLATE/bug.yml`; GitHub maps query params to
  * matching form fields by `id`.
  */
+import { openExternal } from '../utils/openExternal';
+
 export function openBugReport(repoUrl = 'https://github.com/CasualOffice/docs'): void {
   const url = new URL(`${repoUrl.replace(/\/$/, '')}/issues/new`);
   url.searchParams.set('template', 'bug.yml');
@@ -12,7 +14,7 @@ export function openBugReport(repoUrl = 'https://github.com/CasualOffice/docs'):
     url.searchParams.set('url', location.href);
   }
   url.searchParams.set('env', describeEnv());
-  window.open(url.toString(), '_blank', 'noopener,noreferrer');
+  openExternal(url.toString());
 }
 
 function describeEnv(): string {

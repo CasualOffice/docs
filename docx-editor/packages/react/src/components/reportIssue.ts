@@ -5,6 +5,8 @@
  * user to drag-drop their DOCX onto the issue after it opens.
  */
 
+import { openExternal } from '../utils/openExternal';
+
 const ISSUE_URL = 'https://github.com/eigenpal/docx-editor/issues/new';
 
 export interface ReportIssueEnv {
@@ -50,5 +52,5 @@ export function buildReportIssueUrl(env: ReportIssueEnv = {}): string {
 
 export function openReportIssue(env?: ReportIssueEnv): void {
   if (typeof window === 'undefined') return;
-  window.open(buildReportIssueUrl(env), '_blank', 'noopener,noreferrer');
+  openExternal(buildReportIssueUrl(env));
 }

@@ -63,6 +63,7 @@ import { PanelRail } from './PanelRail';
 import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
 import { writeAutosave } from '../utils/autosave';
 import { recordRecentFile } from '../utils/recent-files';
+import { openExternal } from '../utils/openExternal';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
@@ -5192,7 +5193,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   );
 
   const handleHyperlinkPopupNavigate = useCallback((href: string) => {
-    window.open(href, '_blank', 'noopener,noreferrer');
+    openExternal(href);
   }, []);
 
   const handleHyperlinkPopupCopy = useCallback((href: string) => {
@@ -6998,7 +6999,7 @@ body { background: white; }
       const body = encodeURIComponent(
         `Attached: ${fileName}\n\n(The file was ${where} — please attach it to this email.)`
       );
-      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank', 'noopener');
+      openExternal(`mailto:?subject=${subject}&body=${body}`);
       toast.success(
         savedViaHost
           ? `Saved ${fileName}. Attach it to the email window.`
