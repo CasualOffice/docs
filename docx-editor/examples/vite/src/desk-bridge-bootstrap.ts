@@ -553,6 +553,27 @@ if (isDesktop) {
       async exportPdf(suggestedName: string): Promise<string | null> {
         return (await inv('export_pdf', { suggestedName })) as string | null;
       },
+      // Crash-recovery sidecars (see deskapp-bridge.d.ts). Keyed by the bound
+      // filePath; a no-op while untitled (nothing to key the sidecar on). The
+      // Rust side writes atomically and refuses empty snapshots; we mirror that
+      // 0-byte guard here so a degenerate serialization never clobbers a good
+      // sidecar.
+      async writeRecovery(bytes: ArrayBuffer): Promise<void> {
+        if (!filePath || bytes.byteLength === 0) return;
+        await inv('write_recovery', {
+          path: filePath,
+          bytes: Array.from(new Uint8Array(bytes)),
+        });
+      },
+      async readRecovery(): Promise<ArrayBuffer | null> {
+        if (!filePath) return null;
+        const raw = await inv('read_recovery', { path: filePath });
+        return raw == null ? null : asArrayBuffer(raw);
+      },
+      async clearRecovery(): Promise<void> {
+        if (!filePath) return;
+        await inv('clear_recovery', { path: filePath });
+      },
     };
   } else {
     // Iframe mode — postMessage to launcher.
