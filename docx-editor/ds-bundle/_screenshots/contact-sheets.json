@@ -1,0 +1,100 @@
+[
+  {
+    "sheet": 1,
+    "components": [
+      "AgentPanel",
+      "AlignmentButtons",
+      "AuthClient",
+      "AutosaveStatus",
+      "BrowserFileSource",
+      "CasualEditor",
+      "CasualEditorIframe",
+      "ColorPicker",
+      "ContextMenu",
+      "DocumentAgent",
+      "DocxEditor",
+      "DrawnSignaturePad",
+      "EditorToolbar",
+      "EmbedTransport",
+      "ErrorBoundary",
+      "ErrorProvider"
+    ]
+  },
+  {
+    "sheet": 2,
+    "components": [
+      "FileSourceProvider",
+      "FindReplaceDialog",
+      "FocusTrap",
+      "FontPicker",
+      "FontSizePicker",
+      "FormattingBar",
+      "HorizontalRuler",
+      "HyperlinkDialog",
+      "InsertImageDialog",
+      "InsertSymbolDialog",
+      "InsertTableDialog",
+      "KeyboardShortcutsDialog",
+      "LineSpacingPicker",
+      "ListButtons",
+      "LoadingIndicator",
+      "LocaleProvider"
+    ]
+  },
+  {
+    "sheet": 3,
+    "components": [
+      "ParseErrorDisplay",
+      "PasteSpecialDialog",
+      "PersonalAuthGate",
+      "PersonalAuthGateModal",
+      "PersonalFileSource",
+      "PersonalFileSourceError",
+      "PluginHost",
+      "PluginRegistry",
+      "PresenceCluster",
+      "PrintButton",
+      "PrintStyles",
+      "ProfileSettingsDialog",
+      "ResponsePreview",
+      "ResponsiveToolbar",
+      "ResponsiveToolbarGroup",
+      "SigningPane"
+    ]
+  },
+  {
+    "sheet": 4,
+    "components": [
+      "SigningProvider",
+      "StylePicker",
+      "TableBorderColorPicker",
+      "TableBorderPicker",
+      "TableBorderWidthPicker",
+      "TableCellFillPicker",
+      "TableInsertButtons",
+      "TableMergeButton",
+      "TableMoreDropdown",
+      "TableToolbar",
+      "TextContextMenu",
+      "Toolbar",
+      "ToolbarButton",
+      "ToolbarGroup",
+      "ToolbarSeparator",
+      "TypedSignatureField"
+    ]
+  },
+  {
+    "sheet": 5,
+    "components": [
+      "UnsavedIndicator",
+      "UnsupportedFeatureWarning",
+      "UploadedSignatureField",
+      "UserMenu",
+      "VersionHistoryPanel",
+      "WopiFileSource",
+      "WopiNotSupportedError",
+      "WopiSaveConflictError",
+      "ZoomControl"
+    ]
+  }
+]

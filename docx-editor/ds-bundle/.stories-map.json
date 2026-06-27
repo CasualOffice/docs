@@ -1,0 +1,671 @@
+{
+  "global": "CasualOfficeDocs",
+  "pkg": "@casualoffice/docs",
+  "pkgDir": "/Users/sachin/Desktop/melp/services/document/docx-editor/packages/react",
+  "extraEntries": [],
+  "exported": [
+    "AgentPanel",
+    "AlignmentButtons",
+    "AuthClient",
+    "AutosaveStatus",
+    "BrowserFileSource",
+    "CasualEditor",
+    "CasualEditorIframe",
+    "ColorPicker",
+    "ContextMenu",
+    "DocumentAgent",
+    "DocxEditor",
+    "DrawnSignaturePad",
+    "EditorToolbar",
+    "EmbedTransport",
+    "ErrorBoundary",
+    "ErrorProvider",
+    "FileSourceProvider",
+    "FindReplaceDialog",
+    "FocusTrap",
+    "FontPicker",
+    "FontSizePicker",
+    "FormattingBar",
+    "HorizontalRuler",
+    "HyperlinkDialog",
+    "InsertImageDialog",
+    "InsertSymbolDialog",
+    "InsertTableDialog",
+    "KeyboardShortcutsDialog",
+    "LineSpacingPicker",
+    "ListButtons",
+    "LoadingIndicator",
+    "LocaleProvider",
+    "ParseErrorDisplay",
+    "PasteSpecialDialog",
+    "PersonalAuthGate",
+    "PersonalAuthGateModal",
+    "PersonalFileSource",
+    "PersonalFileSourceError",
+    "PluginHost",
+    "PluginRegistry",
+    "PresenceCluster",
+    "PrintButton",
+    "PrintStyles",
+    "ProfileSettingsDialog",
+    "ResponsePreview",
+    "ResponsiveToolbar",
+    "ResponsiveToolbarGroup",
+    "SigningPane",
+    "SigningProvider",
+    "StylePicker",
+    "TableBorderColorPicker",
+    "TableBorderPicker",
+    "TableBorderWidthPicker",
+    "TableCellFillPicker",
+    "TableInsertButtons",
+    "TableMergeButton",
+    "TableMoreDropdown",
+    "TableToolbar",
+    "TextContextMenu",
+    "Toolbar",
+    "ToolbarButton",
+    "ToolbarGroup",
+    "ToolbarSeparator",
+    "TypedSignatureField",
+    "UnsavedIndicator",
+    "UnsupportedFeatureWarning",
+    "UploadedSignatureField",
+    "UserMenu",
+    "VERSION",
+    "VersionHistoryPanel",
+    "WopiFileSource",
+    "WopiNotSupportedError",
+    "WopiSaveConflictError",
+    "ZoomControl"
+  ],
+  "storybookStatic": null,
+  "keyRecipe": 7,
+  "cfgSliceGlobal": "a139d95ad8ab0a8ba08b44a258c54602e36090304087f48fe923c61aa5a8ae08",
+  "components": [
+    {
+      "name": "AgentPanel",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "AlignmentButtons",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "AuthClient",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "AutosaveStatus",
+      "group": "file-source",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "BrowserFileSource",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "CasualEditor",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "CasualEditorIframe",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ColorPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ContextMenu",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "DocumentAgent",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "DocxEditor",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "DrawnSignaturePad",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "EditorToolbar",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "EmbedTransport",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ErrorBoundary",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ErrorProvider",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "FileSourceProvider",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "FindReplaceDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "FocusTrap",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "FontPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "FontSizePicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "FormattingBar",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "HorizontalRuler",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "HyperlinkDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "InsertImageDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "InsertSymbolDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "InsertTableDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "KeyboardShortcutsDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "LineSpacingPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ListButtons",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "LoadingIndicator",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "LocaleProvider",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ParseErrorDisplay",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PasteSpecialDialog",
+      "group": "dialogs",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PersonalAuthGate",
+      "group": "file-source",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PersonalAuthGateModal",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PersonalFileSource",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PersonalFileSourceError",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PluginHost",
+      "group": "plugin-api",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PluginRegistry",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PresenceCluster",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PrintButton",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "PrintStyles",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ProfileSettingsDialog",
+      "group": "file-source",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ResponsePreview",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ResponsiveToolbar",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ResponsiveToolbarGroup",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "SigningPane",
+      "group": "signing",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "SigningProvider",
+      "group": "signing",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "StylePicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableBorderColorPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableBorderPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableBorderWidthPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableCellFillPicker",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableInsertButtons",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableMergeButton",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableMoreDropdown",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TableToolbar",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TextContextMenu",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "Toolbar",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ToolbarButton",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ToolbarGroup",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ToolbarSeparator",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "TypedSignatureField",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "UnsavedIndicator",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "UnsupportedFeatureWarning",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "UploadedSignatureField",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "UserMenu",
+      "group": "file-source",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "VersionHistoryPanel",
+      "group": "sidebar",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "WopiFileSource",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "WopiNotSupportedError",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "WopiSaveConflictError",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    },
+    {
+      "name": "ZoomControl",
+      "group": "general",
+      "srcSha": null,
+      "sourceKey": "39e99120b35f12f2",
+      "cfgSlice": "5ff899b099eb6923833804cda955efdd69101524bec86f67dac5537cd81802e8",
+      "stories": []
+    }
+  ]
+}
