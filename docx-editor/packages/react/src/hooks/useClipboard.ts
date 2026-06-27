@@ -67,6 +67,12 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
 
   const isProcessingRef = useRef<boolean>(false);
   const lastPastedContentRef = useRef<ParsedClipboardContent | null>(null);
+  // A paste `ClipboardEvent` carries no keyboard-modifier state, so we can't
+  // read shift off it to detect ⌘/Ctrl+Shift+V (paste-as-plain-text). Instead
+  // we remember whether the most recent paste-initiating keydown held Shift,
+  // and consume that in `handlePaste`. `handleKeyDown` must be wired by the
+  // consumer alongside `handlePaste` for the keyboard path to work.
+  const plainPasteArmedRef = useRef<boolean>(false);
 
   const copy = useCallback(
     async (selection: ClipboardSelection): Promise<boolean> => {
@@ -202,15 +208,23 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
       const content = handlePasteEvent(event, { cleanWordFormatting });
       if (content) {
         lastPastedContentRef.current = content;
-        const asPlainText = (event as unknown as KeyboardEvent).shiftKey ?? false;
+        // The paste event has no modifier state; read the flag armed by the
+        // preceding keydown (⌘/Ctrl+Shift+V) and disarm it.
+        const asPlainText = plainPasteArmedRef.current;
+        plainPasteArmedRef.current = false;
         onPaste?.(content, asPlainText);
       }
     },
     [editable, cleanWordFormatting, onPaste]
   );
 
-  const handleKeyDown = useCallback((_event: KeyboardEvent) => {
-    // Let native copy/cut/paste events handle clipboard operations
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Native copy/cut/paste events do the actual clipboard work; we only
+    // record whether a paste keystroke (⌘/Ctrl+V) held Shift so the paste
+    // handler can branch to plain-text. Other keys leave the flag untouched.
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'v') {
+      plainPasteArmedRef.current = event.shiftKey;
+    }
   }, []);
 
   return {
