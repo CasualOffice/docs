@@ -10,7 +10,12 @@
  * direction/effect reads at a glance.
  */
 import type { CSSProperties, ReactNode } from 'react';
+import type { Theme } from '@eigenpal/docx-core/types/document';
 import type { TableAction } from '../ui/TableToolbar';
+import { TableBorderPicker } from '../ui/TableBorderPicker';
+import { TableBorderColorPicker } from '../ui/TableBorderColorPicker';
+import { TableBorderWidthPicker } from '../ui/TableBorderWidthPicker';
+import { TableCellFillPicker } from '../ui/TableCellFillPicker';
 
 const ACCENT = 'var(--doc-primary, #1a73e8)';
 const ADD = '#1e8e3e';
@@ -218,11 +223,39 @@ const tile = (danger: boolean): CSSProperties => ({
 export interface TablePropertiesSectionProps {
   /** Dispatch a table action (host wires this to handleTableAction). */
   onAction: (action: TableAction) => void;
+  /** Active theme — used to resolve theme colors in the border/fill pickers. */
+  theme?: Theme | null;
+  /** Resolved hex of the selected cells' border color (for the swatch). */
+  borderColorHex?: string;
+  /** The selected cells' background fill (for the swatch). */
+  cellBackgroundColor?: string;
 }
 
-export function TablePropertiesSection({ onAction }: TablePropertiesSectionProps) {
+const APPEARANCE_ROW: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  flexWrap: 'wrap',
+  padding: '0 12px 8px',
+};
+
+export function TablePropertiesSection({
+  onAction,
+  theme,
+  borderColorHex,
+  cellBackgroundColor,
+}: TablePropertiesSectionProps) {
   return (
     <div data-testid="properties-table-section">
+      {/* Borders & fill — the appearance controls live here, in the panel,
+          not scattered across the toolbar. */}
+      <div style={GROUP_HEADER}>Borders &amp; fill</div>
+      <div style={APPEARANCE_ROW} role="group" aria-label="Borders and fill">
+        <TableBorderPicker onAction={onAction} />
+        <TableBorderColorPicker onAction={onAction} theme={theme} value={borderColorHex} />
+        <TableBorderWidthPicker onAction={onAction} />
+        <TableCellFillPicker onAction={onAction} theme={theme} value={cellBackgroundColor} />
+      </div>
       {GROUPS.map((group) => (
         <div key={group.header}>
           <div style={GROUP_HEADER}>{group.header}</div>

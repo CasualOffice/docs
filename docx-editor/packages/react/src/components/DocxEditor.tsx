@@ -9339,7 +9339,15 @@ body { background: white; }
                             />
                           )}
                           {propsKind === 'table' && (
-                            <TablePropertiesSection onAction={handleTableAction} />
+                            <TablePropertiesSection
+                              onAction={handleTableAction}
+                              theme={history.state?.package.theme || theme}
+                              borderColorHex={resolveColorToHex(
+                                state.pmTableContext?.cellBorderColor,
+                                history.state?.package.theme || theme
+                              )}
+                              cellBackgroundColor={state.pmTableContext?.cellBackgroundColor}
+                            />
                           )}
                           {propsKind === 'textbox' && state.pmTextBoxContext && (
                             <TextBoxPropertiesSection
