@@ -9,7 +9,6 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import type { ReactNode } from 'react';
 import type { ColorValue, ParagraphAlignment } from '@eigenpal/docx-core/types/document';
-import { resolveColorToHex } from '@eigenpal/docx-core/utils';
 import { FontPicker } from './ui/FontPicker';
 import { normalizeFontFamilies } from './ui/normalizeFontFamilies';
 import { FontSizePicker, halfPointsToPoints } from './ui/FontSizePicker';
@@ -20,10 +19,6 @@ import { LineSpacingPicker } from './ui/LineSpacingPicker';
 import { StylePicker } from './ui/StylePicker';
 import { MaterialSymbol } from './ui/MaterialSymbol';
 import { ZoomControl } from './ui/ZoomControl';
-import { TableBorderPicker } from './ui/TableBorderPicker';
-import { TableBorderColorPicker } from './ui/TableBorderColorPicker';
-import { TableBorderWidthPicker } from './ui/TableBorderWidthPicker';
-import { TableCellFillPicker } from './ui/TableCellFillPicker';
 import { TableMoreDropdown } from './ui/TableMoreDropdown';
 import { TableStyleGallery } from './ui/TableStyleGallery';
 import { ImageWrapDropdown } from './ui/ImageWrapDropdown';
@@ -702,23 +697,12 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
         </ToolbarGroup>
       )}
 
-      {/* Table Options - shown when cursor is in a table */}
+      {/* Table Options - shown when cursor is in a table. Border / color /
+          width / fill now live in the Format (properties) panel, not here —
+          the panel is the single home for object appearance, so they're no
+          longer scattered across the toolbar. */}
       {tableContext?.isInTable && onTableAction && (
         <ToolbarGroup label={t('formattingBar.groups.table')}>
-          <TableBorderPicker onAction={handleTableAction} disabled={disabled} />
-          <TableBorderColorPicker
-            onAction={handleTableAction}
-            disabled={disabled}
-            theme={theme}
-            value={resolveColorToHex(tableContext?.cellBorderColor, theme)}
-          />
-          <TableBorderWidthPicker onAction={handleTableAction} disabled={disabled} />
-          <TableCellFillPicker
-            onAction={handleTableAction}
-            disabled={disabled}
-            theme={theme}
-            value={tableContext?.cellBackgroundColor}
-          />
           <TableStyleGallery documentStyles={documentStyles} onAction={handleTableAction} />
           <TableMoreDropdown
             onAction={handleTableAction}
