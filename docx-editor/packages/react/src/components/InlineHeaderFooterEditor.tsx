@@ -17,7 +17,7 @@ import React, {
   forwardRef,
 } from 'react';
 import type { CSSProperties } from 'react';
-import { EditorState, TextSelection } from 'prosemirror-state';
+import { EditorState, TextSelection, Selection } from 'prosemirror-state';
 import { keymap } from 'prosemirror-keymap';
 import { useTranslation } from '../i18n';
 import { EditorView } from 'prosemirror-view';
@@ -324,13 +324,15 @@ export const InlineHeaderFooterEditor = forwardRef<
     const hfMgr = new ExtensionManager(createStarterKit());
     hfMgr.buildSchema();
     hfMgr.initializeRuntime();
-    // Take `End` over from the browser. Native `End` in this clipped/positioned
-    // overlay desynced ProseMirror's selection from the DOM and then silently
-    // swallowed the following keystrokes (Home / arrows were unaffected). Map it
-    // to a real PM command that moves the caret to the end of the current
-    // textblock, so the selection stays valid. `keymap` is prepended so it wins
-    // over PM's built-in key capture.
-    const endKeymap = keymap({
+    // Take the viewport-relative forward-navigation keys over from the browser.
+    // Native `End` / `PageDown` in this clipped/positioned overlay computed a
+    // caret target against the clipped viewport, desynced ProseMirror's
+    // selection from the DOM, and then silently swallowed the following
+    // keystrokes (Home / PageUp / arrows / Shift-variants were unaffected). Map
+    // them to real PM commands that land a valid selection. There's no "page" in
+    // a header, so PageUp/PageDown go to the start/end of the header content.
+    // `keymap` is prepended so it wins over PM's built-in key capture.
+    const navKeymap = keymap({
       End: (state, dispatch) => {
         const { $head, empty } = state.selection;
         if (!empty) return false; // let the browser extend/collapse a range
@@ -340,8 +342,19 @@ export const InlineHeaderFooterEditor = forwardRef<
         }
         return true;
       },
+      PageDown: (state, dispatch) => {
+        if (!state.selection.empty) return false;
+        if (dispatch) dispatch(state.tr.setSelection(Selection.atEnd(state.doc)).scrollIntoView());
+        return true;
+      },
+      PageUp: (state, dispatch) => {
+        if (!state.selection.empty) return false;
+        if (dispatch)
+          dispatch(state.tr.setSelection(Selection.atStart(state.doc)).scrollIntoView());
+        return true;
+      },
     });
-    const plugins = [endKeymap, ...hfMgr.getPlugins()];
+    const plugins = [navKeymap, ...hfMgr.getPlugins()];
 
     const state = EditorState.create({
       doc: pmDoc,
