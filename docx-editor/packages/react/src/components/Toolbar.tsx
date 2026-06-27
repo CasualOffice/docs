@@ -537,7 +537,9 @@ export function ToolbarGroup({ label, children, className }: ToolbarGroupProps) 
  * Toolbar separator
  */
 export function ToolbarSeparator() {
-  return <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1.5" role="separator" />;
+  // Use the shared border token (like ToolbarGroup's divider), not hardcoded
+  // slate — so it stays consistent across light/dark and any theme retint.
+  return <div className="w-px h-6 mx-1.5 bg-[color:var(--doc-border-light)]" role="separator" />;
 }
 
 // ============================================================================
