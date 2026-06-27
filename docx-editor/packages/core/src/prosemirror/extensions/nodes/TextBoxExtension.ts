@@ -186,11 +186,26 @@ export const TextBoxExtension = createNodeExtension({
       if (attrs.posAlignH) domAttrs['data-pos-align-h'] = attrs.posAlignH;
       if (attrs.posAlignV) domAttrs['data-pos-align-v'] = attrs.posAlignV;
 
+      // A filled box with no real text is a decorative divider / rule (e.g. the
+      // hairline bars in an SDS letterhead), NOT an editable text box. The
+      // default text-box chrome (min-height that grows to a line, 8px padding,
+      // a 1px border) turned these into thick black bars in the edit overlay.
+      // Render them as their declared thin rule: fixed height, no padding, no
+      // border. (Phase 2 of docs/internal/30.)
+      const isFilledRule = !!attrs.fillColor && node.textContent.trim() === '';
+
       // Build inline styles
       const styles: string[] = [];
 
       if (attrs.width) styles.push(`width: ${attrs.width}px`);
-      if (attrs.height) styles.push(`min-height: ${attrs.height}px`);
+      if (attrs.height) {
+        // Rule: fixed thin height (clamped ≥1px so a sub-px rule still paints),
+        // clipping the empty paragraph. Text box: height is a minimum that
+        // grows to fit content.
+        styles.push(
+          isFilledRule ? `height: ${Math.max(attrs.height, 1)}px` : `min-height: ${attrs.height}px`
+        );
+      }
 
       // Background
       if (attrs.fillColor) {
@@ -202,17 +217,19 @@ export const TextBoxExtension = createNodeExtension({
         const style = attrs.outlineStyle || 'solid';
         const color = attrs.outlineColor || '#000000';
         styles.push(`border: ${attrs.outlineWidth}px ${style} ${color}`);
-      } else {
-        // Default thin border for text boxes
+      } else if (!isFilledRule) {
+        // Default thin border for text boxes (not for decorative rules).
         styles.push('border: 1px solid var(--doc-border, #d1d5db)');
       }
 
-      // Internal margins/padding
-      const mt = attrs.marginTop ?? 4;
-      const mb = attrs.marginBottom ?? 4;
-      const ml = attrs.marginLeft ?? 7;
-      const mr = attrs.marginRight ?? 7;
-      styles.push(`padding: ${mt}px ${mr}px ${mb}px ${ml}px`);
+      // Internal margins/padding (rules carry no text, so no padding).
+      if (!isFilledRule) {
+        const mt = attrs.marginTop ?? 4;
+        const mb = attrs.marginBottom ?? 4;
+        const ml = attrs.marginLeft ?? 7;
+        const mr = attrs.marginRight ?? 7;
+        styles.push(`padding: ${mt}px ${mr}px ${mb}px ${ml}px`);
+      }
 
       // Vertical alignment
       if (attrs.verticalAlign === 'middle' || attrs.verticalAlign === 'center') {
