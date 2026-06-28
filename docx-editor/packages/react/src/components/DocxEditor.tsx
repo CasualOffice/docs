@@ -97,8 +97,7 @@ import { type PrintOptions } from './ui/PrintPreview';
 // reached for a value that had become undefined.
 import { useFindReplace } from './dialogs/useFindReplace';
 import {
-  findInDocument,
-  scrollToMatch,
+  findInPmDoc,
   type FindMatch,
   type FindOptions,
   type FindResult,
@@ -282,7 +281,6 @@ import { findBodyPmAnchors } from '@eigenpal/docx-core/layout-bridge';
 import { type DocxInput } from '@eigenpal/docx-core/utils';
 import { onFontsLoaded, loadDocumentFonts } from '@eigenpal/docx-core/utils';
 import { resolveColorToHex } from '@eigenpal/docx-core/utils';
-import { executeCommand } from '@eigenpal/docx-core/agent';
 import { useTableSelection } from '../hooks/useTableSelection';
 import { useDocumentHistory } from '../hooks/useHistory';
 import {
@@ -299,11 +297,7 @@ import {
 } from '@eigenpal/docx-core/prosemirror/plugins';
 
 // Conversion (for HF inline editor save + version-history preview)
-import {
-  proseDocToBlocks,
-  fromProseDoc,
-  toProseDoc,
-} from '@eigenpal/docx-core/prosemirror/conversion';
+import { proseDocToBlocks, fromProseDoc } from '@eigenpal/docx-core/prosemirror/conversion';
 import { buildVersionDiffDoc } from '../version-history/versionDiff';
 import {
   setStrictCoEditing,
@@ -7322,38 +7316,57 @@ body { background: white; }
 
   // Store the current find result for navigation
   const findResultRef = useRef<FindResult | null>(null);
-  const getFindDocument = useCallback(
-    () => pagedEditorRef.current?.getDocument() ?? history.state,
-    [history.state]
-  );
+  // Last executed query — lets Replace re-run the search after an edit shifts
+  // positions, so "N of M" and the next current match stay correct.
+  const lastFindQueryRef = useRef<{ searchText: string; options: FindOptions } | null>(null);
 
-  // Handle find operation
+  // Select a PM-position match in the editor and scroll its painted span into
+  // view. The hidden PM's own scrollIntoView is suppressed (the paginated layer
+  // owns scroll), so we scroll the painted DOM directly. Works in table cells.
+  const navigateToMatch = useCallback((match: FindMatch | null): void => {
+    if (!match || match.pmFrom == null || match.pmTo == null) return;
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return;
+    const size = view.state.doc.content.size;
+    const from = Math.max(0, Math.min(match.pmFrom, size));
+    const to = Math.max(from, Math.min(match.pmTo, size));
+    try {
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+    } catch {
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) return;
+    for (const el of Array.from(
+      container.querySelectorAll<HTMLElement>('.paged-editor__pages [data-pm-start]')
+    )) {
+      const s = Number(el.dataset.pmStart);
+      const e = Number(el.dataset.pmEnd);
+      if (from >= s && from <= e) {
+        el.scrollIntoView({ block: 'center' });
+        return;
+      }
+    }
+  }, []);
+
+  // Handle find operation (PM-native — searches table cells too)
   const handleFind = useCallback(
     (searchText: string, options: FindOptions): FindResult | null => {
-      const document = getFindDocument();
-      if (!document || !searchText.trim()) {
+      const view = pagedEditorRef.current?.getView();
+      if (!view || !searchText.trim()) {
         findResultRef.current = null;
+        lastFindQueryRef.current = null;
         return null;
       }
-
-      const matches = findInDocument(document, searchText, options);
-      const result: FindResult = {
-        matches,
-        totalCount: matches.length,
-        currentIndex: 0,
-      };
-
+      lastFindQueryRef.current = { searchText, options };
+      const matches = findInPmDoc(view.state.doc, searchText, options);
+      const result: FindResult = { matches, totalCount: matches.length, currentIndex: 0 };
       findResultRef.current = result;
       findReplace.setMatches(matches, 0);
-
-      // Scroll to first match
-      if (matches.length > 0 && containerRef.current) {
-        scrollToMatch(containerRef.current, matches[0]);
-      }
-
+      if (matches.length > 0) navigateToMatch(matches[0]);
       return result;
     },
-    [getFindDocument, findReplace]
+    [findReplace, navigateToMatch]
   );
 
   // Handle find next
@@ -7361,138 +7374,79 @@ body { background: white; }
     if (!findResultRef.current || findResultRef.current.matches.length === 0) {
       return null;
     }
-
     const newIndex = findReplace.goToNextMatch();
     const match = findResultRef.current.matches[newIndex];
-
-    // Scroll to the match
-    if (match && containerRef.current) {
-      scrollToMatch(containerRef.current, match);
-    }
-
+    navigateToMatch(match);
     return match || null;
-  }, [findReplace]);
+  }, [findReplace, navigateToMatch]);
 
   // Handle find previous
   const handleFindPrevious = useCallback((): FindMatch | null => {
     if (!findResultRef.current || findResultRef.current.matches.length === 0) {
       return null;
     }
-
     const newIndex = findReplace.goToPreviousMatch();
     const match = findResultRef.current.matches[newIndex];
-
-    // Scroll to the match
-    if (match && containerRef.current) {
-      scrollToMatch(containerRef.current, match);
-    }
-
+    navigateToMatch(match);
     return match || null;
-  }, [findReplace]);
+  }, [findReplace, navigateToMatch]);
 
-  // Handle replace current match
-  // Push a Document produced by a Document-model command (e.g. find/replace's
-  // `replaceText`) into the live ProseMirror view as a single undoable
-  // transaction. We can't just call `handleDocumentChange(newDoc)`: that path
-  // assumes the change already happened in PM (it's the post-transaction echo),
-  // and the HiddenProseMirror re-seed guard keys on document *metadata*, so a
-  // pure content edit pushed that way never reaches the editor. Dispatching the
-  // rebuilt content here makes the change real, keeps undo as one step, and the
-  // normal onTransaction → handleDocumentChange echo handles history/dirty.
-  const applyDocumentToPm = useCallback((newDoc: Document): boolean => {
-    const view = pagedEditorRef.current?.getView();
-    if (!view) return false;
-    const pmDoc = toProseDoc(newDoc, { styles: newDoc.package?.styles });
-    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, pmDoc.content);
-    view.dispatch(tr.scrollIntoView());
-    return true;
-  }, []);
-
+  // Replace the current match with a targeted PM transaction (works in table
+  // cells; one undoable step), then re-run the search so positions / "N of M"
+  // stay correct and the next match becomes current.
   const handleReplace = useCallback(
     (replaceText: string): boolean => {
-      const document = getFindDocument();
-      if (!document || !findResultRef.current || findResultRef.current.matches.length === 0) {
-        return false;
-      }
-
-      const currentMatch = findResultRef.current.matches[findResultRef.current.currentIndex];
-      if (!currentMatch) return false;
-
-      // Execute replace command
+      const res = findResultRef.current;
+      if (!res || res.matches.length === 0) return false;
+      const match = res.matches[res.currentIndex] ?? res.matches[0];
+      if (!match || match.pmFrom == null || match.pmTo == null) return false;
+      const view = pagedEditorRef.current?.getView();
+      if (!view) return false;
+      const size = view.state.doc.content.size;
+      const from = Math.max(0, Math.min(match.pmFrom, size));
+      const to = Math.max(from, Math.min(match.pmTo, size));
       try {
-        const newDoc = executeCommand(document, {
-          type: 'replaceText',
-          range: {
-            start: {
-              paragraphIndex: currentMatch.paragraphIndex,
-              offset: currentMatch.startOffset,
-            },
-            end: {
-              paragraphIndex: currentMatch.paragraphIndex,
-              offset: currentMatch.endOffset,
-            },
-          },
-          text: replaceText,
-        });
-
-        return applyDocumentToPm(newDoc);
+        view.dispatch(view.state.tr.insertText(replaceText, from, to).scrollIntoView());
       } catch (error) {
         console.error('Replace failed:', error);
         return false;
       }
+      const q = lastFindQueryRef.current;
+      const nextView = pagedEditorRef.current?.getView();
+      const matches = q && nextView ? findInPmDoc(nextView.state.doc, q.searchText, q.options) : [];
+      findResultRef.current = { matches, totalCount: matches.length, currentIndex: 0 };
+      findReplace.setMatches(matches, 0);
+      if (matches.length > 0) navigateToMatch(matches[0]);
+      return true;
     },
-    [getFindDocument, applyDocumentToPm]
+    [findReplace, navigateToMatch]
   );
 
-  // Handle replace all matches
+  // Replace every match in one undoable transaction. Apply end → start so each
+  // edit doesn't shift the positions of matches still to be processed. Covers
+  // table cells.
   const handleReplaceAll = useCallback(
     (searchText: string, replaceText: string, options: FindOptions): number => {
-      const document = getFindDocument();
-      if (!document || !searchText.trim()) {
-        return 0;
-      }
-
-      // Find all matches first
-      const matches = findInDocument(document, searchText, options);
+      const view = pagedEditorRef.current?.getView();
+      if (!view || !searchText.trim()) return 0;
+      const matches = findInPmDoc(view.state.doc, searchText, options).filter(
+        (m) => m.pmFrom != null && m.pmTo != null
+      );
       if (matches.length === 0) return 0;
-
-      // Replace from end to start to maintain correct indices
-      let doc = document;
-      const sortedMatches = [...matches].sort((a, b) => {
-        if (a.paragraphIndex !== b.paragraphIndex) {
-          return b.paragraphIndex - a.paragraphIndex;
-        }
-        return b.startOffset - a.startOffset;
-      });
-
-      for (const match of sortedMatches) {
-        try {
-          doc = executeCommand(doc, {
-            type: 'replaceText',
-            range: {
-              start: {
-                paragraphIndex: match.paragraphIndex,
-                offset: match.startOffset,
-              },
-              end: {
-                paragraphIndex: match.paragraphIndex,
-                offset: match.endOffset,
-              },
-            },
-            text: replaceText,
-          });
-        } catch (error) {
-          console.error('Replace failed for match:', match, error);
-        }
+      const sorted = [...matches].sort((a, b) => (b.pmFrom as number) - (a.pmFrom as number));
+      const tr = view.state.tr;
+      const size = view.state.doc.content.size;
+      for (const m of sorted) {
+        const from = Math.max(0, Math.min(m.pmFrom as number, size));
+        const to = Math.max(from, Math.min(m.pmTo as number, size));
+        tr.insertText(replaceText, from, to);
       }
-
-      applyDocumentToPm(doc);
+      view.dispatch(tr.scrollIntoView());
       findResultRef.current = null;
       findReplace.setMatches([], 0);
-
       return matches.length;
     },
-    [getFindDocument, applyDocumentToPm, findReplace]
+    [findReplace]
   );
 
   // Expose ref methods
