@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Issue #395 — Word-compat closing-border heuristic.
  *

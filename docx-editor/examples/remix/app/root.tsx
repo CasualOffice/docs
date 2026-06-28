@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 import './styles.css';
 

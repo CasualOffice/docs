@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * UserMenu — the authenticated-user surface for Mode 3.
  *

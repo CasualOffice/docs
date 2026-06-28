@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Table Parser - Parse tables with full OOXML structure
  *

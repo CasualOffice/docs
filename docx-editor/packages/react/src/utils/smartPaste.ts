@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Smart paste helpers — detect when the user just pasted tabular
  * content (CSV, TSV, anything that looks gridded) so the host can

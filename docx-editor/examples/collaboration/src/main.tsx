@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import './styles.css';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

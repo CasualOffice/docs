@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Centered card shown while the collab app fetches the seed doc.
 // The Yjs sync plugin can't paint anything until the .docx has
 // been loaded into the editor at least once, so we block on the

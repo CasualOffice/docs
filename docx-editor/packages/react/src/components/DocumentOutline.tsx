@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import React, { useEffect, useMemo, useState } from 'react';
 import type { HeadingInfo } from '@eigenpal/docx-core/utils';
 import { MaterialSymbol } from './ui/Icons';

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * renderCommentText — chips @-mentions only when the trailing name
  * matches a known author. Tests cover the boundary rules + email

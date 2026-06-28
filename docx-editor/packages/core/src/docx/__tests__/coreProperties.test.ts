@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tests for parsing and round-tripping docProps/core.xml — the data
  * source for the File → Properties dialog.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Grammar check — toggle on, a likely mistake gets a blue squiggle, and the
  * right-click menu applies the fix into the document.

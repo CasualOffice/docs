@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * findTextRange — locate a plain-text substring inside a ProseMirror
  * document and map it back to a PM position range `{from, to}`.

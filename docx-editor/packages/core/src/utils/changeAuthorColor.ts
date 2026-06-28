@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Per-author colors for tracked changes — the Word / Google-Docs "by author"
  * convention: each reviewer's suggestions get a distinct, stable color, and the

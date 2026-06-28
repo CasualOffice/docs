@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: a 3×3 table with merged cells at column positions BEYOND the
 // first column. Pins `table-merged-cells` from
 // `openspec/table-rendering-fidelity` — historically reported as

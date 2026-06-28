@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import React from 'react';
 import type { CollaborativeUser } from './useCollaboration';
 

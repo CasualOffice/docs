@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression tests for #382 — floating tables in headers/footers anchor at
  * (tblpX, tblpY) per their horzAnchor/vertAnchor mode, not cursor-Y in flow.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins round-trip for a batch of boolean flag round-trips that
  * scripts/roundtrip-audit.mjs surfaced (546 occurrences total before

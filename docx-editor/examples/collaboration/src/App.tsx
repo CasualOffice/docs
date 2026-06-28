@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DocxEditor, createEmptyDocument } from '@casualoffice/docs';
 import { GitHubBadge } from '../../shared/GitHubBadge';

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression — `<w:lastRenderedPageBreak/>` must round-trip through
  * fromProseDoc + paragraph serializer. Without this, save+reload silently

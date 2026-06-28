@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * PersonalFileSource — the FileSource implementation for Mode 3
  * (Standalone). Talks to the collab server over cookie-authenticated

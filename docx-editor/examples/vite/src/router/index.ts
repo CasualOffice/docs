@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tiny path-based router for the personal-mode IA. Mirrors the
  * sheet repo's `apps/web/src/router/index.ts` so the two apps stay

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Curated, high-precision grammar rules. Each scans one textblock's plain text
  * and returns matches in TEXT-OFFSET coordinates (the GrammarExtension maps

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * AutosaveStatus end-to-end: drives the useFileSourceAutoSave hook
  * via the `?e2e=autosave` fixture in examples/vite/src/App.tsx +

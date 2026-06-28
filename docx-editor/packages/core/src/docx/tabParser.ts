@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tab Parser - Parse and handle tab stops in DOCX documents
  *

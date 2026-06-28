@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * VoiceTypingIndicator — fixed-position chip shown while voice
  * typing is active. Pulses a mic icon + shows the interim

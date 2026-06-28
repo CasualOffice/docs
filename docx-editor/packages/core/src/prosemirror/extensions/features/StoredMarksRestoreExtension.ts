@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * StoredMarksRestore — re-hydrates `state.storedMarks` from a paragraph's
  * `defaultTextFormatting` attr whenever the cursor sits in an empty

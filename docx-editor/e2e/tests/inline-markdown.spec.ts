@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Inline-markdown autoformat: typing `*italic*` / `**bold**` applies the mark.
  * Spaced asterisks (`2 * 3`) must NOT trigger.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pipeline-level unit test — does the layout-bridge produce a `textBox`
  * FlowBlock when we feed it a header that contains a textbox?

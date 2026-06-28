@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Phase 0 (VF-to-80 initiative, docs/internal/21) — editor row geometry probe.
  *

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * WopiFileSource — the FileSource implementation for Mode 2 (WOPI).
  *

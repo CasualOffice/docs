@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Command casual-docs is the operator CLI for a Casual Editor
 // Mode 3 (Standalone) deploy. It's the recovery + admin surface that
 // pairs with the y-websocket gateway: things the operator should be

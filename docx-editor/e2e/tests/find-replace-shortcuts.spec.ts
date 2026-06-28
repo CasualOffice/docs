@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { expect, test } from '@playwright/test';
 import { EditorPage } from '../helpers/editor-page';
 import { modifierKey } from '../helpers/keyboard';

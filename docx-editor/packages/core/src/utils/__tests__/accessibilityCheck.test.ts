@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for checkAccessibility — heading-jump + missing-alt detection.
  */

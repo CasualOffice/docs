@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * C2 v0 — basic inline shapes. Each shape is generated as an SVG string,
  * encoded as a `data:` URL, and inserted as a regular image node. The

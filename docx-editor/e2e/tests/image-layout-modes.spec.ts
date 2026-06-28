@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Image layout modes — inline, wrap-square (float), and topAndBottom (block).
  *

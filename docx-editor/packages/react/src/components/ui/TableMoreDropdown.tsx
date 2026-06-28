@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * TableMoreDropdown - Compact dropdown for less-used table actions
  *

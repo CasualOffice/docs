@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** Headers/footers reflow on every page; honoring `<w:lastRenderedPageBreak/>`
  *  inside an HF would force body-level page breaks for every header repetition. */
 

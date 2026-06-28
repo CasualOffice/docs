@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: a body paragraph containing a `<w:pict>` with a decorative
 // `<v:rect>` (no inner text). Used to pin `drawing-shapes-render` — the
 // foundation for the broader shape rendering work. Pre-fix, the v:rect

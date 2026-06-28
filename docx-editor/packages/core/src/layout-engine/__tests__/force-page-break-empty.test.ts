@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression — back-to-back forced breaks must not leave phantom empty pages.
  * A common pattern: a section break is followed by a paragraph that itself

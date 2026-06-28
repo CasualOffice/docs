@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Grammar-check service — the React-side state + engine the core
  * `GrammarExtension` plugs into via `setGrammarChecker`. Mirrors

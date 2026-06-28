@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // /health/ready — readiness probe with per-component status.
 //
 // Distinct from /health (liveness — "the process is running"):

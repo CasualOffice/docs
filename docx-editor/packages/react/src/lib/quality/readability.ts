@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Readability statistics — Hemingway-style heuristics that score the
  * document without invoking an LLM. Live-computed in the status bar

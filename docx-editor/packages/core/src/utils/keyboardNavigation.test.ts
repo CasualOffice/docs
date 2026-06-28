@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for the word-boundary helpers powering WordNavigationExtension
  * (Ctrl/Alt + Arrow word-wise cursor motion).

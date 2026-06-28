@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 """Phase 0 visual-fidelity harness — DIFF + SCORE stage.
 
 Compares the editor's render (editor/<name>-pNN.png) against the LibreOffice

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package wopi implements host.Integration as a WOPI client.
 //
 // In the WOPI architecture:

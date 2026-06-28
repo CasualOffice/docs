@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package local is a filesystem-backed host.Integration. Docs
 // persist to a directory on the host filesystem so they survive
 // container restarts — the foundation for the Standalone deploy

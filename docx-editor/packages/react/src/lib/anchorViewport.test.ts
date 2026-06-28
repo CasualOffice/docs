@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // bun:test runs in a Node-like env by default so DOM globals are
 // undefined. Other test files in this monorepo set Happy DOM up via
 // `beforeAll(register) / afterAll(unregister)` — match that pattern

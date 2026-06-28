@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * DocumentAgent - High-level fluent API for programmatic document manipulation
  *

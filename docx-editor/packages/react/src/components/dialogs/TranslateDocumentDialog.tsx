@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tools → Translate document — side-by-side preview that uses the
  * editor's real layout-painter for both panes, not an HTML hack.

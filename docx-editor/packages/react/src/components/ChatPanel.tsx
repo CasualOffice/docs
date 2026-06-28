@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * ChatPanel — right-docked chat surface for the on-device LLM.
  * Streams Llama-3.2-1B's reply tokens into the message bubble as

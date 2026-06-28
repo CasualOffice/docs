@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin the parseDOM CSS extraction that absorbs paste-from-Google-Docs
  * formatting (gap-matrix `paste-gdocs-align-spacing-indent` + openspec

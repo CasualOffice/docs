@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit test — VML `<v:group>` with `z-index < 0` parses to behind-doc wrap.
  *

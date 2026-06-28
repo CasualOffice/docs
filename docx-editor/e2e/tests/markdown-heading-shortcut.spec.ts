@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Markdown heading shortcut: "# " / "## " / "### " at the start of a plain
  * paragraph applies Heading 1/2/3 (Google Docs / Notion autoformat). It sets

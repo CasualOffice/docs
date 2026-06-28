@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Builds a pre-filled GitHub "new issue" URL for the Help > Report issue action.
  *

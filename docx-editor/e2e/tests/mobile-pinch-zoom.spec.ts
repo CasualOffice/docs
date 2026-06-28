@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Mobile pinch-to-zoom — pins the contract that a two-finger pinch
  * gesture on the editor area updates the zoom indicator in the

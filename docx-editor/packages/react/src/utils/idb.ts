@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Shared IndexedDB handle for editor-local state — autosave, recent
  * files, future per-doc version history, etc. Lives in one named DB

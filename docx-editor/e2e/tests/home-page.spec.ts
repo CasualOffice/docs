@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Smoke tests for the home-page template gallery (Casual Editor
  * landing view). The 200+ existing e2e specs assume direct editor

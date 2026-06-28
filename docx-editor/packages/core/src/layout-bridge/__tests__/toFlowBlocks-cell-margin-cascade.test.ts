@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Integration test — per-side cell-margin cascade (ECMA-376 §17.4.41).
  *

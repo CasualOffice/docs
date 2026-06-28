@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit test — does parseHeader actually capture textbox content for the
  * header-with-textbox.docx fixture? Direct inspection of the parsed

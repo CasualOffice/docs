@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package wopi parses + verifies the JWT access_token a WOPI host
 // hands the user when they click "Open in editor". The verifier
 // fetches the host's published JWKS, caches it for 5 min (matching

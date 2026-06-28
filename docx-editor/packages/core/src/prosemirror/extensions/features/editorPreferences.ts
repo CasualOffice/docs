@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Editor preferences — runtime-toggleable behavior the user controls from
  * the Tools → Preferences dialog. The smart-quotes and autocorrect

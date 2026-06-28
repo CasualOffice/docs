@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Thin status banner shown above the editor when the user is in
  * "Suggesting" mode (E3). Matches Google Docs' yellow stripe pattern:

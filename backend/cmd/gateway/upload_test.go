@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Integration tests for the /api/docs upload + download REST
 // endpoints. Together with broadcast_test.go these prove the
 // v0 share-link flow end-to-end:

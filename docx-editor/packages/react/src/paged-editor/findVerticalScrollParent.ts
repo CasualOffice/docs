@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Shared logic for locating the DOM element that vertically scrolls the paginated editor.
  * Used by scroll-to-position, arrow-key line navigation, and drag auto-scroll.

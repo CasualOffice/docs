@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package personal is the user store + session signer for Mode 3
 // (Standalone) deploys — Docker + bind-mount /data + password
 // authentication. Mirrors the design of sheet's

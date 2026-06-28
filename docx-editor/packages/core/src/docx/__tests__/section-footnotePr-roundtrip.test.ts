@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins `<w:footnotePr>` / `<w:endnotePr>` round-trip for the empty
  * form (titlePg-header-footer.docx).

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
 import { PersonalFileSource, PersonalFileSourceError } from './personal';

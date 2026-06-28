@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for the Strict co-editing enforcement core — the data-layer
  * verification the roadmap calls for (multi-peer UI e2e needs a live

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** Regression for #391 — see mergeFontFamily for ECMA-376 §17.3.2.27 rule. */
 
 import { describe, test, expect } from 'bun:test';

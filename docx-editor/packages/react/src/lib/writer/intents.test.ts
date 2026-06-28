@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Intent classifier — covers the deterministic `quickClassify` fast
  * paths. Llama-mode classification is not unit-tested (needs a GPU);

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { useMemo } from 'react';
 import type { EditorState } from 'prosemirror-state';
 import type { Mark } from 'prosemirror-model';

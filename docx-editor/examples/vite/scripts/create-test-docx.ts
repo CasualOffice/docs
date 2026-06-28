@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Creates a test .docx file with both comments and template variables.
  * Run: bun examples/vite/scripts/create-test-docx.ts

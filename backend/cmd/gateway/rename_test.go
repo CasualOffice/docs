@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Tests for PATCH /api/docs/{docId}/rename — updates the stored
 // fileName so a subsequent /download advertises the new name in
 // Content-Disposition. Used by the live-rename path: when a peer

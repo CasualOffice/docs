@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Signing types — mirror the iframe-protocol envelopes from
  * `docs/internal/13-iframe-protocol.md` so the SDK and iframe

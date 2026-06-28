@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** Edge cases for `paragraphStartsWithRenderedPageBreak`. */
 
 import { describe, test, expect } from 'bun:test';

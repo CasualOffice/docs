@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Verifies the `table-column-resize` gap-matrix row: dragging the
  * resize handle BETWEEN columns 0+1 should change both column 0

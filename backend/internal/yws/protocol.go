@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package yws implements the wire-level y-websocket protocol.
 //
 // Message types per the canonical y-protocols spec

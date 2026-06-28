@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Variant config used by scripts/run-e2e.sh: identical to playwright.config.ts
 // except the webServer block is omitted — the script starts vite itself and
 // waits for readiness, sidestepping the 60s cold-start timeout that hits in

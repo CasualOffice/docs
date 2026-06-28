@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Paragraph Extension — paragraph node with alignment, spacing, indent, style commands
  *

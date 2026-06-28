@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Persistence + cache-usage helpers for the Writing Assistant. See
  * `docs/internal/10-writing-assistant-design.md` § 8.

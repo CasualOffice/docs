@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Field Extension — inline field node (PAGE, NUMPAGES, DATE, MERGEFIELD, etc.)
  *

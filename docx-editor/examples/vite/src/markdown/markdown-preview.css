@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
+/*
  * Typography for the markdown preview pane. The app ships a CSS reset
  * (Tailwind preflight) that strips heading sizes and list bullets, so the
  * preview needs its own scoped styles to read like a real markdown render

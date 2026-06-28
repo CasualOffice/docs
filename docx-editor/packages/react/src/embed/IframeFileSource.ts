@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * IframeFileSource — a FileSource implementation that runs inside the
  * embedded editor and forwards open / save to the host via the

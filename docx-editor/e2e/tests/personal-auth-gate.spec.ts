@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * PersonalAuthGate end-to-end: drives the React modal at
  * /examples/vite/src/App.tsx in `?e2e=auth-gate` mode against a

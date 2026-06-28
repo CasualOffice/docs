@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * For every .docx in e2e/fixtures/, walk every <w:tbl> and report the
  * border-defining state that decides whether Word draws a closing line

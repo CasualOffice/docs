@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Behavioural test for Option A (Phase 2 / audit doc 17): the autosave hook
  * flushes the editor's bytes to the FileSource when the page is hidden or

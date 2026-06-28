@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins `<a:noFill/>` and `<a:ln><a:noFill/></a:ln>` emission in
  * `<pic:spPr>` when an image has no explicit fill / outline.

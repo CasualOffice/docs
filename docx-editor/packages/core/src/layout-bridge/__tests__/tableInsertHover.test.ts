@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for detectTableInsertHover — the table-insert "+" button hit-test
  * shared across React + Vue adapters.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Text box section of the Format/Properties panel. A text box is edited by
  * clicking inside it (caret model), so its Format chip appears while the caret

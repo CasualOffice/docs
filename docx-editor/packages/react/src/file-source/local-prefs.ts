@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Per-source local preferences — the small slice of FileSource state
  * that's intentionally client-only: recent-files list, last-opened id.

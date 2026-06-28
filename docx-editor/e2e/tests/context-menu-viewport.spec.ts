@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * The right-click context menu must stay within the viewport — when opened near
  * the bottom edge it should clamp up (and cap its height + scroll internally)

@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Phase 0 visual-fidelity harness — EDITOR render stage.
  *

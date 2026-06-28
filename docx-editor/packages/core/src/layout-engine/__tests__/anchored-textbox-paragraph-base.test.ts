@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * A `relFromV="paragraph"` anchored textbox (e.g. a letterhead "Powered by:"
  * box that `convertParagraphWithTextBoxes` extracts into a sibling block

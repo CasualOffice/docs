@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Widow/orphan control (OOXML §17.3.1.44, Word default ON): a paragraph that
  * splits across a page break must keep at least two of its lines together on

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { defineConfig } from 'vite';
 import { vitePlugin as remix } from '@remix-run/dev';
 import tailwindcss from 'tailwindcss';

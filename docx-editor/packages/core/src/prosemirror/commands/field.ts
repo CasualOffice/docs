@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Field Commands — insert an inline OOXML field node (PAGE, NUMPAGES,
  * DATE, TIME, …) at the cursor. Round-trips through the existing

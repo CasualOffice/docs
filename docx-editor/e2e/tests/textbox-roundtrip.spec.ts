@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Round-trip proof for the rawXml-invariant fix: editing an imported text
  * box's box-level properties (fill/outline/size) must PERSIST through a

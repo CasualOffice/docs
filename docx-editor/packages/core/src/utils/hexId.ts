@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Random 8-char uppercase hex id, matching Microsoft's `w14:paraId`
  * extension format (also reused for comment `paraId` / `durableId`).

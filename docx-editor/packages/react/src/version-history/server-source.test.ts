@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, it, expect, afterEach } from 'bun:test';
 import { fetchServerVersions, downloadServerVersion } from './server-source';
 

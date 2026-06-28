@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 const path = require('path');
 const monorepoRoot = path.resolve(__dirname, '../..');
 

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * MobileFormatBar — Google-Docs-style floating format chip that
  * appears near a non-collapsed selection on phone viewports.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * SigningProvider — wraps a signing session in React context so
  * descendant components (SigningPane, capture surfaces, and the

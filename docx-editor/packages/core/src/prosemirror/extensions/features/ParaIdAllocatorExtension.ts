@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * ParaIdAllocator — assigns a stable `w14:paraId` to every paragraph.
  *

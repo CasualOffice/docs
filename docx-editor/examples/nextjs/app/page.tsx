@@ -1,4 +1,8 @@
 'use client';
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 
 import dynamic from 'next/dynamic';
 

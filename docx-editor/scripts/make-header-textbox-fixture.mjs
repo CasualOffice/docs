@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Build a fixture .docx that has a textbox INSIDE the page header.
 // Used by e2e/tests/textbox-rendering-header.spec.ts to exercise the
 // header-parsing path for textboxes (issue #318 — "the textbox is only

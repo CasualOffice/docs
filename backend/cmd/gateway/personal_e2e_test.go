@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Full Mode 3 (Standalone) flow exercised through real HTTP. Spins
 // up the same wiring main() does — UserStore + PerUserStores +
 // FileProfileStore + Handlers — and drives every personal-auth +

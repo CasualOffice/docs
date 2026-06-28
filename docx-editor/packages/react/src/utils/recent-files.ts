@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * IndexedDB-backed "recent files" list. Captures the user's last N
  * opened documents so the Home screen can let them reopen with one

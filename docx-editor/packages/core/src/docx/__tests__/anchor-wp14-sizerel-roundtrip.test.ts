@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins wp14:sizeRelH / wp14:sizeRelV / wp14:pctWidth / wp14:pctHeight
  * round-trip. These are Word 2010+ extension hints recording the

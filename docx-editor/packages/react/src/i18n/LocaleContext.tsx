@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { createContext, useContext, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import en from '../../i18n/en.json';

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, it, expect } from 'bun:test';
 import { generateShape } from './shapes';
 

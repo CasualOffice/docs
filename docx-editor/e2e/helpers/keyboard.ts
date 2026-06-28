@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Resolve the Mod modifier (Meta on Mac, Control elsewhere) the way the
  * editor itself does — via the page's `navigator.platform`, NOT via

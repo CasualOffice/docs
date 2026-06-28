@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Open the GitHub bug template prefilled with environment info the user
  * shouldn't have to dig up (browser, viewport, URL). The structured form

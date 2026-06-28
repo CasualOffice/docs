@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Tests for GET /api/docs/{docId}/history — the revision-metadata
 // log surfaced to the version-history panel. Metadata only; content
 // revert to a past revision is not exposed here (M2 serializer

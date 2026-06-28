@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Image right-click layout menu — Scope B (anchor↔anchor transitions).
  *

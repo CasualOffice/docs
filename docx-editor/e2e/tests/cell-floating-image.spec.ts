@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * A floating image anchored inside a table cell must be clickable/selectable.
  * Previously findImageElement only matched page-floating images, so clicking a

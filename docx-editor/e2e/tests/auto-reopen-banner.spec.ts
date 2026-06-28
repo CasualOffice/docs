@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Auto-reopen banner — Phase A from docs/internal/11-storage-modes.md.
  * "If there's a last-opened entry less than 7 days old, show

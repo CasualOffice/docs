@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * PresenceCluster — the live co-editing presence unit for the title bar.
  *

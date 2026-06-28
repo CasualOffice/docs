@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Verifies the `table-overlap-text` gap-matrix row: a tall table
  * followed by a paragraph must not visually overlap, and the

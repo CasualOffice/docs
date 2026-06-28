@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Re-export from @eigenpal/docx-core where the implementation now lives.
  * Kept for backward compatibility with in-package imports.

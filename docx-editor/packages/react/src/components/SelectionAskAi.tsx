@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * SelectionAskAi — selection-anchored AI prompt surface.
  *

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Per-mark-run AI helpers — walks a PM Fragment and runs the model
  * against each contiguous text-mark-run individually, then rebuilds

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Build a fixture .docx that exercises Word's 3-section header layout:
 //   Left[tab]Center[tab]Right
 // with explicit tab stops:

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * insertOutline tool — builds a structured outline (memo / essay /
  * report) directly as PM heading + paragraph nodes.

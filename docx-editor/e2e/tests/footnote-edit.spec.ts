@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Footnote text editing — complete flow incl. round-trip persistence.
  *   double-click a footnote at page bottom → editor opens with its text →

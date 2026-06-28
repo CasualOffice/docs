@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Table section of the Format/Properties panel. Surfaces the core table
  * structure operations as scannable ICON tiles (insert / delete rows &

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Insert → Equation: type LaTeX, preview as MathML, insert as a real math
  * node that renders on the page (and round-trips to OMML on save).

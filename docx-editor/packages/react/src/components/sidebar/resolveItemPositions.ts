@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import type { RenderedDomContext } from '../../plugin-api/types';
 import type { ReactSidebarItem } from '../../plugin-api/types';
 import { MIN_CARD_GAP } from './constants';

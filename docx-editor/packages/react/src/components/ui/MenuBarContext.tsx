@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * MenuBarContext — shared open-state for a horizontal menu bar so
  * adjacent <MenuDropdown/> components can switch in a single click

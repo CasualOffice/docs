@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tab-local autosave for the docx editor. Single slot per origin — we
  * keep the most recent dirty snapshot so the user can recover from a

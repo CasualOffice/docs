@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins wps:bodyPr's a:spAutoFit / a:noAutofit / a:normAutofit detection
  * (ECMA-376 §21.1.2.1.2).

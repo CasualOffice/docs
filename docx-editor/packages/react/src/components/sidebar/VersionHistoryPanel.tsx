@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Version-history side panel — a single Google-Docs-style timeline of
  * persisted snapshots (`useVersionHistoryCapture` → IndexedDB store).

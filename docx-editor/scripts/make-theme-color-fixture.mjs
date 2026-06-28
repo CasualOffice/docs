@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Build a minimal .docx with `<w:color w:val="auto" w:themeColor="dk1"/>`
 // on a body run. Pins the openspec `ooxml-roundtrip-fidelity` Problem #2
 // scenario: Word writes auto + themeColor for theme-resolved text (e.g.

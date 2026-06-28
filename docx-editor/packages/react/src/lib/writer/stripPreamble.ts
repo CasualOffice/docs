@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Strip Llama-1B "preamble pollution" — sentences the model
  * compulsively prepends to its answers despite system prompts telling

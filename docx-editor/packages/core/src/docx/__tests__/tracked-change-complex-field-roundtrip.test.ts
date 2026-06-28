@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins the field-cluster drop in issue-319-sections.docx (and any other
  * fixture with a tracked-edit hyperlink field).

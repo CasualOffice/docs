@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Block-geometry probe — dumps every painted top-level block (heading,
  * paragraph, list item, table) in the live editor with its page-relative

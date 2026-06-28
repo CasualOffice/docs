@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { addCitation, loadCitations, removeCitation, formatCitation } from './citations';
 

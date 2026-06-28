@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Borders and Shading Panel (Phase 1.5-PIVOT).
  *

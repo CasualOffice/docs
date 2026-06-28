@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** Regression for #391 — paragraphParser flags `<w:spacing>` attrs that
  *  the paragraph wrote on its own pPr so the renderer can suppress style-
  *  inherited spacing on empty paragraphs. */

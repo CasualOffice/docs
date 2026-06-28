@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * i18n CLI — manage locale files for the docx-editor.
  *

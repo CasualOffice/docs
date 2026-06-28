@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Header/Footer Serializer - Serialize headers/footers to OOXML XML
  *

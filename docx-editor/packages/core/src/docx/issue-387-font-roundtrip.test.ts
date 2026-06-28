@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression test for #387 — opening and saving a DOCX where the run uses
  * a paragraph style (Heading1) that explicitly sets `ascii="Arial"` while

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * TemplateChip — sidebar card for a template tag.
  * Rendered inside the UnifiedSidebar via getSidebarItems.

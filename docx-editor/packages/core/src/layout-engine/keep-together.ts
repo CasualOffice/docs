@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Keep Together Logic - Handle keepNext and keepLines paragraph properties
  *

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Right-edge vertical rail of panel-toggle buttons. Mirrors the
  * sibling Casual Sheets PanelRail and the activity-bar conventions

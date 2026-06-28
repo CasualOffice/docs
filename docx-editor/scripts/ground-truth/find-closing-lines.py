@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 """For each LibreOffice-rendered PDF, find horizontal line segments and check
 whether one falls below the last body row of the named candidate table — and
 is NOT actually the top border of a following table.

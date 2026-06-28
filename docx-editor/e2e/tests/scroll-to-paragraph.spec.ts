@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * P1/P2: scrollToParaId + scrollToPosition (paginated editor, virtualization-friendly path).
  * Relies on `window.__DOCX_EDITOR_E2E__` from the Vite demo (examples/vite).

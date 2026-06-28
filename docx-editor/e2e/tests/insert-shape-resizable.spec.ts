@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Insert → Shape produces a resizable vector shape (currently an
  * SVG-image node — renders, selectable, resizable, movable). Guards

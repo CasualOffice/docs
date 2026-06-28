@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tools → Translate (A5). Translates the editor selection via the free
  * public MyMemory endpoint. No API key, no auth — fine for the v0

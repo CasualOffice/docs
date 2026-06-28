@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Thin amber/red strip across the top of the viewport whenever
 // the Yjs websocket provider isn't `connected`. Rendered on top of
 // the editor; the editor stays usable (edits buffer locally and

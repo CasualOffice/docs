@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package middleware bundles cross-cutting HTTP wrappers — request
 // id, structured access logging, future tracing — that the gateway
 // chains in front of its mux. Kept separate from cmd/gateway so

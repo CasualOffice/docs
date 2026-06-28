@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: wrapNone anchored images (`behind` / `inFront`) are positioned
  * floats. They must not consume a paragraph line like topAndBottom/block images.

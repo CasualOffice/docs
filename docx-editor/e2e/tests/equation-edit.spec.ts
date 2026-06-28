@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Editing an existing equation: double-click a painted equation re-opens the
  * dialog prefilled with its LaTeX; inserting replaces it in place.

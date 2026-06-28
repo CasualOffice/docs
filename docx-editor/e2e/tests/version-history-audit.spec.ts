@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Ad-hoc audit spec — drives the editor through the four primary
  * Version History states (closed, empty-open, single-entry, expanded

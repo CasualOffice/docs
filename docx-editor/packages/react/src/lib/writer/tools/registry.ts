@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tool registry — single place the pipeline looks up which tool
  * handles which intent.

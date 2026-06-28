@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * DeviceCapabilities — one-shot snapshot of the runtime environment we
  * rely on for the on-device Writing Assistant. Detected once at editor

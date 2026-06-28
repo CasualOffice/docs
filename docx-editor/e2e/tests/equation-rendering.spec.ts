@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Equations already in a .docx render as real math (native MathML),
  * not the italic plain-text fallback. The OMML is converted to MathML

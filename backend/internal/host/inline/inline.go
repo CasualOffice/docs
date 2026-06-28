@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package inline is the host.Integration that keeps documents in
 // process memory keyed by docId. Powers the v0 share-link flow:
 //

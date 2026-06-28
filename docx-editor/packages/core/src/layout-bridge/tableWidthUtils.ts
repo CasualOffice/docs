@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * @internal Helpers for resolving DOCX table-width metadata into pixel widths.
  */

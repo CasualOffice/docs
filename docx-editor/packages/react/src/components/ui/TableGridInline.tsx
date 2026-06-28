@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * TableGridInline — a grid picker for table dimensions, rendered inline (no button/dropdown wrapper).
  * Used both standalone inside menu submenus and internally by TableGridPicker.

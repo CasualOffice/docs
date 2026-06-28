@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin Word-default boilerplate inside pic:pic descriptors:
  *   - <a:picLocks noChangeAspect="1"/> in <pic:cNvPicPr>

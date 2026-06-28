@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Signing state machine — pure with respect to React so bun-test
  * can exercise it without a renderer. The React wrappers

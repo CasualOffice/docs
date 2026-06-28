@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, expect, test } from 'bun:test';
 import type { XmlElement } from './xmlParser';
 import { parseXmlDocument } from './xmlParser';

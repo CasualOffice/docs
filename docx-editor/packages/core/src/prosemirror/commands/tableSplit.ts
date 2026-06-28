@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * ProseMirror table cell splitting — dialog-backed split with explicit
  * row/column input.

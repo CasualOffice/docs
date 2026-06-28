@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, test, expect } from 'bun:test';
 import { parseDrawing } from '../imageParser';
 import { serializeRun } from '../serializer/runSerializer';

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * TableBorderColorPicker - Wrapper around ColorPicker for table border colors.
  *

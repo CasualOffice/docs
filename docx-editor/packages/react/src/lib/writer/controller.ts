@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * WriterController — module-level singleton that owns the worker, the
  * state machine, and the public hook UI components subscribe to.

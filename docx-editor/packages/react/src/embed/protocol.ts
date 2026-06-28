@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Iframe protocol — wire envelopes that match
  * `docs/internal/13-iframe-protocol.md`.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Contextual Format/Properties panel — COMPLETE end-to-end flow for BOTH
  * object kinds, driving the REAL entry point (the on-object "Format" chip)

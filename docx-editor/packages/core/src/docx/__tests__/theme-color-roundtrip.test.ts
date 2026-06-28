@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Theme text color roundtrip — openspec `ooxml-roundtrip-fidelity` Problem #2.
  *

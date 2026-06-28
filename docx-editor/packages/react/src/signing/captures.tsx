@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Three signature-capture surfaces: drawn (canvas), typed (input
  * rendered in a script font), uploaded (image file picker).

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { defineConfig } from 'tsup';
 
 const isProd = process.env.NODE_ENV === 'production';

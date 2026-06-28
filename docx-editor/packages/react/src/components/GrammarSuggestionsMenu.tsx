@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * GrammarSuggestionsMenu — the popup shown when the user right-clicks a
  * `.grammar-error` span. Sibling of `SpellSuggestionsMenu`, but a grammar issue

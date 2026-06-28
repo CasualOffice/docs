@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Copy non-JS assets into dist/ after tsup build.
  * tsup bundles JS/TS only; CSS and similar resources have to be copied

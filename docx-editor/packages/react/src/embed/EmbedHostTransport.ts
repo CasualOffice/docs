@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * EmbedHostTransport — the parent side of the embed iframe bridge.
  *
