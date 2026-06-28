@@ -18,7 +18,7 @@ test('find highlights all matches, marks the current one, clears on close', asyn
   await ed.typeText('apple banana apple cherry apple');
   await page.waitForTimeout(200);
 
-  const mod = /Win/i.test(await page.evaluate(() => navigator.platform)) ? 'Control' : 'Meta';
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
   await page.keyboard.press(`${mod}+f`);
   await page.locator('[data-testid="find-replace-dialog"]').waitFor({ timeout: 3000 });
   await page.locator('[data-testid="find-input"]').fill('apple');
