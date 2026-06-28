@@ -7,7 +7,7 @@
  * Positioned in the same overlay-relative space as the caret (see
  * `CaretPosition`), so it tracks the cursor as the user keeps typing.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CaretPosition } from '@eigenpal/docx-core/layout-bridge';
 import type { SmartChipTrigger } from '@eigenpal/docx-core/prosemirror';
 
@@ -49,8 +49,10 @@ export function SmartChipMenu({
 }: SmartChipMenuProps): React.ReactElement | null {
   const [active, setActive] = useState(0);
   // Suppress the menu for a trigger the user dismissed with Escape, until the
-  // trigger position changes (i.e. they moved on or re-typed `@`).
-  const dismissedFromRef = useRef<number | null>(null);
+  // trigger position changes (i.e. they moved on or re-typed `@`). State (not a
+  // ref) so dismissing actually re-renders — `setActive(i => i)` would bail out
+  // of React's update (same value) and leave the menu open.
+  const [dismissedFrom, setDismissedFrom] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
     if (!trigger) return [];
@@ -64,7 +66,7 @@ export function SmartChipMenu({
     setActive(0);
   }, [trigger?.query, filtered.length]);
 
-  const dismissed = trigger != null && dismissedFromRef.current === trigger.from;
+  const dismissed = trigger != null && dismissedFrom === trigger.from;
   const open = isFocused && trigger != null && caret != null && filtered.length > 0 && !dismissed;
 
   // Keyboard: the hidden ProseMirror holds focus, so intercept navigation keys
@@ -87,9 +89,7 @@ export function SmartChipMenu({
       } else if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        dismissedFromRef.current = trigger?.from ?? null;
-        // Force a re-render so `dismissed` recomputes and the menu hides.
-        setActive((i) => i);
+        setDismissedFrom(trigger?.from ?? null);
       }
     };
     window.addEventListener('keydown', onKeyDown, true);

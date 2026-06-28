@@ -43,7 +43,10 @@ test.describe('Command palette — rail toggles', () => {
     const mod = await modifierKey(page);
     await page.keyboard.press(`${mod}+Shift+p`);
     await page.getByTestId('command-palette-input').fill('version history');
-    await expect(page.locator('[data-cp-index="0"]')).toContainText('Show version history');
+    // Two commands match now — the File-menu "Version history" (discoverability)
+    // and the View "Show version history" toggle. Either as the top hit is fine;
+    // both open the panel, which is what we assert below.
+    await expect(page.locator('[data-cp-index="0"]')).toContainText(/version history/i);
     await page.keyboard.press('Enter');
 
     await expect(page.getByTestId('rail-history')).toHaveAttribute('aria-pressed', 'true');
