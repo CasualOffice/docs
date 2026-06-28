@@ -6993,9 +6993,18 @@ body { background: white; }
     [onPrint]
   );
 
-  const handleDirectPrint = useCallback(() => {
+  const handleDirectPrint = useCallback(async () => {
+    // Desktop (WebKitGTK): the browser print path opens `window.open('','_blank')`,
+    // which returns null in the Tauri webview and falls back to printing the whole
+    // editor chrome. Real printing there is unreliable, so route Print through the
+    // host's print-to-PDF (same as Export as PDF) — the user prints the saved PDF
+    // from their OS viewer. Web keeps the normal print dialog.
+    if (onExportPdf) {
+      const base = (documentName?.trim() || 'Document').replace(/\.docx$/i, '');
+      if (await onExportPdf(`${base}.pdf`)) return;
+    }
     triggerPrintFlow('Print');
-  }, [triggerPrintFlow]);
+  }, [triggerPrintFlow, onExportPdf, documentName]);
 
   // Export as PDF reuses the print pipeline — browsers' print dialogs
   // include a "Save as PDF" destination that uses the print window's
