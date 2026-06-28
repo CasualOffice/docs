@@ -356,6 +356,10 @@ export interface ToolbarProps {
   onToggleSpellcheck?: () => void;
   /** Current spell-check enabled state — drives the menu checkmark. */
   spellcheckEnabled?: boolean;
+  /** Tools → Grammar check — toggles inline grammar decorations. */
+  onToggleGrammar?: () => void;
+  /** Current grammar-check enabled state — drives the menu checkmark. */
+  grammarEnabled?: boolean;
   /** Tools → Writing Assistant — opens the on-device assistant sheet. */
   onOpenWritingAssistant?: () => void;
   /** Tools → Explore — opens the Wikipedia lookup dialog (A3). */

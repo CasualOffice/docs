@@ -75,6 +75,7 @@ import { SmartQuotesExtension } from './features/SmartQuotesExtension';
 import { AutocorrectExtension } from './features/AutocorrectExtension';
 import { SmartChipExtension } from './features/SmartChipExtension';
 import { SpellcheckExtension } from './features/SpellcheckExtension';
+import { GrammarExtension } from './features/GrammarExtension';
 import { WordNavigationExtension } from './features/WordNavigationExtension';
 
 export interface StarterKitOptions {
@@ -204,6 +205,10 @@ export function createStarterKit(options: StarterKitOptions = {}): AnyExtension[
   // toggles it on. Off by default so the ~500 KB dictionary download
   // doesn't fire on every page load.
   add('spellcheck', SpellcheckExtension());
+  // Grammar-check decorations — inert until the React side registers a
+  // checker via `setGrammarChecker(...)` and the user toggles it on. Sibling
+  // of spellcheck; paints a blue underline under likely grammar mistakes.
+  add('grammar', GrammarExtension());
   // Word-wise cursor motion (Alt+Arrow on macOS, Ctrl+Arrow elsewhere) +
   // Shift variants to extend. Operates on PM state — the dialog-advertised
   // "move by word" had no working binding before this.

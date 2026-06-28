@@ -275,6 +275,8 @@ export function MenuBar() {
     onTranslateDocument,
     onToggleSpellcheck,
     spellcheckEnabled,
+    onToggleGrammar,
+    grammarEnabled,
     onOpenWritingAssistant,
     onOpenExplore,
     onOpenCitations,
@@ -972,6 +974,7 @@ export function MenuBar() {
           onOpenTranslate ||
           onTranslateDocument ||
           onToggleSpellcheck ||
+          onToggleGrammar ||
           onOpenWritingAssistant ||
           onOpenExplore ||
           onOpenCitations) && (
@@ -1026,6 +1029,15 @@ export function MenuBar() {
                       icon: 'spellcheck',
                       label: spellcheckEnabled ? '✓ Spell check' : 'Spell check',
                       onClick: onToggleSpellcheck,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onToggleGrammar
+                ? [
+                    {
+                      icon: 'edit_note',
+                      label: grammarEnabled ? '✓ Grammar check' : 'Grammar check',
+                      onClick: onToggleGrammar,
                     } as MenuEntry,
                   ]
                 : []),
