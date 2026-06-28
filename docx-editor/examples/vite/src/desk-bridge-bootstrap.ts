@@ -56,7 +56,18 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
 
     const resolve = (m: 'system' | 'light' | 'dark'): 'light' | 'dark' => {
       if (m === 'light' || m === 'dark') return m;
-      return mql?.matches ? 'dark' : 'light';
+      // Match the launcher CSS, which is the theme the user actually sees:
+      // `:root[data-theme='system']` defaults to the DARK token set and only
+      // flips light under `@media (prefers-color-scheme: light)`. So `system`
+      // is dark UNLESS the OS explicitly reports a light preference. WebKitGTK
+      // frequently reports neither (matchMedia('dark') === false even in a dark
+      // session); defaulting those cases to light made the editor render light
+      // while the launcher chrome was dark — the "version panel still white in
+      // dark mode" bug. Mirror the launcher's dark-default instead.
+      return typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-color-scheme: light)').matches
+        ? 'light'
+        : 'dark';
     };
 
     let lastResolved: 'light' | 'dark' | null = null;
@@ -72,7 +83,14 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
       try {
         document.documentElement.dataset.theme = resolved;
         document.documentElement.style.colorScheme = resolved;
-        window.localStorage.setItem('casual-editor:color-theme', mode === 'system' ? 'auto' : mode);
+        // Seed the CONCRETE resolved value, not 'auto'. DocxEditor's mount
+        // effect re-resolves a stored 'auto' through its own matchMedia (which
+        // defaults to light on WebKitGTK) and stamps that onto <html>,
+        // clobbering the dark hint we just set. Writing the concrete value the
+        // launcher chose makes DocxEditor's resolveColorTheme a pass-through so
+        // editor + launcher always agree. The launcher re-broadcasts over
+        // `deskapp://theme` on live change, so we don't lose system-follow.
+        window.localStorage.setItem('casual-editor:color-theme', resolved);
       } catch {
         /* dataset / localStorage may be unavailable; hint is best-effort */
       }
