@@ -218,6 +218,6 @@ The editor under [`docx-editor/`](./docx-editor/) is a fork of [eigenpal/docx-ed
 
 ## 📄 License
 
-Apache-2.0 for this repository — the Go gateway, Dockerfile, docker-compose, CI workflows, and project docs. See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE).
+Apache-2.0 for this repository — the Dockerfile, docker-compose, CI workflows, and project docs. The collab server is the `collab/` submodule (CasualOffice/collab, Apache-2.0). See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE).
 
 The editor under [`docx-editor/`](./docx-editor/) is based on [eigenpal/docx-editor](https://github.com/eigenpal/docx-editor) and remains under its original **MIT** terms — see [`docx-editor/LICENSE`](./docx-editor/LICENSE). Apache-2.0 + MIT are compatible; the combined work is distributed under Apache-2.0 with MIT attribution preserved.

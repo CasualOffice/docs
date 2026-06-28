@@ -27,7 +27,7 @@ System design for Casual Editor. For deployment notes, see [`DEPLOYMENT.md`](./D
 │  └────────────────────────────────┬──────────────────────────────────────┘  │
 │                                   │ y-prosemirror.ySyncPlugin                │
 │  ┌────────────────────────────────▼──────────────────────────────────────┐  │
-│  │  Yjs Y.Doc + y-websocket provider → wss://host/doc/<docId>?p=<pw>    │  │
+│  │  Yjs Y.Doc + HocuspocusProvider → wss://host/yjs (room in handshake)  │  │
 │  │  Awareness — selection, cursors, presence                             │  │
 │  └──────────────────────────────┬─────────────────────────────────────────┘ │
 │                                 │                                            │
@@ -37,43 +37,48 @@ System design for Casual Editor. For deployment notes, see [`DEPLOYMENT.md`](./D
 │  │  ProseMirror → fromProseDoc → Document → serialize XML → rezip         │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────┬───────────────────────────────────────────┘
-                                   │ WebSocket  /doc/:docId
-                                   │ HTTP       /api/docs
+                                   │ WebSocket  /yjs (Hocuspocus)
+                                   │ HTTP       /api/rooms, /auth, /files, /wopi
                                    ▼
-┌─── LEGACY Go gateway (backend/) — superseded by the Node CasualOffice/collab ─┐
+┌─── Node collab server (CasualOffice/collab, the ./collab submodule) ──────────┐
 │                                                                              │
 │  REST + static                                                               │
 │  ├─ GET  /                            editor SPA bundle                      │
-│  ├─ GET  /d/:docId                    same SPA; doc context                  │
-│  ├─ POST /api/docs                    upload .docx → {docId}                 │
-│  ├─ GET  /api/docs/:id/download       download latest snapshot               │
+│  ├─ POST /api/rooms                   mint a share-link room → {roomId}      │
+│  ├─ POST /api/rooms/:id/seed          seed a room with starting .docx bytes  │
+│  ├─ GET  /api/rooms/:id/seed          fetch seed bytes (joiners)            │
+│  ├─ /auth/* /files/* /wopi/*          Mode 3 (personal) + Mode 2 (WOPI)      │
 │  └─ GET  /health                      {ok, ts, rooms}                        │
 │                                                                              │
-│  y-websocket gateway (WS /doc/:docId)                                        │
-│  ├─ Per-docId in-memory Y.Doc room                                           │
-│  ├─ Password gate: SHA-256 + constant-time compare, close 4401 on fail       │
+│  Hocuspocus WS broker (/yjs)                                                 │
+│  ├─ One authoritative Y.Doc per room (room name in the handshake)            │
+│  ├─ Share-token gate via onAuthenticate → resolveJoinRole                    │
 │  ├─ Awareness fan-out — cursors, presence                                    │
-│  └─ Room GC: dropped when last client of a room disconnects                  │
+│  └─ Snapshot / version on room drain; room GC when last client leaves        │
 │                                                                              │
-│  Host integration (internal/host/)                                           │
-│  ├─ inline — in-memory bytes, drained on container restart (v0)              │
-│  ├─ wopi   — GetFile / PutFile against a WOPI host (v1)                      │
-│  └─ jwtapi — lighter REST host integration (v1)                              │
+│  Persistence                                                                 │
+│  ├─ Y.Doc room state — CASUAL_STORAGE: memory / local / redis                │
+│  └─ File bytes (host integration) — memory / local / s3 / postgres           │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> The legacy in-repo **Go** y-websocket gateway (`backend/`, paths `/doc/:docId`
+> + `/api/docs`) was **removed 2026-06-28** — see
+> [docs/internal/23](./internal/23-collab-server-migration.md).
 
 ---
 
 ## Stateless invariant
 
-The gateway has **no database** and **no on-disk update log**.
+The collab server holds **one authoritative `Y.Doc` per live room** and no
+product database.
 
-- The only live state is the in-memory `Y.Doc` for an active room.
-- When the last client of a room disconnects, the Y.Doc is flushed via the host integration (`PutFile` or equivalent) and dropped.
-- On process restart, clients reconnect and the session re-seeds from the host via `GetFile`.
+- Room Y.Doc state is persisted via `CASUAL_STORAGE` (in-memory by default; `local` / `redis` to survive restarts); file bytes via the host integration.
+- When the last client of a room disconnects, the room drains — a snapshot is taken and the in-memory Y.Doc dropped.
+- On reconnect, a fresh peer syncs from the server's Y.Doc (or re-seeds from the host).
 
-This shifts durability entirely to the host. The gateway is a pure realtime orchestrator — horizontally scalable behind a sticky-by-room load balancer with no shared state.
+Durability is delegated to the configured storage + host backends, keeping the server horizontally scalable behind a sticky-by-room load balancer.
 
 ---
 
@@ -123,12 +128,13 @@ docx-editor/packages/
         ├── hooks/                 # selection sync, sidebar items, etc.
         └── i18n/                  # locale loader + en.json
 
-backend/
-├── cmd/gateway/                   # entry point
-└── internal/
-    ├── host/                      # host.Integration interface + impls
-    ├── room/                      # per-docId in-memory Y.Doc room manager
-    └── yws/                       # y-websocket protocol helpers
+collab/                            # Node collab server (CasualOffice/collab submodule)
+└── src/
+    ├── index.ts                  # Fastify app: static SPA + REST + /yjs WS
+    ├── yjs.ts                    # Hocuspocus broker, onAuthenticate gate
+    ├── rooms.ts                  # in-memory Y.Doc room registry + GC
+    ├── auth/ files/ wopi.ts      # /auth, /files, /api/rooms, /wopi surfaces
+    └── host/                     # file-byte backends: memory / local / s3 / postgres
 ```
 
 ---
@@ -140,9 +146,9 @@ backend/
 | Editor model     | OOXML-preserving ProseMirror schema           | Round-trip fidelity matters more than schema purity                                          |
 | Layout           | Custom layout-painter, separate from `toDOM`  | Word-style pagination, headers/footers, section breaks                                       |
 | CRDT             | Yjs + `y-prosemirror`                         | Documented integration, mature, fast convergence                                             |
-| Transport        | y-websocket protocol                          | Standard for Yjs over WS — works with Hocuspocus, custom servers, etc.                       |
-| Backend language | Go                                            | IO-bound workload, mature WS ecosystem                                                       |
-| Backend state    | None on disk; in-memory Y.Doc per active room | Stateless = trivial to scale + restart cleanly                                               |
-| Persistence      | Delegated to host integration                 | inline / WOPI / JWT-API — keeps the gateway storage-agnostic                                 |
+| Transport        | Hocuspocus (`@hocuspocus/provider`)           | Maintained Yjs WS server/client; room name in the handshake                                  |
+| Backend language | Node / TypeScript                             | Shared CasualOffice/collab server (docs + sheets); one codebase to run                       |
+| Backend state    | One authoritative Y.Doc per active room       | `CASUAL_STORAGE` (memory / local / redis) for room state; scale behind sticky-by-room LB      |
+| Persistence      | Storage + host backends                       | Room state via `CASUAL_STORAGE`; file bytes via memory / local / s3 / postgres               |
 | Editor toolchain | Bun                                           | Fast install, fast test, native TS                                                           |
-| Test runner      | Playwright (Chromium)                         | 836 e2e tests on the editor, plus `go test -race ./...` on the backend; both gate every push |
+| Test runner      | Playwright (Chromium)                         | e2e on the editor; the collab server has its own Node test suite in `CasualOffice/collab`     |
