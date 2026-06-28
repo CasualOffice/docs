@@ -516,10 +516,9 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const room = params.get('room');
     if (!room) return null;
-    // Collab WS endpoint. The shared CasualOffice collab server
-    // (Hocuspocus) is a SEPARATE service from the REST/share-link
-    // gateway, so resolve it on its own and let it differ from
-    // `backendHttp`. Order:
+    // Collab WS endpoint on the shared CasualOffice collab server
+    // (Hocuspocus). Same origin as the `/api/rooms` REST surface
+    // (`collabHttp`), just over ws(s). Order:
     //   ?collab=ws(s)://…  →  VITE_COLLAB_BACKEND  →  ?backend=  →  same-origin
     const env = (import.meta as { env?: Record<string, string> }).env?.VITE_COLLAB_BACKEND;
     let backend = params.get('collab') || env || params.get('backend');
@@ -540,28 +539,34 @@ export function App() {
     return { room, backend, kind };
   }, [isDesktop]);
 
-  // Backend HTTP base — used for the upload (POST /api/docs) in
-  // the Share dialog and the seed-download fetch in CollabApp.
+  // Collab server endpoints — the share-link + seed flow lives on the
+  // Node CasualOffice/collab server (Hocuspocus + its `/api/rooms` REST
+  // surface), NOT the legacy Go gateway.
   //
-  // Resolution order:
-  //   1. ?backend=ws(s)://... in the URL → use that, converting back
-  //      to http(s) for the REST surface. Set by the share link
-  //      generator.
-  //   2. VITE_BACKEND env at build time → for the Vite dev story
-  //      where the editor is on :5173 and the gateway on :8080.
-  //   3. window.location.origin in production builds → the bundled
-  //      Docker image serves both the editor and the gateway from
-  //      the same origin, so this is the only correct default.
-  //   4. http://localhost:8080 in dev as a last-resort fallback.
-  const backendHttp = useMemo(() => {
-    const fromQS = new URLSearchParams(window.location.search).get('backend');
-    if (fromQS) return fromQS.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
-    const env = (import.meta as { env?: Record<string, string> }).env?.VITE_BACKEND;
-    if (env) return env;
-    const isDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
-    if (!isDev) return window.location.origin;
-    return 'http://localhost:8080';
+  // `collabWs` is the Hocuspocus WS the share URL embeds; `collabHttp`
+  // is that same origin over http(s) for the `/api/rooms` REST calls
+  // (room create + seed upload/download). Resolution order:
+  //   1. ?collab= / ?backend= in the URL → set by the share-link generator.
+  //   2. VITE_COLLAB_BACKEND env at build time → Vite dev story where the
+  //      editor is on :5173 and collab on :1234.
+  //   3. same-origin `/yjs` → production: a reverse proxy routes `/yjs`
+  //      to the collab server, so the share URL needn't carry it.
+  const collabWs = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const env = (import.meta as { env?: Record<string, string> }).env?.VITE_COLLAB_BACKEND;
+    const ws = params.get('collab') || env || params.get('backend');
+    if (ws) return ws;
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}/yjs`;
   }, []);
+  const collabHttp = useMemo(
+    () =>
+      collabWs
+        .replace(/^wss:/, 'https:')
+        .replace(/^ws:/, 'http:')
+        .replace(/\/yjs\/?$/, ''),
+    [collabWs]
+  );
 
   // Local-user identity for awareness. M2 will prompt for a name +
   // colour; M1 ships an anonymous fallback so co-edit works
@@ -587,11 +592,11 @@ export function App() {
 
   const [shareOpen, setShareOpen] = useState(false);
 
-  // Collab is only available when the build has a real backend to
-  // talk to. The Pages demo builds with this off because there's no
-  // gateway behind doc.schnsrw.live; the Docker image and local dev
-  // builds set VITE_COLLAB_ENABLED=true. Hiding the Share button in
-  // the disabled case prevents the user from hitting a dead /api/docs
+  // Collab is only available when the build has a real collab server
+  // to talk to. The Pages demo builds with this off because there's no
+  // collab server behind doc.schnsrw.live; the Docker image and local
+  // dev builds set VITE_COLLAB_ENABLED=true. Hiding the Share button in
+  // the disabled case prevents the user from hitting a dead /api/rooms
   // POST and having no idea why.
   const collabEnabled = useMemo(() => {
     // Desktop disables collaboration entirely regardless of the env flag.
@@ -1356,7 +1361,7 @@ export function App() {
         editorRef={editorRef}
         room={collabParams.room}
         backend={collabParams.backend}
-        backendHttp={backendHttp}
+        collabHttp={collabHttp}
         author={randomAuthor}
         zoom={autoZoom}
         isMobile={isMobile}
@@ -1532,8 +1537,8 @@ export function App() {
         open={shareOpen}
         documentBuffer={documentBuffer}
         fileName={fileName}
-        backendHttp={backendHttp}
-        backendWs={backendHttp.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')}
+        collabHttp={collabHttp}
+        backendWs={collabWs}
         onClose={() => setShareOpen(false)}
       />
     </div>
@@ -1544,15 +1549,15 @@ export function App() {
  * CollabApp — the read/write-shared edition. Renders the same
  * <DocxEditor> but feeds it a Y.Doc-backed ProseMirror state via
  * `externalPlugins` + `externalContent`. The first joiner's
- * upload (via /api/docs) seeds the doc; subsequent joiners get
- * it through the WS broker. Title-bar UI is trimmed — open/new
- * make no sense when everyone shares one source.
+ * room seed (via /api/rooms/{id}/seed) seeds the doc; subsequent
+ * joiners get it through the WS broker. Title-bar UI is trimmed —
+ * open/new make no sense when everyone shares one source.
  */
 interface CollabAppProps {
   editorRef: React.RefObject<DocxEditorRef | null>;
   room: string;
   backend: string;
-  backendHttp: string;
+  collabHttp: string;
   author: string;
   zoom: number;
   isMobile: boolean;
@@ -1575,7 +1580,7 @@ function CollabApp({
   editorRef,
   room,
   backend,
-  backendHttp,
+  collabHttp,
   author,
   zoom,
   isMobile,
@@ -1609,14 +1614,12 @@ function CollabApp({
     };
   }, [metaMap]);
 
-  // When the user renames locally:
-  //   1. Write into metaMap → Yjs fans the change to every peer.
-  //   2. PATCH the gateway so /api/docs/{id}/download advertises
-  //      the new name and future re-joiners pick it up from the
-  //      seed fetch.
-  // Both updates are best-effort — Yjs is the source of truth for
-  // live peers; the HTTP call is what makes new joiners + the
-  // share-link UI see the new name.
+  // When the user renames locally, write into metaMap → Yjs fans the
+  // change to every peer. The Y.Doc is the single source of truth for
+  // the filename: live peers update immediately, and new joiners read
+  // `fileName` from the synced meta map on connect — so no server-side
+  // rename call is needed (the collab room seed is just the starting
+  // bytes; it carries no canonical name).
   const handleRename = useCallback(
     (newName: string) => {
       const trimmed = newName.trim();
@@ -1624,17 +1627,8 @@ function CollabApp({
       if (metaMap.get('fileName') !== trimmed) {
         metaMap.set('fileName', trimmed);
       }
-      void fetch(`${backendHttp}/api/docs/${encodeURIComponent(room)}/rename`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: trimmed }),
-      }).catch(() => {
-        // Non-fatal — the live Y.Doc still has the new name; next
-        // page load may show the stale server name if the PATCH
-        // really failed (rare), but the editor keeps working.
-      });
     },
-    [metaMap, backendHttp, room]
+    [metaMap]
   );
 
   // Fetch the seed .docx for this room. Every joiner does this on
@@ -1645,7 +1639,7 @@ function CollabApp({
     let cancelled = false;
     setSeed({ kind: 'loading' });
 
-    fetch(`${backendHttp}/api/docs/${encodeURIComponent(room)}/download`)
+    fetch(`${collabHttp}/api/rooms/${encodeURIComponent(room)}/seed`)
       .then(async (res) => {
         if (!res.ok) {
           const text = await res.text().catch(() => '');
@@ -1653,6 +1647,9 @@ function CollabApp({
         }
         const fromHeader = parseFileNameFromDisposition(res.headers.get('Content-Disposition'));
         const buffer = await res.arrayBuffer();
+        // The room seed carries no canonical name; the live Y.Doc meta
+        // map provides it once Hocuspocus sync completes. Fall back to
+        // the room id until then.
         return { buffer, fileName: fromHeader ?? `${room}.docx` };
       })
       .then(({ buffer, fileName }) => {
@@ -1668,7 +1665,7 @@ function CollabApp({
     return () => {
       cancelled = true;
     };
-  }, [backendHttp, room, attempt]);
+  }, [collabHttp, room, attempt]);
 
   const renderTitleBarRight = useCallback(
     () => (
@@ -1702,7 +1699,6 @@ function CollabApp({
           author={author}
           onError={onError}
           onFontsLoaded={onFontsLoaded}
-          versionBackend={{ baseUrl: backendHttp, docId: room }}
           showToolbar={true}
           showRuler={!isMobile}
           showZoomControl={true}
