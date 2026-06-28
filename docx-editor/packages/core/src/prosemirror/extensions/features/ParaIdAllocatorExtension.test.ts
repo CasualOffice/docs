@@ -40,10 +40,15 @@ const schema = new Schema({
   },
 });
 
-const ext = ParaIdAllocatorExtension();
 const manager = new ExtensionManager([]);
-const runtime = ext.onSchemaReady({ schema, manager });
-const plugin = runtime.plugins![0];
+
+// A FRESH plugin per state — each models an independent editor session. The
+// allocator does one full scan on the first doc-changing transaction (catching
+// load-time gaps), then only re-scans on structural edits; sharing a single
+// instance across tests would leak that "did initial scan" state between them.
+function freshPlugin() {
+  return ParaIdAllocatorExtension().onSchemaReady({ schema, manager }).plugins![0];
+}
 
 function createDoc(paras: Array<{ text: string; paraId?: string | null }>) {
   return schema.node(
@@ -56,7 +61,7 @@ function createDoc(paras: Array<{ text: string; paraId?: string | null }>) {
 }
 
 function createState(paras: Array<{ text: string; paraId?: string | null }>) {
-  return EditorState.create({ doc: createDoc(paras), plugins: [plugin] });
+  return EditorState.create({ doc: createDoc(paras), plugins: [freshPlugin()] });
 }
 
 function paraIds(state: EditorState): (string | null)[] {
@@ -172,6 +177,30 @@ describe('ParaIdAllocatorExtension', () => {
       expect(ids).toHaveLength(3);
       expect(new Set(ids).size).toBe(3);
       expect(ids.every((id) => typeof id === 'string')).toBe(true);
+    });
+  });
+
+  describe('typing fast-path (skips the O(paragraphs) re-scan)', () => {
+    test('plain typing after the initial scan appends no allocator transaction', () => {
+      let state = createState([{ text: 'X', paraId: 'A' }]);
+      // First doc-changing tx does the initial scan.
+      state = state.apply(state.tr.insertText('Y', 2));
+      // Subsequent plain typing must NOT append a second allocator tx — that
+      // whole-doc walk is what made large documents lag per keystroke.
+      const { transactions } = state.applyTransaction(state.tr.insertText('Z', 3));
+      expect(transactions).toHaveLength(1); // just the insert, no appended scan
+    });
+
+    test('a structural edit after the initial scan still re-scans and dedups', () => {
+      let state = createState([{ text: 'HelloWorld', paraId: 'ORIG' }]);
+      // Initial scan via a plain edit.
+      state = state.apply(state.tr.insertText('!', 11));
+      // Now split (Enter) — a structural edit must still allocate a fresh id
+      // for the second half rather than leaving a duplicate.
+      state = state.apply(state.tr.split(6));
+      const ids = paraIds(state);
+      expect(ids).toHaveLength(2);
+      expect(new Set(ids).size).toBe(2);
     });
   });
 });
