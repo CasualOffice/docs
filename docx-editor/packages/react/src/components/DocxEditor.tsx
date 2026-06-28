@@ -7083,11 +7083,20 @@ body { background: white; }
           // fails the next tick can retry (isDirty will be set again
           // by any subsequent edit, or stays false until one occurs).
           markDirty(false);
-          await writeAutosave({
-            name: documentName?.trim() || 'Untitled',
-            buffer,
-            savedAt: Date.now(),
-          });
+          // Skip the IndexedDB autosave copy under the Casual Office desktop
+          // shell: crash-recovery there is a sidecar written next to the file ON
+          // DISK by the host bridge, so a second copy of the whole document in
+          // browser storage is redundant and contradicts the local-only,
+          // files-stay-on-disk model. Web keeps the IDB autosave.
+          const onDesktop = !!(window as { __deskApp__?: { isDesktop?: boolean } }).__deskApp__
+            ?.isDesktop;
+          if (!onDesktop) {
+            await writeAutosave({
+              name: documentName?.trim() || 'Untitled',
+              buffer,
+              savedAt: Date.now(),
+            });
+          }
         } catch {
           // Silent — autosave is best-effort and shouldn't surface
           // errors to the user. The next tick will try again.
@@ -7285,15 +7294,22 @@ body { background: white; }
         // host so it can react (the desktop shell unbinds the old file path so a
         // later Save can't overwrite the previous file with this content).
         onFileOpened?.();
-        // Record in the recent-files list so the Home screen can show
-        // a one-click reopen tile. Best-effort — failures are logged
-        // inside the helper and don't surface to the user.
-        void recordRecentFile({
-          name: cleanName || file.name,
-          buffer: docxBuffer,
-          size: docxBuffer.byteLength,
-          openedAt: Date.now(),
-        });
+        // Record in the recent-files list so the Home screen can show a
+        // one-click reopen tile. Best-effort — failures are logged inside the
+        // helper. Skipped under the desktop shell: recents there are owned by
+        // the Rust launcher, and this store keeps the full document buffer in
+        // IndexedDB, which would cache file content in browser storage on a
+        // local-only app.
+        const onDesktopOpen = !!(window as { __deskApp__?: { isDesktop?: boolean } }).__deskApp__
+          ?.isDesktop;
+        if (!onDesktopOpen) {
+          void recordRecentFile({
+            name: cleanName || file.name,
+            buffer: docxBuffer,
+            size: docxBuffer.byteLength,
+            openedAt: Date.now(),
+          });
+        }
       } catch (error) {
         onError?.(error instanceof Error ? error : new Error('Failed to open document'));
       }
