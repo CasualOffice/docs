@@ -63,6 +63,11 @@ export interface GrammarChecker {
 
 let checker: GrammarChecker | null = null;
 
+/** How long after the last edit before the full grammar re-scan runs. Long
+ *  enough to stay off the typing hot path, short enough that squiggles feel
+ *  responsive once you pause. */
+const GRAMMAR_DEBOUNCE_MS = 350;
+
 export function setGrammarChecker(impl: GrammarChecker | null): void {
   checker = impl;
 }
@@ -147,11 +152,41 @@ export const GrammarExtension = createExtension({
             apply(tr, prev) {
               const currentVersion = checker?.version() ?? 0;
               const forceRefresh = tr.getMeta(grammarPluginKey) === 'refresh';
-              if (!tr.docChanged && currentVersion === prev.version && !forceRefresh) {
-                return prev;
+              // Full re-scan ONLY when the checker flips on/off (version) or the
+              // debounced view requests a refresh. A full-doc scan per keystroke
+              // costs ~12ms on a 2500-paragraph doc — over a frame — so during
+              // active typing we just MAP the existing decorations through the
+              // change (cheap) and let the view() below trigger a real rebuild
+              // shortly after the user pauses.
+              if (forceRefresh || currentVersion !== prev.version) {
+                return { version: currentVersion, decos: buildDecorations(tr.doc) };
               }
-              return { version: currentVersion, decos: buildDecorations(tr.doc) };
+              if (tr.docChanged) {
+                return { version: currentVersion, decos: prev.decos.map(tr.mapping, tr.doc) };
+              }
+              return prev;
             },
+          },
+          // Debounce the expensive full re-scan: reset a timer on every doc
+          // change and only rebuild once typing has paused.
+          view() {
+            let timer: ReturnType<typeof setTimeout> | null = null;
+            return {
+              update(view: EditorView, prevState) {
+                if (view.state.doc === prevState.doc) return;
+                if (!checker?.isEnabled()) return;
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                  timer = null;
+                  // The view may have been torn down while the timer waited.
+                  if ((view as unknown as { docView: unknown }).docView == null) return;
+                  view.dispatch(view.state.tr.setMeta(grammarPluginKey, 'refresh'));
+                }, GRAMMAR_DEBOUNCE_MS);
+              },
+              destroy() {
+                if (timer) clearTimeout(timer);
+              },
+            };
           },
           props: {
             decorations(state) {
