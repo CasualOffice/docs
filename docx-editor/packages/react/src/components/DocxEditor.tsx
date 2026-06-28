@@ -299,7 +299,11 @@ import {
 } from '@eigenpal/docx-core/prosemirror/plugins';
 
 // Conversion (for HF inline editor save + version-history preview)
-import { proseDocToBlocks, fromProseDoc } from '@eigenpal/docx-core/prosemirror/conversion';
+import {
+  proseDocToBlocks,
+  fromProseDoc,
+  toProseDoc,
+} from '@eigenpal/docx-core/prosemirror/conversion';
 import { buildVersionDiffDoc } from '../version-history/versionDiff';
 import {
   setStrictCoEditing,
@@ -7387,6 +7391,23 @@ body { background: white; }
   }, [findReplace]);
 
   // Handle replace current match
+  // Push a Document produced by a Document-model command (e.g. find/replace's
+  // `replaceText`) into the live ProseMirror view as a single undoable
+  // transaction. We can't just call `handleDocumentChange(newDoc)`: that path
+  // assumes the change already happened in PM (it's the post-transaction echo),
+  // and the HiddenProseMirror re-seed guard keys on document *metadata*, so a
+  // pure content edit pushed that way never reaches the editor. Dispatching the
+  // rebuilt content here makes the change real, keeps undo as one step, and the
+  // normal onTransaction → handleDocumentChange echo handles history/dirty.
+  const applyDocumentToPm = useCallback((newDoc: Document): boolean => {
+    const view = pagedEditorRef.current?.getView();
+    if (!view) return false;
+    const pmDoc = toProseDoc(newDoc, { styles: newDoc.package?.styles });
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, pmDoc.content);
+    view.dispatch(tr.scrollIntoView());
+    return true;
+  }, []);
+
   const handleReplace = useCallback(
     (replaceText: string): boolean => {
       const document = getFindDocument();
@@ -7414,14 +7435,13 @@ body { background: white; }
           text: replaceText,
         });
 
-        handleDocumentChange(newDoc);
-        return true;
+        return applyDocumentToPm(newDoc);
       } catch (error) {
         console.error('Replace failed:', error);
         return false;
       }
     },
-    [getFindDocument, handleDocumentChange]
+    [getFindDocument, applyDocumentToPm]
   );
 
   // Handle replace all matches
@@ -7466,13 +7486,13 @@ body { background: white; }
         }
       }
 
-      handleDocumentChange(doc);
+      applyDocumentToPm(doc);
       findResultRef.current = null;
       findReplace.setMatches([], 0);
 
       return matches.length;
     },
-    [getFindDocument, handleDocumentChange, findReplace]
+    [getFindDocument, applyDocumentToPm, findReplace]
   );
 
   // Expose ref methods
