@@ -707,7 +707,45 @@ function goToNextCell(): Command {
       return true;
     }
 
-    return false;
+    // Last cell of the last row → extend the table with a new row and land in
+    // its first cell, matching Word / Google Docs (Tab is how you grow a table
+    // by walking through it). Without this, Tab here falls through to inserting
+    // a literal tab character.
+    if (dispatch) {
+      const schema = state.schema;
+      const newCells: PMNode[] = [];
+      row.forEach((cell) => {
+        const a = cell.attrs;
+        newCells.push(
+          schema.nodes.tableCell.create(
+            {
+              colspan: a.colspan || 1,
+              rowspan: 1,
+              colwidth: a.colwidth,
+              width: a.width,
+              widthType: a.widthType,
+              verticalAlign: a.verticalAlign,
+              backgroundColor: a.backgroundColor,
+              borders: a.borders,
+              margins: a.margins,
+              textDirection: a.textDirection,
+              noWrap: a.noWrap,
+            },
+            schema.nodes.paragraph.create()
+          )
+        );
+      });
+      const newRow = schema.nodes.tableRow.create(
+        { height: row.attrs.height ?? 360, heightRule: row.attrs.heightRule ?? 'atLeast' },
+        newCells
+      );
+      const insertPos = $from.before(info.rowDepth) + row.nodeSize;
+      const tr = state.tr.insert(insertPos, newRow);
+      // New row's first cell text: row start +1 (row) +1 (cell) +1 (paragraph).
+      tr.setSelection(Selection.near(tr.doc.resolve(insertPos + 1 + 1 + 1)));
+      dispatch(tr.scrollIntoView());
+    }
+    return true;
   };
 }
 
