@@ -8,6 +8,7 @@ import { EditorState, TextSelection } from 'prosemirror-state';
 import { AddMarkStep, RemoveMarkStep, ReplaceStep } from 'prosemirror-transform';
 import {
   getChangedParagraphIds,
+  getChangeTrackerState,
   hasStructuralChanges,
   hasUntrackedChanges,
   getChangedBlockTypes,
@@ -220,6 +221,20 @@ describe('ParagraphChangeTrackerExtension', () => {
       state = state.apply(tr);
 
       expect(hasStructuralChanges(state)).toBe(true);
+    });
+
+    test('typing within a paragraph is NOT structural (fast-path skips recount)', () => {
+      let state = createState([
+        { text: 'First', paraId: 'P1' },
+        { text: 'Second', paraId: 'P2' },
+      ]);
+      const before = getChangeTrackerState(state)!.paragraphCount;
+      // Plain inline insert — must mark P1 changed but NOT flag a structural
+      // change, and the cached paragraph count must carry over unchanged.
+      state = state.apply(state.tr.insertText('!', 3));
+      expect(getChangedParagraphIds(state).has('P1')).toBe(true);
+      expect(hasStructuralChanges(state)).toBe(false);
+      expect(getChangeTrackerState(state)!.paragraphCount).toBe(before);
     });
   });
 
