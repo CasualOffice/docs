@@ -92,6 +92,7 @@ import {
   clearAllCaches,
   getCachedParagraphMeasure,
   setCachedParagraphMeasure,
+  setParagraphCacheSize,
   type FloatingImageZone,
   resolveTableWidthPx,
   countTableColumns,
@@ -1126,6 +1127,23 @@ function extractFloatingZones(blocks: FlowBlock[], contentWidth: number): Floati
 /**
  * Measure a block based on its type.
  */
+/** One layout-pipeline timing sample (ms), exposed for the perf benchmark. */
+interface LayoutPerfSample {
+  total: number;
+  flow: number;
+  measure: number;
+  layout: number;
+  blocks: number;
+  pages: number;
+}
+
+/** Window fields used only by the opt-in layout perf instrumentation. */
+interface PerfWindow {
+  __layoutPerf?: boolean;
+  __layoutPerfLast?: LayoutPerfSample;
+  __layoutPerfSamples?: LayoutPerfSample[];
+}
+
 function measureBlock(
   block: FlowBlock,
   contentWidth: number,
@@ -1219,8 +1237,29 @@ function measureBlock(
  * Then measures each block, passing the zones so paragraphs can calculate
  * per-line widths based on vertical overlap with floating images.
  */
+// Tracks the paragraph-measure cache capacity we've grown to this session.
+// The cache must be at least as large as the document's paragraph working set:
+// a full re-measure pass over a doc LARGER than the cache evicts entries the
+// same pass still needs (sequential LRU thrash), collapsing the hit rate to ~0
+// and re-measuring every paragraph on every keystroke. Grow-only, capped to
+// bound memory; the 2x headroom absorbs stale keys left by in-flight edits.
+const PARAGRAPH_CACHE_MIN = 5000;
+const PARAGRAPH_CACHE_MAX = 50000;
+let paragraphCacheTarget = PARAGRAPH_CACHE_MIN;
+
+function ensureParagraphCacheCapacity(paragraphCount: number): void {
+  const target = Math.min(PARAGRAPH_CACHE_MAX, Math.max(PARAGRAPH_CACHE_MIN, paragraphCount * 2));
+  if (target > paragraphCacheTarget) {
+    paragraphCacheTarget = target;
+    setParagraphCacheSize(target);
+  }
+}
+
 function measureBlocks(blocks: FlowBlock[], contentWidth: number | number[]): Measure[] {
   const defaultWidth = Array.isArray(contentWidth) ? (contentWidth[0] ?? 0) : contentWidth;
+  let paragraphCount = 0;
+  for (const b of blocks) if (b.kind === 'paragraph') paragraphCount++;
+  ensureParagraphCacheCapacity(paragraphCount);
   // Pre-extract floating image exclusion zones with anchor block indices
   const floatingZonesWithAnchors = extractFloatingZones(blocks, defaultWidth);
 
@@ -1771,6 +1810,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           const pageContentHeight = pageSize.h - margins.top - margins.bottom;
           const newBlocks = toFlowBlocks(state.doc, { theme: _theme, pageContentHeight });
           let stepTime = performance.now() - stepStart;
+          const tFlow = stepTime;
           if (stepTime > 500) {
             console.warn(
               `[PagedEditor] toFlowBlocks took ${Math.round(stepTime)}ms (${newBlocks.length} blocks)`
@@ -1793,6 +1833,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           );
           const newMeasures = measureBlocks(newBlocks, blockWidths);
           stepTime = performance.now() - stepStart;
+          const tMeasure = stepTime;
           if (stepTime > 1000) {
             console.warn(
               `[PagedEditor] measureBlocks took ${Math.round(stepTime)}ms (${newBlocks.length} blocks)`
@@ -1974,6 +2015,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
 
           stepTime = performance.now() - stepStart;
+          const tLayout = stepTime;
           if (stepTime > 500) {
             console.warn(
               `[PagedEditor] layoutDocument took ${Math.round(stepTime)}ms (${newLayout.pages.length} pages)`
@@ -2153,6 +2195,22 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               `[PagedEditor] Layout pipeline took ${Math.round(totalTime)}ms total ` +
                 `(${newBlocks.length} blocks, ${newMeasures.length} measures)`
             );
+          }
+          // Opt-in perf instrumentation: when an e2e/benchmark harness sets
+          // `window.__layoutPerf`, record the last pipeline's per-step timing so a
+          // test can read the breakdown. No-op (and no allocation) in production.
+          if (typeof window !== 'undefined' && (window as unknown as PerfWindow).__layoutPerf) {
+            const w = window as unknown as PerfWindow;
+            const sample = {
+              total: totalTime,
+              flow: tFlow,
+              measure: tMeasure,
+              layout: tLayout,
+              blocks: newBlocks.length,
+              pages: newLayout.pages.length,
+            };
+            w.__layoutPerfLast = sample;
+            (w.__layoutPerfSamples ??= []).push(sample);
           }
         } catch (error) {
           console.error('[PagedEditor] Layout pipeline error:', error);
