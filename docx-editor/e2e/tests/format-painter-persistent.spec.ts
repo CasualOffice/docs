@@ -26,7 +26,7 @@ test('double-click paints multiple targets; Escape disarms', async ({ page }) =>
   await ed.focus();
   await ed.typeText('SRC one two');
   await page.waitForTimeout(150);
-  const mod = /Win/i.test(await page.evaluate(() => navigator.platform)) ? 'Control' : 'Meta';
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
   await ed.selectText('SRC');
   await page.keyboard.press(`${mod}+b`);
   await page.waitForTimeout(150);
@@ -57,7 +57,7 @@ test('single click paints one target then disarms', async ({ page }) => {
   await ed.focus();
   await ed.typeText('SRC aaa bbb');
   await page.waitForTimeout(150);
-  const mod = /Win/i.test(await page.evaluate(() => navigator.platform)) ? 'Control' : 'Meta';
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
   await ed.selectText('SRC');
   await page.keyboard.press(`${mod}+b`);
   await page.waitForTimeout(150);
