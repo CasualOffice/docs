@@ -4721,7 +4721,6 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               trigger={smartChip}
               caret={caretPosition}
               isFocused={isFocused}
-              zoom={zoom}
               items={smartChipItems}
             />
           )}
