@@ -3384,10 +3384,20 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
 
           // Start dragging
           isDraggingRef.current = true;
-          dragAnchorRef.current = pmPos;
 
-          // Set initial selection (collapsed)
-          hiddenPMRef.current.setSelection(pmPos);
+          if (e.shiftKey) {
+            // Shift+Click extends the existing selection to the click point —
+            // keep the current anchor, move the head. A subsequent drag keeps
+            // extending from that same anchor.
+            const view = hiddenPMRef.current.getView();
+            const anchor = view ? view.state.selection.anchor : pmPos;
+            dragAnchorRef.current = anchor;
+            hiddenPMRef.current.setSelection(anchor, pmPos);
+          } else {
+            dragAnchorRef.current = pmPos;
+            // Set initial selection (collapsed)
+            hiddenPMRef.current.setSelection(pmPos);
+          }
         } else {
           // Clicked outside content - move to end
           cellDragAnchorPosRef.current = null;
