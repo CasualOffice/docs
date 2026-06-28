@@ -10,13 +10,7 @@
  */
 
 import type { NodeSpec, Node as PMNode } from 'prosemirror-model';
-import {
-  Plugin,
-  PluginKey,
-  TextSelection,
-  type EditorState,
-  type Transaction,
-} from 'prosemirror-state';
+import { Plugin, PluginKey, type EditorState, type Transaction } from 'prosemirror-state';
 import { Selection, type Command } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 import {
@@ -975,8 +969,12 @@ export const TablePluginExtension = createExtension({
           }
 
           const firstCellPos = tableStartPos + 1;
-          const firstCellContentPos = firstCellPos + 1;
-          tr.setSelection(TextSelection.create(tr.doc, firstCellContentPos));
+          // +1 enters the cell, +1 more enters its first paragraph, so the
+          // caret lands in inline content rather than on the cell boundary
+          // (which logs "TextSelection endpoint not pointing into a node
+          // with inline content"). Selection.near clamps defensively.
+          const firstCellContentPos = firstCellPos + 2;
+          tr.setSelection(Selection.near(tr.doc.resolve(firstCellContentPos), 1));
           dispatch(tr.scrollIntoView());
         }
 
