@@ -1042,6 +1042,18 @@ export function App() {
     [clearRecovery]
   ); // bridge.save, setStatus, setFileName are stable across renders
 
+  // Document rename. Updates the title locally and, on desktop, renames the
+  // bound file on disk (so the change persists and Ctrl+S overwrites the renamed
+  // file rather than the old path). On rename failure the local title is left as
+  // typed and the error is logged — the bridge throws on a name collision.
+  const handleDocumentNameChange = useCallback((name: string) => {
+    setFileName(name);
+    const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+    if (bridge?.isDesktop && bridge.filePath && bridge.rename) {
+      void bridge.rename(name).catch((err) => console.error('[deskApp] rename failed', err));
+    }
+  }, []);
+
   const onExportDesktop = useCallback(async (blob: Blob, suggestedName: string) => {
     const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
     if (!bridge?.isDesktop) return false;
@@ -1490,7 +1502,7 @@ export function App() {
           commentIdBase={commentIdBase}
           wordCompat={wordCompat}
           documentName={fileName}
-          onDocumentNameChange={setFileName}
+          onDocumentNameChange={handleDocumentNameChange}
           onNew={handleNewDocument}
           renderLogo={renderLogo}
           renderTitleBarRight={renderTitleBarRight}
