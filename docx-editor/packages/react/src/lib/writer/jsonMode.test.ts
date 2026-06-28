@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * tryParseJson — defensive parser used to recover from the (rare)
  * case where Llama emits non-JSON despite `response_format`.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Build a small 3-column × 3-row table fixture so we can drag each
  * inter-column resize handle and assert the widths update on the

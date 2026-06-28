@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Inline image resize — guard. Selecting an inline image shows the
  * selection overlay with 4 corner handles; dragging one resizes it.

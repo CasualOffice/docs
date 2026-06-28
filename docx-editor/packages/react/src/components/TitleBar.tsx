@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * TitleBar and sub-components for the Google Docs-style 2-level toolbar.
  *

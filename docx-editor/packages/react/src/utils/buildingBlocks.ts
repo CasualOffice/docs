@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Building blocks (Quick parts) — reusable snippets the user has saved
  * from selections in the editor.

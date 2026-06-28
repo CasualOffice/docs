@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * AISuggestionPanel — right-docked task pane (Copilot-in-Word /
  * Gemini-in-Docs pattern) showing an AI rewrite or summary

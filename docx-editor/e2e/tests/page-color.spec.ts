@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins the "page color" path — doc-level `<w:background>` (OOXML
  * §17.2.1) parses → renders as the page surface color → round-trips

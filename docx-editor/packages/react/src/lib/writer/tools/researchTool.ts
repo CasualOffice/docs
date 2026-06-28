@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * researchTool — Wikipedia-backed lookup the assistant can call when
  * the user asks a knowledge question ("what is ATS?", "look up

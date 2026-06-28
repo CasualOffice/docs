@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Image section of the Format/Properties panel — Google-Docs "Image options"
  * model: text-wrapping as labeled icon tiles (the selected mode highlighted),

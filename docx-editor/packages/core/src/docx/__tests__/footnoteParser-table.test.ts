@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression test for #378: footnote/endnote parser must collect table
  * children, not just paragraphs. Pre-PR `parseFootnote` walked

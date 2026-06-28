@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * E2E coverage for scrollToPage(n) and getTotalPages() (issue #280).
  * Uses the multi-page paraid-test.docx fixture.

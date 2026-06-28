@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, expect, it } from 'bun:test';
 import { Schema } from 'prosemirror-model';
 import { chunkMarkdown, docToMarkdown } from './translateMarkdown';

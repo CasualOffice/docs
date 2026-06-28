@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * SpellSuggestionsMenu — right-click context menu shown when the user
  * right-clicks on a `.spellcheck-error` overlay. Matches the Google

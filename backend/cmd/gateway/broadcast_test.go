@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Integration test: stand up the gateway on a random port, connect
 // two clients to the same /doc/{docId} URL, verify a binary frame
 // from one reaches the other and not the sender.

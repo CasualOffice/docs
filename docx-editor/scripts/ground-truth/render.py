@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 """Render PDFs in this dir to per-page PNGs at 300 DPI."""
 import fitz, sys, pathlib
 

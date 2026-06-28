@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins round-trip of `<w:tblBorders>` blocks whose sides are all
  * declared `w:val="none"`. Word writes this verbatim to express

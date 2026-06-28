@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * applyAsSuggestion — turns an AI rewrite (or summary) into a tracked
  * change so the user reviews + accepts/rejects it via the existing

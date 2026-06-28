@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { useRef, useState, useCallback } from 'react';
 import {
   DocxEditor,

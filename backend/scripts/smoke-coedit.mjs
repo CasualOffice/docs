@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * End-to-end smoke for the co-edit path. Bring the gateway up
  * (`go run ./cmd/gateway` from `backend/`), then run:

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Restore-prompt banner shown at editor mount when an autosave record
  * exists from the last session. Two actions:

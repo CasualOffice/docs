@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: a dynamic field (DATE/TIME) inserted as a paragraph's trailing
  * run must paint immediately, not only after the next keystroke.

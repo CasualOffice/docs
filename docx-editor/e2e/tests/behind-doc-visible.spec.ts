@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: "behind text" (behind-doc) anchored objects must render above
  * the page background, not vanish behind it.

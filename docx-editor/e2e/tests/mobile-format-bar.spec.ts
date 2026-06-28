@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Mobile floating format chip — pins the contract that the chip is
  * absent on desktop, appears when a non-collapsed selection exists

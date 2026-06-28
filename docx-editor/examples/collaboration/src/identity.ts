@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Lightweight per-tab identity. Persisted to sessionStorage so a refresh
 // keeps the same user, but a new tab gets a fresh persona — handy for demoing
 // multi-user collaboration in two browser windows side by side.

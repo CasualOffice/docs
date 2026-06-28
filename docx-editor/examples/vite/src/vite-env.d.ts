@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /// <reference types="vite/client" />
 
 declare module '*?worker&url' {

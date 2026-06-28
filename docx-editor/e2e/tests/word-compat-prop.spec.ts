@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins the `<DocxEditor wordCompat>` React-prop surface for the
  * firstRow-only closing-border heuristic (#395).

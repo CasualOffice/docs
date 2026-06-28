@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 

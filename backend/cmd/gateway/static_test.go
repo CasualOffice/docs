@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Tests the bundled-image static handler: assets resolve to the
 // file on disk, unmatched paths fall back to index.html so the
 // client-side router can take over, and `..` segments are

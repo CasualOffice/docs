@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 # Helper: assume vite is reachable at http://localhost:5173 (the persistent
 # `docker compose up editor` container already runs it) and just run
 # playwright. Use playwright.docker.config.ts which drops the webServer block

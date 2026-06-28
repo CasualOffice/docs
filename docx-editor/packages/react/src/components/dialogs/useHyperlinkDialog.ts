@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Hyperlink dialog state hook — lives in its own module so consumers
  * (DocxEditor) can import the hook without pulling the dialog

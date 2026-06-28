@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: the version-preview banner ("Viewing <name> … / Restore this
  * version") must stay pinned to the viewport while the previewed document

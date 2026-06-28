@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression guard for issue #386 — multiple <w:num> elements pointing to the
  * same <w:abstractNum> share counter state per ECMA-376 §17.9.18. A numId

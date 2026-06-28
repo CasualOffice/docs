@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Integration test — numbered list markers stay continuous when a list spans
  * body → table cell → body, all sharing the same numId.

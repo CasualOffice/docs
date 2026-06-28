@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, expect, it } from 'bun:test';
 
 import { performAutoSave, type AutoSaveEditorRef } from './useFileSourceAutoSave';

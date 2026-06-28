@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** ECMA-376 §17.6.22: a `continuous` section break does not force a page,
  *  but the next page (when one is naturally created) must use the new
  *  section's geometry. The previous version skipped `updatePageLayout`

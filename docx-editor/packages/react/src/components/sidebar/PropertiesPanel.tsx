@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Format / Properties panel — the contextual right-rail home for editing
  * the properties of the SELECTED object (image / table / shape): size,

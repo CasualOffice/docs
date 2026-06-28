@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: hashParagraphBlock used to ignore defaultFontSize/defaultFontFamily
  * on empty paragraphs. Two empty paragraphs with different default fonts hashed

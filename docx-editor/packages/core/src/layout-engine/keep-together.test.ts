@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * calculateChainHeight — a keepNext chain must reserve enough height to keep
  * the chain's paragraphs with the START of whatever they anchor to. The anchor

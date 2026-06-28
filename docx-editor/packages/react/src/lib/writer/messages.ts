@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Typed wire protocol between the controller (main thread) and the
  * writer worker. See `docs/internal/10-writing-assistant-design.md` § 6.

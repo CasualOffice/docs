@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { useEffect, useState } from 'react';
 import { listVersions, setLiveFeed, type VersionSnapshot } from './store';
 import { createLiveVersionFeed, type LiveVersionFeed } from './live-feed';

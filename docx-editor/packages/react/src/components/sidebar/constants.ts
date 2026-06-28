@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** Sidebar width in pixels. */
 export const SIDEBAR_WIDTH = 340;
 

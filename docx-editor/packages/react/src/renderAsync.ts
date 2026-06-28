@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Simple imperative API for rendering a DOCX editor into a DOM element.
  *

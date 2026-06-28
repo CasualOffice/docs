@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import type { MetaFunction } from '@remix-run/node';
 import { lazy, Suspense, useEffect, useState } from 'react';
 

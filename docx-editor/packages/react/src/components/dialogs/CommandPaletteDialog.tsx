@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Command palette — fuzzy-searchable list of every menu action.
  * Triggered by Cmd/Ctrl+Shift+P.

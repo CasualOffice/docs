@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tools → Explore (A3). The stripped-down version of Google Docs'
  * Explore panel that the parity note sketches: pull a Wikipedia

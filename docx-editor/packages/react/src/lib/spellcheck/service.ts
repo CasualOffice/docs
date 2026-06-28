@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Spell-check service — lazy-loaded Hunspell engine (nspell + en_US
  * dictionary). Single module-level instance shared across the app.

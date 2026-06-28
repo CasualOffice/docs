@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Tests for the Manager + Room + broadcast hub.
 //
 // These pin:

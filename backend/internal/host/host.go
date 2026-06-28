@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package host defines the integration interface every document
 // source must satisfy. The gateway calls Fetch on room creation
 // to seed the in-memory Y.Doc; calls Snapshot on room drain

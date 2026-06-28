@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Shape Parser - Parse shapes and drawings from wps:wsp elements
  *

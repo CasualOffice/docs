@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Coverage for the line-number gutter (w:lnNumType, ECMA-376 §17.6.10).
  * renderPage paints a left-margin number for body text lines, honoring

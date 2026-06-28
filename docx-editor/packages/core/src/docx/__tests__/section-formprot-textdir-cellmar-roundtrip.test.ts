@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins three small round-trip drops in issue-387-font-theme-override.docx
  * and docx-editor-numbering.docx:

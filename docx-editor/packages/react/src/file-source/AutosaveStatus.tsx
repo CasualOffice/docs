@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * AutosaveStatus — compact "Saved 2 min ago" / "Saving…" / "Save
  * failed" indicator the host drops next to the user menu or title

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // /wopi/host — the embed entry point for WOPI deploys (Mode 2).
 //
 // Wire shape:

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin round-trip for irregular-row w:trPr children:
  *   <w:gridBefore w:val="N"/>     + <w:wBefore w:w=".." w:type=".."/>

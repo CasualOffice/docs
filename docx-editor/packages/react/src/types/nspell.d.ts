@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Minimal type shim for nspell — the upstream package ships no types
 // (https://github.com/wooorm/nspell/issues/14). We only use the slice
 // of the API the spell-check service touches; everything else stays

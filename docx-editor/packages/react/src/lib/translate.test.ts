@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import { Schema } from 'prosemirror-model';
 import { clearTranslateCacheForTests, translateFragment } from './translate';

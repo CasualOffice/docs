@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwindcss from 'tailwindcss';

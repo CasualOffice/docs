@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Collab transport for comment threads. Comment highlight marks ride
  * ySyncPlugin (they're in the PM doc), but the thread content — author, text,

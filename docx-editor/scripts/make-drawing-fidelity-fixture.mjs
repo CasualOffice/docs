@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Build a single fixture with one of each drawing kind at *known*
  * EMU coordinates so the e2e can assert "OOXML → rendered" geometry

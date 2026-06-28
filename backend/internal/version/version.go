@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package version is the single source of truth for the running
 // gateway + CLI build version.
 //

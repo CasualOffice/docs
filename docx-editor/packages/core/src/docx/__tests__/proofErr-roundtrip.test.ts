@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin parse + serialize round-trip for `<w:proofErr w:type="..."/>`
  * markers.

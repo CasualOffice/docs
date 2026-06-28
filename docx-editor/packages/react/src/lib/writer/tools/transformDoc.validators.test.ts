@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Pure-function tests for the six per-target semantic validators
 // shipped in 4664eb2. Each validator runs against:
 //

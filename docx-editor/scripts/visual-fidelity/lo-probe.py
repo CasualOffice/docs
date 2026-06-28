@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 """
 LibreOffice ground-truth probe.
 

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Feature + model registry. Declarative — no behaviour, just the
  * shape the UI and controller read from.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Header/footer editing is discoverable + works: hovering shows a
  * "Double-click to edit" affordance, and double-clicking enters edit mode where

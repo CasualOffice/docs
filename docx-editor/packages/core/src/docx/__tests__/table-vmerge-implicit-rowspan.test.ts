@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression — `inferImplicitSingleCellRowSpans` must not expand a row whose
  * sole cell is a `<w:vMerge w:val="continue"/>` continuation, nor a row whose

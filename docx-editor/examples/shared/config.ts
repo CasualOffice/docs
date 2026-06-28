@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 export interface FrameworkExample {
   name: string;
   url: string;

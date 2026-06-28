@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * EmbedTransport — postMessage bridge for the iframe-embedded
  * editor. Validates origin, dispatches envelopes to handlers,

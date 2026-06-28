@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: a body paragraph containing a `<w:drawing>` whose
 // `<wps:wsp>` carries `<wps:spPr>` (geometry + fill + outline) but no
 // `<wps:txbx>` — Word's "Insert → Shapes" output for a decorative

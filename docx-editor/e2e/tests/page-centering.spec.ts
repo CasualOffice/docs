@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * The page (and its rulers) center in the full window at every width that fits
  * it — Google-Docs style. Previously the outline-button reserved a symmetric

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * ProfileSettingsDialog — edit the signed-in user's extended profile.
  *

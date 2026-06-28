@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * WriterStatusPill — small chip in the title bar that reflects the
  * Writing Assistant's lifecycle state. Click → opens the

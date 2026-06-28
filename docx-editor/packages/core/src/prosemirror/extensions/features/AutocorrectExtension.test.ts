@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * AutocorrectExtension — symbol sequences + common-typo dictionary.
  * Drives the plugin's handleTextInput against a mock view (no DOM),

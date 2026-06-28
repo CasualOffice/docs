@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * transformDoc — re-shape the user's existing document into a target
  * format (resume, cover-letter, memo, blog).

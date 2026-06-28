@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Desktop "New document" should show the editor's template gallery, not a blank
  * page. A file-bound desktop window still boots straight into the document.

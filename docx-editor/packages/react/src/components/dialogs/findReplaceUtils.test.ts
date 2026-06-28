@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for findReplaceUtils — pins the regex flag plumbing
  * surfaced by the Phase 1.5 U7 checkbox in the Find dialog.

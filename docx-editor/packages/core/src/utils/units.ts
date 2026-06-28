@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit Conversion Utilities - Convert OOXML units to CSS/pixels
  *

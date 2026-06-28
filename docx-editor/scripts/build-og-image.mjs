@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Build the social preview image (Open Graph / Twitter card) at
  * `examples/vite/public/og.png` — 1200×630, the size every major

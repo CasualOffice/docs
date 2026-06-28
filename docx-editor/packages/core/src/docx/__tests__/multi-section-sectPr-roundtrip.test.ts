@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin per-paragraph <w:sectPr> round-trip — the schema-last child of
  * <w:pPr>, used to mark "this paragraph ends a section".

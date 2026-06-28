@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { examples } from './config';
 

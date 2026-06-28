@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Acceptance tests for #378 — footnote rendering routes through the body
  * pipeline so block-kind support (table, image, fields) reaches footnotes.

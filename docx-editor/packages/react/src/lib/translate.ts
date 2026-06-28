@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Translate helpers — shared between the TranslateDialog (preview),
  * the right-click quick-translate, and the full-document

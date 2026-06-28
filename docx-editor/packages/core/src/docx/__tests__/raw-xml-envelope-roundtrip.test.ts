@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pins the envelope-preservation contract added in
  * `textBoxEnricher.ts` + `runSerializer.ts`: when a Shape or Image

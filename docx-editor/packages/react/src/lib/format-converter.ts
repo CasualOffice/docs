@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Main-thread shim over `format-converter.worker.ts`. Lazy-loads the worker
  * (and the 7 MB WASM behind it) on first call.

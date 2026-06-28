@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression coverage for border overlay geometry:
  * - Paragraph borders follow indented text extents, not the full page width.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * E2E for the paraId allocator — every paragraph in the live editor
  * must carry a stable `w14:paraId`. The agent toolkit anchors comments,

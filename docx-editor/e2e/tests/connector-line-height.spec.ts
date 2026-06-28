@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * A grouped "Straight Connector" (prst="line", cy=0) with a fill must render
  * as a thin rule, NOT a content-height filled box. Regression: the medical-

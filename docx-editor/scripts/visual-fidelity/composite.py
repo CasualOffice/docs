@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 """Phase 0 visual-fidelity harness — SIDE-BY-SIDE COMPOSITE stage.
 
 For each fixture/page, stitches the editor render and the LibreOffice

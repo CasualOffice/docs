@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Generate a very large DOCX file matching issue #68 specs:
  * ~428KB, ~127,151 words, ~652,733 characters.

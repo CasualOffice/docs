@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * translateRange tool — LLM-backed translation that bypasses MyMemory
  * entirely when the Advanced LLM tier is loaded.

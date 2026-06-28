@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Tailwind v3 resolves `content` globs relative to process.cwd(), not
 // to this config file's directory. When the build runs from
 // `examples/vite/`, the previous relative globs resolved to

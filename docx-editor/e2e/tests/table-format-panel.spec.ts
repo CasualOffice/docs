@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Table appearance controls (border / border color / width / cell fill) live in
  * the Format (properties) panel, NOT scattered into the formatting toolbar.

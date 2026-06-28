@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Accessibility checker — read-only analyzer over a ProseMirror document.
  *

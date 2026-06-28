@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * summarizeDoc tool — produces a coherent summary that always fits in
  * Llama-1B's 4096-token context window.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Minimal PM-Fragment → safe HTML serializer used by the translate
  * side-by-side preview.

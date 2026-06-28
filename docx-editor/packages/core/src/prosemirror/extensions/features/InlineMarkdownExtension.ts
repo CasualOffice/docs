@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Inline-markdown autoformat — typing `*italic*` / `**bold**` applies the mark
  * (standard Markdown convention; `*` only — `_` is skipped to avoid snake_case

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Wire types — exact-match counterparts for the JSON shapes the collab
  * server emits (CasualOffice/collab `src/auth/*` + `src/files/*`).

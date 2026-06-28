@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Share button + modal. The "start collaborating" entry point.
 //
 // Flow:

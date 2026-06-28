@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * embed-runtime — the in-iframe entry point for the SDK's iframe
  * delivery mode. Doc 16 §6 + §14.

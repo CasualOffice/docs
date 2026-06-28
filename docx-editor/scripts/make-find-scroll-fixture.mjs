@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: a long body with a CANARY paragraph deep enough that it's
 // below the initial viewport. Used to pin GH #321 (Cmd+F doesn't scroll
 // to match).

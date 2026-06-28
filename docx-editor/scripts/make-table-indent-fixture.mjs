@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: two tables — one with explicit `<w:tblInd w:w="720" w:type="dxa"/>`
 // (0.5 inch) and one with no tblInd. Used to pin the corrected
 // table-left-offset formula: `marginLeft = (tblInd - leftCellMargin)` in

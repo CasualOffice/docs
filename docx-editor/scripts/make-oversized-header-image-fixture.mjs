@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Build a fixture .docx whose header contains an inline image declared
 // at 1800 px wide — much wider than the content area for US Letter with
 // 1-inch left/right margins (content width ≈ 624 px). Used to pin GH

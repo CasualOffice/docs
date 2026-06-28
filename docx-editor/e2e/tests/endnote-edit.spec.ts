@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Endnote text editing — render + edit + round-trip persistence. Endnotes are
  * now rendered at document end; double-click → editor → change → save → reload

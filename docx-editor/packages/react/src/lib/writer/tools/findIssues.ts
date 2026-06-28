@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * findIssues tool — proof-reads the selection (or full doc when
  * nothing's selected) and returns a structured list of issues so the

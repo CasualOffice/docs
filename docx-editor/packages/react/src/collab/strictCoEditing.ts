@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Strict / paragraph-lock co-editing (OnlyOffice "Strict" pattern).
  *

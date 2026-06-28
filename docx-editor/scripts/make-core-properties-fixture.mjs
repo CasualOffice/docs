@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Build a minimal .docx with a populated `docProps/core.xml` for the
 // File → Properties dialog e2e test.
 //

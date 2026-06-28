@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Long-sentence highlighter — ProseMirror decoration plugin.
  *

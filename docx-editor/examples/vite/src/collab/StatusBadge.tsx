@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Small pill rendered in the corner during collab sessions to
 // surface connection state at a glance. Reads from the
 // useCollab() hook's `status` field.

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Hyperlink Parser - Parse hyperlinks (w:hyperlink) with URL resolution
  *

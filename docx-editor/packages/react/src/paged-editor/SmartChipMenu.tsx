@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Smart-chip menu — the caret-anchored popup that appears while an `@query`
  * trigger is active in the body (Google-Docs "@" menu). Detection lives in the

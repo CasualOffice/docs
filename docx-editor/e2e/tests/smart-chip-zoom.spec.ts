@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: the smart-chip "@" menu must anchor to the caret at any zoom.
  * It used to multiply the (already zoom-transformed) caret coords by the zoom

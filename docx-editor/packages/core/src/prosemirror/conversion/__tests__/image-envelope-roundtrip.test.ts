@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: images extracted from a group / mc:AlternateContent envelope
  * carry their captured `rawXml` + `envelopeKey` on the parsed model (see

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Doc-context summariser — gives every chat-driven AI call a one-
  * paragraph picture of the active document so the model can reason

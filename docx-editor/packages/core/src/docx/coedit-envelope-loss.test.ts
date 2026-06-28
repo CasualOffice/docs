@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Proving test for the co-editing fidelity gap (audit doc 17, §2).
  *

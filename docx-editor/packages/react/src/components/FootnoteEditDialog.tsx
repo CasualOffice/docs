@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Minimal footnote text editor. Opened by double-clicking a footnote at the
  * bottom of a page. v1 edits plain text; on apply the host writes the new text

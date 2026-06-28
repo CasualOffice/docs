@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Anchor geometry — translate OOXML `relativeFrom` anchors (ST_RelFromH /
  * ST_RelFromV, ECMA-376 §20.4.3.1-2) into painter coordinates.

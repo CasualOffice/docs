@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin <wps:cNvPr id="..." name="..."/> emission inside <wps:wsp>.
  *

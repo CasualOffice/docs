@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * usePinchZoom — two-finger pinch gesture on a target element that
  * proportionally updates the editor's zoom factor.

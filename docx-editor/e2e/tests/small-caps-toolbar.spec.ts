@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Small caps + All caps toolbar toggles (Phase 1.5 U2).
  *

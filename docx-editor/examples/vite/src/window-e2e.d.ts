@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /** Playwright-only hooks on the Vite demo (not a public API). */
 declare global {
   interface Window {

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package main is the entry point for the Casual Editor backend
 // y-websocket gateway.
 //

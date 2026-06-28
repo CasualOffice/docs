@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Document-edit history hook — captures every committed ProseMirror
  * transaction into a coalesced, human-readable feed. Pairs with

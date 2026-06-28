@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Auto-hyperlink: typing a URL then space auto-links it (Word/GDocs
  * autoformat), and pasting a bare URL over a selection wraps the SELECTED

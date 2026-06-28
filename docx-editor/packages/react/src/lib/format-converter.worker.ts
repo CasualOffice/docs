@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /// <reference lib="webworker" />
 /**
  * Format converter Web Worker — bridges to @casualoffice/core (WASM).

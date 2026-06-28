@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // @eigenpal/docx-editor-vue
 // Vue.js wrapper for the DOCX editor — community contributed
 //

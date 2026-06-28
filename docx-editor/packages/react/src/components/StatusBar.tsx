@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * StatusBar — bottom strip with page indicator, word count, and zoom
  * controls. Inspired by the bottom bar in Google Docs / Word and the

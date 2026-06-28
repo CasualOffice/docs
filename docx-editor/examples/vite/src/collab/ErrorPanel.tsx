@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Full-page error state shown when the collab seed fetch fails.
 // Most common causes:
 //   - The share link's docId expired (gateway restart wipes

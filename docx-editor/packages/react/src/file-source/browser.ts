@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * BrowserFileSource — the FileSource implementation for Mode 1
  * (Pages). Wraps the existing IDB-backed recent-files store so the

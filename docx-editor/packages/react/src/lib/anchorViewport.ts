@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * anchorViewport — shared math for "where can I float UI without
  * landing under fixed chrome".

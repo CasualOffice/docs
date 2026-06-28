@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Paragraph Serializer - Serialize paragraphs to OOXML XML
  *

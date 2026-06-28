@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { createContext, useContext } from 'react';
 import type { ToolbarProps } from './Toolbar';
 

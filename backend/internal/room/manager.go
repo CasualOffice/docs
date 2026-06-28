@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package room owns the lifecycle of every in-memory Y.Doc the
 // gateway is currently serving.
 //

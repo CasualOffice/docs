@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { useMemo } from 'react';
 import type { Comment } from '@eigenpal/docx-core/types/content';
 // useMemo already imported above — knownAuthors uses it.

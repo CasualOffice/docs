@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * `PanelState` — the three rest-states every side panel ends up needing:
  * empty (no content yet), loading (fetching), and error (something

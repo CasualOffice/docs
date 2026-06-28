@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for `insertField`. Pins the field-node insertion shape
  * the menu entries depend on. Round-trip behavior is covered by the

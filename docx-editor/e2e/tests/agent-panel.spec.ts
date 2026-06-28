@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * E2E for the right-hand AgentPanel: toolbar toggle, controlled open prop,
  * close button, drag-to-resize handle.

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 # Start all 4 framework example dev servers in parallel.
 # Auto-installs dependencies if node_modules is missing.
 

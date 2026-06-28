@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * SigningPane — the floating sidebar that walks the signer through
  * fields. Lives inside <SigningProvider>; uses the controller via

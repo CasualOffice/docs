@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import { describe, expect, test, mock, beforeEach, afterEach } from 'bun:test';
 import { normalizeFontFamilies } from './normalizeFontFamilies';
 import type { FontOption } from './FontPicker';

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * WritingAssistantSheet — right-docked panel that exposes the on-
  * device writing assistant: per-feature toggles, device capability

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Real-world smoke test against a complex .docx the user provided
  * (Safety Data Sheet, ZH locale, large body + 1 body textbox + 1

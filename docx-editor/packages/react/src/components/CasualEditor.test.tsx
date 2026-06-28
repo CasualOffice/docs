@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Bun smoke tests for the CasualEditor wrapper's behaviour around
  * the FileSource lifecycle. The heavy DOM work happens inside

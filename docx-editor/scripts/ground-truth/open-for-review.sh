@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Casual Office. All rights reserved.
+
 # Open the 5 fixtures + Word Online + Google Docs so they can be reviewed
 # side-by-side. Drag the fixtures from Finder into each web app and record
 # Yes/No in scripts/table-border-test-plan.md.

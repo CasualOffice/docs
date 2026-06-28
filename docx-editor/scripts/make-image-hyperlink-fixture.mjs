@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: a paragraph with an inline image that carries
 // `<a:hlinkClick r:id="..."/>` on its `pic:cNvPr`. Used to pin the
 // drawingml-hyperlink-click fix: clicking the rendered image should

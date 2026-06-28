@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Casual Office. All rights reserved.
+
 // Package limit implements a per-IP token-bucket HTTP middleware
 // for the Casual Editor gateway.
 //

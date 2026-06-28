@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Build a fixture .docx whose paragraphs use `w:pBdr/w:between` (rule
 // between adjacent paragraphs sharing the border) and `w:pBdr/w:bar`
 // (left-margin vertical bar). Used to pin the openspec

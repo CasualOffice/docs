@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * useFileSourceAutoSave — periodic auto-save from a DocxEditor into
  * a FileSource.

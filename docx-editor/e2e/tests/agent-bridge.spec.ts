@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * E2E for the live agent bridge: addComment / proposeChange / scrollToParaId etc.
  *

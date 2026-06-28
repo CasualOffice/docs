@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Unit tests for buildVersionDiffDoc — the version-to-version diff that
  * annotates the selected version's doc with insertion / deletion marks

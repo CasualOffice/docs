@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Vite 8 + rolldown ignores the inline `css.postcss` block in
 // vite.config.ts for some CSS pipelines, so an on-disk postcss
 // config is required. We explicitly point Tailwind at the

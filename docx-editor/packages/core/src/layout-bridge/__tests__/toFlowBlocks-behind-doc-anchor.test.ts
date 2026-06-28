@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Integration test — a behind-doc shape's wrap survives end-to-end so the
  * layout engine can both paint it behind text AND reserve its flow band.

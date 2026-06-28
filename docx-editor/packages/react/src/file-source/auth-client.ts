@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * AuthClient — the thin HTTP shim PersonalAuthGate consumes for
  * signup / login / logout / `/auth/me`. Kept separate from

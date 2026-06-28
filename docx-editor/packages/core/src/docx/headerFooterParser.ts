@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Header/Footer Parser - Parse header*.xml and footer*.xml files
  *

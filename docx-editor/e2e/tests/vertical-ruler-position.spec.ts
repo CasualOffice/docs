@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Regression: the vertical ruler must sit immediately to the left of the
  * page, not floating against the content area's far-left edge.

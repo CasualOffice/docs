@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Fixture: a wpg:wgp group containing two text-bearing wps:wsp shapes
 // (a label + a hyperlink) plus a decorative rect, all under an
 // `mc:AlternateContent` envelope (Word's typical wrapping for modern

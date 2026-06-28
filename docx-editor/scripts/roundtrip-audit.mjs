@@ -1,4 +1,8 @@
 #!/usr/bin/env bun
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Per-fixture round-trip tag audit.
  *

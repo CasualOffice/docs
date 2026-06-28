@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Auto-list: typing a list marker at the start of a paragraph followed by a
  * space converts it to a list (Word / Google Docs autoformat).

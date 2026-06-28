@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Pin the .docx pre-flight: when a user renames `.doc` → `.docx` and
  * tries to open it, surface a clean "this is a legacy .doc, not a

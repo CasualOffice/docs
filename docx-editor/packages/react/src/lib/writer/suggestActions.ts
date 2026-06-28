@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * suggestActions — picks chat quick-prompt chips that fit the live
  * document. Demonstrates that the assistant knows what the user is

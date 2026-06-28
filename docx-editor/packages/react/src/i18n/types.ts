@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import en from '../../i18n/en.json';
 
 /** Auto-derived from en.json — never manually maintained */

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Bidi Shortcut Extension — Ctrl/Cmd+Left Shift → LTR, Ctrl/Cmd+Right Shift → RTL
  *

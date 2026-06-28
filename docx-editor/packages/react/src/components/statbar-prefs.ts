@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Persistent preference for which counters appear in the status bar.
  * Mirrors Excel's right-click-on-status-bar checklist (and the sibling

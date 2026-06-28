@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Custom Spacing Dialog (Phase 1.5-PIVOT, replaces the old tabbed
  * ParagraphDialog).

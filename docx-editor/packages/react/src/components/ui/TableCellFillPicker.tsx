@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * TableCellFillPicker - Wrapper around ColorPicker for table cell fill/shading.
  *

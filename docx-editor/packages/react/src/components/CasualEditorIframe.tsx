@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * CasualEditorIframe — the iframe-mounting variant of `<CasualEditor>`.
  * Doc 16 §5 + §6.

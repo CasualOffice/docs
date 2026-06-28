@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * FocusTrap — wraps a modal subtree and keeps Tab / Shift+Tab cycling
  * inside it. Restores focus to the previously-focused element on

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 // Bootstrap the deskApp host bridge first — it must define
 // `window.__deskApp__` before any other module reads it.
 import './desk-bridge-bootstrap';

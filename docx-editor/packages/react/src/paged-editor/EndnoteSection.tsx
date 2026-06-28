@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Endnote section — rendered at the END of the document (after the last page),
  * since the paged layout-painter has no endnote area of its own. Plain-text v1,

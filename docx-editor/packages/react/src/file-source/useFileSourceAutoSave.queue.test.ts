@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Durability tests for the autosave drain loop (audit findings
  * autosave-flush-no-queue and autosave-inflight-deadlock):

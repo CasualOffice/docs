@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Run-level marks that don't fit the existing TextEffectsExtensions bucket:
  *

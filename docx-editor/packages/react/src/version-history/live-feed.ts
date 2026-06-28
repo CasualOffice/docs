@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 /**
  * Tiny pub/sub the version-history store uses to wake subscribers
  * whenever a snapshot is written / renamed / deleted. The Versions

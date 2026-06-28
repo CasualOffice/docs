@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Casual Office. All rights reserved.
+ */
+
 import type { Comment } from '@eigenpal/docx-core/types/content';
 import { MaterialSymbol } from '../ui/Icons';
 import type { SidebarItemRenderProps } from '../../plugin-api/types';
