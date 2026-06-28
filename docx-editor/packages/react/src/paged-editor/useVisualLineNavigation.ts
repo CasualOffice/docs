@@ -241,6 +241,25 @@ export function useVisualLineNavigation({ pagesContainerRef }: VisualLineNavigat
    */
   const handlePMKeyDown = useCallback(
     (view: EditorView, event: KeyboardEvent): boolean => {
+      // PageUp / PageDown → scroll the visible viewport by ~one page, like
+      // Google Docs (the caret stays put). The off-screen ProseMirror's native
+      // paging scrolls ITS hidden area, not the paginated pages, so handle it
+      // here against the real scroll container.
+      if (
+        (event.key === 'PageUp' || event.key === 'PageDown') &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        const container = pagesContainerRef.current;
+        const sc = container ? findVerticalScrollParent(container) : null;
+        if (!sc) return false;
+        const delta = sc.clientHeight * 0.9; // one viewport, with overlap
+        sc.scrollBy({ top: event.key === 'PageDown' ? delta : -delta });
+        return true;
+      }
+
       // Ctrl/Cmd + Home / End → document start / end (caret move). The
       // container separately scrolls the viewport; without this the caret
       // stays put. Shift extends the selection to the doc edge.
