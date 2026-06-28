@@ -17,9 +17,13 @@ test.describe('Version preview — pinned banner', () => {
     await editor.newDocument();
     await editor.focus();
 
-    // Enough content that the preview scrolls.
-    for (let i = 0; i < 14; i++) {
-      await editor.typeText(`Paragraph ${i} with filler text long enough to scroll. `);
+    // Enough content that the preview scrolls. Each line is >100 chars so the
+    // helper inserts it in one InputEvent (the per-char path is far too slow
+    // under CI load and times the test out).
+    for (let i = 0; i < 9; i++) {
+      await editor.typeText(
+        `Paragraph ${i} with a good deal of filler text that is comfortably long so the document height grows well past the viewport and scrolls. `
+      );
       await editor.pressEnter();
     }
     await page.waitForTimeout(2200);
