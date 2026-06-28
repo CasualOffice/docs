@@ -36,7 +36,14 @@ jobs:
           bun-version: '1.3.14'
 
       - name: Install
-        run: bun install --frozen-lockfile
+        # Retry to survive transient npm registry tarball flakes.
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "::warning::bun install attempt $i failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: Format check
         run: bun run format:check
@@ -61,7 +68,14 @@ jobs:
           bun-version: '1.3.14'
 
       - name: Install
-        run: bun install --frozen-lockfile
+        # Retry to survive transient npm registry tarball flakes.
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "::warning::bun install attempt $i failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: Typecheck
         run: bun run typecheck
@@ -102,7 +116,14 @@ jobs:
           bun-version: '1.3.14'
 
       - name: Install
-        run: bun install --frozen-lockfile
+        # Retry to survive transient npm registry tarball flakes.
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "::warning::bun install attempt $i failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       # Cache the Playwright browser binaries. The cache key embeds the
       # @playwright/test version pulled from node_modules so a Playwright
