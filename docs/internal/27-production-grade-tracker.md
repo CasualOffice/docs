@@ -36,11 +36,11 @@ The forward backend is the shared Node/TypeScript `@casualoffice/collab` server:
 - Used by Docs, Sheets, and future Slides.
 - Stores opaque file bytes and Yjs updates; editor-specific serialization remains in the product clients unless a dedicated headless serializer is introduced.
 
-The legacy Go gateway remains transitional:
+The legacy Go gateway (`backend/`) was **removed 2026-06-28** (see [23-collab-server-migration](./23-collab-server-migration.md)):
 
-- It can continue serving SPA, upload/download, and historical compatibility during migration.
-- It must not receive new realtime collaboration or snapshot architecture work.
-- Public docs must stop presenting the legacy Go y-websocket path as the primary production architecture.
+- The collab server now serves the SPA, the REST surface (`/api/rooms`, `/auth`, `/files`, `/wopi`), and the WS broker (`/yjs`) from one origin.
+- All realtime / snapshot / REST work lives in the collab server.
+- Public docs (README, deploy, `.env.example`, CLAUDE.md, NOTICE) no longer reference the Go gateway.
 
 ---
 
@@ -70,7 +70,7 @@ No production-grade release until all gates below are green.
 | ID   | Task                                                                             | Acceptance gate                                                                                                                            | Status                                                                                                                  |
 | ---- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | P0.1 | Update README architecture claims from Go/y-websocket to Node/Hocuspocus collab. | README stack table, collaboration section, Docker section, and API surface no longer contradict `deploy/README.md`.                        | Todo                                                                                                                    |
-| P0.2 | Mark legacy Go realtime gateway as transitional everywhere.                      | `docs/ARCHITECTURE.md`, `00-overview.md`, deployment docs, and Docker comments consistently describe current vs legacy responsibilities.   | Partial — `00-overview.md` and deploy docs are current; README/Docker comments still drift.                             |
+| P0.2 | Mark legacy Go realtime gateway as transitional everywhere.                      | `docs/ARCHITECTURE.md`, `00-overview.md`, deployment docs, and Docker comments consistently describe current vs legacy responsibilities.   | Done — the Go gateway was removed 2026-06-28 (#195); README, deploy, `.env.example`, CLAUDE.md, NOTICE, Docker all collab-only. |
 | P0.3 | Define the official production topology.                                         | One canonical diagram: `gateway/static + collab + persistent storage + reverse proxy`; single-container legacy path labeled dev/demo only. | Covered — `deploy/README.md`, `deploy/docker-compose.prod.yml`, and `deploy/Caddyfile` define gateway + collab + proxy. |
 | P0.4 | Add a decision record for “one shared collab server across Docs/Sheets/Slides.”  | Decision states why: shared protocol, fewer servers, common auth/share semantics, common operator story.                                   | Partial — `23-collab-server-migration.md` covers Docs/Sheets; formal suite-wide ADR still useful.                       |
 | P0.5 | Create a release checklist template.                                             | Every release must attach gate status: fidelity, collab, a11y, UX, security, deploy, rollback.                                             | Todo                                                                                                                    |

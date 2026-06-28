@@ -1,11 +1,16 @@
 # 12 — Backend env vars
 
-Consolidated reference for every env var the `backend/` reads at
-startup, with defaults and mode dependencies. Source of truth is the
-code; this doc exists so an operator doesn't have to grep `os.Getenv`
-to know what's tunable.
+> **Legacy / historical.** This documents the env vars of the in-repo
+> **Go** gateway under `backend/`, which was **removed 2026-06-28** (see
+> [23-collab-server-migration](./23-collab-server-migration.md)). The
+> collab server (the `./collab` submodule) now owns the REST surface and
+> reads its own vars — `PORT`, `CASUAL_STORAGE`, `CASUAL_FILE_EXT`,
+> `CASUAL_PERSONAL_MODE`, `CASUAL_WOPI_*`; see `.env.example`, the README
+> config table, and the collab repo's README. Kept for historical
+> reference to the retired Go gateway.
 
-When a new env var ships, add a row to the right table.
+Consolidated reference for every env var the `backend/` Go gateway read
+at startup, with defaults and mode dependencies.
 
 ---
 

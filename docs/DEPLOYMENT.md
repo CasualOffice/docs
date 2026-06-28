@@ -8,13 +8,15 @@ If you're new to the project, start with §[Quickstart](#quickstart).
 For production hosting (TLS, reverse proxy, scale), jump to
 §[Production hosting](#production-hosting).
 
-> **Backend note.** Where this guide describes the **Go** gateway / `backend/`
-> image, that is the legacy in-repo gateway, now **superseded** by the shared
-> **Node/TypeScript** `@casualoffice/collab` server (Hocuspocus + Yjs on Fastify).
-> The deployment shapes still apply; the collab service is run from the separate
-> `@casualoffice/collab` repo. See
-> [internal/23-collab-server-migration](internal/23-collab-server-migration.md)
-> and [`ARCHITECTURE.md`](ARCHITECTURE.md).
+> **Superseded — read [`../deploy/README.md`](../deploy/README.md) for the current deploy.**
+> The in-repo **Go** gateway under `backend/` was **removed 2026-06-28**. The bundled
+> Docker image now runs the Node `@casualoffice/collab` server (the `./collab` submodule),
+> which serves the SPA + REST (`/api/rooms`, `/auth`, `/files`, `/wopi`) + WS (`/yjs`) on
+> one `:8080` origin. The three deployment *shapes* below still apply, but any `GATEWAY_*` /
+> `STATIC_DIR` / `VITE_BACKEND` / `go run` specifics are **historical** — use `PORT` /
+> `CASUAL_STORAGE` / `CASUAL_FILE_EXT` / `CASUAL_PERSONAL_MODE` and
+> `VITE_COLLAB_BACKEND=ws://localhost:1234/yjs` (see [`../.env.example`](../.env.example),
+> the README config table, and [internal/23](internal/23-collab-server-migration.md)).
 
 ---
 
@@ -37,7 +39,7 @@ open http://localhost:8080
 # → they open it, you both edit live
 ```
 
-That image carries the editor SPA + Go gateway in one container. No
+That image carries the editor SPA + the Node collab server in one container. No
 database, no Redis, no sidecars. Everything works out of the box on
 the host you run it on.
 

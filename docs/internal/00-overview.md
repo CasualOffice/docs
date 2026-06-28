@@ -7,8 +7,8 @@ A real-time collaborative `.docx` editor service. Browser-side: a fork of `eigen
 > **Backend note (current).** Real-time sync/presence/snapshots are owned by the Node
 > `@casualoffice/collab` server (Hocuspocus + Yjs on Fastify); the editor connects via
 > `HocuspocusProvider` (`packages/react/src/collab/useCollab.ts`). A legacy in-repo **Go**
-> y-websocket gateway under `backend/` predates this and is **superseded** — it still builds
-> in CI but new sync/persistence work goes to the collab server, not `backend/`. The
+> y-websocket gateway under `backend/` predated this and was **removed 2026-06-28** — all
+> sync / persistence / REST work lives in the collab server. The
 > "Architecture (committed)", "Decisions (locked, 2026-05-16)", "Resolved questions", and the
 > Go-specific milestone rows **below are a historical record of that legacy gateway**. For the
 > current backend see [23-collab-server-migration](23-collab-server-migration.md) and
