@@ -177,6 +177,35 @@ const decreaseListLevel: Command = (state, dispatch) => {
   return true;
 };
 
+// Indent / outdent plain paragraphs by half an inch — the fallback for
+// Mod-] / Mod-[ (Google Docs' Ctrl+] / Ctrl+[) when the selection isn't in a
+// list. Mirrors ParagraphExtension's makeIncreaseIndent. Returns false when
+// nothing changes so it composes after the list-level command in a chain.
+const PARAGRAPH_INDENT_STEP = 720; // 0.5"
+const indentParagraphs =
+  (delta: number): Command =>
+  (state, dispatch) => {
+    const { $from, $to } = state.selection;
+    const targets: Array<{ pos: number; attrs: Record<string, unknown>; next: number }> = [];
+    const seen = new Set<number>();
+    state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+      if (node.type.name !== 'paragraph' || seen.has(pos)) return;
+      seen.add(pos);
+      const cur = (node.attrs.indentLeft as number) ?? 0;
+      const next = Math.max(0, cur + delta);
+      if (next === cur) return;
+      targets.push({ pos, attrs: node.attrs, next });
+    });
+    if (targets.length === 0) return false;
+    if (!dispatch) return true;
+    let tr = state.tr;
+    for (const { pos, attrs, next } of targets) {
+      tr = tr.setNodeMarkup(pos, undefined, { ...attrs, indentLeft: next || null });
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  };
+
 const removeList: Command = (state, dispatch) => {
   const { $from, $to } = state.selection;
 
@@ -462,10 +491,10 @@ export const ListExtension = createExtension({
         // Google Docs list shortcuts
         'Mod-Shift-7': toggleNumberedList,
         'Mod-Shift-8': toggleBulletList,
-        // Indent / outdent for paragraphs (works inside or outside lists —
-        // increaseListLevel handles both via the existing list-aware path).
-        'Mod-]': increaseListLevel,
-        'Mod-[': decreaseListLevel,
+        // Indent / outdent: bump the list level inside a list, else indent the
+        // plain paragraph (Google Docs' Ctrl+] / Ctrl+[ work on any paragraph).
+        'Mod-]': chainCommands(increaseListLevel, indentParagraphs(PARAGRAPH_INDENT_STEP)),
+        'Mod-[': chainCommands(decreaseListLevel, indentParagraphs(-PARAGRAPH_INDENT_STEP)),
       },
     };
   },
