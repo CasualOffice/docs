@@ -48,4 +48,15 @@ Nielsen 0.1s = instant, 1.0s = flow; RAIL respond ≤100ms / frame ≤16ms; INP 
 
 ## Where we already stand (from earlier sessions)
 
-Suggesting mode, version history, comments, footnotes, tables, images with wrap modes, find/replace, autosave status, strict co-editing, IME, and a hidden-PM accessibility layer all exist. The competitive gaps to prioritize: **on-selection mini toolbar (15)**, verify **undo coalescing (4)**, **paste match-destination keybind (5)**, and harden the **accessibility side-DOM (13)** as a tested contract.
+Suggesting mode, version history, comments, footnotes, tables, images with wrap modes, find/replace, autosave status, strict co-editing, IME, and a hidden-PM accessibility layer all exist.
+
+### Tier 1 gap check — 2026-06-28 (all four verified closed)
+
+The four gaps previously flagged to prioritize are all shipping **and** covered by tests:
+
+- **On-selection mini toolbar (15)** — the desktop floating format bar appears on range selection; covered by `e2e/tests/mobile-format-bar.spec.ts` ("desktop floating bar appears on selection").
+- **Undo coalescing (4)** — a single Ctrl/⌘+Z undoes a whole typing burst, not one character (ProseMirror history grouping). Verified by probe; the editing-experience `history.spec.ts` locks undo/redo convergence.
+- **Paste match-destination keybind (5)** — Ctrl/⌘+Shift+V pastes without formatting (handler in `DocxEditor.tsx`, plus context menu, title-bar menu, and shortcuts dialog).
+- **Accessibility side-DOM (13)** — `e2e/tests/editor-a11y.spec.ts` asserts the visible pages are `aria-hidden`, the off-screen `HiddenProseMirror` is a named `role="textbox"` carrying the text, and it is not buried under an `aria-hidden` ancestor.
+
+The remaining real gap is **Tier 0 #3 — sub-100ms keystroke-to-paint on large docs** (per-line incremental repaint vs. the current per-transaction React re-render). That is architectural and tracked separately; everything else on the credible-competitor floor is met.
