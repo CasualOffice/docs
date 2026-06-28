@@ -73,24 +73,30 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
     let lastResolved: 'light' | 'dark' | null = null;
     let lastMode: 'system' | 'light' | 'dark' | null = null;
 
-    const apply = () => {
-      const resolved = resolve(mode);
-      // Page-level hint for an instant, flash-free first paint. The
-      // DocxEditor reads `data-theme` (and seeds from this localStorage key
-      // on mount), so writing both makes the editor adopt the launcher's
-      // choice without a dedicated prop. `system` maps to the editor's
-      // 'auto' bucket.
+    // `authoritative` = the user actively changed the launcher's theme in
+    // Settings (broadcast over `deskapp://theme`). In that case the launcher
+    // wins and overwrites the per-editor choice. On the INITIAL load (and on
+    // passive OS-theme flips) it's NOT authoritative: a per-editor explicit
+    // light/dark choice (set with the editor's own toggle) wins and must
+    // survive restarts — the launcher theme is only the default for windows
+    // that have never been toggled. Without this, the bridge re-seeded the
+    // launcher theme on every open and clobbered the editor's own toggle.
+    const apply = (authoritative: boolean) => {
+      const launcherResolved = resolve(mode);
+      let effective = launcherResolved;
       try {
-        document.documentElement.dataset.theme = resolved;
-        document.documentElement.style.colorScheme = resolved;
-        // Seed the CONCRETE resolved value, not 'auto'. DocxEditor's mount
-        // effect re-resolves a stored 'auto' through its own matchMedia (which
-        // defaults to light on WebKitGTK) and stamps that onto <html>,
-        // clobbering the dark hint we just set. Writing the concrete value the
-        // launcher chose makes DocxEditor's resolveColorTheme a pass-through so
-        // editor + launcher always agree. The launcher re-broadcasts over
-        // `deskapp://theme` on live change, so we don't lose system-follow.
-        window.localStorage.setItem('casual-editor:color-theme', resolved);
+        const stored = window.localStorage.getItem('casual-editor:color-theme');
+        const hasExplicit = stored === 'light' || stored === 'dark';
+        effective = authoritative || !hasExplicit ? launcherResolved : (stored as 'light' | 'dark');
+        document.documentElement.dataset.theme = effective;
+        document.documentElement.style.colorScheme = effective;
+        // Persist a CONCRETE value (not 'auto') so DocxEditor's mount effect
+        // doesn't re-resolve 'auto' via matchMedia (light on WebKitGTK) and
+        // clobber it. Only write when the launcher is authoritative or the
+        // editor has no explicit choice yet — never overwrite a user toggle.
+        if (authoritative || !hasExplicit) {
+          window.localStorage.setItem('casual-editor:color-theme', effective);
+        }
       } catch {
         /* dataset / localStorage may be unavailable; hint is best-effort */
       }
@@ -101,22 +107,25 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
       } catch {
         /* best-effort */
       }
-      // Only fire when something actually changed (mode OR resolved system
-      // value) so we don't spam listeners on redundant matchMedia ticks.
-      if (mode === lastMode && resolved === lastResolved) return;
+      // Only fire when something actually changed (mode OR resolved value) so
+      // we don't spam listeners on redundant matchMedia ticks.
+      if (mode === lastMode && effective === lastResolved) return;
       lastMode = mode;
-      lastResolved = resolved;
+      lastResolved = effective;
       try {
-        window.dispatchEvent(new CustomEvent('deskapp:theme', { detail: { mode, resolved } }));
+        window.dispatchEvent(
+          new CustomEvent('deskapp:theme', { detail: { mode, resolved: effective } })
+        );
       } catch {
         /* CustomEvent unsupported — nothing more we can do */
       }
     };
 
-    // Initial application + first dispatch.
-    apply();
+    // Initial application + first dispatch (respects an existing editor choice).
+    apply(false);
 
-    // Live launcher changes over the Tauri event bus.
+    // Live launcher changes over the Tauri event bus — authoritative: the user
+    // changed the theme in launcher Settings, so it overrides per-editor toggles.
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tauriEvent = (window as any).__TAURI__?.event;
@@ -125,7 +134,7 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
           const next = e?.payload?.theme;
           if (next && VALID.has(next)) {
             mode = next as 'system' | 'light' | 'dark';
-            apply();
+            apply(true);
           }
         });
       }
@@ -136,7 +145,7 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
     // When following the system, re-dispatch on OS theme flips.
     if (mql) {
       const onSystemChange = () => {
-        if (mode === 'system') apply();
+        if (mode === 'system') apply(false);
       };
       if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
       else if (mql.addListener) mql.addListener(onSystemChange); // older WebKit
@@ -267,8 +276,15 @@ let dismissBoot: () => void = () => undefined;
     // full-window overlay is painted, reveal the window. Best-effort; the shell
     // also reveals it on page-load as a fallback.
     try {
+      // `.show()` returns a Promise; a sync try/catch won't catch an async
+      // rejection (e.g. the window:show ACL denying it), which then surfaces as
+      // an unhandled rejection (and pops the error banner). Swallow it — the
+      // shell also reveals the window on page-load, so this is best-effort.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__TAURI__?.window?.getCurrentWindow?.()?.show?.();
+      void (window as any).__TAURI__?.window
+        ?.getCurrentWindow?.()
+        ?.show?.()
+        ?.catch?.(() => {});
     } catch {
       /* not in the desktop shell, or window API unavailable — no-op */
     }
@@ -406,6 +422,7 @@ if (isDesktop) {
         loadText?(p?: string): Promise<string>;
         save(bytes: ArrayBuffer): Promise<string | null>;
         saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
+        rename?(newName: string): Promise<string | null>;
         setDirty?(dirty: boolean): void;
         exportPdf?(suggestedName: string): Promise<string | null>;
         openViaMenu?(): Promise<void>;
@@ -682,6 +699,23 @@ if (isDesktop) {
         filePath = newPath;
         // Only mark clean if no edit landed while the write was in flight.
         if (editSeq === seqAtStart) setWindowDirty(false);
+        await updateWindowTitleFromPath(newPath);
+        return newPath;
+      },
+      // Rename the bound file on disk (same folder, new name) and re-bind
+      // filePath so subsequent saves overwrite the renamed file. Resolves to the
+      // new path, or null for an untitled doc. Rejects on a name collision / fs
+      // error so the caller can surface it.
+      async rename(newName: string): Promise<string | null> {
+        if (!filePath) return null;
+        let newPath: string;
+        try {
+          newPath = (await inv('rename_document', { path: filePath, newName })) as string;
+        } catch (err) {
+          console.error('[deskApp] rename failed for', filePath, err);
+          throw err;
+        }
+        filePath = newPath;
         await updateWindowTitleFromPath(newPath);
         return newPath;
       },

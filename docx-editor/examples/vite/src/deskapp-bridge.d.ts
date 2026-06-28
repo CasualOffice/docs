@@ -57,6 +57,12 @@ declare global {
        */
       saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null>;
       /**
+       * Rename the bound file on disk (same folder, new name) and re-bind
+       * filePath. Resolves to the new path, or null for an untitled doc.
+       * Rejects on a name collision / fs error.
+       */
+      rename?(newName: string): Promise<string | null>;
+      /**
        * Editor → bridge dirty signal for the Rust unsaved-changes close-guard.
        * App.tsx forwards DocxEditor's `onChange` here so every real document
        * change (mouse/toolbar/menu edits included) marks the window dirty;
