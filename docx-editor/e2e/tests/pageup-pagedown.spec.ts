@@ -24,14 +24,19 @@ test('PageDown scrolls down and PageUp scrolls back up', async ({ page }) => {
   await ed.waitForReady();
   await ed.newDocument();
   await ed.focus();
-  // Fill well past one viewport.
-  for (let i = 0; i < 70; i++) {
-    await ed.typeText('Line ' + i);
-    await page.keyboard.press('Enter');
+
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
+  // Build a multi-page (scrollable) doc with page breaks rather than typing
+  // dozens of lines — char-by-char typing of a long doc is slow enough on CI
+  // to blow the test's keyboard-input budget. A handful of page breaks gives
+  // several pages with a few keystrokes.
+  await ed.typeText('Top');
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press(`${mod}+Enter`); // page break
+    await ed.typeText('Page ' + (i + 2));
   }
   await page.waitForTimeout(300);
 
-  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
   await page.keyboard.press(`${mod}+Home`);
   await page.waitForTimeout(200);
 
