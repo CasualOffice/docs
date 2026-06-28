@@ -29,12 +29,12 @@ export interface SmartChipMenuItem {
 interface SmartChipMenuProps {
   /** Active trigger, or null when no `@query` is open. */
   trigger: SmartChipTrigger | null;
-  /** Caret position in overlay space; the menu anchors just below it. */
+  /** Caret position in the overlay's pre-zoom coordinate space; the menu
+   *  anchors just below it. The overlay container applies the zoom transform,
+   *  so these coords are used raw (multiplying by zoom would double-scale). */
   caret: CaretPosition | null;
   /** Whether the editor body is focused (menu hides otherwise). */
   isFocused: boolean;
-  /** Current zoom — caret coords are pre-zoom, the overlay is scaled. */
-  zoom: number;
   /** The full menu (filtered by the trigger query before render). */
   items: SmartChipMenuItem[];
 }
@@ -45,7 +45,6 @@ export function SmartChipMenu({
   trigger,
   caret,
   isFocused,
-  zoom,
   items,
 }: SmartChipMenuProps): React.ReactElement | null {
   const [active, setActive] = useState(0);
@@ -111,8 +110,8 @@ export function SmartChipMenu({
       }}
       style={{
         position: 'absolute',
-        left: caret.x * zoom,
-        top: (caret.y + caret.height) * zoom + 4,
+        left: caret.x,
+        top: caret.y + caret.height + 4,
         minWidth: 200,
         background: 'var(--doc-surface, #fff)',
         border: '1px solid var(--doc-border-light, #dadce0)',
