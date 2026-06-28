@@ -902,13 +902,18 @@ export const ParagraphExtension = createNodeExtension({
         },
       },
       keyboardShortcuts: {
-        // Word / Google Docs paragraph alignment shortcuts.
-        // Surfaced by AlignmentButtons in the toolbar; bound here so the
-        // shortcut works whether or not the dropdown is open.
+        // Paragraph alignment shortcuts, surfaced by AlignmentButtons in the
+        // toolbar; bound here so the shortcut works whether or not the dropdown
+        // is open. Word uses Ctrl+L/E/R/J; Google Docs uses Ctrl+Shift+L/E/R/J —
+        // bind both so either muscle memory works.
         'Mod-l': makeSetAlignment('left'),
         'Mod-e': makeSetAlignment('center'),
         'Mod-r': makeSetAlignment('right'),
         'Mod-j': makeSetAlignment('both'),
+        'Mod-Shift-l': makeSetAlignment('left'),
+        'Mod-Shift-e': makeSetAlignment('center'),
+        'Mod-Shift-r': makeSetAlignment('right'),
+        'Mod-Shift-j': makeSetAlignment('both'),
       },
     };
   },
