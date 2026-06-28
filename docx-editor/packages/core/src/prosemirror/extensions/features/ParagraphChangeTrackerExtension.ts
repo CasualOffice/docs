@@ -75,6 +75,50 @@ function countParagraphs(doc: EditorState['doc']): number {
 }
 
 /**
+ * Could this transaction have changed the paragraph COUNT (added or removed a
+ * paragraph)? Plain text edits within a paragraph can't, so we reuse the cached
+ * count instead of re-walking the whole document — `countParagraphs` costs
+ * ~2.5ms PER KEYSTROKE on a 2,500-paragraph doc otherwise. A count change needs
+ * a step whose replacement slice opens a block boundary (Enter split,
+ * backspace/selection merge) or carries block-level content (paste, insert).
+ */
+function mayChangeParagraphCount(tr: Transaction): boolean {
+  for (let i = 0; i < tr.steps.length; i++) {
+    const step = tr.steps[i] as {
+      slice?: { openStart: number; openEnd: number; content: unknown };
+      from?: number;
+      to?: number;
+    };
+    const slice = step.slice;
+    if (!slice) continue; // mark / attr steps never change structure
+    // Opening a block boundary (split/merge) or inserting block content can
+    // change the count.
+    if (slice.openStart > 0 || slice.openEnd > 0) return true;
+    let hasBlock = false;
+    (slice.content as { forEach: (cb: (n: { isBlock: boolean }) => void) => void }).forEach((n) => {
+      if (n.isBlock) hasBlock = true;
+    });
+    if (hasBlock) return true;
+    // Empty/inline slice: still a merge if the DELETED range crosses a
+    // paragraph boundary (e.g. backspace-join → an empty-slice ReplaceStep).
+    // Check in the doc *before* this step. Only step 0 maps cleanly onto
+    // `tr.before`; for later steps (rare outside paste/structural ops) be
+    // conservative and recount.
+    if (step.from != null && step.to != null && step.to > step.from) {
+      if (i !== 0) return true;
+      try {
+        if (tr.before.resolve(step.from).parent !== tr.before.resolve(step.to).parent) {
+          return true;
+        }
+      } catch {
+        return true; // uncertain → recount
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Collect paraIds of all paragraphs that overlap with the given range,
  * plus the names of any non-paragraph block-level nodes touched
  * (textBox / image / shape / table / …). Drawings live in the block
@@ -174,8 +218,12 @@ function createParagraphChangeTrackerPlugin(): Plugin<ParagraphChangeTrackerStat
           return prevState;
         }
 
-        // Count paragraphs in new doc only (use cached count for old doc)
-        const newCount = countParagraphs(tr.doc);
+        // Count paragraphs in the new doc only when the transaction could have
+        // changed the count — plain typing can't, so reuse the cached count and
+        // skip the whole-doc walk (the dominant per-keystroke cost on big docs).
+        const newCount = mayChangeParagraphCount(tr)
+          ? countParagraphs(tr.doc)
+          : prevState.paragraphCount;
 
         // Clone previous state
         const newState: ParagraphChangeTrackerState = {
