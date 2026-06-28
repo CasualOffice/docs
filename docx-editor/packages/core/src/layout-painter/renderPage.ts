@@ -2051,9 +2051,18 @@ export function renderPages(
       const shell = prev.element;
       const data = prevDataMap.get(shell);
 
+      // A fingerprint change usually means content SHIFTED (typing earlier in
+      // the doc bumps every later fragment's pmStart/pmEnd) rather than the
+      // page geometry changing. Capture the old size before overwriting so the
+      // shell-style write below can be skipped when the size is unchanged —
+      // otherwise editing near the top re-applies styles to every page (~300
+      // redundant style writes ≈ 5ms per keystroke on a large document).
+      const oldPage = data?.page;
+      const newPage = pages[i];
+
       // Update data map entry
       if (data) {
-        data.page = pages[i];
+        data.page = newPage;
 
         if (data.rendered) {
           // Surgically replace only the content area, preserving header/footer
@@ -2065,9 +2074,18 @@ export function renderPages(
       // Update fingerprint
       prev.fingerprint = newFp;
 
-      // Update page styles in case size changed
-      applyPageStyles(shell, pages[i].size.w, pages[i].size.h, options);
-      shell.dataset.pageNumber = String(pages[i].number);
+      // Re-apply shell geometry only when the page size actually changed (the
+      // page background uses a CSS var, so dark-mode / paper changes re-resolve
+      // without a rewrite). Page number is likewise only written when it moved.
+      const sizeChanged =
+        !oldPage || oldPage.size.w !== newPage.size.w || oldPage.size.h !== newPage.size.h;
+      if (sizeChanged) {
+        applyPageStyles(shell, newPage.size.w, newPage.size.h, options);
+      }
+      const newNumber = String(newPage.number);
+      if (shell.dataset.pageNumber !== newNumber) {
+        shell.dataset.pageNumber = newNumber;
+      }
     }
 
     // Handle new pages (document grew)
