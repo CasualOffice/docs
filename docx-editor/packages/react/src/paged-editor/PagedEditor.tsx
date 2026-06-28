@@ -39,7 +39,7 @@ import { usePinchZoom } from '../components/hooks/usePinchZoom';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 import { EndnoteSection } from './EndnoteSection';
 import { DecorationLayer } from './DecorationLayer';
-import { spellcheckPluginKey } from '@eigenpal/docx-core/prosemirror/extensions';
+import { spellcheckPluginKey, getGrammarIssueAt } from '@eigenpal/docx-core/prosemirror/extensions';
 import { getTableContext } from '@eigenpal/docx-core/prosemirror';
 import {
   smartChipKey,
@@ -356,6 +356,17 @@ export interface PagedEditorProps {
      * dispatch the replacement transaction.
      */
     spellcheck?: { from: number; to: number; word: string } | null;
+    /**
+     * Populated when the right-click landed on a `.grammar-error`
+     * decoration. Carries the flagged range plus the issue's message and
+     * suggested replacements; the host opens a fix menu from it.
+     */
+    grammar?: {
+      from: number;
+      to: number;
+      message: string;
+      replacements: string[];
+    } | null;
   }) => void;
   /** Open the contextual Format panel for the currently-selected object
    *  (image or table). Wired to the on-object "Format" chip. The host
@@ -4054,12 +4065,33 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           }
         }
 
+        // Grammar hit: same idea, against the grammar plugin's decorations.
+        // Each carries its issue (message + fixes) on the decoration spec.
+        let grammarInfo: {
+          from: number;
+          to: number;
+          message: string;
+          replacements: string[];
+        } | null = null;
+        if (pmPos !== null) {
+          const issue = getGrammarIssueAt(view, pmPos);
+          if (issue) {
+            grammarInfo = {
+              from: issue.from,
+              to: issue.to,
+              message: issue.message,
+              replacements: issue.replacements,
+            };
+          }
+        }
+
         onContextMenu({
           x: e.clientX,
           y: e.clientY,
           hasSelection,
           image: imageInfo,
           spellcheck: spellcheckInfo,
+          grammar: grammarInfo,
         });
       },
       // `zoom` is read inside `captureInlinePositionEmu` to convert post-

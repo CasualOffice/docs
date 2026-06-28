@@ -48,6 +48,17 @@ export {
 } from './features/SpellcheckExtension';
 export type { SpellChecker } from './features/SpellcheckExtension';
 
+// Grammar-check — sibling of spellcheck; the React layer plugs in the actual
+// analysis engine via `setGrammarChecker`.
+export {
+  GrammarExtension,
+  setGrammarChecker,
+  refreshGrammarDecorations,
+  getGrammarIssueAt,
+  grammarPluginKey,
+} from './features/GrammarExtension';
+export type { GrammarChecker, GrammarMatch, GrammarIssue } from './features/GrammarExtension';
+
 // Re-export specific extensions consumers commonly customize
 export {
   ParagraphChangeTrackerExtension,

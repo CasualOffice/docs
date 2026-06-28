@@ -223,6 +223,8 @@ import {
   type EditorPreferences,
   setSpellChecker,
   refreshSpellcheckDecorations,
+  setGrammarChecker,
+  refreshGrammarDecorations,
 } from '@eigenpal/docx-core/prosemirror/extensions';
 import {
   getSpellCheckerImpl,
@@ -232,7 +234,9 @@ import {
   suggestionsFor,
   ignoreWord,
 } from '../lib/spellcheck/service';
+import { getGrammarCheckerImpl, isGrammarEnabled, setGrammarEnabled } from '../lib/grammar/service';
 import { SpellSuggestionsMenu } from './SpellSuggestionsMenu';
+import { GrammarSuggestionsMenu } from './GrammarSuggestionsMenu';
 import { bootWriterController, useWriterState } from '../lib/writer/controller';
 import { rewriteFragment, sampleContext } from '../lib/writer/rewriteFragment';
 import {
@@ -2808,6 +2812,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     suggestions: string[];
   } | null>(null);
 
+  const [grammarMenu, setGrammarMenu] = useState<{
+    x: number;
+    y: number;
+    from: number;
+    to: number;
+    message: string;
+    replacements: string[];
+  } | null>(null);
+
   // Spell-check runtime toggle. Off by default — the ~500 KB Hunspell
   // dictionary downloads lazily the first time the user flips this on.
   // Persisted to localStorage so the choice survives reloads.
@@ -2828,6 +2841,25 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     return () => {
       setSpellChecker(null);
     };
+  }, []);
+
+  const GRAMMAR_KEY = 'docx-editor-grammar-enabled';
+  const [grammarOn, setGrammarOn] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(GRAMMAR_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    setGrammarChecker(getGrammarCheckerImpl());
+    // Restore the persisted on-state so reopening keeps grammar active.
+    if (grammarOn) setGrammarEnabled(true);
+    return () => {
+      setGrammarChecker(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const handlePreferenceChange = useCallback(
     <K extends keyof EditorPreferences>(key: K, value: EditorPreferences[K]) => {
@@ -5405,6 +5437,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         inlinePositionEmu?: { horizontalEmu: number; verticalEmu: number };
       } | null;
       spellcheck?: { from: number; to: number; word: string } | null;
+      grammar?: {
+        from: number;
+        to: number;
+        message: string;
+        replacements: string[];
+      } | null;
     }) => {
       // Spell-check hit takes priority over both image and text menus —
       // matches Word's behaviour where a misspelled word's right-click
@@ -5417,6 +5455,18 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           to: data.spellcheck.to,
           word: data.spellcheck.word,
           suggestions: suggestionsFor(data.spellcheck.word, 5),
+        });
+        return;
+      }
+      // Grammar hit pre-empts the standard menu too (mirrors spell-check).
+      if (data.grammar) {
+        setGrammarMenu({
+          x: data.x,
+          y: data.y,
+          from: data.grammar.from,
+          to: data.grammar.to,
+          message: data.grammar.message,
+          replacements: data.grammar.replacements,
         });
         return;
       }
@@ -5475,6 +5525,28 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (view) refreshSpellcheckDecorations(view);
     setSpellMenu(null);
   }, [getActiveEditorView, spellMenu]);
+
+  // Apply a grammar fix: replace the flagged span with the suggestion,
+  // preserving the marks at the start so formatting survives.
+  const handlePickGrammarFix = useCallback(
+    (replacement: string) => {
+      const view = getActiveEditorView();
+      if (!view || !grammarMenu) return;
+      const { from, to } = grammarMenu;
+      const docSize = view.state.doc.content.size;
+      const clampedFrom = Math.min(Math.max(from, 0), docSize);
+      const clampedTo = Math.min(Math.max(to, clampedFrom), docSize);
+      const marks = view.state.doc.nodeAt(clampedFrom)?.marks ?? [];
+      const tr = view.state.tr.replaceWith(
+        clampedFrom,
+        clampedTo,
+        view.state.schema.text(replacement, marks)
+      );
+      view.dispatch(tr);
+      setGrammarMenu(null);
+    },
+    [getActiveEditorView, grammarMenu]
+  );
 
   const handleImageWrapApply = useCallback(
     (target: ImageLayoutTarget) => {
@@ -6451,6 +6523,21 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
     const view = getActiveEditorView();
     if (view) refreshSpellcheckDecorations(view);
+  }, [getActiveEditorView]);
+
+  const handleToggleGrammar = useCallback(() => {
+    // No dictionary to download — the rule engine is synchronous, so the
+    // flip is instant (unlike spell-check).
+    const next = !isGrammarEnabled();
+    setGrammarEnabled(next);
+    setGrammarOn(next);
+    try {
+      window.localStorage.setItem(GRAMMAR_KEY, next ? '1' : '0');
+    } catch {
+      // Storage denied — toggle still takes effect for the session.
+    }
+    const view = getActiveEditorView();
+    if (view) refreshGrammarDecorations(view);
   }, [getActiveEditorView]);
 
   // Restore from localStorage on mount: if persisted "on", quietly load
@@ -8651,6 +8738,8 @@ body { background: white; }
                       // existing handlers when ready.
                       onToggleSpellcheck={handleToggleSpellcheck}
                       spellcheckEnabled={spellOn}
+                      onToggleGrammar={handleToggleGrammar}
+                      grammarEnabled={grammarOn}
                       onOpenCitations={handleOpenCitations}
                       onInsertShape={handleInsertShape}
                       onInsertTextBox={handleInsertTextBox}
@@ -9657,6 +9746,19 @@ body { background: white; }
                 onPick={handlePickSpellSuggestion}
                 onIgnore={handleIgnoreSpell}
                 onClose={() => setSpellMenu(null)}
+              />
+            )}
+
+            {/* Grammar fix menu — opens when a right-click landed on a
+                `.grammar-error` decoration. */}
+            {grammarMenu && (
+              <GrammarSuggestionsMenu
+                isOpen={true}
+                position={{ x: grammarMenu.x, y: grammarMenu.y }}
+                message={grammarMenu.message}
+                replacements={grammarMenu.replacements}
+                onPick={handlePickGrammarFix}
+                onClose={() => setGrammarMenu(null)}
               />
             )}
 

@@ -426,6 +426,17 @@
   pointer-events: none;
 }
 
+/* Grammar issues — same wavy-underline mechanism as spell-check, but BLUE
+ * (#1a73e8) so the two are visually distinct, matching Google Docs (red =
+ * spelling, blue = grammar). */
+.grammar-error {
+  background-repeat: repeat-x;
+  background-position: bottom left;
+  background-size: 6px 3px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 3' fill='none' stroke='%231a73e8' stroke-width='1' stroke-linecap='round'><path d='M0 1.5 Q1.5 0 3 1.5 T6 1.5'/></svg>");
+  pointer-events: none;
+}
+
 /* Find/replace match highlighting */
 .docx-find-highlight {
   background-color: rgba(255, 235, 59, 0.5) !important;
