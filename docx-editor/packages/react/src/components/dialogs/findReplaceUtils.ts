@@ -27,6 +27,24 @@ export interface FindMatch {
   endOffset: number;
   /** The matched text */
   text: string;
+  /**
+   * ProseMirror document positions of the match. Set by `findInPmDoc` (the
+   * PM-native search, which covers table cells). Navigation + replace prefer
+   * these; the paragraphIndex/offset fields above are the legacy Document-model
+   * coordinates (top-level paragraphs only) kept for back-compat.
+   */
+  pmFrom?: number;
+  pmTo?: number;
+}
+
+/** Minimal structural view of a ProseMirror node — avoids a hard dep here. */
+interface PmNodeLike {
+  isTextblock: boolean;
+  isText: boolean;
+  text?: string | null;
+  content: { size: number };
+  descendants(f: (node: PmNodeLike, pos: number) => boolean | void, ...rest: unknown[]): void;
+  forEach(f: (node: PmNodeLike, offset: number, index: number) => void): void;
 }
 
 /**
@@ -308,6 +326,58 @@ export function findInDocument(
       }
     }
   }
+
+  return matches;
+}
+
+/**
+ * PM-native search: walk the ProseMirror doc (including table cells, unlike
+ * `findInDocument` which only covers top-level paragraphs) and return matches as
+ * PM document positions. Reuses `findAllMatches` per textblock so case /
+ * whole-word / regex semantics match the Document-model search exactly.
+ */
+export function findInPmDoc(
+  doc: PmNodeLike,
+  searchText: string,
+  options: FindOptions
+): FindMatch[] {
+  if (!doc || !searchText) return [];
+  const matches: FindMatch[] = [];
+
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) return true; // recurse into tables / cells / etc.
+
+    // Build the block's plain text + a PM position for each text-offset
+    // boundary (pmAt[k] = PM pos just before text char k; the final entry is
+    // the position just after the last text char).
+    let text = '';
+    const pmAt: number[] = [];
+    let lastTextPmEnd = pos + 1; // empty block → content start
+    node.forEach((child, offset) => {
+      if (child.isText && child.text) {
+        const base = pos + 1 + offset;
+        for (let i = 0; i < child.text.length; i++) {
+          pmAt.push(base + i);
+          text += child.text.charAt(i);
+        }
+        lastTextPmEnd = base + child.text.length;
+      }
+    });
+    pmAt.push(lastTextPmEnd);
+
+    for (const m of findAllMatches(text, searchText, options)) {
+      matches.push({
+        paragraphIndex: -1,
+        contentIndex: -1,
+        startOffset: m.start,
+        endOffset: m.end,
+        text: text.slice(m.start, m.end),
+        pmFrom: pmAt[m.start],
+        pmTo: pmAt[m.end],
+      });
+    }
+    return false; // already consumed this textblock's inline content
+  });
 
   return matches;
 }
