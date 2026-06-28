@@ -283,17 +283,66 @@ export function useVisualLineNavigation({ pagesContainerRef }: VisualLineNavigat
         if (currentIndex === -1) return false;
       }
 
-      // Find target line
-      const targetIndex = event.key === 'ArrowUp' ? currentIndex - 1 : currentIndex + 1;
-      if (targetIndex < 0 || targetIndex >= allLines.length) {
+      // Find the target line geometrically rather than by a flat DOM index±1
+      // step. The lines list is in document order, so the line AFTER the caret's
+      // line is not always the line visually below it: inside a table the next
+      // DOM line is the neighbouring cell in the SAME row, so a naive index+1
+      // made ArrowDown jump sideways into the next cell instead of down a row.
+      // Instead: find the nearest visual row in the arrow direction, then within
+      // that row pick the line whose horizontal span is closest to the sticky X.
+      // For ordinary single-column text the nearest row holds exactly one line,
+      // so this reduces to the previous next/prev-line behaviour.
+      const dir = event.key === 'ArrowUp' ? -1 : 1;
+      const currentLine = allLines[currentIndex] as HTMLElement;
+      const curRect = currentLine.getBoundingClientRect();
+      const curMidY = (curRect.top + curRect.bottom) / 2;
+      const stickyX = stickyXRef.current;
+      if (stickyX === null) return false;
+      // Minimum vertical gap for a line to count as a different visual row —
+      // filters out same-row side-by-side table cells (mid-Y ≈ current).
+      const rowGap = Math.max(curRect.height * 0.3, 2);
+
+      // 1) Closest row band ahead in the arrow direction.
+      let bandMidY: number | null = null;
+      for (const line of allLines) {
+        const r = (line as HTMLElement).getBoundingClientRect();
+        const midY = (r.top + r.bottom) / 2;
+        if ((midY - curMidY) * dir > rowGap) {
+          if (bandMidY === null || (midY - bandMidY) * dir < 0) bandMidY = midY;
+        }
+      }
+      if (bandMidY === null) {
+        // No line ahead — top/bottom edge of content. Let PM handle it (exits a
+        // table to the surrounding paragraph, moves to the doc boundary, etc.).
         lastVisualLineIndexRef.current = -1;
         return false;
       }
 
-      const targetLine = allLines[targetIndex] as HTMLElement;
+      // 2) Within that band, the line nearest the sticky X.
+      const bandTol = Math.max(curRect.height * 0.6, 4);
+      let targetLine: HTMLElement | null = null;
+      let targetIndex = -1;
+      let bestXDist = Infinity;
+      allLines.forEach((line, i) => {
+        const el = line as HTMLElement;
+        const r = el.getBoundingClientRect();
+        const midY = (r.top + r.bottom) / 2;
+        if (Math.abs(midY - bandMidY!) > bandTol) return;
+        const xDist =
+          stickyX < r.left ? r.left - stickyX : stickyX > r.right ? stickyX - r.right : 0;
+        if (xDist < bestXDist) {
+          bestXDist = xDist;
+          targetLine = el;
+          targetIndex = i;
+        }
+      });
+      if (!targetLine) {
+        lastVisualLineIndexRef.current = -1;
+        return false;
+      }
 
       // Find PM position on target line at sticky X
-      const newPos = findPositionOnLineAtClientX(targetLine, stickyXRef.current);
+      const newPos = findPositionOnLineAtClientX(targetLine, stickyX);
       if (newPos === null) return false;
 
       // Track which line we navigated to
