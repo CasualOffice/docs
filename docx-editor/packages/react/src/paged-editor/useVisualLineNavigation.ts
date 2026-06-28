@@ -241,6 +241,76 @@ export function useVisualLineNavigation({ pagesContainerRef }: VisualLineNavigat
    */
   const handlePMKeyDown = useCallback(
     (view: EditorView, event: KeyboardEvent): boolean => {
+      // Ctrl/Cmd + Home / End → document start / end (caret move). The
+      // container separately scrolls the viewport; without this the caret
+      // stays put. Shift extends the selection to the doc edge.
+      if (
+        (event.key === 'Home' || event.key === 'End') &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey
+      ) {
+        stickyXRef.current = null;
+        lastVisualLineIndexRef.current = -1;
+        const { state, dispatch } = view;
+        const edge =
+          event.key === 'Home' ? TextSelection.atStart(state.doc) : TextSelection.atEnd(state.doc);
+        const sel = event.shiftKey
+          ? TextSelection.between(state.doc.resolve(state.selection.anchor), edge.$head)
+          : edge;
+        dispatch(state.tr.setSelection(sel).scrollIntoView());
+        return true;
+      }
+
+      // Home / End → start / end of the current VISUAL line, measured against
+      // the painted layout. The real editing state lives in an off-screen
+      // ProseMirror whose native Home/End map to ITS line wrapping, not the
+      // paginated layout the user sees — so without this, Home/End are no-ops
+      // (or jump to the wrong place). Alt is left to PM / the container handler.
+      if (
+        (event.key === 'Home' || event.key === 'End') &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        stickyXRef.current = null;
+        lastVisualLineIndexRef.current = -1;
+        if (!pagesContainerRef.current) return false;
+        const { from, anchor } = view.state.selection;
+        const line = findLineElementAtPosition(from);
+        if (!line) return false; // off the painted layout — let PM try
+        const spans = Array.from(
+          line.querySelectorAll('span[data-pm-start][data-pm-end]')
+        ) as HTMLElement[];
+        let target: number | null = null;
+        if (spans.length === 0) {
+          // Empty line — go to the paragraph's content start.
+          const para = line.closest('.layout-paragraph') as HTMLElement | null;
+          if (para?.dataset.pmStart) target = Number(para.dataset.pmStart) + 1;
+        } else {
+          let lo = Infinity;
+          let hi = -Infinity;
+          for (const s of spans) {
+            const st = Number(s.dataset.pmStart);
+            const en = Number(s.dataset.pmEnd);
+            if (st < lo) lo = st;
+            if (en > hi) hi = en;
+          }
+          target = event.key === 'Home' ? lo : hi;
+        }
+        if (target === null) return false;
+        const { state, dispatch } = view;
+        const clamped = Math.max(0, Math.min(target, state.doc.content.size));
+        try {
+          const sel = event.shiftKey
+            ? TextSelection.create(state.doc, anchor, clamped)
+            : TextSelection.create(state.doc, clamped);
+          dispatch(state.tr.setSelection(sel).scrollIntoView());
+        } catch {
+          return false; // let PM fall back if the position won't resolve
+        }
+        return true;
+      }
+
       // Clear sticky state on non-vertical navigation
       if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
         if (
