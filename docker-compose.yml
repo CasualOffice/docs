@@ -1,33 +1,33 @@
 # Local dev stack for Casual Editor.
 #
-# Design note: the Go gateway is stateless — it holds the live Y.Doc
-# per session and drops it when the last peer leaves. Persistence is
-# delegated to host backends (inline / local-fs / WOPI) selected via
-# the GATEWAY_HOST env var. Mode 3 personal auth is delegated to the
-# SQLite-backed UserStore at <CASUAL_LOCAL_PATH>/.casual/users.db.
+# Design note: the collab server (Node CasualOffice/collab, Hocuspocus +
+# Yjs) holds one authoritative Y.Doc per room and serves the REST surface
+# (/api/rooms share-link/seed, /auth, /files, /wopi). Room Y.Doc state is
+# persisted via CASUAL_STORAGE (in-memory / local / redis); file bytes via
+# the host integration (memory / local / s3 / postgres).
 #
-# All backend env vars are documented in docs/internal/12-env-vars.md.
-# Keep that doc + this file in sync when adding a new tunable.
+# All env vars are documented in docs/internal/12-env-vars.md. Keep that
+# doc + this file in sync when adding a new tunable.
 #
 # Two profiles:
 #
-#   `dev`     — Vite dev server (hot reload) on :5173 + Go gateway on
-#               :8080. The frontend points at the gateway via
-#               VITE_BACKEND=http://localhost:8080. Use this while
-#               iterating on either side.
+#   `dev`     — Vite dev server (hot reload) on :5173 + the collab server
+#               on :1234. The frontend reaches collab via
+#               VITE_COLLAB_BACKEND=ws://localhost:1234/yjs. Use this
+#               while iterating on either side.
 #
 #               docker compose --profile dev up
 #               open http://localhost:5173/
 #
-#   default   — Bundled image: the gateway serves both the API/WS
-#               AND the pre-built SPA on :8080. This is what users
-#               of the Docker Hub image get.
+#   default   — Bundled image: the collab server serves both the API/WS
+#               AND the pre-built SPA on :8080. This is what users of the
+#               Docker Hub image get.
 #
 #               docker compose up
 #               open http://localhost:8080/
 
 services:
-  gateway:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -35,39 +35,29 @@ services:
     container_name: casual-editor
     ports:
       - "8080:8080"
+    environment:
+      CASUAL_FILE_EXT: ".docx"
+      # Default is ephemeral in-memory rooms (drain on disconnect). For
+      # persistence across restarts set CASUAL_STORAGE=local + a volume.
+      # CASUAL_STORAGE: "local"
+      # CASUAL_LOCAL_PATH: "/data"
+      # Mode 3 (personal auth): CASUAL_PERSONAL_MODE=single|multi + a
+      # /data volume for users.db. Mode 2 (WOPI): CASUAL_WOPI_* — see
+      # docs/internal/12-env-vars.md.
+    # volumes:
+    #   - ./data/collab:/data
     restart: unless-stopped
     healthcheck:
-      # /health stays a single-line OK so this probe is stable
-      # across version bumps. /health/ready is the per-component
-      # status — point a load balancer at that, not at /health.
-      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:8080/health"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 3s
       retries: 3
-    # Default deploy is share-link mode (GATEWAY_HOST=inline). To
-    # flip to Mode 3 (personal auth) or Mode 2 (WOPI), uncomment one
-    # of the env blocks below and `docker compose up --force-recreate
-    # gateway`. Full reference: docs/internal/12-env-vars.md.
-    #
-    # environment:
-    #   # --- Mode 3: Standalone, personal auth ---
-    #   GATEWAY_HOST: "local"
-    #   GATEWAY_AUTH: "personal"
-    #   CASUAL_LOCAL_PATH: "/data"
-    #   CASUAL_SESSION_KEY: "${CASUAL_SESSION_KEY:?missing — generate via: openssl rand -hex 32}"
-    #   SECURE_COOKIES: "true"   # production HTTPS only
-    #   ADMIN_ROUTES: "true"     # mount /admin/users
-    #   LOG_FORMAT: "json"
-    #   ACCESS_LOG: "true"
-    # volumes:
-    #   - ./data:/data
-    #
-    # environment:
-    #   # --- Mode 2: WOPI client ---
-    #   GATEWAY_HOST: "wopi"
-    #   CASUAL_WOPI_JWKS_URL: "https://host.example/.well-known/jwks.json"
-    #   LOG_FORMAT: "json"
-    #   ACCESS_LOG: "true"
 
   editor-dev:
     profiles: ["dev"]
@@ -77,10 +67,10 @@ services:
     command: sh -c "bun install && bunx vite --config examples/vite/vite.config.ts --host 0.0.0.0"
     environment:
       VITE_COLLAB_ENABLED: "true"
-      VITE_BACKEND: "http://localhost:8080"
-      # Collab CRDT runs on the shared collab server (Hocuspocus), a
-      # separate service from the REST gateway above. REST/share-link
-      # stays on :8080; the Y.Doc sync goes to the collab server.
+      # Realtime sync + the share-link/seed REST flow both run on the
+      # shared collab server (Hocuspocus). The editor reaches it at
+      # ws://localhost:1234/yjs; the /api/rooms REST surface is derived
+      # from that same origin.
       VITE_COLLAB_BACKEND: "ws://localhost:1234/yjs"
     ports:
       - "5173:5173"
@@ -89,31 +79,11 @@ services:
       - editor-node-modules:/app/node_modules
     restart: unless-stopped
 
-  gateway-dev:
-    profiles: ["dev"]
-    # Pinned to 1.25-alpine to match backend/go.mod's `go 1.25.0`
-    # directive — running on 1.24 fails at `go run` with the same
-    # error the CI hotfix (ec9a2e7) caught.
-    image: golang:1.25-alpine
-    container_name: casual-editor-gateway-dev
-    working_dir: /src
-    command: sh -c "go run ./cmd/gateway"
-    environment:
-      GATEWAY_ADDR: ":8080"
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./backend:/src
-      - go-mod-cache:/go
-    restart: unless-stopped
-
   # Shared CasualOffice collab server (Hocuspocus + Yjs), vendored as a
   # git submodule at ./collab. Holds one authoritative Y.Doc per room so
   # a fresh peer syncs from server state and the server can snapshot /
-  # version on its own — the forward path that replaces the Go gateway's
-  # relay-only collab. Run in DOCS mode here (CASUAL_FILE_EXT=.docx); the
-  # sheet app deploys the same image with .xlsx. A CasualEditor host
-  # points its `backend` at ws://localhost:1234/yjs to use it.
+  # version on its own. Run in DOCS mode here (CASUAL_FILE_EXT=.docx); the
+  # sheet app deploys the same image with .xlsx.
   collab-dev:
     profiles: ["dev"]
     build:
@@ -134,4 +104,3 @@ services:
 
 volumes:
   editor-node-modules:
-  go-mod-cache:

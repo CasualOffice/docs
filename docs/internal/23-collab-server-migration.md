@@ -1,7 +1,18 @@
 # 23 — Collab server migration (shared Hocuspocus + Yjs)
 
-Status: **in progress** — server extracted + docs client wired + path proven; deploy
-cutover staged. Continues pillar C of [22-collab-scale-persistence](./22-collab-scale-persistence.md).
+Status: **complete** — the Go gateway (`backend/`) was **removed 2026-06-28**. The editor
+connects to the collab server via `HocuspocusProvider`; the share-link/seed flow moved to
+collab's `/api/rooms`; Mode 2/3 (auth, files, WOPI) were already collab-contract-native; the
+bundled Docker image now runs the collab server (Node) serving the SPA + REST + WS on one
+origin (`Dockerfile`, `docker-compose.yml`, `deploy/`). Continues pillar C of
+[22-collab-scale-persistence](./22-collab-scale-persistence.md).
+
+> **2026-06-28 removal note.** The REST surface the Go gateway used to own is now fully
+> covered by collab: realtime WS (`/yjs`), share-link/seed (`/api/rooms`), personal auth
+> (`/auth`), personal files (`/files`), and WOPI (`/wopi`). The opt-in server version-history
+> endpoint (`/api/docs/:id/history`) has no collab equivalent — it was dropped from the demo
+> (local IndexedDB history still works). `docs/internal/05-backend-design.md` + `12-env-vars.md`
+> describe the removed Go code and are historical.
 
 ## Decision
 
