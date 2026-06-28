@@ -72,7 +72,8 @@ import { CommentMarginMarkers } from './CommentMarginMarkers';
 import { useCommentSidebarItems, type CommentCallbacks } from '../hooks/useCommentSidebarItems';
 import { useTrackedChanges } from '../hooks/useTrackedChanges';
 import type { EditorState as PMEditorState } from 'prosemirror-state';
-import { NodeSelection, Plugin } from 'prosemirror-state';
+import { NodeSelection, Plugin, PluginKey } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
 import type { Mark as PMMark } from 'prosemirror-model';
 import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import type { ReactSidebarItem } from '../plugin-api/types';
@@ -2157,9 +2158,52 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }),
     []
   );
+  // Find & Replace match highlighting. The handlers publish the match ranges
+  // (PM positions) via a `findHighlightKey` meta; this plugin turns them into
+  // inline decorations, which DecorationLayer paints over the visible pages
+  // (the current match gets `find-match-current`). Purely visual — it never
+  // affects find/replace behavior. Decorations map through edits so they stay
+  // put until the next find re-runs.
+  const findHighlightKey = useMemo(() => new PluginKey('findHighlight'), []);
+  const findHighlightPlugin = useMemo(
+    () =>
+      new Plugin({
+        key: findHighlightKey,
+        state: {
+          init: () => DecorationSet.empty,
+          apply(tr, deco: DecorationSet) {
+            const meta = tr.getMeta(findHighlightKey) as
+              | { ranges: Array<{ from: number; to: number }>; current: number }
+              | undefined;
+            if (meta) {
+              if (!meta.ranges.length) return DecorationSet.empty;
+              const decos = meta.ranges.map((r, i) =>
+                Decoration.inline(r.from, r.to, {
+                  class: i === meta.current ? 'find-match find-match-current' : 'find-match',
+                })
+              );
+              return DecorationSet.create(tr.doc, decos);
+            }
+            return deco.map(tr.mapping, tr.doc);
+          },
+        },
+        props: {
+          decorations(state) {
+            return findHighlightKey.getState(state);
+          },
+        },
+      }),
+    [findHighlightKey]
+  );
+
   const allExternalPlugins = useMemo(
-    () => [suggestionPlugin, markdownHeadingPlugin, ...(externalPlugins ?? [])],
-    [suggestionPlugin, markdownHeadingPlugin, externalPlugins]
+    () => [
+      suggestionPlugin,
+      markdownHeadingPlugin,
+      findHighlightPlugin,
+      ...(externalPlugins ?? []),
+    ],
+    [suggestionPlugin, markdownHeadingPlugin, findHighlightPlugin, externalPlugins]
   );
 
   // Refs
@@ -7320,6 +7364,19 @@ body { background: white; }
   // positions, so "N of M" and the next current match stay correct.
   const lastFindQueryRef = useRef<{ searchText: string; options: FindOptions } | null>(null);
 
+  // Publish the find matches as highlight decorations (see findHighlightPlugin).
+  const setFindHighlights = useCallback(
+    (matches: FindMatch[], current: number) => {
+      const view = pagedEditorRef.current?.getView();
+      if (!view) return;
+      const ranges = matches
+        .filter((m) => m.pmFrom != null && m.pmTo != null)
+        .map((m) => ({ from: m.pmFrom as number, to: m.pmTo as number }));
+      view.dispatch(view.state.tr.setMeta(findHighlightKey, { ranges, current }));
+    },
+    [findHighlightKey]
+  );
+
   // Select a PM-position match in the editor and scroll its painted span into
   // view. The hidden PM's own scrollIntoView is suppressed (the paginated layer
   // owns scroll), so we scroll the painted DOM directly. Works in table cells.
@@ -7363,10 +7420,11 @@ body { background: white; }
       const result: FindResult = { matches, totalCount: matches.length, currentIndex: 0 };
       findResultRef.current = result;
       findReplace.setMatches(matches, 0);
+      setFindHighlights(matches, 0);
       if (matches.length > 0) navigateToMatch(matches[0]);
       return result;
     },
-    [findReplace, navigateToMatch]
+    [findReplace, navigateToMatch, setFindHighlights]
   );
 
   // Handle find next
@@ -7377,8 +7435,9 @@ body { background: white; }
     const newIndex = findReplace.goToNextMatch();
     const match = findResultRef.current.matches[newIndex];
     navigateToMatch(match);
+    setFindHighlights(findResultRef.current.matches, newIndex);
     return match || null;
-  }, [findReplace, navigateToMatch]);
+  }, [findReplace, navigateToMatch, setFindHighlights]);
 
   // Handle find previous
   const handleFindPrevious = useCallback((): FindMatch | null => {
@@ -7388,8 +7447,9 @@ body { background: white; }
     const newIndex = findReplace.goToPreviousMatch();
     const match = findResultRef.current.matches[newIndex];
     navigateToMatch(match);
+    setFindHighlights(findResultRef.current.matches, newIndex);
     return match || null;
-  }, [findReplace, navigateToMatch]);
+  }, [findReplace, navigateToMatch, setFindHighlights]);
 
   // Replace the current match with a targeted PM transaction (works in table
   // cells; one undoable step), then re-run the search so positions / "N of M"
@@ -7416,10 +7476,11 @@ body { background: white; }
       const matches = q && nextView ? findInPmDoc(nextView.state.doc, q.searchText, q.options) : [];
       findResultRef.current = { matches, totalCount: matches.length, currentIndex: 0 };
       findReplace.setMatches(matches, 0);
+      setFindHighlights(matches, 0);
       if (matches.length > 0) navigateToMatch(matches[0]);
       return true;
     },
-    [findReplace, navigateToMatch]
+    [findReplace, navigateToMatch, setFindHighlights]
   );
 
   // Replace every match in one undoable transaction. Apply end → start so each
@@ -7444,9 +7505,10 @@ body { background: white; }
       view.dispatch(tr.scrollIntoView());
       findResultRef.current = null;
       findReplace.setMatches([], 0);
+      setFindHighlights([], 0);
       return matches.length;
     },
-    [findReplace]
+    [findReplace, setFindHighlights]
   );
 
   // Expose ref methods
@@ -9953,7 +10015,10 @@ body { background: white; }
               {findReplace.state.isOpen && (
                 <FindReplaceDialog
                   isOpen={findReplace.state.isOpen}
-                  onClose={findReplace.close}
+                  onClose={() => {
+                    findReplace.close();
+                    setFindHighlights([], 0);
+                  }}
                   onFind={handleFind}
                   onFindNext={handleFindNext}
                   onFindPrevious={handleFindPrevious}

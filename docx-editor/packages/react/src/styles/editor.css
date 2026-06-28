@@ -454,6 +454,18 @@
   outline: 2px solid rgba(255, 152, 0, 0.8);
 }
 
+/* Find/replace match highlights painted by DecorationLayer over the visible
+   pages (findHighlightPlugin inline decorations). Each is an absolute overlay
+   rect above the text, so a translucent fill tints the matched run. */
+.find-match {
+  background-color: rgba(255, 235, 59, 0.45);
+  border-radius: 2px;
+}
+.find-match-current {
+  background-color: rgba(255, 152, 0, 0.55);
+  border-radius: 2px;
+}
+
 /* ============================================================================
  * AI ACTION PREVIEW HIGHLIGHTING
  * ============================================================================ */
