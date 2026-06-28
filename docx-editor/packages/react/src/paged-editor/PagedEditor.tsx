@@ -1317,7 +1317,17 @@ function measureBlocks(blocks: FlowBlock[], contentWidth: number | number[]): Me
       activeZones = zonesByAnchor.get(blockIndex) ?? [];
     }
 
-    const zones = activeZones.length > 0 ? activeZones : undefined;
+    // Only zones that extend below this block's top can affect its line widths.
+    // A block starting at or past every active zone's bottom can't overlap any
+    // of them, so it measures identically to the no-zone case — drop the zones
+    // so measureBlock can use the paragraph cache. Without this, one floating
+    // image near the top of a long doc forces a full re-measure of every block
+    // below it on every keystroke (the zones persist from the anchor onward).
+    let zones: FloatingImageZone[] | undefined;
+    if (activeZones.length > 0) {
+      const relevant = activeZones.filter((z) => z.bottomY > cumulativeY);
+      zones = relevant.length > 0 ? relevant : undefined;
+    }
 
     try {
       const blockStart = performance.now();
