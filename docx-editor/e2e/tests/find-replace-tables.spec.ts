@@ -6,7 +6,7 @@ import { EditorPage } from '../helpers/editor-page';
  * replaces inside table cells — the old Document-model search skipped tables.
  */
 async function modKey(page: import('@playwright/test').Page) {
-  return /Win/i.test(await page.evaluate(() => navigator.platform)) ? 'Control' : 'Meta';
+  return /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
 }
 
 test('find counts matches in body and table cells; Replace All replaces all', async ({ page }) => {

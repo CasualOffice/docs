@@ -9,7 +9,7 @@ import { EditorPage } from '../helpers/editor-page';
  * echo and never re-seeded the editor, so Replace silently did nothing.
  */
 async function openReplace(page: import('@playwright/test').Page) {
-  const mod = /Win/i.test(await page.evaluate(() => navigator.platform)) ? 'Control' : 'Meta';
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
   await page.keyboard.press(`${mod}+h`);
   await page.locator('[data-testid="find-replace-dialog"]').waitFor({ timeout: 3000 });
   return mod;
@@ -61,7 +61,7 @@ test('Replace preserves surrounding formatting', async ({ page }) => {
   await ed.focus();
   await ed.typeText('KEEP');
   await page.waitForTimeout(80);
-  const mod = /Win/i.test(await page.evaluate(() => navigator.platform)) ? 'Control' : 'Meta';
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
   await page.keyboard.press(`${mod}+a`);
   await page.keyboard.press(`${mod}+b`); // bold "KEEP"
   await page.waitForTimeout(100);
