@@ -6,14 +6,19 @@
 //
 // Flow:
 //   1. User clicks "Share for collaboration".
-//   2. We POST the current document buffer to the gateway's
-//      /api/docs endpoint with the original filename.
-//   3. Gateway returns `{ docId, shareUrl }`.
-//   4. We build a full URL: `${location.origin}/?room=${docId}&backend=${ws}`.
-//   5. Display in a modal with a copy-to-clipboard button.
-//   6. On the same page, optionally redirect into collab mode by
+//   2. We mint a transient room on the collab server (POST /api/rooms)
+//      and seed it with the current document bytes
+//      (POST /api/rooms/{id}/seed).
+//   3. We build a full URL: `${location.origin}/?room=${roomId}&backend=${ws}`.
+//   4. Display in a modal with a copy-to-clipboard button.
+//   5. On the same page, optionally redirect into collab mode by
 //      navigating to the share URL so the local user joins
 //      immediately too.
+//
+// The room + seed live on the Node CasualOffice/collab server, not the
+// legacy Go gateway — joiners fetch the seed bytes on connect and the
+// live Y.Doc (filename included, via its meta map) takes over once
+// Hocuspocus sync completes.
 //
 // The modal is intentionally simple — no portal, no animations,
 // just inline-styled markup so it doesn't require a CSS-in-JS
@@ -24,12 +29,12 @@ import type { CSSProperties } from 'react';
 export interface ShareDialogProps {
   /** Current document buffer (the bytes the user is editing). */
   documentBuffer: ArrayBuffer | null;
-  /** Filename to send to the backend (used by the download endpoint's
-   *  Content-Disposition). */
+  /** Filename to seed the room with (the live Y.Doc meta map carries the
+   *  canonical name to joiners once Hocuspocus sync completes). */
   fileName: string;
-  /** Backend base URL (HTTP — ws/wss is derived for the WS path). */
-  backendHttp: string;
-  /** Backend ws URL the share URL should embed. */
+  /** Collab server REST base URL (its `/api/rooms` surface). */
+  collabHttp: string;
+  /** Collab ws URL the share URL should embed. */
   backendWs: string;
   open: boolean;
   onClose: () => void;
@@ -146,7 +151,7 @@ const styles: Record<string, CSSProperties> = {
 export function ShareDialog({
   documentBuffer,
   fileName,
-  backendHttp,
+  collabHttp,
   backendWs,
   open,
   onClose,
@@ -172,23 +177,41 @@ export function ShareDialog({
     }
     setState('uploading');
 
-    const formData = new FormData();
-    const blob = new Blob([documentBuffer], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    });
-    formData.append('file', blob, fileName || 'Untitled.docx');
+    const mintRoom = async (): Promise<string> => {
+      // 1. Create a fresh transient room. No password — a casual share
+      //    link is open-by-URL; the room drains when everyone leaves.
+      const createRes = await fetch(`${collabHttp}/api/rooms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!createRes.ok) {
+        throw new Error(`HTTP ${createRes.status}: ${await createRes.text().catch(() => '')}`);
+      }
+      const { roomId } = (await createRes.json()) as { roomId: string };
 
-    fetch(`${backendHttp}/api/docs`, { method: 'POST', body: formData })
-      .then(async (res) => {
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`HTTP ${res.status}: ${text}`);
-        }
-        return res.json();
-      })
-      .then((data: { docId: string }) => {
+      // 2. Seed the room with the current document bytes. Joiners GET
+      //    these on connect to start from the same state; future edits
+      //    flow through the Y.Doc.
+      const formData = new FormData();
+      const blob = new Blob([documentBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      formData.append('file', blob, fileName || 'Untitled.docx');
+      const seedRes = await fetch(`${collabHttp}/api/rooms/${encodeURIComponent(roomId)}/seed`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!seedRes.ok) {
+        throw new Error(`HTTP ${seedRes.status}: ${await seedRes.text().catch(() => '')}`);
+      }
+      return roomId;
+    };
+
+    mintRoom()
+      .then((roomId) => {
         const url = new URL(window.location.origin);
-        url.searchParams.set('room', data.docId);
+        url.searchParams.set('room', roomId);
         url.searchParams.set('backend', backendWs);
         setShareUrl(url.toString());
         setState('ready');
@@ -197,7 +220,7 @@ export function ShareDialog({
         setErrorMsg(err instanceof Error ? err.message : String(err));
         setState('error');
       });
-  }, [open, documentBuffer, fileName, backendHttp, backendWs]);
+  }, [open, documentBuffer, fileName, collabHttp, backendWs]);
 
   const copy = useCallback(async () => {
     try {
@@ -229,7 +252,15 @@ export function ShareDialog({
         {state === 'error' && <div style={styles.errorBanner}>{errorMsg}</div>}
 
         {state === 'uploading' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#64748b', fontSize: 13 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              color: '#64748b',
+              fontSize: 13,
+            }}
+          >
             <span style={styles.spinner} />
             Preparing share link…
           </div>
