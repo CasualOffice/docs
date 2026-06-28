@@ -418,6 +418,7 @@ import {
   findNextChange,
   findPreviousChange,
 } from '@eigenpal/docx-core/prosemirror/commands';
+import { deleteCellSelection } from 'prosemirror-tables';
 import { collectHeadings } from '@eigenpal/docx-core/utils';
 import {
   getChangedParagraphIds,
@@ -3463,30 +3464,20 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       // Delete selected table from layout selection (non-ProseMirror selection)
       if (!cmdOrCtrl && !e.shiftKey && !e.altKey) {
         if (e.key === 'Delete' || e.key === 'Backspace') {
-          // If full table is selected via ProseMirror CellSelection, delete it.
+          // Multi-cell (CellSelection) delete: clear the selected cells'
+          // contents and keep the table, matching Word and Google Docs. Even
+          // selecting the whole table just empties it — deleting the table is
+          // an explicit menu/right-click action, not what Delete does. (This
+          // previously called deleteTable on a full-table selection, which
+          // surprised users who selected all cells just to clear them.)
           const view = pagedEditorRef.current?.getView();
           if (view) {
             const sel = view.state.selection as { $anchorCell?: unknown; forEachCell?: unknown };
             const isCellSel = '$anchorCell' in sel && typeof sel.forEachCell === 'function';
             if (isCellSel) {
-              const context = getTableContext(view.state);
-              if (context.isInTable && context.table) {
-                let totalCells = 0;
-                context.table.descendants((node) => {
-                  if (node.type.name === 'tableCell' || node.type.name === 'tableHeader') {
-                    totalCells += 1;
-                  }
-                });
-                let selectedCells = 0;
-                (sel as { forEachCell: (fn: () => void) => void }).forEachCell(() => {
-                  selectedCells += 1;
-                });
-                if (totalCells > 0 && selectedCells >= totalCells) {
-                  e.preventDefault();
-                  pmDeleteTable(view.state, view.dispatch);
-                  return;
-                }
-              }
+              e.preventDefault();
+              deleteCellSelection(view.state, view.dispatch);
+              return;
             }
           }
 
