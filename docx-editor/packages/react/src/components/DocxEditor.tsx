@@ -3635,6 +3635,26 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         setShowCommandPalette(true);
       }
 
+      // Google Docs heading shortcuts: Ctrl/Cmd+Alt+1/2/3 → Heading 1/2/3,
+      // Ctrl/Cmd+Alt+0 → Normal text. Match on e.code (the physical digit key)
+      // so it works regardless of what Alt+digit produces on the layout.
+      if (cmdOrCtrl && e.altKey && !e.shiftKey) {
+        const styleId =
+          e.code === 'Digit1'
+            ? 'Heading1'
+            : e.code === 'Digit2'
+              ? 'Heading2'
+              : e.code === 'Digit3'
+                ? 'Heading3'
+                : e.code === 'Digit0'
+                  ? 'Normal'
+                  : null;
+        if (styleId && applyHeadingStyleRef.current) {
+          e.preventDefault();
+          applyHeadingStyleRef.current(styleId);
+        }
+      }
+
       // Mod+Shift+\ → toggle focus mode. iA Writer / Bear / Notion all
       // use a variant of this; backslash is chosen because it sits
       // alone on every layout (no conflict with format shortcuts) and
