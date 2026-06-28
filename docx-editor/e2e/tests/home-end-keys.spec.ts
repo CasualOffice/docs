@@ -45,6 +45,39 @@ test('Shift+Home extends the selection to line start', async ({ page }) => {
   expect((await page.locator('.paged-editor__pages').innerText()).trim()).toBe('Z');
 });
 
+test('Ctrl/Cmd+Home/End move the caret to document start/end', async ({ page }) => {
+  const ed = new EditorPage(page);
+  await ed.goto();
+  await ed.waitForReady();
+  await ed.newDocument();
+  await ed.focus();
+  // Playwright's Chromium reports platform Win32 even on macOS; detect the
+  // real modifier so the right key combo is sent.
+  const mod = /Mac/i.test(await page.evaluate(() => navigator.platform)) ? 'Meta' : 'Control';
+  await ed.typeText('first');
+  await page.keyboard.press('Enter');
+  await ed.typeText('second');
+  await page.keyboard.press('Enter');
+  await ed.typeText('third');
+  await page.waitForTimeout(150);
+
+  await page.keyboard.press(`${mod}+Home`);
+  await page.waitForTimeout(120);
+  await ed.typeText('Z');
+  await page.waitForTimeout(150);
+  expect((await page.locator('.paged-editor__pages').innerText()).replace(/\n/g, '|')).toMatch(
+    /^Zfirst/
+  );
+
+  await page.keyboard.press(`${mod}+End`);
+  await page.waitForTimeout(120);
+  await ed.typeText('Q');
+  await page.waitForTimeout(150);
+  expect((await page.locator('.paged-editor__pages').innerText()).replace(/\n/g, '|')).toMatch(
+    /thirdQ$/
+  );
+});
+
 test('Home goes to the visual-line start on a wrapped paragraph', async ({ page }) => {
   const ed = new EditorPage(page);
   await ed.goto();

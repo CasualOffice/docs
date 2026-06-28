@@ -2,4 +2,4 @@
 '@eigenpal/docx-js-editor': patch
 ---
 
-Fix Home and End keys: they now move the caret to the start/end of the current visual line (and Shift+Home/End extend the selection), measured against the painted layout. Previously they were no-ops because the off-screen editing model's native Home/End didn't map to the paginated view.
+Fix Home/End navigation. Home and End now move the caret to the start/end of the current visual line, and Ctrl/Cmd+Home/End move it to the document start/end (Shift extends the selection in both cases). Previously these were no-ops because the off-screen editing model's native Home/End didn't map to the paginated view.

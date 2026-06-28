@@ -241,12 +241,31 @@ export function useVisualLineNavigation({ pagesContainerRef }: VisualLineNavigat
    */
   const handlePMKeyDown = useCallback(
     (view: EditorView, event: KeyboardEvent): boolean => {
+      // Ctrl/Cmd + Home / End → document start / end (caret move). The
+      // container separately scrolls the viewport; without this the caret
+      // stays put. Shift extends the selection to the doc edge.
+      if (
+        (event.key === 'Home' || event.key === 'End') &&
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey
+      ) {
+        stickyXRef.current = null;
+        lastVisualLineIndexRef.current = -1;
+        const { state, dispatch } = view;
+        const edge =
+          event.key === 'Home' ? TextSelection.atStart(state.doc) : TextSelection.atEnd(state.doc);
+        const sel = event.shiftKey
+          ? TextSelection.between(state.doc.resolve(state.selection.anchor), edge.$head)
+          : edge;
+        dispatch(state.tr.setSelection(sel).scrollIntoView());
+        return true;
+      }
+
       // Home / End → start / end of the current VISUAL line, measured against
       // the painted layout. The real editing state lives in an off-screen
       // ProseMirror whose native Home/End map to ITS line wrapping, not the
       // paginated layout the user sees — so without this, Home/End are no-ops
-      // (or jump to the wrong place). Ctrl/Cmd (doc start/end) and Alt are left
-      // to PM / the container handler.
+      // (or jump to the wrong place). Alt is left to PM / the container handler.
       if (
         (event.key === 'Home' || event.key === 'End') &&
         !event.ctrlKey &&
