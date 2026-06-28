@@ -1748,6 +1748,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // toggles between idle/armed.
   const [paintFormatMarks, setPaintFormatMarks] = useState<readonly PMMark[] | null>(null);
   const paintFormatMarksRef = useRef<readonly PMMark[] | null>(null);
+  // Double-click arms persistent paint (apply to many selections); single click
+  // is one-shot. `lastPaintClickRef` is how the toggle handler tells them apart.
+  const paintFormatPersistentRef = useRef(false);
+  const lastPaintClickRef = useRef(0);
   useEffect(() => {
     paintFormatMarksRef.current = paintFormatMarks;
   }, [paintFormatMarks]);
@@ -3770,10 +3774,23 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // disarm. Otherwise capture the current cursor's mark set; the next
   // selection-change with a non-empty selection will apply them.
   const handleTogglePaintFormat = useCallback(() => {
+    const now = Date.now();
+    const isDoubleClick = now - lastPaintClickRef.current < 350;
+    lastPaintClickRef.current = now;
+
+    // Already armed: a double-click promotes to persistent mode (paint many
+    // selections until Esc or another click, matching Google Docs); a single
+    // click disarms.
     if (paintFormatMarksRef.current) {
+      if (isDoubleClick) {
+        paintFormatPersistentRef.current = true;
+        return; // keep the captured marks, stay armed
+      }
+      paintFormatPersistentRef.current = false;
       setPaintFormatMarks(null);
       return;
     }
+
     const view = pagedEditorRef.current?.getView();
     if (!view) return;
     const { selection, storedMarks } = view.state;
@@ -3787,6 +3804,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     } else {
       marks = selection.$from.marks();
     }
+    paintFormatPersistentRef.current = isDoubleClick;
     setPaintFormatMarks(marks);
   }, []);
 
@@ -3807,14 +3825,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       tr = tr.addMark(from, to, m);
     }
     view.dispatch(tr);
-    setPaintFormatMarks(null);
+    // One-shot paint disarms after a single application; persistent (double-
+    // click) mode stays armed until Esc or another click on the button.
+    if (!paintFormatPersistentRef.current) setPaintFormatMarks(null);
   }, []);
 
   // Cancel paint-format on Escape.
   useEffect(() => {
     if (!paintFormatMarks) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPaintFormatMarks(null);
+      if (e.key === 'Escape') {
+        paintFormatPersistentRef.current = false;
+        setPaintFormatMarks(null);
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
