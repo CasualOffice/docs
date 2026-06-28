@@ -7123,7 +7123,6 @@ body { background: white; }
   );
   const handleExportOdt = useCallback(() => handleExportAs('odt'), [handleExportAs]);
   const handleExportMd = useCallback(() => handleExportAs('md'), [handleExportAs]);
-  const handleExportTxt = useCallback(() => handleExportAs('txt'), [handleExportAs]);
 
   const handleOpenDocument = useCallback(() => {
     // Host override (desktop shell): native dialog + open-where prompt. The
@@ -8629,7 +8628,6 @@ body { background: white; }
                       onExportPdf={handleExportPdf}
                       onExportOdt={handleExportOdt}
                       onExportMd={handleExportMd}
-                      onExportTxt={handleExportTxt}
                       onReportBug={handleReportBug}
                       onShowAbout={handleShowAbout}
                       onOpenCommandPalette={() => setShowCommandPalette(true)}
@@ -10286,12 +10284,6 @@ body { background: white; }
                       label: 'Export as Markdown',
                       path: 'File · Export',
                       run: handleExportMd,
-                    },
-                    {
-                      id: 'file.export.txt',
-                      label: 'Export as Plain Text',
-                      path: 'File · Export',
-                      run: handleExportTxt,
                     },
                     {
                       id: 'file.pageSetup',
