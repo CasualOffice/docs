@@ -1,9 +1,8 @@
 name: CI
 
-# Two parallel surfaces:
-#   - docx-editor/   editor fork (Bun + React, see jobs that set
-#                    working-directory at the job level)
-#   - backend/       Go gateway (jobs without that default)
+# Editor fork (Bun + React) under docx-editor/. Real-time collab + the
+# REST surface live in the Node CasualOffice/collab server (the ./collab
+# submodule), which has its own CI in that repo.
 
 on:
   push:
@@ -153,32 +152,3 @@ jobs:
             docx-editor/playwright-report
             docx-editor/screenshots/test-results
           retention-days: 7
-
-  backend:
-    name: Backend (Go vet + test + build)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          # The editor's styles.css @imports the @schnsrw/design-system
-          # tokens vendored at docx-editor/vendor/design-system (git
-          # submodule); the build fails without it checked out.
-          submodules: recursive
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25'
-          cache-dependency-path: backend/go.sum
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Test (race)
-        run: go test -race ./...
-
-      - name: Build
-        run: go build ./...

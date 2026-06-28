@@ -1,6 +1,6 @@
 # Docker build context exclusions.
 #
-# The bundled image needs the editor source + the Go backend; nothing
+# The bundled image needs the editor source + the collab server; nothing
 # else. Everything large or generated stays out of the build context
 # so `docker build` doesn't ship 2 GB of node_modules / build output /
 # fixtures to the daemon.
@@ -48,5 +48,4 @@
 /docs/
 /assets/
 
-# Editor doesn't need this — the gateway builds from backend/ only
 **/*.log

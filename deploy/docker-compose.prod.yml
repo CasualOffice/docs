@@ -1,8 +1,8 @@
-# Production topology for the collab migration: the gateway (REST +
-# bundled SPA) and the shared collab server (Hocuspocus CRDT) behind a
-# Caddy reverse proxy that unifies them same-origin. The SPA reaches
-# collab at same-origin /yjs (see deploy/Caddyfile + the App.tsx
-# same-origin default), so nothing host-specific is baked into the build.
+# Production topology: one `app` container — the Node collab server
+# (Hocuspocus CRDT on /yjs + REST: /api/rooms, /auth, /files, /wopi)
+# serving the bundled SPA from the same origin — behind a Caddy reverse
+# proxy for TLS. Nothing host-specific is baked into the SPA build (it
+# reaches the WS broker at same-origin /yjs, see the App.tsx default).
 #
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
@@ -10,30 +10,14 @@
 # Run from the repo root (contexts are relative to it).
 
 services:
-  gateway:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
     image: casual-editor:local
     environment:
-      GATEWAY_ADDR: ":8080"
-      # Share-link mode by default; switch to local/wopi as needed.
-      GATEWAY_HOST: "inline"
-      LOG_FORMAT: "json"
-      ACCESS_LOG: "true"
-    expose:
-      - "8080"
-    restart: unless-stopped
-
-  collab:
-    build:
-      context: ./collab
-      dockerfile: Dockerfile
-    image: casual-collab:local
-    environment:
-      PORT: "1234"
+      PORT: "8080"
       HOST: "0.0.0.0"
-      # DOCS deployment — sheets deploy the same image with .xlsx.
       CASUAL_FILE_EXT: ".docx"
       # Persist Y.Doc room snapshots so a restart doesn't drop live docs.
       CASUAL_STORAGE: "local"
@@ -44,14 +28,13 @@ services:
     volumes:
       - ./data/collab:/data
     expose:
-      - "1234"
+      - "8080"
     restart: unless-stopped
 
   proxy:
     image: caddy:2
     depends_on:
-      - gateway
-      - collab
+      - app
     environment:
       COLLAB_SITE_ADDRESS: "${COLLAB_SITE_ADDRESS:-:8080}"
     ports:

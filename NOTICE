@@ -19,29 +19,30 @@ suite). Our fork's modifications to those files inherit the MIT terms;
 new files added under `docx-editor/` are also MIT for consistency with
 the upstream tree.
 
-Files outside `docx-editor/` — including the Go backend at `backend/`,
-the bundled Dockerfile, docker-compose configuration, CI workflows,
-fidelity-comparison scripts, and project documentation — are Apache-2.0
-(this repo's NOTICE and LICENSE).
+Files outside `docx-editor/` — including the bundled Dockerfile,
+docker-compose configuration, CI workflows, fidelity-comparison
+scripts, and project documentation — are Apache-2.0 (this repo's NOTICE
+and LICENSE). The collab server is vendored as the `collab/` git
+submodule (CasualOffice/collab, Apache-2.0) and carries its own NOTICE.
 
 ─── Runtime dependencies ─────────────────────────────────────────────
 
 This product depends on the following Open Source software at runtime
-(non-exhaustive — see the per-package package.json + backend/go.mod for
-the full dependency list):
+(non-exhaustive — see the per-package package.json for the full list):
 
   Editor (docx-editor/, MIT or compatible):
     * react              — MIT          (Meta Platforms, Inc.)
     * prosemirror-*      — MIT          (Marijn Haverbeke and contributors)
     * yjs                — MIT          (Kevin Jahns)
     * y-prosemirror      — MIT          (Kevin Jahns)
-    * y-websocket        — MIT          (Kevin Jahns)
+    * @hocuspocus/provider — MIT        (überdosis)
     * jszip              — MIT or GPL-3 (Stuart Knightley)
     * xml-js             — MIT          (Nashwaan)
 
-  Gateway (backend/, Apache-2.0):
-    * github.com/coder/websocket — ISC  (Coder Technologies, Inc.)
-    * Go standard library         — BSD-3-Clause (The Go Authors)
+  Collab server (collab/ submodule, Apache-2.0):
+    * @hocuspocus/server — MIT          (überdosis)
+    * fastify            — MIT          (The Fastify team)
+    * yjs                — MIT          (Kevin Jahns)
 
 ─── Trademarks ──────────────────────────────────────────────────────
 

@@ -26,7 +26,7 @@
 
 ---
 
-Casual Docs is a **self-hostable, browser-based `.docx` editor** that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with **real-time multi-user co-editing** built in. Upload a `.docx`, share a link, edit together instantly. **No accounts, no Microsoft / Google login, no lock-in.** One Docker container, a **stateless Go gateway** (~120 LOC of y-websocket protocol), in-memory rooms.
+Casual Docs is a **self-hostable, browser-based `.docx` editor** that looks and behaves like Microsoft Word — ribbon-style toolbar, paginated WYSIWYG layout, file-centric workflow — with **real-time multi-user co-editing** built in. Upload a `.docx`, share a link, edit together instantly. **No accounts, no Microsoft / Google login, no lock-in.** One Docker container running the **Node collab server** (Hocuspocus + Yjs), in-memory rooms.
 
 Sister projects: [Casual Sheets](https://github.com/CasualOffice/sheets) (`.xlsx`) and [Casual Slides](https://github.com/CasualOffice/slides) (`.pptx`).
 
@@ -82,7 +82,7 @@ Non-DOCX formats convert to/from DOCX bytes in a Web Worker (Rust + WASM); the ~
 
 - **`<DocxEditor>`** React component ([`@casualoffice/docs`](https://www.npmjs.com/package/@casualoffice/docs)) + an extension system for custom nodes/marks/menus
 - **i18n** — translatable toolbar/dialog strings with a CI-enforced, auto-derived `LocaleStrings` type
-- **Single multi-arch Docker image** (`linux/amd64` + `linux/arm64`): editor SPA + Go gateway in one container behind one port
+- **Single multi-arch Docker image** (`linux/amd64` + `linux/arm64`): editor SPA + Node collab server (Hocuspocus + Yjs) in one container behind one port
 - Material-Symbols icons bundled as SVGs (no font fetch)
 </details>
 
@@ -92,7 +92,7 @@ See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full design.
 
 ## 🐳 Self-Host with Docker
 
-A single multi-arch image. Editor SPA and Go gateway run in one container behind a single port.
+A single multi-arch image. The editor SPA and the Node collab server (Hocuspocus + Yjs) run in one container behind a single port.
 
 ### Quick start
 
@@ -111,8 +111,8 @@ services:
     restart: unless-stopped
     ports: ['8080:8080']
     environment:
-      GATEWAY_ADDR: ':8080'
-      ROOM_TTL_MIN: '15'
+      PORT: '8080'
+      CASUAL_FILE_EXT: '.docx'
 ```
 
 ### Try co-editing
@@ -126,28 +126,28 @@ services:
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/` | Serves the built editor SPA |
-| `GET` | `/d/:docId` | Same SPA; bridges into the named Y.Doc |
-| `POST` | `/api/docs` | Upload a `.docx` — returns `{docId}` |
-| `GET` | `/api/docs/:id/download` | Download the latest snapshot as `.docx` |
+| `POST` | `/api/rooms` | Mint a transient share-link room — returns `{roomId}` |
+| `POST` | `/api/rooms/:id/seed` | Seed a room with the starting `.docx` bytes |
+| `GET` | `/api/rooms/:id/seed` | Fetch the room's seed bytes (joiners) |
 | `GET` | `/health` | Liveness probe |
-| `WS` | `/doc/:docId` | y-websocket sync; `?p=<password>` |
+| `WS` | `/yjs` | Hocuspocus sync; room name travels in the handshake |
 
 ### Configuration
 
 | Env var | Scope | Default | Description |
 | --- | --- | --- | --- |
-| `GATEWAY_ADDR` | server | `:8080` | HTTP + WebSocket listen address |
-| `STATIC_DIR` | server | `/srv/static` | Where the editor SPA is served from |
-| `ROOM_TTL_MIN` | server | `15` | Minutes a room stays alive after the last client leaves |
-| `MAX_UPLOAD_MB` | server | `25` | Upload cap for `.docx` |
-| `HOST_INTEGRATION` | server | `inline` | `inline`, `wopi`, or `jwtapi` |
+| `PORT` | server | `8080` | HTTP + WebSocket listen port |
+| `CASUAL_STORAGE` | server | `memory` | Room Y.Doc persistence: `memory` / `local` / `redis` |
+| `CASUAL_LOCAL_PATH` | server | `/data` | Path for `local` storage (mount a volume) |
+| `CASUAL_FILE_EXT` | server | `.docx` | File extension for the host integration |
+| `CASUAL_PERSONAL_MODE` | server | `none` | Personal auth (Mode 3): `none` / `single` / `multi` |
 | `VITE_COLLAB_ENABLED` | build | `true` in image | Include co-edit code in the bundle |
 
 ---
 
 ## 🛠 Develop
 
-**Prerequisites:** Bun ≥ 1.3.14, Go ≥ 1.25
+**Prerequisites:** Bun ≥ 1.3.14 (editor), Node ≥ 22 (collab server, the `./collab` submodule)
 
 ```sh
 # Editor (browser side)
@@ -159,14 +159,15 @@ bun test                  # unit tests
 bun run test:e2e          # Playwright suite (Chromium)
 bun run build             # build core + react libs
 
-# Gateway (Go server)
-cd backend
-go vet ./...
-go test -race ./...
-go run ./cmd/gateway      # listens on :8080
+# Collab server (Node, the ./collab submodule)
+cd collab
+npm install
+npm run dev               # Hocuspocus + REST  →  http://localhost:1234
 ```
 
-**Co-editing in dev** requires both servers running. Open the Vite dev server, upload a doc, click Share — the editor proxies the y-websocket connection to `:8080` automatically.
+**Co-editing in dev** requires both servers running. Point the editor at the
+collab server with `VITE_COLLAB_BACKEND=ws://localhost:1234/yjs`, open the Vite
+dev server, upload a doc, and click Share.
 
 ---
 
@@ -179,14 +180,10 @@ go run ./cmd/gateway      # listens on :8080
 │   ├── packages/react/           # React <DocxEditor> component (@casualoffice/docs)
 │   ├── examples/vite/            # Demo app deployed at docs.casualoffice.org
 │   └── e2e/                      # Playwright suite
-├── backend/                      # Go gateway (this repo)
-│   ├── cmd/gateway/              # Entry point, REST + WS handlers
-│   └── internal/
-│       ├── host/                 # host.Integration interface + impls (inline / wopi / jwtapi)
-│       ├── room/                 # Per-docId room manager (in-memory Y.Doc lifecycle)
-│       └── yws/                  # y-websocket protocol helpers
+├── collab/                       # Node collab server (CasualOffice/collab submodule)
+│   └── src/                      # Hocuspocus + Yjs, REST (/api/rooms, /auth, /files, /wopi)
 ├── docs/                         # Architecture, co-editing, deployment, round-trip
-├── Dockerfile                    # Multi-stage build (web → gateway → runtime)
+├── Dockerfile                    # Multi-stage build (web → collab server + SPA)
 └── docker-compose.yml            # Local dev stack
 ```
 
@@ -199,9 +196,9 @@ go run ./cmd/gateway      # listens on :8080
 | Editor model | ProseMirror schema preserving OOXML round-trip |
 | Layout | Custom paginated layout-painter (Word-fidelity output) |
 | Frontend | React 18 + Vite + TypeScript (strict) |
-| Collab transport | Yjs (CRDT) + `y-prosemirror` over y-websocket |
-| Backend | Go 1.25 — stateless gateway, in-memory Y.Doc per room |
-| Persistence | Delegated to host (inline, WOPI, or JWT-API) |
+| Collab transport | Yjs (CRDT) + `y-prosemirror` via `HocuspocusProvider` |
+| Backend | Node CasualOffice/collab — Hocuspocus + Yjs on Fastify, one Y.Doc per room |
+| Persistence | Room state via `CASUAL_STORAGE` (memory / local / redis); file bytes via host (memory / local / s3 / postgres) |
 | E2E tests | Playwright (Chromium) |
 | Editor toolchain | Bun |
 
@@ -209,7 +206,7 @@ go run ./cmd/gateway      # listens on :8080
 
 ## 🚫 Explicit Non-Goals
 
-- **No database on the gateway** — sessions are in-memory; persistence is the host's job. The gateway dies cleanly and restarts cleanly.
+- **No database required** — rooms are in-memory by default; persistence is opt-in (`CASUAL_STORAGE`) and the file-byte host's job. The server dies cleanly and restarts cleanly.
 - **No AI / LLM features** — the editor is a pure document tool. Wire your own model in via the extension system if you need one.
 - **No mobile editor** — desktop browsers only. The shell is responsive to 768 px, but the paginated editing UX assumes a pointer device.
 
