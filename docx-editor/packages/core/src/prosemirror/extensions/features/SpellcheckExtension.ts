@@ -38,6 +38,10 @@ export interface SpellChecker {
 
 let checker: SpellChecker | null = null;
 
+/** How long after the last edit before the full spell re-scan runs — kept off
+ *  the typing hot path on large documents. */
+const SPELLCHECK_DEBOUNCE_MS = 350;
+
 export function setSpellChecker(impl: SpellChecker | null): void {
   checker = impl;
 }
@@ -104,18 +108,42 @@ export const SpellcheckExtension = createExtension({
             },
             apply(tr, prev) {
               const currentVersion = checker?.version() ?? 0;
-              // Re-scan when the doc actually changed, when the checker
-              // flips on/off (version bump), or when meta requests a
-              // refresh (e.g. dictionary finished loading).
+              // Full re-scan when the checker flips on/off (version bump) or meta
+              // requests a refresh (toggle, dictionary finished loading, or the
+              // debounced view below). During active typing we just MAP the
+              // existing decorations through the change — a full-doc word walk
+              // per keystroke is too costly on large documents — and let the
+              // debounced view trigger a real rebuild once typing pauses.
               const forceRefresh = tr.getMeta(spellcheckPluginKey) === 'refresh';
-              if (!tr.docChanged && currentVersion === prev.version && !forceRefresh) {
-                return prev;
+              if (forceRefresh || currentVersion !== prev.version) {
+                return { version: currentVersion, decos: buildDecorations(tr.doc) };
               }
-              return {
-                version: currentVersion,
-                decos: buildDecorations(tr.doc),
-              };
+              if (tr.docChanged) {
+                return { version: currentVersion, decos: prev.decos.map(tr.mapping, tr.doc) };
+              }
+              return prev;
             },
+          },
+          // Debounce the expensive full re-scan: reset a timer on every doc
+          // change and only rebuild once typing has paused.
+          view() {
+            let timer: ReturnType<typeof setTimeout> | null = null;
+            return {
+              update(view: EditorView, prevState) {
+                if (view.state.doc === prevState.doc) return;
+                if (!checker?.isEnabled()) return;
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                  timer = null;
+                  // The view may have been torn down while the timer waited.
+                  if ((view as unknown as { docView: unknown }).docView == null) return;
+                  view.dispatch(view.state.tr.setMeta(spellcheckPluginKey, 'refresh'));
+                }, SPELLCHECK_DEBOUNCE_MS);
+              },
+              destroy() {
+                if (timer) clearTimeout(timer);
+              },
+            };
           },
           props: {
             decorations(state) {
