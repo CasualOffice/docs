@@ -698,7 +698,27 @@ export function App() {
         }
         bridge
           .loadDocument()
-          .then((buffer) => {
+          .then(async (buffer) => {
+            // .odt (and any other foreign format the launcher routes to this
+            // editor) is NOT a DOCX zip — feeding it straight to the parser
+            // fails the PK check, which is why opening an .odt used to land on
+            // the read-only error surface. Convert to the DOCX model first via
+            // the WASM worker, exactly like the web upload path. The editor's
+            // native format is DOCX, so unbind the source path afterwards: Save
+            // then prompts for a .docx location instead of overwriting the
+            // original .odt with DOCX bytes.
+            const fmt = formatFromFilename(name);
+            if (fmt && isForeignFormat(fmt)) {
+              const out = await convertToDocx(new Uint8Array(buffer), fmt);
+              const docBuf = out.buffer.slice(
+                out.byteOffset,
+                out.byteOffset + out.byteLength
+              ) as ArrayBuffer;
+              if (window.__deskApp__) window.__deskApp__.filePath = null;
+              setDocumentBuffer(docBuf);
+              setFileName(name.replace(/\.[^.]+$/, '.docx'));
+              return;
+            }
             setDocumentBuffer(buffer);
             setFileName(name);
             // Do NOT dismiss the boot splash here — the buffer is set but
