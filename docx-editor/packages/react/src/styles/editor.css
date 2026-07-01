@@ -441,19 +441,6 @@
   pointer-events: none;
 }
 
-/* Find/replace match highlighting */
-.docx-find-highlight {
-  background-color: rgba(255, 235, 59, 0.5) !important;
-  border-radius: 2px;
-}
-
-/* Current find/replace match */
-.docx-find-highlight-current {
-  background-color: rgba(255, 152, 0, 0.6) !important;
-  border-radius: 2px;
-  outline: 2px solid rgba(255, 152, 0, 0.8);
-}
-
 /* Find/replace match highlights painted by DecorationLayer over the visible
    pages (findHighlightPlugin inline decorations). Each is an absolute overlay
    rect above the text, so a translucent fill tints the matched run. */
