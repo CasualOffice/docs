@@ -117,6 +117,14 @@ export async function loadFont(
     isLoadingAny = true;
 
     try {
+      // Skip Google Fonts CDN in Tauri desktop — the webview's CSP blocks
+      // external requests, causing a 5 s timeout. Bundled @font-face fonts
+      // were already handled by the self-hosted guard above; for everything
+      // else the browser falls back to system fonts immediately.
+      if ((window as Window & { __TAURI__?: unknown }).__TAURI__) {
+        return false;
+      }
+
       // Generate Google Fonts URL
       const url = getGoogleFontsUrl(normalizedFamily, options?.weights, options?.styles);
 

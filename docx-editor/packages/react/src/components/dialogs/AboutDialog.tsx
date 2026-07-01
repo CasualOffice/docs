@@ -12,6 +12,7 @@
 
 import type { CSSProperties } from 'react';
 import { Dialog } from '../ui/Dialog';
+import { openExternal } from '../../utils/openExternal';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const APP_VERSION: string = (globalThis as any).__APP_VERSION__ ?? 'dev';
@@ -164,7 +165,11 @@ export function AboutDialog({
           A casual, real-time collaborative <code>.docx</code> editor.
           <br />
           Open it.{' '}
-          <a href={homepageUrl} target="_blank" rel="noreferrer noopener" style={linkStyle}>
+          <a
+            href={homepageUrl}
+            onClick={(e) => { e.preventDefault(); void openExternal(homepageUrl); }}
+            style={linkStyle}
+          >
             Try the live demo
           </a>
           .
@@ -176,7 +181,11 @@ export function AboutDialog({
           </dd>
           <dt style={dtStyle}>Source</dt>
           <dd style={ddStyle}>
-            <a href={sourceUrl} target="_blank" rel="noreferrer noopener" style={linkStyle}>
+            <a
+              href={sourceUrl}
+              onClick={(e) => { e.preventDefault(); void openExternal(sourceUrl); }}
+              style={linkStyle}
+            >
               {sourceUrl.replace(/^https?:\/\//, '')}
             </a>
           </dd>
@@ -185,8 +194,7 @@ export function AboutDialog({
             Built on{' '}
             <a
               href="https://github.com/eigenpal/docx-editor"
-              target="_blank"
-              rel="noreferrer noopener"
+              onClick={(e) => { e.preventDefault(); void openExternal('https://github.com/eigenpal/docx-editor'); }}
               style={linkStyle}
             >
               eigenpal/docx-editor

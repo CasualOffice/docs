@@ -3241,17 +3241,23 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       return;
     }
     const container = scrollContainerRef.current;
-    const parentEl = editorContentRef.current;
-    if (!container || !parentEl) return;
-    const top = findSelectionYPosition(container, parentEl, from);
-    if (top == null) return;
+    // Use editorColumnRef (the position:relative ancestor that the button is
+    // portalled into) — NOT editorContentRef (which scrolls inside the
+    // container and drifts, causing Y to grow the further down you select).
+    const posContext = editorColumnRef.current;
+    if (!container || !posContext) return;
+    const rawTop = findSelectionYPosition(container, posContext, from);
+    if (rawTop == null) return;
     const pagesEl = container.querySelector('.paged-editor__pages');
     const pageEl = pagesEl?.querySelector('.layout-page') as HTMLElement | null;
-    const left = pageEl
-      ? pageEl.getBoundingClientRect().right - parentEl.getBoundingClientRect().left
-      : parentEl.getBoundingClientRect().width / 2 + 408;
-    setFloatingCommentBtn({ top, left });
-  }, []);
+    const contextRect = posContext.getBoundingClientRect();
+    const rawLeft = pageEl
+      ? pageEl.getBoundingClientRect().right - contextRect.left
+      : posContext.getBoundingClientRect().width / 2 + 408;
+    // The page layout lives inside a zoom-scaled subtree; the button does not.
+    // Divide screen-space deltas by zoom so the button doesn't double-scale.
+    setFloatingCommentBtn({ top: rawTop / state.zoom, left: rawLeft / state.zoom });
+  }, [state.zoom]);
   // Keep the readOnly ref used by recomputeFloatingCommentBtn in sync
   readOnlyForFloatingBtnRef.current = readOnly;
 
@@ -8875,15 +8881,19 @@ body { background: white; }
                 )}
 
                 {/* Autosave restore prompt — shown at mount when an autosave
-                    record exists from the last session. The Restore handler
-                    routes the saved buffer through the same `loadBuffer` path
-                    File → Open uses, so PM + UI state reset cleanly. */}
-                <AutosaveRestoreBanner
-                  onRestore={(buf, name) => {
-                    void loadBuffer(buf);
-                    onDocumentNameChange?.(name);
-                  }}
-                />
+                    record exists from the last session. Hidden on desktop:
+                    the Tauri shell owns crash recovery via sidecar files and
+                    shows its own restore UI. IndexedDB autosave is also
+                    disabled on desktop (see onDesktop guard above). */}
+                {!(window as { __deskApp__?: { isDesktop?: boolean } }).__deskApp__
+                  ?.isDesktop && (
+                  <AutosaveRestoreBanner
+                    onRestore={(buf, name) => {
+                      void loadBuffer(buf);
+                      onDocumentNameChange?.(name);
+                    }}
+                  />
+                )}
 
                 {/* Below-toolbar horizontal row: scroll container + the floating
                     PanelRail. position:relative anchors the rail's absolute
