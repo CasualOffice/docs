@@ -64,6 +64,7 @@ import { VoiceTypingIndicator } from './ui/VoiceTypingIndicator';
 import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
 import { PanelRail } from './PanelRail';
+import { DocOpsPanel, DocsBridge, isDocOpsEnabled } from '../docops';
 import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
 import { writeAutosave, clearLegacyLocalStorageAutosave } from '../utils/autosave';
 import { restoreNativeBuildingBlocks } from '../utils/buildingBlocks';
@@ -2696,9 +2697,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // mount so capability checks + auto-load run before the sheet opens.
   const [showWritingAssistant, setShowWritingAssistant] = useState(false);
   const [showChatPanel, setShowChatPanel] = useState(false);
+  const [showDocOpsPanel, setShowDocOpsPanel] = useState(false);
   useEffect(() => {
     void bootWriterController();
   }, []);
+
+  const docsBridgeRef = useRef<DocsBridge | null>(null);
+  if (docsBridgeRef.current === null) {
+    docsBridgeRef.current = new DocsBridge(() => getActiveEditorView() ?? null);
+  }
 
   // Right-side panel mutex. Google Docs / Microsoft Word only ever
   // expose ONE right-edge panel at a time (Comments XOR Outline,
@@ -2712,11 +2719,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // `handleToggleVersionHistory`'s historical behaviour — those two
   // share the right-margin slot).
   const openRightPanel = useCallback(
-    (which: 'writer' | 'chat' | 'history' | 'properties' | 'aiSuggestion' | 'none') => {
+    (which: 'writer' | 'chat' | 'history' | 'properties' | 'aiSuggestion' | 'docops' | 'none') => {
       setShowWritingAssistant(which === 'writer');
       setShowChatPanel(which === 'chat');
       setShowVersionHistory(which === 'history');
       setShowProperties(which === 'properties');
+      setShowDocOpsPanel(which === 'docops');
       // Only ONE right-side surface is ever open: outline (TOC), comments,
       // properties, history. Opening any of the docked panels closes the
       // others (outline included — it was previously left open alongside).
@@ -9735,6 +9743,16 @@ body { background: white; }
                       restoring is a copy-paste of the JSX back in
                       from git history. */}
 
+                  {/* DocOps AI panel — gated behind window.__casualFeatures__.docops.
+                      Uses the Anthropic API directly (user-supplied key) with the
+                      JSON DocOps IR tool catalog. No WebLLM, no server inference. */}
+                  {showDocOpsPanel && isDocOpsEnabled() && docsBridgeRef.current && (
+                    <DocOpsPanel
+                      bridge={docsBridgeRef.current}
+                      onClose={() => openRightPanel('none')}
+                    />
+                  )}
+
                   {/* Right-edge PanelRail (X7) — always-visible activity bar
                     with toggles for Outline / Comments / Version history.
                     Lives inside the below-toolbar flex row so it spans only
@@ -9758,6 +9776,12 @@ body { background: white; }
                       //   onToggleWriter={() => openRightPanel(showWritingAssistant ? 'none' : 'writer')}
                       //   chatVisible={showChatPanel}
                       //   onToggleChat={() => openRightPanel(showChatPanel ? 'none' : 'chat')}
+                      docopsVisible={isDocOpsEnabled() ? showDocOpsPanel : undefined}
+                      onToggleDocOps={
+                        isDocOpsEnabled()
+                          ? () => openRightPanel(showDocOpsPanel ? 'none' : 'docops')
+                          : undefined
+                      }
                     />
                   )}
                 </div>

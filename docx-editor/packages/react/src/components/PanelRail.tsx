@@ -52,6 +52,10 @@ export interface PanelRailProps {
   chatVisible?: boolean;
   /** Toggle the chat panel. */
   onToggleChat?: () => void;
+  /** Whether the DocOps AI panel is open. */
+  docopsVisible?: boolean;
+  /** Toggle the DocOps AI panel. */
+  onToggleDocOps?: () => void;
 }
 
 // Floating rounded card pinned to the top-right of the canvas area (not
@@ -147,6 +151,8 @@ export function PanelRail({
   onToggleWriter,
   chatVisible,
   onToggleChat,
+  docopsVisible,
+  onToggleDocOps,
 }: PanelRailProps) {
   const { t } = useTranslation();
   // No-op if nothing to toggle (host wired no panels) — render nothing
@@ -157,7 +163,8 @@ export function PanelRail({
     !onToggleHistory &&
     !onToggleProperties &&
     !onToggleWriter &&
-    !onToggleChat
+    !onToggleChat &&
+    !onToggleDocOps
   )
     return null;
 
@@ -217,6 +224,15 @@ export function PanelRail({
           icon="chat_bubble_outline"
           active={!!chatVisible}
           onClick={onToggleChat}
+        />
+      )}
+      {onToggleDocOps && (
+        <RailButton
+          testId="rail-docops"
+          label={docopsVisible ? 'Hide DocOps AI' : 'DocOps AI'}
+          icon="auto_awesome"
+          active={!!docopsVisible}
+          onClick={onToggleDocOps}
         />
       )}
     </aside>

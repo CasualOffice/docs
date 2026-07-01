@@ -21,6 +21,7 @@
     "paths": {
       "@/*": ["./packages/react/src/*"],
       "@casualoffice/docs": ["./packages/react/src/index.ts"],
+      "@casualoffice/docops": ["./packages/docops/src/index.ts"],
       "@eigenpal/docx-core": ["./packages/core/src/core.ts"],
       "@eigenpal/docx-core/headless": ["./packages/core/src/headless.ts"],
       "@eigenpal/docx-core/core-plugins": ["./packages/core/src/core-plugins/index.ts"],
@@ -31,6 +32,7 @@
   "include": [
     "src",
     "packages/core/src",
+    "packages/docops/src",
     "packages/react/src",
     "examples/shared",
     "examples/vite",
