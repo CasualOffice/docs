@@ -1146,22 +1146,28 @@ export const TablePluginExtension = createExtension({
 
         const updatedTable = tr.doc.nodeAt(context.tablePos);
         if (updatedTable && updatedTable.type.name === 'table') {
-          const firstRow = updatedTable.child(0);
-          if (firstRow && firstRow.type.name === 'tableRow') {
-            let cellPos = context.tablePos + 2;
-            firstRow.forEach((cell) => {
-              if (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader') {
-                tr = tr.setNodeMarkup(cellPos, undefined, {
-                  ...cell.attrs,
-                  width: newColWidthPercent,
-                  widthType: 'pct',
-                });
-              }
-              cellPos += cell.nodeSize;
-            });
-          }
+          // Redistribute widths in ALL rows (not just the first row) so the
+          // total pct width stays at 5000 across every row after insertion.
+          let rowOffset = context.tablePos + 1;
+          updatedTable.forEach((row) => {
+            if (row.type.name === 'tableRow') {
+              let cellOffset = rowOffset + 1;
+              row.forEach((cell) => {
+                if (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader') {
+                  tr = tr.setNodeMarkup(cellOffset, undefined, {
+                    ...cell.attrs,
+                    width: newColWidthPercent,
+                    widthType: 'pct',
+                  });
+                }
+                cellOffset += cell.nodeSize;
+              });
+            }
+            rowOffset += row.nodeSize;
+          });
 
           // Update table columnWidths so full-width tables resize correctly.
+          const firstRow = updatedTable.child(0);
           const colCount = firstRow?.childCount ?? newColumnCount;
           const tableWidthTwips = (updatedTable.attrs.width as number) || 9360;
           const colWidthTwips = Math.floor(tableWidthTwips / Math.max(1, colCount));
@@ -1241,22 +1247,28 @@ export const TablePluginExtension = createExtension({
 
         const updatedTable = tr.doc.nodeAt(context.tablePos);
         if (updatedTable && updatedTable.type.name === 'table') {
-          const firstRow = updatedTable.child(0);
-          if (firstRow && firstRow.type.name === 'tableRow') {
-            let cellPos = context.tablePos + 2;
-            firstRow.forEach((cell) => {
-              if (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader') {
-                tr = tr.setNodeMarkup(cellPos, undefined, {
-                  ...cell.attrs,
-                  width: newColWidthPercent,
-                  widthType: 'pct',
-                });
-              }
-              cellPos += cell.nodeSize;
-            });
-          }
+          // Redistribute widths in ALL rows (not just the first row) so the
+          // total pct width stays at 5000 across every row after insertion.
+          let rowOffset = context.tablePos + 1;
+          updatedTable.forEach((row) => {
+            if (row.type.name === 'tableRow') {
+              let cellOffset = rowOffset + 1;
+              row.forEach((cell) => {
+                if (cell.type.name === 'tableCell' || cell.type.name === 'tableHeader') {
+                  tr = tr.setNodeMarkup(cellOffset, undefined, {
+                    ...cell.attrs,
+                    width: newColWidthPercent,
+                    widthType: 'pct',
+                  });
+                }
+                cellOffset += cell.nodeSize;
+              });
+            }
+            rowOffset += row.nodeSize;
+          });
 
           // Update table columnWidths so full-width tables resize correctly.
+          const firstRow = updatedTable.child(0);
           const colCount = firstRow?.childCount ?? newColumnCount;
           const tableWidthTwips = (updatedTable.attrs.width as number) || 9360;
           const colWidthTwips = Math.floor(tableWidthTwips / Math.max(1, colCount));

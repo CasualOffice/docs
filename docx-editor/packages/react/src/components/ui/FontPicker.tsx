@@ -93,7 +93,10 @@ export function FontPicker({
     (newValue: string) => {
       const font = fonts.find((f) => f.name === newValue);
       if (font) {
-        onChange?.(font.fontFamily);
+        // Pass the plain font name (e.g. "Arial"), not the CSS fallback stack.
+        // The PM mark stores the OOXML font name; fontResolver builds the CSS
+        // stack at render time. Passing the full stack corrupts OOXML on save.
+        onChange?.(font.name);
       }
     },
     [onChange, fonts]
