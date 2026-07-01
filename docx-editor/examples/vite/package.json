@@ -16,6 +16,7 @@
     "codemirror": "^6.0.2",
     "dompurify": "^3.4.11",
     "marked": "^18.0.5",
+    "mermaid": "^11.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "y-codemirror.next": "^0.3.5",

@@ -30,6 +30,8 @@ import {
 import { Home } from './Home';
 import { MarkdownEditor } from './markdown/MarkdownEditor';
 import { MarkdownCollabApp } from './markdown/MarkdownCollabApp';
+import { RtfViewer } from './viewers/RtfViewer';
+import { EmlViewer } from './viewers/EmlViewer';
 import { loadTemplate } from './templates/loader';
 import type { TemplateEntry } from './templates/manifest';
 import { navigate, useRoute } from './router';
@@ -428,13 +430,13 @@ export function App() {
   // read-only error surface instead of a blank editable document so a stray
   // Ctrl+S can't overwrite a merely-unreadable original with empty content.
   const [loadError, setLoadError] = useState<{ message: string; fileName: string } | null>(null);
-  // Plain-text / markdown documents (.md / .markdown / .txt) open in the
-  // dedicated source+preview editor, not the DOCX surface — they're never
-  // flattened to DOCX. Null when a DOCX-family doc is open.
+  // Plain-text / markdown / RTF / EML documents open in dedicated viewers,
+  // not the DOCX surface — they're never flattened to DOCX.
+  // Null when a DOCX-family doc is open.
   const [textDoc, setTextDoc] = useState<{
     text: string;
     fileName: string;
-    kind: 'markdown' | 'text';
+    kind: 'markdown' | 'text' | 'rtf' | 'eml';
   } | null>(null);
 
   // Launcher-driven colour theme (desktop only). The bootstrap centralises
@@ -833,16 +835,24 @@ export function App() {
       try {
         suppressSeedDocumentRef.current = true;
         setStatus('Loading…');
-        const fmt = formatFromFilename(file.name);
+        // Cast to string so the compiler doesn't narrow away 'rtf'/'eml'
+        // which are ViewerFormat additions not present in the older dist .d.ts.
+        const fmt = formatFromFilename(file.name) as string | null;
 
         // .md / .markdown / .txt open as plain text in the source+preview
         // editor — not converted to DOCX. Markdown gets the live preview;
         // .txt is source-only.
-        if (fmt === 'md' || fmt === 'txt') {
+        // .rtf and .eml open in dedicated read-only viewers.
+        if (fmt === 'md' || fmt === 'txt' || fmt === 'rtf' || fmt === 'eml') {
           const text = await file.text();
           setDocumentBuffer(null);
           setCurrentDocument(null);
-          setTextDoc({ text, fileName: file.name, kind: fmt === 'md' ? 'markdown' : 'text' });
+          setTextDoc({
+            text,
+            fileName: file.name,
+            kind:
+              fmt === 'md' ? 'markdown' : fmt === 'rtf' ? 'rtf' : fmt === 'eml' ? 'eml' : 'text',
+          });
           setStatus('');
           if (!legacyForcedEditor) navigate('/document/new');
           setView('editor');
@@ -1386,11 +1396,17 @@ export function App() {
   }
 
   if (textDoc) {
+    if (textDoc.kind === 'rtf') {
+      return <RtfViewer content={textDoc.text} fileName={textDoc.fileName} onBack={handleGoHome} />;
+    }
+    if (textDoc.kind === 'eml') {
+      return <EmlViewer content={textDoc.text} fileName={textDoc.fileName} onBack={handleGoHome} />;
+    }
     return (
       <MarkdownEditor
         initialText={textDoc.text}
         fileName={textDoc.fileName}
-        kind={textDoc.kind}
+        kind={textDoc.kind as 'markdown' | 'text'}
         onRenameFile={(name) => setTextDoc((d) => (d ? { ...d, fileName: name } : d))}
         onBack={handleGoHome}
         renderLogo={renderLogo}

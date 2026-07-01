@@ -36,6 +36,7 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } f
 import type { EditorView } from 'prosemirror-view';
 import { usableRightEdge } from '../lib/anchorViewport';
 import { MaterialSymbol } from './ui/Icons';
+import { useTranslation } from '../i18n';
 
 export interface SelectionAskAiProps {
   /** Whether the editor has a non-empty plain-text selection AND the
@@ -174,14 +175,6 @@ const spinnerStyle: CSSProperties = {
   animation: 'docx-spin 0.8s linear infinite',
 };
 
-const QUICK_PROMPTS = [
-  'Transform this into a table',
-  'Rewrite this concisely',
-  'Make this more formal',
-  'Translate to Spanish',
-  'Summarize this',
-];
-
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -193,6 +186,14 @@ export function SelectionAskAi({
   onDismiss,
   busy = false,
 }: SelectionAskAiProps) {
+  const { t } = useTranslation();
+  const quickPrompts = [
+    t('selectionAskAi.quickPrompts.table'),
+    t('selectionAskAi.quickPrompts.concise'),
+    t('selectionAskAi.quickPrompts.formal'),
+    t('selectionAskAi.quickPrompts.translate'),
+    t('selectionAskAi.quickPrompts.summarize'),
+  ];
   const [expanded, setExpanded] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
@@ -333,14 +334,16 @@ export function SelectionAskAi({
           setExpanded(true);
         }}
         data-testid="selection-ask-ai-pill"
-        aria-label={busy ? 'AI is processing your request' : 'Ask AI about the selection'}
+        aria-label={
+          busy ? t('selectionAskAi.pillAriaLabelBusy') : t('selectionAskAi.pillAriaLabelIdle')
+        }
       >
         {busy ? (
           <span style={spinnerStyle} aria-hidden="true" />
         ) : (
           <MaterialSymbol name="auto_awesome" size={14} />
         )}
-        <span>{busy ? 'Thinking…' : 'Ask AI'}</span>
+        <span>{busy ? t('selectionAskAi.pillTextBusy') : t('selectionAskAi.pillTextIdle')}</span>
       </button>
     );
   }
@@ -348,7 +351,7 @@ export function SelectionAskAi({
   return (
     <div
       role="dialog"
-      aria-label="Ask AI about the selection"
+      aria-label={t('selectionAskAi.dialogAriaLabel')}
       data-testid="selection-ask-ai-panel"
       style={{ ...panelStyle, top: anchor.top, left: anchor.left }}
     >
@@ -358,7 +361,7 @@ export function SelectionAskAi({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Transform the selection… (Enter to send)"
+          placeholder={t('selectionAskAi.placeholder')}
           rows={2}
           style={textareaStyle}
           disabled={busy}
@@ -378,7 +381,7 @@ export function SelectionAskAi({
           disabled={busy || !prompt.trim()}
           data-testid="selection-ask-ai-send"
         >
-          Send
+          {t('common.send')}
         </button>
         <button
           type="button"
@@ -387,13 +390,13 @@ export function SelectionAskAi({
             setExpanded(false);
             setPrompt('');
           }}
-          aria-label="Cancel"
+          aria-label={t('common.cancel')}
         >
           ✕
         </button>
       </div>
       <div style={hintRowStyle}>
-        {QUICK_PROMPTS.map((q) => (
+        {quickPrompts.map((q) => (
           <button
             key={q}
             type="button"

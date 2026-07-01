@@ -319,15 +319,7 @@ export function createSelectionTrackerPlugin(onSelectionChange?: SelectionChange
           return prevContext;
         }
 
-        const newContext = extractSelectionContext(newState);
-
-        // Notify callback if context changed
-        if (onSelectionChange && !contextsEqual(prevContext, newContext)) {
-          // Defer to next tick to avoid dispatch during dispatch
-          setTimeout(() => onSelectionChange(newContext), 0);
-        }
-
-        return newContext;
+        return extractSelectionContext(newState);
       },
     },
 
@@ -339,10 +331,13 @@ export function createSelectionTrackerPlugin(onSelectionChange?: SelectionChange
           if (view.state.selection.eq(prevState.selection) && view.state.doc.eq(prevState.doc)) {
             return;
           }
-          // Reuse context already computed in state.apply() — avoid double doc walk
-          const context = selectionTrackerKey.getState(view.state);
-          if (context) {
-            onSelectionChange(context);
+          // Reuse contexts already computed in state.apply() — avoid double doc walk.
+          // Compare prev vs new context so we don't fire when the cursor moved within
+          // the same formatting region (e.g. cursor-only motion inside a bold run).
+          const prevContext = selectionTrackerKey.getState(prevState);
+          const newContext = selectionTrackerKey.getState(view.state);
+          if (newContext && (!prevContext || !contextsEqual(prevContext, newContext))) {
+            onSelectionChange(newContext);
           }
         },
       };

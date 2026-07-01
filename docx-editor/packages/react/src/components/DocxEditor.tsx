@@ -10270,7 +10270,11 @@ body { background: white; }
               {noteEdit && (
                 <FootnoteEditDialog
                   initialText={noteEdit.text}
-                  title={noteEdit.kind === 'endnote' ? 'Edit endnote' : 'Edit footnote'}
+                  title={
+                    noteEdit.kind === 'endnote'
+                      ? t('footnote.editEndnoteTitle')
+                      : t('footnote.editTitle')
+                  }
                   onCancel={() => setNoteEdit(null)}
                   onApply={(t) => handleApplyNoteEdit(noteEdit.kind, noteEdit.id, t)}
                 />

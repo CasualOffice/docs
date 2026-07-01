@@ -669,6 +669,15 @@
       "title": null,
       "words": null,
       "readingTime": null
+    },
+    "equation": {
+      "displayLabel": null,
+      "helper": null,
+      "invalidLatex": null,
+      "previewLabel": null,
+      "previewPlaceholder": null,
+      "renderFailed": null,
+      "title": null
     }
   },
   "comments": {
@@ -1002,5 +1011,50 @@
   "smartChip": {
     "date": null,
     "dateHint": null
+  },
+  "chat": {
+    "ariaLabel": null,
+    "clearButton": null,
+    "editorNotReady": null,
+    "errorCaught": null,
+    "errorFallback": null,
+    "errorSorry": null,
+    "llmHintEmphasis": null,
+    "llmHintPart1": null,
+    "llmHintPart2": null,
+    "llmRequired": null,
+    "placeholderNotLoaded": null,
+    "placeholderReady": null,
+    "proposalNoSurface": null,
+    "proposalTip": null,
+    "selectionExcluded": null,
+    "selectionIncluded": null,
+    "stopButton": null,
+    "title": null,
+    "useDocContext": null,
+    "wordPlural": null,
+    "wordSingular": null
+  },
+  "footnote": {
+    "editEndnoteTitle": null,
+    "editTitle": null
+  },
+  "rightPanel": {
+    "closeButton": null
+  },
+  "selectionAskAi": {
+    "dialogAriaLabel": null,
+    "pillAriaLabelBusy": null,
+    "pillAriaLabelIdle": null,
+    "pillTextBusy": null,
+    "pillTextIdle": null,
+    "placeholder": null,
+    "quickPrompts": {
+      "concise": null,
+      "formal": null,
+      "summarize": null,
+      "table": null,
+      "translate": null
+    }
   }
 }

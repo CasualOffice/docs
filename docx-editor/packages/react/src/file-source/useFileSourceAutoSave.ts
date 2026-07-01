@@ -91,7 +91,13 @@ export async function performAutoSave(deps: PerformAutoSaveDeps): Promise<AutoSa
   if (!ref) return { kind: 'skip', reason: 'no-ref' };
   try {
     const bytes = await ref.save({ selective: true });
-    if (!bytes) return { kind: 'skip', reason: 'no-bytes' };
+    // When the editor ref is mounted, a null return means serialization
+    // failed silently (the editor caught the error internally). Surface it
+    // as an error so the status indicator shows "Save failed" rather than
+    // silently treating it as "no changes" (audit: autosave-skip-hides-failures).
+    if (!bytes) {
+      return { kind: 'err', err: new Error('Document serialization returned no bytes') };
+    }
     const result = await deps.fileSource.save(deps.docId, bytes, { name: deps.name });
     return { kind: 'ok', etag: result.etag, savedAt: new Date() };
   } catch (err) {
@@ -198,6 +204,10 @@ export function useFileSourceAutoSave(
   // hide-triggered save is never silently dropped just because an
   // interval tick happened to be mid-flight (audit: autosave-flush-no-queue).
   const pendingRef = useRef(false);
+  // Auto-clear "Save failed" after 60 s so a stale error badge doesn't
+  // persist indefinitely when the next ticks simply have nothing to save
+  // (audit: autosave-stale-error-status).
+  const errorClearTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // The promise for the currently-draining save loop. flush() callers
   // join this so an awaited flush() resolves only once their requested
   // save has actually run, even if another save was in flight when they
@@ -254,11 +264,21 @@ export function useFileSourceAutoSave(
           setLastSavedAt(result.savedAt);
           setStatus('saved');
           setLastError(null);
+          clearTimeout(errorClearTimerRef.current);
+          errorClearTimerRef.current = undefined;
           onSavedRef.current?.(result.savedAt, result.etag);
           break;
         case 'err':
           setStatus('error');
           setLastError(result.err);
+          // Auto-clear the error badge after 60 s so a one-off failure
+          // doesn't haunt the title bar forever (autosave-stale-error-status).
+          clearTimeout(errorClearTimerRef.current);
+          errorClearTimerRef.current = setTimeout(() => {
+            setStatus((s) => (s === 'error' ? 'idle' : s));
+            setLastError(null);
+            errorClearTimerRef.current = undefined;
+          }, 60_000);
           onErrorRef.current?.(result.err);
           break;
         case 'skip':
@@ -346,6 +366,11 @@ export function useFileSourceAutoSave(
       window.removeEventListener('pagehide', flushOnHide);
     };
   }, [enabled, runSave]);
+
+  // Clear stale error timer on unmount.
+  useEffect(() => {
+    return () => clearTimeout(errorClearTimerRef.current);
+  }, []);
 
   // Stable object identity so hosts can pass the return value into
   // dependency arrays without churn.
