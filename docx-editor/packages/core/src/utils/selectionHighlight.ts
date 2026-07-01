@@ -484,18 +484,6 @@ export function injectSelectionStyles(
       ${config.mixBlendMode ? `mix-blend-mode: ${config.mixBlendMode};` : ''}
     }
 
-    /* Find/replace highlight */
-    .docx-find-highlight {
-      background-color: rgba(255, 235, 59, 0.5);
-      border-radius: 2px;
-    }
-
-    .docx-find-highlight-current {
-      background-color: rgba(255, 152, 0, 0.6);
-      border-radius: 2px;
-      outline: 2px solid rgba(255, 152, 0, 0.8);
-    }
-
     /* AI action selection preview */
     .docx-ai-selection-preview {
       background-color: rgba(156, 39, 176, 0.2);

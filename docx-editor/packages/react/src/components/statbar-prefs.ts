@@ -26,7 +26,7 @@ const DEFAULTS: StatPrefs = {
   words: true,
   chars: true,
   readingTime: true,
-  readability: true,
+  readability: false,
 };
 
 function read(): StatPrefs {
@@ -89,5 +89,5 @@ export const STAT_LABELS: Record<StatKey, string> = {
   words: 'Word count',
   chars: 'Character count',
   readingTime: 'Reading time',
-  readability: 'Readability score',
+  readability: 'Readability score & sentence highlights',
 };

@@ -3012,6 +3012,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     setHfEditPosition(null);
     setAnchorPositions(EMPTY_ANCHOR_POSITIONS);
     findReplace.setMatches([], 0);
+    setPaintFormatMarks(null);
+    paintFormatPersistentRef.current = false;
     if (cleanOrphanedCommentsTimerRef.current) {
       clearTimeout(cleanOrphanedCommentsTimerRef.current);
       cleanOrphanedCommentsTimerRef.current = null;
