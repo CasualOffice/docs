@@ -8885,8 +8885,7 @@ body { background: white; }
                     the Tauri shell owns crash recovery via sidecar files and
                     shows its own restore UI. IndexedDB autosave is also
                     disabled on desktop (see onDesktop guard above). */}
-                {!(window as { __deskApp__?: { isDesktop?: boolean } }).__deskApp__
-                  ?.isDesktop && (
+                {!(window as { __deskApp__?: { isDesktop?: boolean } }).__deskApp__?.isDesktop && (
                   <AutosaveRestoreBanner
                     onRestore={(buf, name) => {
                       void loadBuffer(buf);

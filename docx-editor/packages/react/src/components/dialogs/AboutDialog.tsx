@@ -167,7 +167,10 @@ export function AboutDialog({
           Open it.{' '}
           <a
             href={homepageUrl}
-            onClick={(e) => { e.preventDefault(); void openExternal(homepageUrl); }}
+            onClick={(e) => {
+              e.preventDefault();
+              void openExternal(homepageUrl);
+            }}
             style={linkStyle}
           >
             Try the live demo
@@ -183,7 +186,10 @@ export function AboutDialog({
           <dd style={ddStyle}>
             <a
               href={sourceUrl}
-              onClick={(e) => { e.preventDefault(); void openExternal(sourceUrl); }}
+              onClick={(e) => {
+                e.preventDefault();
+                void openExternal(sourceUrl);
+              }}
               style={linkStyle}
             >
               {sourceUrl.replace(/^https?:\/\//, '')}
@@ -194,7 +200,10 @@ export function AboutDialog({
             Built on{' '}
             <a
               href="https://github.com/eigenpal/docx-editor"
-              onClick={(e) => { e.preventDefault(); void openExternal('https://github.com/eigenpal/docx-editor'); }}
+              onClick={(e) => {
+                e.preventDefault();
+                void openExternal('https://github.com/eigenpal/docx-editor');
+              }}
               style={linkStyle}
             >
               eigenpal/docx-editor
