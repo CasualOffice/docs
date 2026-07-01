@@ -34,6 +34,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { RIGHT_PANEL_WIDTH } from './sidebar/constants';
+import { useTranslation } from '../i18n';
 
 /* ============================================================
    Premium right-dock shell aesthetics. The chrome is deliberately
@@ -167,6 +168,7 @@ export function RightDockPanel({
   testId,
   ariaLabel,
 }: RightDockPanelProps) {
+  const { t } = useTranslation();
   const [closeHover, setCloseHover] = useState(false);
   return (
     <>
@@ -198,7 +200,7 @@ export function RightDockPanel({
             onMouseLeave={() => setCloseHover(false)}
             onFocus={() => setCloseHover(true)}
             onBlur={() => setCloseHover(false)}
-            aria-label="Close panel"
+            aria-label={t('rightPanel.closeButton')}
             data-testid={testId ? `${testId}-close` : undefined}
           >
             <svg

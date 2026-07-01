@@ -674,6 +674,15 @@
       "noResults": "No shortcuts found matching \"{query}\"",
       "pressEscToClose": "Press {key} to close",
       "or": "or"
+    },
+    "equation": {
+      "title": "Insert equation",
+      "helper": "LaTeX — e.g. \\frac{a}{b}, x^2, \\sqrt{x}, \\sum, \\int",
+      "displayLabel": "Display equation (centered on its own line)",
+      "previewLabel": "Preview",
+      "previewPlaceholder": "Type LaTeX above to preview.",
+      "renderFailed": "Could not render equation",
+      "invalidLatex": "Invalid LaTeX"
     }
   },
   "voiceTyping": {
@@ -1002,5 +1011,50 @@
   "smartChip": {
     "date": "Date",
     "dateHint": "Insert today's date"
+  },
+  "chat": {
+    "title": "Ask AI",
+    "ariaLabel": "Ask AI",
+    "clearButton": "Clear",
+    "stopButton": "Stop",
+    "editorNotReady": "Editor is not ready yet — give it a second and try again.",
+    "placeholderReady": "Ask anything… (Enter to send, Shift+Enter for newline)",
+    "placeholderNotLoaded": "LLM not loaded.",
+    "proposalTip": "Drafted {summary} — preview is {where}. Use Replace / Insert below / Try again / Discard in the popover.",
+    "proposalNoSurface": "Drafted {summary}, but the preview surface isn't wired up yet.",
+    "errorSorry": "Sorry — {message}",
+    "errorCaught": "Error: {message}",
+    "errorFallback": "Failed to reach the model.",
+    "wordSingular": "word",
+    "wordPlural": "words",
+    "selectionIncluded": "(included)",
+    "selectionExcluded": "(excluded)",
+    "useDocContext": "Use document context",
+    "llmRequired": "Chat needs the Advanced LLM tier.",
+    "llmHintPart1": "Open the Writing Assistant from the rail and enable",
+    "llmHintEmphasis": "Advanced (Llama-3.2-1B)",
+    "llmHintPart2": "to start a conversation. ~880 MB one-time download."
+  },
+  "rightPanel": {
+    "closeButton": "Close panel"
+  },
+  "footnote": {
+    "editTitle": "Edit footnote",
+    "editEndnoteTitle": "Edit endnote"
+  },
+  "selectionAskAi": {
+    "pillAriaLabelBusy": "AI is processing your request",
+    "pillAriaLabelIdle": "Ask AI about the selection",
+    "pillTextBusy": "Thinking…",
+    "pillTextIdle": "Ask AI",
+    "dialogAriaLabel": "Ask AI about the selection",
+    "placeholder": "Transform the selection… (Enter to send)",
+    "quickPrompts": {
+      "table": "Transform this into a table",
+      "concise": "Rewrite this concisely",
+      "formal": "Make this more formal",
+      "translate": "Translate to Spanish",
+      "summarize": "Summarize this"
+    }
   }
 }

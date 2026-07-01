@@ -9,6 +9,7 @@
  * regenerates only that footnote's text in footnotes.xml.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useTranslation } from '../i18n';
 
 const OVERLAY: CSSProperties = {
   position: 'fixed',
@@ -74,8 +75,10 @@ export function FootnoteEditDialog({
   initialText,
   onApply,
   onCancel,
-  title = 'Edit footnote',
+  title,
 }: FootnoteEditDialogProps) {
+  const { t } = useTranslation();
+  const displayTitle = title ?? t('footnote.editTitle');
   const [text, setText] = useState(initialText);
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -87,7 +90,7 @@ export function FootnoteEditDialog({
   return (
     <div style={OVERLAY} data-testid="footnote-edit-dialog" onMouseDown={onCancel}>
       <div style={CARD} onMouseDown={(e) => e.stopPropagation()}>
-        <div style={TITLE}>{title}</div>
+        <div style={TITLE}>{displayTitle}</div>
         <textarea
           ref={ref}
           style={TEXTAREA}
@@ -106,7 +109,7 @@ export function FootnoteEditDialog({
             data-testid="footnote-edit-cancel"
             onClick={onCancel}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -114,7 +117,7 @@ export function FootnoteEditDialog({
             data-testid="footnote-edit-apply"
             onClick={() => onApply(text)}
           >
-            Save
+            {t('common.save')}
           </button>
         </div>
       </div>

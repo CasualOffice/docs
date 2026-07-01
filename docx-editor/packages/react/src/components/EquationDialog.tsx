@@ -17,6 +17,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import katex from 'katex';
 import { Dialog } from './ui/Dialog';
+import { useTranslation } from '../i18n';
 
 export interface EquationInsert {
   latex: string;
@@ -62,6 +63,7 @@ export function EquationDialog({
   initialLatex = '',
   initialDisplay = 'inline',
 }: EquationDialogProps) {
+  const { t } = useTranslation();
   const [latex, setLatex] = useState(initialLatex);
   const [display, setDisplay] = useState<'inline' | 'block'>(initialDisplay);
 
@@ -90,11 +92,14 @@ export function EquationDialog({
       if (mathml && display === 'block' && !/\bdisplay="block"/.test(mathml)) {
         mathml = mathml.replace(/<math\b/, '<math display="block"');
       }
-      return { mathml, error: mathml ? null : 'Could not render equation' };
+      return { mathml, error: mathml ? null : t('dialogs.equation.renderFailed') };
     } catch (err) {
-      return { mathml: '', error: err instanceof Error ? err.message : 'Invalid LaTeX' };
+      return {
+        mathml: '',
+        error: err instanceof Error ? err.message : t('dialogs.equation.invalidLatex'),
+      };
     }
-  }, [latex, display]);
+  }, [latex, display, t]);
 
   const canInsert = latex.trim().length > 0 && !!rendered.mathml && !rendered.error;
 
@@ -113,14 +118,14 @@ export function EquationDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Insert equation"
+      title={t('dialogs.equation.title')}
       width={560}
       testId="equation-dialog"
-      helper="LaTeX — e.g. \frac{a}{b}, x^2, \sqrt{x}, \sum, \int"
+      helper={t('dialogs.equation.helper')}
       footer={
         <>
           <button type="button" onClick={onClose} style={secondaryBtn}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -129,7 +134,7 @@ export function EquationDialog({
             style={{ ...primaryBtn, opacity: canInsert ? 1 : 0.5 }}
             data-testid="equation-insert"
           >
-            Insert
+            {t('common.insert')}
           </button>
         </>
       }
@@ -175,11 +180,11 @@ export function EquationDialog({
             onChange={(e) => setDisplay(e.target.checked ? 'block' : 'inline')}
             data-testid="equation-display-toggle"
           />
-          Display equation (centered on its own line)
+          {t('dialogs.equation.displayLabel')}
         </label>
 
         {/* Live preview. */}
-        <div style={previewLabel}>Preview</div>
+        <div style={previewLabel}>{t('dialogs.equation.previewLabel')}</div>
         <div style={previewBox} data-testid="equation-preview">
           {rendered.error ? (
             <span style={{ color: 'var(--doc-danger, #c62828)', fontSize: 13 }}>
@@ -193,7 +198,7 @@ export function EquationDialog({
             />
           ) : (
             <span style={{ color: 'var(--doc-text-muted)', fontSize: 13 }}>
-              Type LaTeX above to preview.
+              {t('dialogs.equation.previewPlaceholder')}
             </span>
           )}
         </div>

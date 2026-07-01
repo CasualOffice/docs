@@ -32,6 +32,7 @@ import { getQuickPromptsForDoc } from '../lib/writer/suggestActions';
 import { Markdown } from '../lib/markdown';
 import { RightDockPanel } from './RightDockPanel';
 import { MaterialSymbol } from './ui/Icons';
+import { useTranslation } from '../i18n';
 
 export interface ChatPanelProps {
   isOpen: boolean;
@@ -495,6 +496,7 @@ export function ChatPanel({
   getView,
   onProposal,
 }: ChatPanelProps) {
+  const { t } = useTranslation();
   const writer = useWriterState();
   const [history, setHistory] = useState<ChatMessage[]>(() => loadHistory());
   const [input, setInput] = useState('');
@@ -594,7 +596,7 @@ export function ChatPanel({
         ...nextHistory,
         {
           role: 'assistant',
-          content: 'Editor is not ready yet — give it a second and try again.',
+          content: t('chat.editorNotReady'),
         },
       ]);
       setBusy(false);
@@ -635,12 +637,15 @@ export function ChatPanel({
       } else if (result.kind === 'proposal') {
         const where = result.replaceRange ? 'over your selection' : 'below your cursor';
         const tip = onProposal
-          ? `Drafted ${result.summary} — preview is ${where}. Use Replace / Insert below / Try again / Discard in the popover.`
-          : `Drafted ${result.summary}, but the preview surface isn't wired up yet.`;
+          ? t('chat.proposalTip', { summary: result.summary, where })
+          : t('chat.proposalNoSurface', { summary: result.summary });
         setHistory([...nextHistory, { role: 'assistant', content: tip }]);
         if (onProposal) onProposal(result, expanded);
       } else {
-        setHistory([...nextHistory, { role: 'assistant', content: `Sorry — ${result.message}` }]);
+        setHistory([
+          ...nextHistory,
+          { role: 'assistant', content: t('chat.errorSorry', { message: result.message }) },
+        ]);
       }
       setStreaming('');
     } catch (err) {
@@ -650,7 +655,7 @@ export function ChatPanel({
           ...nextHistory,
           {
             role: 'assistant',
-            content: `Error: ${e.message || 'Failed to reach the model.'}`,
+            content: t('chat.errorCaught', { message: e.message || t('chat.errorFallback') }),
           },
         ]);
       }
@@ -687,7 +692,7 @@ export function ChatPanel({
       title="Clear conversation"
       data-testid="chat-clear"
     >
-      Clear
+      {t('chat.clearButton')}
     </button>
   );
 
@@ -715,9 +720,7 @@ export function ChatPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder={
-            llmReady ? 'Ask anything… (Enter to send, Shift+Enter for newline)' : 'LLM not loaded.'
-          }
+          placeholder={llmReady ? t('chat.placeholderReady') : t('chat.placeholderNotLoaded')}
           disabled={!llmReady || busy}
           style={textareaStyle}
           rows={1}
@@ -725,7 +728,7 @@ export function ChatPanel({
         />
         {busy ? (
           <button type="button" style={stopBtnStyle} onClick={onStop} data-testid="chat-stop">
-            Stop
+            {t('chat.stopButton')}
           </button>
         ) : (
           <button
@@ -735,7 +738,7 @@ export function ChatPanel({
             disabled={!llmReady || !input.trim()}
             data-testid="chat-send"
           >
-            Send
+            {t('common.send')}
           </button>
         )}
       </div>
@@ -744,12 +747,12 @@ export function ChatPanel({
 
   return (
     <RightDockPanel
-      title="Ask AI"
+      title={t('chat.title')}
       icon={<MaterialSymbol name="chat_bubble_outline" size={16} />}
       onClose={onClose}
       headerActions={headerActions}
       testId="chat-panel"
-      ariaLabel="Ask AI"
+      ariaLabel={t('chat.ariaLabel')}
       footer={footer}
     >
       <>
@@ -761,8 +764,9 @@ export function ChatPanel({
               onClick={() => setIncludeSelection((v) => !v)}
               data-testid="chat-selection-chip"
             >
-              Selection · {selectionWords} {selectionWords === 1 ? 'word' : 'words'}{' '}
-              {includeSelection ? '(included)' : '(excluded)'}
+              Selection · {selectionWords}{' '}
+              {selectionWords === 1 ? t('chat.wordSingular') : t('chat.wordPlural')}{' '}
+              {includeSelection ? t('chat.selectionIncluded') : t('chat.selectionExcluded')}
             </button>
           </div>
         )}
@@ -774,17 +778,17 @@ export function ChatPanel({
             onChange={(e) => setUseDocContext(e.target.checked)}
             data-testid="chat-use-doc-context"
           />
-          Use document context
+          {t('chat.useDocContext')}
         </label>
 
         <div ref={bodyRef} style={bodyStyle}>
           {!llmReady && (
             <div style={emptyStyle}>
-              <strong>Chat needs the Advanced LLM tier.</strong>
+              <strong>{t('chat.llmRequired')}</strong>
               <span>
-                Open the Writing Assistant from the rail and enable
-                <em> Advanced (Llama-3.2-1B) </em>
-                to start a conversation. ~880 MB one-time download.
+                {t('chat.llmHintPart1')}
+                <em> {t('chat.llmHintEmphasis')} </em>
+                {t('chat.llmHintPart2')}
               </span>
             </div>
           )}
