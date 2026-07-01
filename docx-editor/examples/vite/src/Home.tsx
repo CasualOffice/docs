@@ -603,37 +603,77 @@ const recentSubStyle: CSSProperties = {
 function RecentCard({
   entry,
   onOpen,
+  onDelete,
 }: {
   entry: RecentFile;
   onOpen: (r: RecentFile) => void;
+  onDelete: (r: RecentFile) => void;
 }): React.JSX.Element {
   const [hovered, setHovered] = useState(false);
   return (
-    <button
-      type="button"
-      style={{ ...recentCardStyle, ...(hovered ? recentCardHoverStyle : null) }}
-      onClick={() => onOpen(entry)}
+    <div
+      style={{ position: 'relative' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      data-testid={`recent-card-${entry.id}`}
-      aria-label={`Reopen ${entry.name}`}
     >
-      <div style={recentIconBoxStyle}>
-        <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 22 }}>
-          description
-        </span>
-      </div>
-      <div style={recentMetaStyle}>
-        <div style={recentNameStyle} title={entry.name}>
-          {entry.name}
+      <button
+        type="button"
+        style={{ ...recentCardStyle, ...(hovered ? recentCardHoverStyle : null), width: '100%' }}
+        onClick={() => onOpen(entry)}
+        data-testid={`recent-card-${entry.id}`}
+        aria-label={`Reopen ${entry.name}`}
+      >
+        <div style={recentIconBoxStyle}>
+          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 22 }}>
+            description
+          </span>
         </div>
-        <div style={recentSubStyle}>
-          {formatSize(entry.size)} · {relativeAgo(Date.now() - entry.openedAt)}
+        <div style={recentMetaStyle}>
+          <div style={recentNameStyle} title={entry.name}>
+            {entry.name}
+          </div>
+          <div style={recentSubStyle}>
+            {formatSize(entry.size)} · {relativeAgo(Date.now() - entry.openedAt)}
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {hovered && (
+        <button
+          type="button"
+          title="Remove from recents"
+          aria-label={`Remove ${entry.name} from recents`}
+          data-testid={`recent-card-delete-${entry.id}`}
+          style={{
+            position: 'absolute',
+            top: '6px',
+            right: '6px',
+            width: '22px',
+            height: '22px',
+            borderRadius: '50%',
+            border: 'none',
+            background: 'rgba(15,23,42,0.08)',
+            color: COLORS.inkSubtle,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            lineHeight: 1,
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(entry);
+          }}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 14 }}>
+            close
+          </span>
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -673,10 +713,17 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
     onOpenFile(file);
   };
   const autoReopenCandidate = autoReopenDismissed ? null : (recents[0] ?? null);
-  // `deleteRecentFile` stays exported from the package for future
-  // wiring (per-card remove, "Clear all" affordance), but v0 just lets
-  // the 10-entry cap + 60-day stale window manage the list.
-  void deleteRecentFile;
+
+  const handleDeleteRecent = (r: RecentFile) => {
+    setRecents((prev) => prev.filter((x) => x.id !== r.id));
+    void deleteRecentFile(r.id);
+  };
+
+  const handleClearAllRecents = () => {
+    const ids = recents.map((r) => r.id);
+    setRecents([]);
+    void Promise.all(ids.map((id) => deleteRecentFile(id)));
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -816,6 +863,23 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           <div style={{ ...styles.sectionHead, ...(isMobile && mobile.sectionHead) }}>
             <h2 style={styles.sectionTitle}>Recent</h2>
             <span style={styles.sectionHint}>Pick up where you left off.</span>
+            <button
+              type="button"
+              onClick={handleClearAllRecents}
+              style={{
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                fontSize: '12px',
+                color: COLORS.inkSubtle,
+                cursor: 'pointer',
+                padding: '2px 6px',
+                borderRadius: '4px',
+              }}
+              data-testid="home-clear-recents"
+            >
+              Clear all
+            </button>
           </div>
           <div
             style={{
@@ -827,7 +891,7 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
             }}
           >
             {recents.slice(0, 4).map((r) => (
-              <RecentCard key={r.id} entry={r} onOpen={openRecent} />
+              <RecentCard key={r.id} entry={r} onOpen={openRecent} onDelete={handleDeleteRecent} />
             ))}
           </div>
         </section>

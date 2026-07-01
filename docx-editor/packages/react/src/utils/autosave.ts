@@ -88,6 +88,22 @@ export async function clearAutosave(): Promise<void> {
   }
 }
 
+/**
+ * One-time cleanup: remove the stale `docx-editor-autosave` key written by the
+ * legacy `AutoSaveManager` (localStorage Document JSON). The active autosave
+ * path uses IndexedDB; this key is never read by the current codebase and can
+ * accumulate up to several MB of stale JSON. Safe to call on every mount —
+ * removeItem is a no-op when the key is absent.
+ */
+export function clearLegacyLocalStorageAutosave(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem('docx-editor-autosave');
+  } catch {
+    // Private-mode or storage denied — no-op.
+  }
+}
+
 /** "moments ago" / "12 min ago" / "3 hr ago" / "2 days ago". */
 export function formatAgo(ms: number): string {
   if (ms < 60_000) return 'moments ago';

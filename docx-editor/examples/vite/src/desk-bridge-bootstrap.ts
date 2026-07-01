@@ -763,10 +763,31 @@ if (isDesktop) {
         if (!filePath) return;
         await inv('clear_recovery', { path: filePath });
       },
+      // Generic native key-value store — survives webview storage clears.
+      // Keys must be [a-zA-Z0-9_-]. Used by building-blocks, citations, etc.
+      async getStore(key: string): Promise<string | null> {
+        return (await inv('casual_store_get', { key })) as string | null;
+      },
+      async setStore(key: string, value: string): Promise<void> {
+        await inv('casual_store_set', { key, value });
+      },
     };
   } else {
     // Iframe mode — postMessage to launcher.
-    type RequestMethod = 'loadDocument' | 'save' | 'saveAs';
+    type RequestMethod =
+      | 'loadDocument'
+      | 'save'
+      | 'saveAs'
+      | 'rename'
+      | 'setDirty'
+      | 'openViaMenu'
+      | 'getProfile'
+      | 'exportPdf'
+      | 'writeRecovery'
+      | 'readRecovery'
+      | 'clearRecovery'
+      | 'getStore'
+      | 'setStore';
     let nextId = 0;
     const pending = new Map<
       number,
@@ -805,9 +826,6 @@ if (isDesktop) {
         return new Uint8Array(bytes).buffer;
       },
       async loadText(p?: string): Promise<string> {
-        // Reuse the same byte-fetch channel; decode client-side. The
-        // launcher's `loadDocument` handler returns raw file bytes, so a
-        // .txt/.md round-trips fine without a dedicated host command.
         const bytes = await request<number[]>('loadDocument', { path: p ?? filePath });
         return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
       },
@@ -825,6 +843,45 @@ if (isDesktop) {
         });
         if (written) bridge!.filePath = written;
         return written;
+      },
+      async rename(newName: string): Promise<string | null> {
+        const written = await request<string | null>('rename', { newName });
+        if (written) bridge!.filePath = written;
+        return written;
+      },
+      setDirty(dirty: boolean): void {
+        void request<void>('setDirty', { dirty });
+      },
+      async openViaMenu(): Promise<void> {
+        await request<void>('openViaMenu', {});
+      },
+      async getProfile() {
+        return request<unknown>('getProfile', {});
+      },
+      async exportPdf(suggestedName: string): Promise<string | null> {
+        return request<string | null>('exportPdf', { suggestedName });
+      },
+      async writeRecovery(bytes: ArrayBuffer): Promise<void> {
+        if (!filePath || bytes.byteLength === 0) return;
+        await request<void>('writeRecovery', {
+          path: filePath,
+          bytes: Array.from(new Uint8Array(bytes)),
+        });
+      },
+      async readRecovery(): Promise<ArrayBuffer | null> {
+        if (!filePath) return null;
+        const raw = await request<number[] | null>('readRecovery', { path: filePath });
+        return raw == null ? null : new Uint8Array(raw).buffer;
+      },
+      async clearRecovery(): Promise<void> {
+        if (!filePath) return;
+        await request<void>('clearRecovery', { path: filePath });
+      },
+      async getStore(key: string): Promise<string | null> {
+        return request<string | null>('getStore', { key });
+      },
+      async setStore(key: string, value: string): Promise<void> {
+        await request<void>('setStore', { key, value });
       },
     };
   }

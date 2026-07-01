@@ -18,6 +18,7 @@
 
 const STORAGE_KEY = 'docx-editor-building-blocks';
 const MAX_PREVIEW_LEN = 80;
+const MAX_BLOCKS = 100;
 
 export interface BuildingBlock {
   /** Stable identifier — Date.now() + random suffix. */
@@ -59,11 +60,36 @@ export function loadBuildingBlocks(): BuildingBlock[] {
 
 function saveAll(blocks: BuildingBlock[]): void {
   if (typeof window === 'undefined') return;
+  const json = JSON.stringify(blocks);
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
+    window.localStorage.setItem(STORAGE_KEY, json);
   } catch {
-    // Quota / private mode — silent fail; runtime list still has the new
-    // entry in memory if the caller keeps a copy.
+    // Quota / private mode — silent fail.
+  }
+  // Desktop: also write to native config dir so data survives a webview
+  // storage clear. Best-effort, non-blocking.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bridge = (window as any).__deskApp__;
+  if (bridge?.isDesktop && bridge.setStore) {
+    void (bridge.setStore('building-blocks', json) as Promise<void>).catch(() => undefined);
+  }
+}
+
+/**
+ * On desktop, if localStorage is empty, restore from the native store.
+ * Call once on app mount. Resolves immediately on web (no-op).
+ */
+export async function restoreNativeBuildingBlocks(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bridge = (window as any).__deskApp__;
+  if (!bridge?.isDesktop || !bridge.getStore) return;
+  if (window.localStorage.getItem(STORAGE_KEY)) return; // already populated
+  try {
+    const raw = (await bridge.getStore('building-blocks')) as string | null;
+    if (raw) window.localStorage.setItem(STORAGE_KEY, raw);
+  } catch {
+    // best-effort
   }
 }
 
@@ -89,7 +115,7 @@ export function addBuildingBlock(input: {
     preview: previewFromText(input.preview),
     createdAt: Date.now(),
   };
-  const next = [block, ...loadBuildingBlocks()];
+  const next = [block, ...loadBuildingBlocks()].slice(0, MAX_BLOCKS);
   saveAll(next);
   return next;
 }

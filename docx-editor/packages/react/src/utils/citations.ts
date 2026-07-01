@@ -19,6 +19,7 @@
  */
 
 const STORAGE_KEY = 'docx-editor-citations';
+const MAX_CITATIONS = 300;
 
 export type CitationStyle = 'apa' | 'mla' | 'chicago';
 
@@ -62,10 +63,35 @@ export function loadCitations(): Citation[] {
 
 function saveAll(items: Citation[]): void {
   if (typeof window === 'undefined') return;
+  const json = JSON.stringify(items);
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    window.localStorage.setItem(STORAGE_KEY, json);
   } catch {
     // Quota / private mode — silent fail.
+  }
+  // Desktop: also write to native config dir. Best-effort, non-blocking.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bridge = (window as any).__deskApp__;
+  if (bridge?.isDesktop && bridge.setStore) {
+    void (bridge.setStore('citations', json) as Promise<void>).catch(() => undefined);
+  }
+}
+
+/**
+ * On desktop, if localStorage is empty, restore from the native store.
+ * Call once on app mount. Resolves immediately on web (no-op).
+ */
+export async function restoreNativeCitations(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bridge = (window as any).__deskApp__;
+  if (!bridge?.isDesktop || !bridge.getStore) return;
+  if (window.localStorage.getItem(STORAGE_KEY)) return;
+  try {
+    const raw = (await bridge.getStore('citations')) as string | null;
+    if (raw) window.localStorage.setItem(STORAGE_KEY, raw);
+  } catch {
+    // best-effort
   }
 }
 
@@ -82,7 +108,7 @@ export function addCitation(input: Omit<Citation, 'id' | 'createdAt'>): Citation
     url: input.url?.trim() || undefined,
     createdAt: Date.now(),
   };
-  const next = [c, ...loadCitations()];
+  const next = [c, ...loadCitations()].slice(0, MAX_CITATIONS);
   saveAll(next);
   return next;
 }

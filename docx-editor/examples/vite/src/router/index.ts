@@ -87,7 +87,7 @@ export function navigate(to: string, opts: { replace?: boolean } = {}): void {
 /** Subscribe to the current route. Re-reads on popstate + cd:navigate. */
 export function useRoute(): Route {
   const [route, setRoute] = useState<Route>(() =>
-    parseRoute(window.location.pathname, window.location.search),
+    parseRoute(window.location.pathname, window.location.search)
   );
   useEffect(() => {
     const read = () => {

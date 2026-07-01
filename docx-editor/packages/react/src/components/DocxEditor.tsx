@@ -65,7 +65,9 @@ import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
 import { PanelRail } from './PanelRail';
 import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
-import { writeAutosave } from '../utils/autosave';
+import { writeAutosave, clearLegacyLocalStorageAutosave } from '../utils/autosave';
+import { restoreNativeBuildingBlocks } from '../utils/buildingBlocks';
+import { restoreNativeCitations } from '../utils/citations';
 import { recordRecentFile } from '../utils/recent-files';
 import { openExternal } from '../utils/openExternal';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
@@ -2956,6 +2958,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-app', 'docs');
     document.documentElement.setAttribute('data-theme', resolveColorTheme(colorTheme));
+    // Purge the stale AutoSaveManager localStorage key. The active autosave
+    // path uses IndexedDB; this key is never read and wastes quota.
+    clearLegacyLocalStorageAutosave();
+    // Desktop: restore building-blocks/citations from native store if
+    // localStorage is empty (e.g., after a webview storage clear).
+    void restoreNativeBuildingBlocks();
+    void restoreNativeCitations();
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
