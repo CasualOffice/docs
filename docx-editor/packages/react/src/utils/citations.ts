@@ -19,6 +19,7 @@
  */
 
 const STORAGE_KEY = 'docx-editor-citations';
+const MAX_CITATIONS = 300;
 
 export type CitationStyle = 'apa' | 'mla' | 'chicago';
 
@@ -82,7 +83,7 @@ export function addCitation(input: Omit<Citation, 'id' | 'createdAt'>): Citation
     url: input.url?.trim() || undefined,
     createdAt: Date.now(),
   };
-  const next = [c, ...loadCitations()];
+  const next = [c, ...loadCitations()].slice(0, MAX_CITATIONS);
   saveAll(next);
   return next;
 }

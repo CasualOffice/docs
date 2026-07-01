@@ -65,7 +65,7 @@ import { UnifiedSidebar } from './UnifiedSidebar';
 import { AgentPanel } from './AgentPanel';
 import { PanelRail } from './PanelRail';
 import { AutosaveRestoreBanner } from './AutosaveRestoreBanner';
-import { writeAutosave } from '../utils/autosave';
+import { writeAutosave, clearLegacyLocalStorageAutosave } from '../utils/autosave';
 import { recordRecentFile } from '../utils/recent-files';
 import { openExternal } from '../utils/openExternal';
 import { CommentMarginMarkers } from './CommentMarginMarkers';
@@ -2177,8 +2177,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           init: () => DecorationSet.empty,
           apply(tr, deco: DecorationSet) {
             const meta = tr.getMeta(findHighlightKey) as
-              | { ranges: Array<{ from: number; to: number }>; current: number }
-              | undefined;
+              { ranges: Array<{ from: number; to: number }>; current: number } | undefined;
             if (meta) {
               if (!meta.ranges.length) return DecorationSet.empty;
               const decos = meta.ranges.map((r, i) =>
@@ -2956,6 +2955,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (typeof document === 'undefined') return;
     document.documentElement.setAttribute('data-app', 'docs');
     document.documentElement.setAttribute('data-theme', resolveColorTheme(colorTheme));
+    // Purge the stale AutoSaveManager localStorage key. The active autosave
+    // path uses IndexedDB; this key is never read and wastes quota.
+    clearLegacyLocalStorageAutosave();
     // Only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -10122,8 +10124,7 @@ body { background: white; }
                       if (node.type.name !== 'paragraph') return;
                       const paraId = node.attrs.paraId as string | undefined;
                       const bms = node.attrs.bookmarks as
-                        | Array<{ id: number; name: string }>
-                        | undefined;
+                        Array<{ id: number; name: string }> | undefined;
                       if (!bms || !paraId) return;
                       for (const bm of bms) list.push({ paraId, name: bm.name });
                       return false;

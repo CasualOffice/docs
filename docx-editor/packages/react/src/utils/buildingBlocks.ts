@@ -18,6 +18,7 @@
 
 const STORAGE_KEY = 'docx-editor-building-blocks';
 const MAX_PREVIEW_LEN = 80;
+const MAX_BLOCKS = 100;
 
 export interface BuildingBlock {
   /** Stable identifier — Date.now() + random suffix. */
@@ -89,7 +90,7 @@ export function addBuildingBlock(input: {
     preview: previewFromText(input.preview),
     createdAt: Date.now(),
   };
-  const next = [block, ...loadBuildingBlocks()];
+  const next = [block, ...loadBuildingBlocks()].slice(0, MAX_BLOCKS);
   saveAll(next);
   return next;
 }
