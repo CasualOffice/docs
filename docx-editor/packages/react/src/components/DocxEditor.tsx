@@ -2179,7 +2179,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           init: () => DecorationSet.empty,
           apply(tr, deco: DecorationSet) {
             const meta = tr.getMeta(findHighlightKey) as
-              { ranges: Array<{ from: number; to: number }>; current: number } | undefined;
+              | { ranges: Array<{ from: number; to: number }>; current: number }
+              | undefined;
             if (meta) {
               if (!meta.ranges.length) return DecorationSet.empty;
               const decos = meta.ranges.map((r, i) =>
@@ -10130,7 +10131,8 @@ body { background: white; }
                       if (node.type.name !== 'paragraph') return;
                       const paraId = node.attrs.paraId as string | undefined;
                       const bms = node.attrs.bookmarks as
-                        Array<{ id: number; name: string }> | undefined;
+                        | Array<{ id: number; name: string }>
+                        | undefined;
                       if (!bms || !paraId) return;
                       for (const bm of bms) list.push({ paraId, name: bm.name });
                       return false;
