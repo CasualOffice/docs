@@ -122,8 +122,11 @@ export async function detectFormat(bytes: Uint8Array): Promise<Format | null> {
   return reply.format;
 }
 
+/** Viewer-only formats that bypass the WASM converter. */
+export type ViewerFormat = 'rtf' | 'eml';
+
 /** Best-effort guess of the format from a filename. */
-export function formatFromFilename(name: string): Format | null {
+export function formatFromFilename(name: string): Format | ViewerFormat | null {
   const m = /\.([a-z0-9]+)$/i.exec(name);
   if (!m) return null;
   const ext = m[1].toLowerCase();
@@ -131,5 +134,7 @@ export function formatFromFilename(name: string): Format | null {
     return ext;
   }
   if (ext === 'markdown') return 'md';
+  if (ext === 'rtf') return 'rtf';
+  if (ext === 'eml') return 'eml';
   return null;
 }
