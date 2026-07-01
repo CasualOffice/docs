@@ -57,9 +57,12 @@ function isOpeningContext(prevChar: string | null): boolean {
 
 export const SmartQuotesExtension = createExtension({
   name: 'smartQuotes',
-  // Run before BaseKeymap so the keystroke replacement happens
-  // before any default text-insertion handlers.
-  priority: Priority.High,
+  // Run after Autocorrect (Priority.High=50) so arrow sequences like
+  // "<-" / "<--" are handled by Autocorrect before SmartQuotes can
+  // mishandle the trailing "-" as part of "--" → em-dash.
+  // Still before BaseKeymap (Priority.Low=150) so smart replacements
+  // happen before the default text-insertion path.
+  priority: Priority.Default,
   onSchemaReady(): ExtensionRuntime {
     return {
       plugins: [
