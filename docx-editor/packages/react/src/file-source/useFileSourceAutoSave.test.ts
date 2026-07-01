@@ -87,14 +87,17 @@ describe('performAutoSave', () => {
     expect(fs.saveCalls).toHaveLength(0);
   });
 
-  it("skips with reason=no-bytes when the editor's save() returns null", async () => {
+  it("returns err when the editor's save() returns null (serialization failure)", async () => {
     const fs = fakeFileSource();
     const result = await performAutoSave({
       getRef: () => fakeRef(null),
       fileSource: fs,
       docId: 'doc_id',
     });
-    expect(result).toEqual({ kind: 'skip', reason: 'no-bytes' });
+    expect(result.kind).toBe('err');
+    if (result.kind === 'err') {
+      expect((result.err as Error).message).toMatch(/no bytes/i);
+    }
     expect(fs.saveCalls).toHaveLength(0);
   });
 
