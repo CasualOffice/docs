@@ -51,14 +51,14 @@ export const PIXELS_PER_INCH = STANDARD_DPI;
  * → 1 twip = 96/1440 pixels = 1/15 pixels
  */
 export function twipsToPixels(twips: number): number {
-  return (twips / TWIPS_PER_INCH) * PIXELS_PER_INCH;
+	return (twips / TWIPS_PER_INCH) * PIXELS_PER_INCH;
 }
 
 /**
  * Convert pixels to twips
  */
 export function pixelsToTwips(px: number): number {
-  return (px / PIXELS_PER_INCH) * TWIPS_PER_INCH;
+	return (px / PIXELS_PER_INCH) * TWIPS_PER_INCH;
 }
 
 // ============================================================================
@@ -72,8 +72,8 @@ export function pixelsToTwips(px: number): number {
  * Returns 0 for null/undefined/NaN inputs.
  */
 export function emuToPixels(emu: number | undefined | null): number {
-  if (emu == null || isNaN(emu)) return 0;
-  return Math.round((emu * PIXELS_PER_INCH) / EMUS_PER_INCH);
+	if (emu == null || isNaN(emu)) return 0;
+	return Math.round((emu * PIXELS_PER_INCH) / EMUS_PER_INCH);
 }
 
 /**
@@ -82,21 +82,21 @@ export function emuToPixels(emu: number | undefined | null): number {
  * floating-point drift (e.g. 52 px → 495299.99999999994) out of the document.
  */
 export function pixelsToEmu(px: number): number {
-  return Math.round((px / PIXELS_PER_INCH) * EMUS_PER_INCH);
+	return Math.round((px / PIXELS_PER_INCH) * EMUS_PER_INCH);
 }
 
 /**
  * Convert EMUs to twips
  */
 export function emuToTwips(emu: number): number {
-  return Math.round((emu / EMUS_PER_INCH) * TWIPS_PER_INCH);
+	return Math.round((emu / EMUS_PER_INCH) * TWIPS_PER_INCH);
 }
 
 /**
  * Convert twips to EMUs
  */
 export function twipsToEmu(twips: number): number {
-  return Math.round((twips / TWIPS_PER_INCH) * EMUS_PER_INCH);
+	return Math.round((twips / TWIPS_PER_INCH) * EMUS_PER_INCH);
 }
 
 // ============================================================================
@@ -110,7 +110,7 @@ export function twipsToEmu(twips: number): number {
  * → 1 point = 96/72 pixels = 4/3 pixels
  */
 export function pointsToPixels(points: number): number {
-  return (points / POINTS_PER_INCH) * PIXELS_PER_INCH;
+	return (points / POINTS_PER_INCH) * PIXELS_PER_INCH;
 }
 
 // ============================================================================
@@ -123,21 +123,21 @@ export function pointsToPixels(points: number): number {
  * Half-points are commonly used for font sizes in OOXML (w:sz).
  */
 export function halfPointsToPixels(halfPoints: number): number {
-  return (halfPoints / HALF_POINTS_PER_INCH) * PIXELS_PER_INCH;
+	return (halfPoints / HALF_POINTS_PER_INCH) * PIXELS_PER_INCH;
 }
 
 /**
  * Convert half-points to points
  */
 export function halfPointsToPoints(halfPoints: number): number {
-  return halfPoints / 2;
+	return halfPoints / 2;
 }
 
 /**
  * Convert points to half-points
  */
 export function pointsToHalfPoints(points: number): number {
-  return points * 2;
+	return points * 2;
 }
 
 // ============================================================================
@@ -150,7 +150,7 @@ export function pointsToHalfPoints(points: number): number {
  * Eighths of a point are used for border widths in OOXML.
  */
 export function eighthsToPixels(eighths: number): number {
-  return (eighths / EIGHTHS_PER_INCH) * PIXELS_PER_INCH;
+	return (eighths / EIGHTHS_PER_INCH) * PIXELS_PER_INCH;
 }
 
 // ============================================================================
@@ -161,15 +161,15 @@ export function eighthsToPixels(eighths: number): number {
  * Round a pixel value to avoid sub-pixel rendering issues
  */
 export function roundPixels(px: number, decimalPlaces: number = 2): number {
-  const factor = Math.pow(10, decimalPlaces);
-  return Math.round(px * factor) / factor;
+	const factor = 10 ** decimalPlaces;
+	return Math.round(px * factor) / factor;
 }
 
 /**
  * Clamp a value between min and max
  */
 export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+	return Math.min(Math.max(value, min), max);
 }
 
 // ============================================================================
@@ -180,5 +180,5 @@ export function clamp(value: number, min: number, max: number): number {
  * Format a pixel value as CSS string
  */
 export function formatPx(px: number): string {
-  return `${roundPixels(px)}px`;
+	return `${roundPixels(px)}px`;
 }

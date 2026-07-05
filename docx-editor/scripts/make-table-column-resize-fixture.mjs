@@ -13,45 +13,50 @@
  *
  * Output: e2e/fixtures/table-column-resize.docx
  */
-import JSZip from 'jszip';
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e/fixtures/table-column-resize.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e/fixtures/table-column-resize.docx");
 
 function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	return String(s)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
 }
 function run(text) {
-  return `<w:r><w:t>${esc(text)}</w:t></w:r>`;
+	return `<w:r><w:t>${esc(text)}</w:t></w:r>`;
 }
 function para(text) {
-  return `<w:p>${run(text)}</w:p>`;
+	return `<w:p>${run(text)}</w:p>`;
 }
 function cell(text, w) {
-  return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr>${para(text)}</w:tc>`;
+	return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr>${para(text)}</w:tc>`;
 }
 
 // 3 columns at 2400 twips each = 7200 twips ≈ 5 inches wide.
 const COL_W = 2400;
 const ROWS = [
-  ['Col-A', 'Col-B', 'Col-C'],
-  ['cell-1-A', 'cell-1-B', 'cell-1-C'],
-  ['cell-2-A', 'cell-2-B', 'cell-2-C'],
+	["Col-A", "Col-B", "Col-C"],
+	["cell-1-A", "cell-1-B", "cell-1-C"],
+	["cell-2-A", "cell-2-B", "cell-2-C"],
 ];
 
 const rows = ROWS.map(
-  (r) => `<w:tr>${r.map((t) => cell(t, COL_W)).join('')}</w:tr>`
-).join('');
+	(r) => `<w:tr>${r.map((t) => cell(t, COL_W)).join("")}</w:tr>`,
+).join("");
 
 const grid =
-  '<w:tblGrid>' + ROWS[0].map(() => `<w:gridCol w:w="${COL_W}"/>`).join('') + '</w:tblGrid>';
+	"<w:tblGrid>" +
+	ROWS[0].map(() => `<w:gridCol w:w="${COL_W}"/>`).join("") +
+	"</w:tblGrid>";
 
 const body = `
-  ${para('Resize fixture')}
+  ${para("Resize fixture")}
   <w:tbl>
     <w:tblPr>
       <w:tblW w:w="7200" w:type="dxa"/>
@@ -92,10 +97,10 @@ const DOC = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CONTENT_TYPES);
-zip.file('_rels/.rels', RELS);
-zip.file('word/document.xml', DOC);
+zip.file("[Content_Types].xml", CONTENT_TYPES);
+zip.file("_rels/.rels", RELS);
+zip.file("word/document.xml", DOC);
 
-const out = await zip.generateAsync({ type: 'nodebuffer' });
+const out = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, out);
 console.log(`wrote ${OUT} (${out.byteLength} bytes)`);

@@ -13,8 +13,8 @@
  * resolution is already wired in `paged-editor` for PAGE / NUMPAGES.
  */
 
-import type { Command } from 'prosemirror-state';
-import { TextSelection } from 'prosemirror-state';
+import type { Command } from "prosemirror-state";
+import { TextSelection } from "prosemirror-state";
 
 /**
  * Field instruction strings exactly as Word writes them. The leading +
@@ -22,25 +22,25 @@ import { TextSelection } from 'prosemirror-state';
  * round-trip.
  */
 const DEFAULT_INSTRUCTIONS: Record<string, string> = {
-  PAGE: ' PAGE ',
-  NUMPAGES: ' NUMPAGES ',
-  DATE: ' DATE ',
-  TIME: ' TIME ',
-  CREATEDATE: ' CREATEDATE ',
-  SAVEDATE: ' SAVEDATE ',
-  AUTHOR: ' AUTHOR ',
-  FILENAME: ' FILENAME ',
+	PAGE: " PAGE ",
+	NUMPAGES: " NUMPAGES ",
+	DATE: " DATE ",
+	TIME: " TIME ",
+	CREATEDATE: " CREATEDATE ",
+	SAVEDATE: " SAVEDATE ",
+	AUTHOR: " AUTHOR ",
+	FILENAME: " FILENAME ",
 };
 
 export type InsertableFieldType =
-  | 'PAGE'
-  | 'NUMPAGES'
-  | 'DATE'
-  | 'TIME'
-  | 'CREATEDATE'
-  | 'SAVEDATE'
-  | 'AUTHOR'
-  | 'FILENAME';
+	| "PAGE"
+	| "NUMPAGES"
+	| "DATE"
+	| "TIME"
+	| "CREATEDATE"
+	| "SAVEDATE"
+	| "AUTHOR"
+	| "FILENAME";
 
 /**
  * Insert an inline `field` node of the given type at the cursor.
@@ -62,32 +62,32 @@ export type InsertableFieldType =
  *     and should be recomputed.
  */
 export function insertField(
-  fieldType: InsertableFieldType,
-  instruction: string = DEFAULT_INSTRUCTIONS[fieldType] ?? ` ${fieldType} `
+	fieldType: InsertableFieldType,
+	instruction: string = DEFAULT_INSTRUCTIONS[fieldType] ?? ` ${fieldType} `,
 ): Command {
-  return (state, dispatch) => {
-    const fieldNodeType = state.schema.nodes.field;
-    if (!fieldNodeType) return false;
+	return (state, dispatch) => {
+		const fieldNodeType = state.schema.nodes.field;
+		if (!fieldNodeType) return false;
 
-    const { $from } = state.selection;
-    if (!$from.parent.isTextblock) return false;
+		const { $from } = state.selection;
+		if (!$from.parent.isTextblock) return false;
 
-    if (dispatch) {
-      const node = fieldNodeType.create({
-        fieldType,
-        instruction,
-        displayText: '',
-        fieldKind: 'complex',
-        fldLock: false,
-        dirty: true,
-      });
-      const tr = state.tr.replaceSelectionWith(node, false);
-      // Move the cursor after the inserted atom so the next keystroke
-      // types inline-after instead of nudging the field around.
-      const after = tr.selection.$to.pos;
-      tr.setSelection(TextSelection.create(tr.doc, after));
-      dispatch(tr.scrollIntoView());
-    }
-    return true;
-  };
+		if (dispatch) {
+			const node = fieldNodeType.create({
+				fieldType,
+				instruction,
+				displayText: "",
+				fieldKind: "complex",
+				fldLock: false,
+				dirty: true,
+			});
+			const tr = state.tr.replaceSelectionWith(node, false);
+			// Move the cursor after the inserted atom so the next keystroke
+			// types inline-after instead of nudging the field around.
+			const after = tr.selection.$to.pos;
+			tr.setSelection(TextSelection.create(tr.doc, after));
+			dispatch(tr.scrollIntoView());
+		}
+		return true;
+	};
 }

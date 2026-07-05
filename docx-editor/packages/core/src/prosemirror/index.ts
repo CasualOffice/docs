@@ -22,174 +22,181 @@
 // `ExtensionContext.manager` (see prosemirror/extensions/types.ts), not
 // through a module-level global. Internal callers can still import the
 // singleton via the relative `./schema` path inside the package.
-export { schema } from './schema';
+export { schema } from "./schema";
 export type {
-  ParagraphAttrs,
-  ImageAttrs,
-  TextColorAttrs,
-  UnderlineAttrs,
-  FontSizeAttrs,
-  FontFamilyAttrs,
-  HyperlinkAttrs,
-} from './schema';
+	ParagraphAttrs,
+	ImageAttrs,
+	TextColorAttrs,
+	UnderlineAttrs,
+	FontSizeAttrs,
+	FontFamilyAttrs,
+	HyperlinkAttrs,
+} from "./schema";
 
 // Conversion
 export {
-  toProseDoc,
-  createEmptyDoc,
-  fromProseDoc,
-  updateDocumentContent,
-  headerFooterToProseDoc,
-  footnoteToProseDoc,
-} from './conversion';
-export type { ToProseDocOptions } from './conversion';
+	toProseDoc,
+	createEmptyDoc,
+	fromProseDoc,
+	updateDocumentContent,
+	headerFooterToProseDoc,
+	footnoteToProseDoc,
+} from "./conversion";
+export type { ToProseDocOptions } from "./conversion";
 
 // Styles
-export { StyleResolver, createStyleResolver } from './styles';
-export type { ResolvedParagraphStyle } from './styles';
+export { StyleResolver, createStyleResolver } from "./styles";
+export type { ResolvedParagraphStyle } from "./styles";
 
 // Selection state utilities
-export { extractSelectionState } from './selectionState';
-export type { SelectionState } from './selectionState';
+export { extractSelectionState } from "./selectionState";
+export type { SelectionState } from "./selectionState";
 
 // Re-export TextSelection for restoring selections after toolbar interactions
-export { TextSelection } from 'prosemirror-state';
+export { TextSelection } from "prosemirror-state";
 
 // Plugins (selection tracker only — keymaps are now in extension system)
 export {
-  createSelectionTrackerPlugin,
-  extractSelectionContext,
-  getSelectionContext,
-  selectionTrackerKey,
-} from './plugins';
-export type { SelectionContext, SelectionChangeCallback } from './plugins';
+	createSelectionTrackerPlugin,
+	extractSelectionContext,
+	getSelectionContext,
+	selectionTrackerKey,
+} from "./plugins";
+export type { SelectionContext, SelectionChangeCallback } from "./plugins";
 
 // Commands
 export {
-  // Text formatting
-  toggleBold,
-  toggleItalic,
-  toggleUnderline,
-  toggleStrike,
-  toggleSuperscript,
-  toggleSubscript,
-  toggleSmallCaps,
-  toggleAllCaps,
-  toggleHidden,
-  toggleEmboss,
-  toggleImprint,
-  toggleTextShadow,
-  toggleTextOutline,
-  setCharacterSpacing,
-  setCharacterAttrs,
-  type CharacterAttrs,
-  setTextColor,
-  clearTextColor,
-  setHighlight,
-  clearHighlight,
-  setFontSize,
-  clearFontSize,
-  setFontFamily,
-  clearFontFamily,
-  clearFormatting,
-  isMarkActive,
-  getMarkAttr,
-  // Hyperlink commands
-  isHyperlinkActive,
-  getHyperlinkAttrs,
-  getSelectedText,
-  setHyperlink,
-  removeHyperlink,
-  insertHyperlink,
-  // Paragraph formatting
-  setParagraphAttrs,
-  setAlignment,
-  alignLeft,
-  alignCenter,
-  alignRight,
-  alignJustify,
-  setLineSpacing,
-  increaseIndent,
-  decreaseIndent,
-  setIndentLeft,
-  setIndentRight,
-  setIndentFirstLine,
-  addTabStop,
-  removeTabStop,
-  toggleBulletList,
-  toggleNumberedList,
-  increaseListLevel,
-  decreaseListLevel,
-  removeList,
-  getParagraphAlignment,
-  getParagraphBidi,
-  isInList,
-  getListInfo,
-  applyStyle,
-  clearStyle,
-  getStyleId,
-  setRtl,
-  setLtr,
-  setSpaceBefore,
-  setSpaceAfter,
-  // Table operations
-  isInTable,
-  getTableContext,
-  insertTable,
-  addRowAbove,
-  addRowBelow,
-  deleteRow,
-  addColumnLeft,
-  addColumnRight,
-  deleteColumn,
-  deleteTable,
-  selectTable,
-  selectRow,
-  selectColumn,
-  mergeCells,
-  splitCell,
-  setTableBorders,
-  removeTableBorders,
-  setAllTableBorders,
-  setOutsideTableBorders,
-  setInsideTableBorders,
-  setCellBorder,
-  setCellVerticalAlign,
-  setCellMargins,
-  setCellTextDirection,
-  toggleNoWrap,
-  setRowHeight,
-  toggleHeaderRow,
-  distributeColumns,
-  distributeRows,
-  autoFitContents,
-  autoFitWindow,
-  sortTable,
-  setTableProperties,
-  applyTableStyle,
-  setCellFillColor,
-  setTableBorderColor,
-  setTableBorderWidth,
-  // Page break
-  insertPageBreak,
-  // Field insert (PAGE / NUMPAGES / DATE / TIME / …)
-  insertField,
-  // List numbering control
-  restartListNumbering,
-  continueListNumbering,
-  // Section break
-  insertSectionBreak,
-  insertFootnote,
-  insertEndnote,
-  insertHorizontalRule,
-  // Table of Contents
-  generateTOC,
-} from './commands';
-export type { TableContextInfo, BorderPreset, InsertableFieldType } from './commands';
+	// Text formatting
+	toggleBold,
+	toggleItalic,
+	toggleUnderline,
+	toggleStrike,
+	toggleSuperscript,
+	toggleSubscript,
+	toggleSmallCaps,
+	toggleAllCaps,
+	toggleHidden,
+	toggleEmboss,
+	toggleImprint,
+	toggleTextShadow,
+	toggleTextOutline,
+	setCharacterSpacing,
+	setCharacterAttrs,
+	type CharacterAttrs,
+	setTextColor,
+	clearTextColor,
+	setHighlight,
+	clearHighlight,
+	setFontSize,
+	clearFontSize,
+	setFontFamily,
+	clearFontFamily,
+	clearFormatting,
+	isMarkActive,
+	getMarkAttr,
+	// Hyperlink commands
+	isHyperlinkActive,
+	getHyperlinkAttrs,
+	getSelectedText,
+	setHyperlink,
+	removeHyperlink,
+	insertHyperlink,
+	// Paragraph formatting
+	setParagraphAttrs,
+	setAlignment,
+	alignLeft,
+	alignCenter,
+	alignRight,
+	alignJustify,
+	setLineSpacing,
+	increaseIndent,
+	decreaseIndent,
+	setIndentLeft,
+	setIndentRight,
+	setIndentFirstLine,
+	addTabStop,
+	removeTabStop,
+	toggleBulletList,
+	toggleNumberedList,
+	increaseListLevel,
+	decreaseListLevel,
+	removeList,
+	getParagraphAlignment,
+	getParagraphBidi,
+	isInList,
+	getListInfo,
+	applyStyle,
+	clearStyle,
+	getStyleId,
+	setRtl,
+	setLtr,
+	setSpaceBefore,
+	setSpaceAfter,
+	// Table operations
+	isInTable,
+	getTableContext,
+	insertTable,
+	addRowAbove,
+	addRowBelow,
+	deleteRow,
+	addColumnLeft,
+	addColumnRight,
+	deleteColumn,
+	deleteTable,
+	selectTable,
+	selectRow,
+	selectColumn,
+	mergeCells,
+	splitCell,
+	setTableBorders,
+	removeTableBorders,
+	setAllTableBorders,
+	setOutsideTableBorders,
+	setInsideTableBorders,
+	setCellBorder,
+	setCellVerticalAlign,
+	setCellMargins,
+	setCellTextDirection,
+	toggleNoWrap,
+	setRowHeight,
+	toggleHeaderRow,
+	distributeColumns,
+	distributeRows,
+	autoFitContents,
+	autoFitWindow,
+	sortTable,
+	setTableProperties,
+	applyTableStyle,
+	setCellFillColor,
+	setTableBorderColor,
+	setTableBorderWidth,
+	// Page break
+	insertPageBreak,
+	// Field insert (PAGE / NUMPAGES / DATE / TIME / …)
+	insertField,
+	// List numbering control
+	restartListNumbering,
+	continueListNumbering,
+	// Section break
+	insertSectionBreak,
+	insertFootnote,
+	insertEndnote,
+	insertHorizontalRule,
+	// Table of Contents
+	generateTOC,
+} from "./commands";
+export type {
+	TableContextInfo,
+	BorderPreset,
+	InsertableFieldType,
+} from "./commands";
 // Smart-chip trigger (`@` menu): plugin state key + the date-chip command.
-export { smartChipKey, insertSmartChipDate } from './extensions/features/SmartChipExtension';
-export type { SmartChipTrigger } from './extensions/features/SmartChipExtension';
+export {
+	smartChipKey,
+	insertSmartChipDate,
+} from "./extensions/features/SmartChipExtension";
+export type { SmartChipTrigger } from "./extensions/features/SmartChipExtension";
 
 /** Word `w14:paraId` → ProseMirror position before matching paragraph. */
-export { findStartPosForParaId } from './utils/findStartPosForParaId';
-export { findParagraphByParaId } from './utils/findParagraphByParaId';
+export { findStartPosForParaId } from "./utils/findStartPosForParaId";
+export { findParagraphByParaId } from "./utils/findParagraphByParaId";

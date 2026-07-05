@@ -9,8 +9,8 @@
  * This file re-exports from Icons.tsx for backwards compatibility.
  */
 
-export { MaterialSymbol, type IconProps as MaterialSymbolProps } from './Icons';
+export { MaterialSymbol, type IconProps as MaterialSymbolProps } from "./Icons";
 export default MaterialSymbol;
 
 // Re-export MaterialSymbol as default for existing imports
-import { MaterialSymbol } from './Icons';
+import { MaterialSymbol } from "./Icons";

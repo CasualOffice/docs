@@ -23,9 +23,9 @@
  * want it in the doc.
  */
 
-import { runChat } from '../controller';
-import { stripModelPreamble } from '../stripPreamble';
-import type { Tool, ToolResult } from './types';
+import { runChat } from "../controller";
+import { stripModelPreamble } from "../stripPreamble";
+import type { Tool, ToolResult } from "./types";
 
 const ONE_PASS_LIMIT_CHARS = 5500;
 const CHUNK_CHARS = 4500;
@@ -41,83 +41,91 @@ Return 1-2 sentences capturing the most important facts in this section.
 No commentary, no bullets, no quotation marks.`;
 
 export interface SummarizeArgs {
-  /** When true, summarise the user's selection instead of the whole doc. */
-  selectionOnly?: boolean;
+	/** When true, summarise the user's selection instead of the whole doc. */
+	selectionOnly?: boolean;
 }
 
 export const summarizeDocTool: Tool<SummarizeArgs> = {
-  name: 'summarize',
-  description: 'Summarise the document (or selection) into a few bullets.',
-  async execute(args, ctx): Promise<ToolResult> {
-    const source = args.selectionOnly ? ctx.getSelectionText().trim() : ctx.getDocText().trim();
-    if (!source) {
-      return {
-        kind: 'error',
-        message: args.selectionOnly
-          ? 'Select some text first to summarise it.'
-          : 'The document is empty — nothing to summarise.',
-      };
-    }
+	name: "summarize",
+	description: "Summarise the document (or selection) into a few bullets.",
+	async execute(args, ctx): Promise<ToolResult> {
+		const source = args.selectionOnly
+			? ctx.getSelectionText().trim()
+			: ctx.getDocText().trim();
+		if (!source) {
+			return {
+				kind: "error",
+				message: args.selectionOnly
+					? "Select some text first to summarise it."
+					: "The document is empty — nothing to summarise.",
+			};
+		}
 
-    const t0 = Date.now();
-    let text: string;
-    try {
-      text =
-        source.length <= ONE_PASS_LIMIT_CHARS
-          ? await summariseOnePass(source, ctx.signal)
-          : await summariseMapReduce(source, ctx.signal);
-    } catch (err) {
-      return {
-        kind: 'error',
-        message: `Summary failed — ${(err as Error).message}`,
-      };
-    }
-    return {
-      kind: 'chat',
-      text: stripModelPreamble(text),
-      meta: { tool: 'summarize', elapsedMs: Date.now() - t0 },
-    };
-  },
+		const t0 = Date.now();
+		let text: string;
+		try {
+			text =
+				source.length <= ONE_PASS_LIMIT_CHARS
+					? await summariseOnePass(source, ctx.signal)
+					: await summariseMapReduce(source, ctx.signal);
+		} catch (err) {
+			return {
+				kind: "error",
+				message: `Summary failed — ${(err as Error).message}`,
+			};
+		}
+		return {
+			kind: "chat",
+			text: stripModelPreamble(text),
+			meta: { tool: "summarize", elapsedMs: Date.now() - t0 },
+		};
+	},
 };
 
-async function summariseOnePass(text: string, signal?: AbortSignal): Promise<string> {
-  return runChat(
-    [
-      { role: 'system', content: FINAL_SYSTEM },
-      { role: 'user', content: `Document:\n\n${text}` },
-    ],
-    { maxTokens: 384, temperature: 0.3, signal }
-  );
+async function summariseOnePass(
+	text: string,
+	signal?: AbortSignal,
+): Promise<string> {
+	return runChat(
+		[
+			{ role: "system", content: FINAL_SYSTEM },
+			{ role: "user", content: `Document:\n\n${text}` },
+		],
+		{ maxTokens: 384, temperature: 0.3, signal },
+	);
 }
 
-async function summariseMapReduce(text: string, signal?: AbortSignal): Promise<string> {
-  const chunks = splitIntoChunks(text, CHUNK_CHARS).slice(0, MAX_CHUNKS);
-  const partials: string[] = [];
-  for (let i = 0; i < chunks.length; i++) {
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    const partial = await runChat(
-      [
-        { role: 'system', content: CHUNK_SYSTEM },
-        {
-          role: 'user',
-          content: `Section ${i + 1} of ${chunks.length}:\n\n${chunks[i]}`,
-        },
-      ],
-      { maxTokens: 160, temperature: 0.2, signal }
-    );
-    partials.push(`- ${partial.trim()}`);
-  }
-  const combined = partials.join('\n');
-  return runChat(
-    [
-      { role: 'system', content: FINAL_SYSTEM },
-      {
-        role: 'user',
-        content: `Here are section-by-section notes about a longer document. Combine them into a single summary.\n\n${combined}`,
-      },
-    ],
-    { maxTokens: 384, temperature: 0.3, signal }
-  );
+async function summariseMapReduce(
+	text: string,
+	signal?: AbortSignal,
+): Promise<string> {
+	const chunks = splitIntoChunks(text, CHUNK_CHARS).slice(0, MAX_CHUNKS);
+	const partials: string[] = [];
+	for (let i = 0; i < chunks.length; i++) {
+		if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+		const partial = await runChat(
+			[
+				{ role: "system", content: CHUNK_SYSTEM },
+				{
+					role: "user",
+					content: `Section ${i + 1} of ${chunks.length}:\n\n${chunks[i]}`,
+				},
+			],
+			{ maxTokens: 160, temperature: 0.2, signal },
+		);
+		partials.push(`- ${partial.trim()}`);
+	}
+	const combined = partials.join("\n");
+	return runChat(
+		[
+			{ role: "system", content: FINAL_SYSTEM },
+			{
+				role: "user",
+				content: `Here are section-by-section notes about a longer document. Combine them into a single summary.\n\n${combined}`,
+			},
+		],
+		{ maxTokens: 384, temperature: 0.3, signal },
+	);
 }
 
 /**
@@ -126,30 +134,30 @@ async function summariseMapReduce(text: string, signal?: AbortSignal): Promise<s
  * unbroken wall of text doesn't blow past the budget.
  */
 function splitIntoChunks(text: string, maxChars: number): string[] {
-  const paragraphs = text
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  const out: string[] = [];
-  let current = '';
-  for (const p of paragraphs) {
-    if (p.length > maxChars) {
-      if (current) {
-        out.push(current);
-        current = '';
-      }
-      for (let i = 0; i < p.length; i += maxChars) {
-        out.push(p.slice(i, i + maxChars));
-      }
-      continue;
-    }
-    if (current.length + p.length + 2 > maxChars) {
-      out.push(current);
-      current = p;
-    } else {
-      current = current ? `${current}\n\n${p}` : p;
-    }
-  }
-  if (current) out.push(current);
-  return out.length > 0 ? out : [text.slice(0, maxChars)];
+	const paragraphs = text
+		.split(/\n{2,}/)
+		.map((p) => p.trim())
+		.filter(Boolean);
+	const out: string[] = [];
+	let current = "";
+	for (const p of paragraphs) {
+		if (p.length > maxChars) {
+			if (current) {
+				out.push(current);
+				current = "";
+			}
+			for (let i = 0; i < p.length; i += maxChars) {
+				out.push(p.slice(i, i + maxChars));
+			}
+			continue;
+		}
+		if (current.length + p.length + 2 > maxChars) {
+			out.push(current);
+			current = p;
+		} else {
+			current = current ? `${current}\n\n${p}` : p;
+		}
+	}
+	if (current) out.push(current);
+	return out.length > 0 ? out : [text.slice(0, maxChars)];
 }

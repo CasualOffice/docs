@@ -18,40 +18,40 @@
  *
  * Run: bun scripts/make-table-overlap-fixture.mjs
  */
-import JSZip from 'jszip';
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e/fixtures/table-overlap.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e/fixtures/table-overlap.docx");
 
 function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+	return String(s)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
 }
 
 function run(text) {
-  return `<w:r><w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
+	return `<w:r><w:t xml:space="preserve">${esc(text)}</w:t></w:r>`;
 }
 function para(text) {
-  return `<w:p>${run(text)}</w:p>`;
+	return `<w:p>${run(text)}</w:p>`;
 }
 function row(cells) {
-  const cellXml = cells
-    .map(
-      (c) =>
-        `<w:tc><w:tcPr><w:tcW w:w="3120" w:type="dxa"/></w:tcPr>${para(c)}</w:tc>`
-    )
-    .join('');
-  return `<w:tr>${cellXml}</w:tr>`;
+	const cellXml = cells
+		.map(
+			(c) =>
+				`<w:tc><w:tcPr><w:tcW w:w="3120" w:type="dxa"/></w:tcPr>${para(c)}</w:tc>`,
+		)
+		.join("");
+	return `<w:tr>${cellXml}</w:tr>`;
 }
 function table(rows) {
-  const grid = `<w:tblGrid>${rows[0].map(() => '<w:gridCol w:w="3120"/>').join('')}</w:tblGrid>`;
-  const tblPr = `
+	const grid = `<w:tblGrid>${rows[0].map(() => '<w:gridCol w:w="3120"/>').join("")}</w:tblGrid>`;
+	const tblPr = `
   <w:tblPr>
     <w:tblW w:w="0" w:type="auto"/>
     <w:tblBorders>
@@ -63,24 +63,24 @@ function table(rows) {
       <w:insideV w:val="single" w:sz="4" w:color="888888"/>
     </w:tblBorders>
   </w:tblPr>`;
-  return `<w:tbl>${tblPr}${grid}${rows.map(row).join('')}</w:tbl>`;
+	return `<w:tbl>${tblPr}${grid}${rows.map(row).join("")}</w:tbl>`;
 }
 
 // 30 rows × 3 columns. 30 × ~24 px per row + borders ≈ 750 px = forces
 // pagination into a second page (Letter content area ≈ 912 px).
 const T1_ROWS = Array.from({ length: 30 }, (_, i) => [
-  `R${i + 1}A`,
-  `R${i + 1}B`,
-  `R${i + 1}C`,
+	`R${i + 1}A`,
+	`R${i + 1}B`,
+	`R${i + 1}C`,
 ]);
 
 const body = `
-  ${para('PRE-T1-INTRO')}
+  ${para("PRE-T1-INTRO")}
   ${table(T1_ROWS)}
-  ${para('POST-T1-MARKER')}
-  ${para('POST-T1-FILL')}
+  ${para("POST-T1-MARKER")}
+  ${para("POST-T1-FILL")}
   ${table(Array.from({ length: 20 }, (_, i) => [`S${i + 1}A`, `S${i + 1}B`, `S${i + 1}C`]))}
-  ${para('POST-T2-MARKER')}
+  ${para("POST-T2-MARKER")}
   <w:sectPr>
     <w:pgSz w:w="12240" w:h="15840"/>
     <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"
@@ -106,10 +106,10 @@ const DOC = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CONTENT_TYPES);
-zip.file('_rels/.rels', RELS);
-zip.file('word/document.xml', DOC);
+zip.file("[Content_Types].xml", CONTENT_TYPES);
+zip.file("_rels/.rels", RELS);
+zip.file("word/document.xml", DOC);
 
-const out = await zip.generateAsync({ type: 'nodebuffer' });
+const out = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, out);
 console.log(`wrote ${OUT} (${out.byteLength} bytes)`);

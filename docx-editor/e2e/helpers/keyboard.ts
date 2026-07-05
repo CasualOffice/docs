@@ -16,15 +16,15 @@
  *     const mod = await modifierKey(page);
  *     await page.keyboard.press(`${mod}+e`);
  */
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
-let cached: Promise<'Meta' | 'Control'> | undefined;
+let cached: Promise<"Meta" | "Control"> | undefined;
 
-export async function modifierKey(page: Page): Promise<'Meta' | 'Control'> {
-  if (!cached) {
-    cached = page
-      .evaluate(() => navigator.platform.toUpperCase().includes('MAC'))
-      .then((isMac) => (isMac ? 'Meta' : 'Control'));
-  }
-  return cached;
+export async function modifierKey(page: Page): Promise<"Meta" | "Control"> {
+	if (!cached) {
+		cached = page
+			.evaluate(() => navigator.platform.toUpperCase().includes("MAC"))
+			.then((isMac) => (isMac ? "Meta" : "Control"));
+	}
+	return cached;
 }

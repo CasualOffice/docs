@@ -19,43 +19,46 @@
  *    an "improved" passage is what `applyRewrite` is for.
  */
 
-import { runJsonChat } from '../jsonMode';
-import type { Tool, ToolResult } from './types';
+import { runJsonChat } from "../jsonMode";
+import type { Tool, ToolResult } from "./types";
 
 export interface FindIssuesArgs {
-  /** When true, scan the selection. When false, scan the doc text. */
-  selectionOnly?: boolean;
+	/** When true, scan the selection. When false, scan the doc text. */
+	selectionOnly?: boolean;
 }
 
 interface IssueJson {
-  issues: {
-    kind: 'typo' | 'grammar' | 'awkward' | 'redundant';
-    original: string;
-    suggestion: string;
-    reason?: string;
-  }[];
+	issues: {
+		kind: "typo" | "grammar" | "awkward" | "redundant";
+		original: string;
+		suggestion: string;
+		reason?: string;
+	}[];
 }
 
 const SCHEMA = {
-  type: 'object',
-  properties: {
-    issues: {
-      type: 'array',
-      minItems: 0,
-      maxItems: 10,
-      items: {
-        type: 'object',
-        properties: {
-          kind: { type: 'string', enum: ['typo', 'grammar', 'awkward', 'redundant'] },
-          original: { type: 'string', minLength: 1, maxLength: 160 },
-          suggestion: { type: 'string', minLength: 1, maxLength: 200 },
-          reason: { type: 'string', maxLength: 160 },
-        },
-        required: ['kind', 'original', 'suggestion'],
-      },
-    },
-  },
-  required: ['issues'],
+	type: "object",
+	properties: {
+		issues: {
+			type: "array",
+			minItems: 0,
+			maxItems: 10,
+			items: {
+				type: "object",
+				properties: {
+					kind: {
+						type: "string",
+						enum: ["typo", "grammar", "awkward", "redundant"],
+					},
+					original: { type: "string", minLength: 1, maxLength: 160 },
+					suggestion: { type: "string", minLength: 1, maxLength: 200 },
+					reason: { type: "string", maxLength: 160 },
+				},
+				required: ["kind", "original", "suggestion"],
+			},
+		},
+	},
+	required: ["issues"],
 } as const;
 
 const SYSTEM = `You are a careful copy editor reading a passage for issues.
@@ -76,60 +79,70 @@ Rules:
 // even when summed with the system prompt and JSON output budget.
 const SCAN_CAP = 3500;
 
-const KIND_LABEL: Record<IssueJson['issues'][number]['kind'], string> = {
-  typo: 'Typo',
-  grammar: 'Grammar',
-  awkward: 'Awkward',
-  redundant: 'Redundant',
+const KIND_LABEL: Record<IssueJson["issues"][number]["kind"], string> = {
+	typo: "Typo",
+	grammar: "Grammar",
+	awkward: "Awkward",
+	redundant: "Redundant",
 };
 
 export const findIssuesTool: Tool<FindIssuesArgs> = {
-  name: 'findIssues',
-  description: 'Find typos and weak phrasing in the selection (or document).',
-  async execute(args, ctx): Promise<ToolResult> {
-    const raw = args.selectionOnly
-      ? ctx.getSelectionText().trim()
-      : ctx.getSelectionText().trim() || ctx.getDocText().trim();
-    if (!raw) {
-      return { kind: 'error', message: 'There is no text to scan.' };
-    }
-    const passage = raw.slice(0, SCAN_CAP);
-    const truncated = raw.length > SCAN_CAP;
+	name: "findIssues",
+	description: "Find typos and weak phrasing in the selection (or document).",
+	async execute(args, ctx): Promise<ToolResult> {
+		const raw = args.selectionOnly
+			? ctx.getSelectionText().trim()
+			: ctx.getSelectionText().trim() || ctx.getDocText().trim();
+		if (!raw) {
+			return { kind: "error", message: "There is no text to scan." };
+		}
+		const passage = raw.slice(0, SCAN_CAP);
+		const truncated = raw.length > SCAN_CAP;
 
-    let out: IssueJson;
-    try {
-      out = await runJsonChat<IssueJson>(
-        [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: `Passage:\n\n${passage}` },
-        ],
-        { schema: SCHEMA, maxTokens: 600, temperature: 0.15, signal: ctx.signal }
-      );
-    } catch (err) {
-      return { kind: 'error', message: `Proofread failed — ${(err as Error).message}` };
-    }
+		let out: IssueJson;
+		try {
+			out = await runJsonChat<IssueJson>(
+				[
+					{ role: "system", content: SYSTEM },
+					{ role: "user", content: `Passage:\n\n${passage}` },
+				],
+				{
+					schema: SCHEMA,
+					maxTokens: 600,
+					temperature: 0.15,
+					signal: ctx.signal,
+				},
+			);
+		} catch (err) {
+			return {
+				kind: "error",
+				message: `Proofread failed — ${(err as Error).message}`,
+			};
+		}
 
-    const issues = (out.issues ?? []).filter((i) => i.original?.trim() && i.suggestion?.trim());
-    if (issues.length === 0) {
-      return {
-        kind: 'chat',
-        text: 'No issues found in the passage. Looks clean!',
-      };
-    }
+		const issues = (out.issues ?? []).filter(
+			(i) => i.original?.trim() && i.suggestion?.trim(),
+		);
+		if (issues.length === 0) {
+			return {
+				kind: "chat",
+				text: "No issues found in the passage. Looks clean!",
+			};
+		}
 
-    // Render as a markdown bullet list the Markdown component already
-    // knows how to paint in chat bubbles.
-    const lines = issues.map((i) => {
-      const label = KIND_LABEL[i.kind] ?? 'Issue';
-      const reason = i.reason ? ` — ${i.reason}` : '';
-      return `- **${label}**: \`${i.original}\` → \`${i.suggestion}\`${reason}`;
-    });
-    const header = `Found **${issues.length}** issue${issues.length === 1 ? '' : 's'}${
-      truncated ? ' (scanned first 3.5 KB):' : ':'
-    }`;
-    return {
-      kind: 'chat',
-      text: `${header}\n${lines.join('\n')}`,
-    };
-  },
+		// Render as a markdown bullet list the Markdown component already
+		// knows how to paint in chat bubbles.
+		const lines = issues.map((i) => {
+			const label = KIND_LABEL[i.kind] ?? "Issue";
+			const reason = i.reason ? ` — ${i.reason}` : "";
+			return `- **${label}**: \`${i.original}\` → \`${i.suggestion}\`${reason}`;
+		});
+		const header = `Found **${issues.length}** issue${issues.length === 1 ? "" : "s"}${
+			truncated ? " (scanned first 3.5 KB):" : ":"
+		}`;
+		return {
+			kind: "chat",
+			text: `${header}\n${lines.join("\n")}`,
+		};
+	},
 };

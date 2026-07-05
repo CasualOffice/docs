@@ -21,7 +21,7 @@
  * `docs/internal/08-improvement-tracker.md`.
  */
 
-import type { Command } from 'prosemirror-state';
+import type { Command } from "prosemirror-state";
 
 /**
  * Restart the list numbering at the cursor's paragraph. Returns false
@@ -31,22 +31,25 @@ import type { Command } from 'prosemirror-state';
  * list items at the same level continue from the restarted counter.
  */
 export const restartListNumbering: Command = (state, dispatch) => {
-  const { $from } = state.selection;
-  const paragraph = $from.parent;
-  if (paragraph.type.name !== 'paragraph') return false;
+	const { $from } = state.selection;
+	const paragraph = $from.parent;
+	if (paragraph.type.name !== "paragraph") return false;
 
-  const numPr = paragraph.attrs.numPr as { numId?: number; ilvl?: number } | null | undefined;
-  if (!numPr || numPr.numId == null) return false;
+	const numPr = paragraph.attrs.numPr as
+		| { numId?: number; ilvl?: number }
+		| null
+		| undefined;
+	if (!numPr || numPr.numId == null) return false;
 
-  if (dispatch) {
-    const pos = $from.before();
-    const tr = state.tr.setNodeMarkup(pos, undefined, {
-      ...paragraph.attrs,
-      listStartOverride: 1,
-    });
-    dispatch(tr.scrollIntoView());
-  }
-  return true;
+	if (dispatch) {
+		const pos = $from.before();
+		const tr = state.tr.setNodeMarkup(pos, undefined, {
+			...paragraph.attrs,
+			listStartOverride: 1,
+		});
+		dispatch(tr.scrollIntoView());
+	}
+	return true;
 };
 
 /**
@@ -55,18 +58,18 @@ export const restartListNumbering: Command = (state, dispatch) => {
  * when the paragraph has no override set.
  */
 export const continueListNumbering: Command = (state, dispatch) => {
-  const { $from } = state.selection;
-  const paragraph = $from.parent;
-  if (paragraph.type.name !== 'paragraph') return false;
-  if (paragraph.attrs.listStartOverride == null) return false;
+	const { $from } = state.selection;
+	const paragraph = $from.parent;
+	if (paragraph.type.name !== "paragraph") return false;
+	if (paragraph.attrs.listStartOverride == null) return false;
 
-  if (dispatch) {
-    const pos = $from.before();
-    const tr = state.tr.setNodeMarkup(pos, undefined, {
-      ...paragraph.attrs,
-      listStartOverride: null,
-    });
-    dispatch(tr.scrollIntoView());
-  }
-  return true;
+	if (dispatch) {
+		const pos = $from.before();
+		const tr = state.tr.setNodeMarkup(pos, undefined, {
+			...paragraph.attrs,
+			listStartOverride: null,
+		});
+		dispatch(tr.scrollIntoView());
+	}
+	return true;
 };

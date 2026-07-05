@@ -9,42 +9,45 @@
  * off, the last body row's last cell has no bottom border. With
  * wordCompat on, that cell inherits the firstRow bottom border.
  */
-import JSZip from 'jszip';
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e/fixtures/word-compat-closing-border.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e/fixtures/word-compat-closing-border.docx");
 
 function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	return String(s)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
 }
 function run(text) {
-  return `<w:r><w:t>${esc(text)}</w:t></w:r>`;
+	return `<w:r><w:t>${esc(text)}</w:t></w:r>`;
 }
 function para(text) {
-  return `<w:p>${run(text)}</w:p>`;
+	return `<w:p>${run(text)}</w:p>`;
 }
 function cell(text) {
-  return `<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/></w:tcPr>${para(text)}</w:tc>`;
+	return `<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/></w:tcPr>${para(text)}</w:tc>`;
 }
 
 const ROWS = [
-  ['H1', 'H2', 'H3'],
-  ['cell-1-A', 'cell-1-B', 'cell-1-C'],
-  ['LAST-A', 'LAST-B', 'LAST-C'],
+	["H1", "H2", "H3"],
+	["cell-1-A", "cell-1-B", "cell-1-C"],
+	["LAST-A", "LAST-B", "LAST-C"],
 ];
 
-const rows = ROWS.map((r) => `<w:tr>${r.map(cell).join('')}</w:tr>`).join('');
-const grid = `<w:tblGrid>${ROWS[0].map(() => `<w:gridCol w:w="2400"/>`).join('')}</w:tblGrid>`;
+const rows = ROWS.map((r) => `<w:tr>${r.map(cell).join("")}</w:tr>`).join("");
+const grid = `<w:tblGrid>${ROWS[0].map(() => `<w:gridCol w:w="2400"/>`).join("")}</w:tblGrid>`;
 
 // Only `firstRow` declares a bottom border — no whole-table bottom,
 // no insideH, no per-row bottom on the last row. This is the gap-row
 // scenario that the wordCompat heuristic targets.
 const body = `
-  ${para('WORDCOMPAT-FIXTURE')}
+  ${para("WORDCOMPAT-FIXTURE")}
   <w:tbl>
     <w:tblPr>
       <w:tblW w:w="7200" w:type="dxa"/>
@@ -58,14 +61,14 @@ const body = `
     ${grid}
     <w:tr>
       ${ROWS[0]
-        .map(
-          (t) =>
-            `<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="8" w:color="222222"/></w:tcBorders></w:tcPr>${para(t)}</w:tc>`
-        )
-        .join('')}
+				.map(
+					(t) =>
+						`<w:tc><w:tcPr><w:tcW w:w="2400" w:type="dxa"/><w:tcBorders><w:bottom w:val="single" w:sz="8" w:color="222222"/></w:tcBorders></w:tcPr>${para(t)}</w:tc>`,
+				)
+				.join("")}
     </w:tr>
-    <w:tr>${ROWS[1].map(cell).join('')}</w:tr>
-    <w:tr>${ROWS[2].map(cell).join('')}</w:tr>
+    <w:tr>${ROWS[1].map(cell).join("")}</w:tr>
+    <w:tr>${ROWS[2].map(cell).join("")}</w:tr>
   </w:tbl>
   <w:sectPr>
     <w:pgSz w:w="12240" w:h="15840"/>
@@ -92,10 +95,10 @@ const DOC = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CONTENT_TYPES);
-zip.file('_rels/.rels', RELS);
-zip.file('word/document.xml', DOC);
+zip.file("[Content_Types].xml", CONTENT_TYPES);
+zip.file("_rels/.rels", RELS);
+zip.file("word/document.xml", DOC);
 
-const out = await zip.generateAsync({ type: 'nodebuffer' });
+const out = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, out);
 console.log(`wrote ${OUT} (${out.byteLength} bytes)`);

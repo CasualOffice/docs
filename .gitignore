@@ -32,3 +32,4 @@ docx-editor/test-results/
 # Build/test artifacts at the outer repo root
 .pnpm-store/
 /test-results/
+

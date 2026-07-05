@@ -34,7 +34,7 @@
     // so does a mount that's no more informative than the floor: a bare echo
     // of the stub children (the component name floating in white space) or a
     // visually collapsed render (invisible/headless output).
-    setTimeout(function(){
+    setTimeout(()=> {
       var t=(r.textContent||'').trim();
       if (!r.childElementCount && !t) return dsFallback();
       if (t === "EmbedTransport" || r.getBoundingClientRect().height < 2) dsFallback();

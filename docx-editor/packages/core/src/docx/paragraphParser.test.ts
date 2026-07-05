@@ -2,22 +2,22 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { describe, expect, test } from 'bun:test';
-import type { XmlElement } from './xmlParser';
-import { parseXmlDocument } from './xmlParser';
-import { parseParagraph } from './paragraphParser';
+import { describe, expect, test } from "bun:test";
+import type { XmlElement } from "./xmlParser";
+import { parseXmlDocument } from "./xmlParser";
+import { parseParagraph } from "./paragraphParser";
 
 function parseParagraphXml(xml: string) {
-  const root = parseXmlDocument(xml) as XmlElement | null;
-  if (!root) {
-    throw new Error('Failed to parse paragraph XML fixture');
-  }
-  return parseParagraph(root, null, null, null, null, null);
+	const root = parseXmlDocument(xml) as XmlElement | null;
+	if (!root) {
+		throw new Error("Failed to parse paragraph XML fixture");
+	}
+	return parseParagraph(root, null, null, null, null, null);
 }
 
-describe('parseParagraph tracked-change hardening', () => {
-  test('parses deletion text from w:delText runs', () => {
-    const paragraph = parseParagraphXml(`
+describe("parseParagraph tracked-change hardening", () => {
+	test("parses deletion text from w:delText runs", () => {
+		const paragraph = parseParagraphXml(`
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:del w:id="7" w:author="Reviewer" w:date="2026-02-22T10:00:00Z">
           <w:r>
@@ -27,27 +27,27 @@ describe('parseParagraph tracked-change hardening', () => {
       </w:p>
     `);
 
-    const deletion = paragraph.content[0];
-    expect(deletion?.type).toBe('deletion');
-    if (!deletion || deletion.type !== 'deletion') return;
+		const deletion = paragraph.content[0];
+		expect(deletion?.type).toBe("deletion");
+		if (!deletion || deletion.type !== "deletion") return;
 
-    expect(deletion.info.id).toBe(7);
-    expect(deletion.info.author).toBe('Reviewer');
-    expect(deletion.info.date).toBe('2026-02-22T10:00:00Z');
-    expect(deletion.content).toHaveLength(1);
-    const run = deletion.content[0];
-    expect(run.type).toBe('run');
-    if (run.type !== 'run') return;
+		expect(deletion.info.id).toBe(7);
+		expect(deletion.info.author).toBe("Reviewer");
+		expect(deletion.info.date).toBe("2026-02-22T10:00:00Z");
+		expect(deletion.content).toHaveLength(1);
+		const run = deletion.content[0];
+		expect(run.type).toBe("run");
+		if (run.type !== "run") return;
 
-    expect(run.content).toHaveLength(1);
-    expect(run.content[0].type).toBe('text');
-    if (run.content[0].type !== 'text') return;
-    expect(run.content[0].text).toBe(' removed ');
-    expect(run.content[0].preserveSpace).toBe(true);
-  });
+		expect(run.content).toHaveLength(1);
+		expect(run.content[0].type).toBe("text");
+		if (run.content[0].type !== "text") return;
+		expect(run.content[0].text).toBe(" removed ");
+		expect(run.content[0].preserveSpace).toBe(true);
+	});
 
-  test('parses deletion instruction text from w:delInstrText', () => {
-    const paragraph = parseParagraphXml(`
+	test("parses deletion instruction text from w:delInstrText", () => {
+		const paragraph = parseParagraphXml(`
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:del w:id="8" w:author="Reviewer">
           <w:r>
@@ -57,22 +57,22 @@ describe('parseParagraph tracked-change hardening', () => {
       </w:p>
     `);
 
-    const deletion = paragraph.content[0];
-    expect(deletion?.type).toBe('deletion');
-    if (!deletion || deletion.type !== 'deletion') return;
+		const deletion = paragraph.content[0];
+		expect(deletion?.type).toBe("deletion");
+		if (!deletion || deletion.type !== "deletion") return;
 
-    const run = deletion.content[0];
-    expect(run.type).toBe('run');
-    if (run.type !== 'run') return;
+		const run = deletion.content[0];
+		expect(run.type).toBe("run");
+		if (run.type !== "run") return;
 
-    expect(run.content).toHaveLength(1);
-    expect(run.content[0].type).toBe('instrText');
-    if (run.content[0].type !== 'instrText') return;
-    expect(run.content[0].text).toBe(' MERGEFIELD name ');
-  });
+		expect(run.content).toHaveLength(1);
+		expect(run.content[0].type).toBe("instrText");
+		if (run.content[0].type !== "instrText") return;
+		expect(run.content[0].text).toBe(" MERGEFIELD name ");
+	});
 
-  test('normalizes tracked-change metadata when attributes are invalid or blank', () => {
-    const paragraph = parseParagraphXml(`
+	test("normalizes tracked-change metadata when attributes are invalid or blank", () => {
+		const paragraph = parseParagraphXml(`
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:ins w:id="invalid" w:author="   " w:date="   ">
           <w:r><w:t>Added</w:t></w:r>
@@ -80,19 +80,19 @@ describe('parseParagraph tracked-change hardening', () => {
       </w:p>
     `);
 
-    const insertion = paragraph.content[0];
-    expect(insertion?.type).toBe('insertion');
-    if (!insertion || insertion.type !== 'insertion') return;
+		const insertion = paragraph.content[0];
+		expect(insertion?.type).toBe("insertion");
+		if (!insertion || insertion.type !== "insertion") return;
 
-    expect(insertion.info.id).toBe(0);
-    expect(insertion.info.author).toBe('Unknown');
-    expect(insertion.info.date).toBeUndefined();
-  });
+		expect(insertion.info.id).toBe(0);
+		expect(insertion.info.author).toBe("Unknown");
+		expect(insertion.info.date).toBeUndefined();
+	});
 });
 
-describe('parseParagraph rendered page break markers', () => {
-  test('marks a paragraph when Word rendered-page-break appears before visible text', () => {
-    const paragraph = parseParagraphXml(`
+describe("parseParagraph rendered page break markers", () => {
+	test("marks a paragraph when Word rendered-page-break appears before visible text", () => {
+		const paragraph = parseParagraphXml(`
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:proofErr w:type="spellStart"/>
         <w:r>
@@ -102,11 +102,11 @@ describe('parseParagraph rendered page break markers', () => {
       </w:p>
     `);
 
-    expect(paragraph.renderedPageBreakBefore).toBe(true);
-  });
+		expect(paragraph.renderedPageBreakBefore).toBe(true);
+	});
 
-  test('marks a paragraph when a page break appears before visible text', () => {
-    const paragraph = parseParagraphXml(`
+	test("marks a paragraph when a page break appears before visible text", () => {
+		const paragraph = parseParagraphXml(`
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:r>
           <w:br w:type="page"/>
@@ -115,11 +115,11 @@ describe('parseParagraph rendered page break markers', () => {
       </w:p>
     `);
 
-    expect(paragraph.renderedPageBreakBefore).toBe(true);
-  });
+		expect(paragraph.renderedPageBreakBefore).toBe(true);
+	});
 
-  test('does not mark a paragraph when rendered page break follows visible text', () => {
-    const paragraph = parseParagraphXml(`
+	test("does not mark a paragraph when rendered page break follows visible text", () => {
+		const paragraph = parseParagraphXml(`
       <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:r>
           <w:t>Previous page text</w:t>
@@ -128,6 +128,6 @@ describe('parseParagraph rendered page break markers', () => {
       </w:p>
     `);
 
-    expect(paragraph.renderedPageBreakBefore).toBeUndefined();
-  });
+		expect(paragraph.renderedPageBreakBefore).toBeUndefined();
+	});
 });

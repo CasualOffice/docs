@@ -6,9 +6,9 @@
  * Creates a test .docx file with both comments and template variables.
  * Run: bun examples/vite/scripts/create-test-docx.ts
  */
-import JSZip from '../../../packages/core/node_modules/jszip';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
+import JSZip from "../../../packages/core/node_modules/jszip";
+import { writeFile } from "fs/promises";
+import { join } from "path";
 
 const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -208,19 +208,24 @@ const DOCUMENT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 async function main() {
-  const zip = new JSZip();
+	const zip = new JSZip();
 
-  zip.file('[Content_Types].xml', CONTENT_TYPES);
-  zip.file('_rels/.rels', RELS);
-  zip.file('word/_rels/document.xml.rels', WORD_RELS);
-  zip.file('word/document.xml', DOCUMENT);
-  zip.file('word/comments.xml', COMMENTS);
-  zip.file('word/styles.xml', STYLES);
+	zip.file("[Content_Types].xml", CONTENT_TYPES);
+	zip.file("_rels/.rels", RELS);
+	zip.file("word/_rels/document.xml.rels", WORD_RELS);
+	zip.file("word/document.xml", DOCUMENT);
+	zip.file("word/comments.xml", COMMENTS);
+	zip.file("word/styles.xml", STYLES);
 
-  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-  const outPath = join(import.meta.dir, '..', 'public', 'comments-and-templates.docx');
-  await writeFile(outPath, buffer);
-  console.log(`Created ${outPath}`);
+	const buffer = await zip.generateAsync({ type: "nodebuffer" });
+	const outPath = join(
+		import.meta.dir,
+		"..",
+		"public",
+		"comments-and-templates.docx",
+	);
+	await writeFile(outPath, buffer);
+	console.log(`Created ${outPath}`);
 }
 
 main();

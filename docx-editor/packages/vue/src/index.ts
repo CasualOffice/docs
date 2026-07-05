@@ -9,15 +9,15 @@
 // Contributions welcome! See the repository README for guidelines.
 
 // renderAsync stub
-export { renderAsync } from './renderAsync';
-export type { VueRenderAsyncOptions } from './renderAsync';
+export { renderAsync } from "./renderAsync";
+export type { VueRenderAsyncOptions } from "./renderAsync";
 
 // Plugin types
-export type { VueEditorPlugin } from './plugin-api/types';
+export type { VueEditorPlugin } from "./plugin-api/types";
 export type {
-  EditorPluginCore,
-  PluginPanelProps,
-  PanelConfig,
-  RenderedDomContext,
-  PositionCoordinates,
-} from './plugin-api/types';
+	EditorPluginCore,
+	PluginPanelProps,
+	PanelConfig,
+	RenderedDomContext,
+	PositionCoordinates,
+} from "./plugin-api/types";

@@ -12,14 +12,14 @@
 //
 // Run: docker compose exec editor bun scripts/make-between-bar-borders-fixture.mjs
 
-import JSZip from 'jszip';
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e', 'fixtures', 'between-bar-borders.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e", "fixtures", "between-bar-borders.docx");
 
 const CT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -77,12 +77,12 @@ const DOCUMENT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CT);
-zip.file('_rels/.rels', RELS);
-zip.file('word/_rels/document.xml.rels', DOC_RELS);
-zip.file('word/document.xml', DOCUMENT);
-zip.file('word/styles.xml', STYLES);
+zip.file("[Content_Types].xml", CT);
+zip.file("_rels/.rels", RELS);
+zip.file("word/_rels/document.xml.rels", DOC_RELS);
+zip.file("word/document.xml", DOCUMENT);
+zip.file("word/styles.xml", STYLES);
 
-const buf = await zip.generateAsync({ type: 'nodebuffer' });
+const buf = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, buf);
 console.log(`wrote ${OUT} (${buf.byteLength} bytes)`);

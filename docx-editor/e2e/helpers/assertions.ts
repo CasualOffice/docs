@@ -9,355 +9,412 @@
  * and document state in the DOCX editor.
  */
 
-import { Page, expect } from '@playwright/test';
-import { checkFormattingAtSelection, getParagraphText, getParagraphCount } from './text-selection';
+import { type Page, expect } from "@playwright/test";
+import {
+	checkFormattingAtSelection,
+	getParagraphText,
+	getParagraphCount,
+} from "./text-selection";
 
 /**
  * Assert that text is bold
  */
-export async function assertTextIsBold(page: Page, searchText: string): Promise<void> {
-  const isBold = await page.evaluate((text) => {
-    // Search only in editor content area, not toolbar (which has icon text like "format_bold")
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return false;
+export async function assertTextIsBold(
+	page: Page,
+	searchText: string,
+): Promise<void> {
+	const isBold = await page.evaluate((text) => {
+		// Search only in editor content area, not toolbar (which has icon text like "format_bold")
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return false;
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        let element = node.parentElement;
-        while (element) {
-          const style = window.getComputedStyle(element);
-          const fontWeight = style.fontWeight;
-          if (fontWeight === 'bold' || parseInt(fontWeight) >= 700) {
-            return true;
-          }
-          if (element.tagName === 'STRONG' || element.tagName === 'B') {
-            return true;
-          }
-          element = element.parentElement;
-        }
-      }
-    }
-    return false;
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				let element = node.parentElement;
+				while (element) {
+					const style = window.getComputedStyle(element);
+					const fontWeight = style.fontWeight;
+					if (fontWeight === "bold" || parseInt(fontWeight) >= 700) {
+						return true;
+					}
+					if (element.tagName === "STRONG" || element.tagName === "B") {
+						return true;
+					}
+					element = element.parentElement;
+				}
+			}
+		}
+		return false;
+	}, searchText);
 
-  expect(isBold, `Expected "${searchText}" to be bold`).toBe(true);
+	expect(isBold, `Expected "${searchText}" to be bold`).toBe(true);
 }
 
 /**
  * Assert that text is not bold
  */
-export async function assertTextIsNotBold(page: Page, searchText: string): Promise<void> {
-  const isBold = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return false;
+export async function assertTextIsNotBold(
+	page: Page,
+	searchText: string,
+): Promise<void> {
+	const isBold = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return false;
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        let element = node.parentElement;
-        while (element) {
-          const style = window.getComputedStyle(element);
-          const fontWeight = style.fontWeight;
-          if (fontWeight === 'bold' || parseInt(fontWeight) >= 700) {
-            return true;
-          }
-          if (element.tagName === 'STRONG' || element.tagName === 'B') {
-            return true;
-          }
-          element = element.parentElement;
-        }
-        return false;
-      }
-    }
-    return false;
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				let element = node.parentElement;
+				while (element) {
+					const style = window.getComputedStyle(element);
+					const fontWeight = style.fontWeight;
+					if (fontWeight === "bold" || parseInt(fontWeight) >= 700) {
+						return true;
+					}
+					if (element.tagName === "STRONG" || element.tagName === "B") {
+						return true;
+					}
+					element = element.parentElement;
+				}
+				return false;
+			}
+		}
+		return false;
+	}, searchText);
 
-  expect(isBold, `Expected "${searchText}" to NOT be bold`).toBe(false);
+	expect(isBold, `Expected "${searchText}" to NOT be bold`).toBe(false);
 }
 
 /**
  * Assert that text is italic
  */
-export async function assertTextIsItalic(page: Page, searchText: string): Promise<void> {
-  const isItalic = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return false;
+export async function assertTextIsItalic(
+	page: Page,
+	searchText: string,
+): Promise<void> {
+	const isItalic = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return false;
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        let element = node.parentElement;
-        while (element) {
-          const style = window.getComputedStyle(element);
-          if (style.fontStyle === 'italic') {
-            return true;
-          }
-          if (element.tagName === 'EM' || element.tagName === 'I') {
-            return true;
-          }
-          element = element.parentElement;
-        }
-      }
-    }
-    return false;
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				let element = node.parentElement;
+				while (element) {
+					const style = window.getComputedStyle(element);
+					if (style.fontStyle === "italic") {
+						return true;
+					}
+					if (element.tagName === "EM" || element.tagName === "I") {
+						return true;
+					}
+					element = element.parentElement;
+				}
+			}
+		}
+		return false;
+	}, searchText);
 
-  expect(isItalic, `Expected "${searchText}" to be italic`).toBe(true);
+	expect(isItalic, `Expected "${searchText}" to be italic`).toBe(true);
 }
 
 /**
  * Assert that text is underlined
  */
-export async function assertTextIsUnderlined(page: Page, searchText: string): Promise<void> {
-  const isUnderlined = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return false;
+export async function assertTextIsUnderlined(
+	page: Page,
+	searchText: string,
+): Promise<void> {
+	const isUnderlined = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return false;
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        let element = node.parentElement;
-        while (element) {
-          const style = window.getComputedStyle(element);
-          if (
-            style.textDecoration.includes('underline') ||
-            style.textDecorationLine.includes('underline')
-          ) {
-            return true;
-          }
-          if (element.tagName === 'U') {
-            return true;
-          }
-          element = element.parentElement;
-        }
-      }
-    }
-    return false;
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				let element = node.parentElement;
+				while (element) {
+					const style = window.getComputedStyle(element);
+					if (
+						style.textDecoration.includes("underline") ||
+						style.textDecorationLine.includes("underline")
+					) {
+						return true;
+					}
+					if (element.tagName === "U") {
+						return true;
+					}
+					element = element.parentElement;
+				}
+			}
+		}
+		return false;
+	}, searchText);
 
-  expect(isUnderlined, `Expected "${searchText}" to be underlined`).toBe(true);
+	expect(isUnderlined, `Expected "${searchText}" to be underlined`).toBe(true);
 }
 
 /**
  * Assert that text has strikethrough
  */
-export async function assertTextHasStrikethrough(page: Page, searchText: string): Promise<void> {
-  const hasStrike = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return false;
+export async function assertTextHasStrikethrough(
+	page: Page,
+	searchText: string,
+): Promise<void> {
+	const hasStrike = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return false;
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        let element = node.parentElement;
-        while (element) {
-          const style = window.getComputedStyle(element);
-          if (
-            style.textDecoration.includes('line-through') ||
-            style.textDecorationLine.includes('line-through')
-          ) {
-            return true;
-          }
-          if (
-            element.tagName === 'S' ||
-            element.tagName === 'STRIKE' ||
-            element.tagName === 'DEL'
-          ) {
-            return true;
-          }
-          element = element.parentElement;
-        }
-      }
-    }
-    return false;
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				let element = node.parentElement;
+				while (element) {
+					const style = window.getComputedStyle(element);
+					if (
+						style.textDecoration.includes("line-through") ||
+						style.textDecorationLine.includes("line-through")
+					) {
+						return true;
+					}
+					if (
+						element.tagName === "S" ||
+						element.tagName === "STRIKE" ||
+						element.tagName === "DEL"
+					) {
+						return true;
+					}
+					element = element.parentElement;
+				}
+			}
+		}
+		return false;
+	}, searchText);
 
-  expect(hasStrike, `Expected "${searchText}" to have strikethrough`).toBe(true);
+	expect(hasStrike, `Expected "${searchText}" to have strikethrough`).toBe(
+		true,
+	);
 }
 
 /**
  * Assert text has a specific font family
  */
 export async function assertTextHasFontFamily(
-  page: Page,
-  searchText: string,
-  fontFamily: string
+	page: Page,
+	searchText: string,
+	fontFamily: string,
 ): Promise<void> {
-  const actualFont = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return '';
+	const actualFont = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return "";
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        const element = node.parentElement;
-        if (element) {
-          const style = window.getComputedStyle(element);
-          return style.fontFamily;
-        }
-      }
-    }
-    return '';
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				const element = node.parentElement;
+				if (element) {
+					const style = window.getComputedStyle(element);
+					return style.fontFamily;
+				}
+			}
+		}
+		return "";
+	}, searchText);
 
-  expect(
-    actualFont.toLowerCase(),
-    `Expected "${searchText}" to have font family "${fontFamily}"`
-  ).toContain(fontFamily.toLowerCase());
+	expect(
+		actualFont.toLowerCase(),
+		`Expected "${searchText}" to have font family "${fontFamily}"`,
+	).toContain(fontFamily.toLowerCase());
 }
 
 /**
  * Assert text has a specific font size
  */
 export async function assertTextHasFontSize(
-  page: Page,
-  searchText: string,
-  expectedSize: string
+	page: Page,
+	searchText: string,
+	expectedSize: string,
 ): Promise<void> {
-  const actualSize = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return '';
+	const actualSize = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return "";
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        const element = node.parentElement;
-        if (element) {
-          const style = window.getComputedStyle(element);
-          return style.fontSize;
-        }
-      }
-    }
-    return '';
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				const element = node.parentElement;
+				if (element) {
+					const style = window.getComputedStyle(element);
+					return style.fontSize;
+				}
+			}
+		}
+		return "";
+	}, searchText);
 
-  expect(actualSize, `Expected "${searchText}" to have font size "${expectedSize}"`).toBe(
-    expectedSize
-  );
+	expect(
+		actualSize,
+		`Expected "${searchText}" to have font size "${expectedSize}"`,
+	).toBe(expectedSize);
 }
 
 /**
  * Assert text has a specific color
  */
 export async function assertTextHasColor(
-  page: Page,
-  searchText: string,
-  expectedColor: string
+	page: Page,
+	searchText: string,
+	expectedColor: string,
 ): Promise<void> {
-  const actualColor = await page.evaluate((text) => {
-    // Search only in editor content area
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    if (!contentArea) return '';
+	const actualColor = await page.evaluate((text) => {
+		// Search only in editor content area
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		if (!contentArea) return "";
 
-    const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
+		const walker = document.createTreeWalker(
+			contentArea,
+			NodeFilter.SHOW_TEXT,
+			null,
+		);
 
-    let node: Text | null;
-    while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent?.includes(text)) {
-        const element = node.parentElement;
-        if (element) {
-          const style = window.getComputedStyle(element);
-          return style.color;
-        }
-      }
-    }
-    return '';
-  }, searchText);
+		let node: Text | null;
+		while ((node = walker.nextNode() as Text | null)) {
+			if (node.textContent?.includes(text)) {
+				const element = node.parentElement;
+				if (element) {
+					const style = window.getComputedStyle(element);
+					return style.color;
+				}
+			}
+		}
+		return "";
+	}, searchText);
 
-  // Normalize colors for comparison (both to lowercase)
-  expect(
-    actualColor.toLowerCase(),
-    `Expected "${searchText}" to have color "${expectedColor}"`
-  ).toContain(expectedColor.toLowerCase());
+	// Normalize colors for comparison (both to lowercase)
+	expect(
+		actualColor.toLowerCase(),
+		`Expected "${searchText}" to have color "${expectedColor}"`,
+	).toContain(expectedColor.toLowerCase());
 }
 
 /**
  * Assert paragraph has specific alignment
  */
 export async function assertParagraphAlignment(
-  page: Page,
-  paragraphIndex: number,
-  expectedAlignment: 'left' | 'center' | 'right' | 'justify'
+	page: Page,
+	paragraphIndex: number,
+	expectedAlignment: "left" | "center" | "right" | "justify",
 ): Promise<void> {
-  const alignment = await page.evaluate(({ pIndex, expected }) => {
-    const paragraph =
-      document.querySelector(`[data-paragraph-index="${pIndex}"]`) ||
-      document.querySelectorAll('.layout-paragraph')[pIndex] ||
-      null;
-    if (!paragraph) return '';
-    const style = window.getComputedStyle(paragraph);
-    const cssAlignment = style.textAlign;
-    if (
-      cssAlignment &&
-      cssAlignment !== 'start' &&
-      cssAlignment !== 'initial' &&
-      !(expected === 'justify' && cssAlignment === 'left')
-    ) {
-      return cssAlignment;
-    }
+	const alignment = await page.evaluate(
+		({ pIndex, expected }) => {
+			const paragraph =
+				document.querySelector(`[data-paragraph-index="${pIndex}"]`) ||
+				document.querySelectorAll(".layout-paragraph")[pIndex] ||
+				null;
+			if (!paragraph) return "";
+			const style = window.getComputedStyle(paragraph);
+			const cssAlignment = style.textAlign;
+			if (
+				cssAlignment &&
+				cssAlignment !== "start" &&
+				cssAlignment !== "initial" &&
+				!(expected === "justify" && cssAlignment === "left")
+			) {
+				return cssAlignment;
+			}
 
-    const toolbarAlignment = document
-      .querySelector('[data-testid="toolbar-alignment"]')
-      ?.getAttribute('aria-label')
-      ?.toLowerCase();
+			const toolbarAlignment = document
+				.querySelector('[data-testid="toolbar-alignment"]')
+				?.getAttribute("aria-label")
+				?.toLowerCase();
 
-    if (toolbarAlignment?.includes('justify')) return 'justify';
-    if (toolbarAlignment?.includes('center')) return 'center';
-    if (toolbarAlignment?.includes('right')) return 'right';
-    if (toolbarAlignment?.includes('left')) return 'left';
+			if (toolbarAlignment?.includes("justify")) return "justify";
+			if (toolbarAlignment?.includes("center")) return "center";
+			if (toolbarAlignment?.includes("right")) return "right";
+			if (toolbarAlignment?.includes("left")) return "left";
 
-    return cssAlignment;
-  }, { pIndex: paragraphIndex, expected: expectedAlignment });
+			return cssAlignment;
+		},
+		{ pIndex: paragraphIndex, expected: expectedAlignment },
+	);
 
-  expect(
-    alignment,
-    `Expected paragraph ${paragraphIndex} to have alignment "${expectedAlignment}"`
-  ).toBe(expectedAlignment);
+	expect(
+		alignment,
+		`Expected paragraph ${paragraphIndex} to have alignment "${expectedAlignment}"`,
+	).toBe(expectedAlignment);
 }
 
 /**
@@ -375,293 +432,338 @@ export async function assertParagraphAlignment(
  * `formatCounter()`.
  */
 export async function assertParagraphIsList(
-  page: Page,
-  paragraphIndex: number,
-  listType: 'bullet' | 'numbered'
+	page: Page,
+	paragraphIndex: number,
+	listType: "bullet" | "numbered",
 ): Promise<void> {
-  const isList = await page.evaluate(
-    ({ pIndex, type }) => {
-      // Painter virtualizes pages — only the visible paragraphs are
-      // present in the DOM. For the assertion's flat indexing we look
-      // at all `.layout-paragraph` elements globally in document order.
-      const paragraphs = Array.from(document.querySelectorAll('.layout-paragraph'));
-      const paragraph = paragraphs[pIndex];
-      if (!paragraph) return false;
+	const isList = await page.evaluate(
+		({ pIndex, type }) => {
+			// Painter virtualizes pages — only the visible paragraphs are
+			// present in the DOM. For the assertion's flat indexing we look
+			// at all `.layout-paragraph` elements globally in document order.
+			const paragraphs = Array.from(
+				document.querySelectorAll(".layout-paragraph"),
+			);
+			const paragraph = paragraphs[pIndex];
+			if (!paragraph) return false;
 
-      const marker = paragraph.querySelector('.layout-list-marker');
-      if (!marker) return false;
+			const marker = paragraph.querySelector(".layout-list-marker");
+			if (!marker) return false;
 
-      const markerText = (marker.textContent || '').trim();
-      if (type === 'bullet') {
-        // Common bullet glyphs from the OOXML default lvlText set plus
-        // Wingdings replacements the editor normalises into Unicode.
-        return /^[•○▪◦▸◆◇■□●–-]$/.test(markerText);
-      }
-      // Numbered formats: decimal (1.), roman (i. / I.), alpha (a. / A.),
-      // chicago / parenthesized variants. Be lenient — the painter has
-      // 9+ numFmt branches in formatCounter().
-      return /[0-9ivxlcdmIVXLCDMa-zA-Z①②③④⑤⑥⑦⑧⑨]/.test(markerText);
-    },
-    { pIndex: paragraphIndex, type: listType }
-  );
+			const markerText = (marker.textContent || "").trim();
+			if (type === "bullet") {
+				// Common bullet glyphs from the OOXML default lvlText set plus
+				// Wingdings replacements the editor normalises into Unicode.
+				return /^[•○▪◦▸◆◇■□●–-]$/.test(markerText);
+			}
+			// Numbered formats: decimal (1.), roman (i. / I.), alpha (a. / A.),
+			// chicago / parenthesized variants. Be lenient — the painter has
+			// 9+ numFmt branches in formatCounter().
+			return /[0-9ivxlcdmIVXLCDMa-zA-Z①②③④⑤⑥⑦⑧⑨]/.test(markerText);
+		},
+		{ pIndex: paragraphIndex, type: listType },
+	);
 
-  expect(isList, `Expected paragraph ${paragraphIndex} to be a ${listType} list`).toBe(true);
+	expect(
+		isList,
+		`Expected paragraph ${paragraphIndex} to be a ${listType} list`,
+	).toBe(true);
 }
 
 /**
  * Assert document has specific paragraph count
  */
-export async function assertParagraphCount(page: Page, expectedCount: number): Promise<void> {
-  const count = await getParagraphCount(page);
-  expect(count, `Expected ${expectedCount} paragraphs, but found ${count}`).toBe(expectedCount);
+export async function assertParagraphCount(
+	page: Page,
+	expectedCount: number,
+): Promise<void> {
+	const count = await getParagraphCount(page);
+	expect(
+		count,
+		`Expected ${expectedCount} paragraphs, but found ${count}`,
+	).toBe(expectedCount);
 }
 
 /**
  * Assert paragraph contains specific text
  */
 export async function assertParagraphContainsText(
-  page: Page,
-  paragraphIndex: number,
-  expectedText: string
+	page: Page,
+	paragraphIndex: number,
+	expectedText: string,
 ): Promise<void> {
-  const text = await getParagraphText(page, paragraphIndex);
-  expect(text, `Expected paragraph ${paragraphIndex} to contain "${expectedText}"`).toContain(
-    expectedText
-  );
+	const text = await getParagraphText(page, paragraphIndex);
+	expect(
+		text,
+		`Expected paragraph ${paragraphIndex} to contain "${expectedText}"`,
+	).toContain(expectedText);
 }
 
 /**
  * Assert paragraph exactly matches text
  */
 export async function assertParagraphExactText(
-  page: Page,
-  paragraphIndex: number,
-  expectedText: string
+	page: Page,
+	paragraphIndex: number,
+	expectedText: string,
 ): Promise<void> {
-  const text = await getParagraphText(page, paragraphIndex);
-  expect(
-    text.trim(),
-    `Expected paragraph ${paragraphIndex} to exactly match "${expectedText}"`
-  ).toBe(expectedText);
+	const text = await getParagraphText(page, paragraphIndex);
+	expect(
+		text.trim(),
+		`Expected paragraph ${paragraphIndex} to exactly match "${expectedText}"`,
+	).toBe(expectedText);
 }
 
 /**
  * Normalize whitespace (replace non-breaking spaces with regular spaces)
  */
 function normalizeWhitespace(text: string): string {
-  // Replace non-breaking spaces (char 160) with regular spaces (char 32)
-  return text.replace(/\u00A0/g, ' ');
+	// Replace non-breaking spaces (char 160) with regular spaces (char 32)
+	return text.replace(/\u00A0/g, " ");
 }
 
 /**
  * Assert document contains specific text (checks editor content area only)
  */
-export async function assertDocumentContainsText(page: Page, expectedText: string): Promise<void> {
-  // Get text only from the editor content area
-  const rawText = await page.evaluate(() => {
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    return contentArea?.textContent || '';
-  });
-  // Normalize whitespace for comparison (contentEditable uses &nbsp; instead of regular spaces)
-  const fullText = normalizeWhitespace(rawText);
-  const normalizedExpected = normalizeWhitespace(expectedText);
-  expect(
-    fullText.includes(normalizedExpected),
-    `Expected document to contain "${expectedText}" but found: "${fullText}"`
-  ).toBe(true);
+export async function assertDocumentContainsText(
+	page: Page,
+	expectedText: string,
+): Promise<void> {
+	// Get text only from the editor content area
+	const rawText = await page.evaluate(() => {
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		return contentArea?.textContent || "";
+	});
+	// Normalize whitespace for comparison (contentEditable uses &nbsp; instead of regular spaces)
+	const fullText = normalizeWhitespace(rawText);
+	const normalizedExpected = normalizeWhitespace(expectedText);
+	expect(
+		fullText.includes(normalizedExpected),
+		`Expected document to contain "${expectedText}" but found: "${fullText}"`,
+	).toBe(true);
 }
 
 /**
  * Assert document does not contain specific text (checks editor content area only)
  */
 export async function assertDocumentNotContainsText(
-  page: Page,
-  expectedText: string
+	page: Page,
+	expectedText: string,
 ): Promise<void> {
-  // Get text only from the editor content area
-  const rawText = await page.evaluate(() => {
-    const contentArea =
-      document.querySelector('.ProseMirror') ||
-      document.querySelector('.docx-editor-pages') ||
-      document.querySelector('.docx-ai-editor');
-    return contentArea?.textContent || '';
-  });
-  // Normalize whitespace for comparison
-  const fullText = normalizeWhitespace(rawText);
-  const normalizedExpected = normalizeWhitespace(expectedText);
-  expect(
-    !fullText.includes(normalizedExpected),
-    `Expected document to NOT contain "${expectedText}" but found: "${fullText}"`
-  ).toBe(true);
+	// Get text only from the editor content area
+	const rawText = await page.evaluate(() => {
+		const contentArea =
+			document.querySelector(".ProseMirror") ||
+			document.querySelector(".docx-editor-pages") ||
+			document.querySelector(".docx-ai-editor");
+		return contentArea?.textContent || "";
+	});
+	// Normalize whitespace for comparison
+	const fullText = normalizeWhitespace(rawText);
+	const normalizedExpected = normalizeWhitespace(expectedText);
+	expect(
+		!fullText.includes(normalizedExpected),
+		`Expected document to NOT contain "${expectedText}" but found: "${fullText}"`,
+	).toBe(true);
 }
 
 /**
  * Assert table exists with specific dimensions
  */
 export async function assertTableDimensions(
-  page: Page,
-  tableIndex: number,
-  expectedRows: number,
-  expectedCols: number
+	page: Page,
+	tableIndex: number,
+	expectedRows: number,
+	expectedCols: number,
 ): Promise<void> {
-  const table = page.locator('table').nth(tableIndex);
-  await expect(table, `Expected table ${tableIndex} to exist`).toBeVisible();
+	const table = page.locator("table").nth(tableIndex);
+	await expect(table, `Expected table ${tableIndex} to exist`).toBeVisible();
 
-  const rows = await table.locator('tr').count();
-  const cols = await table.locator('tr').first().locator('td, th').count();
+	const rows = await table.locator("tr").count();
+	const cols = await table.locator("tr").first().locator("td, th").count();
 
-  expect(rows, `Expected table ${tableIndex} to have ${expectedRows} rows`).toBe(expectedRows);
-  expect(cols, `Expected table ${tableIndex} to have ${expectedCols} columns`).toBe(expectedCols);
+	expect(
+		rows,
+		`Expected table ${tableIndex} to have ${expectedRows} rows`,
+	).toBe(expectedRows);
+	expect(
+		cols,
+		`Expected table ${tableIndex} to have ${expectedCols} columns`,
+	).toBe(expectedCols);
 }
 
 /**
  * Assert table cell contains text
  */
 export async function assertTableCellText(
-  page: Page,
-  tableIndex: number,
-  row: number,
-  col: number,
-  expectedText: string
+	page: Page,
+	tableIndex: number,
+	row: number,
+	col: number,
+	expectedText: string,
 ): Promise<void> {
-  const table = page.locator('table').nth(tableIndex);
-  const cell = table.locator('tr').nth(row).locator('td, th').nth(col);
-  await expect(
-    cell,
-    `Expected cell (${row}, ${col}) in table ${tableIndex} to contain "${expectedText}"`
-  ).toContainText(expectedText);
+	const table = page.locator("table").nth(tableIndex);
+	const cell = table.locator("tr").nth(row).locator("td, th").nth(col);
+	await expect(
+		cell,
+		`Expected cell (${row}, ${col}) in table ${tableIndex} to contain "${expectedText}"`,
+	).toContainText(expectedText);
 }
 
 /**
  * Assert toolbar button is enabled
  */
-export async function assertToolbarButtonEnabled(page: Page, buttonTestId: string): Promise<void> {
-  const button = page.locator(`[data-testid="${buttonTestId}"]`);
-  await expect(button, `Expected toolbar button "${buttonTestId}" to be enabled`).toBeEnabled();
+export async function assertToolbarButtonEnabled(
+	page: Page,
+	buttonTestId: string,
+): Promise<void> {
+	const button = page.locator(`[data-testid="${buttonTestId}"]`);
+	await expect(
+		button,
+		`Expected toolbar button "${buttonTestId}" to be enabled`,
+	).toBeEnabled();
 }
 
 /**
  * Assert toolbar button is disabled
  */
-export async function assertToolbarButtonDisabled(page: Page, buttonTestId: string): Promise<void> {
-  const button = page.locator(`[data-testid="${buttonTestId}"]`);
-  await expect(button, `Expected toolbar button "${buttonTestId}" to be disabled`).toBeDisabled();
+export async function assertToolbarButtonDisabled(
+	page: Page,
+	buttonTestId: string,
+): Promise<void> {
+	const button = page.locator(`[data-testid="${buttonTestId}"]`);
+	await expect(
+		button,
+		`Expected toolbar button "${buttonTestId}" to be disabled`,
+	).toBeDisabled();
 }
 
 /**
  * Assert toolbar button is active (pressed state)
  */
-export async function assertToolbarButtonActive(page: Page, buttonTestId: string): Promise<void> {
-  const button = page.locator(`[data-testid="${buttonTestId}"]`);
-  await expect(button, `Expected toolbar button "${buttonTestId}" to be active`).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  );
+export async function assertToolbarButtonActive(
+	page: Page,
+	buttonTestId: string,
+): Promise<void> {
+	const button = page.locator(`[data-testid="${buttonTestId}"]`);
+	await expect(
+		button,
+		`Expected toolbar button "${buttonTestId}" to be active`,
+	).toHaveAttribute("aria-pressed", "true");
 }
 
 /**
  * Assert toolbar button is inactive (not pressed)
  */
-export async function assertToolbarButtonInactive(page: Page, buttonTestId: string): Promise<void> {
-  const button = page.locator(`[data-testid="${buttonTestId}"]`);
-  await expect(button, `Expected toolbar button "${buttonTestId}" to be inactive`).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  );
+export async function assertToolbarButtonInactive(
+	page: Page,
+	buttonTestId: string,
+): Promise<void> {
+	const button = page.locator(`[data-testid="${buttonTestId}"]`);
+	await expect(
+		button,
+		`Expected toolbar button "${buttonTestId}" to be inactive`,
+	).toHaveAttribute("aria-pressed", "false");
 }
 
 /**
  * Assert no JavaScript errors on page
  */
 export async function assertNoJavaScriptErrors(page: Page): Promise<string[]> {
-  const errors: string[] = [];
+	const errors: string[] = [];
 
-  page.on('pageerror', (error) => {
-    errors.push(error.message);
-  });
+	page.on("pageerror", (error) => {
+		errors.push(error.message);
+	});
 
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') {
-      const text = msg.text();
-      // Filter out known non-critical errors
-      if (!text.includes('favicon') && !text.includes('404')) {
-        errors.push(text);
-      }
-    }
-  });
+	page.on("console", (msg) => {
+		if (msg.type() === "error") {
+			const text = msg.text();
+			// Filter out known non-critical errors
+			if (!text.includes("favicon") && !text.includes("404")) {
+				errors.push(text);
+			}
+		}
+	});
 
-  return errors;
+	return errors;
 }
 
 /**
  * Assert current formatting matches expected
  */
 export async function assertCurrentFormatting(
-  page: Page,
-  expected: {
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    strikethrough?: boolean;
-  }
+	page: Page,
+	expected: {
+		bold?: boolean;
+		italic?: boolean;
+		underline?: boolean;
+		strikethrough?: boolean;
+	},
 ): Promise<void> {
-  const formatting = await checkFormattingAtSelection(page);
+	const formatting = await checkFormattingAtSelection(page);
 
-  if (expected.bold !== undefined) {
-    expect(formatting.bold, `Expected bold to be ${expected.bold}`).toBe(expected.bold);
-  }
-  if (expected.italic !== undefined) {
-    expect(formatting.italic, `Expected italic to be ${expected.italic}`).toBe(expected.italic);
-  }
-  if (expected.underline !== undefined) {
-    expect(formatting.underline, `Expected underline to be ${expected.underline}`).toBe(
-      expected.underline
-    );
-  }
-  if (expected.strikethrough !== undefined) {
-    expect(formatting.strikethrough, `Expected strikethrough to be ${expected.strikethrough}`).toBe(
-      expected.strikethrough
-    );
-  }
+	if (expected.bold !== undefined) {
+		expect(formatting.bold, `Expected bold to be ${expected.bold}`).toBe(
+			expected.bold,
+		);
+	}
+	if (expected.italic !== undefined) {
+		expect(formatting.italic, `Expected italic to be ${expected.italic}`).toBe(
+			expected.italic,
+		);
+	}
+	if (expected.underline !== undefined) {
+		expect(
+			formatting.underline,
+			`Expected underline to be ${expected.underline}`,
+		).toBe(expected.underline);
+	}
+	if (expected.strikethrough !== undefined) {
+		expect(
+			formatting.strikethrough,
+			`Expected strikethrough to be ${expected.strikethrough}`,
+		).toBe(expected.strikethrough);
+	}
 }
 
 /**
  * Assert visual screenshot matches baseline
  */
 export async function assertVisualMatch(
-  page: Page,
-  screenshotName: string,
-  options?: {
-    maxDiffPixels?: number;
-    threshold?: number;
-    fullPage?: boolean;
-  }
+	page: Page,
+	screenshotName: string,
+	options?: {
+		maxDiffPixels?: number;
+		threshold?: number;
+		fullPage?: boolean;
+	},
 ): Promise<void> {
-  await expect(page).toHaveScreenshot(screenshotName, {
-    maxDiffPixels: options?.maxDiffPixels ?? 100,
-    threshold: options?.threshold ?? 0.2,
-    fullPage: options?.fullPage ?? false,
-  });
+	await expect(page).toHaveScreenshot(screenshotName, {
+		maxDiffPixels: options?.maxDiffPixels ?? 100,
+		threshold: options?.threshold ?? 0.2,
+		fullPage: options?.fullPage ?? false,
+	});
 }
 
 /**
  * Assert element visual matches baseline
  */
 export async function assertElementVisualMatch(
-  page: Page,
-  selector: string,
-  screenshotName: string,
-  options?: {
-    maxDiffPixels?: number;
-    threshold?: number;
-  }
+	page: Page,
+	selector: string,
+	screenshotName: string,
+	options?: {
+		maxDiffPixels?: number;
+		threshold?: number;
+	},
 ): Promise<void> {
-  const element = page.locator(selector);
-  await expect(element).toHaveScreenshot(screenshotName, {
-    maxDiffPixels: options?.maxDiffPixels ?? 50,
-    threshold: options?.threshold ?? 0.2,
-  });
+	const element = page.locator(selector);
+	await expect(element).toHaveScreenshot(screenshotName, {
+		maxDiffPixels: options?.maxDiffPixels ?? 50,
+		threshold: options?.threshold ?? 0.2,
+	});
 }

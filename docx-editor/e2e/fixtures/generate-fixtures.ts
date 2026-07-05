@@ -9,9 +9,9 @@
  * Run with: bun run e2e/fixtures/generate-fixtures.ts
  */
 
-import JSZip from 'jszip';
-import * as fs from 'fs';
-import * as path from 'path';
+import JSZip from "jszip";
+import * as fs from "fs";
+import * as path from "path";
 
 const FIXTURES_DIR = path.dirname(new URL(import.meta.url).pathname);
 
@@ -54,28 +54,31 @@ const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 /**
  * Create a minimal DOCX file
  */
-async function createDocx(documentXml: string, filename: string): Promise<void> {
-  const zip = new JSZip();
+async function createDocx(
+	documentXml: string,
+	filename: string,
+): Promise<void> {
+	const zip = new JSZip();
 
-  // Add required DOCX structure
-  zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
-  zip.file('_rels/.rels', RELS_XML);
-  zip.file('word/_rels/document.xml.rels', DOCUMENT_RELS_XML);
-  zip.file('word/styles.xml', STYLES_XML);
-  zip.file('word/document.xml', documentXml);
+	// Add required DOCX structure
+	zip.file("[Content_Types].xml", CONTENT_TYPES_XML);
+	zip.file("_rels/.rels", RELS_XML);
+	zip.file("word/_rels/document.xml.rels", DOCUMENT_RELS_XML);
+	zip.file("word/styles.xml", STYLES_XML);
+	zip.file("word/document.xml", documentXml);
 
-  // Generate the DOCX file
-  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-  const outputPath = path.join(FIXTURES_DIR, filename);
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`Created: ${outputPath}`);
+	// Generate the DOCX file
+	const buffer = await zip.generateAsync({ type: "nodebuffer" });
+	const outputPath = path.join(FIXTURES_DIR, filename);
+	fs.writeFileSync(outputPath, buffer);
+	console.log(`Created: ${outputPath}`);
 }
 
 /**
  * Generate empty.docx
  */
 async function generateEmptyDocx(): Promise<void> {
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -90,14 +93,14 @@ async function generateEmptyDocx(): Promise<void> {
   </w:body>
 </w:document>`;
 
-  await createDocx(documentXml, 'empty.docx');
+	await createDocx(documentXml, "empty.docx");
 }
 
 /**
  * Generate styled-content.docx
  */
 async function generateStyledContentDocx(): Promise<void> {
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -175,14 +178,14 @@ async function generateStyledContentDocx(): Promise<void> {
   </w:body>
 </w:document>`;
 
-  await createDocx(documentXml, 'styled-content.docx');
+	await createDocx(documentXml, "styled-content.docx");
 }
 
 /**
  * Generate with-tables.docx
  */
 async function generateWithTablesDocx(): Promise<void> {
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -248,14 +251,14 @@ async function generateWithTablesDocx(): Promise<void> {
   </w:body>
 </w:document>`;
 
-  await createDocx(documentXml, 'with-tables.docx');
+	await createDocx(documentXml, "with-tables.docx");
 }
 
 /**
  * Generate complex-styles.docx
  */
 async function generateComplexStylesDocx(): Promise<void> {
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
@@ -340,7 +343,7 @@ async function generateComplexStylesDocx(): Promise<void> {
   </w:body>
 </w:document>`;
 
-  await createDocx(documentXml, 'complex-styles.docx');
+	await createDocx(documentXml, "complex-styles.docx");
 }
 
 /**
@@ -351,7 +354,7 @@ async function generateComplexStylesDocx(): Promise<void> {
  * Body content must be pushed down so the header doesn't overlap it.
  */
 async function generateHeaderWithTableAndParagraphsDocx(): Promise<void> {
-  const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:p><w:r><w:t>HEADER PARA 1</w:t></w:r></w:p>
   <w:p><w:r><w:t>HEADER PARA 2</w:t></w:r></w:p>
@@ -385,7 +388,7 @@ async function generateHeaderWithTableAndParagraphsDocx(): Promise<void> {
   <w:p><w:r><w:t>HEADER PARA 4</w:t></w:r></w:p>
 </w:hdr>`;
 
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>
     <w:p><w:r><w:t>BODY TITLE TEXT THAT MUST NOT BE OVERLAPPED BY HEADER</w:t></w:r></w:p>
@@ -398,7 +401,7 @@ async function generateHeaderWithTableAndParagraphsDocx(): Promise<void> {
   </w:body>
 </w:document>`;
 
-  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -407,24 +410,27 @@ async function generateHeaderWithTableAndParagraphsDocx(): Promise<void> {
   <Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
 </Types>`;
 
-  const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
 </Relationships>`;
 
-  const zip = new JSZip();
-  zip.file('[Content_Types].xml', contentTypes);
-  zip.file('_rels/.rels', RELS_XML);
-  zip.file('word/_rels/document.xml.rels', documentRels);
-  zip.file('word/styles.xml', STYLES_XML);
-  zip.file('word/document.xml', documentXml);
-  zip.file('word/header1.xml', headerXml);
+	const zip = new JSZip();
+	zip.file("[Content_Types].xml", contentTypes);
+	zip.file("_rels/.rels", RELS_XML);
+	zip.file("word/_rels/document.xml.rels", documentRels);
+	zip.file("word/styles.xml", STYLES_XML);
+	zip.file("word/document.xml", documentXml);
+	zip.file("word/header1.xml", headerXml);
 
-  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-  const outputPath = path.join(FIXTURES_DIR, 'header-with-table-and-paragraphs.docx');
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`Created: ${outputPath}`);
+	const buffer = await zip.generateAsync({ type: "nodebuffer" });
+	const outputPath = path.join(
+		FIXTURES_DIR,
+		"header-with-table-and-paragraphs.docx",
+	);
+	fs.writeFileSync(outputPath, buffer);
+	console.log(`Created: ${outputPath}`);
 }
 
 /**
@@ -435,7 +441,7 @@ async function generateHeaderWithTableAndParagraphsDocx(): Promise<void> {
  * renders quickly.
  */
 async function generateHeaderWithTableDocx(): Promise<void> {
-  const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const headerXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:tbl>
     <w:tblPr>
@@ -467,7 +473,7 @@ async function generateHeaderWithTableDocx(): Promise<void> {
   <w:p/>
 </w:hdr>`;
 
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>
     <w:p>
@@ -483,7 +489,7 @@ async function generateHeaderWithTableDocx(): Promise<void> {
   </w:body>
 </w:document>`;
 
-  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -492,43 +498,43 @@ async function generateHeaderWithTableDocx(): Promise<void> {
   <Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>
 </Types>`;
 
-  const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	const documentRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
 </Relationships>`;
 
-  const zip = new JSZip();
-  zip.file('[Content_Types].xml', contentTypes);
-  zip.file('_rels/.rels', RELS_XML);
-  zip.file('word/_rels/document.xml.rels', documentRels);
-  zip.file('word/styles.xml', STYLES_XML);
-  zip.file('word/document.xml', documentXml);
-  zip.file('word/header1.xml', headerXml);
+	const zip = new JSZip();
+	zip.file("[Content_Types].xml", contentTypes);
+	zip.file("_rels/.rels", RELS_XML);
+	zip.file("word/_rels/document.xml.rels", documentRels);
+	zip.file("word/styles.xml", STYLES_XML);
+	zip.file("word/document.xml", documentXml);
+	zip.file("word/header1.xml", headerXml);
 
-  const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-  const outputPath = path.join(FIXTURES_DIR, 'header-with-table.docx');
-  fs.writeFileSync(outputPath, buffer);
-  console.log(`Created: ${outputPath}`);
+	const buffer = await zip.generateAsync({ type: "nodebuffer" });
+	const outputPath = path.join(FIXTURES_DIR, "header-with-table.docx");
+	fs.writeFileSync(outputPath, buffer);
+	console.log(`Created: ${outputPath}`);
 }
 
 /**
  * Main function
  */
 async function main(): Promise<void> {
-  console.log('Generating DOCX test fixtures...\n');
+	console.log("Generating DOCX test fixtures...\n");
 
-  await generateEmptyDocx();
-  await generateStyledContentDocx();
-  await generateWithTablesDocx();
-  await generateComplexStylesDocx();
-  await generateHeaderWithTableDocx();
-  await generateHeaderWithTableAndParagraphsDocx();
+	await generateEmptyDocx();
+	await generateStyledContentDocx();
+	await generateWithTablesDocx();
+	await generateComplexStylesDocx();
+	await generateHeaderWithTableDocx();
+	await generateHeaderWithTableAndParagraphsDocx();
 
-  console.log('\nAll fixtures generated successfully!');
+	console.log("\nAll fixtures generated successfully!");
 }
 
 main().catch((error) => {
-  console.error('Error generating fixtures:', error);
-  process.exit(1);
+	console.error("Error generating fixtures:", error);
+	process.exit(1);
 });

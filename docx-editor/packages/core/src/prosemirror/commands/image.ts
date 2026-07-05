@@ -9,12 +9,12 @@
  * structural and live in a follow-up; this surface only covers anchor↔anchor.
  */
 
-import type { Command } from 'prosemirror-state';
-import { singletonManager } from '../schema';
+import type { Command } from "prosemirror-state";
+import { singletonManager } from "../schema";
 import type {
-  ImageLayoutTarget,
-  SetImageWrapTypeOptions,
-} from '../extensions/nodes/ImageExtension';
+	ImageLayoutTarget,
+	SetImageWrapTypeOptions,
+} from "../extensions/nodes/ImageExtension";
 
 const cmds = singletonManager.getCommands();
 
@@ -30,15 +30,15 @@ const cmds = singletonManager.getCommands();
  * exactly where the inline glyph used to sit (matches Word's behavior).
  */
 export function setImageWrapType(
-  pos: number,
-  target: ImageLayoutTarget,
-  opts?: SetImageWrapTypeOptions
+	pos: number,
+	target: ImageLayoutTarget,
+	opts?: SetImageWrapTypeOptions,
 ): Command {
-  return cmds.setImageWrapType(pos, target, opts);
+	return cmds.setImageWrapType(pos, target, opts);
 }
 
 export type {
-  AnchorWrapType,
-  ImageLayoutTarget,
-  SetImageWrapTypeOptions,
-} from '../extensions/nodes/ImageExtension';
+	AnchorWrapType,
+	ImageLayoutTarget,
+	SetImageWrapTypeOptions,
+} from "../extensions/nodes/ImageExtension";

@@ -11,13 +11,13 @@
  * `id` via `targetId`.
  */
 
-import type { WriterBackend } from './capabilities';
+import type { WriterBackend } from "./capabilities";
 
-export type WriterTask = 'gec' | 'rewrite' | 'summarize';
+export type WriterTask = "gec" | "rewrite" | "summarize";
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+	role: "system" | "user" | "assistant";
+	content: string;
 }
 
 /**
@@ -27,57 +27,66 @@ export interface ChatMessage {
  * the intent classifier.
  */
 export interface JsonResponseFormat {
-  type: 'json_object';
-  /** Stringified JSON Schema (WebLLM's `schema` field). */
-  schema?: string;
+	type: "json_object";
+	/** Stringified JSON Schema (WebLLM's `schema` field). */
+	schema?: string;
 }
 
 export type WriterReq =
-  | { id: string; kind: 'load'; modelId: string; backend: WriterBackend }
-  | {
-      id: string;
-      kind: 'run';
-      modelId: string;
-      task: WriterTask;
-      input: string;
-      opts?: Record<string, unknown>;
-    }
-  | {
-      id: string;
-      kind: 'chat';
-      modelId: string;
-      messages: ChatMessage[];
-      maxTokens?: number;
-      temperature?: number;
-      /** When set, WebLLM constrains output to this format. */
-      responseFormat?: JsonResponseFormat;
-    }
-  | { id: string; kind: 'abort'; targetId: string }
-  | { id: string; kind: 'unload'; modelId: string };
+	| { id: string; kind: "load"; modelId: string; backend: WriterBackend }
+	| {
+			id: string;
+			kind: "run";
+			modelId: string;
+			task: WriterTask;
+			input: string;
+			opts?: Record<string, unknown>;
+	  }
+	| {
+			id: string;
+			kind: "chat";
+			modelId: string;
+			messages: ChatMessage[];
+			maxTokens?: number;
+			temperature?: number;
+			/** When set, WebLLM constrains output to this format. */
+			responseFormat?: JsonResponseFormat;
+	  }
+	| { id: string; kind: "abort"; targetId: string }
+	| { id: string; kind: "unload"; modelId: string };
 
 export type WriterErrorCode =
-  | 'oom'
-  | 'network'
-  | 'backend-failed'
-  | 'unsupported'
-  | 'aborted'
-  | 'unknown';
+	| "oom"
+	| "network"
+	| "backend-failed"
+	| "unsupported"
+	| "aborted"
+	| "unknown";
 
 export type WriterRes =
-  | { id: string; kind: 'progress'; loaded: number; total: number }
-  | { id: string; kind: 'loaded'; modelId: string; backend: WriterBackend; warmupMs: number }
-  | { id: string; kind: 'output'; output: string; inferenceMs: number }
-  | { id: string; kind: 'chat-delta'; text: string }
-  | { id: string; kind: 'chat-done'; inferenceMs: number }
-  | { id: string; kind: 'error'; code: WriterErrorCode; message: string }
-  | { id: string; kind: 'unloaded'; modelId: string };
+	| { id: string; kind: "progress"; loaded: number; total: number }
+	| {
+			id: string;
+			kind: "loaded";
+			modelId: string;
+			backend: WriterBackend;
+			warmupMs: number;
+	  }
+	| { id: string; kind: "output"; output: string; inferenceMs: number }
+	| { id: string; kind: "chat-delta"; text: string }
+	| { id: string; kind: "chat-done"; inferenceMs: number }
+	| { id: string; kind: "error"; code: WriterErrorCode; message: string }
+	| { id: string; kind: "unloaded"; modelId: string };
 
 export function newRequestId(): string {
-  // crypto.randomUUID is available in every modern browser; tsup
-  // / Vite both polyfill where needed.
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  // Fallback for environments without crypto.randomUUID (very old browsers).
-  return `wr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+	// crypto.randomUUID is available in every modern browser; tsup
+	// / Vite both polyfill where needed.
+	if (
+		typeof crypto !== "undefined" &&
+		typeof crypto.randomUUID === "function"
+	) {
+		return crypto.randomUUID();
+	}
+	// Fallback for environments without crypto.randomUUID (very old browsers).
+	return `wr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }

@@ -29,38 +29,40 @@
  * w:delInstrText when emitting inside <w:del>.
  */
 
-import { describe, expect, test } from 'bun:test';
-import { readFile } from 'node:fs/promises';
-import JSZip from 'jszip';
-import { parseDocx } from '../index';
-import { repackDocx } from '../index';
+import { describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
+import JSZip from "jszip";
+import { parseDocx } from "../index";
+import { repackDocx } from "../index";
 
-const FIXTURE = new URL('../../../../../e2e/fixtures/issue-319-sections.docx', import.meta.url)
-  .pathname;
+const FIXTURE = new URL(
+	"../../../../../e2e/fixtures/issue-319-sections.docx",
+	import.meta.url,
+).pathname;
 
 async function tagCounts(buf: Buffer): Promise<Record<string, number>> {
-  const zip = await JSZip.loadAsync(buf);
-  const xml = await zip.file('word/document.xml')!.async('string');
-  return {
-    fldChar: (xml.match(/<w:fldChar/g) ?? []).length,
-    rStyle: (xml.match(/<w:rStyle/g) ?? []).length,
-    delInstrText: (xml.match(/<w:delInstrText/g) ?? []).length,
-    instrText: (xml.match(/<w:instrText\b/g) ?? []).length,
-  };
+	const zip = await JSZip.loadAsync(buf);
+	const xml = await zip.file("word/document.xml")!.async("string");
+	return {
+		fldChar: (xml.match(/<w:fldChar/g) ?? []).length,
+		rStyle: (xml.match(/<w:rStyle/g) ?? []).length,
+		delInstrText: (xml.match(/<w:delInstrText/g) ?? []).length,
+		instrText: (xml.match(/<w:instrText\b/g) ?? []).length,
+	};
 }
 
-describe('tracked-change complex field round-trip', () => {
-  test('issue-319-sections.docx preserves fldChar/rStyle/instrText counts', async () => {
-    const buf = await readFile(FIXTURE);
-    const before = await tagCounts(buf);
+describe("tracked-change complex field round-trip", () => {
+	test("issue-319-sections.docx preserves fldChar/rStyle/instrText counts", async () => {
+		const buf = await readFile(FIXTURE);
+		const before = await tagCounts(buf);
 
-    const pkg = await parseDocx(buf as unknown as ArrayBuffer);
-    const out = await repackDocx(pkg);
-    const after = await tagCounts(Buffer.from(out));
+		const pkg = await parseDocx(buf as unknown as ArrayBuffer);
+		const out = await repackDocx(pkg);
+		const after = await tagCounts(Buffer.from(out));
 
-    expect(after.fldChar).toBe(before.fldChar);
-    expect(after.rStyle).toBe(before.rStyle);
-    expect(after.delInstrText).toBe(before.delInstrText);
-    expect(after.instrText).toBe(before.instrText);
-  });
+		expect(after.fldChar).toBe(before.fldChar);
+		expect(after.rStyle).toBe(before.rStyle);
+		expect(after.delInstrText).toBe(before.delInstrText);
+		expect(after.instrText).toBe(before.instrText);
+	});
 });

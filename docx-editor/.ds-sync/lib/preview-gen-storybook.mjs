@@ -17,8 +17,8 @@
 // re-syncs leave them alone. Fork seam: resolution policy lives in
 // lib/story-imports.mjs.
 
-import { relative } from 'node:path';
-import { exportName } from './common.mjs';
+import { relative } from "node:path";
+import { exportName } from "./common.mjs";
 
 // The composeStories-equivalent embedded in every wrapper. Storybook
 // semantics, minimally: merged args (meta ← story), render precedence
@@ -69,68 +69,75 @@ const COMPOSE = `function compose(S: any, key: string) {
 // card (the same floor as a wrapper that fails to compile). Pairing failures
 // are loud and fixable, so the floor card is the only fallback.
 export function generatePreviewSource(c, opts) {
-  // Story-module tier: needs the story source path and at least one visible
-  // story paired to a module export (pairing happens in source-storybook.mjs
-  // — c.storyIds[].exportKey).
-  const skipSet = new Set(opts.skip ?? []);
-  const visible = (c.storyIds ?? []).filter((s) => !skipSet.has(s.id));
-  const paired = visible.filter((s) => s.exportKey);
-  if (!c.storySrc || paired.length === 0) {
-    if (c.storySrc && visible.length > 0) {
-      console.error(`  (preview: ${c.name} — no story exports paired (storyName overrides?); showing the floor card)`);
-    }
-    return null;
-  }
-  // Location-independent import: `@ds-stories/<path relative to the repo
-  // root>` (forward slashes for machine portability), resolved by the
-  // story-imports plugin set. A relative spec would bake in the wrapper's
-  // directory depth — and the promote flow copies wrappers from the
-  // generated cache into .design-sync/previews/ (one level shallower), so
-  // the same file must compile from either home. One import per distinct
-  // story module, in first-paired order; S is the first (and for
-  // single-module components the only) one.
-  const toSpec = (p) => {
-    const rel = relative(process.cwd(), p).replace(/\\/g, '/');
-    return JSON.stringify(`@ds-stories/${rel}`.replace(/\.[cm]?[jt]sx?$/, ''));
-  };
-  const modVars = new Map(); // story source path -> import identifier
-  const modVarFor = (p) => {
-    if (!modVars.has(p)) modVars.set(p, modVars.size === 0 ? 'S' : `S${modVars.size + 1}`);
-    return modVars.get(p);
-  };
-  // Emitted export names are PascalCased via exportName (the html mount loop
-  // only renders /^[A-Z]/ exports; CSF allows camelCase keys) — compare's
-  // squash pairing is case-insensitive, so pairing is unaffected. compose()
-  // still receives the RAW module key. Squash collisions (two index stories
-  // pairing to one export of the same module, e.g. via a storyName override)
-  // emit once.
-  // Each story records the EXACT export name its cell is emitted under
-  // (s.emitted, carried into the stories-map) — labels are deduped when the
-  // same key appears in several modules ("Default" + "Default2"), so compare
-  // must pair on the emitted label, not a fuzzy match of the raw key.
-  const seen = new Set();
-  const used = new Set();
-  const lines = [];
-  for (const s of paired) {
-    const mod = modVarFor(s.storySrc ?? c.storySrc);
-    const dupKey = `${mod}:${s.exportKey}`;
-    if (seen.has(dupKey)) {
-      console.error(`  (preview: ${c.name} — story "${s.name}" pairs to already-emitted export ${s.exportKey}; skipping duplicate)`);
-      continue;
-    }
-    seen.add(dupKey);
-    const label = exportName(s.exportKey, used);
-    s.emitted = label;
-    lines.push(`export const ${label} = /* ${s.name} */ compose(${mod}, ${JSON.stringify(s.exportKey)});`);
-  }
-  const imports = [...modVars.entries()]
-    .map(([p, v]) => `import * as ${v} from ${toSpec(p)};`)
-    .join('\n');
-  return `import * as React from 'react';
+	// Story-module tier: needs the story source path and at least one visible
+	// story paired to a module export (pairing happens in source-storybook.mjs
+	// — c.storyIds[].exportKey).
+	const skipSet = new Set(opts.skip ?? []);
+	const visible = (c.storyIds ?? []).filter((s) => !skipSet.has(s.id));
+	const paired = visible.filter((s) => s.exportKey);
+	if (!c.storySrc || paired.length === 0) {
+		if (c.storySrc && visible.length > 0) {
+			console.error(
+				`  (preview: ${c.name} — no story exports paired (storyName overrides?); showing the floor card)`,
+			);
+		}
+		return null;
+	}
+	// Location-independent import: `@ds-stories/<path relative to the repo
+	// root>` (forward slashes for machine portability), resolved by the
+	// story-imports plugin set. A relative spec would bake in the wrapper's
+	// directory depth — and the promote flow copies wrappers from the
+	// generated cache into .design-sync/previews/ (one level shallower), so
+	// the same file must compile from either home. One import per distinct
+	// story module, in first-paired order; S is the first (and for
+	// single-module components the only) one.
+	const toSpec = (p) => {
+		const rel = relative(process.cwd(), p).replace(/\\/g, "/");
+		return JSON.stringify(`@ds-stories/${rel}`.replace(/\.[cm]?[jt]sx?$/, ""));
+	};
+	const modVars = new Map(); // story source path -> import identifier
+	const modVarFor = (p) => {
+		if (!modVars.has(p))
+			modVars.set(p, modVars.size === 0 ? "S" : `S${modVars.size + 1}`);
+		return modVars.get(p);
+	};
+	// Emitted export names are PascalCased via exportName (the html mount loop
+	// only renders /^[A-Z]/ exports; CSF allows camelCase keys) — compare's
+	// squash pairing is case-insensitive, so pairing is unaffected. compose()
+	// still receives the RAW module key. Squash collisions (two index stories
+	// pairing to one export of the same module, e.g. via a storyName override)
+	// emit once.
+	// Each story records the EXACT export name its cell is emitted under
+	// (s.emitted, carried into the stories-map) — labels are deduped when the
+	// same key appears in several modules ("Default" + "Default2"), so compare
+	// must pair on the emitted label, not a fuzzy match of the raw key.
+	const seen = new Set();
+	const used = new Set();
+	const lines = [];
+	for (const s of paired) {
+		const mod = modVarFor(s.storySrc ?? c.storySrc);
+		const dupKey = `${mod}:${s.exportKey}`;
+		if (seen.has(dupKey)) {
+			console.error(
+				`  (preview: ${c.name} — story "${s.name}" pairs to already-emitted export ${s.exportKey}; skipping duplicate)`,
+			);
+			continue;
+		}
+		seen.add(dupKey);
+		const label = exportName(s.exportKey, used);
+		s.emitted = label;
+		lines.push(
+			`export const ${label} = /* ${s.name} */ compose(${mod}, ${JSON.stringify(s.exportKey)});`,
+		);
+	}
+	const imports = [...modVars.entries()]
+		.map(([p, v]) => `import * as ${v} from ${toSpec(p)};`)
+		.join("\n");
+	return `import * as React from 'react';
 ${imports}
 
 ${COMPOSE}
 
-${lines.join('\n')}
+${lines.join("\n")}
 `;
 }

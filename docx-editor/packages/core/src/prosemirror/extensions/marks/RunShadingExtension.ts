@@ -10,17 +10,17 @@
  * source XML, but do not paint it like a user-applied text highlight.
  */
 
-import { createMarkExtension } from '../create';
+import { createMarkExtension } from "../create";
 
 export const RunShadingExtension = createMarkExtension({
-  name: 'runShading',
-  schemaMarkName: 'runShading',
-  markSpec: {
-    attrs: {
-      shading: { default: null },
-    },
-    toDOM() {
-      return ['span', { 'data-run-shading': 'true' }, 0];
-    },
-  },
+	name: "runShading",
+	schemaMarkName: "runShading",
+	markSpec: {
+		attrs: {
+			shading: { default: null },
+		},
+		toDOM() {
+			return ["span", { "data-run-shading": "true" }, 0];
+		},
+	},
 });

@@ -10,18 +10,18 @@
  */
 
 export {
-  serializeDocument,
-  serializeDocumentBody,
-  serializeSectionProperties,
-} from './documentSerializer';
-export { serializeParagraph } from './paragraphSerializer';
-export { serializeRun } from './runSerializer';
-export { serializeTable } from './tableSerializer';
-export { serializeHeaderFooter } from './headerFooterSerializer';
-export { serializeComments } from './commentSerializer';
+	serializeDocument,
+	serializeDocumentBody,
+	serializeSectionProperties,
+} from "./documentSerializer";
+export { serializeParagraph } from "./paragraphSerializer";
+export { serializeRun } from "./runSerializer";
+export { serializeTable } from "./tableSerializer";
+export { serializeHeaderFooter } from "./headerFooterSerializer";
+export { serializeComments } from "./commentSerializer";
 export {
-  setFootnotePlainText,
-  replaceFootnotesInXml,
-  setEndnotePlainText,
-  replaceEndnotesInXml,
-} from './footnoteSerializer';
+	setFootnotePlainText,
+	replaceFootnotesInXml,
+	setEndnotePlainText,
+	replaceEndnotesInXml,
+} from "./footnoteSerializer";

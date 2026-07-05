@@ -16,13 +16,13 @@
  * This test only pins the parsed flag. The measure-side max() lives in
  * PagedEditor.measureBlock's textBox case.
  */
-import { describe, expect, test } from 'bun:test';
-import type { XmlElement } from '../xmlParser';
-import { parseXmlDocument } from '../xmlParser';
-import { parseTextBox } from '../textBoxParser';
+import { describe, expect, test } from "bun:test";
+import type { XmlElement } from "../xmlParser";
+import { parseXmlDocument } from "../xmlParser";
+import { parseTextBox } from "../textBoxParser";
 
 function drawingXml(bodyPrInnerXml: string): string {
-  return `
+	return `
     <w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
                xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
                xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -46,45 +46,47 @@ function drawingXml(bodyPrInnerXml: string): string {
 }
 
 function parseDrawing(bodyPrInnerXml: string) {
-  const root = parseXmlDocument(drawingXml(bodyPrInnerXml)) as XmlElement | null;
-  if (!root) throw new Error('Failed to parse drawing XML fixture');
-  return parseTextBox(root);
+	const root = parseXmlDocument(
+		drawingXml(bodyPrInnerXml),
+	) as XmlElement | null;
+	if (!root) throw new Error("Failed to parse drawing XML fixture");
+	return parseTextBox(root);
 }
 
-describe('parseTextBox — wps:bodyPr autoFit child', () => {
-  test('a:spAutoFit yields autoFit = "spAutoFit"', () => {
-    const tb = parseDrawing('<a:spAutoFit/>');
-    expect(tb).not.toBeNull();
-    expect(tb?.autoFit).toBe('spAutoFit');
-  });
+describe("parseTextBox — wps:bodyPr autoFit child", () => {
+	test('a:spAutoFit yields autoFit = "spAutoFit"', () => {
+		const tb = parseDrawing("<a:spAutoFit/>");
+		expect(tb).not.toBeNull();
+		expect(tb?.autoFit).toBe("spAutoFit");
+	});
 
-  test('a:noAutofit yields autoFit = "noAutofit"', () => {
-    const tb = parseDrawing('<a:noAutofit/>');
-    expect(tb).not.toBeNull();
-    expect(tb?.autoFit).toBe('noAutofit');
-  });
+	test('a:noAutofit yields autoFit = "noAutofit"', () => {
+		const tb = parseDrawing("<a:noAutofit/>");
+		expect(tb).not.toBeNull();
+		expect(tb?.autoFit).toBe("noAutofit");
+	});
 
-  test('a:normAutofit yields autoFit = "normAutofit"', () => {
-    const tb = parseDrawing('<a:normAutofit/>');
-    expect(tb).not.toBeNull();
-    expect(tb?.autoFit).toBe('normAutofit');
-  });
+	test('a:normAutofit yields autoFit = "normAutofit"', () => {
+		const tb = parseDrawing("<a:normAutofit/>");
+		expect(tb).not.toBeNull();
+		expect(tb?.autoFit).toBe("normAutofit");
+	});
 
-  test('no autoFit child leaves the field undefined', () => {
-    // bodyPr present but no fit child — treat as default (renderer applies
-    // saved height as exact, same as noAutofit).
-    const tb = parseDrawing('');
-    expect(tb).not.toBeNull();
-    expect(tb?.autoFit).toBeUndefined();
-  });
+	test("no autoFit child leaves the field undefined", () => {
+		// bodyPr present but no fit child — treat as default (renderer applies
+		// saved height as exact, same as noAutofit).
+		const tb = parseDrawing("");
+		expect(tb).not.toBeNull();
+		expect(tb?.autoFit).toBeUndefined();
+	});
 
-  test('margins parsing is preserved alongside autoFit', () => {
-    const tb = parseDrawing('<a:spAutoFit/>');
-    expect(tb?.margins).toEqual({
-      left: 91440,
-      right: 91440,
-      top: 45720,
-      bottom: 45720,
-    });
-  });
+	test("margins parsing is preserved alongside autoFit", () => {
+		const tb = parseDrawing("<a:spAutoFit/>");
+		expect(tb?.margins).toEqual({
+			left: 91440,
+			right: 91440,
+			top: 45720,
+			bottom: 45720,
+		});
+	});
 });

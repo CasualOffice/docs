@@ -88,55 +88,6 @@ Non-DOCX formats convert to/from DOCX bytes in a Web Worker (Rust + WASM); the ~
 
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full design.
 
-## AI Features (pre-release)
-
-<details>
-<summary><b>Inline ask, rewrite panel, DocOps chat</b> (pre-release — in active development)</summary>
-
-These features are gated on model availability and are off by default until a model is confirmed reachable. Nothing in the AI layer is shown to the user until that check passes.
-
-**Inline ask pill**
-
-Select text in the document and an ask pill appears above the selection. Type a prompt and press Enter to send. On desktop (Casual Desktop app), the pill is available when a local model is loaded. On the web, it requires an Anthropic API key configured in the collab server. The keyboard shortcut `Cmd+J` (Mac) / `Ctrl+J` (Windows/Linux) opens the pill from the keyboard when AI is available.
-
-**AI Suggestion Panel**
-
-A right-docked panel for rewrites and summaries. After submitting a prompt from the inline pill, the panel opens and streams the response token by token. Tone chips along the top of the panel let you adjust the output before or after generation: Polish, Concise, Formal, Casual, Shorter, Longer. Controls:
-
-- Accept — replaces the selected text with the suggestion
-- Reject — discards the suggestion, returns focus to the document
-- Stop — halts in-flight generation (replaces Retry while the model is running)
-- Retry — re-runs the last prompt after generation finishes
-
-Status labels reflect the active operation ("Rewriting...", "Summarizing...") rather than a generic spinner.
-
-**DocOps chat panel**
-
-A separate panel for document-level operations: restructure, insert boilerplate, apply section templates. Responses stream in real time via SSE. This panel is the primary surface for the DocOps IR mutation set (see roadmap below).
-
-**Model gating**
-
-| Context | Model path |
-| --- | --- |
-| Casual Desktop (macOS) | Local llama.cpp model via the ai-worker sidecar; Metal GPU acceleration; fully offline |
-| Web / Docker | Anthropic API key set on the collab server (`CASUAL_AI_API_KEY`); no local model required |
-
-If neither condition is met, all AI UI is hidden. There is no degraded or stubbed state.
-
-**Streaming**
-
-Both the DocOps panel and the AI Suggestion Panel receive responses as SSE streams. Tokens appear in the in-flight bubble as they arrive; the panel commits the full response once the stream closes.
-
-**What is coming next (DocOps Phase 1)**
-
-- Full mutation set: insert/delete/move/replace at paragraph and section granularity, applied as ProseMirror transactions so undo works normally
-- Accept/reject in-document: suggested changes rendered as tracked-change overlays, accepted or rejected inline without leaving the document
-- Casual Sheets AI: the same DocOps IR and model-gating infrastructure extended to the spreadsheet surface
-
-These are tracked in [`docs/internal/31-docops-architecture.md`](./docs/internal/31-docops-architecture.md).
-
-</details>
-
 ---
 
 ## 🐳 Self-Host with Docker
@@ -256,7 +207,7 @@ dev server, upload a doc, and click Share.
 ## 🚫 Explicit Non-Goals
 
 - **No database required** — rooms are in-memory by default; persistence is opt-in (`CASUAL_STORAGE`) and the file-byte host's job. The server dies cleanly and restarts cleanly.
-- **No server-side AI** — inference runs on-device (desktop) or directly against the Anthropic API (web); the collab server has no model access.
+- **No AI / LLM features** — the editor is a pure document tool. Wire your own model in via the extension system if you need one.
 - **No mobile editor** — desktop browsers only. The shell is responsive to 768 px, but the paginated editing UX assumes a pointer device.
 
 ---

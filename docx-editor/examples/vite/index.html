@@ -74,15 +74,6 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CDWFLK79M"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-1CDWFLK79M');
-    </script>
-
     <!--
     JSON-LD: SoftwareApplication + Person + WebSite.
     Google's rich-results indexer + LLM crawlers (Perplexity, ChatGPT
@@ -237,14 +228,14 @@
     <script>
       // Detect when Material Symbols font is loaded
       if (document.fonts) {
-        document.fonts.ready.then(function () {
+        document.fonts.ready.then(() => {
           document.documentElement.classList.add('fonts-loaded');
         });
-        document.fonts.load('24px "Material Symbols Outlined"').then(function () {
+        document.fonts.load('24px "Material Symbols Outlined"').then(() => {
           document.documentElement.classList.add('fonts-loaded');
         });
       } else {
-        setTimeout(function () {
+        setTimeout(() => {
           document.documentElement.classList.add('fonts-loaded');
         }, 500);
       }
@@ -258,7 +249,7 @@
       // page, which re-fetches index.html and the current hash refs.
       // The session-storage guard stops us from looping if the reload
       // itself fails for an unrelated reason.
-      (function () {
+      (() => {
         var KEY = 'casual:chunk-reload-at';
         function shouldReload() {
           try {
@@ -274,12 +265,12 @@
           } catch (_) {}
           window.location.reload();
         }
-        window.addEventListener('vite:preloadError', function (e) {
+        window.addEventListener('vite:preloadError', (e) => {
           if (!shouldReload()) return;
           e.preventDefault();
           reloadOnce();
         });
-        window.addEventListener('unhandledrejection', function (e) {
+        window.addEventListener('unhandledrejection', (e) => {
           var msg = e && e.reason && (e.reason.message || String(e.reason));
           if (msg && /Failed to fetch dynamically imported module/i.test(msg) && shouldReload()) {
             reloadOnce();

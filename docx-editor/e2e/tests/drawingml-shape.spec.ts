@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
 /**
  * Decorative DrawingML shapes (the modern half of
@@ -26,38 +26,45 @@ import { EditorPage } from '../helpers/editor-page';
  *   2. Both surrounding text paragraphs paint normally.
  */
 
-test('DrawingML decorative shape (wps:wsp without wps:txbx) paints with its fill', async ({
-  page,
+test("DrawingML decorative shape (wps:wsp without wps:txbx) paints with its fill", async ({
+	page,
 }) => {
-  const editor = new EditorPage(page);
-  await editor.goto();
-  await editor.waitForReady();
-  await editor.loadDocxFile('fixtures/drawingml-shape.docx');
-  await page.waitForTimeout(500);
+	const editor = new EditorPage(page);
+	await editor.goto();
+	await editor.waitForReady();
+	await editor.loadDocxFile("fixtures/drawingml-shape.docx");
+	await page.waitForTimeout(500);
 
-  const data = await page.evaluate(() => {
-    const visible = (el: HTMLElement) => !el.closest('.paged-editor__hidden-pm');
-    const textBoxes = Array.from(document.querySelectorAll<HTMLElement>('.layout-textbox')).filter(
-      visible
-    );
-    // A shape-only drawing must NOT also emit an image run — that produced a
-    // spurious empty-src <img> (broken-image icon) next to the painted shape.
-    const emptyImgs = Array.from(document.querySelectorAll<HTMLImageElement>('img'))
-      .filter(visible)
-      .filter((img) => !(img.getAttribute('src') || '').trim());
-    return {
-      count: textBoxes.length,
-      bgs: textBoxes.map((el) => el.style.backgroundColor),
-      emptyImgCount: emptyImgs.length,
-      bodyText: (document.querySelector('.paged-editor__pages') as HTMLElement)?.innerText ?? '',
-    };
-  });
+	const data = await page.evaluate(() => {
+		const visible = (el: HTMLElement) =>
+			!el.closest(".paged-editor__hidden-pm");
+		const textBoxes = Array.from(
+			document.querySelectorAll<HTMLElement>(".layout-textbox"),
+		).filter(visible);
+		// A shape-only drawing must NOT also emit an image run — that produced a
+		// spurious empty-src <img> (broken-image icon) next to the painted shape.
+		const emptyImgs = Array.from(
+			document.querySelectorAll<HTMLImageElement>("img"),
+		)
+			.filter(visible)
+			.filter((img) => !(img.getAttribute("src") || "").trim());
+		return {
+			count: textBoxes.length,
+			bgs: textBoxes.map((el) => el.style.backgroundColor),
+			emptyImgCount: emptyImgs.length,
+			bodyText:
+				(document.querySelector(".paged-editor__pages") as HTMLElement)
+					?.innerText ?? "",
+		};
+	});
 
-  expect(data.count, 'one painted shape container for the wps:wsp').toBe(1);
-  const bg = data.bgs[0]?.toLowerCase() ?? '';
-  // Chromium normalizes #00C000 to rgb(0, 192, 0).
-  expect(bg === '#00c000' || bg === 'rgb(0, 192, 0)').toBe(true);
-  expect(data.emptyImgCount, 'no spurious empty-src image for the shape').toBe(0);
-  expect(data.bodyText).toContain('BEFORE-SHAPE');
-  expect(data.bodyText).toContain('AFTER-SHAPE');
+	expect(data.count, "one painted shape container for the wps:wsp").toBe(1);
+	const bg = data.bgs[0]?.toLowerCase() ?? "";
+	// Chromium normalizes #00C000 to rgb(0, 192, 0).
+	expect(bg === "#00c000" || bg === "rgb(0, 192, 0)").toBe(true);
+	expect(data.emptyImgCount, "no spurious empty-src image for the shape").toBe(
+		0,
+	);
+	expect(data.bodyText).toContain("BEFORE-SHAPE");
+	expect(data.bodyText).toContain("AFTER-SHAPE");
 });

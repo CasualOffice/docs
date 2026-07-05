@@ -22,28 +22,28 @@
  */
 
 import type {
-  FlowBlock,
-  ImageRun,
-  Measure,
-  PageMargins,
-  TableBlock,
-  TextBoxBlock,
-} from '../layout-engine/types';
-import type { HeaderFooter, StyleDefinitions, Theme } from '../types/document';
-import type { HeaderFooterContent } from '../layout-painter/renderPage';
-import { headerFooterToProseDoc } from '../prosemirror/conversion/toProseDoc';
-import { emuToPixels } from '../utils/units';
-import { toFlowBlocks } from './toFlowBlocks';
-import type { MeasureBlocksFn } from './footnoteLayout';
+	FlowBlock,
+	ImageRun,
+	Measure,
+	PageMargins,
+	TableBlock,
+	TextBoxBlock,
+} from "../layout-engine/types";
+import type { HeaderFooter, StyleDefinitions, Theme } from "../types/document";
+import type { HeaderFooterContent } from "../layout-painter/renderPage";
+import { headerFooterToProseDoc } from "../prosemirror/conversion/toProseDoc";
+import { emuToPixels } from "../utils/units";
+import { toFlowBlocks } from "./toFlowBlocks";
+import type { MeasureBlocksFn } from "./footnoteLayout";
 
 // ============================================================================
 // 1. Page-level metrics passed in by the caller
 // ============================================================================
 
 export type HeaderFooterMetrics = {
-  section: 'header' | 'footer';
-  pageSize: { w: number; h: number };
-  margins: PageMargins;
+	section: "header" | "footer";
+	pageSize: { w: number; h: number };
+	margins: PageMargins;
 };
 
 // ============================================================================
@@ -75,86 +75,89 @@ export type HeaderFooterMetrics = {
 //    visual side effect, not just as a structural anchor.
 
 function hasAuthoredVisualContent(block: FlowBlock): boolean {
-  if (block.kind !== 'paragraph') return false;
-  const attrs = block.attrs;
-  if (!attrs) return false;
-  if (attrs.borders?.top || attrs.borders?.bottom) return true;
-  if (attrs.spacingExplicit?.before || attrs.spacingExplicit?.after) return true;
-  return false;
+	if (block.kind !== "paragraph") return false;
+	const attrs = block.attrs;
+	if (!attrs) return false;
+	if (attrs.borders?.top || attrs.borders?.bottom) return true;
+	if (attrs.spacingExplicit?.before || attrs.spacingExplicit?.after)
+		return true;
+	return false;
 }
 
-export function normalizeHeaderFooterMeasureBlocks(blocks: FlowBlock[]): FlowBlock[] {
-  return normalizeFlowBlockArray(blocks);
+export function normalizeHeaderFooterMeasureBlocks(
+	blocks: FlowBlock[],
+): FlowBlock[] {
+	return normalizeFlowBlockArray(blocks);
 }
 
 function normalizeFlowBlockArray(blocks: FlowBlock[]): FlowBlock[] {
-  const trailingEmptyAfterTable = new Set<number>();
-  for (let i = 1; i < blocks.length; i++) {
-    const prev = blocks[i - 1];
-    const cur = blocks[i];
-    if (prev.kind !== 'table') continue;
-    if (cur.kind !== 'paragraph') continue;
-    if (cur.runs.length > 0) continue;
-    if (hasAuthoredVisualContent(cur)) continue;
-    trailingEmptyAfterTable.add(i);
-  }
+	const trailingEmptyAfterTable = new Set<number>();
+	for (let i = 1; i < blocks.length; i++) {
+		const prev = blocks[i - 1];
+		const cur = blocks[i];
+		if (prev.kind !== "table") continue;
+		if (cur.kind !== "paragraph") continue;
+		if (cur.runs.length > 0) continue;
+		if (hasAuthoredVisualContent(cur)) continue;
+		trailingEmptyAfterTable.add(i);
+	}
 
-  return blocks.map((block, index) => {
-    if (block.kind === 'table') {
-      return normalizeTableBlock(block);
-    }
-    if (block.kind !== 'paragraph') return block;
+	return blocks.map((block, index) => {
+		if (block.kind === "table") {
+			return normalizeTableBlock(block);
+		}
+		if (block.kind !== "paragraph") return block;
 
-    const isTrailingEmpty = trailingEmptyAfterTable.has(index);
+		const isTrailingEmpty = trailingEmptyAfterTable.has(index);
 
-    const explicit = block.attrs?.spacingExplicit;
-    const hasResolvedBefore = block.attrs?.spacing?.before != null;
-    const hasResolvedAfter = block.attrs?.spacing?.after != null;
-    const beforeIsInherited = hasResolvedBefore && !explicit?.before;
-    const afterIsInherited = hasResolvedAfter && !explicit?.after;
-    const stripsSpacing = beforeIsInherited || afterIsInherited;
+		const explicit = block.attrs?.spacingExplicit;
+		const hasResolvedBefore = block.attrs?.spacing?.before != null;
+		const hasResolvedAfter = block.attrs?.spacing?.after != null;
+		const beforeIsInherited = hasResolvedBefore && !explicit?.before;
+		const afterIsInherited = hasResolvedAfter && !explicit?.after;
+		const stripsSpacing = beforeIsInherited || afterIsInherited;
 
-    if (!stripsSpacing && !isTrailingEmpty) return block;
+		if (!stripsSpacing && !isTrailingEmpty) return block;
 
-    let attrs = block.attrs;
-    if (stripsSpacing && attrs?.spacing) {
-      attrs = {
-        ...attrs,
-        spacing: {
-          ...attrs.spacing,
-          before: explicit?.before ? attrs.spacing.before : undefined,
-          after: explicit?.after ? attrs.spacing.after : undefined,
-        },
-      };
-    }
+		let attrs = block.attrs;
+		if (stripsSpacing && attrs?.spacing) {
+			attrs = {
+				...attrs,
+				spacing: {
+					...attrs.spacing,
+					before: explicit?.before ? attrs.spacing.before : undefined,
+					after: explicit?.after ? attrs.spacing.after : undefined,
+				},
+			};
+		}
 
-    if (isTrailingEmpty) {
-      attrs = { ...(attrs ?? {}), suppressEmptyParagraphHeight: true };
-    }
+		if (isTrailingEmpty) {
+			attrs = { ...(attrs ?? {}), suppressEmptyParagraphHeight: true };
+		}
 
-    return { ...block, attrs };
-  });
+		return { ...block, attrs };
+	});
 }
 
 function normalizeTableBlock(block: TableBlock): TableBlock {
-  let changed = false;
-  const rows = block.rows.map((row) => {
-    let rowChanged = false;
-    const cells = row.cells.map((cell) => {
-      const normalizedBlocks = normalizeFlowBlockArray(cell.blocks);
-      const cellChanged = normalizedBlocks.some(
-        (normalizedBlock, idx) => normalizedBlock !== cell.blocks[idx]
-      );
-      if (!cellChanged) return cell;
-      rowChanged = true;
-      return { ...cell, blocks: normalizedBlocks };
-    });
-    if (!rowChanged) return row;
-    changed = true;
-    return { ...row, cells };
-  });
+	let changed = false;
+	const rows = block.rows.map((row) => {
+		let rowChanged = false;
+		const cells = row.cells.map((cell) => {
+			const normalizedBlocks = normalizeFlowBlockArray(cell.blocks);
+			const cellChanged = normalizedBlocks.some(
+				(normalizedBlock, idx) => normalizedBlock !== cell.blocks[idx],
+			);
+			if (!cellChanged) return cell;
+			rowChanged = true;
+			return { ...cell, blocks: normalizedBlocks };
+		});
+		if (!rowChanged) return row;
+		changed = true;
+		return { ...row, cells };
+	});
 
-  return changed ? { ...block, rows } : block;
+	return changed ? { ...block, rows } : block;
 }
 
 // ============================================================================
@@ -163,64 +166,77 @@ function normalizeTableBlock(block: TableBlock): TableBlock {
 // ============================================================================
 
 type PositionedAxis = {
-  relativeTo?: string;
-  posOffset?: number;
-  align?: string;
-  alignment?: string;
+	relativeTo?: string;
+	posOffset?: number;
+	align?: string;
+	alignment?: string;
 };
 
-function getPositionAlignment(axis: PositionedAxis | undefined): string | undefined {
-  return axis?.align ?? axis?.alignment;
+function getPositionAlignment(
+	axis: PositionedAxis | undefined,
+): string | undefined {
+	return axis?.align ?? axis?.alignment;
 }
 
 export function resolveHeaderFooterVisualTop(
-  run: ImageRun,
-  paragraphY: number,
-  flowHeight: number,
-  metrics: HeaderFooterMetrics
+	run: ImageRun,
+	paragraphY: number,
+	flowHeight: number,
+	metrics: HeaderFooterMetrics,
 ): number {
-  const flowTop =
-    metrics.section === 'header'
-      ? (metrics.margins.header ?? 48)
-      : metrics.pageSize.h - (metrics.margins.footer ?? 48) - flowHeight;
-  const vertical = run.position?.vertical;
+	const flowTop =
+		metrics.section === "header"
+			? (metrics.margins.header ?? 48)
+			: metrics.pageSize.h - (metrics.margins.footer ?? 48) - flowHeight;
+	const vertical = run.position?.vertical;
 
-  if (!vertical) {
-    return paragraphY;
-  }
+	if (!vertical) {
+		return paragraphY;
+	}
 
-  const align = getPositionAlignment(vertical);
-  const offsetPx = vertical.posOffset !== undefined ? emuToPixels(vertical.posOffset) : undefined;
+	const align = getPositionAlignment(vertical);
+	const offsetPx =
+		vertical.posOffset !== undefined
+			? emuToPixels(vertical.posOffset)
+			: undefined;
 
-  if (vertical.relativeTo === 'page') {
-    if (offsetPx !== undefined) return offsetPx - flowTop;
-    if (align === 'top') return -flowTop;
-    if (align === 'bottom') return metrics.pageSize.h - run.height - flowTop;
-    if (align === 'center') return (metrics.pageSize.h - run.height) / 2 - flowTop;
-  }
+	if (vertical.relativeTo === "page") {
+		if (offsetPx !== undefined) return offsetPx - flowTop;
+		if (align === "top") return -flowTop;
+		if (align === "bottom") return metrics.pageSize.h - run.height - flowTop;
+		if (align === "center")
+			return (metrics.pageSize.h - run.height) / 2 - flowTop;
+	}
 
-  if (vertical.relativeTo === 'margin') {
-    const marginTop = metrics.margins.top;
-    const marginHeight = metrics.pageSize.h - metrics.margins.top - metrics.margins.bottom;
-    if (offsetPx !== undefined) return marginTop + offsetPx - flowTop;
-    if (align === 'top') return marginTop - flowTop;
-    if (align === 'bottom') return marginTop + marginHeight - run.height - flowTop;
-    if (align === 'center') return marginTop + (marginHeight - run.height) / 2 - flowTop;
-  }
+	if (vertical.relativeTo === "margin") {
+		const marginTop = metrics.margins.top;
+		const marginHeight =
+			metrics.pageSize.h - metrics.margins.top - metrics.margins.bottom;
+		if (offsetPx !== undefined) return marginTop + offsetPx - flowTop;
+		if (align === "top") return marginTop - flowTop;
+		if (align === "bottom")
+			return marginTop + marginHeight - run.height - flowTop;
+		if (align === "center")
+			return marginTop + (marginHeight - run.height) / 2 - flowTop;
+	}
 
-  if (offsetPx !== undefined) {
-    return paragraphY + offsetPx;
-  }
+	if (offsetPx !== undefined) {
+		return paragraphY + offsetPx;
+	}
 
-  return paragraphY;
+	return paragraphY;
 }
 
 /** True when a header/footer textbox is floated by an anchor (don't stack it). */
 function isAnchoredTextBox(block: TextBoxBlock): boolean {
-  const a = block.anchor;
-  return (
-    !!a && (a.offsetH != null || a.offsetV != null || a.relFromH != null || a.relFromV != null)
-  );
+	const a = block.anchor;
+	return (
+		!!a &&
+		(a.offsetH != null ||
+			a.offsetV != null ||
+			a.relFromH != null ||
+			a.relFromV != null)
+	);
 }
 
 /**
@@ -228,97 +244,102 @@ function isAnchoredTextBox(block: TextBoxBlock): boolean {
  * `resolveHeaderFooterVisualTop` for images. Anchor offsets are already pixels.
  */
 export function resolveHeaderFooterTextBoxTop(
-  anchor: NonNullable<TextBoxBlock['anchor']>,
-  flowHeight: number,
-  metrics: HeaderFooterMetrics
+	anchor: NonNullable<TextBoxBlock["anchor"]>,
+	flowHeight: number,
+	metrics: HeaderFooterMetrics,
 ): number {
-  const flowTop =
-    metrics.section === 'header'
-      ? (metrics.margins.header ?? 48)
-      : metrics.pageSize.h - (metrics.margins.footer ?? 48) - flowHeight;
-  const offsetPx = anchor.offsetV;
-  if (anchor.relFromV === 'page' && offsetPx != null) return offsetPx - flowTop;
-  if (anchor.relFromV === 'margin' && offsetPx != null)
-    return metrics.margins.top + offsetPx - flowTop;
-  return offsetPx ?? 0;
+	const flowTop =
+		metrics.section === "header"
+			? (metrics.margins.header ?? 48)
+			: metrics.pageSize.h - (metrics.margins.footer ?? 48) - flowHeight;
+	const offsetPx = anchor.offsetV;
+	if (anchor.relFromV === "page" && offsetPx != null) return offsetPx - flowTop;
+	if (anchor.relFromV === "margin" && offsetPx != null)
+		return metrics.margins.top + offsetPx - flowTop;
+	return offsetPx ?? 0;
 }
 
 /** Header/footer flow-X (content-area-relative) of an anchored textbox. */
 export function resolveHeaderFooterTextBoxLeft(
-  anchor: NonNullable<TextBoxBlock['anchor']>,
-  metrics: HeaderFooterMetrics
+	anchor: NonNullable<TextBoxBlock["anchor"]>,
+	metrics: HeaderFooterMetrics,
 ): number {
-  const offsetPx = anchor.offsetH;
-  if (offsetPx == null) return 0;
-  // Header content box is inset by margins.left, so a page-relative offset
-  // becomes content-relative by subtracting the left margin; margin/column
-  // relative offsets are already content-relative.
-  if (anchor.relFromH === 'page') return offsetPx - metrics.margins.left;
-  return offsetPx;
+	const offsetPx = anchor.offsetH;
+	if (offsetPx == null) return 0;
+	// Header content box is inset by margins.left, so a page-relative offset
+	// becomes content-relative by subtracting the left margin; margin/column
+	// relative offsets are already content-relative.
+	if (anchor.relFromH === "page") return offsetPx - metrics.margins.left;
+	return offsetPx;
 }
 
 export function calculateHeaderFooterVisualBounds(
-  blocks: FlowBlock[],
-  measures: Measure[],
-  flowHeight: number,
-  metrics: HeaderFooterMetrics
+	blocks: FlowBlock[],
+	measures: Measure[],
+	flowHeight: number,
+	metrics: HeaderFooterMetrics,
 ): { visualTop: number; visualBottom: number } {
-  let visualTop = 0;
-  let visualBottom = flowHeight;
-  let cursorY = 0;
+	let visualTop = 0;
+	let visualBottom = flowHeight;
+	let cursorY = 0;
 
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i];
-    const measure = measures[i];
-    if (!block || !measure) continue;
+	for (let i = 0; i < blocks.length; i++) {
+		const block = blocks[i];
+		const measure = measures[i];
+		if (!block || !measure) continue;
 
-    if (block.kind === 'paragraph' && measure.kind === 'paragraph') {
-      const paragraphStartY = cursorY;
-      const paragraphBottomY = paragraphStartY + measure.totalHeight;
-      visualTop = Math.min(visualTop, paragraphStartY);
-      visualBottom = Math.max(visualBottom, paragraphBottomY);
+		if (block.kind === "paragraph" && measure.kind === "paragraph") {
+			const paragraphStartY = cursorY;
+			const paragraphBottomY = paragraphStartY + measure.totalHeight;
+			visualTop = Math.min(visualTop, paragraphStartY);
+			visualBottom = Math.max(visualBottom, paragraphBottomY);
 
-      for (const run of block.runs) {
-        if (run.kind !== 'image' || !run.position) continue;
-        const runTop = resolveHeaderFooterVisualTop(run, paragraphStartY, flowHeight, metrics);
-        visualTop = Math.min(visualTop, runTop);
-        visualBottom = Math.max(visualBottom, runTop + run.height);
-      }
+			for (const run of block.runs) {
+				if (run.kind !== "image" || !run.position) continue;
+				const runTop = resolveHeaderFooterVisualTop(
+					run,
+					paragraphStartY,
+					flowHeight,
+					metrics,
+				);
+				visualTop = Math.min(visualTop, runTop);
+				visualBottom = Math.max(visualBottom, runTop + run.height);
+			}
 
-      cursorY = paragraphBottomY;
-    } else if (block.kind === 'table' && measure.kind === 'table') {
-      const blockBottomY = cursorY + measure.totalHeight;
-      visualTop = Math.min(visualTop, cursorY);
-      visualBottom = Math.max(visualBottom, blockBottomY);
-      cursorY = blockBottomY;
-    } else if (block.kind === 'image' && measure.kind === 'image') {
-      const blockBottomY = cursorY + measure.height;
-      visualTop = Math.min(visualTop, cursorY);
-      visualBottom = Math.max(visualBottom, blockBottomY);
-      cursorY = blockBottomY;
-    } else if (block.kind === 'textBox' && measure.kind === 'textBox') {
-      if (isAnchoredTextBox(block as TextBoxBlock)) {
-        // Floated (anchored) — contributes its ABSOLUTE extent to the bounds
-        // but does NOT take flow space. Stacking these (the old behavior) summed
-        // all heights, inflating the header so the top margin expanded and the
-        // body was pushed onto extra pages.
-        const top = resolveHeaderFooterTextBoxTop(
-          (block as TextBoxBlock).anchor!,
-          flowHeight,
-          metrics
-        );
-        visualTop = Math.min(visualTop, top);
-        visualBottom = Math.max(visualBottom, top + measure.height);
-      } else {
-        const blockBottomY = cursorY + measure.height;
-        visualTop = Math.min(visualTop, cursorY);
-        visualBottom = Math.max(visualBottom, blockBottomY);
-        cursorY = blockBottomY;
-      }
-    }
-  }
+			cursorY = paragraphBottomY;
+		} else if (block.kind === "table" && measure.kind === "table") {
+			const blockBottomY = cursorY + measure.totalHeight;
+			visualTop = Math.min(visualTop, cursorY);
+			visualBottom = Math.max(visualBottom, blockBottomY);
+			cursorY = blockBottomY;
+		} else if (block.kind === "image" && measure.kind === "image") {
+			const blockBottomY = cursorY + measure.height;
+			visualTop = Math.min(visualTop, cursorY);
+			visualBottom = Math.max(visualBottom, blockBottomY);
+			cursorY = blockBottomY;
+		} else if (block.kind === "textBox" && measure.kind === "textBox") {
+			if (isAnchoredTextBox(block as TextBoxBlock)) {
+				// Floated (anchored) — contributes its ABSOLUTE extent to the bounds
+				// but does NOT take flow space. Stacking these (the old behavior) summed
+				// all heights, inflating the header so the top margin expanded and the
+				// body was pushed onto extra pages.
+				const top = resolveHeaderFooterTextBoxTop(
+					(block as TextBoxBlock).anchor!,
+					flowHeight,
+					metrics,
+				);
+				visualTop = Math.min(visualTop, top);
+				visualBottom = Math.max(visualBottom, top + measure.height);
+			} else {
+				const blockBottomY = cursorY + measure.height;
+				visualTop = Math.min(visualTop, cursorY);
+				visualBottom = Math.max(visualBottom, blockBottomY);
+				cursorY = blockBottomY;
+			}
+		}
+	}
 
-  return { visualTop, visualBottom };
+	return { visualTop, visualBottom };
 }
 
 // ============================================================================
@@ -326,9 +347,9 @@ export function calculateHeaderFooterVisualBounds(
 // ============================================================================
 
 export type ConvertHeaderFooterOptions = {
-  styles?: StyleDefinitions | null;
-  theme?: Theme | null;
-  measureBlocks: MeasureBlocksFn;
+	styles?: StyleDefinitions | null;
+	theme?: Theme | null;
+	measureBlocks: MeasureBlocksFn;
 };
 
 /**
@@ -340,43 +361,47 @@ export type ConvertHeaderFooterOptions = {
  * textBox, fields) and the inline editor's content stay in lockstep.
  */
 export function convertHeaderFooterToContent(
-  headerFooter: HeaderFooter | null | undefined,
-  contentWidth: number,
-  metrics: HeaderFooterMetrics,
-  options: ConvertHeaderFooterOptions
+	headerFooter: HeaderFooter | null | undefined,
+	contentWidth: number,
+	metrics: HeaderFooterMetrics,
+	options: ConvertHeaderFooterOptions,
 ): HeaderFooterContent | undefined {
-  if (!headerFooter || !headerFooter.content || headerFooter.content.length === 0) {
-    return undefined;
-  }
+	if (
+		!headerFooter ||
+		!headerFooter.content ||
+		headerFooter.content.length === 0
+	) {
+		return undefined;
+	}
 
-  const pmDoc = headerFooterToProseDoc(headerFooter.content, {
-    styles: options.styles ?? undefined,
-    theme: options.theme ?? null,
-  });
-  const blocks = toFlowBlocks(pmDoc, { theme: options.theme ?? undefined });
-  if (blocks.length === 0) return undefined;
+	const pmDoc = headerFooterToProseDoc(headerFooter.content, {
+		styles: options.styles ?? undefined,
+		theme: options.theme ?? null,
+	});
+	const blocks = toFlowBlocks(pmDoc, { theme: options.theme ?? undefined });
+	if (blocks.length === 0) return undefined;
 
-  const blocksForMeasure = normalizeHeaderFooterMeasureBlocks(blocks);
-  const measures = options.measureBlocks(blocksForMeasure, contentWidth);
-  const totalHeight = measures.reduce((h, m) => {
-    if (m.kind === 'paragraph') return h + m.totalHeight;
-    if (m.kind === 'table') return h + m.totalHeight;
-    if (m.kind === 'image') return h + m.height;
-    if (m.kind === 'textBox') return h + m.height;
-    return h;
-  }, 0);
-  const { visualTop, visualBottom } = calculateHeaderFooterVisualBounds(
-    blocks,
-    measures,
-    totalHeight,
-    metrics
-  );
+	const blocksForMeasure = normalizeHeaderFooterMeasureBlocks(blocks);
+	const measures = options.measureBlocks(blocksForMeasure, contentWidth);
+	const totalHeight = measures.reduce((h, m) => {
+		if (m.kind === "paragraph") return h + m.totalHeight;
+		if (m.kind === "table") return h + m.totalHeight;
+		if (m.kind === "image") return h + m.height;
+		if (m.kind === "textBox") return h + m.height;
+		return h;
+	}, 0);
+	const { visualTop, visualBottom } = calculateHeaderFooterVisualBounds(
+		blocks,
+		measures,
+		totalHeight,
+		metrics,
+	);
 
-  return {
-    blocks: blocksForMeasure,
-    measures,
-    height: totalHeight,
-    visualTop,
-    visualBottom,
-  };
+	return {
+		blocks: blocksForMeasure,
+		measures,
+		height: totalHeight,
+		visualTop,
+		visualBottom,
+	};
 }

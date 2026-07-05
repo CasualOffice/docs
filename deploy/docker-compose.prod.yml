@@ -15,55 +15,20 @@ services:
       context: .
       dockerfile: Dockerfile
     image: casual-editor:local
-    depends_on:
-      redis:
-        condition: service_healthy
     environment:
       PORT: "8080"
       HOST: "0.0.0.0"
-      # Production mode: the server refuses to boot with in-memory Y.Doc
-      # storage (rooms lost on restart) — so REDIS_URL below is mandatory here.
-      NODE_ENV: "production"
-      # We terminate TLS at Caddy; trust its forwarded IP so per-IP rate
-      # limiting keys on the real client, not the proxy container.
-      TRUST_PROXY: "true"
       CASUAL_FILE_EXT: ".docx"
-      # File host (workbook/document bytes) — separate from Y.Doc room storage.
+      # Persist Y.Doc room snapshots so a restart doesn't drop live docs.
       CASUAL_STORAGE: "local"
       CASUAL_LOCAL_PATH: "/data"
-      # Y.Doc ROOM storage — this is what actually persists live rooms across a
-      # restart. Without it the server would (now) refuse to start in prod.
-      REDIS_URL: "redis://redis:6379"
-      CASUAL_REDIS_PREFIX: "casual-docs:room:"
+      # For a shared Redis, set REDIS_URL + a per-product key prefix:
+      # REDIS_URL: "redis://redis:6379"
+      # CASUAL_REDIS_PREFIX: "casual-docs:room:"
     volumes:
       - ./data/collab:/data
     expose:
       - "8080"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    # Persist the RDB so a redis restart doesn't drop rooms either.
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
     restart: unless-stopped
 
   proxy:
@@ -86,4 +51,3 @@ services:
 volumes:
   caddy-data:
   caddy-config:
-  redis-data:

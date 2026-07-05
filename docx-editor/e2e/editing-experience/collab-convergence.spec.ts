@@ -28,51 +28,51 @@
  * visible in the report rather than silently absent.
  */
 
-import { test, expect, chromium } from '@playwright/test';
+import { test, expect, chromium } from "@playwright/test";
 
-const COLLAB_E2E = process.env.COLLAB_E2E === '1';
-const COLLAB_URL = process.env.COLLAB_URL ?? 'http://localhost:5174';
+const COLLAB_E2E = process.env.COLLAB_E2E === "1";
+const COLLAB_URL = process.env.COLLAB_URL ?? "http://localhost:5174";
 // Shared room so both clients land on the same Y.Doc.
 const ROOM = `m1b-converge-${Date.now()}`;
 
-test.describe('Yjs 2-client convergence (collaboration example)', () => {
-  test.skip(
-    !COLLAB_E2E,
-    'collab infra not reachable — set COLLAB_E2E=1 + COLLAB_URL (see file header)'
-  );
+test.describe("Yjs 2-client convergence (collaboration example)", () => {
+	test.skip(
+		!COLLAB_E2E,
+		"collab infra not reachable — set COLLAB_E2E=1 + COLLAB_URL (see file header)",
+	);
 
-  test('an edit on client A appears on client B', async () => {
-    // Two isolated browser contexts = two independent peers in the same room.
-    const browser = await chromium.launch();
-    const ctxA = await browser.newContext();
-    const ctxB = await browser.newContext();
-    try {
-      const a = await ctxA.newPage();
-      const b = await ctxB.newPage();
+	test("an edit on client A appears on client B", async () => {
+		// Two isolated browser contexts = two independent peers in the same room.
+		const browser = await chromium.launch();
+		const ctxA = await browser.newContext();
+		const ctxB = await browser.newContext();
+		try {
+			const a = await ctxA.newPage();
+			const b = await ctxB.newPage();
 
-      const url = `${COLLAB_URL}/?room=${ROOM}`;
-      await a.goto(url);
-      await b.goto(url);
+			const url = `${COLLAB_URL}/?room=${ROOM}`;
+			await a.goto(url);
+			await b.goto(url);
 
-      // Wait for both peers to mount their editing surface.
-      const editorA = a.locator('[contenteditable="true"]').first();
-      const editorB = b.locator('[contenteditable="true"]').first();
-      await editorA.waitFor({ state: 'visible', timeout: 15000 });
-      await editorB.waitFor({ state: 'visible', timeout: 15000 });
+			// Wait for both peers to mount their editing surface.
+			const editorA = a.locator('[contenteditable="true"]').first();
+			const editorB = b.locator('[contenteditable="true"]').first();
+			await editorA.waitFor({ state: "visible", timeout: 15000 });
+			await editorB.waitFor({ state: "visible", timeout: 15000 });
 
-      // Give the WebRTC peers a moment to discover each other.
-      await a.waitForTimeout(2000);
+			// Give the WebRTC peers a moment to discover each other.
+			await a.waitForTimeout(2000);
 
-      const marker = `CONVERGE-${Math.floor(Math.random() * 1e6)}`;
-      await editorA.click();
-      await a.keyboard.type(marker);
+			const marker = `CONVERGE-${Math.floor(Math.random() * 1e6)}`;
+			await editorA.click();
+			await a.keyboard.type(marker);
 
-      // Client B should converge to A's edit.
-      await expect(editorB).toContainText(marker, { timeout: 15000 });
-    } finally {
-      await ctxA.close();
-      await ctxB.close();
-      await browser.close();
-    }
-  });
+			// Client B should converge to A's edit.
+			await expect(editorB).toContainText(marker, { timeout: 15000 });
+		} finally {
+			await ctxA.close();
+			await ctxB.close();
+			await browser.close();
+		}
+	});
 });

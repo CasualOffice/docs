@@ -10,17 +10,17 @@
  * UI rendering capabilities (e.g., ReactEditorPlugin, VueEditorPlugin).
  */
 
-import type { Plugin as ProseMirrorPlugin } from 'prosemirror-state';
-import type { EditorView } from 'prosemirror-view';
-import type { Node as ProseMirrorNode } from 'prosemirror-model';
+import type { Plugin as ProseMirrorPlugin } from "prosemirror-state";
+import type { EditorView } from "prosemirror-view";
+import type { Node as ProseMirrorNode } from "prosemirror-model";
 
 /**
  * Coordinates returned by position lookup in the rendered DOM.
  */
 export interface PositionCoordinates {
-  x: number;
-  y: number;
-  height: number;
+	x: number;
+	y: number;
+	height: number;
 }
 
 /**
@@ -34,91 +34,91 @@ export interface PositionCoordinates {
  * to map between ProseMirror positions and DOM elements.
  */
 export interface RenderedDomContext {
-  /** The container element holding all rendered pages. */
-  pagesContainer: HTMLElement;
+	/** The container element holding all rendered pages. */
+	pagesContainer: HTMLElement;
 
-  /**
-   * Get pixel coordinates for a ProseMirror position in the rendered DOM.
-   * Returns null if the position cannot be found.
-   */
-  getCoordinatesForPosition(pmPos: number): PositionCoordinates | null;
+	/**
+	 * Get pixel coordinates for a ProseMirror position in the rendered DOM.
+	 * Returns null if the position cannot be found.
+	 */
+	getCoordinatesForPosition(pmPos: number): PositionCoordinates | null;
 
-  /**
-   * Find DOM elements that overlap with a ProseMirror position range.
-   */
-  findElementsForRange(from: number, to: number): Element[];
+	/**
+	 * Find DOM elements that overlap with a ProseMirror position range.
+	 */
+	findElementsForRange(from: number, to: number): Element[];
 
-  /**
-   * Get bounding rectangles for a range of text, accounting for line wraps.
-   * Returns rects relative to the pages container.
-   */
-  getRectsForRange(
-    from: number,
-    to: number
-  ): Array<{ x: number; y: number; width: number; height: number }>;
+	/**
+	 * Get bounding rectangles for a range of text, accounting for line wraps.
+	 * Returns rects relative to the pages container.
+	 */
+	getRectsForRange(
+		from: number,
+		to: number,
+	): Array<{ x: number; y: number; width: number; height: number }>;
 
-  /** Current zoom level (1 = 100%). */
-  zoom: number;
+	/** Current zoom level (1 = 100%). */
+	zoom: number;
 
-  /**
-   * Offset of the pages container from its parent viewport.
-   */
-  getContainerOffset(): { x: number; y: number };
+	/**
+	 * Offset of the pages container from its parent viewport.
+	 */
+	getContainerOffset(): { x: number; y: number };
 }
 
 /**
  * Props passed to plugin panel components (framework-agnostic base).
  */
 export interface PluginPanelProps<TState = unknown> {
-  /** Current ProseMirror editor view */
-  editorView: EditorView | null;
+	/** Current ProseMirror editor view */
+	editorView: EditorView | null;
 
-  /** Current ProseMirror document */
-  doc: ProseMirrorNode | null;
+	/** Current ProseMirror document */
+	doc: ProseMirrorNode | null;
 
-  /** Scroll editor to a specific position */
-  scrollToPosition: (pos: number) => void;
+	/** Scroll editor to a specific position */
+	scrollToPosition: (pos: number) => void;
 
-  /** Select a range in the editor */
-  selectRange: (from: number, to: number) => void;
+	/** Select a range in the editor */
+	selectRange: (from: number, to: number) => void;
 
-  /** Plugin-specific state (managed by the plugin) */
-  pluginState: TState;
+	/** Plugin-specific state (managed by the plugin) */
+	pluginState: TState;
 
-  /** Width of the panel in pixels */
-  panelWidth: number;
+	/** Width of the panel in pixels */
+	panelWidth: number;
 
-  /**
-   * Context for the rendered DOM (LayoutPainter output).
-   * May be null if layout hasn't completed yet.
-   */
-  renderedDomContext: RenderedDomContext | null;
+	/**
+	 * Context for the rendered DOM (LayoutPainter output).
+	 * May be null if layout hasn't completed yet.
+	 */
+	renderedDomContext: RenderedDomContext | null;
 }
 
 /**
  * Configuration for plugin panel rendering.
  */
 export interface PanelConfig {
-  /** Where to render the panel */
-  position: 'left' | 'right' | 'bottom';
+	/** Where to render the panel */
+	position: "left" | "right" | "bottom";
 
-  /** Default width/height of the panel */
-  defaultSize: number;
+	/** Default width/height of the panel */
+	defaultSize: number;
 
-  /** Minimum size */
-  minSize?: number;
+	/** Minimum size */
+	minSize?: number;
 
-  /** Maximum size */
-  maxSize?: number;
+	/** Maximum size */
+	maxSize?: number;
 
-  /** Whether the panel is resizable */
-  resizable?: boolean;
+	/** Whether the panel is resizable */
+	resizable?: boolean;
 
-  /** Whether the panel can be collapsed */
-  collapsible?: boolean;
+	/** Whether the panel can be collapsed */
+	collapsible?: boolean;
 
-  /** Initial collapsed state */
-  defaultCollapsed?: boolean;
+	/** Initial collapsed state */
+	defaultCollapsed?: boolean;
 }
 
 /**
@@ -135,45 +135,45 @@ export interface PanelConfig {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface EditorPluginCore<TState = any> {
-  /** Unique plugin identifier */
-  id: string;
+	/** Unique plugin identifier */
+	id: string;
 
-  /** Display name for the plugin */
-  name: string;
+	/** Display name for the plugin */
+	name: string;
 
-  /**
-   * ProseMirror plugins to register with the editor.
-   * These are merged with the editor's internal plugins.
-   */
-  proseMirrorPlugins?: ProseMirrorPlugin[];
+	/**
+	 * ProseMirror plugins to register with the editor.
+	 * These are merged with the editor's internal plugins.
+	 */
+	proseMirrorPlugins?: ProseMirrorPlugin[];
 
-  /**
-   * Configuration for the panel (position, size, etc.)
-   */
-  panelConfig?: PanelConfig;
+	/**
+	 * Configuration for the panel (position, size, etc.)
+	 */
+	panelConfig?: PanelConfig;
 
-  /**
-   * Called when the editor state changes.
-   * Use this to update plugin-specific state based on document changes.
-   */
-  onStateChange?: (view: EditorView) => TState | undefined;
+	/**
+	 * Called when the editor state changes.
+	 * Use this to update plugin-specific state based on document changes.
+	 */
+	onStateChange?: (view: EditorView) => TState | undefined;
 
-  /**
-   * Initialize plugin state when the plugin is first loaded.
-   */
-  initialize?: (view: EditorView | null) => TState;
+	/**
+	 * Initialize plugin state when the plugin is first loaded.
+	 */
+	initialize?: (view: EditorView | null) => TState;
 
-  /**
-   * Called when the plugin is being destroyed.
-   * Use this for cleanup (subscriptions, timers, etc.)
-   */
-  destroy?: () => void;
+	/**
+	 * Called when the plugin is being destroyed.
+	 * Use this for cleanup (subscriptions, timers, etc.)
+	 */
+	destroy?: () => void;
 
-  /**
-   * CSS styles to inject for this plugin.
-   * Can be a string of CSS or a URL to a stylesheet.
-   */
-  styles?: string;
+	/**
+	 * CSS styles to inject for this plugin.
+	 * Can be a string of CSS or a URL to a stylesheet.
+	 */
+	styles?: string;
 }
 
 /**
@@ -181,32 +181,32 @@ export interface EditorPluginCore<TState = any> {
  * Framework adapters extend this with rendering capabilities.
  */
 export interface SidebarItem {
-  /** Unique ID for this item (used as React key and for overlap resolution). */
-  id: string;
+	/** Unique ID for this item (used as React key and for overlap resolution). */
+	id: string;
 
-  /** ProseMirror document position this item anchors to. */
-  anchorPos: number;
+	/** ProseMirror document position this item anchors to. */
+	anchorPos: number;
 
-  /** Optional key into the anchorPositions Map (e.g. "comment-42", "revision-7"). */
-  anchorKey?: string;
+	/** Optional key into the anchorPositions Map (e.g. "comment-42", "revision-7"). */
+	anchorKey?: string;
 
-  /** Sort priority within items at the same anchor Y. Lower = first. Default: 0. */
-  priority?: number;
+	/** Sort priority within items at the same anchor Y. Lower = first. Default: 0. */
+	priority?: number;
 
-  /** Temporary items (e.g. "add comment" input) skip entrance animation. */
-  isTemporary?: boolean;
+	/** Temporary items (e.g. "add comment" input) skip entrance animation. */
+	isTemporary?: boolean;
 
-  /** Pre-computed Y position (scroll-container coords, pre-zoom). Overrides anchor resolution. */
-  fixedY?: number;
+	/** Pre-computed Y position (scroll-container coords, pre-zoom). Overrides anchor resolution. */
+	fixedY?: number;
 }
 
 /**
  * Context provided to plugins when computing sidebar items.
  */
 export interface SidebarItemContext {
-  editorView: EditorView | null;
-  renderedDomContext: RenderedDomContext | null;
-  /** Pre-computed Y positions from layout engine (keys like "comment-{id}"). */
-  anchorPositions: Map<string, number>;
-  zoom: number;
+	editorView: EditorView | null;
+	renderedDomContext: RenderedDomContext | null;
+	/** Pre-computed Y positions from layout engine (keys like "comment-{id}"). */
+	anchorPositions: Map<string, number>;
+	zoom: number;
 }

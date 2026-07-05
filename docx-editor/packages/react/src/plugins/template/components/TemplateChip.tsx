@@ -8,35 +8,35 @@
  */
 
 // TemplateChip uses React.createElement in template/index.ts, so no direct JSX import needed here
-import type { SidebarItemRenderProps } from '../../../plugin-api/types';
-import type { TemplateTag, TagType } from '../prosemirror-plugin';
+import type { SidebarItemRenderProps } from "../../../plugin-api/types";
+import type { TemplateTag, TagType } from "../prosemirror-plugin";
 
 const COLORS: Record<TagType, string> = {
-  variable: '#f59e0b',
-  sectionStart: '#3b82f6',
-  sectionEnd: '#3b82f6',
-  invertedStart: '#8b5cf6',
-  raw: '#ef4444',
+	variable: "#f59e0b",
+	sectionStart: "#3b82f6",
+	sectionEnd: "#3b82f6",
+	invertedStart: "#8b5cf6",
+	raw: "#ef4444",
 };
 
 function getLabel(type: TagType): string {
-  switch (type) {
-    case 'sectionStart':
-      return 'LOOP / IF';
-    case 'invertedStart':
-      return 'IF NOT';
-    case 'raw':
-      return 'HTML';
-    default:
-      return '';
-  }
+	switch (type) {
+		case "sectionStart":
+			return "LOOP / IF";
+		case "invertedStart":
+			return "IF NOT";
+		case "raw":
+			return "HTML";
+		default:
+			return "";
+	}
 }
 
 export interface TemplateChipProps extends SidebarItemRenderProps {
-  tag: TemplateTag;
-  isHovered: boolean;
-  onHover: (id: string | undefined) => void;
-  onSelect: (id: string) => void;
+	tag: TemplateTag;
+	isHovered: boolean;
+	onHover: (id: string | undefined) => void;
+	onSelect: (id: string) => void;
 }
 
 /** CSS for template chips in the sidebar. */
@@ -110,62 +110,72 @@ export const TEMPLATE_CHIP_STYLES = `
 }
 `;
 
-export function TemplateChip({ tag, isHovered, measureRef, onHover, onSelect }: TemplateChipProps) {
-  const label = getLabel(tag.type);
-  const color = COLORS[tag.type];
-  const isSection = tag.type === 'sectionStart' || tag.type === 'invertedStart';
+export function TemplateChip({
+	tag,
+	isHovered,
+	measureRef,
+	onHover,
+	onSelect,
+}: TemplateChipProps) {
+	const label = getLabel(tag.type);
+	const color = COLORS[tag.type];
+	const isSection = tag.type === "sectionStart" || tag.type === "invertedStart";
 
-  return (
-    <div ref={measureRef} style={{ display: 'flex', alignItems: 'flex-start' }}>
-      {/* Connector line */}
-      <div
-        style={{
-          width: 20,
-          height: 1,
-          background: isHovered ? '#3b82f6' : '#d0d0d0',
-          marginTop: 12,
-          marginRight: 4,
-          flexShrink: 0,
-        }}
-      />
-      <div
-        className={`template-annotation-chip ${isHovered ? 'hovered' : ''}`}
-        style={{ borderLeftColor: color }}
-        onMouseEnter={() => onHover(tag.id)}
-        onMouseLeave={() => onHover(undefined)}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(tag.id);
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-        title={
-          isSection
-            ? `${tag.rawTag}\nIterates over ${tag.name}[]. Access nested properties via ${tag.name}.property`
-            : tag.rawTag
-        }
-      >
-        {label && (
-          <span className="template-chip-badge" style={{ background: color }}>
-            {label}
-          </span>
-        )}
-        {!label && (
-          <span className="template-chip-dot" style={{ color }}>
-            ●
-          </span>
-        )}
-        <span className="template-chip-name">{tag.name}</span>
+	return (
+		<div ref={measureRef} style={{ display: "flex", alignItems: "flex-start" }}>
+			{/* Connector line */}
+			<div
+				style={{
+					width: 20,
+					height: 1,
+					background: isHovered ? "#3b82f6" : "#d0d0d0",
+					marginTop: 12,
+					marginRight: 4,
+					flexShrink: 0,
+				}}
+			/>
+			<div
+				className={`template-annotation-chip ${isHovered ? "hovered" : ""}`}
+				style={{ borderLeftColor: color }}
+				onMouseEnter={() => onHover(tag.id)}
+				onMouseLeave={() => onHover(undefined)}
+				onClick={(e) => {
+					e.stopPropagation();
+					onSelect(tag.id);
+				}}
+				onMouseDown={(e) => e.stopPropagation()}
+				title={
+					isSection
+						? `${tag.rawTag}\nIterates over ${tag.name}[]. Access nested properties via ${tag.name}.property`
+						: tag.rawTag
+				}
+			>
+				{label && (
+					<span className="template-chip-badge" style={{ background: color }}>
+						{label}
+					</span>
+				)}
+				{!label && (
+					<span className="template-chip-dot" style={{ color }}>
+						●
+					</span>
+				)}
+				<span className="template-chip-name">{tag.name}</span>
 
-        {isSection && tag.nestedVars && tag.nestedVars.length > 0 && (
-          <div className="template-chip-nested">
-            {tag.nestedVars.map((v, i) => (
-              <span key={i} className="template-nested-var" title={`Access: ${tag.name}.${v}`}>
-                {v.includes('.') ? v.split('.').pop() : v}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+				{isSection && tag.nestedVars && tag.nestedVars.length > 0 && (
+					<div className="template-chip-nested">
+						{tag.nestedVars.map((v, i) => (
+							<span
+								key={i}
+								className="template-nested-var"
+								title={`Access: ${tag.name}.${v}`}
+							>
+								{v.includes(".") ? v.split(".").pop() : v}
+							</span>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	);
 }

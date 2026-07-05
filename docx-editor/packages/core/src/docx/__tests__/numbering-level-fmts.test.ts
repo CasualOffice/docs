@@ -2,10 +2,10 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { describe, test, expect } from 'bun:test';
-import { parseNumbering } from '../numberingParser';
-import { parseParagraph } from '../paragraphParser';
-import { parseXmlDocument, type XmlElement } from '../xmlParser';
+import { describe, test, expect } from "bun:test";
+import { parseNumbering } from "../numberingParser";
+import { parseParagraph } from "../paragraphParser";
+import { parseXmlDocument, type XmlElement } from "../xmlParser";
 
 const NUMBERING_MULTI_LEVEL = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -31,45 +31,52 @@ const NUMBERING_MULTI_LEVEL = `<?xml version="1.0" encoding="UTF-8" standalone="
   </w:num>
 </w:numbering>`;
 
-function parseParagraphXml(xml: string, numbering: ReturnType<typeof parseNumbering>) {
-  const root = parseXmlDocument(xml) as XmlElement | null;
-  if (!root) throw new Error('Failed to parse paragraph XML');
-  return parseParagraph(root, null, null, numbering, null, null);
+function parseParagraphXml(
+	xml: string,
+	numbering: ReturnType<typeof parseNumbering>,
+) {
+	const root = parseXmlDocument(xml) as XmlElement | null;
+	if (!root) throw new Error("Failed to parse paragraph XML");
+	return parseParagraph(root, null, null, numbering, null, null);
 }
 
-describe('paragraphParser populates listRendering.levelNumFmts', () => {
-  const numbering = parseNumbering(NUMBERING_MULTI_LEVEL);
+describe("paragraphParser populates listRendering.levelNumFmts", () => {
+	const numbering = parseNumbering(NUMBERING_MULTI_LEVEL);
 
-  test('captures numFmt for level 0 only when ilvl=0', () => {
-    const para = parseParagraphXml(
-      `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	test("captures numFmt for level 0 only when ilvl=0", () => {
+		const para = parseParagraphXml(
+			`<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>
       </w:p>`,
-      numbering
-    );
-    expect(para.listRendering?.levelNumFmts).toEqual(['upperRoman']);
-    expect(para.listRendering?.marker).toBe('%1.');
-  });
+			numbering,
+		);
+		expect(para.listRendering?.levelNumFmts).toEqual(["upperRoman"]);
+		expect(para.listRendering?.marker).toBe("%1.");
+	});
 
-  test('captures numFmts for levels 0..1 when ilvl=1', () => {
-    const para = parseParagraphXml(
-      `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	test("captures numFmts for levels 0..1 when ilvl=1", () => {
+		const para = parseParagraphXml(
+			`<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:pPr><w:numPr><w:ilvl w:val="1"/><w:numId w:val="1"/></w:numPr></w:pPr>
       </w:p>`,
-      numbering
-    );
-    expect(para.listRendering?.levelNumFmts).toEqual(['upperRoman', 'decimal']);
-    expect(para.listRendering?.marker).toBe('%1.%2.');
-  });
+			numbering,
+		);
+		expect(para.listRendering?.levelNumFmts).toEqual(["upperRoman", "decimal"]);
+		expect(para.listRendering?.marker).toBe("%1.%2.");
+	});
 
-  test('captures numFmts for levels 0..2 when ilvl=2', () => {
-    const para = parseParagraphXml(
-      `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	test("captures numFmts for levels 0..2 when ilvl=2", () => {
+		const para = parseParagraphXml(
+			`<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
         <w:pPr><w:numPr><w:ilvl w:val="2"/><w:numId w:val="1"/></w:numPr></w:pPr>
       </w:p>`,
-      numbering
-    );
-    expect(para.listRendering?.levelNumFmts).toEqual(['upperRoman', 'decimal', 'lowerLetter']);
-    expect(para.listRendering?.marker).toBe('%3)');
-  });
+			numbering,
+		);
+		expect(para.listRendering?.levelNumFmts).toEqual([
+			"upperRoman",
+			"decimal",
+			"lowerLetter",
+		]);
+		expect(para.listRendering?.marker).toBe("%3)");
+	});
 });

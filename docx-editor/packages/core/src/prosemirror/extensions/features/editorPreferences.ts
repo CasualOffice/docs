@@ -20,20 +20,20 @@
  */
 
 export interface EditorPreferences {
-  /** Replace `"` / `'` / `--` / `...` with typographic equivalents as the user types. */
-  smartQuotes: boolean;
-  /** Symbol sequences (e.g. `(c)` → ©) + common-typo dictionary. */
-  autocorrect: boolean;
+	/** Replace `"` / `'` / `--` / `...` with typographic equivalents as the user types. */
+	smartQuotes: boolean;
+	/** Symbol sequences (e.g. `(c)` → ©) + common-typo dictionary. */
+	autocorrect: boolean;
 }
 
 export const editorPreferences: EditorPreferences = {
-  smartQuotes: true,
-  autocorrect: true,
+	smartQuotes: true,
+	autocorrect: true,
 };
 
 export function setEditorPreference<K extends keyof EditorPreferences>(
-  key: K,
-  value: EditorPreferences[K]
+	key: K,
+	value: EditorPreferences[K],
 ): void {
-  editorPreferences[key] = value;
+	editorPreferences[key] = value;
 }

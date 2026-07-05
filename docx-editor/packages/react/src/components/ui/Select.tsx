@@ -8,191 +8,194 @@
  * A minimal, accessible select dropdown using Radix UI primitives.
  */
 
-import * as React from 'react';
-import * as SelectPrimitive from '@radix-ui/react-select';
-import { cn } from '../../lib/utils';
+import type * as React from "react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { cn } from "../../lib/utils";
 
 const Select: typeof SelectPrimitive.Root = SelectPrimitive.Root;
 const SelectGroup: typeof SelectPrimitive.Group = SelectPrimitive.Group;
 const SelectValue: typeof SelectPrimitive.Value = SelectPrimitive.Value;
 
 function SelectTrigger({
-  className,
-  children,
-  onMouseDown,
-  ...props
+	className,
+	children,
+	onMouseDown,
+	...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>) {
-  return (
-    <SelectPrimitive.Trigger
-      className={cn(
-        'flex h-8 items-center justify-between gap-1 rounded px-2 py-1',
-        'text-sm text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent',
-        'hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:outline-none focus:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        'transition-colors duration-150',
-        '[&>span]:truncate',
-        className
-      )}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        onMouseDown?.(e);
-      }}
-      {...props}
-    >
-      {children}
-      <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="h-4 w-4 text-[color:var(--doc-text-on-surface-muted,#5f6368)] shrink-0" />
-      </SelectPrimitive.Icon>
-    </SelectPrimitive.Trigger>
-  );
+	return (
+		<SelectPrimitive.Trigger
+			className={cn(
+				"flex h-8 items-center justify-between gap-1 rounded px-2 py-1",
+				"text-sm text-[color:var(--doc-text-on-surface,#1f2937)] bg-transparent",
+				"hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:outline-none focus:bg-[color:var(--doc-bg-hover,#f1f3f4)]",
+				"disabled:cursor-not-allowed disabled:opacity-50",
+				"transition-colors duration-150",
+				"[&>span]:truncate",
+				className,
+			)}
+			onMouseDown={(e) => {
+				e.preventDefault();
+				onMouseDown?.(e);
+			}}
+			{...props}
+		>
+			{children}
+			<SelectPrimitive.Icon asChild>
+				<ChevronDownIcon className="h-4 w-4 text-[color:var(--doc-text-on-surface-muted,#5f6368)] shrink-0" />
+			</SelectPrimitive.Icon>
+		</SelectPrimitive.Trigger>
+	);
 }
 
 function SelectContent({
-  className,
-  children,
-  position = 'popper',
-  onCloseAutoFocus,
-  ...props
+	className,
+	children,
+	position = "popper",
+	onCloseAutoFocus,
+	...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>) {
-  return (
-    <SelectPrimitive.Portal>
-      {/* Wrap in .ep-root so Tailwind scoped utilities apply inside the portal */}
-      <div className="ep-root">
-        <SelectPrimitive.Content
-          className={cn(
-            'relative z-50 max-h-72 min-w-[8rem] overflow-hidden',
-            'rounded-lg border border-[color:var(--doc-border,#e0e0e0)] bg-[color:var(--doc-surface,white)] shadow-lg',
-            'data-[state=open]:animate-in data-[state=closed]:animate-out',
-            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
-            position === 'popper' &&
-              'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
-            className
-          )}
-          position={position}
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            onCloseAutoFocus?.(e);
-          }}
-          {...props}
-        >
-          <SelectPrimitive.Viewport
-            className={cn(
-              'p-1',
-              position === 'popper' &&
-                'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]'
-            )}
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            {children}
-          </SelectPrimitive.Viewport>
-        </SelectPrimitive.Content>
-      </div>
-    </SelectPrimitive.Portal>
-  );
+	return (
+		<SelectPrimitive.Portal>
+			{/* Wrap in .ep-root so Tailwind scoped utilities apply inside the portal */}
+			<div className="ep-root">
+				<SelectPrimitive.Content
+					className={cn(
+						"relative z-50 max-h-72 min-w-[8rem] overflow-hidden",
+						"rounded-lg border border-[color:var(--doc-border,#e0e0e0)] bg-[color:var(--doc-surface,white)] shadow-lg",
+						"data-[state=open]:animate-in data-[state=closed]:animate-out",
+						"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+						"data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+						"data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
+						position === "popper" &&
+							"data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
+						className,
+					)}
+					position={position}
+					onCloseAutoFocus={(e) => {
+						e.preventDefault();
+						onCloseAutoFocus?.(e);
+					}}
+					{...props}
+				>
+					<SelectPrimitive.Viewport
+						className={cn(
+							"p-1",
+							position === "popper" &&
+								"h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+						)}
+						onMouseDown={(e) => e.preventDefault()}
+					>
+						{children}
+					</SelectPrimitive.Viewport>
+				</SelectPrimitive.Content>
+			</div>
+		</SelectPrimitive.Portal>
+	);
 }
 
 function SelectLabel({
-  className,
-  ...props
+	className,
+	...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>) {
-  return (
-    <SelectPrimitive.Label
-      className={cn(
-        'px-2 py-1.5 text-xs font-medium text-[color:var(--doc-text-on-surface-muted,#5f6368)]',
-        className
-      )}
-      {...props}
-    />
-  );
+	return (
+		<SelectPrimitive.Label
+			className={cn(
+				"px-2 py-1.5 text-xs font-medium text-[color:var(--doc-text-on-surface-muted,#5f6368)]",
+				className,
+			)}
+			{...props}
+		/>
+	);
 }
 
 function SelectItem({
-  className,
-  children,
-  onMouseDown,
-  ...props
+	className,
+	children,
+	onMouseDown,
+	...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>) {
-  return (
-    <SelectPrimitive.Item
-      className={cn(
-        'relative flex w-full cursor-pointer select-none items-center',
-        'rounded px-2 py-1.5 text-sm text-[color:var(--doc-text-on-surface,#1f2937)] outline-none',
-        'hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
-        'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-        className
-      )}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        onMouseDown?.(e);
-      }}
-      {...props}
-    >
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-      <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
-        <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="h-4 w-4" />
-        </SelectPrimitive.ItemIndicator>
-      </span>
-    </SelectPrimitive.Item>
-  );
+	return (
+		<SelectPrimitive.Item
+			className={cn(
+				"relative flex w-full cursor-pointer select-none items-center",
+				"rounded px-2 py-1.5 text-sm text-[color:var(--doc-text-on-surface,#1f2937)] outline-none",
+				"hover:bg-[color:var(--doc-bg-hover,#f1f3f4)] focus:bg-[color:var(--doc-bg-hover,#f1f3f4)]",
+				"data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				className,
+			)}
+			onMouseDown={(e) => {
+				e.preventDefault();
+				onMouseDown?.(e);
+			}}
+			{...props}
+		>
+			<SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+			<span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+				<SelectPrimitive.ItemIndicator>
+					<CheckIcon className="h-4 w-4" />
+				</SelectPrimitive.ItemIndicator>
+			</span>
+		</SelectPrimitive.Item>
+	);
 }
 
 function SelectSeparator({
-  className,
-  ...props
+	className,
+	...props
 }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>) {
-  return (
-    <SelectPrimitive.Separator
-      className={cn('-mx-1 my-1 h-px bg-[color:var(--doc-border-light,#e5e7eb)]', className)}
-      {...props}
-    />
-  );
+	return (
+		<SelectPrimitive.Separator
+			className={cn(
+				"-mx-1 my-1 h-px bg-[color:var(--doc-border-light,#e5e7eb)]",
+				className,
+			)}
+			{...props}
+		/>
+	);
 }
 
 // Icons
 function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-    >
-      <path
-        fillRule="evenodd"
-        d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
+	return (
+		<svg
+			className={className}
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+		>
+			<path
+				fillRule="evenodd"
+				d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+				clipRule="evenodd"
+			/>
+		</svg>
+	);
 }
 
 function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-    >
-      <path
-        fillRule="evenodd"
-        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
+	return (
+		<svg
+			className={className}
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+		>
+			<path
+				fillRule="evenodd"
+				d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+				clipRule="evenodd"
+			/>
+		</svg>
+	);
 }
 
 export {
-  Select,
-  SelectGroup,
-  SelectValue,
-  SelectTrigger,
-  SelectContent,
-  SelectLabel,
-  SelectItem,
-  SelectSeparator,
+	Select,
+	SelectGroup,
+	SelectValue,
+	SelectTrigger,
+	SelectContent,
+	SelectLabel,
+	SelectItem,
+	SelectSeparator,
 };

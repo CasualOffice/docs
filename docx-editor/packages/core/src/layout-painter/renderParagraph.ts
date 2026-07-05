@@ -10,42 +10,42 @@
  */
 
 import type {
-  ParagraphBlock,
-  ParagraphMeasure,
-  ParagraphFragment,
-  ParagraphIndent,
-  ParagraphBorders,
-  BorderStyle,
-  MeasuredLine,
-  Run,
-  TextRun,
-  TabRun,
-  ImageRun,
-  LineBreakRun,
-  FieldRun,
-  TabStop,
-} from '../layout-engine/types';
-import { isFloatingImageRun, type RenderContext } from './renderPage';
-import { applyImageVisualAttrs, hasImageVisualAttrs } from './renderImage';
+	ParagraphBlock,
+	ParagraphMeasure,
+	ParagraphFragment,
+	ParagraphIndent,
+	ParagraphBorders,
+	BorderStyle,
+	MeasuredLine,
+	Run,
+	TextRun,
+	TabRun,
+	ImageRun,
+	LineBreakRun,
+	FieldRun,
+	TabStop,
+} from "../layout-engine/types";
+import { isFloatingImageRun, type RenderContext } from "./renderPage";
+import { applyImageVisualAttrs, hasImageVisualAttrs } from "./renderImage";
 import {
-  calculateTabWidth,
-  type TabContext,
-  type TabStop as TabCalcStop,
-} from '../prosemirror/utils/tabCalculator';
-import { resolveFontFamily } from '../utils/fontResolver';
-import { colorForAuthor } from '../utils/changeAuthorColor';
+	calculateTabWidth,
+	type TabContext,
+	type TabStop as TabCalcStop,
+} from "../prosemirror/utils/tabCalculator";
+import { resolveFontFamily } from "../utils/fontResolver";
+import { colorForAuthor } from "../utils/changeAuthorColor";
 
 /**
  * CSS class names for paragraph rendering
  */
 export const PARAGRAPH_CLASS_NAMES = {
-  fragment: 'layout-paragraph',
-  line: 'layout-line',
-  run: 'layout-run',
-  text: 'layout-run-text',
-  tab: 'layout-run-tab',
-  image: 'layout-run-image',
-  lineBreak: 'layout-run-linebreak',
+	fragment: "layout-paragraph",
+	line: "layout-line",
+	run: "layout-run",
+	text: "layout-run-text",
+	tab: "layout-run-tab",
+	image: "layout-run-image",
+	lineBreak: "layout-run-linebreak",
 };
 
 // Text wrapping around floating images is implemented via measurement-time
@@ -56,282 +56,301 @@ export const PARAGRAPH_CLASS_NAMES = {
  * Options for rendering a paragraph
  */
 export interface RenderParagraphOptions {
-  /** Document to create elements in */
-  document?: Document;
-  /** Fragment's Y position relative to content area (for per-line margin calculation) */
-  fragmentContentY?: number;
-  /** Borders from the previous adjacent paragraph (for border grouping) */
-  prevBorders?: ParagraphBorders;
-  /** Borders from the next adjacent paragraph (for border grouping) */
-  nextBorders?: ParagraphBorders;
-  /** Inline image runs already rendered for this paragraph block */
-  renderedInlineImageKeys?: Set<string>;
+	/** Document to create elements in */
+	document?: Document;
+	/** Fragment's Y position relative to content area (for per-line margin calculation) */
+	fragmentContentY?: number;
+	/** Borders from the previous adjacent paragraph (for border grouping) */
+	prevBorders?: ParagraphBorders;
+	/** Borders from the next adjacent paragraph (for border grouping) */
+	nextBorders?: ParagraphBorders;
+	/** Inline image runs already rendered for this paragraph block */
+	renderedInlineImageKeys?: Set<string>;
 }
 
 /**
  * Check if run is a text run
  */
 function isTextRun(run: Run): run is TextRun {
-  return run.kind === 'text';
+	return run.kind === "text";
 }
 
 /**
  * Check if run is a tab run
  */
 function isTabRun(run: Run): run is TabRun {
-  return run.kind === 'tab';
+	return run.kind === "tab";
 }
 
 /**
  * Check if run is an image run
  */
 function isImageRun(run: Run): run is ImageRun {
-  return run.kind === 'image';
+	return run.kind === "image";
 }
 
 /**
  * Check if run is a line break run
  */
 function isLineBreakRun(run: Run): run is LineBreakRun {
-  return run.kind === 'lineBreak';
+	return run.kind === "lineBreak";
 }
 
 /**
  * Check if run is a field run
  */
 function isFieldRun(run: Run): run is FieldRun {
-  return run.kind === 'field';
+	return run.kind === "field";
 }
 
 /**
  * Apply text run styles to an element
  */
 function applyRunStyles(
-  element: HTMLElement,
-  run: TextRun | TabRun,
-  resolvedCommentIds?: Set<number>
+	element: HTMLElement,
+	run: TextRun | TabRun,
+	resolvedCommentIds?: Set<number>,
 ): void {
-  // Font properties
-  if (run.fontFamily) {
-    // Use the font resolver for category-appropriate fallback stacks,
-    // matching the same stacks used in measureContainer.ts
-    element.style.fontFamily = resolveFontFamily(run.fontFamily).cssFallback;
-  }
-  if (run.fontSize) {
-    // fontSize is in points - convert to pixels to match Canvas measurement
-    // (1pt = 96/72 px at standard web DPI)
-    // Using px ensures consistent rendering with Canvas-based measurements
-    const fontSizePx = (run.fontSize * 96) / 72;
-    element.style.fontSize = `${fontSizePx}px`;
-  }
-  if (run.bold) {
-    element.style.fontWeight = 'bold';
-  }
-  if (run.italic) {
-    element.style.fontStyle = 'italic';
-  }
+	// Font properties
+	if (run.fontFamily) {
+		// Use the font resolver for category-appropriate fallback stacks,
+		// matching the same stacks used in measureContainer.ts
+		element.style.fontFamily = resolveFontFamily(run.fontFamily).cssFallback;
+	}
+	if (run.fontSize) {
+		// fontSize is in points - convert to pixels to match Canvas measurement
+		// (1pt = 96/72 px at standard web DPI)
+		// Using px ensures consistent rendering with Canvas-based measurements
+		const fontSizePx = (run.fontSize * 96) / 72;
+		element.style.fontSize = `${fontSizePx}px`;
+	}
+	if (run.bold) {
+		element.style.fontWeight = "bold";
+	}
+	if (run.italic) {
+		element.style.fontStyle = "italic";
+	}
 
-  // Color
-  if (run.color) {
-    element.style.color = run.color;
-  }
+	// Color
+	if (run.color) {
+		element.style.color = run.color;
+	}
 
-  // Letter spacing
-  if (run.letterSpacing) {
-    element.style.letterSpacing = `${run.letterSpacing}px`;
-  }
+	// Letter spacing
+	if (run.letterSpacing) {
+		element.style.letterSpacing = `${run.letterSpacing}px`;
+	}
 
-  // Caps / small-caps. OOXML w:caps = render glyphs uppercase; w:smallCaps =
-  // render lowercase glyphs as small uppercase. Map directly onto the
-  // matching CSS properties — same translation the hidden PM toDOM uses.
-  if (run.allCaps) {
-    element.style.textTransform = 'uppercase';
-  }
-  if (run.smallCaps) {
-    element.style.fontVariant = 'small-caps';
-  }
+	// Caps / small-caps. OOXML w:caps = render glyphs uppercase; w:smallCaps =
+	// render lowercase glyphs as small uppercase. Map directly onto the
+	// matching CSS properties — same translation the hidden PM toDOM uses.
+	if (run.allCaps) {
+		element.style.textTransform = "uppercase";
+	}
+	if (run.smallCaps) {
+		element.style.fontVariant = "small-caps";
+	}
 
-  // Baseline shift (OOXML w:position). Already converted from half-points to
-  // CSS px on the bridge; positive raises text the same way CSS does.
-  if (run.positionPx) {
-    element.style.verticalAlign = `${run.positionPx}px`;
-  }
+	// Baseline shift (OOXML w:position). Already converted from half-points to
+	// CSS px on the bridge; positive raises text the same way CSS does.
+	if (run.positionPx) {
+		element.style.verticalAlign = `${run.positionPx}px`;
+	}
 
-  // Horizontal scale (OOXML w:w). Stored as a percent (100 = normal). Apply
-  // via scaleX on an inline-block so the transform actually takes effect.
-  if (run.horizontalScale && run.horizontalScale !== 100) {
-    element.style.display = 'inline-block';
-    element.style.transform = `scaleX(${run.horizontalScale / 100})`;
-    element.style.transformOrigin = 'left center';
-  }
+	// Horizontal scale (OOXML w:w). Stored as a percent (100 = normal). Apply
+	// via scaleX on an inline-block so the transform actually takes effect.
+	if (run.horizontalScale && run.horizontalScale !== 100) {
+		element.style.display = "inline-block";
+		element.style.transform = `scaleX(${run.horizontalScale / 100})`;
+		element.style.transformOrigin = "left center";
+	}
 
-  // Kerning gate (OOXML w:kern). Enable font-kerning when the run's font
-  // size is at or above the threshold; otherwise leave it at the browser
-  // default (`auto`). The painter only knows the resolved fontSize at this
-  // point — assume the gate is satisfied if a non-zero threshold was set.
-  if (run.kerningMinPt && run.kerningMinPt > 0) {
-    const fontSizePt = run.fontSize ?? 11;
-    if (fontSizePt >= run.kerningMinPt) {
-      element.style.fontKerning = 'normal';
-    }
-  }
+	// Kerning gate (OOXML w:kern). Enable font-kerning when the run's font
+	// size is at or above the threshold; otherwise leave it at the browser
+	// default (`auto`). The painter only knows the resolved fontSize at this
+	// point — assume the gate is satisfied if a non-zero threshold was set.
+	if (run.kerningMinPt && run.kerningMinPt > 0) {
+		const fontSizePt = run.fontSize ?? 11;
+		if (fontSizePt >= run.kerningMinPt) {
+			element.style.fontKerning = "normal";
+		}
+	}
 
-  // Cosmetic effect marks (§17.3.2.13/.18/.23/.31/.12). The hidden PM
-  // toDOM uses the same CSS recipes — keep them in sync so the painted
-  // and editable representations match.
-  if (run.emboss) {
-    element.style.textShadow = '1px 1px 1px rgba(255,255,255,0.5), -1px -1px 1px rgba(0,0,0,0.3)';
-  }
-  if (run.imprint) {
-    element.style.textShadow = '-1px -1px 1px rgba(255,255,255,0.5), 1px 1px 1px rgba(0,0,0,0.3)';
-  }
-  if (run.textShadow && !run.emboss && !run.imprint) {
-    // Don't double-apply when emboss/imprint already set text-shadow.
-    element.style.textShadow = '1px 1px 2px rgba(0,0,0,0.3)';
-  }
-  if (run.textOutline) {
-    element.style.webkitTextStroke = '1px currentColor';
-    (element.style as CSSStyleDeclaration & { webkitTextFillColor?: string }).webkitTextFillColor =
-      'transparent';
-  }
-  if (run.emphasisMark) {
-    const variant =
-      run.emphasisMark === 'comma'
-        ? 'filled sesame'
-        : run.emphasisMark === 'circle'
-          ? 'filled circle'
-          : 'filled dot';
-    const position = run.emphasisMark === 'underDot' ? 'under right' : 'over right';
-    element.style.textEmphasis = `${variant}`;
-    element.style.textEmphasisPosition = position;
-    // Safari prefix.
-    (element.style as CSSStyleDeclaration & { webkitTextEmphasis?: string }).webkitTextEmphasis =
-      variant;
-    (
-      element.style as CSSStyleDeclaration & { webkitTextEmphasisPosition?: string }
-    ).webkitTextEmphasisPosition = position;
-  }
+	// Cosmetic effect marks (§17.3.2.13/.18/.23/.31/.12). The hidden PM
+	// toDOM uses the same CSS recipes — keep them in sync so the painted
+	// and editable representations match.
+	if (run.emboss) {
+		element.style.textShadow =
+			"1px 1px 1px rgba(255,255,255,0.5), -1px -1px 1px rgba(0,0,0,0.3)";
+	}
+	if (run.imprint) {
+		element.style.textShadow =
+			"-1px -1px 1px rgba(255,255,255,0.5), 1px 1px 1px rgba(0,0,0,0.3)";
+	}
+	if (run.textShadow && !run.emboss && !run.imprint) {
+		// Don't double-apply when emboss/imprint already set text-shadow.
+		element.style.textShadow = "1px 1px 2px rgba(0,0,0,0.3)";
+	}
+	if (run.textOutline) {
+		element.style.webkitTextStroke = "1px currentColor";
+		(
+			element.style as CSSStyleDeclaration & { webkitTextFillColor?: string }
+		).webkitTextFillColor = "transparent";
+	}
+	if (run.emphasisMark) {
+		const variant =
+			run.emphasisMark === "comma"
+				? "filled sesame"
+				: run.emphasisMark === "circle"
+					? "filled circle"
+					: "filled dot";
+		const position =
+			run.emphasisMark === "underDot" ? "under right" : "over right";
+		element.style.textEmphasis = `${variant}`;
+		element.style.textEmphasisPosition = position;
+		// Safari prefix.
+		(
+			element.style as CSSStyleDeclaration & { webkitTextEmphasis?: string }
+		).webkitTextEmphasis = variant;
+		(
+			element.style as CSSStyleDeclaration & {
+				webkitTextEmphasisPosition?: string;
+			}
+		).webkitTextEmphasisPosition = position;
+	}
 
-  // Highlight (background color)
-  if (run.highlight) {
-    element.style.backgroundColor = run.highlight;
-  }
+	// Highlight (background color)
+	if (run.highlight) {
+		element.style.backgroundColor = run.highlight;
+	}
 
-  // Text decorations
-  const decorations: string[] = [];
+	// Text decorations
+	const decorations: string[] = [];
 
-  if (run.underline) {
-    decorations.push('underline');
-    if (typeof run.underline === 'object') {
-      if (run.underline.style) {
-        element.style.textDecorationStyle = run.underline.style;
-      }
-      if (run.underline.color) {
-        element.style.textDecorationColor = run.underline.color;
-      }
-    }
-  }
+	if (run.underline) {
+		decorations.push("underline");
+		if (typeof run.underline === "object") {
+			if (run.underline.style) {
+				element.style.textDecorationStyle = run.underline.style;
+			}
+			if (run.underline.color) {
+				element.style.textDecorationColor = run.underline.color;
+			}
+		}
+	}
 
-  if (run.strike) {
-    decorations.push('line-through');
-  }
+	if (run.strike) {
+		decorations.push("line-through");
+	}
 
-  // Comment highlight (skip for resolved comments)
-  if (run.commentIds && run.commentIds.length > 0) {
-    const activeCommentId = run.commentIds.find(
-      (id) => !resolvedCommentIds || !resolvedCommentIds.has(id)
-    );
-    if (activeCommentId != null) {
-      element.style.backgroundColor = 'rgba(255, 212, 0, 0.15)';
-      element.style.borderBottom = '1px solid rgba(255, 212, 0, 0.4)';
-      element.dataset.commentId = String(activeCommentId);
-    }
-  }
+	// Comment highlight (skip for resolved comments)
+	if (run.commentIds && run.commentIds.length > 0) {
+		const activeCommentId = run.commentIds.find(
+			(id) => !resolvedCommentIds || !resolvedCommentIds.has(id),
+		);
+		if (activeCommentId != null) {
+			element.style.backgroundColor = "rgba(255, 212, 0, 0.15)";
+			element.style.borderBottom = "1px solid rgba(255, 212, 0, 0.4)";
+			element.dataset.commentId = String(activeCommentId);
+		}
+	}
 
-  // Per-author color ("by author", Word/Google-Docs style); null → no author,
-  // fall back to the classic green-insert / red-delete styling.
-  const changeColor = run.isInsertion || run.isDeletion ? colorForAuthor(run.changeAuthor) : null;
+	// Per-author color ("by author", Word/Google-Docs style); null → no author,
+	// fall back to the classic green-insert / red-delete styling.
+	const changeColor =
+		run.isInsertion || run.isDeletion ? colorForAuthor(run.changeAuthor) : null;
 
-  // Tracked insertion — light author-tint background + dashed underline in the
-  // author's color (default green when anonymous). Decoration = underline.
-  if (run.isInsertion) {
-    element.style.backgroundColor = changeColor?.bg ?? 'rgba(52, 168, 83, 0.08)';
-    element.style.borderBottom = `2px dashed ${changeColor?.solid ?? '#2e7d32'}`;
-    element.style.paddingBottom = '1px';
-    element.classList.add('docx-insertion');
-    if (run.changeAuthor) element.dataset.changeAuthor = run.changeAuthor;
-    if (run.changeDate) element.dataset.changeDate = run.changeDate;
-    if (run.changeRevisionId != null) element.dataset.revisionId = String(run.changeRevisionId);
-  }
+	// Tracked insertion — light author-tint background + dashed underline in the
+	// author's color (default green when anonymous). Decoration = underline.
+	if (run.isInsertion) {
+		element.style.backgroundColor =
+			changeColor?.bg ?? "rgba(52, 168, 83, 0.08)";
+		element.style.borderBottom = `2px dashed ${changeColor?.solid ?? "#2e7d32"}`;
+		element.style.paddingBottom = "1px";
+		element.classList.add("docx-insertion");
+		if (run.changeAuthor) element.dataset.changeAuthor = run.changeAuthor;
+		if (run.changeDate) element.dataset.changeDate = run.changeDate;
+		if (run.changeRevisionId != null)
+			element.dataset.revisionId = String(run.changeRevisionId);
+	}
 
-  // Tracked deletion — light author-tint background + strikethrough in the
-  // author's color (default red when anonymous). Decoration = strikethrough.
-  if (run.isDeletion) {
-    const del = changeColor?.solid ?? '#c62828';
-    element.style.backgroundColor = changeColor?.bg ?? 'rgba(211, 47, 47, 0.08)';
-    element.style.color = del;
-    if (!decorations.includes('line-through')) decorations.push('line-through');
-    element.style.textDecorationColor = del;
-    element.classList.add('docx-deletion');
-    if (run.changeAuthor) element.dataset.changeAuthor = run.changeAuthor;
-    if (run.changeDate) element.dataset.changeDate = run.changeDate;
-    if (run.changeRevisionId != null) element.dataset.revisionId = String(run.changeRevisionId);
-  }
+	// Tracked deletion — light author-tint background + strikethrough in the
+	// author's color (default red when anonymous). Decoration = strikethrough.
+	if (run.isDeletion) {
+		const del = changeColor?.solid ?? "#c62828";
+		element.style.backgroundColor =
+			changeColor?.bg ?? "rgba(211, 47, 47, 0.08)";
+		element.style.color = del;
+		if (!decorations.includes("line-through")) decorations.push("line-through");
+		element.style.textDecorationColor = del;
+		element.classList.add("docx-deletion");
+		if (run.changeAuthor) element.dataset.changeAuthor = run.changeAuthor;
+		if (run.changeDate) element.dataset.changeDate = run.changeDate;
+		if (run.changeRevisionId != null)
+			element.dataset.revisionId = String(run.changeRevisionId);
+	}
 
-  if (decorations.length > 0) {
-    element.style.textDecorationLine = decorations.join(' ');
-  }
+	if (decorations.length > 0) {
+		element.style.textDecorationLine = decorations.join(" ");
+	}
 
-  // Superscript/subscript
-  if (run.superscript) {
-    element.style.verticalAlign = 'super';
-    element.style.fontSize = '0.75em';
-  }
-  if (run.subscript) {
-    element.style.verticalAlign = 'sub';
-    element.style.fontSize = '0.75em';
-  }
+	// Superscript/subscript
+	if (run.superscript) {
+		element.style.verticalAlign = "super";
+		element.style.fontSize = "0.75em";
+	}
+	if (run.subscript) {
+		element.style.verticalAlign = "sub";
+		element.style.fontSize = "0.75em";
+	}
 
-  // Hidden run (OOXML w:vanish, §17.3.2.41). In Word's print/normal view
-  // hidden text is suppressed entirely, but in *editing* view (which we
-  // always are) Word still draws it dimmed with a dotted underline so the
-  // author can navigate to and edit it. Mirror that: keep the run in flow
-  // and selectable — `display: none` would orphan PM positions and break
-  // cursor movement across hidden ranges. A `docx-hidden` class hook lets
-  // host CSS swap to print-style suppression when a future view-mode toggle
-  // ships.
-  if (run.hidden) {
-    element.classList.add('docx-hidden');
-    element.style.opacity = '0.4';
-    element.style.textDecoration = 'underline dotted';
-  }
+	// Hidden run (OOXML w:vanish, §17.3.2.41). In Word's print/normal view
+	// hidden text is suppressed entirely, but in *editing* view (which we
+	// always are) Word still draws it dimmed with a dotted underline so the
+	// author can navigate to and edit it. Mirror that: keep the run in flow
+	// and selectable — `display: none` would orphan PM positions and break
+	// cursor movement across hidden ranges. A `docx-hidden` class hook lets
+	// host CSS swap to print-style suppression when a future view-mode toggle
+	// ships.
+	if (run.hidden) {
+		element.classList.add("docx-hidden");
+		element.style.opacity = "0.4";
+		element.style.textDecoration = "underline dotted";
+	}
 
-  // Per-run RTL (OOXML w:rtl): flip just this run, independent of the
-  // paragraph's bidi direction. The browser's bidi algorithm picks up `dir`
-  // automatically from the attribute.
-  if (run.rtl) {
-    element.setAttribute('dir', 'rtl');
-  }
+	// Per-run RTL (OOXML w:rtl): flip just this run, independent of the
+	// paragraph's bidi direction. The browser's bidi algorithm picks up `dir`
+	// automatically from the attribute.
+	if (run.rtl) {
+		element.setAttribute("dir", "rtl");
+	}
 
-  // Legacy w:effect animations: surface as a class hook so the host CSS
-  // can opt in. We avoid applying actual animations because Word's effects
-  // are obtrusive and most modern docs treat them as legacy decoration.
-  if (run.textEffect) {
-    element.classList.add('docx-text-effect', `docx-text-effect-${run.textEffect}`);
-    element.dataset.effect = run.textEffect;
-  }
+	// Legacy w:effect animations: surface as a class hook so the host CSS
+	// can opt in. We avoid applying actual animations because Word's effects
+	// are obtrusive and most modern docs treat them as legacy decoration.
+	if (run.textEffect) {
+		element.classList.add(
+			"docx-text-effect",
+			`docx-text-effect-${run.textEffect}`,
+		);
+		element.dataset.effect = run.textEffect;
+	}
 }
 
 /**
  * Apply PM position data attributes
  */
-function applyPmPositions(element: HTMLElement, pmStart?: number, pmEnd?: number): void {
-  if (pmStart !== undefined) {
-    element.dataset.pmStart = String(pmStart);
-  }
-  if (pmEnd !== undefined) {
-    element.dataset.pmEnd = String(pmEnd);
-  }
+function applyPmPositions(
+	element: HTMLElement,
+	pmStart?: number,
+	pmEnd?: number,
+): void {
+	if (pmStart !== undefined) {
+		element.dataset.pmStart = String(pmStart);
+	}
+	if (pmEnd !== undefined) {
+		element.dataset.pmEnd = String(pmEnd);
+	}
 }
 
 /**
@@ -343,67 +362,71 @@ function applyPmPositions(element: HTMLElement, pmStart?: number, pmEnd?: number
  * environments without `<template>`/parsing or when the result isn't math.
  */
 function parseMathmlElement(mathml: string, doc: Document): Element | null {
-  try {
-    const tmpl = doc.createElement('template') as HTMLTemplateElement;
-    if (!('content' in tmpl)) return null;
-    tmpl.innerHTML = mathml;
-    const el = tmpl.content.firstElementChild;
-    return el && el.localName.toLowerCase() === 'math' ? el : null;
-  } catch {
-    return null;
-  }
+	try {
+		const tmpl = doc.createElement("template") as HTMLTemplateElement;
+		if (!("content" in tmpl)) return null;
+		tmpl.innerHTML = mathml;
+		const el = tmpl.content.firstElementChild;
+		return el && el.localName.toLowerCase() === "math" ? el : null;
+	} catch {
+		return null;
+	}
 }
 
-function renderTextRun(run: TextRun, doc: Document, resolvedCommentIds?: Set<number>): HTMLElement {
-  const span = doc.createElement('span');
-  span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.text}`;
+function renderTextRun(
+	run: TextRun,
+	doc: Document,
+	resolvedCommentIds?: Set<number>,
+): HTMLElement {
+	const span = doc.createElement("span");
+	span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.text}`;
 
-  applyRunStyles(span, run, resolvedCommentIds);
-  applyPmPositions(span, run.pmStart, run.pmEnd);
+	applyRunStyles(span, run, resolvedCommentIds);
+	applyPmPositions(span, run.pmStart, run.pmEnd);
 
-  // Equation run — render native MathML (converted from the stored OMML)
-  // instead of the italic-text fallback. Falls back to text if the MathML
-  // can't be parsed in this environment.
-  if (run.mathml) {
-    const mathEl = parseMathmlElement(run.mathml, doc);
-    if (mathEl) {
-      span.classList.add('docx-math');
-      // Let MathML use the browser's math font, not the fallback italic.
-      span.style.fontStyle = 'normal';
-      span.style.fontFamily = '';
-      span.appendChild(mathEl);
-      return span;
-    }
-    // else fall through to the plain-text fallback below.
-  }
+	// Equation run — render native MathML (converted from the stored OMML)
+	// instead of the italic-text fallback. Falls back to text if the MathML
+	// can't be parsed in this environment.
+	if (run.mathml) {
+		const mathEl = parseMathmlElement(run.mathml, doc);
+		if (mathEl) {
+			span.classList.add("docx-math");
+			// Let MathML use the browser's math font, not the fallback italic.
+			span.style.fontStyle = "normal";
+			span.style.fontFamily = "";
+			span.appendChild(mathEl);
+			return span;
+		}
+		// else fall through to the plain-text fallback below.
+	}
 
-  // Handle hyperlinks
-  if (run.hyperlink) {
-    const anchor = doc.createElement('a');
-    anchor.href = run.hyperlink.href;
-    // Internal bookmark links (starting with #) should scroll within the document
-    // External links should open in a new tab
-    if (!run.hyperlink.href.startsWith('#')) {
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-    }
-    if (run.hyperlink.tooltip) {
-      anchor.title = run.hyperlink.tooltip;
-    }
-    anchor.textContent = run.text;
-    // Style hyperlink — default Word hyperlink color is blue (#0563c1)
-    const hyperlinkColor = run.color || '#0563c1';
-    anchor.style.color = hyperlinkColor;
-    anchor.style.textDecoration = 'underline';
-    // Override span color to match anchor (prevents color mismatch in selection)
-    span.style.color = hyperlinkColor;
-    span.appendChild(anchor);
-  } else {
-    // Set text content
-    span.textContent = run.text;
-  }
+	// Handle hyperlinks
+	if (run.hyperlink) {
+		const anchor = doc.createElement("a");
+		anchor.href = run.hyperlink.href;
+		// Internal bookmark links (starting with #) should scroll within the document
+		// External links should open in a new tab
+		if (!run.hyperlink.href.startsWith("#")) {
+			anchor.target = "_blank";
+			anchor.rel = "noopener noreferrer";
+		}
+		if (run.hyperlink.tooltip) {
+			anchor.title = run.hyperlink.tooltip;
+		}
+		anchor.textContent = run.text;
+		// Style hyperlink — default Word hyperlink color is blue (#0563c1)
+		const hyperlinkColor = run.color || "#0563c1";
+		anchor.style.color = hyperlinkColor;
+		anchor.style.textDecoration = "underline";
+		// Override span color to match anchor (prevents color mismatch in selection)
+		span.style.color = hyperlinkColor;
+		span.appendChild(anchor);
+	} else {
+		// Set text content
+		span.textContent = run.text;
+	}
 
-  return span;
+	return span;
 }
 
 /**
@@ -425,53 +448,53 @@ function renderTextRun(run: TextRun, doc: Document, resolvedCommentIds?: Set<num
  */
 /** @internal — exported for unit tests in `__tests__/tab-leader.test.ts`. */
 export function renderTabRun(
-  run: TabRun,
-  doc: Document,
-  width: number,
-  leader?: string
+	run: TabRun,
+	doc: Document,
+	width: number,
+	leader?: string,
 ): HTMLElement {
-  const span = doc.createElement('span');
-  span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.tab}`;
+	const span = doc.createElement("span");
+	span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.tab}`;
 
-  span.style.display = 'inline-block';
-  span.style.width = `${width}px`;
-  span.style.overflow = 'hidden';
-  span.style.boxSizing = 'border-box';
+	span.style.display = "inline-block";
+	span.style.width = `${width}px`;
+	span.style.overflow = "hidden";
+	span.style.boxSizing = "border-box";
 
-  applyPmPositions(span, run.pmStart, run.pmEnd);
+	applyPmPositions(span, run.pmStart, run.pmEnd);
 
-  if (leader && leader !== 'none') {
-    // 2 px gutters on each side keep the leader pattern from butting
-    // up against adjacent runs — matches Word's visual spacing.
-    span.style.paddingLeft = '2px';
-    span.style.paddingRight = '2px';
+	if (leader && leader !== "none") {
+		// 2 px gutters on each side keep the leader pattern from butting
+		// up against adjacent runs — matches Word's visual spacing.
+		span.style.paddingLeft = "2px";
+		span.style.paddingRight = "2px";
 
-    if (leader === 'underscore' || leader === 'heavy') {
-      // Solid baseline rule. The `_` character has gaps between
-      // repeats that look like a dotted line — a CSS border is the
-      // right primitive for a continuous underscore / heavy rule.
-      const thickness = leader === 'heavy' ? '2px' : '1px';
-      span.style.borderBottom = `${thickness} solid currentColor`;
-    } else {
-      const leaderChar = getLeaderChar(leader);
-      if (leaderChar) {
-        span.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(
-          `<svg xmlns='http://www.w3.org/2000/svg' width='4' height='16'><text x='0' y='12' font-size='12' fill='%23000'>${leaderChar}</text></svg>`
-        )}")`;
-        span.style.backgroundRepeat = 'repeat-x';
-        span.style.backgroundPosition = 'bottom';
-        // Keep the repeating pattern inside the padded box so it
-        // doesn't bleed across the 2 px gutters.
-        span.style.backgroundOrigin = 'content-box';
-        span.style.backgroundClip = 'content-box';
-      }
-    }
-  }
+		if (leader === "underscore" || leader === "heavy") {
+			// Solid baseline rule. The `_` character has gaps between
+			// repeats that look like a dotted line — a CSS border is the
+			// right primitive for a continuous underscore / heavy rule.
+			const thickness = leader === "heavy" ? "2px" : "1px";
+			span.style.borderBottom = `${thickness} solid currentColor`;
+		} else {
+			const leaderChar = getLeaderChar(leader);
+			if (leaderChar) {
+				span.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(
+					`<svg xmlns='http://www.w3.org/2000/svg' width='4' height='16'><text x='0' y='12' font-size='12' fill='%23000'>${leaderChar}</text></svg>`,
+				)}")`;
+				span.style.backgroundRepeat = "repeat-x";
+				span.style.backgroundPosition = "bottom";
+				// Keep the repeating pattern inside the padded box so it
+				// doesn't bleed across the 2 px gutters.
+				span.style.backgroundOrigin = "content-box";
+				span.style.backgroundClip = "content-box";
+			}
+		}
+	}
 
-  // Tab character for accessibility (but invisible)
-  span.textContent = '\u00A0'; // Non-breaking space for layout
+	// Tab character for accessibility (but invisible)
+	span.textContent = "\u00A0"; // Non-breaking space for layout
 
-  return span;
+	return span;
 }
 
 /**
@@ -482,16 +505,16 @@ export function renderTabRun(
  * continuous rather than dotted between glyph repeats.
  */
 function getLeaderChar(leader: string): string | null {
-  switch (leader) {
-    case 'dot':
-      return '.';
-    case 'hyphen':
-      return '-';
-    case 'middleDot':
-      return '·';
-    default:
-      return null;
-  }
+	switch (leader) {
+		case "dot":
+			return ".";
+		case "hyphen":
+			return "-";
+		case "middleDot":
+			return "·";
+		default:
+			return null;
+	}
 }
 
 /**
@@ -500,10 +523,10 @@ function getLeaderChar(leader: string): string | null {
  * `rotate()` term is present.
  */
 function rotationDegrees(transform: string | undefined): number {
-  if (!transform) return 0;
-  const m = transform.match(/rotate\(([-\d.]+)deg\)/);
-  if (!m) return 0;
-  return ((parseFloat(m[1]) % 360) + 360) % 360;
+	if (!transform) return 0;
+	const m = transform.match(/rotate\(([-\d.]+)deg\)/);
+	if (!m) return 0;
+	return ((parseFloat(m[1]) % 360) + 360) % 360;
 }
 
 /**
@@ -511,13 +534,17 @@ function rotationDegrees(transform: string | undefined): number {
  * `deg` degrees. For multiples of 90° the dims swap (or stay) without
  * floating-point drift; arbitrary angles use the standard formula.
  */
-function rotatedBoundingBox(w: number, h: number, deg: number): { w: number; h: number } {
-  if (deg === 0 || deg === 180) return { w, h };
-  if (deg === 90 || deg === 270) return { w: h, h: w };
-  const rad = (deg * Math.PI) / 180;
-  const sinA = Math.abs(Math.sin(rad));
-  const cosA = Math.abs(Math.cos(rad));
-  return { w: w * cosA + h * sinA, h: w * sinA + h * cosA };
+function rotatedBoundingBox(
+	w: number,
+	h: number,
+	deg: number,
+): { w: number; h: number } {
+	if (deg === 0 || deg === 180) return { w, h };
+	if (deg === 90 || deg === 270) return { w: h, h: w };
+	const rad = (deg * Math.PI) / 180;
+	const sinA = Math.abs(Math.sin(rad));
+	const cosA = Math.abs(Math.cos(rad));
+	return { w: w * cosA + h * sinA, h: w * sinA + h * cosA };
 }
 
 /**
@@ -532,17 +559,17 @@ function rotatedBoundingBox(w: number, h: number, deg: number): { w: number; h: 
  * Cited in gap-matrix `tiff-images` + GH #146.
  */
 function isUnrenderableImageFormat(src: string): boolean {
-  if (!src.startsWith('data:')) return false;
-  const head = src.slice(5, 30).toLowerCase();
-  // image/tiff or image/tif, image/x-emf / image/emf, image/x-wmf / image/wmf
-  // all appear in saved DOCXs.
-  return (
-    head.startsWith('image/tif') ||
-    head.includes('image/x-emf') ||
-    head.includes('image/emf') ||
-    head.includes('image/x-wmf') ||
-    head.includes('image/wmf')
-  );
+	if (!src.startsWith("data:")) return false;
+	const head = src.slice(5, 30).toLowerCase();
+	// image/tiff or image/tif, image/x-emf / image/emf, image/x-wmf / image/wmf
+	// all appear in saved DOCXs.
+	return (
+		head.startsWith("image/tif") ||
+		head.includes("image/x-emf") ||
+		head.includes("image/emf") ||
+		head.includes("image/x-wmf") ||
+		head.includes("image/wmf")
+	);
 }
 
 /**
@@ -552,10 +579,10 @@ function isUnrenderableImageFormat(src: string): boolean {
  * Metafile thumbnail) so they get explicit naming.
  */
 function unrenderableLabelForSrc(src: string): string {
-  const head = src.slice(5, 30).toLowerCase();
-  if (head.includes('image/x-emf') || head.includes('image/emf')) return 'EMF';
-  if (head.includes('image/x-wmf') || head.includes('image/wmf')) return 'WMF';
-  return 'TIFF';
+	const head = src.slice(5, 30).toLowerCase();
+	if (head.includes("image/x-emf") || head.includes("image/emf")) return "EMF";
+	if (head.includes("image/x-wmf") || head.includes("image/wmf")) return "WMF";
+	return "TIFF";
 }
 
 /**
@@ -565,223 +592,226 @@ function unrenderableLabelForSrc(src: string): string {
  * setting display.
  */
 function renderImagePlaceholder(
-  run: ImageRun,
-  doc: Document,
-  kind: 'inline' | 'block'
+	run: ImageRun,
+	doc: Document,
+	kind: "inline" | "block",
 ): HTMLElement {
-  const placeholder = doc.createElement(kind === 'inline' ? 'span' : 'div');
-  placeholder.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.image} layout-image-placeholder`;
-  placeholder.style.width = `${run.width}px`;
-  placeholder.style.height = `${run.height}px`;
-  placeholder.style.maxWidth = '100%';
-  placeholder.style.boxSizing = 'border-box';
-  placeholder.style.border = '1px dashed #94a3b8';
-  placeholder.style.background = '#f1f5f9';
-  placeholder.style.color = '#475569';
-  placeholder.style.fontSize = '11px';
-  placeholder.style.lineHeight = '1.3';
-  placeholder.style.padding = '4px';
-  placeholder.style.overflow = 'hidden';
-  if (kind === 'inline') {
-    placeholder.style.display = 'inline-flex';
-    placeholder.style.verticalAlign = 'middle';
-  } else {
-    placeholder.style.display = 'flex';
-    placeholder.style.marginLeft = 'auto';
-    placeholder.style.marginRight = 'auto';
-  }
-  placeholder.style.alignItems = 'center';
-  placeholder.style.justifyContent = 'center';
-  placeholder.style.textAlign = 'center';
-  const fmt = unrenderableLabelForSrc(run.src);
-  const label =
-    run.alt && run.alt.trim().length > 0
-      ? `${run.alt} (${fmt})`
-      : `${fmt} image — preview unavailable`;
-  placeholder.textContent = label;
-  placeholder.title = label;
-  return placeholder;
+	const placeholder = doc.createElement(kind === "inline" ? "span" : "div");
+	placeholder.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.image} layout-image-placeholder`;
+	placeholder.style.width = `${run.width}px`;
+	placeholder.style.height = `${run.height}px`;
+	placeholder.style.maxWidth = "100%";
+	placeholder.style.boxSizing = "border-box";
+	placeholder.style.border = "1px dashed #94a3b8";
+	placeholder.style.background = "#f1f5f9";
+	placeholder.style.color = "#475569";
+	placeholder.style.fontSize = "11px";
+	placeholder.style.lineHeight = "1.3";
+	placeholder.style.padding = "4px";
+	placeholder.style.overflow = "hidden";
+	if (kind === "inline") {
+		placeholder.style.display = "inline-flex";
+		placeholder.style.verticalAlign = "middle";
+	} else {
+		placeholder.style.display = "flex";
+		placeholder.style.marginLeft = "auto";
+		placeholder.style.marginRight = "auto";
+	}
+	placeholder.style.alignItems = "center";
+	placeholder.style.justifyContent = "center";
+	placeholder.style.textAlign = "center";
+	const fmt = unrenderableLabelForSrc(run.src);
+	const label =
+		run.alt && run.alt.trim().length > 0
+			? `${run.alt} (${fmt})`
+			: `${fmt} image — preview unavailable`;
+	placeholder.textContent = label;
+	placeholder.title = label;
+	return placeholder;
 }
 
 /**
  * Render an inline image run (flows with text).
  * @internal exported for unit tests in `__tests__/tiff-placeholder.test.ts`.
  */
-export function renderInlineImageRun(run: ImageRun, doc: Document): HTMLElement {
-  if (isUnrenderableImageFormat(run.src)) {
-    const ph = renderImagePlaceholder(run, doc, 'inline');
-    applyPmPositions(ph, run.pmStart, run.pmEnd);
-    return ph;
-  }
-  const img = doc.createElement('img');
-  img.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.image}`;
+export function renderInlineImageRun(
+	run: ImageRun,
+	doc: Document,
+): HTMLElement {
+	if (isUnrenderableImageFormat(run.src)) {
+		const ph = renderImagePlaceholder(run, doc, "inline");
+		applyPmPositions(ph, run.pmStart, run.pmEnd);
+		return ph;
+	}
+	const img = doc.createElement("img");
+	img.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.image}`;
 
-  img.src = run.src;
-  img.width = run.width;
-  img.height = run.height;
-  // Lock dimensions explicitly: when only the width/height attributes are set,
-  // browsers may compute height from the natural aspect ratio (e.g. wp:extent
-  // 1771650×278918 EMU rounds to 186×29 px but native 800×126 px gives 29.29 px,
-  // overflowing the cell by ~0.3 px and clipping the bottom of the logo).
-  img.style.width = `${run.width}px`;
-  img.style.height = `${run.height}px`;
-  // Safety net against pasted images much larger than the parent container
-  // (especially in headers — GH #265). Real Word files set `wp:extent` to
-  // the intended display size, so `run.width` already fits the page; this
-  // only triggers when an oversized image lands in a narrow container
-  // (e.g. a paste into a header) and clamps it to the parent width.
-  img.style.maxWidth = '100%';
-  if (run.alt) {
-    img.alt = run.alt;
-  }
-  if (run.transform) {
-    img.style.transform = run.transform;
-    // Word rotates around the picture's geometric center; the CSS default
-    // happens to match, but be explicit so future transforms can't drift.
-    img.style.transformOrigin = 'center center';
-  }
-  // Picture border (set via the Format panel; round-trips on the image node).
-  if (run.borderWidth && run.borderWidth > 0) {
-    img.style.border = `${run.borderWidth}px ${run.borderStyle || 'solid'} ${
-      run.borderColor || '#000000'
-    }`;
-    img.style.boxSizing = 'border-box';
-  }
-  if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
+	img.src = run.src;
+	img.width = run.width;
+	img.height = run.height;
+	// Lock dimensions explicitly: when only the width/height attributes are set,
+	// browsers may compute height from the natural aspect ratio (e.g. wp:extent
+	// 1771650×278918 EMU rounds to 186×29 px but native 800×126 px gives 29.29 px,
+	// overflowing the cell by ~0.3 px and clipping the bottom of the logo).
+	img.style.width = `${run.width}px`;
+	img.style.height = `${run.height}px`;
+	// Safety net against pasted images much larger than the parent container
+	// (especially in headers — GH #265). Real Word files set `wp:extent` to
+	// the intended display size, so `run.width` already fits the page; this
+	// only triggers when an oversized image lands in a narrow container
+	// (e.g. a paste into a header) and clamps it to the parent width.
+	img.style.maxWidth = "100%";
+	if (run.alt) {
+		img.alt = run.alt;
+	}
+	if (run.transform) {
+		img.style.transform = run.transform;
+		// Word rotates around the picture's geometric center; the CSS default
+		// happens to match, but be explicit so future transforms can't drift.
+		img.style.transformOrigin = "center center";
+	}
+	// Picture border (set via the Format panel; round-trips on the image node).
+	if (run.borderWidth && run.borderWidth > 0) {
+		img.style.border = `${run.borderWidth}px ${run.borderStyle || "solid"} ${
+			run.borderColor || "#000000"
+		}`;
+		img.style.boxSizing = "border-box";
+	}
+	if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
 
-  const deg = rotationDegrees(run.transform);
-  if (deg !== 0) {
-    // Rotated content extends past `run.width × run.height`, so the inline
-    // line box would otherwise reserve too little space and adjacent text
-    // would overlap the picture. Wrap the rotated img in a span sized to
-    // its axis-aligned bounding box and position the img absolutely at the
-    // wrapper's centre so the rotation pivots correctly. This matches
-    // Word's behaviour where `wp:extent` reflects the post-rotation bbox
-    // and the picture content rotates inside it.
-    const bbox = rotatedBoundingBox(run.width, run.height, deg);
-    const wrapper = doc.createElement('span');
-    wrapper.style.display = 'inline-block';
-    wrapper.style.position = 'relative';
-    wrapper.style.width = `${bbox.w}px`;
-    wrapper.style.height = `${bbox.h}px`;
-    wrapper.style.verticalAlign = 'middle';
-    img.style.position = 'absolute';
-    img.style.left = `${(bbox.w - run.width) / 2}px`;
-    img.style.top = `${(bbox.h - run.height) / 2}px`;
-    applyPmPositions(wrapper, run.pmStart, run.pmEnd);
-    wrapper.appendChild(img);
-    return wrapper;
-  }
+	const deg = rotationDegrees(run.transform);
+	if (deg !== 0) {
+		// Rotated content extends past `run.width × run.height`, so the inline
+		// line box would otherwise reserve too little space and adjacent text
+		// would overlap the picture. Wrap the rotated img in a span sized to
+		// its axis-aligned bounding box and position the img absolutely at the
+		// wrapper's centre so the rotation pivots correctly. This matches
+		// Word's behaviour where `wp:extent` reflects the post-rotation bbox
+		// and the picture content rotates inside it.
+		const bbox = rotatedBoundingBox(run.width, run.height, deg);
+		const wrapper = doc.createElement("span");
+		wrapper.style.display = "inline-block";
+		wrapper.style.position = "relative";
+		wrapper.style.width = `${bbox.w}px`;
+		wrapper.style.height = `${bbox.h}px`;
+		wrapper.style.verticalAlign = "middle";
+		img.style.position = "absolute";
+		img.style.left = `${(bbox.w - run.width) / 2}px`;
+		img.style.top = `${(bbox.h - run.height) / 2}px`;
+		applyPmPositions(wrapper, run.pmStart, run.pmEnd);
+		wrapper.appendChild(img);
+		return wrapper;
+	}
 
-  // Tailwind preflight resets `<img>` to `display: block`, which breaks the
-  // inline run flow: an inline image preceded and followed by text would push
-  // the trailing text to a new visual row inside the line div, overflowing the
-  // measured line height into the next paragraph. `inline-block` keeps the
-  // image inside the line's flow while preserving its explicit width/height.
-  img.style.display = 'inline-block';
+	// Tailwind preflight resets `<img>` to `display: block`, which breaks the
+	// inline run flow: an inline image preceded and followed by text would push
+	// the trailing text to a new visual row inside the line div, overflowing the
+	// measured line height into the next paragraph. `inline-block` keeps the
+	// image inside the line's flow while preserving its explicit width/height.
+	img.style.display = "inline-block";
 
-  // Middle alignment — when the line's height was sized with extra leading on
-  // both sides (imageH + 2*descent), middle puts the image roughly at line
-  // center with visible padding above and below, matching Word's render. (Pure
-  // baseline/top would land flush with the line edge.)
-  img.style.verticalAlign = 'middle';
+	// Middle alignment — when the line's height was sized with extra leading on
+	// both sides (imageH + 2*descent), middle puts the image roughly at line
+	// center with visible padding above and below, matching Word's render. (Pure
+	// baseline/top would land flush with the line edge.)
+	img.style.verticalAlign = "middle";
 
-  applyPmPositions(img, run.pmStart, run.pmEnd);
+	applyPmPositions(img, run.pmStart, run.pmEnd);
 
-  // a:hlinkClick on the picture (ECMA-376 §20.1.2.3.5) — wrap the image
-  // in a target=_blank anchor so the user can click through. Mirrors the
-  // existing block-image hyperlink handling in `renderImage.ts`.
-  if (run.hlinkHref) {
-    const anchor = doc.createElement('a');
-    anchor.href = run.hlinkHref;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.style.display = 'inline-block';
-    anchor.style.verticalAlign = 'middle';
-    anchor.appendChild(img);
-    return anchor;
-  }
+	// a:hlinkClick on the picture (ECMA-376 §20.1.2.3.5) — wrap the image
+	// in a target=_blank anchor so the user can click through. Mirrors the
+	// existing block-image hyperlink handling in `renderImage.ts`.
+	if (run.hlinkHref) {
+		const anchor = doc.createElement("a");
+		anchor.href = run.hlinkHref;
+		anchor.target = "_blank";
+		anchor.rel = "noopener noreferrer";
+		anchor.style.display = "inline-block";
+		anchor.style.verticalAlign = "middle";
+		anchor.appendChild(img);
+		return anchor;
+	}
 
-  return img;
+	return img;
 }
 
 /**
  * Render a block image (on its own line, like topAndBottom)
  */
 function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
-  const container = doc.createElement('div');
-  container.className = 'layout-block-image';
-  container.style.display = 'block';
-  container.style.textAlign = 'center';
-  container.style.marginTop = `${run.distTop ?? 6}px`;
-  container.style.marginBottom = `${run.distBottom ?? 6}px`;
+	const container = doc.createElement("div");
+	container.className = "layout-block-image";
+	container.style.display = "block";
+	container.style.textAlign = "center";
+	container.style.marginTop = `${run.distTop ?? 6}px`;
+	container.style.marginBottom = `${run.distBottom ?? 6}px`;
 
-  if (isUnrenderableImageFormat(run.src)) {
-    const ph = renderImagePlaceholder(run, doc, 'block');
-    applyPmPositions(ph, run.pmStart, run.pmEnd);
-    container.appendChild(ph);
-    return container;
-  }
+	if (isUnrenderableImageFormat(run.src)) {
+		const ph = renderImagePlaceholder(run, doc, "block");
+		applyPmPositions(ph, run.pmStart, run.pmEnd);
+		container.appendChild(ph);
+		return container;
+	}
 
-  const img = doc.createElement('img');
-  img.src = run.src;
-  img.width = run.width;
-  img.height = run.height;
-  // Global CSS reset (Tailwind preflight) sets img { display: block },
-  // which makes text-align: center on the container ineffective.
-  // Use margin: auto on the img itself to center it.
-  img.style.marginLeft = 'auto';
-  img.style.marginRight = 'auto';
-  // Same safety net as `renderInlineImageRun` — see GH #265.
-  img.style.maxWidth = '100%';
-  if (run.alt) {
-    img.alt = run.alt;
-  }
-  if (run.transform) {
-    img.style.transform = run.transform;
-    img.style.transformOrigin = 'center center';
-  }
-  // Picture border (set via the Format panel; round-trips on the image node).
-  if (run.borderWidth && run.borderWidth > 0) {
-    img.style.border = `${run.borderWidth}px ${run.borderStyle || 'solid'} ${
-      run.borderColor || '#000000'
-    }`;
-    img.style.boxSizing = 'border-box';
-  }
-  if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
+	const img = doc.createElement("img");
+	img.src = run.src;
+	img.width = run.width;
+	img.height = run.height;
+	// Global CSS reset (Tailwind preflight) sets img { display: block },
+	// which makes text-align: center on the container ineffective.
+	// Use margin: auto on the img itself to center it.
+	img.style.marginLeft = "auto";
+	img.style.marginRight = "auto";
+	// Same safety net as `renderInlineImageRun` — see GH #265.
+	img.style.maxWidth = "100%";
+	if (run.alt) {
+		img.alt = run.alt;
+	}
+	if (run.transform) {
+		img.style.transform = run.transform;
+		img.style.transformOrigin = "center center";
+	}
+	// Picture border (set via the Format panel; round-trips on the image node).
+	if (run.borderWidth && run.borderWidth > 0) {
+		img.style.border = `${run.borderWidth}px ${run.borderStyle || "solid"} ${
+			run.borderColor || "#000000"
+		}`;
+		img.style.boxSizing = "border-box";
+	}
+	if (hasImageVisualAttrs(run)) applyImageVisualAttrs(img, run);
 
-  // Reserve the rotated bbox height so the rotated image doesn't bleed into
-  // adjacent paragraphs. The container height matches the bbox; the inner
-  // img rotates around its own centre, which now lands inside the wrapper.
-  const deg = rotationDegrees(run.transform);
-  if (deg !== 0) {
-    const bbox = rotatedBoundingBox(run.width, run.height, deg);
-    container.style.height = `${bbox.h}px`;
-    container.style.position = 'relative';
-    img.style.position = 'absolute';
-    img.style.left = '50%';
-    img.style.top = '50%';
-    img.style.marginLeft = `${-run.width / 2}px`;
-    img.style.marginRight = '0';
-    img.style.marginTop = `${-run.height / 2}px`;
-  }
+	// Reserve the rotated bbox height so the rotated image doesn't bleed into
+	// adjacent paragraphs. The container height matches the bbox; the inner
+	// img rotates around its own centre, which now lands inside the wrapper.
+	const deg = rotationDegrees(run.transform);
+	if (deg !== 0) {
+		const bbox = rotatedBoundingBox(run.width, run.height, deg);
+		container.style.height = `${bbox.h}px`;
+		container.style.position = "relative";
+		img.style.position = "absolute";
+		img.style.left = "50%";
+		img.style.top = "50%";
+		img.style.marginLeft = `${-run.width / 2}px`;
+		img.style.marginRight = "0";
+		img.style.marginTop = `${-run.height / 2}px`;
+	}
 
-  applyPmPositions(container, run.pmStart, run.pmEnd);
-  // Same a:hlinkClick handling as `renderInlineImageRun` — wrap the
-  // image in a target=_blank anchor when the picture carries an
-  // external link.
-  if (run.hlinkHref) {
-    const anchor = doc.createElement('a');
-    anchor.href = run.hlinkHref;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.appendChild(img);
-    container.appendChild(anchor);
-  } else {
-    container.appendChild(img);
-  }
+	applyPmPositions(container, run.pmStart, run.pmEnd);
+	// Same a:hlinkClick handling as `renderInlineImageRun` — wrap the
+	// image in a target=_blank anchor when the picture carries an
+	// external link.
+	if (run.hlinkHref) {
+		const anchor = doc.createElement("a");
+		anchor.href = run.hlinkHref;
+		anchor.target = "_blank";
+		anchor.rel = "noopener noreferrer";
+		anchor.appendChild(img);
+		container.appendChild(anchor);
+	} else {
+		container.appendChild(img);
+	}
 
-  return container;
+	return container;
 }
 
 /**
@@ -790,98 +820,106 @@ function renderBlockImage(run: ImageRun, doc: Document): HTMLElement {
  * not through this function. If they reach here, render as block.
  */
 function renderImageRun(run: ImageRun, doc: Document): HTMLElement {
-  // Floating images should be handled at paragraph level, not here
-  // If they reach here (e.g., inside table cells), render as block
-  if (isFloatingImageRun(run)) {
-    return renderBlockImage(run, doc);
-  } else if (run.displayMode === 'block' || run.wrapType === 'topAndBottom') {
-    return renderBlockImage(run, doc);
-  } else {
-    // Default: inline
-    return renderInlineImageRun(run, doc);
-  }
+	// Floating images should be handled at paragraph level, not here
+	// If they reach here (e.g., inside table cells), render as block
+	if (isFloatingImageRun(run)) {
+		return renderBlockImage(run, doc);
+	} else if (run.displayMode === "block" || run.wrapType === "topAndBottom") {
+		return renderBlockImage(run, doc);
+	} else {
+		// Default: inline
+		return renderInlineImageRun(run, doc);
+	}
 }
 
 /**
  * Render a line break run
  */
 function renderLineBreakRun(run: LineBreakRun, doc: Document): HTMLElement {
-  const br = doc.createElement('br');
-  br.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.lineBreak}`;
+	const br = doc.createElement("br");
+	br.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.lineBreak}`;
 
-  applyPmPositions(br, run.pmStart, run.pmEnd);
+	applyPmPositions(br, run.pmStart, run.pmEnd);
 
-  return br;
+	return br;
 }
 
 /**
  * Render a field run (PAGE, NUMPAGES, etc.)
  * Substitutes the field with actual values from context.
  */
-function renderFieldRun(run: FieldRun, doc: Document, context: RenderContext): HTMLElement {
-  let text = run.fallback ?? '';
+function renderFieldRun(
+	run: FieldRun,
+	doc: Document,
+	context: RenderContext,
+): HTMLElement {
+	let text = run.fallback ?? "";
 
-  switch (run.fieldType) {
-    case 'PAGE':
-      text = String(context.pageNumber);
-      break;
-    case 'NUMPAGES':
-      text = String(context.totalPages);
-      break;
-    case 'DATE':
-      text = new Date().toLocaleDateString();
-      break;
-    case 'TIME':
-      text = new Date().toLocaleTimeString();
-      break;
-    // OTHER fields use fallback
-  }
+	switch (run.fieldType) {
+		case "PAGE":
+			text = String(context.pageNumber);
+			break;
+		case "NUMPAGES":
+			text = String(context.totalPages);
+			break;
+		case "DATE":
+			text = new Date().toLocaleDateString();
+			break;
+		case "TIME":
+			text = new Date().toLocaleTimeString();
+			break;
+		// OTHER fields use fallback
+	}
 
-  // Create a text run with the resolved value
-  const resolvedRun: TextRun = {
-    kind: 'text',
-    text,
-    bold: run.bold,
-    italic: run.italic,
-    underline: run.underline,
-    strike: run.strike,
-    color: run.color,
-    highlight: run.highlight,
-    fontFamily: run.fontFamily,
-    fontSize: run.fontSize,
-    pmStart: run.pmStart,
-    pmEnd: run.pmEnd,
-  };
+	// Create a text run with the resolved value
+	const resolvedRun: TextRun = {
+		kind: "text",
+		text,
+		bold: run.bold,
+		italic: run.italic,
+		underline: run.underline,
+		strike: run.strike,
+		color: run.color,
+		highlight: run.highlight,
+		fontFamily: run.fontFamily,
+		fontSize: run.fontSize,
+		pmStart: run.pmStart,
+		pmEnd: run.pmEnd,
+	};
 
-  return renderTextRun(resolvedRun, doc, context?.resolvedCommentIds);
+	return renderTextRun(resolvedRun, doc, context?.resolvedCommentIds);
 }
 
 /**
  * Render a single run (for non-tab runs)
  */
-function renderRun(run: Run, doc: Document, context?: RenderContext): HTMLElement {
-  if (isTextRun(run)) {
-    return renderTextRun(run, doc, context?.resolvedCommentIds);
-  }
-  if (isTabRun(run)) {
-    // Tab runs should be handled by renderLine with proper width calculation
-    // This is a fallback for cases where tab context isn't available
-    return renderTabRun(run, doc, 48, undefined); // Default 0.5 inch tab
-  }
-  if (isImageRun(run)) {
-    return renderImageRun(run, doc);
-  }
-  if (isLineBreakRun(run)) {
-    return renderLineBreakRun(run, doc);
-  }
-  if (isFieldRun(run) && context) {
-    return renderFieldRun(run, doc, context);
-  }
+function renderRun(
+	run: Run,
+	doc: Document,
+	context?: RenderContext,
+): HTMLElement {
+	if (isTextRun(run)) {
+		return renderTextRun(run, doc, context?.resolvedCommentIds);
+	}
+	if (isTabRun(run)) {
+		// Tab runs should be handled by renderLine with proper width calculation
+		// This is a fallback for cases where tab context isn't available
+		return renderTabRun(run, doc, 48, undefined); // Default 0.5 inch tab
+	}
+	if (isImageRun(run)) {
+		return renderImageRun(run, doc);
+	}
+	if (isLineBreakRun(run)) {
+		return renderLineBreakRun(run, doc);
+	}
+	if (isFieldRun(run) && context) {
+		return renderFieldRun(run, doc, context);
+	}
 
-  // Fallback for unknown run types
-  const span = doc.createElement('span');
-  span.className = PARAGRAPH_CLASS_NAMES.run;
-  return span;
+	// Fallback for unknown run types
+	const span = doc.createElement("span");
+	span.className = PARAGRAPH_CLASS_NAMES.run;
+	return span;
 }
 
 /**
@@ -891,64 +929,68 @@ function renderRun(run: Run, doc: Document, context?: RenderContext): HTMLElemen
  * @param line - The line measurement
  * @returns Array of runs for this line
  */
-export function sliceRunsForLine(block: ParagraphBlock, line: MeasuredLine): Run[] {
-  const result: Run[] = [];
-  const runs = block.runs;
+export function sliceRunsForLine(
+	block: ParagraphBlock,
+	line: MeasuredLine,
+): Run[] {
+	const result: Run[] = [];
+	const runs = block.runs;
 
-  for (let runIndex = line.fromRun; runIndex <= line.toRun; runIndex++) {
-    const run = runs[runIndex];
-    if (!run) continue;
+	for (let runIndex = line.fromRun; runIndex <= line.toRun; runIndex++) {
+		const run = runs[runIndex];
+		if (!run) continue;
 
-    if (isTextRun(run)) {
-      // Get the character range for this run
-      const startChar = runIndex === line.fromRun ? line.fromChar : 0;
-      const endChar = runIndex === line.toRun ? line.toChar : run.text.length;
+		if (isTextRun(run)) {
+			// Get the character range for this run
+			const startChar = runIndex === line.fromRun ? line.fromChar : 0;
+			const endChar = runIndex === line.toRun ? line.toChar : run.text.length;
 
-      // Slice the text if needed
-      if (startChar > 0 || endChar < run.text.length) {
-        const slicedText = run.text.slice(startChar, endChar);
-        result.push({
-          ...run,
-          text: slicedText,
-          pmStart: run.pmStart !== undefined ? run.pmStart + startChar : undefined,
-          pmEnd: run.pmStart !== undefined ? run.pmStart + endChar : undefined,
-        });
-      } else {
-        result.push(run);
-      }
-    } else {
-      // Non-text runs are included as-is
-      result.push(run);
-    }
-  }
+			// Slice the text if needed
+			if (startChar > 0 || endChar < run.text.length) {
+				const slicedText = run.text.slice(startChar, endChar);
+				result.push({
+					...run,
+					text: slicedText,
+					pmStart:
+						run.pmStart !== undefined ? run.pmStart + startChar : undefined,
+					pmEnd: run.pmStart !== undefined ? run.pmStart + endChar : undefined,
+				});
+			} else {
+				result.push(run);
+			}
+		} else {
+			// Non-text runs are included as-is
+			result.push(run);
+		}
+	}
 
-  return result;
+	return result;
 }
 
 /**
  * Options for rendering a line with justify support
  */
 interface RenderLineOptions {
-  /** Available width for the line (content area width minus indentation) */
-  availableWidth: number;
-  /** Whether this is the last line of the paragraph */
-  isLastLine: boolean;
-  /** Whether this is the first line of the paragraph */
-  isFirstLine: boolean;
-  /** Whether the paragraph ends with a line break */
-  paragraphEndsWithLineBreak: boolean;
-  /** Tab stops from paragraph attributes */
-  tabStops?: TabStop[];
-  /** Render context for field substitution */
-  context?: RenderContext;
-  /** Left indent in pixels */
-  leftIndentPx?: number;
-  /** First line indent in pixels (positive) or hanging indent (negative) */
-  firstLineIndentPx?: number;
-  /** Line-specific floating image margins (calculated per-line based on Y overlap) */
-  floatingMargins?: { leftMargin: number; rightMargin: number };
-  /** Track inline image runs already rendered in this paragraph fragment to prevent duplicates */
-  renderedInlineImageKeys?: Set<string>;
+	/** Available width for the line (content area width minus indentation) */
+	availableWidth: number;
+	/** Whether this is the last line of the paragraph */
+	isLastLine: boolean;
+	/** Whether this is the first line of the paragraph */
+	isFirstLine: boolean;
+	/** Whether the paragraph ends with a line break */
+	paragraphEndsWithLineBreak: boolean;
+	/** Tab stops from paragraph attributes */
+	tabStops?: TabStop[];
+	/** Render context for field substitution */
+	context?: RenderContext;
+	/** Left indent in pixels */
+	leftIndentPx?: number;
+	/** First line indent in pixels (positive) or hanging indent (negative) */
+	firstLineIndentPx?: number;
+	/** Line-specific floating image margins (calculated per-line based on Y overlap) */
+	floatingMargins?: { leftMargin: number; rightMargin: number };
+	/** Track inline image runs already rendered in this paragraph fragment to prevent duplicates */
+	renderedInlineImageKeys?: Set<string>;
 }
 
 /**
@@ -956,53 +998,57 @@ interface RenderLineOptions {
  * PM positions are preferred because they uniquely identify the source node.
  */
 function getInlineImageRunKey(run: ImageRun): string {
-  return [
-    run.pmStart ?? 'no-start',
-    run.pmEnd ?? 'no-end',
-    run.src,
-    run.width,
-    run.height,
-    run.displayMode ?? 'inline',
-    run.wrapType ?? 'none',
-  ].join('|');
+	return [
+		run.pmStart ?? "no-start",
+		run.pmEnd ?? "no-end",
+		run.src,
+		run.width,
+		run.height,
+		run.displayMode ?? "inline",
+		run.wrapType ?? "none",
+	].join("|");
 }
 
 /**
  * Convert layout engine TabStop to tab calculator TabStop format
  */
 function convertTabStopToCalc(stop: TabStop): TabCalcStop {
-  return {
-    val: stop.val,
-    pos: stop.pos,
-    leader: stop.leader as TabCalcStop['leader'],
-  };
+	return {
+		val: stop.val,
+		pos: stop.pos,
+		leader: stop.leader as TabCalcStop["leader"],
+	};
 }
 
 /**
  * Get the text content immediately following a tab run in the runs array
  * Used for center/end/decimal tab alignment calculations
  */
-function getTextAfterTab(runs: Run[], tabRunIndex: number, context?: RenderContext): string {
-  let text = '';
-  for (let i = tabRunIndex + 1; i < runs.length; i++) {
-    const run = runs[i];
-    if (isTextRun(run)) {
-      text += run.text;
-    } else if (isFieldRun(run)) {
-      // Resolve field values for TOC page numbers
-      if (run.fieldType === 'PAGE' && context) {
-        text += String(context.pageNumber);
-      } else if (run.fieldType === 'NUMPAGES' && context) {
-        text += String(context.totalPages);
-      } else {
-        text += run.fallback ?? '';
-      }
-    } else if (isTabRun(run) || isLineBreakRun(run)) {
-      // Stop at next tab or line break
-      break;
-    }
-  }
-  return text;
+function getTextAfterTab(
+	runs: Run[],
+	tabRunIndex: number,
+	context?: RenderContext,
+): string {
+	let text = "";
+	for (let i = tabRunIndex + 1; i < runs.length; i++) {
+		const run = runs[i];
+		if (isTextRun(run)) {
+			text += run.text;
+		} else if (isFieldRun(run)) {
+			// Resolve field values for TOC page numbers
+			if (run.fieldType === "PAGE" && context) {
+				text += String(context.pageNumber);
+			} else if (run.fieldType === "NUMPAGES" && context) {
+				text += String(context.totalPages);
+			} else {
+				text += run.fallback ?? "";
+			}
+		} else if (isTabRun(run) || isLineBreakRun(run)) {
+			// Stop at next tab or line break
+			break;
+		}
+	}
+	return text;
 }
 
 /**
@@ -1010,21 +1056,21 @@ function getTextAfterTab(runs: Run[], tabRunIndex: number, context?: RenderConte
  * Uses the same font fallback chain as measureContainer.ts
  */
 function createTextMeasurer(
-  doc: Document
+	doc: Document,
 ): (text: string, fontSize?: number, fontFamily?: string) => number {
-  const canvas = doc.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+	const canvas = doc.createElement("canvas");
+	const ctx = canvas.getContext("2d");
 
-  return (text: string, fontSize = 11, fontFamily = 'Calibri') => {
-    if (!ctx) return text.length * 7; // Fallback estimate
-    // Use font resolver for category-appropriate fallback stacks,
-    // matching measureContainer.ts
-    const cssFallback = resolveFontFamily(fontFamily).cssFallback;
-    // Convert pt to px for canvas (1pt = 96/72 px)
-    const fontSizePx = (fontSize * 96) / 72;
-    ctx.font = `${fontSizePx}px ${cssFallback}`;
-    return ctx.measureText(text).width;
-  };
+	return (text: string, fontSize = 11, fontFamily = "Calibri") => {
+		if (!ctx) return text.length * 7; // Fallback estimate
+		// Use font resolver for category-appropriate fallback stacks,
+		// matching measureContainer.ts
+		const cssFallback = resolveFontFamily(fontFamily).cssFallback;
+		// Convert pt to px for canvas (1pt = 96/72 px)
+		const fontSizePx = (fontSize * 96) / 72;
+		ctx.font = `${fontSizePx}px ${cssFallback}`;
+		return ctx.measureText(text).width;
+	};
 }
 
 /**
@@ -1038,224 +1084,237 @@ function createTextMeasurer(
  * @returns The line DOM element
  */
 export function renderLine(
-  block: ParagraphBlock,
-  line: MeasuredLine,
-  alignment: 'left' | 'center' | 'right' | 'justify' | undefined,
-  doc: Document,
-  options?: RenderLineOptions
+	block: ParagraphBlock,
+	line: MeasuredLine,
+	alignment: "left" | "center" | "right" | "justify" | undefined,
+	doc: Document,
+	options?: RenderLineOptions,
 ): HTMLElement {
-  const lineEl = doc.createElement('div');
-  lineEl.className = PARAGRAPH_CLASS_NAMES.line;
+	const lineEl = doc.createElement("div");
+	lineEl.className = PARAGRAPH_CLASS_NAMES.line;
 
-  // Apply line height
-  lineEl.style.height = `${line.lineHeight}px`;
-  lineEl.style.lineHeight = `${line.lineHeight}px`;
+	// Apply line height
+	lineEl.style.height = `${line.lineHeight}px`;
+	lineEl.style.lineHeight = `${line.lineHeight}px`;
 
-  // Get runs for this line
-  const runsForLine = sliceRunsForLine(block, line);
+	// Get runs for this line
+	const runsForLine = sliceRunsForLine(block, line);
 
-  // Image-only line: vAlign-center the image inside the line's box. Without
-  // this, vertical-align math (baseline / middle / top) all leave the image
-  // either flush with one edge or overflowing — the line's ascent/descent
-  // can't be reconciled with parent-font baseline rules well enough to
-  // center automatically. Flex centering is unambiguous.
-  //
-  // The flex container also needs `justify-content` to honor the image's
-  // horizontal alignment. Two paths feed it:
-  //   1. `pPr/jc` on the containing paragraph — we get this via `alignment`.
-  //   2. The image's own `wp:positionH` `wp:align` (e.g. demo.docx centers
-  //      its topAndBottom green dot via `relativeFrom="page" align="center"`
-  //      and leaves the paragraph alignment untouched).
-  // Image-level alignment wins when present — it's the more specific signal
-  // from OOXML, and it's the only signal Word writes for that kind of
-  // anchored layout.
-  if (runsForLine.length === 1 && isImageRun(runsForLine[0])) {
-    const imageRun = runsForLine[0] as ImageRun;
-    const imageAlign = imageRun.position?.horizontal?.align;
-    const effectiveAlign = imageAlign ?? alignment;
-    lineEl.style.display = 'flex';
-    lineEl.style.alignItems = 'center';
-    lineEl.style.justifyContent =
-      effectiveAlign === 'center'
-        ? 'center'
-        : effectiveAlign === 'right'
-          ? 'flex-end'
-          : 'flex-start';
-  }
+	// Image-only line: vAlign-center the image inside the line's box. Without
+	// this, vertical-align math (baseline / middle / top) all leave the image
+	// either flush with one edge or overflowing — the line's ascent/descent
+	// can't be reconciled with parent-font baseline rules well enough to
+	// center automatically. Flex centering is unambiguous.
+	//
+	// The flex container also needs `justify-content` to honor the image's
+	// horizontal alignment. Two paths feed it:
+	//   1. `pPr/jc` on the containing paragraph — we get this via `alignment`.
+	//   2. The image's own `wp:positionH` `wp:align` (e.g. demo.docx centers
+	//      its topAndBottom green dot via `relativeFrom="page" align="center"`
+	//      and leaves the paragraph alignment untouched).
+	// Image-level alignment wins when present — it's the more specific signal
+	// from OOXML, and it's the only signal Word writes for that kind of
+	// anchored layout.
+	if (runsForLine.length === 1 && isImageRun(runsForLine[0])) {
+		const imageRun = runsForLine[0] as ImageRun;
+		const imageAlign = imageRun.position?.horizontal?.align;
+		const effectiveAlign = imageAlign ?? alignment;
+		lineEl.style.display = "flex";
+		lineEl.style.alignItems = "center";
+		lineEl.style.justifyContent =
+			effectiveAlign === "center"
+				? "center"
+				: effectiveAlign === "right"
+					? "flex-end"
+					: "flex-start";
+	}
 
-  // Handle empty lines
-  if (runsForLine.length === 0) {
-    const emptySpan = doc.createElement('span');
-    emptySpan.className = `${PARAGRAPH_CLASS_NAMES.run} layout-empty-run`;
-    emptySpan.innerHTML = '&nbsp;';
-    lineEl.appendChild(emptySpan);
-    return lineEl;
-  }
+	// Handle empty lines
+	if (runsForLine.length === 0) {
+		const emptySpan = doc.createElement("span");
+		emptySpan.className = `${PARAGRAPH_CLASS_NAMES.run} layout-empty-run`;
+		emptySpan.innerHTML = "&nbsp;";
+		lineEl.appendChild(emptySpan);
+		return lineEl;
+	}
 
-  // Calculate justify spacing if needed
-  const isJustify = alignment === 'justify';
-  let shouldJustify = false;
+	// Calculate justify spacing if needed
+	const isJustify = alignment === "justify";
+	let shouldJustify = false;
 
-  if (isJustify && options) {
-    // Justify all lines except the last line (unless it ends with line break)
-    shouldJustify = !options.isLastLine || options.paragraphEndsWithLineBreak;
+	if (isJustify && options) {
+		// Justify all lines except the last line (unless it ends with line break)
+		shouldJustify = !options.isLastLine || options.paragraphEndsWithLineBreak;
 
-    if (shouldJustify) {
-      // Use CSS text-align: justify with text-align-last: justify
-      // This forces the browser to justify even single-line blocks
-      lineEl.style.textAlign = 'justify';
-      lineEl.style.textAlignLast = 'justify';
-      // Set explicit width so browser knows how wide to justify to
-      lineEl.style.width = `${options.availableWidth}px`;
-    }
-  }
+		if (shouldJustify) {
+			// Use CSS text-align: justify with text-align-last: justify
+			// This forces the browser to justify even single-line blocks
+			lineEl.style.textAlign = "justify";
+			lineEl.style.textAlignLast = "justify";
+			// Set explicit width so browser knows how wide to justify to
+			lineEl.style.width = `${options.availableWidth}px`;
+		}
+	}
 
-  // Use white-space: pre to prevent internal wrapping AND preserve consecutive spaces.
-  // All line breaking is done during measurement. 'pre' ensures multiple spaces
-  // are rendered visually (unlike 'nowrap' which collapses them).
-  lineEl.style.whiteSpace = 'pre';
+	// Use white-space: pre to prevent internal wrapping AND preserve consecutive spaces.
+	// All line breaking is done during measurement. 'pre' ensures multiple spaces
+	// are rendered visually (unlike 'nowrap' which collapses them).
+	lineEl.style.whiteSpace = "pre";
 
-  // Check if any run in this line has a highlight. If so, we need overflow:hidden
-  // to prevent the padding-extended background from bleeding into adjacent lines.
-  const hasHighlight = runsForLine.some((r) => isTextRun(r) && r.highlight);
-  lineEl.style.overflow = hasHighlight ? 'hidden' : 'visible';
+	// Check if any run in this line has a highlight. If so, we need overflow:hidden
+	// to prevent the padding-extended background from bleeding into adjacent lines.
+	const hasHighlight = runsForLine.some((r) => isTextRun(r) && r.highlight);
+	lineEl.style.overflow = hasHighlight ? "hidden" : "visible";
 
-  // Per-line floating margins (leftOffset/rightOffset) are now applied by
-  // renderParagraphFragment via MeasuredLine offsets from re-measurement.
+	// Per-line floating margins (leftOffset/rightOffset) are now applied by
+	// renderParagraphFragment via MeasuredLine offsets from re-measurement.
 
-  // Build tab context if we have tab runs - also create for text measurement
-  const hasTabRuns = runsForLine.some(isTabRun);
-  let tabContext: TabContext | undefined;
+	// Build tab context if we have tab runs - also create for text measurement
+	const hasTabRuns = runsForLine.some(isTabRun);
+	let tabContext: TabContext | undefined;
 
-  // Always create text measurer for accurate X position tracking
-  const measureText = createTextMeasurer(doc);
+	// Always create text measurer for accurate X position tracking
+	const measureText = createTextMeasurer(doc);
 
-  if (hasTabRuns) {
-    // Convert tab stops from layout engine format to tab calculator format
-    const explicitStops = options?.tabStops?.map(convertTabStopToCalc);
+	if (hasTabRuns) {
+		// Convert tab stops from layout engine format to tab calculator format
+		const explicitStops = options?.tabStops?.map(convertTabStopToCalc);
 
-    // Convert left indent from pixels to twips for tab calculation
-    // The leftIndent serves two purposes in the tab calculator:
-    // 1. For hanging indent paragraphs, it adds an implicit tab stop at the left margin
-    // 2. Default tab stops are generated at regular intervals from the left margin
-    const leftIndentTwips = options?.leftIndentPx ? Math.round(options.leftIndentPx * 15) : 0;
+		// Convert left indent from pixels to twips for tab calculation
+		// The leftIndent serves two purposes in the tab calculator:
+		// 1. For hanging indent paragraphs, it adds an implicit tab stop at the left margin
+		// 2. Default tab stops are generated at regular intervals from the left margin
+		const leftIndentTwips = options?.leftIndentPx
+			? Math.round(options.leftIndentPx * 15)
+			: 0;
 
-    tabContext = {
-      explicitStops,
-      leftIndent: leftIndentTwips,
-    };
-  }
+		tabContext = {
+			explicitStops,
+			leftIndent: leftIndentTwips,
+		};
+	}
 
-  // Track current X position for tab calculations
-  // Tab stops are measured from the content area left edge (page text area)
-  // We need to track where on that coordinate system our text is
-  let currentX = 0;
-  const leftIndentPx = options?.leftIndentPx ?? 0;
+	// Track current X position for tab calculations
+	// Tab stops are measured from the content area left edge (page text area)
+	// We need to track where on that coordinate system our text is
+	let currentX = 0;
+	const leftIndentPx = options?.leftIndentPx ?? 0;
 
-  if (options?.isFirstLine) {
-    // First line position depends on first-line indent or hanging indent:
-    // - With hanging indent (firstLineIndentPx < 0): starts at leftIndent + firstLineIndent
-    // - With first-line indent (firstLineIndentPx > 0): starts at leftIndent + firstLineIndent
-    // - No indent: starts at leftIndent
-    const firstLineIndentPx = options?.firstLineIndentPx ?? 0;
-    currentX = leftIndentPx + firstLineIndentPx;
-  } else {
-    // Non-first lines start at the left indent position
-    currentX = leftIndentPx;
-  }
+	if (options?.isFirstLine) {
+		// First line position depends on first-line indent or hanging indent:
+		// - With hanging indent (firstLineIndentPx < 0): starts at leftIndent + firstLineIndent
+		// - With first-line indent (firstLineIndentPx > 0): starts at leftIndent + firstLineIndent
+		// - No indent: starts at leftIndent
+		const firstLineIndentPx = options?.firstLineIndentPx ?? 0;
+		currentX = leftIndentPx + firstLineIndentPx;
+	} else {
+		// Non-first lines start at the left indent position
+		currentX = leftIndentPx;
+	}
 
-  // Render each run
-  for (let i = 0; i < runsForLine.length; i++) {
-    const run = runsForLine[i];
+	// Render each run
+	for (let i = 0; i < runsForLine.length; i++) {
+		const run = runsForLine[i];
 
-    if (isTabRun(run) && tabContext) {
-      // Get text following this tab for alignment calculations
-      const followingText = getTextAfterTab(runsForLine, i, options?.context);
+		if (isTabRun(run) && tabContext) {
+			// Get text following this tab for alignment calculations
+			const followingText = getTextAfterTab(runsForLine, i, options?.context);
 
-      // Calculate tab width based on current position
-      const tabResult = calculateTabWidth(currentX, tabContext, followingText, measureText);
+			// Calculate tab width based on current position
+			const tabResult = calculateTabWidth(
+				currentX,
+				tabContext,
+				followingText,
+				measureText,
+			);
 
-      // Render tab with calculated width and leader
-      const tabEl = renderTabRun(run, doc, tabResult.width, tabResult.leader);
-      lineEl.appendChild(tabEl);
+			// Render tab with calculated width and leader
+			const tabEl = renderTabRun(run, doc, tabResult.width, tabResult.leader);
+			lineEl.appendChild(tabEl);
 
-      // Update X position
-      currentX += tabResult.width;
-    } else if (isTextRun(run)) {
-      const runEl = renderTextRun(run, doc, options?.context?.resolvedCommentIds);
+			// Update X position
+			currentX += tabResult.width;
+		} else if (isTextRun(run)) {
+			const runEl = renderTextRun(
+				run,
+				doc,
+				options?.context?.resolvedCommentIds,
+			);
 
-      // For highlighted runs, extend background to fill the full line height.
-      // Inline elements' background only covers the content area (font ascent+descent),
-      // which differs by font size. Vertical padding on inline elements extends the
-      // background without affecting line box calculations.
-      if (run.highlight) {
-        const fontSizePx = run.fontSize ? (run.fontSize * 96) / 72 : 14.67;
-        const contentHeight = fontSizePx * 1.2; // approximate content area
-        const gap = Math.max(0, line.lineHeight - contentHeight);
-        if (gap > 0) {
-          const pad = gap / 2;
-          runEl.style.paddingTop = `${pad}px`;
-          runEl.style.paddingBottom = `${pad}px`;
-        }
-      }
+			// For highlighted runs, extend background to fill the full line height.
+			// Inline elements' background only covers the content area (font ascent+descent),
+			// which differs by font size. Vertical padding on inline elements extends the
+			// background without affecting line box calculations.
+			if (run.highlight) {
+				const fontSizePx = run.fontSize ? (run.fontSize * 96) / 72 : 14.67;
+				const contentHeight = fontSizePx * 1.2; // approximate content area
+				const gap = Math.max(0, line.lineHeight - contentHeight);
+				if (gap > 0) {
+					const pad = gap / 2;
+					runEl.style.paddingTop = `${pad}px`;
+					runEl.style.paddingBottom = `${pad}px`;
+				}
+			}
 
-      lineEl.appendChild(runEl);
+			lineEl.appendChild(runEl);
 
-      // Measure text width for accurate tab position tracking
-      const fontSize = run.fontSize || 11;
-      const fontFamily = run.fontFamily || 'Calibri';
-      currentX += measureText(run.text, fontSize, fontFamily);
-    } else if (isImageRun(run)) {
-      // Skip floating images - they're rendered separately at page level.
-      // Exception: inside table cells, floating images must render in-flow
-      // Floating images are rendered in dedicated floating layers (page-level
-      // or cell-level), not inline. Skip them here to avoid double rendering.
-      if (isFloatingImageRun(run)) {
-        continue;
-      }
-      const imageKey = getInlineImageRunKey(run);
-      if (options?.renderedInlineImageKeys?.has(imageKey)) {
-        continue;
-      }
-      options?.renderedInlineImageKeys?.add(imageKey);
-      // Inline or block image - render in the text flow
-      const runEl = renderImageRun(run, doc);
-      lineEl.appendChild(runEl);
-      // Block images don't contribute to horizontal position
-      if (run.displayMode !== 'block' && run.wrapType !== 'topAndBottom') {
-        currentX += run.width;
-      }
-    } else if (isLineBreakRun(run)) {
-      const runEl = renderLineBreakRun(run, doc);
-      lineEl.appendChild(runEl);
-    } else if (isFieldRun(run) && options?.context) {
-      // Render field run with context for PAGE/NUMPAGES substitution
-      const runEl = renderFieldRun(run, doc, options.context);
-      lineEl.appendChild(runEl);
-      // Estimate field text width for tab calculations
-      let fieldText = run.fallback ?? '';
-      if (run.fieldType === 'PAGE') fieldText = String(options.context.pageNumber);
-      else if (run.fieldType === 'NUMPAGES') fieldText = String(options.context.totalPages);
-      const fontSize = run.fontSize || 11;
-      const fontFamily = run.fontFamily || 'Calibri';
-      currentX += measureText(fieldText, fontSize, fontFamily);
-    } else {
-      // Fallback for unknown run types
-      const runEl = renderRun(run, doc, options?.context);
-      lineEl.appendChild(runEl);
-    }
-  }
+			// Measure text width for accurate tab position tracking
+			const fontSize = run.fontSize || 11;
+			const fontFamily = run.fontFamily || "Calibri";
+			currentX += measureText(run.text, fontSize, fontFamily);
+		} else if (isImageRun(run)) {
+			// Skip floating images - they're rendered separately at page level.
+			// Exception: inside table cells, floating images must render in-flow
+			// Floating images are rendered in dedicated floating layers (page-level
+			// or cell-level), not inline. Skip them here to avoid double rendering.
+			if (isFloatingImageRun(run)) {
+				continue;
+			}
+			const imageKey = getInlineImageRunKey(run);
+			if (options?.renderedInlineImageKeys?.has(imageKey)) {
+				continue;
+			}
+			options?.renderedInlineImageKeys?.add(imageKey);
+			// Inline or block image - render in the text flow
+			const runEl = renderImageRun(run, doc);
+			lineEl.appendChild(runEl);
+			// Block images don't contribute to horizontal position
+			if (run.displayMode !== "block" && run.wrapType !== "topAndBottom") {
+				currentX += run.width;
+			}
+		} else if (isLineBreakRun(run)) {
+			const runEl = renderLineBreakRun(run, doc);
+			lineEl.appendChild(runEl);
+		} else if (isFieldRun(run) && options?.context) {
+			// Render field run with context for PAGE/NUMPAGES substitution
+			const runEl = renderFieldRun(run, doc, options.context);
+			lineEl.appendChild(runEl);
+			// Estimate field text width for tab calculations
+			let fieldText = run.fallback ?? "";
+			if (run.fieldType === "PAGE")
+				fieldText = String(options.context.pageNumber);
+			else if (run.fieldType === "NUMPAGES")
+				fieldText = String(options.context.totalPages);
+			const fontSize = run.fontSize || 11;
+			const fontFamily = run.fontFamily || "Calibri";
+			currentX += measureText(fieldText, fontSize, fontFamily);
+		} else {
+			// Fallback for unknown run types
+			const runEl = renderRun(run, doc, options?.context);
+			lineEl.appendChild(runEl);
+		}
+	}
 
-  return lineEl;
+	return lineEl;
 }
 
 /**
  * Check if two individual border definitions are equal (same style, width, color).
  */
 function bordersEqual(a?: BorderStyle, b?: BorderStyle): boolean {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  return a.style === b.style && a.width === b.width && a.color === b.color;
+	if (!a && !b) return true;
+	if (!a || !b) return false;
+	return a.style === b.style && a.width === b.width && a.color === b.color;
 }
 
 /**
@@ -1263,15 +1322,15 @@ function bordersEqual(a?: BorderStyle, b?: BorderStyle): boolean {
  * Adjacent paragraphs with identical border definitions belong to the same group.
  */
 function bordersFormGroup(a?: ParagraphBorders, b?: ParagraphBorders): boolean {
-  if (!a && !b) return false; // no borders = no group
-  if (!a || !b) return false;
-  return (
-    bordersEqual(a.top, b.top) &&
-    bordersEqual(a.bottom, b.bottom) &&
-    bordersEqual(a.left, b.left) &&
-    bordersEqual(a.right, b.right) &&
-    bordersEqual(a.between, b.between)
-  );
+	if (!a && !b) return false; // no borders = no group
+	if (!a || !b) return false;
+	return (
+		bordersEqual(a.top, b.top) &&
+		bordersEqual(a.bottom, b.bottom) &&
+		bordersEqual(a.left, b.left) &&
+		bordersEqual(a.right, b.right) &&
+		bordersEqual(a.between, b.between)
+	);
 }
 
 /**
@@ -1285,378 +1344,398 @@ function bordersFormGroup(a?: ParagraphBorders, b?: ParagraphBorders): boolean {
  * @returns The fragment DOM element
  */
 export function renderParagraphFragment(
-  fragment: ParagraphFragment,
-  block: ParagraphBlock,
-  measure: ParagraphMeasure,
-  context: RenderContext,
-  options: RenderParagraphOptions = {}
+	fragment: ParagraphFragment,
+	block: ParagraphBlock,
+	measure: ParagraphMeasure,
+	context: RenderContext,
+	options: RenderParagraphOptions = {},
 ): HTMLElement {
-  const doc = options.document ?? document;
+	const doc = options.document ?? document;
 
-  const fragmentEl = doc.createElement('div');
-  fragmentEl.className = PARAGRAPH_CLASS_NAMES.fragment;
-  // Outer positioning honors the render context. Body's per-page layout
-  // overrides this anyway via applyFragmentStyles (legacy default), but
-  // HF callers explicitly pass `positioning: 'absolute'` and textbox
-  // callers pass `positioning: 'flow'` — keeps the choice in the
-  // RenderContext rather than scattered post-render style flips (#379).
-  // 'flow' / unspecified default to relative because the element must
-  // be a containing block for absolutely positioned floating images.
-  fragmentEl.style.position = context.positioning === 'absolute' ? 'absolute' : 'relative';
+	const fragmentEl = doc.createElement("div");
+	fragmentEl.className = PARAGRAPH_CLASS_NAMES.fragment;
+	// Outer positioning honors the render context. Body's per-page layout
+	// overrides this anyway via applyFragmentStyles (legacy default), but
+	// HF callers explicitly pass `positioning: 'absolute'` and textbox
+	// callers pass `positioning: 'flow'` — keeps the choice in the
+	// RenderContext rather than scattered post-render style flips (#379).
+	// 'flow' / unspecified default to relative because the element must
+	// be a containing block for absolutely positioned floating images.
+	fragmentEl.style.position =
+		context.positioning === "absolute" ? "absolute" : "relative";
 
-  // Store block and fragment metadata
-  fragmentEl.dataset.blockId = String(fragment.blockId);
-  fragmentEl.dataset.fromLine = String(fragment.fromLine);
-  fragmentEl.dataset.toLine = String(fragment.toLine);
+	// Store block and fragment metadata
+	fragmentEl.dataset.blockId = String(fragment.blockId);
+	fragmentEl.dataset.fromLine = String(fragment.fromLine);
+	fragmentEl.dataset.toLine = String(fragment.toLine);
 
-  applyPmPositions(fragmentEl, fragment.pmStart, fragment.pmEnd);
+	applyPmPositions(fragmentEl, fragment.pmStart, fragment.pmEnd);
 
-  if (fragment.continuesFromPrev) {
-    fragmentEl.dataset.continuesFromPrev = 'true';
-  }
-  if (fragment.continuesOnNext) {
-    fragmentEl.dataset.continuesOnNext = 'true';
-  }
+	if (fragment.continuesFromPrev) {
+		fragmentEl.dataset.continuesFromPrev = "true";
+	}
+	if (fragment.continuesOnNext) {
+		fragmentEl.dataset.continuesOnNext = "true";
+	}
 
-  // Text wrapping around floating images is handled at measurement time via
-  // per-line leftOffset/rightOffset in MeasuredLine. Floating images themselves
-  // skip inline rendering - they're rendered at page level.
-  // NOTE: Floating images are rendered at page level in renderPage.ts for
-  // cross-paragraph positioning. Inside table cells, they render in-flow
-  // since page-level extraction doesn't reach into cell paragraphs.
+	// Text wrapping around floating images is handled at measurement time via
+	// per-line leftOffset/rightOffset in MeasuredLine. Floating images themselves
+	// skip inline rendering - they're rendered at page level.
+	// NOTE: Floating images are rendered at page level in renderPage.ts for
+	// cross-paragraph positioning. Inside table cells, they render in-flow
+	// since page-level extraction doesn't reach into cell paragraphs.
 
-  // Get the lines for this fragment
-  const lines = measure.lines.slice(fragment.fromLine, fragment.toLine);
-  const alignment = block.attrs?.alignment;
+	// Get the lines for this fragment
+	const lines = measure.lines.slice(fragment.fromLine, fragment.toLine);
+	const alignment = block.attrs?.alignment;
 
-  // Apply paragraph-level styles
-  if (block.attrs?.styleId) {
-    fragmentEl.dataset.styleId = block.attrs.styleId;
-  }
+	// Apply paragraph-level styles
+	if (block.attrs?.styleId) {
+		fragmentEl.dataset.styleId = block.attrs.styleId;
+	}
 
-  // Paginator owns vertical positioning; spacing.before/after are baked
-  // into fragment.y, not applied as wrapper padding (would double-count).
+	// Paginator owns vertical positioning; spacing.before/after are baked
+	// into fragment.y, not applied as wrapper padding (would double-count).
 
-  // Apply RTL direction
-  const isBidi = block.attrs?.bidi;
-  if (isBidi) {
-    fragmentEl.dir = 'rtl';
-  }
+	// Apply RTL direction
+	const isBidi = block.attrs?.bidi;
+	if (isBidi) {
+		fragmentEl.dir = "rtl";
+	}
 
-  // Apply text alignment at paragraph level
-  // For justify: use text-align: left and apply word-spacing per line
-  // For RTL paragraphs, default alignment is right
-  if (alignment) {
-    if (alignment === 'center') {
-      fragmentEl.style.textAlign = 'center';
-    } else if (alignment === 'right') {
-      fragmentEl.style.textAlign = 'right';
-    } else if (alignment === 'left') {
-      fragmentEl.style.textAlign = 'left';
-    } else {
-      // 'justify' uses text-align: left (or right for RTL)
-      // Justify is implemented via word-spacing on individual lines
-      fragmentEl.style.textAlign = isBidi ? 'right' : 'left';
-    }
-  } else if (isBidi) {
-    // No explicit alignment on RTL paragraph — default to right
-    fragmentEl.style.textAlign = 'right';
-  }
+	// Apply text alignment at paragraph level
+	// For justify: use text-align: left and apply word-spacing per line
+	// For RTL paragraphs, default alignment is right
+	if (alignment) {
+		if (alignment === "center") {
+			fragmentEl.style.textAlign = "center";
+		} else if (alignment === "right") {
+			fragmentEl.style.textAlign = "right";
+		} else if (alignment === "left") {
+			fragmentEl.style.textAlign = "left";
+		} else {
+			// 'justify' uses text-align: left (or right for RTL)
+			// Justify is implemented via word-spacing on individual lines
+			fragmentEl.style.textAlign = isBidi ? "right" : "left";
+		}
+	} else if (isBidi) {
+		// No explicit alignment on RTL paragraph — default to right
+		fragmentEl.style.textAlign = "right";
+	}
 
-  // Track indentation for line-level application
-  // Indentation is applied per-line, not at fragment level
-  const indent = block.attrs?.indent;
-  let indentLeft = 0;
-  let indentRight = 0;
+	// Track indentation for line-level application
+	// Indentation is applied per-line, not at fragment level
+	const indent = block.attrs?.indent;
+	let indentLeft = 0;
+	let indentRight = 0;
 
-  if (indent) {
-    // Track indent values for line-level application
-    // For RTL paragraphs, swap left/right indentation
-    if (isBidi) {
-      if (indent.left && indent.left > 0) indentRight = indent.left;
-      if (indent.right && indent.right > 0) indentLeft = indent.right;
-    } else {
-      if (indent.left && indent.left > 0) indentLeft = indent.left;
-      if (indent.right && indent.right > 0) indentRight = indent.right;
-    }
-  }
+	if (indent) {
+		// Track indent values for line-level application
+		// For RTL paragraphs, swap left/right indentation
+		if (isBidi) {
+			if (indent.left && indent.left > 0) indentRight = indent.left;
+			if (indent.right && indent.right > 0) indentLeft = indent.right;
+		} else {
+			if (indent.left && indent.left > 0) indentLeft = indent.left;
+			if (indent.right && indent.right > 0) indentRight = indent.right;
+		}
+	}
 
-  // Note: Line spacing is applied per-line div (renderLine sets lineEl.style.height
-  // and lineEl.style.lineHeight), not at fragment level. Fragment-level line-height
-  // was removed to avoid conflicts with the explicit per-line pixel heights.
+	// Note: Line spacing is applied per-line div (renderLine sets lineEl.style.height
+	// and lineEl.style.lineHeight), not at fragment level. Fragment-level line-height
+	// was removed to avoid conflicts with the explicit per-line pixel heights.
 
-  // Apply borders
-  const borders = block.attrs?.borders;
-  if (borders) {
-    const borderStyleToCss = (style?: string): string => {
-      // Map OOXML border styles to CSS
-      switch (style) {
-        case 'single':
-          return 'solid';
-        case 'double':
-          return 'double';
-        case 'dotted':
-          return 'dotted';
-        case 'dashed':
-          return 'dashed';
-        case 'thick':
-          return 'solid';
-        case 'wave':
-          return 'wavy';
-        case 'dashSmallGap':
-          return 'dashed';
-        case 'nil':
-        case 'none':
-          return 'none';
-        default:
-          return 'solid';
-      }
-    };
+	// Apply borders
+	const borders = block.attrs?.borders;
+	if (borders) {
+		const borderStyleToCss = (style?: string): string => {
+			// Map OOXML border styles to CSS
+			switch (style) {
+				case "single":
+					return "solid";
+				case "double":
+					return "double";
+				case "dotted":
+					return "dotted";
+				case "dashed":
+					return "dashed";
+				case "thick":
+					return "solid";
+				case "wave":
+					return "wavy";
+				case "dashSmallGap":
+					return "dashed";
+				case "nil":
+				case "none":
+					return "none";
+				default:
+					return "solid";
+			}
+		};
 
-    // Ensure box-sizing is set for proper border calculations
-    fragmentEl.style.boxSizing = 'border-box';
+		// Ensure box-sizing is set for proper border calculations
+		fragmentEl.style.boxSizing = "border-box";
 
-    const borderToCss = (b: BorderStyle) => `${b.width}px ${borderStyleToCss(b.style)} ${b.color}`;
+		const borderToCss = (b: BorderStyle) =>
+			`${b.width}px ${borderStyleToCss(b.style)} ${b.color}`;
 
-    // Word-style border grouping (ECMA-376 §17.3.1.24):
-    // Adjacent paragraphs with identical pBdr form a group.
-    // - top border → only on the first paragraph of the group
-    // - bottom border → only on the last paragraph of the group
-    // - between border → rendered as borderTop on interior paragraphs
-    // - left/right → on every paragraph in the group
-    const groupedWithPrev = bordersFormGroup(options.prevBorders, borders);
-    const groupedWithNext = bordersFormGroup(borders, options.nextBorders);
+		// Word-style border grouping (ECMA-376 §17.3.1.24):
+		// Adjacent paragraphs with identical pBdr form a group.
+		// - top border → only on the first paragraph of the group
+		// - bottom border → only on the last paragraph of the group
+		// - between border → rendered as borderTop on interior paragraphs
+		// - left/right → on every paragraph in the group
+		const groupedWithPrev = bordersFormGroup(options.prevBorders, borders);
+		const groupedWithNext = bordersFormGroup(borders, options.nextBorders);
 
-    const renderedTopBorder = groupedWithPrev ? borders.between : borders.top;
-    const renderedBottomBorder = !groupedWithNext ? borders.bottom : undefined;
+		const renderedTopBorder = groupedWithPrev ? borders.between : borders.top;
+		const renderedBottomBorder = !groupedWithNext ? borders.bottom : undefined;
 
-    const borderBox = doc.createElement('div');
-    borderBox.className = 'layout-paragraph-border';
-    borderBox.style.position = 'absolute';
-    borderBox.style.pointerEvents = 'none';
-    borderBox.style.boxSizing = 'border-box';
-    borderBox.style.left = `${indentLeft - (borders.left?.space ?? 0)}px`;
-    borderBox.style.right = `${indentRight - (borders.right?.space ?? 0)}px`;
-    borderBox.style.top = `${-(renderedTopBorder?.space ?? 0)}px`;
-    borderBox.style.bottom = `${-(renderedBottomBorder?.space ?? 0)}px`;
+		const borderBox = doc.createElement("div");
+		borderBox.className = "layout-paragraph-border";
+		borderBox.style.position = "absolute";
+		borderBox.style.pointerEvents = "none";
+		borderBox.style.boxSizing = "border-box";
+		borderBox.style.left = `${indentLeft - (borders.left?.space ?? 0)}px`;
+		borderBox.style.right = `${indentRight - (borders.right?.space ?? 0)}px`;
+		borderBox.style.top = `${-(renderedTopBorder?.space ?? 0)}px`;
+		borderBox.style.bottom = `${-(renderedBottomBorder?.space ?? 0)}px`;
 
-    if (renderedTopBorder) {
-      borderBox.style.borderTop = borderToCss(renderedTopBorder);
-    }
-    if (renderedBottomBorder) {
-      borderBox.style.borderBottom = borderToCss(renderedBottomBorder);
-    }
-    if (borders.left) {
-      borderBox.style.borderLeft = borderToCss(borders.left);
-    }
-    if (borders.right) {
-      borderBox.style.borderRight = borderToCss(borders.right);
-    }
+		if (renderedTopBorder) {
+			borderBox.style.borderTop = borderToCss(renderedTopBorder);
+		}
+		if (renderedBottomBorder) {
+			borderBox.style.borderBottom = borderToCss(renderedBottomBorder);
+		}
+		if (borders.left) {
+			borderBox.style.borderLeft = borderToCss(borders.left);
+		}
+		if (borders.right) {
+			borderBox.style.borderRight = borderToCss(borders.right);
+		}
 
-    const hasBorder = renderedTopBorder || renderedBottomBorder || borders.left || borders.right;
-    if (hasBorder) {
-      fragmentEl.appendChild(borderBox);
-    }
+		const hasBorder =
+			renderedTopBorder ||
+			renderedBottomBorder ||
+			borders.left ||
+			borders.right;
+		if (hasBorder) {
+			fragmentEl.appendChild(borderBox);
+		}
 
-    // Bar border — vertical decorative bar on the left side (ECMA-376 §17.3.1.4)
-    // Rendered independently of the regular left border
-    if (borders.bar) {
-      const barEl = doc.createElement('div');
-      barEl.style.position = 'absolute';
-      barEl.style.left = '-8px';
-      barEl.style.top = '0';
-      barEl.style.bottom = '0';
-      barEl.style.borderLeft = borderToCss(borders.bar);
-      fragmentEl.style.position = 'relative';
-      fragmentEl.appendChild(barEl);
-    }
-  }
+		// Bar border — vertical decorative bar on the left side (ECMA-376 §17.3.1.4)
+		// Rendered independently of the regular left border
+		if (borders.bar) {
+			const barEl = doc.createElement("div");
+			barEl.style.position = "absolute";
+			barEl.style.left = "-8px";
+			barEl.style.top = "0";
+			barEl.style.bottom = "0";
+			barEl.style.borderLeft = borderToCss(borders.bar);
+			fragmentEl.style.position = "relative";
+			fragmentEl.appendChild(barEl);
+		}
+	}
 
-  // Apply shading (background color)
-  if (block.attrs?.shading) {
-    fragmentEl.style.backgroundColor = block.attrs.shading;
-  }
+	// Apply shading (background color)
+	if (block.attrs?.shading) {
+		fragmentEl.style.backgroundColor = block.attrs.shading;
+	}
 
-  // Calculate available width for justify
-  // Subtract indentation since those are applied as CSS margins on the fragment
-  const availableWidth = fragment.width - indentLeft - indentRight;
+	// Calculate available width for justify
+	// Subtract indentation since those are applied as CSS margins on the fragment
+	const availableWidth = fragment.width - indentLeft - indentRight;
 
-  // Check if paragraph ends with line break (for justify last line handling)
-  const lastRun = block.runs[block.runs.length - 1];
-  const paragraphEndsWithLineBreak = lastRun?.kind === 'lineBreak';
+	// Check if paragraph ends with line break (for justify last line handling)
+	const lastRun = block.runs[block.runs.length - 1];
+	const paragraphEndsWithLineBreak = lastRun?.kind === "lineBreak";
 
-  // Total number of lines in the paragraph (not just this fragment)
-  const totalLines = measure.lines.length;
+	// Total number of lines in the paragraph (not just this fragment)
+	const totalLines = measure.lines.length;
 
-  // Calculate first line indent for tab positioning
-  // Hanging indent is stored as positive value but means negative offset for first line
-  let firstLineIndentPx = 0;
-  if (indent?.hanging && indent.hanging > 0) {
-    firstLineIndentPx = -indent.hanging; // Negative because first line starts further left
-  } else if (indent?.firstLine && indent.firstLine > 0) {
-    firstLineIndentPx = indent.firstLine; // Positive because first line is indented right
-  }
+	// Calculate first line indent for tab positioning
+	// Hanging indent is stored as positive value but means negative offset for first line
+	let firstLineIndentPx = 0;
+	if (indent?.hanging && indent.hanging > 0) {
+		firstLineIndentPx = -indent.hanging; // Negative because first line starts further left
+	} else if (indent?.firstLine && indent.firstLine > 0) {
+		firstLineIndentPx = indent.firstLine; // Positive because first line is indented right
+	}
 
-  // Render each line with per-line floating margin calculation
-  let cumulativeLineY = 0; // Track Y position within the fragment
-  const renderedInlineImageKeys = options.renderedInlineImageKeys ?? new Set<string>();
+	// Render each line with per-line floating margin calculation
+	let cumulativeLineY = 0; // Track Y position within the fragment
+	const renderedInlineImageKeys =
+		options.renderedInlineImageKeys ?? new Set<string>();
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // Calculate the actual line index in the full paragraph
-    const lineIndex = fragment.fromLine + i;
-    const isLastLine = lineIndex === totalLines - 1;
-    // First line of the paragraph (not just this fragment)
-    const isFirstLine = lineIndex === 0 && !fragment.continuesFromPrev;
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		// Calculate the actual line index in the full paragraph
+		const lineIndex = fragment.fromLine + i;
+		const isLastLine = lineIndex === totalLines - 1;
+		// First line of the paragraph (not just this fragment)
+		const isFirstLine = lineIndex === 0 && !fragment.continuesFromPrev;
 
-    // Get per-line floating margins from measurement phase
-    const lineLeftOffset = line.leftOffset ?? 0;
-    const lineRightOffset = line.rightOffset ?? 0;
+		// Get per-line floating margins from measurement phase
+		const lineLeftOffset = line.leftOffset ?? 0;
+		const lineRightOffset = line.rightOffset ?? 0;
 
-    // For first line, adjust available width for hanging/firstLine indent
-    // Measurement uses: baseFirstLineWidth = bodyContentWidth - (firstLine - hanging)
-    // So hanging gives MORE width, firstLine gives LESS width
-    let lineAvailableWidth = availableWidth;
-    if (isFirstLine) {
-      const hasHangingIndent = indent?.hanging && indent.hanging > 0;
-      const hasFirstLineIndent = indent?.firstLine && indent.firstLine > 0;
-      if (hasHangingIndent && indent?.hanging) {
-        lineAvailableWidth = availableWidth + indent.hanging;
-      } else if (hasFirstLineIndent && indent?.firstLine) {
-        lineAvailableWidth = availableWidth - indent.firstLine;
-      }
-    }
+		// For first line, adjust available width for hanging/firstLine indent
+		// Measurement uses: baseFirstLineWidth = bodyContentWidth - (firstLine - hanging)
+		// So hanging gives MORE width, firstLine gives LESS width
+		let lineAvailableWidth = availableWidth;
+		if (isFirstLine) {
+			const hasHangingIndent = indent?.hanging && indent.hanging > 0;
+			const hasFirstLineIndent = indent?.firstLine && indent.firstLine > 0;
+			if (hasHangingIndent && indent?.hanging) {
+				lineAvailableWidth = availableWidth + indent.hanging;
+			} else if (hasFirstLineIndent && indent?.firstLine) {
+				lineAvailableWidth = availableWidth - indent.firstLine;
+			}
+		}
 
-    const lineEl = renderLine(block, line, alignment, doc, {
-      availableWidth: lineAvailableWidth - lineLeftOffset - lineRightOffset,
-      isLastLine,
-      isFirstLine,
-      paragraphEndsWithLineBreak,
-      tabStops: block.attrs?.tabs,
-      leftIndentPx: indentLeft,
-      firstLineIndentPx: isFirstLine ? firstLineIndentPx : 0,
-      context,
-      floatingMargins: { leftMargin: lineLeftOffset, rightMargin: lineRightOffset },
-      renderedInlineImageKeys,
-    });
+		const lineEl = renderLine(block, line, alignment, doc, {
+			availableWidth: lineAvailableWidth - lineLeftOffset - lineRightOffset,
+			isLastLine,
+			isFirstLine,
+			paragraphEndsWithLineBreak,
+			tabStops: block.attrs?.tabs,
+			leftIndentPx: indentLeft,
+			firstLineIndentPx: isFirstLine ? firstLineIndentPx : 0,
+			context,
+			floatingMargins: {
+				leftMargin: lineLeftOffset,
+				rightMargin: lineRightOffset,
+			},
+			renderedInlineImageKeys,
+		});
 
-    // Apply left offset from floating images (lines start after the floating image)
-    // Also constrain width so text doesn't overflow into the image area
-    if (lineLeftOffset > 0 || lineRightOffset > 0) {
-      if (lineLeftOffset > 0) {
-        lineEl.style.marginLeft = `${lineLeftOffset}px`;
-      }
-      if (lineRightOffset > 0) {
-        lineEl.style.marginRight = `${lineRightOffset}px`;
-      }
-      // Constrain line width to prevent text from extending into floating image area
-      const constrainedWidth = lineAvailableWidth - lineLeftOffset - lineRightOffset;
-      if (constrainedWidth > 0) {
-        lineEl.style.width = `${constrainedWidth}px`;
-      }
-    }
+		// Apply left offset from floating images (lines start after the floating image)
+		// Also constrain width so text doesn't overflow into the image area
+		if (lineLeftOffset > 0 || lineRightOffset > 0) {
+			if (lineLeftOffset > 0) {
+				lineEl.style.marginLeft = `${lineLeftOffset}px`;
+			}
+			if (lineRightOffset > 0) {
+				lineEl.style.marginRight = `${lineRightOffset}px`;
+			}
+			// Constrain line width to prevent text from extending into floating image area
+			const constrainedWidth =
+				lineAvailableWidth - lineLeftOffset - lineRightOffset;
+			if (constrainedWidth > 0) {
+				lineEl.style.width = `${constrainedWidth}px`;
+			}
+		}
 
-    // Update cumulative Y for next line
-    cumulativeLineY += line.lineHeight;
+		// Update cumulative Y for next line
+		cumulativeLineY += line.lineHeight;
 
-    // Apply line-level indentation
-    // Indentation is applied per-line for correct text wrapping
-    const hasHanging = indent?.hanging && indent.hanging > 0;
-    const hasFirstLine = indent?.firstLine && indent.firstLine > 0;
+		// Apply line-level indentation
+		// Indentation is applied per-line for correct text wrapping
+		const hasHanging = indent?.hanging && indent.hanging > 0;
+		const hasFirstLine = indent?.firstLine && indent.firstLine > 0;
 
-    if (isFirstLine) {
-      // First line handling
-      if (indentLeft > 0 && hasHanging) {
-        // Hanging indent: first line starts at (indentLeft - hanging)
-        lineEl.style.paddingLeft = `${indentLeft}px`;
-        lineEl.style.textIndent = `-${indent!.hanging}px`;
-      } else if (indentLeft > 0 && hasFirstLine) {
-        // First line indent: first line starts at (indentLeft + firstLine)
-        lineEl.style.paddingLeft = `${indentLeft}px`;
-        lineEl.style.textIndent = `${indent!.firstLine}px`;
-      } else if (indentLeft > 0) {
-        // Just left indent, no special first line treatment
-        lineEl.style.paddingLeft = `${indentLeft}px`;
-      } else if (hasFirstLine) {
-        // No left indent, but has first line indent
-        lineEl.style.textIndent = `${indent!.firstLine}px`;
-      }
-      // No hanging without left indent (handled by firstLineOffset in measurement)
-    } else {
-      // Body lines (not first line)
-      if (indentLeft > 0) {
-        lineEl.style.paddingLeft = `${indentLeft}px`;
-      } else if (hasHanging) {
-        // Hanging indent without left indent: body lines need padding = hanging
-        lineEl.style.paddingLeft = `${indent!.hanging}px`;
-      }
-    }
+		if (isFirstLine) {
+			// First line handling
+			if (indentLeft > 0 && hasHanging) {
+				// Hanging indent: first line starts at (indentLeft - hanging)
+				lineEl.style.paddingLeft = `${indentLeft}px`;
+				lineEl.style.textIndent = `-${indent!.hanging}px`;
+			} else if (indentLeft > 0 && hasFirstLine) {
+				// First line indent: first line starts at (indentLeft + firstLine)
+				lineEl.style.paddingLeft = `${indentLeft}px`;
+				lineEl.style.textIndent = `${indent!.firstLine}px`;
+			} else if (indentLeft > 0) {
+				// Just left indent, no special first line treatment
+				lineEl.style.paddingLeft = `${indentLeft}px`;
+			} else if (hasFirstLine) {
+				// No left indent, but has first line indent
+				lineEl.style.textIndent = `${indent!.firstLine}px`;
+			}
+			// No hanging without left indent (handled by firstLineOffset in measurement)
+		} else {
+			// Body lines (not first line)
+			if (indentLeft > 0) {
+				lineEl.style.paddingLeft = `${indentLeft}px`;
+			} else if (hasHanging) {
+				// Hanging indent without left indent: body lines need padding = hanging
+				lineEl.style.paddingLeft = `${indent!.hanging}px`;
+			}
+		}
 
-    if (indentRight > 0) {
-      lineEl.style.paddingRight = `${indentRight}px`;
-    }
+		if (indentRight > 0) {
+			lineEl.style.paddingRight = `${indentRight}px`;
+		}
 
-    // Add list marker to first line
-    // List first lines have special handling:
-    // - Marker starts at (indentLeft - hanging)
-    // - Text starts at indentLeft
-    // - The marker box fills the hanging space
-    if (isFirstLine && block.attrs?.listMarker && !block.attrs?.listMarkerHidden) {
-      // Override padding for list first lines
-      // Marker position = indentLeft - hanging (where first line content starts)
-      const markerPos = Math.max(0, indentLeft - (indent?.hanging ?? 0));
-      lineEl.style.paddingLeft = `${markerPos}px`;
-      lineEl.style.textIndent = '0'; // Don't use textIndent for lists
+		// Add list marker to first line
+		// List first lines have special handling:
+		// - Marker starts at (indentLeft - hanging)
+		// - Text starts at indentLeft
+		// - The marker box fills the hanging space
+		if (
+			isFirstLine &&
+			block.attrs?.listMarker &&
+			!block.attrs?.listMarkerHidden
+		) {
+			// Override padding for list first lines
+			// Marker position = indentLeft - hanging (where first line content starts)
+			const markerPos = Math.max(0, indentLeft - (indent?.hanging ?? 0));
+			lineEl.style.paddingLeft = `${markerPos}px`;
+			lineEl.style.textIndent = "0"; // Don't use textIndent for lists
 
-      // Resolve marker font per ECMA-376 §17.9.6:
-      // 1. Numbering level rPr (explicit marker font)
-      // 2. First text run's font (paragraph content)
-      // 3. Paragraph default font (from style)
-      let firstTextRun: TextRun | undefined;
-      if (!block.attrs.listMarkerFontFamily || !block.attrs.listMarkerFontSize) {
-        for (let ri = line.fromRun; ri <= line.toRun; ri++) {
-          const r = block.runs[ri];
-          if (r && r.kind === 'text') {
-            firstTextRun = r;
-            break;
-          }
-        }
-      }
-      const markerFontFamily =
-        block.attrs.listMarkerFontFamily ??
-        firstTextRun?.fontFamily ??
-        block.attrs.defaultFontFamily;
-      const markerFontSize =
-        block.attrs.listMarkerFontSize ?? firstTextRun?.fontSize ?? block.attrs.defaultFontSize;
+			// Resolve marker font per ECMA-376 §17.9.6:
+			// 1. Numbering level rPr (explicit marker font)
+			// 2. First text run's font (paragraph content)
+			// 3. Paragraph default font (from style)
+			let firstTextRun: TextRun | undefined;
+			if (
+				!block.attrs.listMarkerFontFamily ||
+				!block.attrs.listMarkerFontSize
+			) {
+				for (let ri = line.fromRun; ri <= line.toRun; ri++) {
+					const r = block.runs[ri];
+					if (r && r.kind === "text") {
+						firstTextRun = r;
+						break;
+					}
+				}
+			}
+			const markerFontFamily =
+				block.attrs.listMarkerFontFamily ??
+				firstTextRun?.fontFamily ??
+				block.attrs.defaultFontFamily;
+			const markerFontSize =
+				block.attrs.listMarkerFontSize ??
+				firstTextRun?.fontSize ??
+				block.attrs.defaultFontSize;
 
-      const marker = renderListMarker(
-        block.attrs.listMarker,
-        indent,
-        doc,
-        markerFontFamily,
-        markerFontSize
-      );
-      // With no hanging indent slot reserved for the marker, Word's default
-      // tab suffix wraps the body text below the marker (§17.9.25). We mirror
-      // that by giving the marker its own line, sized to match line height.
-      const hanging = indent?.hanging ?? 0;
-      if (hanging > 0) {
-        lineEl.insertBefore(marker, lineEl.firstChild);
-      } else {
-        const markerLine = doc.createElement('div');
-        markerLine.className = 'layout-line layout-list-marker-line';
-        markerLine.style.height = `${line.lineHeight}px`;
-        markerLine.style.lineHeight = `${line.lineHeight}px`;
-        markerLine.appendChild(marker);
-        fragmentEl.appendChild(markerLine);
-      }
-    }
+			const marker = renderListMarker(
+				block.attrs.listMarker,
+				indent,
+				doc,
+				markerFontFamily,
+				markerFontSize,
+			);
+			// With no hanging indent slot reserved for the marker, Word's default
+			// tab suffix wraps the body text below the marker (§17.9.25). We mirror
+			// that by giving the marker its own line, sized to match line height.
+			const hanging = indent?.hanging ?? 0;
+			if (hanging > 0) {
+				lineEl.insertBefore(marker, lineEl.firstChild);
+			} else {
+				const markerLine = doc.createElement("div");
+				markerLine.className = "layout-line layout-list-marker-line";
+				markerLine.style.height = `${line.lineHeight}px`;
+				markerLine.style.lineHeight = `${line.lineHeight}px`;
+				markerLine.appendChild(marker);
+				fragmentEl.appendChild(markerLine);
+			}
+		}
 
-    // Append line directly to fragment (per-line margins are applied in renderLine)
-    fragmentEl.appendChild(lineEl);
-  }
+		// Append line directly to fragment (per-line margins are applied in renderLine)
+		fragmentEl.appendChild(lineEl);
+	}
 
-  return fragmentEl;
+	return fragmentEl;
 }
 
 /**
@@ -1667,39 +1746,39 @@ export function renderParagraphFragment(
  * For long markers (like "1.1.1"), we ensure minimum spacing after the text.
  */
 function renderListMarker(
-  marker: string,
-  indent: ParagraphIndent | undefined,
-  doc: Document,
-  fontFamily?: string,
-  fontSize?: number
+	marker: string,
+	indent: ParagraphIndent | undefined,
+	doc: Document,
+	fontFamily?: string,
+	fontSize?: number,
 ): HTMLElement {
-  const span = doc.createElement('span');
-  span.className = 'layout-list-marker';
+	const span = doc.createElement("span");
+	span.className = "layout-list-marker";
 
-  // Apply font styling so the marker matches the paragraph text
-  // Per ECMA-376 §17.9.6, marker formatting comes from level rPr,
-  // then paragraph defaults, then document defaults.
-  if (fontFamily) {
-    span.style.fontFamily = resolveFontFamily(fontFamily).cssFallback;
-  }
-  if (fontSize) {
-    // Convert points to pixels: 1pt = 96/72 px
-    const fontSizePx = (fontSize * 96) / 72;
-    span.style.fontSize = `${fontSizePx}px`;
-  }
+	// Apply font styling so the marker matches the paragraph text
+	// Per ECMA-376 §17.9.6, marker formatting comes from level rPr,
+	// then paragraph defaults, then document defaults.
+	if (fontFamily) {
+		span.style.fontFamily = resolveFontFamily(fontFamily).cssFallback;
+	}
+	if (fontSize) {
+		// Convert points to pixels: 1pt = 96/72 px
+		const fontSizePx = (fontSize * 96) / 72;
+		span.style.fontSize = `${fontSizePx}px`;
+	}
 
-  span.textContent = marker;
-  span.style.textAlign = 'left';
-  span.style.boxSizing = 'border-box';
+	span.textContent = marker;
+	span.style.textAlign = "left";
+	span.style.boxSizing = "border-box";
 
-  // When a hanging indent reserves space for the marker, render inline-block
-  // so the marker sits in that slot. With no hanging indent the caller wraps
-  // the marker in its own line element instead.
-  const hanging = indent?.hanging ?? 0;
-  span.style.display = 'inline-block';
-  if (hanging > 0) {
-    span.style.minWidth = `${hanging}px`;
-  }
+	// When a hanging indent reserves space for the marker, render inline-block
+	// so the marker sits in that slot. With no hanging indent the caller wraps
+	// the marker in its own line element instead.
+	const hanging = indent?.hanging ?? 0;
+	span.style.display = "inline-block";
+	if (hanging > 0) {
+		span.style.minWidth = `${hanging}px`;
+	}
 
-  return span;
+	return span;
 }

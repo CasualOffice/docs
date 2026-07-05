@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
 /**
  * Export as PDF reuses the print pipeline — browsers' print dialog
@@ -17,69 +17,69 @@ import { EditorPage } from '../helpers/editor-page';
  *   3. The print window contains at least one `.layout-page` clone.
  */
 
-test.describe('Export as PDF', () => {
-  test('opens print window titled with document name', async ({ page }) => {
-    const editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.loadDocxFile('fixtures/core-properties.docx');
-    await page.waitForTimeout(400);
+test.describe("Export as PDF", () => {
+	test("opens print window titled with document name", async ({ page }) => {
+		const editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.loadDocxFile("fixtures/core-properties.docx");
+		await page.waitForTimeout(400);
 
-    // Capture what the editor would have written to the print window
-    // and short-circuit window.open + print so the test doesn't pop
-    // OS-level dialogs.
-    await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as any;
-      w.__capturedPrintHtml = null as string | null;
-      const origOpen = window.open;
-      w.__origOpen = origOpen;
-      window.open = function (..._args: unknown[]) {
-        let buffer = '';
-        const stub = {
-          document: {
-            write(s: string) {
-              buffer += s;
-            },
-            close() {
-              w.__capturedPrintHtml = buffer;
-            },
-          },
-          onload: null as (() => void) | null,
-          print() {
-            /* no-op */
-          },
-          close() {
-            /* no-op */
-          },
-          closed: true,
-        };
-        // Allow tests to inspect title without the print actually firing.
-        return stub as unknown as Window;
-      };
-    });
+		// Capture what the editor would have written to the print window
+		// and short-circuit window.open + print so the test doesn't pop
+		// OS-level dialogs.
+		await page.evaluate(() => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const w = window as any;
+			w.__capturedPrintHtml = null as string | null;
+			const origOpen = window.open;
+			w.__origOpen = origOpen;
+			window.open = (..._args: unknown[]) => {
+				let buffer = "";
+				const stub = {
+					document: {
+						write(s: string) {
+							buffer += s;
+						},
+						close() {
+							w.__capturedPrintHtml = buffer;
+						},
+					},
+					onload: null as (() => void) | null,
+					print() {
+						/* no-op */
+					},
+					close() {
+						/* no-op */
+					},
+					closed: true,
+				};
+				// Allow tests to inspect title without the print actually firing.
+				return stub as unknown as Window;
+			};
+		});
 
-    await page.getByRole('button', { name: /^File$/ }).click();
-    await page.getByText('Export as PDF', { exact: true }).click();
-    await page.waitForTimeout(150);
+		await page.getByRole("button", { name: /^File$/ }).click();
+		await page.getByText("Export as PDF", { exact: true }).click();
+		await page.waitForTimeout(150);
 
-    const captured = await page.evaluate(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (window as any).__capturedPrintHtml as string | null;
-    });
+		const captured = await page.evaluate(() => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			return (window as any).__capturedPrintHtml as string | null;
+		});
 
-    expect(captured).toBeTruthy();
-    // The example app sets documentName from the loaded file —
-    // `core-properties.docx` → "core-properties". The export-pdf flow
-    // strips a trailing `.docx` and uses the remainder as the title.
-    expect(captured!).toContain('<title>core-properties</title>');
-    expect(captured!).toContain('class="layout-page"');
+		expect(captured).toBeTruthy();
+		// The example app sets documentName from the loaded file —
+		// `core-properties.docx` → "core-properties". The export-pdf flow
+		// strips a trailing `.docx` and uses the remainder as the title.
+		expect(captured!).toContain("<title>core-properties</title>");
+		expect(captured!).toContain('class="layout-page"');
 
-    // The printed page box must be pinned to the document's actual page
-    // size (read from the .layout-page px dimensions), NOT `size: auto`
-    // which would let the print dialog's default paper drive the PDF.
-    const pageRule = captured!.match(/@page\s*\{[^}]*\}/)?.[0] ?? '';
-    expect(pageRule).not.toContain('size: auto');
-    expect(pageRule).toMatch(/size:\s*\d+(?:\.\d+)?px\s+\d+(?:\.\d+)?px/);
-  });
+		// The printed page box must be pinned to the document's actual page
+		// size (read from the .layout-page px dimensions), NOT `size: auto`
+		// which would let the print dialog's default paper drive the PDF.
+		const pageRule = captured!.match(/@page\s*\{[^}]*\}/)?.[0] ?? "";
+		expect(pageRule).not.toContain("size: auto");
+		expect(pageRule).toMatch(/size:\s*\d+(?:\.\d+)?px\s+\d+(?:\.\d+)?px/);
+	});
 });

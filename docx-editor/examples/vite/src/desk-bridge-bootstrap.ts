@@ -20,7 +20,7 @@
  */
 
 const url = new URL(window.location.href);
-const isDesktop = url.searchParams.get('desk') === '1';
+const isDesktop = url.searchParams.get("desk") === "1";
 
 /**
  * Desktop theme plumbing. The launcher owns the user's light/dark/system
@@ -43,120 +43,130 @@ const isDesktop = url.searchParams.get('desk') === '1';
  * or an absent matchMedia must never throw and must be a no-op.
  */
 function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
-  try {
-    if (!isDesktop) return;
-    if (window.parent !== window) return; // top-level Tauri windows only
-    if (typeof document === 'undefined') return;
+	try {
+		if (!isDesktop) return;
+		if (window.parent !== window) return; // top-level Tauri windows only
+		if (typeof document === "undefined") return;
 
-    const VALID = new Set(['system', 'light', 'dark']);
-    const rawMode = url.searchParams.get('theme');
-    let mode: 'system' | 'light' | 'dark' =
-      rawMode && VALID.has(rawMode) ? (rawMode as 'system' | 'light' | 'dark') : 'system';
+		const VALID = new Set(["system", "light", "dark"]);
+		const rawMode = url.searchParams.get("theme");
+		let mode: "system" | "light" | "dark" =
+			rawMode && VALID.has(rawMode)
+				? (rawMode as "system" | "light" | "dark")
+				: "system";
 
-    const mql =
-      typeof window.matchMedia === 'function'
-        ? window.matchMedia('(prefers-color-scheme: dark)')
-        : null;
+		const mql =
+			typeof window.matchMedia === "function"
+				? window.matchMedia("(prefers-color-scheme: dark)")
+				: null;
 
-    const resolve = (m: 'system' | 'light' | 'dark'): 'light' | 'dark' => {
-      if (m === 'light' || m === 'dark') return m;
-      // Match the launcher CSS, which is the theme the user actually sees:
-      // `:root[data-theme='system']` defaults to the DARK token set and only
-      // flips light under `@media (prefers-color-scheme: light)`. So `system`
-      // is dark UNLESS the OS explicitly reports a light preference. WebKitGTK
-      // frequently reports neither (matchMedia('dark') === false even in a dark
-      // session); defaulting those cases to light made the editor render light
-      // while the launcher chrome was dark — the "version panel still white in
-      // dark mode" bug. Mirror the launcher's dark-default instead.
-      return typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-color-scheme: light)').matches
-        ? 'light'
-        : 'dark';
-    };
+		const resolve = (m: "system" | "light" | "dark"): "light" | "dark" => {
+			if (m === "light" || m === "dark") return m;
+			// Match the launcher CSS, which is the theme the user actually sees:
+			// `:root[data-theme='system']` defaults to the DARK token set and only
+			// flips light under `@media (prefers-color-scheme: light)`. So `system`
+			// is dark UNLESS the OS explicitly reports a light preference. WebKitGTK
+			// frequently reports neither (matchMedia('dark') === false even in a dark
+			// session); defaulting those cases to light made the editor render light
+			// while the launcher chrome was dark — the "version panel still white in
+			// dark mode" bug. Mirror the launcher's dark-default instead.
+			return typeof window.matchMedia === "function" &&
+				window.matchMedia("(prefers-color-scheme: light)").matches
+				? "light"
+				: "dark";
+		};
 
-    let lastResolved: 'light' | 'dark' | null = null;
-    let lastMode: 'system' | 'light' | 'dark' | null = null;
+		let lastResolved: "light" | "dark" | null = null;
+		let lastMode: "system" | "light" | "dark" | null = null;
 
-    // `authoritative` = the user actively changed the launcher's theme in
-    // Settings (broadcast over `deskapp://theme`). In that case the launcher
-    // wins and overwrites the per-editor choice. On the INITIAL load (and on
-    // passive OS-theme flips) it's NOT authoritative: a per-editor explicit
-    // light/dark choice (set with the editor's own toggle) wins and must
-    // survive restarts — the launcher theme is only the default for windows
-    // that have never been toggled. Without this, the bridge re-seeded the
-    // launcher theme on every open and clobbered the editor's own toggle.
-    const apply = (authoritative: boolean) => {
-      const launcherResolved = resolve(mode);
-      let effective = launcherResolved;
-      try {
-        const stored = window.localStorage.getItem('casual-editor:color-theme');
-        const hasExplicit = stored === 'light' || stored === 'dark';
-        effective = authoritative || !hasExplicit ? launcherResolved : (stored as 'light' | 'dark');
-        document.documentElement.dataset.theme = effective;
-        document.documentElement.style.colorScheme = effective;
-        // Persist a CONCRETE value (not 'auto') so DocxEditor's mount effect
-        // doesn't re-resolve 'auto' via matchMedia (light on WebKitGTK) and
-        // clobber it. Only write when the launcher is authoritative or the
-        // editor has no explicit choice yet — never overwrite a user toggle.
-        if (authoritative || !hasExplicit) {
-          window.localStorage.setItem('casual-editor:color-theme', effective);
-        }
-      } catch {
-        /* dataset / localStorage may be unavailable; hint is best-effort */
-      }
-      // Mirror onto the bridge so App.tsx can read the initial mode.
-      try {
-        const b = getBridge();
-        if (b) b.themeMode = mode;
-      } catch {
-        /* best-effort */
-      }
-      // Only fire when something actually changed (mode OR resolved value) so
-      // we don't spam listeners on redundant matchMedia ticks.
-      if (mode === lastMode && effective === lastResolved) return;
-      lastMode = mode;
-      lastResolved = effective;
-      try {
-        window.dispatchEvent(
-          new CustomEvent('deskapp:theme', { detail: { mode, resolved: effective } })
-        );
-      } catch {
-        /* CustomEvent unsupported — nothing more we can do */
-      }
-    };
+		// `authoritative` = the user actively changed the launcher's theme in
+		// Settings (broadcast over `deskapp://theme`). In that case the launcher
+		// wins and overwrites the per-editor choice. On the INITIAL load (and on
+		// passive OS-theme flips) it's NOT authoritative: a per-editor explicit
+		// light/dark choice (set with the editor's own toggle) wins and must
+		// survive restarts — the launcher theme is only the default for windows
+		// that have never been toggled. Without this, the bridge re-seeded the
+		// launcher theme on every open and clobbered the editor's own toggle.
+		const apply = (authoritative: boolean) => {
+			const launcherResolved = resolve(mode);
+			let effective = launcherResolved;
+			try {
+				const stored = window.localStorage.getItem("casual-editor:color-theme");
+				const hasExplicit = stored === "light" || stored === "dark";
+				effective =
+					authoritative || !hasExplicit
+						? launcherResolved
+						: (stored as "light" | "dark");
+				document.documentElement.dataset.theme = effective;
+				document.documentElement.style.colorScheme = effective;
+				// Persist a CONCRETE value (not 'auto') so DocxEditor's mount effect
+				// doesn't re-resolve 'auto' via matchMedia (light on WebKitGTK) and
+				// clobber it. Only write when the launcher is authoritative or the
+				// editor has no explicit choice yet — never overwrite a user toggle.
+				if (authoritative || !hasExplicit) {
+					window.localStorage.setItem("casual-editor:color-theme", effective);
+				}
+			} catch {
+				/* dataset / localStorage may be unavailable; hint is best-effort */
+			}
+			// Mirror onto the bridge so App.tsx can read the initial mode.
+			try {
+				const b = getBridge();
+				if (b) b.themeMode = mode;
+			} catch {
+				/* best-effort */
+			}
+			// Only fire when something actually changed (mode OR resolved value) so
+			// we don't spam listeners on redundant matchMedia ticks.
+			if (mode === lastMode && effective === lastResolved) return;
+			lastMode = mode;
+			lastResolved = effective;
+			try {
+				window.dispatchEvent(
+					new CustomEvent("deskapp:theme", {
+						detail: { mode, resolved: effective },
+					}),
+				);
+			} catch {
+				/* CustomEvent unsupported — nothing more we can do */
+			}
+		};
 
-    // Initial application + first dispatch (respects an existing editor choice).
-    apply(false);
+		// Initial application + first dispatch (respects an existing editor choice).
+		apply(false);
 
-    // Live launcher changes over the Tauri event bus — authoritative: the user
-    // changed the theme in launcher Settings, so it overrides per-editor toggles.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tauriEvent = (window as any).__TAURI__?.event;
-      if (tauriEvent?.listen) {
-        void tauriEvent.listen('deskapp://theme', (e: { payload?: { theme?: string } }) => {
-          const next = e?.payload?.theme;
-          if (next && VALID.has(next)) {
-            mode = next as 'system' | 'light' | 'dark';
-            apply(true);
-          }
-        });
-      }
-    } catch {
-      /* no Tauri event bus (web/iframe) — launcher live-sync just won't run */
-    }
+		// Live launcher changes over the Tauri event bus — authoritative: the user
+		// changed the theme in launcher Settings, so it overrides per-editor toggles.
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const tauriEvent = (window as any).__TAURI__?.event;
+			if (tauriEvent?.listen) {
+				void tauriEvent.listen(
+					"deskapp://theme",
+					(e: { payload?: { theme?: string } }) => {
+						const next = e?.payload?.theme;
+						if (next && VALID.has(next)) {
+							mode = next as "system" | "light" | "dark";
+							apply(true);
+						}
+					},
+				);
+			}
+		} catch {
+			/* no Tauri event bus (web/iframe) — launcher live-sync just won't run */
+		}
 
-    // When following the system, re-dispatch on OS theme flips.
-    if (mql) {
-      const onSystemChange = () => {
-        if (mode === 'system') apply(false);
-      };
-      if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
-      else if (mql.addListener) mql.addListener(onSystemChange); // older WebKit
-    }
-  } catch {
-    /* theme plumbing must never break editor boot */
-  }
+		// When following the system, re-dispatch on OS theme flips.
+		if (mql) {
+			const onSystemChange = () => {
+				if (mode === "system") apply(false);
+			};
+			if (mql.addEventListener) mql.addEventListener("change", onSystemChange);
+			else if (mql.addListener) mql.addListener(onSystemChange); // older WebKit
+		}
+	} catch {
+		/* theme plumbing must never break editor boot */
+	}
 }
 
 // Offline fonts (desktop only). The web build loads 'Material Symbols Outlined'
@@ -165,13 +175,17 @@ function setupDeskTheme(getBridge: () => Record<string, unknown> | undefined) {
 // desktop shell at `./fonts/` (relative to the editor's `--base` mount under
 // /docx/), NOT shipped in the web bundle. Body text already uses system fonts,
 // so only the icon font needs bundling. Mirrors the sheets bootstrap.
-if (typeof window !== 'undefined' && isDesktop && !document.getElementById('__deskapp_fonts__')) {
-  const css = `
+if (
+	typeof window !== "undefined" &&
+	isDesktop &&
+	!document.getElementById("__deskapp_fonts__")
+) {
+	const css = `
 @font-face{font-family:'Material Symbols Outlined';font-style:normal;font-weight:100 700;font-display:block;src:local('Material Symbols Outlined'),url('./fonts/material-symbols-outlined.woff2') format('woff2');}`;
-  const style = document.createElement('style');
-  style.id = '__deskapp_fonts__';
-  style.textContent = css;
-  (document.head || document.documentElement).appendChild(style);
+	const style = document.createElement("style");
+	style.id = "__deskapp_fonts__";
+	style.textContent = css;
+	(document.head || document.documentElement).appendChild(style);
 }
 
 /**
@@ -188,177 +202,198 @@ if (typeof window !== 'undefined' && isDesktop && !document.getElementById('__de
  */
 let dismissBoot: () => void = () => undefined;
 (function installBootOverlay() {
-  try {
-    if (!isDesktop) return;
-    if (typeof document === 'undefined') return;
-    if (window.parent !== window) return; // top-level Tauri windows only
-    if (document.getElementById('__deskapp_boot__')) return;
+	try {
+		if (!isDesktop) return;
+		if (typeof document === "undefined") return;
+		if (window.parent !== window) return; // top-level Tauri windows only
+		if (document.getElementById("__deskapp_boot__")) return;
 
-    // Resolve the theme the bootstrap will apply, mirroring setupDeskTheme so
-    // the overlay never flashes white in dark mode. Prefer the page-level hint
-    // if it's already been written; otherwise derive it from the URL param +
-    // matchMedia exactly as the theme plumbing does.
-    const VALID = new Set(['system', 'light', 'dark']);
-    const rawMode = url.searchParams.get('theme');
-    const mode = rawMode && VALID.has(rawMode) ? rawMode : 'system';
-    const prefersDark =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const hinted = document.documentElement.dataset.theme;
-    const resolved: 'light' | 'dark' =
-      hinted === 'dark' || hinted === 'light'
-        ? hinted
-        : mode === 'dark' || (mode === 'system' && prefersDark)
-          ? 'dark'
-          : 'light';
+		// Resolve the theme the bootstrap will apply, mirroring setupDeskTheme so
+		// the overlay never flashes white in dark mode. Prefer the page-level hint
+		// if it's already been written; otherwise derive it from the URL param +
+		// matchMedia exactly as the theme plumbing does.
+		const VALID = new Set(["system", "light", "dark"]);
+		const rawMode = url.searchParams.get("theme");
+		const mode = rawMode && VALID.has(rawMode) ? rawMode : "system";
+		const prefersDark =
+			typeof window.matchMedia === "function" &&
+			window.matchMedia("(prefers-color-scheme: dark)").matches;
+		const hinted = document.documentElement.dataset.theme;
+		const resolved: "light" | "dark" =
+			hinted === "dark" || hinted === "light"
+				? hinted
+				: mode === "dark" || (mode === "system" && prefersDark)
+					? "dark"
+					: "light";
 
-    const isDark = resolved === 'dark';
-    const bg = isDark ? '#1f1f1f' : '#ffffff';
-    const fg = isDark ? '#e8eaed' : '#3c4043';
-    const spinnerTrack = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)';
-    const spinnerHead = isDark ? '#8ab4f8' : '#1a73e8';
-    const label = url.searchParams.get('file') ? 'Opening…' : 'New document…';
+		const isDark = resolved === "dark";
+		const bg = isDark ? "#1f1f1f" : "#ffffff";
+		const fg = isDark ? "#e8eaed" : "#3c4043";
+		const spinnerTrack = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.12)";
+		const spinnerHead = isDark ? "#8ab4f8" : "#1a73e8";
+		const label = url.searchParams.get("file") ? "Opening…" : "New document…";
 
-    // Keyframes are injected once; scoped IDs keep us from colliding with the
-    // editor's own styles.
-    const style = document.createElement('style');
-    style.id = '__deskapp_boot_style__';
-    style.textContent = '@keyframes __deskapp_boot_spin__{to{transform:rotate(360deg)}}';
-    (document.head || document.documentElement).appendChild(style);
+		// Keyframes are injected once; scoped IDs keep us from colliding with the
+		// editor's own styles.
+		const style = document.createElement("style");
+		style.id = "__deskapp_boot_style__";
+		style.textContent =
+			"@keyframes __deskapp_boot_spin__{to{transform:rotate(360deg)}}";
+		(document.head || document.documentElement).appendChild(style);
 
-    const overlay = document.createElement('div');
-    overlay.id = '__deskapp_boot__';
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.style.cssText = [
-      'position:fixed',
-      'inset:0',
-      'z-index:2147483647',
-      'display:flex',
-      'flex-direction:column',
-      'align-items:center',
-      'justify-content:center',
-      'gap:18px',
-      `background:${bg}`,
-      `color:${fg}`,
-      "font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",
-      'opacity:1',
-      'transition:opacity 240ms ease',
-    ].join(';');
+		const overlay = document.createElement("div");
+		overlay.id = "__deskapp_boot__";
+		overlay.setAttribute("aria-hidden", "true");
+		overlay.style.cssText = [
+			"position:fixed",
+			"inset:0",
+			"z-index:2147483647",
+			"display:flex",
+			"flex-direction:column",
+			"align-items:center",
+			"justify-content:center",
+			"gap:18px",
+			`background:${bg}`,
+			`color:${fg}`,
+			"font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",
+			"opacity:1",
+			"transition:opacity 240ms ease",
+		].join(";");
 
-    // Brand mark — same /logo.svg the title bar and favicon use. If it fails
-    // to load (offline-build path mismatch) we just show the spinner + label.
-    const mark = document.createElement('img');
-    mark.src = './logo.svg';
-    mark.width = 40;
-    mark.height = 40;
-    mark.alt = '';
-    mark.setAttribute('aria-hidden', 'true');
-    mark.style.cssText = 'display:block;width:40px;height:40px';
-    mark.onerror = () => mark.remove();
+		// Brand mark — same /logo.svg the title bar and favicon use. If it fails
+		// to load (offline-build path mismatch) we just show the spinner + label.
+		const mark = document.createElement("img");
+		mark.src = "./logo.svg";
+		mark.width = 40;
+		mark.height = 40;
+		mark.alt = "";
+		mark.setAttribute("aria-hidden", "true");
+		mark.style.cssText = "display:block;width:40px;height:40px";
+		mark.onerror = () => mark.remove();
 
-    const spinner = document.createElement('div');
-    spinner.style.cssText = [
-      'width:28px',
-      'height:28px',
-      'border-radius:50%',
-      `border:3px solid ${spinnerTrack}`,
-      `border-top-color:${spinnerHead}`,
-      'animation:__deskapp_boot_spin__ 0.8s linear infinite',
-    ].join(';');
+		const spinner = document.createElement("div");
+		spinner.style.cssText = [
+			"width:28px",
+			"height:28px",
+			"border-radius:50%",
+			`border:3px solid ${spinnerTrack}`,
+			`border-top-color:${spinnerHead}`,
+			"animation:__deskapp_boot_spin__ 0.8s linear infinite",
+		].join(";");
 
-    const text = document.createElement('div');
-    text.textContent = label;
-    text.style.cssText = 'font-size:13px;letter-spacing:0.01em;opacity:0.85';
+		const text = document.createElement("div");
+		text.textContent = label;
+		text.style.cssText = "font-size:13px;letter-spacing:0.01em;opacity:0.85";
 
-    overlay.appendChild(mark);
-    overlay.appendChild(spinner);
-    overlay.appendChild(text);
-    (document.body || document.documentElement).appendChild(overlay);
+		overlay.appendChild(mark);
+		overlay.appendChild(spinner);
+		overlay.appendChild(text);
+		(document.body || document.documentElement).appendChild(overlay);
 
-    // The shell builds doc windows hidden (so the first visible frame isn't
-    // WebKitGTK's small initial render + maximize settle). Now that the
-    // full-window overlay is painted, reveal the window. Best-effort; the shell
-    // also reveals it on page-load as a fallback.
-    try {
-      // `.show()` returns a Promise; a sync try/catch won't catch an async
-      // rejection (e.g. the window:show ACL denying it), which then surfaces as
-      // an unhandled rejection (and pops the error banner). Swallow it — the
-      // shell also reveals the window on page-load, so this is best-effort.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      void (window as any).__TAURI__?.window
-        ?.getCurrentWindow?.()
-        ?.show?.()
-        ?.catch?.(() => {});
-    } catch {
-      /* not in the desktop shell, or window API unavailable — no-op */
-    }
+		// The shell builds doc windows hidden (so the first visible frame isn't
+		// WebKitGTK's small initial render + maximize settle). Now that the
+		// full-window overlay is painted, reveal the window. Best-effort; the shell
+		// also reveals it on page-load as a fallback.
+		try {
+			// `.show()` returns a Promise; a sync try/catch won't catch an async
+			// rejection (e.g. the window:show ACL denying it), which then surfaces as
+			// an unhandled rejection (and pops the error banner). Swallow it — the
+			// shell also reveals the window on page-load, so this is best-effort.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			void (window as any).__TAURI__?.window
+				?.getCurrentWindow?.()
+				?.show?.()
+				?.catch?.(() => {});
+		} catch {
+			/* not in the desktop shell, or window API unavailable — no-op */
+		}
 
-    let dismissed = false;
-    let safetyTimer: ReturnType<typeof setTimeout> | undefined;
-    dismissBoot = () => {
-      if (dismissed) return; // idempotent
-      dismissed = true;
-      if (safetyTimer) clearTimeout(safetyTimer);
-      try {
-        // Stop intercepting clicks the instant we start fading so the editor
-        // underneath is interactive even during the 240 ms transition.
-        overlay.style.pointerEvents = 'none';
-        overlay.style.opacity = '0';
-        const cleanup = () => {
-          overlay.remove();
-          style.remove();
-        };
-        overlay.addEventListener('transitionend', cleanup, { once: true });
-        // Fallback in case transitionend never fires (display:none ancestor,
-        // reduced-motion, etc.).
-        setTimeout(cleanup, 400);
-      } catch {
-        try {
-          overlay.remove();
-          style.remove();
-        } catch {
-          /* best-effort */
-        }
-      }
-    };
+		let dismissed = false;
+		let safetyTimer: ReturnType<typeof setTimeout> | undefined;
+		dismissBoot = () => {
+			if (dismissed) return; // idempotent
+			dismissed = true;
+			if (safetyTimer) clearTimeout(safetyTimer);
+			try {
+				// Stop intercepting clicks the instant we start fading so the editor
+				// underneath is interactive even during the 240 ms transition.
+				overlay.style.pointerEvents = "none";
+				overlay.style.opacity = "0";
+				const cleanup = () => {
+					overlay.remove();
+					style.remove();
+				};
+				overlay.addEventListener("transitionend", cleanup, { once: true });
+				// Fallback in case transitionend never fires (display:none ancestor,
+				// reduced-motion, etc.).
+				setTimeout(cleanup, 400);
+			} catch {
+				try {
+					overlay.remove();
+					style.remove();
+				} catch {
+					/* best-effort */
+				}
+			}
+		};
 
-    // Safety net: never let the overlay strand the user if the editor fails
-    // to signal ready (e.g. a load error before App.tsx wires up).
-    safetyTimer = setTimeout(() => dismissBoot(), 8000);
-  } catch {
-    /* boot overlay is cosmetic — must never break editor boot */
-  }
+		// Safety net: never let the overlay strand the user if the editor fails
+		// to signal ready (e.g. a load error before App.tsx wires up).
+		safetyTimer = setTimeout(() => dismissBoot(), 8000);
+	} catch {
+		/* boot overlay is cosmetic — must never break editor boot */
+	}
 })();
 
 /** Bridge-rendered "open where?" prompt. The editor's React modals aren't
  *  reachable from this bootstrap, so render a self-contained one. Resolves the
  *  chosen target + whether to remember it as the default, or null if dismissed. */
-function askOpenWhere(path: string): Promise<{ where: 'same' | 'new'; remember: boolean } | null> {
-  return new Promise((resolve) => {
-    const name = path.split(/[\\/]/).pop() ?? path;
-    const esc = (s: string) =>
-      s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-    // Theme-aware: resolved <html data-theme> (set by setupDeskTheme), else the
-    // launcher's ?theme= param, else the OS preference. Without this the modal
-    // was hardcoded white and invisible in dark mode.
-    const dark = (() => {
-      const r = document.documentElement.dataset.theme;
-      if (r === 'dark') return true;
-      if (r === 'light') return false;
-      const tp = new URLSearchParams(window.location.search).get('theme');
-      if (tp === 'dark') return true;
-      if (tp === 'light') return false;
-      return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
-    })();
-    const c = dark
-      ? { bg: '#242528', fg: '#e9eaec', muted: '#a3a6ad', btnBg: '#33353a', btnBorder: '#4a4d54' }
-      : { bg: '#ffffff', fg: '#111111', muted: '#666666', btnBg: '#f5f5f5', btnBorder: '#cccccc' };
-    const backdrop = document.createElement('div');
-    backdrop.setAttribute(
-      'style',
-      'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font:14px system-ui,-apple-system,sans-serif;'
-    );
-    backdrop.innerHTML = `
+function askOpenWhere(
+	path: string,
+): Promise<{ where: "same" | "new"; remember: boolean } | null> {
+	return new Promise((resolve) => {
+		const name = path.split(/[\\/]/).pop() ?? path;
+		const esc = (s: string) =>
+			s.replace(
+				/[&<>"]/g,
+				(c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
+			);
+		// Theme-aware: resolved <html data-theme> (set by setupDeskTheme), else the
+		// launcher's ?theme= param, else the OS preference. Without this the modal
+		// was hardcoded white and invisible in dark mode.
+		const dark = (() => {
+			const r = document.documentElement.dataset.theme;
+			if (r === "dark") return true;
+			if (r === "light") return false;
+			const tp = new URLSearchParams(window.location.search).get("theme");
+			if (tp === "dark") return true;
+			if (tp === "light") return false;
+			return (
+				typeof matchMedia === "function" &&
+				matchMedia("(prefers-color-scheme: dark)").matches
+			);
+		})();
+		const c = dark
+			? {
+					bg: "#242528",
+					fg: "#e9eaec",
+					muted: "#a3a6ad",
+					btnBg: "#33353a",
+					btnBorder: "#4a4d54",
+				}
+			: {
+					bg: "#ffffff",
+					fg: "#111111",
+					muted: "#666666",
+					btnBg: "#f5f5f5",
+					btnBorder: "#cccccc",
+				};
+		const backdrop = document.createElement("div");
+		backdrop.setAttribute(
+			"style",
+			"position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);font:14px system-ui,-apple-system,sans-serif;",
+		);
+		backdrop.innerHTML = `
       <div role="dialog" aria-modal="true" style="background:${c.bg};color:${c.fg};max-width:380px;width:90%;border-radius:12px;padding:22px 22px 16px;box-shadow:0 12px 40px rgba(0,0,0,.45);">
         <h2 style="margin:0 0 6px;font-size:17px;">Open &ldquo;${esc(name)}&rdquo;</h2>
         <p style="margin:0 0 4px;color:${c.muted};">Open it in this window or a new window?</p>
@@ -371,607 +406,598 @@ function askOpenWhere(path: string): Promise<{ where: 'same' | 'new'; remember: 
         </div>
         <button data-act="cancel" style="margin-top:10px;width:100%;background:none;border:0;color:${c.muted};cursor:pointer;padding:6px;">Cancel</button>
       </div>`;
-    document.body.appendChild(backdrop);
-    const remember = () =>
-      (backdrop.querySelector('[data-act=remember]') as HTMLInputElement | null)?.checked ?? false;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') finish(null);
-    };
-    const finish = (result: { where: 'same' | 'new'; remember: boolean } | null) => {
-      window.removeEventListener('keydown', onKey);
-      backdrop.remove();
-      resolve(result);
-    };
-    window.addEventListener('keydown', onKey);
-    backdrop.addEventListener('mousedown', (e) => {
-      if (e.target === backdrop) finish(null);
-    });
-    backdrop
-      .querySelector('[data-act=same]')!
-      .addEventListener('click', () => finish({ where: 'same', remember: remember() }));
-    backdrop
-      .querySelector('[data-act=new]')!
-      .addEventListener('click', () => finish({ where: 'new', remember: remember() }));
-    backdrop.querySelector('[data-act=cancel]')!.addEventListener('click', () => finish(null));
-  });
+		document.body.appendChild(backdrop);
+		const remember = () =>
+			(backdrop.querySelector("[data-act=remember]") as HTMLInputElement | null)
+				?.checked ?? false;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") finish(null);
+		};
+		const finish = (
+			result: { where: "same" | "new"; remember: boolean } | null,
+		) => {
+			window.removeEventListener("keydown", onKey);
+			backdrop.remove();
+			resolve(result);
+		};
+		window.addEventListener("keydown", onKey);
+		backdrop.addEventListener("mousedown", (e) => {
+			if (e.target === backdrop) finish(null);
+		});
+		backdrop
+			.querySelector("[data-act=same]")!
+			.addEventListener("click", () =>
+				finish({ where: "same", remember: remember() }),
+			);
+		backdrop
+			.querySelector("[data-act=new]")!
+			.addEventListener("click", () =>
+				finish({ where: "new", remember: remember() }),
+			);
+		backdrop
+			.querySelector("[data-act=cancel]")!
+			.addEventListener("click", () => finish(null));
+	});
 }
 
 if (isDesktop) {
-  const isTopLevel = window.parent === window;
-  let filePath = url.searchParams.get('file');
+	const isTopLevel = window.parent === window;
+	let filePath = url.searchParams.get("file");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tauriCore: { invoke?: (cmd: string, args?: unknown) => Promise<unknown> } | undefined =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__TAURI__?.core;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const tauriCore:
+		| { invoke?: (cmd: string, args?: unknown) => Promise<unknown> }
+		| undefined =
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(window as any).__TAURI__?.core;
 
-  // File kind inferred from the opened path's extension. The shell now also
-  // routes .txt/.md/.markdown into this editor; those open as plain text /
-  // markdown in the source+preview surface instead of going through the
-  // DOCX zip parser. 'docx' covers everything else (.docx/.odt/…).
-  const fileKindFor = (p: string | null): 'docx' | 'markdown' | 'text' => {
-    const ext = (p ?? '').split('.').pop()?.toLowerCase() ?? '';
-    if (ext === 'md' || ext === 'markdown') return 'markdown';
-    if (ext === 'txt') return 'text';
-    return 'docx';
-  };
+	// File kind inferred from the opened path's extension. The shell now also
+	// routes .txt/.md/.markdown into this editor; those open as plain text /
+	// markdown in the source+preview surface instead of going through the
+	// DOCX zip parser. 'docx' covers everything else (.docx/.odt/…).
+	const fileKindFor = (p: string | null): "docx" | "markdown" | "text" => {
+		const ext = (p ?? "").split(".").pop()?.toLowerCase() ?? "";
+		if (ext === "md" || ext === "markdown") return "markdown";
+		if (ext === "txt") return "text";
+		return "docx";
+	};
 
-  let bridge:
-    | {
-        isDesktop: true;
-        filePath: string | null;
-        fileKind: 'docx' | 'markdown' | 'text';
-        themeMode?: 'system' | 'light' | 'dark';
-        loadDocument(p?: string): Promise<ArrayBuffer>;
-        loadText?(p?: string): Promise<string>;
-        save(bytes: ArrayBuffer): Promise<string | null>;
-        saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
-        rename?(newName: string): Promise<string | null>;
-        setDirty?(dirty: boolean): void;
-        exportPdf?(suggestedName: string): Promise<string | null>;
-        openViaMenu?(): Promise<void>;
-      }
-    | undefined;
+	let bridge:
+		| {
+				isDesktop: true;
+				filePath: string | null;
+				fileKind: "docx" | "markdown" | "text";
+				themeMode?: "system" | "light" | "dark";
+				loadDocument(p?: string): Promise<ArrayBuffer>;
+				loadText?(p?: string): Promise<string>;
+				save(bytes: ArrayBuffer): Promise<string | null>;
+				saveAs(name: string, bytes: ArrayBuffer): Promise<string | null>;
+				rename?(newName: string): Promise<string | null>;
+				setDirty?(dirty: boolean): void;
+				exportPdf?(suggestedName: string): Promise<string | null>;
+				openViaMenu?(): Promise<void>;
+		  }
+		| undefined;
 
-  if (isTopLevel && tauriCore?.invoke) {
-    const inv = tauriCore.invoke;
-    // load_document returns tauri::ipc::Response::new(bytes) on the Rust
-    // side — over binary IPC that resolves to ArrayBuffer directly. No
-    // JSON number-array cost, no truncation on large files.
-    // save_document / save_document_as still go through the JSON path
-    // for now (Array.from + send as number array). That's the next
-    // optimization once we can verify the Tauri 2 binary-input path
-    // for our Linux build.
-    const asArrayBuffer = (raw: unknown): ArrayBuffer => {
-      if (raw instanceof ArrayBuffer) return raw;
-      if (raw instanceof Uint8Array) {
-        const u8 = raw;
-        return u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength
-          ? (u8.buffer as ArrayBuffer)
-          : (u8.slice().buffer as ArrayBuffer);
-      }
-      return new Uint8Array(raw as number[]).buffer as ArrayBuffer;
-    };
-    /**
-     * Write a buffer to disk in 1 MB chunks. Mirrors loadDocument's
-     * chunked-read pattern — each Tauri IPC call stays well below
-     * the JSON-number-array truncation threshold so big files round-
-     * trip correctly. The Rust side writes chunks to a temp file and
-     * only swaps it into place on `commit_save_document` (atomic
-     * rename), so a half-written file never clobbers the original.
-     * Any chunk OR the commit throwing propagates so the editor
-     * reports a failed save — never swallow it here.
-     */
-    async function chunkedWrite(path: string, buf: ArrayBuffer) {
-      // Never atomically replace a good file with an empty one. A degenerate
-      // or failed serialization that yielded 0 bytes would otherwise commit
-      // over the original on disk — silent data loss. Surface it as an error
-      // (the caller re-throws so the editor shows "Save failed") instead.
-      if (buf.byteLength === 0) {
-        throw new Error(`refusing to write an empty document to ${path}`);
-      }
-      await inv('begin_save_document', { path });
-      const view = new Uint8Array(buf);
-      const CHUNK = 1 << 20; // 1 MB
-      for (let offset = 0; offset < view.byteLength; offset += CHUNK) {
-        const slice = view.subarray(offset, Math.min(offset + CHUNK, view.byteLength));
-        await inv('write_save_chunk', {
-          path,
-          offset,
-          bytes: Array.from(slice),
-        });
-      }
-      // Atomic commit: swaps the temp file into the target path.
-      await inv('commit_save_document', { path });
-    }
+	if (isTopLevel && tauriCore?.invoke) {
+		const inv = tauriCore.invoke;
+		// load_document returns tauri::ipc::Response::new(bytes) on the Rust
+		// side — over binary IPC that resolves to ArrayBuffer directly. No
+		// JSON number-array cost, no truncation on large files.
+		// save_document / save_document_as still go through the JSON path
+		// for now (Array.from + send as number array). That's the next
+		// optimization once we can verify the Tauri 2 binary-input path
+		// for our Linux build.
+		const asArrayBuffer = (raw: unknown): ArrayBuffer => {
+			if (raw instanceof ArrayBuffer) return raw;
+			if (raw instanceof Uint8Array) {
+				const u8 = raw;
+				return u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength
+					? (u8.buffer as ArrayBuffer)
+					: (u8.slice().buffer as ArrayBuffer);
+			}
+			return new Uint8Array(raw as number[]).buffer as ArrayBuffer;
+		};
+		/**
+		 * Write a buffer to disk in 1 MB chunks. Mirrors loadDocument's
+		 * chunked-read pattern — each Tauri IPC call stays well below
+		 * the JSON-number-array truncation threshold so big files round-
+		 * trip correctly. The Rust side writes chunks to a temp file and
+		 * only swaps it into place on `commit_save_document` (atomic
+		 * rename), so a half-written file never clobbers the original.
+		 * Any chunk OR the commit throwing propagates so the editor
+		 * reports a failed save — never swallow it here.
+		 */
+		async function chunkedWrite(path: string, buf: ArrayBuffer) {
+			// Never atomically replace a good file with an empty one. A degenerate
+			// or failed serialization that yielded 0 bytes would otherwise commit
+			// over the original on disk — silent data loss. Surface it as an error
+			// (the caller re-throws so the editor shows "Save failed") instead.
+			if (buf.byteLength === 0) {
+				throw new Error(`refusing to write an empty document to ${path}`);
+			}
+			await inv("begin_save_document", { path });
+			const view = new Uint8Array(buf);
+			const CHUNK = 1 << 20; // 1 MB
+			for (let offset = 0; offset < view.byteLength; offset += CHUNK) {
+				const slice = view.subarray(
+					offset,
+					Math.min(offset + CHUNK, view.byteLength),
+				);
+				await inv("write_save_chunk", {
+					path,
+					offset,
+					bytes: Array.from(slice),
+				});
+			}
+			// Atomic commit: swaps the temp file into the target path.
+			await inv("commit_save_document", { path });
+		}
 
-    async function updateWindowTitleFromPath(newPath: string) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const w = (window as any).__TAURI__?.window;
-        if (!w?.getCurrentWindow) return;
-        const name = newPath.split(/[\\/]/).pop() || newPath;
-        await w.getCurrentWindow().setTitle(`Document — ${name}`);
-      } catch {
-        /* best-effort */
-      }
-    }
+		async function updateWindowTitleFromPath(newPath: string) {
+			try {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const w = (window as any).__TAURI__?.window;
+				if (!w?.getCurrentWindow) return;
+				const name = newPath.split(/[\\/]/).pop() || newPath;
+				await w.getCurrentWindow().setTitle(`Document — ${name}`);
+			} catch {
+				/* best-effort */
+			}
+		}
 
-    // Best-effort dirty tracking for the Rust close-guard. We track the
-    // current dirty state in a module-local boolean so we only fire the
-    // transition (clean→dirty / dirty→clean) once and never spam IPC.
-    // The Rust `set_window_dirty` command infers the window from the
-    // caller. All calls are best-effort and must never throw.
-    let isDirty = false;
-    // Monotonic edit counter — bumped on every edit signal, not just the
-    // clean→dirty transition. A save snapshots this before writing and
-    // re-checks it after the commit, so an edit that lands mid-write keeps
-    // the window dirty instead of being cleared (and silently lost on close).
-    let editSeq = 0;
-    function setWindowDirty(dirty: boolean) {
-      if (dirty === isDirty) return;
-      isDirty = dirty;
-      try {
-        void inv('set_window_dirty', { dirty }).catch(() => undefined);
-      } catch {
-        /* best-effort */
-      }
-    }
-    // The dirty signal is driven by the editor's authoritative document-change
-    // callback, not a DOM keystroke heuristic: App.tsx forwards DocxEditor's
-    // `onChange` to `bridge.setDirty(true)`. The old heuristic (input/beforeinput
-    // /printable-keydown listeners) missed every mouse/toolbar/menu edit — bold,
-    // table ops, format painter, accept/reject changes, paste via the menu —
-    // because ProseMirror dispatches those as transactions with no keyboard or
-    // input event, so the close-guard saw a "clean" window and discarded the
-    // work with no prompt. `setDirty` (below) is the single entry point now.
+		// Best-effort dirty tracking for the Rust close-guard. We track the
+		// current dirty state in a module-local boolean so we only fire the
+		// transition (clean→dirty / dirty→clean) once and never spam IPC.
+		// The Rust `set_window_dirty` command infers the window from the
+		// caller. All calls are best-effort and must never throw.
+		let isDirty = false;
+		// Monotonic edit counter — bumped on every edit signal, not just the
+		// clean→dirty transition. A save snapshots this before writing and
+		// re-checks it after the commit, so an edit that lands mid-write keeps
+		// the window dirty instead of being cleared (and silently lost on close).
+		let editSeq = 0;
+		function setWindowDirty(dirty: boolean) {
+			if (dirty === isDirty) return;
+			isDirty = dirty;
+			try {
+				void inv("set_window_dirty", { dirty }).catch(() => undefined);
+			} catch {
+				/* best-effort */
+			}
+		}
+		// The dirty signal is driven by the editor's authoritative document-change
+		// callback, not a DOM keystroke heuristic: App.tsx forwards DocxEditor's
+		// `onChange` to `bridge.setDirty(true)`. The old heuristic (input/beforeinput
+		// /printable-keydown listeners) missed every mouse/toolbar/menu edit — bold,
+		// table ops, format painter, accept/reject changes, paste via the menu —
+		// because ProseMirror dispatches those as transactions with no keyboard or
+		// input event, so the close-guard saw a "clean" window and discarded the
+		// work with no prompt. `setDirty` (below) is the single entry point now.
 
-    // Chunked read in 1 MB slices to avoid IPC payload truncation for big
-    // files (the default JSON number-array path silently drops the file's
-    // tail past a few MB, breaking JSZip's EOCD lookup). Shared by the DOCX
-    // and the text/markdown load paths.
-    async function readAllBytes(path: string): Promise<Uint8Array> {
-      const total = (await inv('document_size', { path })) as number;
-      const CHUNK = 1 << 20;
-      const out = new Uint8Array(total);
-      let offset = 0;
-      while (offset < total) {
-        const length = Math.min(CHUNK, total - offset);
-        const chunk = asArrayBuffer(await inv('read_document_chunk', { path, offset, length }));
-        out.set(new Uint8Array(chunk), offset);
-        offset += chunk.byteLength;
-        if (chunk.byteLength === 0) break;
-      }
-      return out;
-    }
+		// Chunked read in 1 MB slices to avoid IPC payload truncation for big
+		// files (the default JSON number-array path silently drops the file's
+		// tail past a few MB, breaking JSZip's EOCD lookup). Shared by the DOCX
+		// and the text/markdown load paths.
+		async function readAllBytes(path: string): Promise<Uint8Array> {
+			const total = (await inv("document_size", { path })) as number;
+			const CHUNK = 1 << 20;
+			const out = new Uint8Array(total);
+			let offset = 0;
+			while (offset < total) {
+				const length = Math.min(CHUNK, total - offset);
+				const chunk = asArrayBuffer(
+					await inv("read_document_chunk", { path, offset, length }),
+				);
+				out.set(new Uint8Array(chunk), offset);
+				offset += chunk.byteLength;
+				if (chunk.byteLength === 0) break;
+			}
+			return out;
+		}
 
-    bridge = {
-      isDesktop: true,
-      get filePath() {
-        return filePath;
-      },
-      // @ts-expect-error setter on getter via Object.defineProperty pattern
-      set filePath(v: string | null) {
-        filePath = v;
-      },
-      get fileKind() {
-        return fileKindFor(filePath);
-      },
-      // Editor → bridge dirty signal. App.tsx forwards DocxEditor's `onChange`
-      // here, so every real document change (mouse/toolbar/menu edits included)
-      // marks the window dirty for the Rust close-guard. save()/saveAs() clear it.
-      setDirty(dirty: boolean) {
-        // Bump editSeq on every edit signal (even while already dirty) so an
-        // in-flight save can detect a change that landed during the write.
-        if (dirty) editSeq++;
-        setWindowDirty(dirty);
-      },
-      // File → Open from the editor menu (desktop). Uses the NATIVE dialog so
-      // the picked file has a real path (the browser picker doesn't), then
-      // honours the open-where preference: 'same' navigates this window, 'new'
-      // spawns another, 'ask' prompts (with a remember checkbox that updates
-      // the setting). A spreadsheet picked here always opens in a new window —
-      // this window hosts the doc editor.
-      async openViaMenu(): Promise<void> {
-        const path = (await inv('pick_open_document').catch(() => null)) as string | null;
-        if (!path) return; // user cancelled the dialog
-        const ext = path.split('.').pop()?.toLowerCase() ?? '';
-        const kind = ['xlsx', 'xlsm', 'ods', 'csv', 'tsv', 'tab'].includes(ext) ? 'sheets' : 'docx';
-        let settings: { open_window_preference?: 'ask' | 'same' | 'new' } = {};
-        try {
-          settings = (await inv('get_settings')) as typeof settings;
-        } catch {
-          /* fall through to 'ask' */
-        }
-        const pref = settings.open_window_preference ?? 'ask';
-        let where: 'same' | 'new';
-        if (kind !== 'docx') {
-          where = 'new';
-        } else if (pref === 'same' || pref === 'new') {
-          where = pref;
-        } else {
-          const choice = await askOpenWhere(path);
-          if (!choice) return; // dismissed
-          where = choice.where;
-          if (choice.remember) {
-            await inv('save_settings', {
-              settings: { ...settings, open_window_preference: where },
-            }).catch(() => undefined);
-          }
-        }
-        if (where === 'new') {
-          await inv('open_document_window', { kind, filePath: path }).catch((e) =>
-            console.error('[deskApp] open in new window failed', e)
-          );
-        } else {
-          // Same window: navigate this window to the picked file. The editor's
-          // bootstrap re-reads ?file= on load and binds the new path so Save
-          // overwrites it (no Save-As prompt).
-          const u = new URL(window.location.href);
-          u.searchParams.set('file', path);
-          window.location.href = u.toString();
-        }
-      },
-      async loadText(p?: string): Promise<string> {
-        const path = p ?? filePath;
-        if (!path) throw new Error('no file path bound to this window');
-        const bytes = await readAllBytes(path);
-        // .txt / .md are decoded as UTF-8 text — no zip/magic-byte gate.
-        return new TextDecoder('utf-8').decode(bytes);
-      },
-      async loadDocument(p?: string): Promise<ArrayBuffer> {
-        const path = p ?? filePath;
-        if (!path) throw new Error('no file path bound to this window');
-        const out = await readAllBytes(path);
-        // Magic-byte sniff: a .docx is just a renamed zip and must start
-        // with the local-file-header signature PK. Anything
-        // else — an OLE compound file (encrypted .docx or legacy .doc
-        // format), HTML, plain text — gets handed to JSZip which throws
-        // "Can't find end of central directory", a confusing error that
-        // looks like a parse failure. Catch it earlier with a clear
-        // message so the user knows the file itself is the problem.
-        if (
-          out.byteLength < 4 ||
-          out[0] !== 0x50 ||
-          out[1] !== 0x4b ||
-          out[2] !== 0x03 ||
-          out[3] !== 0x04
-        ) {
-          // OLE compound signature for legacy .doc / encrypted .docx
-          const isOLE =
-            out.byteLength >= 8 &&
-            out[0] === 0xd0 &&
-            out[1] === 0xcf &&
-            out[2] === 0x11 &&
-            out[3] === 0xe0;
-          if (isOLE) {
-            throw new Error(
-              "This file isn't a plain .docx — it's an OLE compound file " +
-                '(usually a password-protected .docx or a legacy .doc). ' +
-                'Open it in Word or LibreOffice and Save As .docx (without a password), then try again.'
-            );
-          }
-          throw new Error(
-            "This file doesn't look like a valid .docx. It's missing the ZIP header " +
-              '(first bytes should be PK 03 04). It may be corrupted or not actually a Word document.'
-          );
-        }
-        return out.buffer as ArrayBuffer;
-      },
-      async save(bytes: ArrayBuffer): Promise<string | null> {
-        if (filePath) {
-          const seqAtStart = editSeq;
-          try {
-            await chunkedWrite(filePath, bytes);
-          } catch (err) {
-            console.error('[deskApp] save failed for', filePath, err);
-            throw err;
-          }
-          // Only mark clean if no edit landed while the write was in flight;
-          // otherwise the window would read "saved" with unsaved changes.
-          if (editSeq === seqAtStart) setWindowDirty(false);
-          return filePath;
-        }
-        return bridge!.saveAs('Untitled.docx', bytes);
-      },
-      async saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null> {
-        const newPath = (await inv('pick_save_path', { suggestedName })) as string | null;
-        if (!newPath) return null;
-        const seqAtStart = editSeq;
-        try {
-          await chunkedWrite(newPath, bytes);
-        } catch (err) {
-          console.error('[deskApp] saveAs failed for', newPath, err);
-          throw err;
-        }
-        // Bookkeeping that save_document_as used to do for us.
-        try {
-          await inv('add_recent_file', { path: newPath });
-        } catch {
-          /* recents persistence is best-effort */
-        }
-        // The window rebinds from the old file to newPath. Clear the OLD file's
-        // recovery sidecar so it isn't orphaned — App's post-saveAs clearRecovery
-        // only targets the (now new) bound path.
-        if (filePath && filePath !== newPath) {
-          try {
-            await inv('clear_recovery', { path: filePath });
-          } catch {
-            /* best-effort */
-          }
-        }
-        filePath = newPath;
-        // Only mark clean if no edit landed while the write was in flight.
-        if (editSeq === seqAtStart) setWindowDirty(false);
-        await updateWindowTitleFromPath(newPath);
-        return newPath;
-      },
-      // Rename the bound file on disk (same folder, new name) and re-bind
-      // filePath so subsequent saves overwrite the renamed file. Resolves to the
-      // new path, or null for an untitled doc. Rejects on a name collision / fs
-      // error so the caller can surface it.
-      async rename(newName: string): Promise<string | null> {
-        if (!filePath) return null;
-        let newPath: string;
-        try {
-          newPath = (await inv('rename_document', { path: filePath, newName })) as string;
-        } catch (err) {
-          console.error('[deskApp] rename failed for', filePath, err);
-          throw err;
-        }
-        filePath = newPath;
-        await updateWindowTitleFromPath(newPath);
-        return newPath;
-      },
-      // Profile exposed to the editor so it can show a user chip instead
-      // of the collab Share button. Read-only — Casual Office's Settings
-      // panel owns mutation.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async getProfile() {
-        return (await inv('get_profile')) as {
-          name: string;
-          avatar_hue: number;
-          timezone: string | null;
-          email: string | null;
-          avatar_path: string | null;
-        } | null;
-      },
-      // Native webview print-to-PDF (selectable text). Opens the OS save dialog
-      // and renders this window to PDF via the shell's export_pdf command.
-      // Returns the written path, or null if the user cancelled.
-      async exportPdf(suggestedName: string): Promise<string | null> {
-        return (await inv('export_pdf', { suggestedName })) as string | null;
-      },
-      // Crash-recovery sidecars (see deskapp-bridge.d.ts). Keyed by the bound
-      // filePath; a no-op while untitled (nothing to key the sidecar on). The
-      // Rust side writes atomically and refuses empty snapshots; we mirror that
-      // 0-byte guard here so a degenerate serialization never clobbers a good
-      // sidecar.
-      async writeRecovery(bytes: ArrayBuffer): Promise<void> {
-        if (!filePath || bytes.byteLength === 0) return;
-        await inv('write_recovery', {
-          path: filePath,
-          bytes: Array.from(new Uint8Array(bytes)),
-        });
-      },
-      async readRecovery(): Promise<ArrayBuffer | null> {
-        if (!filePath) return null;
-        const raw = await inv('read_recovery', { path: filePath });
-        return raw == null ? null : asArrayBuffer(raw);
-      },
-      async clearRecovery(): Promise<void> {
-        if (!filePath) return;
-        await inv('clear_recovery', { path: filePath });
-      },
-      // Generic native key-value store — survives webview storage clears.
-      // Keys must be [a-zA-Z0-9_-]. Used by building-blocks, citations, etc.
-      async getStore(key: string): Promise<string | null> {
-        return (await inv('casual_store_get', { key })) as string | null;
-      },
-      async setStore(key: string, value: string): Promise<void> {
-        await inv('casual_store_set', { key, value });
-      },
-    };
-  } else {
-    // Iframe mode — postMessage to launcher.
-    type RequestMethod =
-      | 'loadDocument'
-      | 'save'
-      | 'saveAs'
-      | 'rename'
-      | 'setDirty'
-      | 'openViaMenu'
-      | 'getProfile'
-      | 'exportPdf'
-      | 'writeRecovery'
-      | 'readRecovery'
-      | 'clearRecovery'
-      | 'getStore'
-      | 'setStore';
-    let nextId = 0;
-    const pending = new Map<
-      number,
-      { resolve: (v: unknown) => void; reject: (e: unknown) => void }
-    >();
+		bridge = {
+			isDesktop: true,
+			get filePath() {
+				return filePath;
+			},
+			// @ts-expect-error setter on getter via Object.defineProperty pattern
+			set filePath(v: string | null) {
+				filePath = v;
+			},
+			get fileKind() {
+				return fileKindFor(filePath);
+			},
+			// Editor → bridge dirty signal. App.tsx forwards DocxEditor's `onChange`
+			// here, so every real document change (mouse/toolbar/menu edits included)
+			// marks the window dirty for the Rust close-guard. save()/saveAs() clear it.
+			setDirty(dirty: boolean) {
+				// Bump editSeq on every edit signal (even while already dirty) so an
+				// in-flight save can detect a change that landed during the write.
+				if (dirty) editSeq++;
+				setWindowDirty(dirty);
+			},
+			// File → Open from the editor menu (desktop). Uses the NATIVE dialog so
+			// the picked file has a real path (the browser picker doesn't), then
+			// honours the open-where preference: 'same' navigates this window, 'new'
+			// spawns another, 'ask' prompts (with a remember checkbox that updates
+			// the setting). A spreadsheet picked here always opens in a new window —
+			// this window hosts the doc editor.
+			async openViaMenu(): Promise<void> {
+				const path = (await inv("pick_open_document").catch(() => null)) as
+					| string
+					| null;
+				if (!path) return; // user cancelled the dialog
+				const ext = path.split(".").pop()?.toLowerCase() ?? "";
+				const kind = ["xlsx", "xlsm", "ods", "csv", "tsv", "tab"].includes(ext)
+					? "sheets"
+					: "docx";
+				let settings: { open_window_preference?: "ask" | "same" | "new" } = {};
+				try {
+					settings = (await inv("get_settings")) as typeof settings;
+				} catch {
+					/* fall through to 'ask' */
+				}
+				const pref = settings.open_window_preference ?? "ask";
+				let where: "same" | "new";
+				if (kind !== "docx") {
+					where = "new";
+				} else if (pref === "same" || pref === "new") {
+					where = pref;
+				} else {
+					const choice = await askOpenWhere(path);
+					if (!choice) return; // dismissed
+					where = choice.where;
+					if (choice.remember) {
+						await inv("save_settings", {
+							settings: { ...settings, open_window_preference: where },
+						}).catch(() => undefined);
+					}
+				}
+				if (where === "new") {
+					await inv("open_document_window", { kind, filePath: path }).catch(
+						(e) => console.error("[deskApp] open in new window failed", e),
+					);
+				} else {
+					// Same window: navigate this window to the picked file. The editor's
+					// bootstrap re-reads ?file= on load and binds the new path so Save
+					// overwrites it (no Save-As prompt).
+					const u = new URL(window.location.href);
+					u.searchParams.set("file", path);
+					window.location.href = u.toString();
+				}
+			},
+			async loadText(p?: string): Promise<string> {
+				const path = p ?? filePath;
+				if (!path) throw new Error("no file path bound to this window");
+				const bytes = await readAllBytes(path);
+				// .txt / .md are decoded as UTF-8 text — no zip/magic-byte gate.
+				return new TextDecoder("utf-8").decode(bytes);
+			},
+			async loadDocument(p?: string): Promise<ArrayBuffer> {
+				const path = p ?? filePath;
+				if (!path) throw new Error("no file path bound to this window");
+				const out = await readAllBytes(path);
+				// Magic-byte sniff: a .docx is just a renamed zip and must start
+				// with the local-file-header signature PK. Anything
+				// else — an OLE compound file (encrypted .docx or legacy .doc
+				// format), HTML, plain text — gets handed to JSZip which throws
+				// "Can't find end of central directory", a confusing error that
+				// looks like a parse failure. Catch it earlier with a clear
+				// message so the user knows the file itself is the problem.
+				if (
+					out.byteLength < 4 ||
+					out[0] !== 0x50 ||
+					out[1] !== 0x4b ||
+					out[2] !== 0x03 ||
+					out[3] !== 0x04
+				) {
+					// OLE compound signature for legacy .doc / encrypted .docx
+					const isOLE =
+						out.byteLength >= 8 &&
+						out[0] === 0xd0 &&
+						out[1] === 0xcf &&
+						out[2] === 0x11 &&
+						out[3] === 0xe0;
+					if (isOLE) {
+						throw new Error(
+							"This file isn't a plain .docx — it's an OLE compound file " +
+								"(usually a password-protected .docx or a legacy .doc). " +
+								"Open it in Word or LibreOffice and Save As .docx (without a password), then try again.",
+						);
+					}
+					throw new Error(
+						"This file doesn't look like a valid .docx. It's missing the ZIP header " +
+							"(first bytes should be PK 03 04). It may be corrupted or not actually a Word document.",
+					);
+				}
+				return out.buffer as ArrayBuffer;
+			},
+			async save(bytes: ArrayBuffer): Promise<string | null> {
+				if (filePath) {
+					const seqAtStart = editSeq;
+					try {
+						await chunkedWrite(filePath, bytes);
+					} catch (err) {
+						console.error("[deskApp] save failed for", filePath, err);
+						throw err;
+					}
+					// Only mark clean if no edit landed while the write was in flight;
+					// otherwise the window would read "saved" with unsaved changes.
+					if (editSeq === seqAtStart) setWindowDirty(false);
+					return filePath;
+				}
+				return bridge!.saveAs("Untitled.docx", bytes);
+			},
+			async saveAs(
+				suggestedName: string,
+				bytes: ArrayBuffer,
+			): Promise<string | null> {
+				const newPath = (await inv("pick_save_path", { suggestedName })) as
+					| string
+					| null;
+				if (!newPath) return null;
+				const seqAtStart = editSeq;
+				try {
+					await chunkedWrite(newPath, bytes);
+				} catch (err) {
+					console.error("[deskApp] saveAs failed for", newPath, err);
+					throw err;
+				}
+				// Bookkeeping that save_document_as used to do for us.
+				try {
+					await inv("add_recent_file", { path: newPath });
+				} catch {
+					/* recents persistence is best-effort */
+				}
+				// The window rebinds from the old file to newPath. Clear the OLD file's
+				// recovery sidecar so it isn't orphaned — App's post-saveAs clearRecovery
+				// only targets the (now new) bound path.
+				if (filePath && filePath !== newPath) {
+					try {
+						await inv("clear_recovery", { path: filePath });
+					} catch {
+						/* best-effort */
+					}
+				}
+				filePath = newPath;
+				// Only mark clean if no edit landed while the write was in flight.
+				if (editSeq === seqAtStart) setWindowDirty(false);
+				await updateWindowTitleFromPath(newPath);
+				return newPath;
+			},
+			// Rename the bound file on disk (same folder, new name) and re-bind
+			// filePath so subsequent saves overwrite the renamed file. Resolves to the
+			// new path, or null for an untitled doc. Rejects on a name collision / fs
+			// error so the caller can surface it.
+			async rename(newName: string): Promise<string | null> {
+				if (!filePath) return null;
+				let newPath: string;
+				try {
+					newPath = (await inv("rename_document", {
+						path: filePath,
+						newName,
+					})) as string;
+				} catch (err) {
+					console.error("[deskApp] rename failed for", filePath, err);
+					throw err;
+				}
+				filePath = newPath;
+				await updateWindowTitleFromPath(newPath);
+				return newPath;
+			},
+			// Profile exposed to the editor so it can show a user chip instead
+			// of the collab Share button. Read-only — Casual Office's Settings
+			// panel owns mutation.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			async getProfile() {
+				return (await inv("get_profile")) as {
+					name: string;
+					avatar_hue: number;
+					timezone: string | null;
+					email: string | null;
+					avatar_path: string | null;
+				} | null;
+			},
+			// Native webview print-to-PDF (selectable text). Opens the OS save dialog
+			// and renders this window to PDF via the shell's export_pdf command.
+			// Returns the written path, or null if the user cancelled.
+			async exportPdf(suggestedName: string): Promise<string | null> {
+				return (await inv("export_pdf", { suggestedName })) as string | null;
+			},
+			// Crash-recovery sidecars (see deskapp-bridge.d.ts). Keyed by the bound
+			// filePath; a no-op while untitled (nothing to key the sidecar on). The
+			// Rust side writes atomically and refuses empty snapshots; we mirror that
+			// 0-byte guard here so a degenerate serialization never clobbers a good
+			// sidecar.
+			async writeRecovery(bytes: ArrayBuffer): Promise<void> {
+				if (!filePath || bytes.byteLength === 0) return;
+				await inv("write_recovery", {
+					path: filePath,
+					bytes: Array.from(new Uint8Array(bytes)),
+				});
+			},
+			async readRecovery(): Promise<ArrayBuffer | null> {
+				if (!filePath) return null;
+				const raw = await inv("read_recovery", { path: filePath });
+				return raw == null ? null : asArrayBuffer(raw);
+			},
+			async clearRecovery(): Promise<void> {
+				if (!filePath) return;
+				await inv("clear_recovery", { path: filePath });
+			},
+		};
+	} else {
+		// Iframe mode — postMessage to launcher.
+		type RequestMethod = "loadDocument" | "save" | "saveAs";
+		let nextId = 0;
+		const pending = new Map<
+			number,
+			{ resolve: (v: unknown) => void; reject: (e: unknown) => void }
+		>();
 
-    function request<T>(method: RequestMethod, params: Record<string, unknown>): Promise<T> {
-      return new Promise<T>((resolve, reject) => {
-        const id = ++nextId;
-        pending.set(id, {
-          resolve: resolve as (v: unknown) => void,
-          reject,
-        });
-        window.parent.postMessage({ src: 'deskApp', kind: 'request', id, method, params }, '*');
-      });
-    }
+		function request<T>(
+			method: RequestMethod,
+			params: Record<string, unknown>,
+		): Promise<T> {
+			return new Promise<T>((resolve, reject) => {
+				const id = ++nextId;
+				pending.set(id, {
+					resolve: resolve as (v: unknown) => void,
+					reject,
+				});
+				window.parent.postMessage(
+					{ src: "deskApp", kind: "request", id, method, params },
+					"*",
+				);
+			});
+		}
 
-    window.addEventListener('message', (event) => {
-      const data = event.data;
-      if (!data || data.src !== 'deskApp' || data.kind !== 'reply') return;
-      const pendingReq = pending.get(data.id);
-      if (!pendingReq) return;
-      pending.delete(data.id);
-      if (data.error) pendingReq.reject(new Error(String(data.error)));
-      else pendingReq.resolve(data.result);
-    });
+		window.addEventListener("message", (event) => {
+			const data = event.data;
+			if (!data || data.src !== "deskApp" || data.kind !== "reply") return;
+			const pendingReq = pending.get(data.id);
+			if (!pendingReq) return;
+			pending.delete(data.id);
+			if (data.error) pendingReq.reject(new Error(String(data.error)));
+			else pendingReq.resolve(data.result);
+		});
 
-    bridge = {
-      isDesktop: true,
-      filePath,
-      get fileKind() {
-        return fileKindFor(filePath);
-      },
-      async loadDocument(p?: string): Promise<ArrayBuffer> {
-        const bytes = await request<number[]>('loadDocument', { path: p ?? filePath });
-        return new Uint8Array(bytes).buffer;
-      },
-      async loadText(p?: string): Promise<string> {
-        const bytes = await request<number[]>('loadDocument', { path: p ?? filePath });
-        return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
-      },
-      async save(bytes: ArrayBuffer): Promise<string | null> {
-        const written = await request<string | null>('save', {
-          bytes: Array.from(new Uint8Array(bytes)),
-        });
-        if (written) bridge!.filePath = written;
-        return written;
-      },
-      async saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null> {
-        const written = await request<string | null>('saveAs', {
-          suggestedName,
-          bytes: Array.from(new Uint8Array(bytes)),
-        });
-        if (written) bridge!.filePath = written;
-        return written;
-      },
-      async rename(newName: string): Promise<string | null> {
-        const written = await request<string | null>('rename', { newName });
-        if (written) bridge!.filePath = written;
-        return written;
-      },
-      setDirty(dirty: boolean): void {
-        void request<void>('setDirty', { dirty });
-      },
-      async openViaMenu(): Promise<void> {
-        await request<void>('openViaMenu', {});
-      },
-      async getProfile() {
-        return request<unknown>('getProfile', {});
-      },
-      async exportPdf(suggestedName: string): Promise<string | null> {
-        return request<string | null>('exportPdf', { suggestedName });
-      },
-      async writeRecovery(bytes: ArrayBuffer): Promise<void> {
-        if (!filePath || bytes.byteLength === 0) return;
-        await request<void>('writeRecovery', {
-          path: filePath,
-          bytes: Array.from(new Uint8Array(bytes)),
-        });
-      },
-      async readRecovery(): Promise<ArrayBuffer | null> {
-        if (!filePath) return null;
-        const raw = await request<number[] | null>('readRecovery', { path: filePath });
-        return raw == null ? null : new Uint8Array(raw).buffer;
-      },
-      async clearRecovery(): Promise<void> {
-        if (!filePath) return;
-        await request<void>('clearRecovery', { path: filePath });
-      },
-      async getStore(key: string): Promise<string | null> {
-        return request<string | null>('getStore', { key });
-      },
-      async setStore(key: string, value: string): Promise<void> {
-        await request<void>('setStore', { key, value });
-      },
-    };
-  }
+		bridge = {
+			isDesktop: true,
+			filePath,
+			get fileKind() {
+				return fileKindFor(filePath);
+			},
+			async loadDocument(p?: string): Promise<ArrayBuffer> {
+				const bytes = await request<number[]>("loadDocument", {
+					path: p ?? filePath,
+				});
+				return new Uint8Array(bytes).buffer;
+			},
+			async loadText(p?: string): Promise<string> {
+				// Reuse the same byte-fetch channel; decode client-side. The
+				// launcher's `loadDocument` handler returns raw file bytes, so a
+				// .txt/.md round-trips fine without a dedicated host command.
+				const bytes = await request<number[]>("loadDocument", {
+					path: p ?? filePath,
+				});
+				return new TextDecoder("utf-8").decode(new Uint8Array(bytes));
+			},
+			async save(bytes: ArrayBuffer): Promise<string | null> {
+				const written = await request<string | null>("save", {
+					bytes: Array.from(new Uint8Array(bytes)),
+				});
+				if (written) bridge!.filePath = written;
+				return written;
+			},
+			async saveAs(
+				suggestedName: string,
+				bytes: ArrayBuffer,
+			): Promise<string | null> {
+				const written = await request<string | null>("saveAs", {
+					suggestedName,
+					bytes: Array.from(new Uint8Array(bytes)),
+				});
+				if (written) bridge!.filePath = written;
+				return written;
+			},
+		};
+	}
 
-  if (bridge) {
-    // Expose the boot-overlay dismiss so App.tsx can hide the cold-start
-    // splash once the document has actually loaded into the editor. Idempotent
-    // and a no-op in iframe / web mode (the overlay only paints top-level).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (bridge as any).dismissBoot = dismissBoot;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__deskApp__ = bridge;
+	if (bridge) {
+		// Expose the boot-overlay dismiss so App.tsx can hide the cold-start
+		// splash once the document has actually loaded into the editor. Idempotent
+		// and a no-op in iframe / web mode (the overlay only paints top-level).
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(bridge as any).dismissBoot = dismissBoot;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(window as any).__deskApp__ = bridge;
 
-    // Drag-and-drop onto the editor window → open the dropped file(s). Only the
-    // launcher had a drop handler, so dropping a file on a document window did
-    // nothing. Opens each supported file in a NEW window via
-    // open_document_window (which dedups, so re-dropping an already-open file
-    // just focuses it) — dragging never replaces the document you're viewing.
-    try {
-      // withGlobalTauri exposes the window API at __TAURI__.window; mirror the
-      // launcher's getCurrentWindow().onDragDropEvent without adding the
-      // @tauri-apps/api dep to the editor bundle.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tauriWindow = (window as any).__TAURI__?.window;
-      const currentWindow = tauriWindow?.getCurrentWindow?.();
-      void currentWindow?.onDragDropEvent?.(
-        (event: { payload?: { type?: string; paths?: string[] } }) => {
-          if (event?.payload?.type !== 'drop') return;
-          for (const p of event.payload.paths ?? []) {
-            const ext = p.split('.').pop()?.toLowerCase() ?? '';
-            const kind = ['xlsx', 'xlsm', 'ods', 'csv', 'tsv', 'tab'].includes(ext)
-              ? 'sheets'
-              : ['docx', 'txt', 'md', 'markdown'].includes(ext)
-                ? 'docx'
-                : null;
-            if (kind) {
-              void inv('open_document_window', { kind, filePath: p }).catch((e) =>
-                console.error('[deskApp] drop-open failed', e)
-              );
-            }
-          }
-        }
-      );
-    } catch {
-      /* drag-drop is best-effort — never break editor boot */
-    }
+		// Drag-and-drop onto the editor window → open the dropped file(s). Only the
+		// launcher had a drop handler, so dropping a file on a document window did
+		// nothing. Opens each supported file in a NEW window via
+		// open_document_window (which dedups, so re-dropping an already-open file
+		// just focuses it) — dragging never replaces the document you're viewing.
+		try {
+			// withGlobalTauri exposes the window API at __TAURI__.window; mirror the
+			// launcher's getCurrentWindow().onDragDropEvent without adding the
+			// @tauri-apps/api dep to the editor bundle.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const tauriWindow = (window as any).__TAURI__?.window;
+			const currentWindow = tauriWindow?.getCurrentWindow?.();
+			void currentWindow?.onDragDropEvent?.(
+				(event: { payload?: { type?: string; paths?: string[] } }) => {
+					if (event?.payload?.type !== "drop") return;
+					for (const p of event.payload.paths ?? []) {
+						const ext = p.split(".").pop()?.toLowerCase() ?? "";
+						const kind = ["xlsx", "xlsm", "ods", "csv", "tsv", "tab"].includes(
+							ext,
+						)
+							? "sheets"
+							: ["docx", "txt", "md", "markdown"].includes(ext)
+								? "docx"
+								: null;
+						if (kind) {
+							void inv("open_document_window", { kind, filePath: p }).catch(
+								(e) => console.error("[deskApp] drop-open failed", e),
+							);
+						}
+					}
+				},
+			);
+		} catch {
+			/* drag-drop is best-effort — never break editor boot */
+		}
 
-    // Theme plumbing — top-level desktop windows only (guarded inside).
-    // Seeds the page-level light/dark hint + bridge.themeMode and keeps
-    // them in sync with the launcher's `deskapp://theme` events.
-    setupDeskTheme(() => bridge as unknown as Record<string, unknown>);
+		// Theme plumbing — top-level desktop windows only (guarded inside).
+		// Seeds the page-level light/dark hint + bridge.themeMode and keeps
+		// them in sync with the launcher's `deskapp://theme` events.
+		setupDeskTheme(() => bridge as unknown as Record<string, unknown>);
 
-    // Ctrl/Cmd-H — focus the launcher window. Convention: H for "Home".
-    // Works only in top-level mode (we have direct __TAURI__.core
-    // available) and only inside the desktop shell.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (isTopLevel && tauriCore?.invoke) {
-      const inv = tauriCore.invoke;
-      window.addEventListener('keydown', (e) => {
-        const meta = e.ctrlKey || e.metaKey;
-        if (meta && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'h') {
-          e.preventDefault();
-          inv('focus_launcher_window').catch(() => undefined);
-        }
-      });
+		// Ctrl/Cmd-H — focus the launcher window. Convention: H for "Home".
+		// Works only in top-level mode (we have direct __TAURI__.core
+		// available) and only inside the desktop shell.
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		if (isTopLevel && tauriCore?.invoke) {
+			const inv = tauriCore.invoke;
+			window.addEventListener("keydown", (e) => {
+				const meta = e.ctrlKey || e.metaKey;
+				if (meta && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "h") {
+					e.preventDefault();
+					inv("focus_launcher_window").catch(() => undefined);
+				}
+			});
 
-      // External file-change listener. The Rust filesystem watcher emits
-      // `deskapp://file-changed` with payload `{ kind: "modified"|"removed"|
-      // "renamed", path }` when the open file is touched by another process.
-      // Re-broadcast as a DOM CustomEvent so App.tsx can react without
-      // reaching into __TAURI__ itself.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tauriEvent = (window as any).__TAURI__?.event;
-      if (tauriEvent?.listen) {
-        void tauriEvent
-          .listen('deskapp://file-changed', (e: { payload?: { kind?: string; path?: string } }) => {
-            const { kind, path } = e?.payload ?? {};
-            if (!kind || !path) return;
-            try {
-              window.dispatchEvent(
-                new CustomEvent('deskapp:file-changed', { detail: { kind, path } })
-              );
-            } catch {
-              /* CustomEvent not supported */
-            }
-          })
-          .catch(() => undefined);
-      }
-    }
-  }
+			// External file-change listener. The Rust filesystem watcher emits
+			// `deskapp://file-changed` with payload `{ kind: "modified"|"removed"|
+			// "renamed", path }` when the open file is touched by another process.
+			// Re-broadcast as a DOM CustomEvent so App.tsx can react without
+			// reaching into __TAURI__ itself.
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const tauriEvent = (window as any).__TAURI__?.event;
+			if (tauriEvent?.listen) {
+				void tauriEvent
+					.listen(
+						"deskapp://file-changed",
+						(e: { payload?: { kind?: string; path?: string } }) => {
+							const { kind, path } = e?.payload ?? {};
+							if (!kind || !path) return;
+							try {
+								window.dispatchEvent(
+									new CustomEvent("deskapp:file-changed", {
+										detail: { kind, path },
+									}),
+								);
+							} catch {
+								/* CustomEvent not supported */
+							}
+						},
+					)
+					.catch(() => undefined);
+			}
+		}
+	}
 }
 
 export {};

@@ -19,4 +19,4 @@
  */
 
 // Re-export CSS path for documentation
-export const EDITOR_CSS_PATH = './editor.css';
+export const EDITOR_CSS_PATH = "./editor.css";

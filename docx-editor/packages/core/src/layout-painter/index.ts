@@ -14,83 +14,95 @@
  */
 
 import type {
-  Layout,
-  Page,
-  Fragment,
-  FlowBlock,
-  Measure,
-  ParagraphBlock,
-  ParagraphMeasure,
-  ParagraphFragment,
-  TableBlock,
-  TableMeasure,
-  TableFragment,
-  ImageBlock,
-  ImageMeasure,
-  ImageFragment,
-  TextBoxBlock,
-  TextBoxMeasure,
-  TextBoxFragment,
-} from '../layout-engine/types';
+	Layout,
+	Page,
+	Fragment,
+	FlowBlock,
+	Measure,
+	ParagraphBlock,
+	ParagraphMeasure,
+	ParagraphFragment,
+	TableBlock,
+	TableMeasure,
+	TableFragment,
+	ImageBlock,
+	ImageMeasure,
+	ImageFragment,
+	TextBoxBlock,
+	TextBoxMeasure,
+	TextBoxFragment,
+} from "../layout-engine/types";
 import {
-  renderPage,
-  renderPages,
-  isFloatingImageRun,
-  isTextWrappingFloatingImageRun,
-  forceRenderAllPages,
-  restoreVirtualization,
-  type RenderContext,
-  type RenderPagesUpdateKind,
-} from './renderPage';
-import { renderParagraphFragment, sliceRunsForLine, renderLine } from './renderParagraph';
-import { renderFragment, FRAGMENT_CLASS_NAMES } from './renderFragment';
-import { renderTableFragment, TABLE_CLASS_NAMES } from './renderTable';
-import { renderImageFragment, IMAGE_CLASS_NAMES } from './renderImage';
-import { renderTextBoxFragment, TEXTBOX_CLASS_NAMES } from './renderTextBox';
+	renderPage,
+	renderPages,
+	isFloatingImageRun,
+	isTextWrappingFloatingImageRun,
+	forceRenderAllPages,
+	restoreVirtualization,
+	type RenderContext,
+	type RenderPagesUpdateKind,
+} from "./renderPage";
+import {
+	renderParagraphFragment,
+	sliceRunsForLine,
+	renderLine,
+} from "./renderParagraph";
+import { renderFragment, FRAGMENT_CLASS_NAMES } from "./renderFragment";
+import { renderTableFragment, TABLE_CLASS_NAMES } from "./renderTable";
+import { renderImageFragment, IMAGE_CLASS_NAMES } from "./renderImage";
+import { renderTextBoxFragment, TEXTBOX_CLASS_NAMES } from "./renderTextBox";
 
 // Re-export render functions
 export {
-  renderPage,
-  renderPages,
-  renderParagraphFragment,
-  renderTableFragment,
-  renderImageFragment,
-  renderFragment,
-  sliceRunsForLine,
-  renderLine,
-  FRAGMENT_CLASS_NAMES,
-  TABLE_CLASS_NAMES,
-  IMAGE_CLASS_NAMES,
-  renderTextBoxFragment,
-  TEXTBOX_CLASS_NAMES,
-  isFloatingImageRun,
-  isTextWrappingFloatingImageRun,
-  forceRenderAllPages,
-  restoreVirtualization,
-  type RenderContext,
+	renderPage,
+	renderPages,
+	renderParagraphFragment,
+	renderTableFragment,
+	renderImageFragment,
+	renderFragment,
+	sliceRunsForLine,
+	renderLine,
+	FRAGMENT_CLASS_NAMES,
+	TABLE_CLASS_NAMES,
+	IMAGE_CLASS_NAMES,
+	renderTextBoxFragment,
+	TEXTBOX_CLASS_NAMES,
+	isFloatingImageRun,
+	isTextWrappingFloatingImageRun,
+	forceRenderAllPages,
+	restoreVirtualization,
+	type RenderContext,
 };
 export type { RenderPagesUpdateKind };
-export type { HeaderFooterContent, RenderPageOptions, FootnoteRenderItem } from './renderPage';
+export type {
+	HeaderFooterContent,
+	RenderPageOptions,
+	FootnoteRenderItem,
+} from "./renderPage";
 
 // Framework-agnostic image layout helpers shared by React + Vue adapters.
 export {
-  LAYOUT_IMAGE_CLASSES,
-  hitTestImage,
-  captureInlinePositionEmu,
-  deriveLayoutChoice,
-  IMAGE_LAYOUT_OPTIONS,
-  isImageLayoutOptionEnabled,
-  toolbarValueToLayoutTarget,
-} from './imageLayout';
-export type { ImageHitTestResult, ImageLayoutIconHint, ImageLayoutOptionDef } from './imageLayout';
+	LAYOUT_IMAGE_CLASSES,
+	hitTestImage,
+	captureInlinePositionEmu,
+	deriveLayoutChoice,
+	IMAGE_LAYOUT_OPTIONS,
+	isImageLayoutOptionEnabled,
+	toolbarValueToLayoutTarget,
+} from "./imageLayout";
+export type {
+	ImageHitTestResult,
+	ImageLayoutIconHint,
+	ImageLayoutOptionDef,
+} from "./imageLayout";
 
 /**
  * Block lookup entry for painter
  */
 export interface BlockLookupEntry {
-  block: FlowBlock;
-  measure: Measure;
-  version?: string;
+	block: FlowBlock;
+	measure: Measure;
+	version?: string;
 }
 
 /**
@@ -102,32 +114,32 @@ export type BlockLookup = Map<string, BlockLookupEntry>;
  * Painter options
  */
 export interface PainterOptions {
-  /** Document to create elements in */
-  document?: Document;
-  /** Gap between pages in pixels */
-  pageGap?: number;
-  /** Show page shadows */
-  showShadow?: boolean;
-  /** Background color for pages */
-  pageBackground?: string;
-  /** Container background color */
-  containerBackground?: string;
-  /**
-   * Word-compat (#395): draw the firstRow style's bottom border under the
-   * last body row of tables that declare it but have no lastRow style or
-   * tblBorders of their own. Matches Word's behavior; LibreOffice and
-   * Google Docs do not draw this line. Off by default.
-   */
-  wordCompat?: boolean;
+	/** Document to create elements in */
+	document?: Document;
+	/** Gap between pages in pixels */
+	pageGap?: number;
+	/** Show page shadows */
+	showShadow?: boolean;
+	/** Background color for pages */
+	pageBackground?: string;
+	/** Container background color */
+	containerBackground?: string;
+	/**
+	 * Word-compat (#395): draw the firstRow style's bottom border under the
+	 * last body row of tables that declare it but have no lastRow style or
+	 * tblBorders of their own. Matches Word's behavior; LibreOffice and
+	 * Google Docs do not draw this line. Off by default.
+	 */
+	wordCompat?: boolean;
 }
 
 /**
  * Page DOM state for reconciliation
  */
 interface PageState {
-  element: HTMLElement;
-  pageNumber: number;
-  fragmentCount: number;
+	element: HTMLElement;
+	pageNumber: number;
+	fragmentCount: number;
 }
 
 /**
@@ -137,223 +149,256 @@ interface PageState {
  * Only updates changed pages and fragments for better performance.
  */
 export class LayoutPainter {
-  private container: HTMLElement | null = null;
-  private blockLookup: BlockLookup = new Map();
-  private pageStates: PageState[] = [];
-  private totalPages = 0;
-  private options: PainterOptions;
-  private doc: Document;
-  resolvedCommentIds: Set<number> = new Set();
+	private container: HTMLElement | null = null;
+	private blockLookup: BlockLookup = new Map();
+	private pageStates: PageState[] = [];
+	private totalPages = 0;
+	private options: PainterOptions;
+	private doc: Document;
+	resolvedCommentIds: Set<number> = new Set();
 
-  constructor(options: PainterOptions = {}) {
-    this.options = options;
-    this.doc = options.document ?? document;
-  }
+	constructor(options: PainterOptions = {}) {
+		this.options = options;
+		this.doc = options.document ?? document;
+	}
 
-  /**
-   * Set the block lookup map for rendering fragments
-   */
-  setBlockLookup(lookup: BlockLookup): void {
-    this.blockLookup = lookup;
-  }
+	/**
+	 * Set the block lookup map for rendering fragments
+	 */
+	setBlockLookup(lookup: BlockLookup): void {
+		this.blockLookup = lookup;
+	}
 
-  /**
-   * Mount the painter to a container element
-   */
-  mount(container: HTMLElement): void {
-    this.container = container;
-    this.applyContainerStyles();
-  }
+	/**
+	 * Mount the painter to a container element
+	 */
+	mount(container: HTMLElement): void {
+		this.container = container;
+		this.applyContainerStyles();
+	}
 
-  /**
-   * Unmount the painter
-   */
-  unmount(): void {
-    if (this.container) {
-      this.container.innerHTML = '';
-    }
-    this.container = null;
-    this.pageStates = [];
-  }
+	/**
+	 * Unmount the painter
+	 */
+	unmount(): void {
+		if (this.container) {
+			this.container.innerHTML = "";
+		}
+		this.container = null;
+		this.pageStates = [];
+	}
 
-  /**
-   * Apply styles to the container
-   */
-  private applyContainerStyles(): void {
-    if (!this.container) return;
+	/**
+	 * Apply styles to the container
+	 */
+	private applyContainerStyles(): void {
+		if (!this.container) return;
 
-    const pageGap = this.options.pageGap ?? 24;
+		const pageGap = this.options.pageGap ?? 24;
 
-    this.container.style.display = 'flex';
-    this.container.style.flexDirection = 'column';
-    this.container.style.alignItems = 'center';
-    this.container.style.gap = `${pageGap}px`;
-    this.container.style.padding = `${pageGap}px`;
-    this.container.style.backgroundColor =
-      this.options.containerBackground ?? 'var(--doc-bg, #f8f9fa)';
-    this.container.style.minHeight = '100%';
-  }
+		this.container.style.display = "flex";
+		this.container.style.flexDirection = "column";
+		this.container.style.alignItems = "center";
+		this.container.style.gap = `${pageGap}px`;
+		this.container.style.padding = `${pageGap}px`;
+		this.container.style.backgroundColor =
+			this.options.containerBackground ?? "var(--doc-bg, #f8f9fa)";
+		this.container.style.minHeight = "100%";
+	}
 
-  /**
-   * Paint a layout to the container
-   */
-  paint(layout: Layout): void {
-    if (!this.container) {
-      throw new Error('LayoutPainter: not mounted');
-    }
+	/**
+	 * Paint a layout to the container
+	 */
+	paint(layout: Layout): void {
+		if (!this.container) {
+			throw new Error("LayoutPainter: not mounted");
+		}
 
-    const { pages } = layout;
-    this.totalPages = pages.length;
+		const { pages } = layout;
+		this.totalPages = pages.length;
 
-    // Full repaint for now (reconciliation can be added later)
-    this.container.innerHTML = '';
-    this.pageStates = [];
+		// Full repaint for now (reconciliation can be added later)
+		this.container.innerHTML = "";
+		this.pageStates = [];
 
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const context: RenderContext = {
-        pageNumber: page.number,
-        totalPages: this.totalPages,
-        section: 'body',
-        resolvedCommentIds: this.resolvedCommentIds,
-        wordCompat: this.options.wordCompat,
-      };
+		for (let i = 0; i < pages.length; i++) {
+			const page = pages[i];
+			const context: RenderContext = {
+				pageNumber: page.number,
+				totalPages: this.totalPages,
+				section: "body",
+				resolvedCommentIds: this.resolvedCommentIds,
+				wordCompat: this.options.wordCompat,
+			};
 
-      const pageEl = this.renderPageWithLookup(page, context);
-      this.container.appendChild(pageEl);
+			const pageEl = this.renderPageWithLookup(page, context);
+			this.container.appendChild(pageEl);
 
-      this.pageStates.push({
-        element: pageEl,
-        pageNumber: page.number,
-        fragmentCount: page.fragments.length,
-      });
-    }
-  }
+			this.pageStates.push({
+				element: pageEl,
+				pageNumber: page.number,
+				fragmentCount: page.fragments.length,
+			});
+		}
+	}
 
-  /**
-   * Render a page using block lookup for full fragment rendering
-   */
-  private renderPageWithLookup(page: Page, context: RenderContext): HTMLElement {
-    const pageEl = this.doc.createElement('div');
-    pageEl.className = 'layout-page';
-    pageEl.dataset.pageNumber = String(page.number);
+	/**
+	 * Render a page using block lookup for full fragment rendering
+	 */
+	private renderPageWithLookup(
+		page: Page,
+		context: RenderContext,
+	): HTMLElement {
+		const pageEl = this.doc.createElement("div");
+		pageEl.className = "layout-page";
+		pageEl.dataset.pageNumber = String(page.number);
 
-    // Apply page styles
-    pageEl.style.position = 'relative';
-    pageEl.style.width = `${page.size.w}px`;
-    pageEl.style.height = `${page.size.h}px`;
-    pageEl.style.backgroundColor = this.options.pageBackground ?? '#ffffff';
-    pageEl.style.overflow = 'hidden';
+		// Apply page styles
+		pageEl.style.position = "relative";
+		pageEl.style.width = `${page.size.w}px`;
+		pageEl.style.height = `${page.size.h}px`;
+		pageEl.style.backgroundColor = this.options.pageBackground ?? "#ffffff";
+		pageEl.style.overflow = "hidden";
 
-    if (this.options.showShadow) {
-      pageEl.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-    }
+		if (this.options.showShadow) {
+			pageEl.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.15)";
+		}
 
-    // Create content area
-    const contentEl = this.doc.createElement('div');
-    contentEl.className = 'layout-page-content';
-    contentEl.style.position = 'absolute';
-    contentEl.style.top = `${page.margins.top}px`;
-    contentEl.style.left = `${page.margins.left}px`;
-    contentEl.style.right = `${page.margins.right}px`;
-    contentEl.style.bottom = `${page.margins.bottom}px`;
-    contentEl.style.overflow = 'visible';
+		// Create content area
+		const contentEl = this.doc.createElement("div");
+		contentEl.className = "layout-page-content";
+		contentEl.style.position = "absolute";
+		contentEl.style.top = `${page.margins.top}px`;
+		contentEl.style.left = `${page.margins.left}px`;
+		contentEl.style.right = `${page.margins.right}px`;
+		contentEl.style.bottom = `${page.margins.bottom}px`;
+		contentEl.style.overflow = "visible";
 
-    // Render fragments
-    for (const fragment of page.fragments) {
-      const fragmentEl = this.renderFragmentWithLookup(fragment, context);
-      this.applyFragmentPosition(fragmentEl, fragment);
-      contentEl.appendChild(fragmentEl);
-    }
+		// Render fragments
+		for (const fragment of page.fragments) {
+			const fragmentEl = this.renderFragmentWithLookup(fragment, context);
+			this.applyFragmentPosition(fragmentEl, fragment);
+			contentEl.appendChild(fragmentEl);
+		}
 
-    pageEl.appendChild(contentEl);
-    return pageEl;
-  }
+		pageEl.appendChild(contentEl);
+		return pageEl;
+	}
 
-  /**
-   * Render a fragment using block lookup for full content rendering
-   */
-  private renderFragmentWithLookup(fragment: Fragment, context: RenderContext): HTMLElement {
-    const lookup = this.blockLookup.get(String(fragment.blockId));
+	/**
+	 * Render a fragment using block lookup for full content rendering
+	 */
+	private renderFragmentWithLookup(
+		fragment: Fragment,
+		context: RenderContext,
+	): HTMLElement {
+		const lookup = this.blockLookup.get(String(fragment.blockId));
 
-    if (fragment.kind === 'paragraph' && lookup) {
-      const block = lookup.block as ParagraphBlock;
-      const measure = lookup.measure as ParagraphMeasure;
-      return renderParagraphFragment(fragment as ParagraphFragment, block, measure, context, {
-        document: this.doc,
-      });
-    }
+		if (fragment.kind === "paragraph" && lookup) {
+			const block = lookup.block as ParagraphBlock;
+			const measure = lookup.measure as ParagraphMeasure;
+			return renderParagraphFragment(
+				fragment as ParagraphFragment,
+				block,
+				measure,
+				context,
+				{
+					document: this.doc,
+				},
+			);
+		}
 
-    if (fragment.kind === 'table' && lookup) {
-      const block = lookup.block as TableBlock;
-      const measure = lookup.measure as TableMeasure;
-      return renderTableFragment(fragment as TableFragment, block, measure, context, {
-        document: this.doc,
-      });
-    }
+		if (fragment.kind === "table" && lookup) {
+			const block = lookup.block as TableBlock;
+			const measure = lookup.measure as TableMeasure;
+			return renderTableFragment(
+				fragment as TableFragment,
+				block,
+				measure,
+				context,
+				{
+					document: this.doc,
+				},
+			);
+		}
 
-    if (fragment.kind === 'image' && lookup) {
-      const block = lookup.block as ImageBlock;
-      const measure = lookup.measure as ImageMeasure;
-      return renderImageFragment(fragment as ImageFragment, block, measure, context, {
-        document: this.doc,
-      });
-    }
+		if (fragment.kind === "image" && lookup) {
+			const block = lookup.block as ImageBlock;
+			const measure = lookup.measure as ImageMeasure;
+			return renderImageFragment(
+				fragment as ImageFragment,
+				block,
+				measure,
+				context,
+				{
+					document: this.doc,
+				},
+			);
+		}
 
-    if (fragment.kind === 'textBox' && lookup) {
-      const block = lookup.block as TextBoxBlock;
-      const measure = lookup.measure as TextBoxMeasure;
-      return renderTextBoxFragment(fragment as TextBoxFragment, block, measure, context, {
-        document: this.doc,
-      });
-    }
+		if (fragment.kind === "textBox" && lookup) {
+			const block = lookup.block as TextBoxBlock;
+			const measure = lookup.measure as TextBoxMeasure;
+			return renderTextBoxFragment(
+				fragment as TextBoxFragment,
+				block,
+				measure,
+				context,
+				{
+					document: this.doc,
+				},
+			);
+		}
 
-    // Fallback to placeholder for other fragment types
-    return renderFragment(fragment, context, { document: this.doc });
-  }
+		// Fallback to placeholder for other fragment types
+		return renderFragment(fragment, context, { document: this.doc });
+	}
 
-  /**
-   * Apply positioning styles to a fragment element
-   */
-  private applyFragmentPosition(element: HTMLElement, fragment: Fragment): void {
-    element.style.position = 'absolute';
-    element.style.left = `${fragment.x}px`;
-    element.style.top = `${fragment.y}px`;
-    element.style.width = `${fragment.width}px`;
+	/**
+	 * Apply positioning styles to a fragment element
+	 */
+	private applyFragmentPosition(
+		element: HTMLElement,
+		fragment: Fragment,
+	): void {
+		element.style.position = "absolute";
+		element.style.left = `${fragment.x}px`;
+		element.style.top = `${fragment.y}px`;
+		element.style.width = `${fragment.width}px`;
 
-    if ('height' in fragment) {
-      element.style.height = `${fragment.height}px`;
-    }
-  }
+		if ("height" in fragment) {
+			element.style.height = `${fragment.height}px`;
+		}
+	}
 
-  /**
-   * Get the current page count
-   */
-  getPageCount(): number {
-    return this.totalPages;
-  }
+	/**
+	 * Get the current page count
+	 */
+	getPageCount(): number {
+		return this.totalPages;
+	}
 
-  /**
-   * Get a page element by index
-   */
-  getPageElement(index: number): HTMLElement | null {
-    return this.pageStates[index]?.element ?? null;
-  }
+	/**
+	 * Get a page element by index
+	 */
+	getPageElement(index: number): HTMLElement | null {
+		return this.pageStates[index]?.element ?? null;
+	}
 
-  /**
-   * Scroll to a specific page
-   */
-  scrollToPage(pageNumber: number): void {
-    const state = this.pageStates.find((s) => s.pageNumber === pageNumber);
-    if (state?.element) {
-      state.element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
+	/**
+	 * Scroll to a specific page
+	 */
+	scrollToPage(pageNumber: number): void {
+		const state = this.pageStates.find((s) => s.pageNumber === pageNumber);
+		if (state?.element) {
+			state.element.scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+	}
 }
 
 /**
  * Create a new LayoutPainter instance
  */
 export function createPainter(options?: PainterOptions): LayoutPainter {
-  return new LayoutPainter(options);
+	return new LayoutPainter(options);
 }

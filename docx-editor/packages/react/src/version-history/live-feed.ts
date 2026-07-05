@@ -13,27 +13,27 @@
  * unsubscribe in their effect cleanup).
  */
 export type LiveVersionFeed = {
-  tick: () => void;
-  subscribe: (fn: () => void) => () => void;
+	tick: () => void;
+	subscribe: (fn: () => void) => () => void;
 };
 
 export function createLiveVersionFeed(): LiveVersionFeed {
-  const subs = new Set<() => void>();
-  return {
-    tick: () => {
-      for (const fn of subs) {
-        try {
-          fn();
-        } catch (err) {
-          console.warn('[version-history] subscriber threw', err);
-        }
-      }
-    },
-    subscribe: (fn) => {
-      subs.add(fn);
-      return () => {
-        subs.delete(fn);
-      };
-    },
-  };
+	const subs = new Set<() => void>();
+	return {
+		tick: () => {
+			for (const fn of subs) {
+				try {
+					fn();
+				} catch (err) {
+					console.warn("[version-history] subscriber threw", err);
+				}
+			}
+		},
+		subscribe: (fn) => {
+			subs.add(fn);
+			return () => {
+				subs.delete(fn);
+			};
+		},
+	};
 }

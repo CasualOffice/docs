@@ -9,18 +9,18 @@
 //
 // Run: docker compose exec editor bun scripts/make-image-hyperlink-fixture.mjs
 
-import JSZip from 'jszip';
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e', 'fixtures', 'image-hyperlink.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e", "fixtures", "image-hyperlink.docx");
 
 // Tiny 4×4 PNG.
 const PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFUlEQVR4nGP8z/CfgQGI/jMwMDAAAAQfAQGFklUNAAAAAElFTkSuQmCC';
+	"iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAFUlEQVR4nGP8z/CfgQGI/jMwMDAAAAQfAQGFklUNAAAAAElFTkSuQmCC";
 const pngBytes = Uint8Array.from(atob(PNG_BASE64), (c) => c.charCodeAt(0));
 
 const CT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -98,13 +98,13 @@ const DOCUMENT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CT);
-zip.file('_rels/.rels', RELS);
-zip.file('word/_rels/document.xml.rels', DOC_RELS);
-zip.file('word/document.xml', DOCUMENT);
-zip.file('word/styles.xml', STYLES);
-zip.file('word/media/image1.png', pngBytes);
+zip.file("[Content_Types].xml", CT);
+zip.file("_rels/.rels", RELS);
+zip.file("word/_rels/document.xml.rels", DOC_RELS);
+zip.file("word/document.xml", DOCUMENT);
+zip.file("word/styles.xml", STYLES);
+zip.file("word/media/image1.png", pngBytes);
 
-const buf = await zip.generateAsync({ type: 'nodebuffer' });
+const buf = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, buf);
 console.log(`wrote ${OUT} (${buf.byteLength} bytes)`);

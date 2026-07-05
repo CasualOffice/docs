@@ -11,23 +11,23 @@
  * Community contributed — contributions welcome!
  */
 
-import type { EditorView } from 'prosemirror-view';
-import type { Component, VNode } from 'vue';
+import type { EditorView } from "prosemirror-view";
+import type { Component, VNode } from "vue";
 
 // Re-export core types
 export type {
-  EditorPluginCore,
-  PluginPanelProps,
-  PanelConfig,
-  RenderedDomContext,
-  PositionCoordinates,
-} from '@eigenpal/docx-core/plugin-api';
+	EditorPluginCore,
+	PluginPanelProps,
+	PanelConfig,
+	RenderedDomContext,
+	PositionCoordinates,
+} from "@eigenpal/docx-core/plugin-api";
 
 import type {
-  EditorPluginCore,
-  PluginPanelProps,
-  RenderedDomContext,
-} from '@eigenpal/docx-core/plugin-api';
+	EditorPluginCore,
+	PluginPanelProps,
+	RenderedDomContext,
+} from "@eigenpal/docx-core/plugin-api";
 
 /**
  * Vue-specific editor plugin interface.
@@ -37,18 +37,19 @@ import type {
  * - renderOverlay: Function returning VNode for overlay rendering
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface VueEditorPlugin<TState = any> extends EditorPluginCore<TState> {
-  /**
-   * Vue component to render in the annotation panel area.
-   */
-  Panel?: Component<PluginPanelProps<TState>>;
+export interface VueEditorPlugin<TState = any>
+	extends EditorPluginCore<TState> {
+	/**
+	 * Vue component to render in the annotation panel area.
+	 */
+	Panel?: Component<PluginPanelProps<TState>>;
 
-  /**
-   * Render an overlay on top of the rendered pages.
-   */
-  renderOverlay?: (
-    context: RenderedDomContext,
-    state: TState,
-    editorView: EditorView | null
-  ) => VNode | null;
+	/**
+	 * Render an overlay on top of the rendered pages.
+	 */
+	renderOverlay?: (
+		context: RenderedDomContext,
+		state: TState,
+		editorView: EditorView | null,
+	) => VNode | null;
 }

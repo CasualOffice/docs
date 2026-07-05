@@ -7,7 +7,7 @@
  * Kept for backward compatibility with in-package imports.
  */
 export {
-  type SplitCellDialogConfig,
-  getSplitCellDialogConfig,
-  splitActiveTableCell,
-} from '@eigenpal/docx-core/prosemirror/commands';
+	type SplitCellDialogConfig,
+	getSplitCellDialogConfig,
+	splitActiveTableCell,
+} from "@eigenpal/docx-core/prosemirror/commands";

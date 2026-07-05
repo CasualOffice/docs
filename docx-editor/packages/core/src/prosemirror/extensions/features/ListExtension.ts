@@ -9,24 +9,24 @@
  * Provides: toggle bullet/number, indent/outdent, enter/backspace handling.
  */
 
-import { Plugin, type Command, type EditorState } from 'prosemirror-state';
-import { createExtension } from '../create';
-import { Priority } from '../types';
-import type { ExtensionRuntime } from '../types';
+import { Plugin, type Command, type EditorState } from "prosemirror-state";
+import { createExtension } from "../create";
+import { Priority } from "../types";
+import type { ExtensionRuntime } from "../types";
 
 // ============================================================================
 // CHAIN COMMANDS HELPER
 // ============================================================================
 
 function chainCommands(...commands: Command[]): Command {
-  return (state, dispatch, view) => {
-    for (const cmd of commands) {
-      if (cmd(state, dispatch, view)) {
-        return true;
-      }
-    }
-    return false;
-  };
+	return (state, dispatch, view) => {
+		for (const cmd of commands) {
+			if (cmd(state, dispatch, view)) {
+				return true;
+			}
+		}
+		return false;
+	};
 }
 
 // ============================================================================
@@ -34,67 +34,56 @@ function chainCommands(...commands: Command[]): Command {
 // ============================================================================
 
 function toggleList(numId: number): Command {
-  return (state, dispatch) => {
-    const { $from, $to } = state.selection;
+	return (state, dispatch) => {
+		const { $from, $to } = state.selection;
 
-    const paragraph = $from.parent;
-    if (paragraph.type.name !== 'paragraph') return false;
+		const paragraph = $from.parent;
+		if (paragraph.type.name !== "paragraph") return false;
 
-    // Toggle off only when EVERY selected paragraph is already in the target
-    // list — otherwise convert all of them to it (matches Word / Google Docs
-    // for mixed selections). Judging from the anchor paragraph alone would
-    // wrongly strip the list from bullet items when the anchor was numbered.
-    let allInSameList = true;
-    let sawParagraph = false;
-    state.doc.nodesBetween($from.pos, $to.pos, (node) => {
-      if (node.type.name === 'paragraph') {
-        sawParagraph = true;
-        if (node.attrs.numPr?.numId !== numId) allInSameList = false;
-      }
-    });
-    const isInSameList = sawParagraph && allInSameList;
+		const currentNumPr = paragraph.attrs.numPr;
+		const isInSameList = currentNumPr?.numId === numId;
 
-    if (!dispatch) return true;
+		if (!dispatch) return true;
 
-    let tr = state.tr;
-    const seen = new Set<number>();
+		let tr = state.tr;
+		const seen = new Set<number>();
 
-    state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-      if (node.type.name === 'paragraph' && !seen.has(pos)) {
-        seen.add(pos);
+		state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+			if (node.type.name === "paragraph" && !seen.has(pos)) {
+				seen.add(pos);
 
-        if (isInSameList) {
-          tr = tr.setNodeMarkup(pos, undefined, {
-            ...node.attrs,
-            numPr: null,
-            listIsBullet: null,
-            listNumFmt: null,
-            listMarker: null,
-          });
-        } else {
-          const isBullet = numId === 1;
-          tr = tr.setNodeMarkup(pos, undefined, {
-            ...node.attrs,
-            numPr: { numId, ilvl: node.attrs.numPr?.ilvl || 0 },
-            listIsBullet: isBullet,
-            listNumFmt: isBullet ? null : 'decimal',
-            listMarker: null,
-          });
-        }
-      }
-    });
+				if (isInSameList) {
+					tr = tr.setNodeMarkup(pos, undefined, {
+						...node.attrs,
+						numPr: null,
+						listIsBullet: null,
+						listNumFmt: null,
+						listMarker: null,
+					});
+				} else {
+					const isBullet = numId === 1;
+					tr = tr.setNodeMarkup(pos, undefined, {
+						...node.attrs,
+						numPr: { numId, ilvl: node.attrs.numPr?.ilvl || 0 },
+						listIsBullet: isBullet,
+						listNumFmt: isBullet ? null : "decimal",
+						listMarker: null,
+					});
+				}
+			}
+		});
 
-    dispatch(tr.scrollIntoView());
-    return true;
-  };
+		dispatch(tr.scrollIntoView());
+		return true;
+	};
 }
 
 const toggleBulletList: Command = (state, dispatch) => {
-  return toggleList(1)(state, dispatch);
+	return toggleList(1)(state, dispatch);
 };
 
 const toggleNumberedList: Command = (state, dispatch) => {
-  return toggleList(2)(state, dispatch);
+	return toggleList(2)(state, dispatch);
 };
 
 // Both indent/outdent commands walk the selection so that multi-paragraph
@@ -105,87 +94,93 @@ const toggleNumberedList: Command = (state, dispatch) => {
 // silently no-op'd every other selected item.
 
 const increaseListLevel: Command = (state, dispatch) => {
-  const { $from, $to } = state.selection;
+	const { $from, $to } = state.selection;
 
-  const targets: Array<{ pos: number; attrs: Record<string, unknown>; newLevel: number }> = [];
-  const seen = new Set<number>();
-  state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-    if (node.type.name !== 'paragraph' || !node.attrs.numPr || seen.has(pos)) return;
-    seen.add(pos);
-    const currentLevel = node.attrs.numPr.ilvl || 0;
-    if (currentLevel >= 8) return;
-    targets.push({ pos, attrs: node.attrs, newLevel: currentLevel + 1 });
-  });
+	const targets: Array<{
+		pos: number;
+		attrs: Record<string, unknown>;
+		newLevel: number;
+	}> = [];
+	const seen = new Set<number>();
+	state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+		if (node.type.name !== "paragraph" || !node.attrs.numPr || seen.has(pos))
+			return;
+		seen.add(pos);
+		const currentLevel = node.attrs.numPr.ilvl || 0;
+		if (currentLevel >= 8) return;
+		targets.push({ pos, attrs: node.attrs, newLevel: currentLevel + 1 });
+	});
 
-  if (targets.length === 0) return false;
-  if (!dispatch) return true;
+	if (targets.length === 0) return false;
+	if (!dispatch) return true;
 
-  let tr = state.tr;
-  for (const { pos, attrs, newLevel } of targets) {
-    tr = tr.setNodeMarkup(pos, undefined, {
-      ...attrs,
-      numPr: { ...(attrs.numPr as Record<string, unknown>), ilvl: newLevel },
-      // Clear explicit indentation so the layout engine recomputes from
-      // the new level — otherwise the item keeps its old visual indent.
-      indentLeft: null,
-      indentFirstLine: null,
-      hangingIndent: null,
-    });
-  }
-  dispatch(tr.scrollIntoView());
-  return true;
+	let tr = state.tr;
+	for (const { pos, attrs, newLevel } of targets) {
+		tr = tr.setNodeMarkup(pos, undefined, {
+			...attrs,
+			numPr: { ...(attrs.numPr as Record<string, unknown>), ilvl: newLevel },
+			// Clear explicit indentation so the layout engine recomputes from
+			// the new level — otherwise the item keeps its old visual indent.
+			indentLeft: null,
+			indentFirstLine: null,
+			hangingIndent: null,
+		});
+	}
+	dispatch(tr.scrollIntoView());
+	return true;
 };
 
 const decreaseListLevel: Command = (state, dispatch) => {
-  const { $from, $to } = state.selection;
+	const { $from, $to } = state.selection;
 
-  const targets: Array<{
-    pos: number;
-    attrs: Record<string, unknown>;
-    removeList: boolean;
-    newLevel: number;
-  }> = [];
-  const seen = new Set<number>();
-  state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-    if (node.type.name !== 'paragraph' || !node.attrs.numPr || seen.has(pos)) return;
-    seen.add(pos);
-    const currentLevel = node.attrs.numPr.ilvl || 0;
-    targets.push({
-      pos,
-      attrs: node.attrs,
-      removeList: currentLevel <= 0,
-      newLevel: currentLevel - 1,
-    });
-  });
+	const targets: Array<{
+		pos: number;
+		attrs: Record<string, unknown>;
+		removeList: boolean;
+		newLevel: number;
+	}> = [];
+	const seen = new Set<number>();
+	state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+		if (node.type.name !== "paragraph" || !node.attrs.numPr || seen.has(pos))
+			return;
+		seen.add(pos);
+		const currentLevel = node.attrs.numPr.ilvl || 0;
+		targets.push({
+			pos,
+			attrs: node.attrs,
+			removeList: currentLevel <= 0,
+			newLevel: currentLevel - 1,
+		});
+	});
 
-  if (targets.length === 0) return false;
-  if (!dispatch) return true;
+	if (targets.length === 0) return false;
+	if (!dispatch) return true;
 
-  let tr = state.tr;
-  for (const { pos, attrs, removeList, newLevel } of targets) {
-    if (removeList) {
-      tr = tr.setNodeMarkup(pos, undefined, {
-        ...attrs,
-        numPr: null,
-        listIsBullet: null,
-        listNumFmt: null,
-        listMarker: null,
-        indentLeft: null,
-        indentFirstLine: null,
-        hangingIndent: null,
-      });
-    } else {
-      tr = tr.setNodeMarkup(pos, undefined, {
-        ...attrs,
-        numPr: { ...(attrs.numPr as Record<string, unknown>), ilvl: newLevel },
-        indentLeft: null,
-        indentFirstLine: null,
-        hangingIndent: null,
-      });
-    }
-  }
-  dispatch(tr.scrollIntoView());
-  return true;
+	let tr = state.tr;
+	for (const { pos, attrs, removeList, newLevel } of targets) {
+		if (removeList) {
+			tr = tr.setNodeMarkup(pos, undefined, {
+				...attrs,
+				numPr: null,
+				listIsBullet: null,
+				listNumFmt: null,
+				listMarker: null,
+				indentLeft: null,
+				indentFirstLine: null,
+				hangingIndent: null,
+			});
+		} else {
+			tr = tr.setNodeMarkup(pos, undefined, {
+				...attrs,
+				numPr: { ...(attrs.numPr as Record<string, unknown>), ilvl: newLevel },
+				indentLeft: null,
+				indentFirstLine: null,
+				hangingIndent: null,
+			});
+		}
+	}
+	dispatch(tr.scrollIntoView());
+	return true;
 };
 
 // Indent / outdent plain paragraphs by half an inch — the fallback for
@@ -194,52 +189,59 @@ const decreaseListLevel: Command = (state, dispatch) => {
 // nothing changes so it composes after the list-level command in a chain.
 const PARAGRAPH_INDENT_STEP = 720; // 0.5"
 const indentParagraphs =
-  (delta: number): Command =>
-  (state, dispatch) => {
-    const { $from, $to } = state.selection;
-    const targets: Array<{ pos: number; attrs: Record<string, unknown>; next: number }> = [];
-    const seen = new Set<number>();
-    state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-      if (node.type.name !== 'paragraph' || seen.has(pos)) return;
-      seen.add(pos);
-      const cur = (node.attrs.indentLeft as number) ?? 0;
-      const next = Math.max(0, cur + delta);
-      if (next === cur) return;
-      targets.push({ pos, attrs: node.attrs, next });
-    });
-    if (targets.length === 0) return false;
-    if (!dispatch) return true;
-    let tr = state.tr;
-    for (const { pos, attrs, next } of targets) {
-      tr = tr.setNodeMarkup(pos, undefined, { ...attrs, indentLeft: next || null });
-    }
-    dispatch(tr.scrollIntoView());
-    return true;
-  };
+	(delta: number): Command =>
+	(state, dispatch) => {
+		const { $from, $to } = state.selection;
+		const targets: Array<{
+			pos: number;
+			attrs: Record<string, unknown>;
+			next: number;
+		}> = [];
+		const seen = new Set<number>();
+		state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+			if (node.type.name !== "paragraph" || seen.has(pos)) return;
+			seen.add(pos);
+			const cur = (node.attrs.indentLeft as number) ?? 0;
+			const next = Math.max(0, cur + delta);
+			if (next === cur) return;
+			targets.push({ pos, attrs: node.attrs, next });
+		});
+		if (targets.length === 0) return false;
+		if (!dispatch) return true;
+		let tr = state.tr;
+		for (const { pos, attrs, next } of targets) {
+			tr = tr.setNodeMarkup(pos, undefined, {
+				...attrs,
+				indentLeft: next || null,
+			});
+		}
+		dispatch(tr.scrollIntoView());
+		return true;
+	};
 
 const removeList: Command = (state, dispatch) => {
-  const { $from, $to } = state.selection;
+	const { $from, $to } = state.selection;
 
-  if (!dispatch) return true;
+	if (!dispatch) return true;
 
-  let tr = state.tr;
-  const seen = new Set<number>();
+	let tr = state.tr;
+	const seen = new Set<number>();
 
-  state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-    if (node.type.name === 'paragraph' && node.attrs.numPr && !seen.has(pos)) {
-      seen.add(pos);
-      tr = tr.setNodeMarkup(pos, undefined, {
-        ...node.attrs,
-        numPr: null,
-        listIsBullet: null,
-        listNumFmt: null,
-        listMarker: null,
-      });
-    }
-  });
+	state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+		if (node.type.name === "paragraph" && node.attrs.numPr && !seen.has(pos)) {
+			seen.add(pos);
+			tr = tr.setNodeMarkup(pos, undefined, {
+				...node.attrs,
+				numPr: null,
+				listIsBullet: null,
+				listNumFmt: null,
+				listMarker: null,
+			});
+		}
+	});
 
-  dispatch(tr.scrollIntoView());
-  return true;
+	dispatch(tr.scrollIntoView());
+	return true;
 };
 
 // ============================================================================
@@ -247,24 +249,26 @@ const removeList: Command = (state, dispatch) => {
 // ============================================================================
 
 export function isInList(state: EditorState): boolean {
-  const { $from } = state.selection;
-  const paragraph = $from.parent;
+	const { $from } = state.selection;
+	const paragraph = $from.parent;
 
-  if (paragraph.type.name !== 'paragraph') return false;
-  return !!paragraph.attrs.numPr?.numId;
+	if (paragraph.type.name !== "paragraph") return false;
+	return !!paragraph.attrs.numPr?.numId;
 }
 
-export function getListInfo(state: EditorState): { numId: number; ilvl: number } | null {
-  const { $from } = state.selection;
-  const paragraph = $from.parent;
+export function getListInfo(
+	state: EditorState,
+): { numId: number; ilvl: number } | null {
+	const { $from } = state.selection;
+	const paragraph = $from.parent;
 
-  if (paragraph.type.name !== 'paragraph') return null;
-  if (!paragraph.attrs.numPr?.numId) return null;
+	if (paragraph.type.name !== "paragraph") return null;
+	if (!paragraph.attrs.numPr?.numId) return null;
 
-  return {
-    numId: paragraph.attrs.numPr.numId,
-    ilvl: paragraph.attrs.numPr.ilvl || 0,
-  };
+	return {
+		numId: paragraph.attrs.numPr.numId,
+		ilvl: paragraph.attrs.numPr.ilvl || 0,
+	};
 }
 
 // ============================================================================
@@ -272,182 +276,184 @@ export function getListInfo(state: EditorState): { numId: number; ilvl: number }
 // ============================================================================
 
 function exitListOnEmptyEnter(): Command {
-  return (state, dispatch) => {
-    const { $from, empty } = state.selection;
-    if (!empty) return false;
+	return (state, dispatch) => {
+		const { $from, empty } = state.selection;
+		if (!empty) return false;
 
-    const paragraph = $from.parent;
-    if (paragraph.type.name !== 'paragraph') return false;
+		const paragraph = $from.parent;
+		if (paragraph.type.name !== "paragraph") return false;
 
-    const numPr = paragraph.attrs.numPr;
-    if (!numPr) return false;
+		const numPr = paragraph.attrs.numPr;
+		if (!numPr) return false;
 
-    if (paragraph.textContent.length > 0) return false;
+		if (paragraph.textContent.length > 0) return false;
 
-    if (dispatch) {
-      const tr = state.tr.setNodeMarkup($from.before(), undefined, {
-        ...paragraph.attrs,
-        numPr: null,
-        listIsBullet: null,
-        listNumFmt: null,
-        listMarker: null,
-      });
-      dispatch(tr);
-    }
-    return true;
-  };
+		if (dispatch) {
+			const tr = state.tr.setNodeMarkup($from.before(), undefined, {
+				...paragraph.attrs,
+				numPr: null,
+				listIsBullet: null,
+				listNumFmt: null,
+				listMarker: null,
+			});
+			dispatch(tr);
+		}
+		return true;
+	};
 }
 
 function splitListItem(): Command {
-  return (state, dispatch) => {
-    const { $from, empty } = state.selection;
-    if (!empty) return false;
+	return (state, dispatch) => {
+		const { $from, empty } = state.selection;
+		if (!empty) return false;
 
-    const paragraph = $from.parent;
-    if (paragraph.type.name !== 'paragraph') return false;
+		const paragraph = $from.parent;
+		if (paragraph.type.name !== "paragraph") return false;
 
-    const numPr = paragraph.attrs.numPr;
-    if (!numPr) return false;
+		const numPr = paragraph.attrs.numPr;
+		if (!numPr) return false;
 
-    if (dispatch) {
-      const { tr } = state;
-      const pos = $from.pos;
+		if (dispatch) {
+			const { tr } = state;
+			const pos = $from.pos;
 
-      tr.split(pos, 1, [{ type: state.schema.nodes.paragraph, attrs: { ...paragraph.attrs } }]);
+			tr.split(pos, 1, [
+				{ type: state.schema.nodes.paragraph, attrs: { ...paragraph.attrs } },
+			]);
 
-      dispatch(tr.scrollIntoView());
-    }
-    return true;
-  };
+			dispatch(tr.scrollIntoView());
+		}
+		return true;
+	};
 }
 
 function backspaceExitList(): Command {
-  return (state, dispatch) => {
-    const { $from, empty } = state.selection;
-    if (!empty) return false;
+	return (state, dispatch) => {
+		const { $from, empty } = state.selection;
+		if (!empty) return false;
 
-    if ($from.parentOffset !== 0) return false;
+		if ($from.parentOffset !== 0) return false;
 
-    const paragraph = $from.parent;
-    if (paragraph.type.name !== 'paragraph') return false;
+		const paragraph = $from.parent;
+		if (paragraph.type.name !== "paragraph") return false;
 
-    const numPr = paragraph.attrs.numPr;
-    if (!numPr) return false;
+		const numPr = paragraph.attrs.numPr;
+		if (!numPr) return false;
 
-    if (dispatch) {
-      const tr = state.tr.setNodeMarkup($from.before(), undefined, {
-        ...paragraph.attrs,
-        numPr: null,
-        listIsBullet: null,
-        listNumFmt: null,
-        listMarker: null,
-      });
-      dispatch(tr);
-    }
-    return true;
-  };
+		if (dispatch) {
+			const tr = state.tr.setNodeMarkup($from.before(), undefined, {
+				...paragraph.attrs,
+				numPr: null,
+				listIsBullet: null,
+				listNumFmt: null,
+				listMarker: null,
+			});
+			dispatch(tr);
+		}
+		return true;
+	};
 }
 
 function increaseListIndent(): Command {
-  return (state, dispatch) => {
-    const { $from, $to } = state.selection;
+	return (state, dispatch) => {
+		const { $from, $to } = state.selection;
 
-    // Collect all list paragraphs in the selection range
-    const positions: { pos: number; attrs: Record<string, unknown> }[] = [];
-    state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-      if (node.type.name === 'paragraph' && node.attrs.numPr) {
-        const currentLevel = (node.attrs.numPr as { ilvl?: number }).ilvl ?? 0;
-        if (currentLevel < 8) {
-          positions.push({ pos, attrs: node.attrs as Record<string, unknown> });
-        }
-      }
-    });
+		// Collect all list paragraphs in the selection range
+		const positions: { pos: number; attrs: Record<string, unknown> }[] = [];
+		state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+			if (node.type.name === "paragraph" && node.attrs.numPr) {
+				const currentLevel = (node.attrs.numPr as { ilvl?: number }).ilvl ?? 0;
+				if (currentLevel < 8) {
+					positions.push({ pos, attrs: node.attrs as Record<string, unknown> });
+				}
+			}
+		});
 
-    if (positions.length === 0) return false;
+		if (positions.length === 0) return false;
 
-    if (dispatch) {
-      let tr = state.tr;
-      for (const { pos, attrs } of positions) {
-        const numPr = attrs.numPr as { ilvl?: number; numId?: number };
-        tr = tr.setNodeMarkup(pos, undefined, {
-          ...attrs,
-          numPr: { ...numPr, ilvl: (numPr.ilvl ?? 0) + 1 },
-          indentLeft: null,
-          indentFirstLine: null,
-          hangingIndent: null,
-        });
-      }
-      dispatch(tr);
-    }
-    return true;
-  };
+		if (dispatch) {
+			let tr = state.tr;
+			for (const { pos, attrs } of positions) {
+				const numPr = attrs.numPr as { ilvl?: number; numId?: number };
+				tr = tr.setNodeMarkup(pos, undefined, {
+					...attrs,
+					numPr: { ...numPr, ilvl: (numPr.ilvl ?? 0) + 1 },
+					indentLeft: null,
+					indentFirstLine: null,
+					hangingIndent: null,
+				});
+			}
+			dispatch(tr);
+		}
+		return true;
+	};
 }
 
 function decreaseListIndent(): Command {
-  return (state, dispatch) => {
-    const { $from, $to } = state.selection;
+	return (state, dispatch) => {
+		const { $from, $to } = state.selection;
 
-    // Collect all list paragraphs in the selection range
-    const positions: { pos: number; attrs: Record<string, unknown> }[] = [];
-    state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
-      if (node.type.name === 'paragraph' && node.attrs.numPr) {
-        positions.push({ pos, attrs: node.attrs as Record<string, unknown> });
-      }
-    });
+		// Collect all list paragraphs in the selection range
+		const positions: { pos: number; attrs: Record<string, unknown> }[] = [];
+		state.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+			if (node.type.name === "paragraph" && node.attrs.numPr) {
+				positions.push({ pos, attrs: node.attrs as Record<string, unknown> });
+			}
+		});
 
-    if (positions.length === 0) return false;
+		if (positions.length === 0) return false;
 
-    if (dispatch) {
-      let tr = state.tr;
-      for (const { pos, attrs } of positions) {
-        const numPr = attrs.numPr as { ilvl?: number; numId?: number };
-        const currentLevel = numPr.ilvl ?? 0;
-        if (currentLevel <= 0) {
-          tr = tr.setNodeMarkup(pos, undefined, {
-            ...attrs,
-            numPr: null,
-            listIsBullet: null,
-            listNumFmt: null,
-            listMarker: null,
-            indentLeft: null,
-            indentFirstLine: null,
-            hangingIndent: null,
-          });
-        } else {
-          tr = tr.setNodeMarkup(pos, undefined, {
-            ...attrs,
-            numPr: { ...numPr, ilvl: currentLevel - 1 },
-            indentLeft: null,
-            indentFirstLine: null,
-            hangingIndent: null,
-          });
-        }
-      }
-      dispatch(tr);
-    }
-    return true;
-  };
+		if (dispatch) {
+			let tr = state.tr;
+			for (const { pos, attrs } of positions) {
+				const numPr = attrs.numPr as { ilvl?: number; numId?: number };
+				const currentLevel = numPr.ilvl ?? 0;
+				if (currentLevel <= 0) {
+					tr = tr.setNodeMarkup(pos, undefined, {
+						...attrs,
+						numPr: null,
+						listIsBullet: null,
+						listNumFmt: null,
+						listMarker: null,
+						indentLeft: null,
+						indentFirstLine: null,
+						hangingIndent: null,
+					});
+				} else {
+					tr = tr.setNodeMarkup(pos, undefined, {
+						...attrs,
+						numPr: { ...numPr, ilvl: currentLevel - 1 },
+						indentLeft: null,
+						indentFirstLine: null,
+						hangingIndent: null,
+					});
+				}
+			}
+			dispatch(tr);
+		}
+		return true;
+	};
 }
 
 function insertTab(): Command {
-  return (state, dispatch) => {
-    const { schema } = state;
-    const tabType = schema.nodes.tab;
+	return (state, dispatch) => {
+		const { schema } = state;
+		const tabType = schema.nodes.tab;
 
-    if (!tabType) {
-      return false;
-    }
+		if (!tabType) {
+			return false;
+		}
 
-    if (dispatch) {
-      const tr = state.tr.replaceSelectionWith(tabType.create());
-      dispatch(tr.scrollIntoView());
-    }
-    return true;
-  };
+		if (dispatch) {
+			const tr = state.tr.replaceSelectionWith(tabType.create());
+			dispatch(tr.scrollIntoView());
+		}
+		return true;
+	};
 }
 
 // Import goToNextCell/goToPrevCell from table extension for chaining
-import { goToNextCell, goToPrevCell } from '../nodes/TableExtension';
+import { goToNextCell, goToPrevCell } from "../nodes/TableExtension";
 
 // ============================================================================
 // EXTENSION
@@ -458,55 +464,65 @@ import { goToNextCell, goToPrevCell } from '../nodes/TableExtension';
 //   "-", "*", "+"  → bullet list
 //   "1.", "1)"     → numbered list
 const autoListPlugin = new Plugin({
-  props: {
-    handleTextInput(view, from, _to, text) {
-      if (text !== ' ') return false;
-      const { state } = view;
-      const $from = state.doc.resolve(from);
-      if (!$from.parent.isTextblock) return false;
-      // Already a list paragraph → don't toggle it off.
-      if (($from.parent.attrs as { numPr?: { numId?: number } }).numPr?.numId != null) return false;
-      // The marker must be the ENTIRE content before the cursor (line start).
-      const before = state.doc.textBetween($from.start(), from);
-      let cmd: Command | null = null;
-      if (/^[-*+]$/.test(before)) cmd = toggleBulletList;
-      else if (/^\d{1,3}[.)]$/.test(before)) cmd = toggleNumberedList;
-      if (!cmd) return false;
-      // Remove the typed marker, then apply the list to the now-empty paragraph.
-      view.dispatch(state.tr.delete($from.start(), from));
-      cmd(view.state, view.dispatch);
-      return true; // consume the space
-    },
-  },
+	props: {
+		handleTextInput(view, from, _to, text) {
+			if (text !== " ") return false;
+			const { state } = view;
+			const $from = state.doc.resolve(from);
+			if (!$from.parent.isTextblock) return false;
+			// Already a list paragraph → don't toggle it off.
+			if (
+				($from.parent.attrs as { numPr?: { numId?: number } }).numPr?.numId !=
+				null
+			)
+				return false;
+			// The marker must be the ENTIRE content before the cursor (line start).
+			const before = state.doc.textBetween($from.start(), from);
+			let cmd: Command | null = null;
+			if (/^[-*+]$/.test(before)) cmd = toggleBulletList;
+			else if (/^\d{1,3}[.)]$/.test(before)) cmd = toggleNumberedList;
+			if (!cmd) return false;
+			// Remove the typed marker, then apply the list to the now-empty paragraph.
+			view.dispatch(state.tr.delete($from.start(), from));
+			cmd(view.state, view.dispatch);
+			return true; // consume the space
+		},
+	},
 });
 
 export const ListExtension = createExtension({
-  name: 'list',
-  priority: Priority.High, // Must be before base keymap
-  onSchemaReady(): ExtensionRuntime {
-    return {
-      plugins: [autoListPlugin],
-      commands: {
-        toggleBulletList: () => toggleBulletList,
-        toggleNumberedList: () => toggleNumberedList,
-        increaseListLevel: () => increaseListLevel,
-        decreaseListLevel: () => decreaseListLevel,
-        removeList: () => removeList,
-      },
-      keyboardShortcuts: {
-        Tab: chainCommands(goToNextCell(), increaseListIndent(), insertTab()),
-        'Shift-Tab': chainCommands(goToPrevCell(), decreaseListIndent()),
-        'Shift-Enter': () => false, // Let base keymap handle this
-        Enter: chainCommands(exitListOnEmptyEnter(), splitListItem()),
-        Backspace: backspaceExitList(),
-        // Google Docs list shortcuts
-        'Mod-Shift-7': toggleNumberedList,
-        'Mod-Shift-8': toggleBulletList,
-        // Indent / outdent: bump the list level inside a list, else indent the
-        // plain paragraph (Google Docs' Ctrl+] / Ctrl+[ work on any paragraph).
-        'Mod-]': chainCommands(increaseListLevel, indentParagraphs(PARAGRAPH_INDENT_STEP)),
-        'Mod-[': chainCommands(decreaseListLevel, indentParagraphs(-PARAGRAPH_INDENT_STEP)),
-      },
-    };
-  },
+	name: "list",
+	priority: Priority.High, // Must be before base keymap
+	onSchemaReady(): ExtensionRuntime {
+		return {
+			plugins: [autoListPlugin],
+			commands: {
+				toggleBulletList: () => toggleBulletList,
+				toggleNumberedList: () => toggleNumberedList,
+				increaseListLevel: () => increaseListLevel,
+				decreaseListLevel: () => decreaseListLevel,
+				removeList: () => removeList,
+			},
+			keyboardShortcuts: {
+				Tab: chainCommands(goToNextCell(), increaseListIndent(), insertTab()),
+				"Shift-Tab": chainCommands(goToPrevCell(), decreaseListIndent()),
+				"Shift-Enter": () => false, // Let base keymap handle this
+				Enter: chainCommands(exitListOnEmptyEnter(), splitListItem()),
+				Backspace: backspaceExitList(),
+				// Google Docs list shortcuts
+				"Mod-Shift-7": toggleNumberedList,
+				"Mod-Shift-8": toggleBulletList,
+				// Indent / outdent: bump the list level inside a list, else indent the
+				// plain paragraph (Google Docs' Ctrl+] / Ctrl+[ work on any paragraph).
+				"Mod-]": chainCommands(
+					increaseListLevel,
+					indentParagraphs(PARAGRAPH_INDENT_STEP),
+				),
+				"Mod-[": chainCommands(
+					decreaseListLevel,
+					indentParagraphs(-PARAGRAPH_INDENT_STEP),
+				),
+			},
+		};
+	},
 });

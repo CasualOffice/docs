@@ -7,12 +7,12 @@
  */
 
 export function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+	return text
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&apos;");
 }
 
 /**
@@ -28,6 +28,6 @@ export function escapeXml(text: string): string {
  * leaking literal `"NaN"` or `"Infinity"` into the XML.
  */
 export function intAttr(value: number | undefined | null): string {
-  if (value == null || !Number.isFinite(value)) return '0';
-  return String(Math.round(value));
+	if (value == null || !Number.isFinite(value)) return "0";
+	return String(Math.round(value));
 }

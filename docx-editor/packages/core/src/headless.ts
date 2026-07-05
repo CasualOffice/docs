@@ -47,208 +47,215 @@
 // VERSION
 // ============================================================================
 
-export const VERSION = '0.0.2';
+export const VERSION = "0.0.2";
 
 // ============================================================================
 // DOCUMENT AGENT
 // ============================================================================
 
-export { DocumentAgent, createAgent, createAgentFromDocument } from './agent/DocumentAgent';
+export {
+	DocumentAgent,
+	createAgent,
+	createAgentFromDocument,
+} from "./agent/DocumentAgent";
 export type {
-  InsertTextOptions,
-  InsertTableOptions,
-  InsertImageOptions,
-  InsertHyperlinkOptions,
-  FormattedTextSegment,
-} from './agent/DocumentAgent';
+	InsertTextOptions,
+	InsertTableOptions,
+	InsertImageOptions,
+	InsertHyperlinkOptions,
+	FormattedTextSegment,
+} from "./agent/DocumentAgent";
 
 // ============================================================================
 // COMMAND EXECUTION
 // ============================================================================
 
-export { executeCommand, executeCommands } from './agent/executor';
+export { executeCommand, executeCommands } from "./agent/executor";
 
 // ============================================================================
 // CONTEXT BUILDERS
 // ============================================================================
 
 export {
-  getAgentContext,
-  getDocumentSummary,
-  buildSelectionContext as buildSelectionContextFromContext,
-  type AgentContextOptions,
-  type SelectionContextOptions as ContextSelectionOptions,
-} from './agent/context';
+	getAgentContext,
+	getDocumentSummary,
+	buildSelectionContext as buildSelectionContextFromContext,
+	type AgentContextOptions,
+	type SelectionContextOptions as ContextSelectionOptions,
+} from "./agent/context";
 
 export {
-  buildSelectionContext,
-  buildExtendedSelectionContext,
-  getSelectionFormattingSummary,
-  type SelectionContextOptions,
-  type ExtendedSelectionContext,
-  type FormattingSummary,
-} from './agent/selectionContext';
+	buildSelectionContext,
+	buildExtendedSelectionContext,
+	getSelectionFormattingSummary,
+	type SelectionContextOptions,
+	type ExtendedSelectionContext,
+	type FormattingSummary,
+} from "./agent/selectionContext";
 
 // ============================================================================
 // TEXT UTILITIES
 // ============================================================================
 
 export {
-  getParagraphText,
-  getRunText,
-  getHyperlinkText,
-  getTableText,
-  getBodyText,
-  countWords,
-  countCharacters,
-  getBodyWordCount,
-  getBodyCharacterCount,
-  getTextBefore,
-  getTextAfter,
-  getFormattingAtPosition,
-  isPositionInHyperlink,
-  getHyperlinkAtPosition,
-  isHeadingStyle,
-  parseHeadingLevel,
-  hasImages,
-  hasHyperlinks,
-  hasTables,
-  getParagraphs,
-  getParagraphAtIndex,
-  getBlockIndexForParagraph,
-} from './agent/text-utils';
+	getParagraphText,
+	getRunText,
+	getHyperlinkText,
+	getTableText,
+	getBodyText,
+	countWords,
+	countCharacters,
+	getBodyWordCount,
+	getBodyCharacterCount,
+	getTextBefore,
+	getTextAfter,
+	getFormattingAtPosition,
+	isPositionInHyperlink,
+	getHyperlinkAtPosition,
+	isHeadingStyle,
+	parseHeadingLevel,
+	hasImages,
+	hasHyperlinks,
+	hasTables,
+	getParagraphs,
+	getParagraphAtIndex,
+	getBlockIndexForParagraph,
+} from "./agent/text-utils";
 
 // ============================================================================
 // PARSER / SERIALIZER
 // ============================================================================
 
-export { parseDocx } from './docx/parser';
+export { parseDocx } from "./docx/parser";
 export {
-  serializeDocument as serializeDocx,
-  serializeDocumentBody,
-  serializeSectionProperties,
-} from './docx/serializer/documentSerializer';
-export { repackDocx, createDocx, updateMultipleFiles } from './docx/rezip';
-export { attemptSelectiveSave } from './docx/selectiveSave';
-export { buildPatchedDocumentXml, validatePatchSafety } from './docx/selectiveXmlPatch';
+	serializeDocument as serializeDocx,
+	serializeDocumentBody,
+	serializeSectionProperties,
+} from "./docx/serializer/documentSerializer";
+export { repackDocx, createDocx, updateMultipleFiles } from "./docx/rezip";
+export { attemptSelectiveSave } from "./docx/selectiveSave";
+export {
+	buildPatchedDocumentXml,
+	validatePatchSafety,
+} from "./docx/selectiveXmlPatch";
 
 // ============================================================================
 // TEMPLATE PROCESSING
 // ============================================================================
 
 export {
-  processTemplate,
-  processTemplateDetailed,
-  processTemplateAsBlob,
-  processTemplateAdvanced,
-  getTemplateTags,
-  validateTemplate,
-  getMissingVariables,
-  previewTemplate,
-  createTemplateProcessor,
-  type ProcessTemplateOptions,
-  type ProcessTemplateResult,
-  type TemplateError,
-} from './utils/processTemplate';
+	processTemplate,
+	processTemplateDetailed,
+	processTemplateAsBlob,
+	processTemplateAdvanced,
+	getTemplateTags,
+	validateTemplate,
+	getMissingVariables,
+	previewTemplate,
+	createTemplateProcessor,
+	type ProcessTemplateOptions,
+	type ProcessTemplateResult,
+	type TemplateError,
+} from "./utils/processTemplate";
 
 // ============================================================================
 // VARIABLE DETECTION
 // ============================================================================
 
 export {
-  detectVariables,
-  detectVariablesDetailed,
-  detectVariablesInBody,
-  detectVariablesInParagraph,
-  extractVariablesFromText,
-  hasTemplateVariables,
-  isValidVariableName,
-  sanitizeVariableName,
-  formatVariable,
-  parseVariable,
-  replaceVariables,
-  removeVariables,
-  documentHasVariables,
-  type VariableDetectionResult,
-  type VariableOccurrence,
-} from './utils/variableDetector';
+	detectVariables,
+	detectVariablesDetailed,
+	detectVariablesInBody,
+	detectVariablesInParagraph,
+	extractVariablesFromText,
+	hasTemplateVariables,
+	isValidVariableName,
+	sanitizeVariableName,
+	formatVariable,
+	parseVariable,
+	replaceVariables,
+	removeVariables,
+	documentHasVariables,
+	type VariableDetectionResult,
+	type VariableOccurrence,
+} from "./utils/variableDetector";
 
 // ============================================================================
 // DOCUMENT CREATION
 // ============================================================================
 
 export {
-  createEmptyDocument,
-  createDocumentWithText,
-  type CreateEmptyDocumentOptions,
-} from './utils/createDocument';
+	createEmptyDocument,
+	createDocumentWithText,
+	type CreateEmptyDocumentOptions,
+} from "./utils/createDocument";
 
 // ============================================================================
 // UTILITIES
 // ============================================================================
 
 export {
-  twipsToPixels,
-  pixelsToTwips,
-  formatPx,
-  emuToPixels,
-  pointsToPixels,
-  halfPointsToPixels,
-  pixelsToEmu,
-  emuToTwips,
-  twipsToEmu,
-} from './utils/units';
+	twipsToPixels,
+	pixelsToTwips,
+	formatPx,
+	emuToPixels,
+	pointsToPixels,
+	halfPointsToPixels,
+	pixelsToEmu,
+	emuToTwips,
+	twipsToEmu,
+} from "./utils/units";
 
 export {
-  resolveColor,
-  resolveHighlightColor,
-  resolveShadingColor,
-  parseColorString,
-  createThemeColor,
-  createRgbColor,
-  darkenColor,
-  lightenColor,
-  blendColors,
-  getContrastingColor,
-  isBlack,
-  isWhite,
-  colorsEqual,
-} from './utils/colorResolver';
+	resolveColor,
+	resolveHighlightColor,
+	resolveShadingColor,
+	parseColorString,
+	createThemeColor,
+	createRgbColor,
+	darkenColor,
+	lightenColor,
+	blendColors,
+	getContrastingColor,
+	isBlack,
+	isWhite,
+	colorsEqual,
+} from "./utils/colorResolver";
 
 // ============================================================================
 // PLUGIN SYSTEM
 // ============================================================================
 
 export {
-  pluginRegistry,
-  PluginRegistry,
-  registerPlugins,
-  createPluginRegistrar,
-  isZodSchema,
-  type CorePlugin,
-  type Plugin,
-  type PluginCommand,
-  type CommandHandler,
-  type PluginCommandHandler,
-  type CommandResult,
-  type PluginOptions,
-  type PluginRegistrationResult,
-  type McpToolDefinition,
-  type ToolDefinition,
-  type McpToolHandler,
-  type ToolHandler,
-  type McpToolResult,
-  type ToolResult,
-  type McpToolContent,
-  type McpToolContext,
-  type McpToolAnnotations,
-  type McpSession,
-  type LoadedDocument,
-  type JsonSchema,
-  type ZodSchemaLike,
-  type PluginEvent,
-  type PluginEventListener,
-} from './core-plugins';
+	pluginRegistry,
+	PluginRegistry,
+	registerPlugins,
+	createPluginRegistrar,
+	isZodSchema,
+	type CorePlugin,
+	type Plugin,
+	type PluginCommand,
+	type CommandHandler,
+	type PluginCommandHandler,
+	type CommandResult,
+	type PluginOptions,
+	type PluginRegistrationResult,
+	type McpToolDefinition,
+	type ToolDefinition,
+	type McpToolHandler,
+	type ToolHandler,
+	type McpToolResult,
+	type ToolResult,
+	type McpToolContent,
+	type McpToolContext,
+	type McpToolAnnotations,
+	type McpSession,
+	type LoadedDocument,
+	type JsonSchema,
+	type ZodSchemaLike,
+	type PluginEvent,
+	type PluginEventListener,
+} from "./core-plugins";
 
 // ============================================================================
 // TYPES
@@ -256,79 +263,104 @@ export {
 
 // Document types
 export type {
-  Document,
-  DocxPackage,
-  DocumentBody,
-  BlockContent,
-  Paragraph,
-  ParagraphContent,
-  Run,
-  RunContent,
-  TextContent,
-  Table,
-  TableRow,
-  TableCell,
-  Image,
-  Hyperlink,
-  Theme,
-  Style,
-  StyleDefinitions,
-  TextFormatting,
-  ParagraphFormatting,
-  SectionProperties,
-  Footnote,
-  Endnote,
-  ListLevel,
-  NumberingDefinitions,
-  Relationship,
-  // Track changes & comments
-  Comment,
-  CommentRangeStart,
-  CommentRangeEnd,
-  TrackedChangeInfo,
-  TrackedRunChange,
-  Insertion,
-  Deletion,
-  MoveFrom,
-  MoveTo,
-} from './types/document';
+	Document,
+	DocxPackage,
+	DocumentBody,
+	BlockContent,
+	Paragraph,
+	ParagraphContent,
+	Run,
+	RunContent,
+	TextContent,
+	Table,
+	TableRow,
+	TableCell,
+	Image,
+	Hyperlink,
+	Theme,
+	Style,
+	StyleDefinitions,
+	TextFormatting,
+	ParagraphFormatting,
+	SectionProperties,
+	Footnote,
+	Endnote,
+	ListLevel,
+	NumberingDefinitions,
+	Relationship,
+	// Track changes & comments
+	Comment,
+	CommentRangeStart,
+	CommentRangeEnd,
+	TrackedChangeInfo,
+	TrackedRunChange,
+	Insertion,
+	Deletion,
+	MoveFrom,
+	MoveTo,
+} from "./types/document";
 
 // Agent API types
 export type {
-  AIAction,
-  AIActionRequest,
-  AgentResponse,
-  AgentContext,
-  SelectionContext,
-  Range,
-  Position,
-  ParagraphContext,
-  ParagraphOutline,
-  SectionInfo,
-  StyleInfo,
-  SuggestedAction,
-  AgentCommand,
-  InsertTextCommand,
-  ReplaceTextCommand,
-  DeleteTextCommand,
-  FormatTextCommand,
-  FormatParagraphCommand,
-  InsertTableCommand,
-  InsertImageCommand,
-  InsertHyperlinkCommand,
-  SetVariableCommand,
-  ApplyStyleCommand,
-  ApplyVariablesCommand,
-} from './types/agentApi';
+	AIAction,
+	AIActionRequest,
+	AgentResponse,
+	AgentContext,
+	SelectionContext,
+	Range,
+	Position,
+	ParagraphContext,
+	ParagraphOutline,
+	SectionInfo,
+	StyleInfo,
+	SuggestedAction,
+	AgentCommand,
+	InsertTextCommand,
+	ReplaceTextCommand,
+	DeleteTextCommand,
+	FormatTextCommand,
+	FormatParagraphCommand,
+	InsertTableCommand,
+	InsertImageCommand,
+	InsertHyperlinkCommand,
+	SetVariableCommand,
+	ApplyStyleCommand,
+	ApplyVariablesCommand,
+} from "./types/agentApi";
 
 // API functions
 export {
-  createCollapsedRange,
-  createRange,
-  isPositionInRange,
-  comparePositions,
-  getActionLabel,
-  getActionDescription,
-  createCommand,
-  DEFAULT_AI_ACTIONS,
-} from './types/agentApi';
+	createCollapsedRange,
+	createRange,
+	isPositionInRange,
+	comparePositions,
+	getActionLabel,
+	getActionDescription,
+	createCommand,
+	DEFAULT_AI_ACTIONS,
+} from "./types/agentApi";
+
+// ============================================================================
+// JUBARTE PROSEMIRROR DOCX ENGINE
+// ============================================================================
+
+export {
+	casualOfficeJubarteProseMirror,
+	clipboardHtmlToDoc,
+	createHeadlessEditor,
+	docToClipboardHtml,
+	docxSchema,
+	openDocx,
+	proseDocJsonToAst,
+	proseDocJsonToDocx,
+	propTreeFromXml,
+	wireProseMirrorEngine,
+	wmlToProseDocJson,
+} from "./jubarte-prosemirror";
+export type {
+	ClipboardDomOptions,
+	DocxSchema,
+	HeadlessEditor,
+	HeadlessExportFormat,
+	ProseDocToDocxOptions,
+} from "./jubarte-prosemirror";

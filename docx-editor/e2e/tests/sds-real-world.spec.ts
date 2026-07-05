@@ -17,31 +17,36 @@
  * and bodies get the same treatment regardless of format.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
-const FIXTURE = 'fixtures/sds-real-world.docx';
+const FIXTURE = "fixtures/sds-real-world.docx";
 
-test.describe('Real-world doc (SDS) — smoke test', () => {
-  let editor: EditorPage;
+test.describe("Real-world doc (SDS) — smoke test", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.loadDocxFile(FIXTURE);
-    await page.waitForTimeout(800);
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.loadDocxFile(FIXTURE);
+		await page.waitForTimeout(800);
+	});
 
-  test('loads without onError firing', async ({ page }) => {
-    const editorEl = page.locator('[data-testid="docx-editor"]');
-    await expect(editorEl).toBeVisible({ timeout: 5000 });
-  });
+	test("loads without onError firing", async ({ page }) => {
+		const editorEl = page.locator('[data-testid="docx-editor"]');
+		await expect(editorEl).toBeVisible({ timeout: 5000 });
+	});
 
-  test('VML textboxes render as .layout-textbox containers', async ({ page }) => {
-    // SDS has 1 body VML textbox + 1 header VML textbox (the header
-    // repeats on every page), so count is >= 1.
-    const count = await page.locator('.layout-textbox').count();
-    expect(count, 'expected at least one rendered VML textbox container').toBeGreaterThanOrEqual(1);
-  });
+	test("VML textboxes render as .layout-textbox containers", async ({
+		page,
+	}) => {
+		// SDS has 1 body VML textbox + 1 header VML textbox (the header
+		// repeats on every page), so count is >= 1.
+		const count = await page.locator(".layout-textbox").count();
+		expect(
+			count,
+			"expected at least one rendered VML textbox container",
+		).toBeGreaterThanOrEqual(1);
+	});
 });

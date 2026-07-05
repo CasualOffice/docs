@@ -35,11 +35,11 @@
   </style>
   <script>
     if (document.fonts) {
-      document.fonts.ready.then(function() {
+      document.fonts.ready.then(() => {
         document.documentElement.classList.add('fonts-loaded');
       });
     } else {
-      setTimeout(function() {
+      setTimeout(() => {
         document.documentElement.classList.add('fonts-loaded');
       }, 500);
     }

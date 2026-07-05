@@ -9,12 +9,12 @@
  * A Vue contributor can implement this using `createApp().mount()`.
  */
 
-import type { EditorHandle } from '@eigenpal/docx-core';
+import type { EditorHandle } from "@eigenpal/docx-core";
 
 /** Options for the Vue renderAsync (to be defined by implementor). */
 export interface VueRenderAsyncOptions {
-  readOnly?: boolean;
-  showToolbar?: boolean;
+	readOnly?: boolean;
+	showToolbar?: boolean;
 }
 
 /**
@@ -26,12 +26,12 @@ export interface VueRenderAsyncOptions {
  * @returns A handle implementing the framework-agnostic EditorHandle interface
  */
 export function renderAsync(
-  _input: ArrayBuffer | Uint8Array | Blob | File,
-  _container: HTMLElement,
-  _options: VueRenderAsyncOptions = {}
+	_input: ArrayBuffer | Uint8Array | Blob | File,
+	_container: HTMLElement,
+	_options: VueRenderAsyncOptions = {},
 ): Promise<EditorHandle> {
-  throw new Error(
-    '@eigenpal/docx-editor-vue renderAsync is not yet implemented. ' +
-      'Community contributions welcome!'
-  );
+	throw new Error(
+		"@eigenpal/docx-editor-vue renderAsync is not yet implemented. " +
+			"Community contributions welcome!",
+	);
 }

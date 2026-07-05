@@ -33,29 +33,29 @@ let isLoadingAny = false;
  * @returns Google Fonts CSS URL
  */
 function getGoogleFontsUrl(
-  fontFamily: string,
-  weights: number[] = [400, 700],
-  styles: ('normal' | 'italic')[] = ['normal', 'italic']
+	fontFamily: string,
+	weights: number[] = [400, 700],
+	styles: ("normal" | "italic")[] = ["normal", "italic"],
 ): string {
-  // Encode font family name for URL
-  const encodedFamily = encodeURIComponent(fontFamily);
+	// Encode font family name for URL
+	const encodedFamily = encodeURIComponent(fontFamily);
 
-  // Build weight/style combinations
-  // Format: ital,wght@0,400;0,700;1,400;1,700
-  const combinations: string[] = [];
+	// Build weight/style combinations
+	// Format: ital,wght@0,400;0,700;1,400;1,700
+	const combinations: string[] = [];
 
-  for (const style of styles) {
-    const italVal = style === 'italic' ? 1 : 0;
-    for (const weight of weights) {
-      combinations.push(`${italVal},${weight}`);
-    }
-  }
+	for (const style of styles) {
+		const italVal = style === "italic" ? 1 : 0;
+		for (const weight of weights) {
+			combinations.push(`${italVal},${weight}`);
+		}
+	}
 
-  // Sort and join
-  combinations.sort();
-  const spec = combinations.join(';');
+	// Sort and join
+	combinations.sort();
+	const spec = combinations.join(";");
 
-  return `https://fonts.googleapis.com/css2?family=${encodedFamily}:ital,wght@${spec}&display=swap`;
+	return `https://fonts.googleapis.com/css2?family=${encodedFamily}:ital,wght@${spec}&display=swap`;
 }
 
 /**
@@ -66,113 +66,111 @@ function getGoogleFontsUrl(
  * @returns Promise resolving to true if font loaded successfully, false otherwise
  */
 export async function loadFont(
-  fontFamily: string,
-  options?: {
-    weights?: number[];
-    styles?: ('normal' | 'italic')[];
-  }
+	fontFamily: string,
+	options?: {
+		weights?: number[];
+		styles?: ("normal" | "italic")[];
+	},
 ): Promise<boolean> {
-  // Skip font loading in non-browser environments (Node.js, SSR)
-  if (typeof document === 'undefined') {
-    return false;
-  }
+	// Skip font loading in non-browser environments (Node.js, SSR)
+	if (typeof document === "undefined") {
+		return false;
+	}
 
-  // Normalize font family name
-  const normalizedFamily = fontFamily.trim();
+	// Normalize font family name
+	const normalizedFamily = fontFamily.trim();
 
-  // Already loaded?
-  if (loadedFonts.has(normalizedFamily)) {
-    return true;
-  }
+	// Already loaded?
+	if (loadedFonts.has(normalizedFamily)) {
+		return true;
+	}
 
-  // Self-hosted first: if this family is already declared via a bundled
-  // `@font-face` (Carlito/Caladea/Liberation, shipped in fonts.css), load it
-  // from the local woff2 instead of fetching from the Google CDN. This is what
-  // keeps rendering deterministic offline and in regions where Google is
-  // blocked — no third-party request, no IP leak.
-  if ('fonts' in document) {
-    const declared = Array.from(document.fonts).some(
-      (ff) => ff.family.replace(/['"]/g, '').toLowerCase() === normalizedFamily.toLowerCase()
-    );
-    if (declared) {
-      try {
-        await document.fonts.load(`400 16px "${normalizedFamily}"`);
-      } catch {
-        // ignore — the @font-face is present; canvas/CSS will still use it
-      }
-      loadedFonts.add(normalizedFamily);
-      notifyCallbacks([normalizedFamily]);
-      return true;
-    }
-  }
+	// Self-hosted first: if this family is already declared via a bundled
+	// `@font-face` (Carlito/Caladea/Liberation, shipped in fonts.css), load it
+	// from the local woff2 instead of fetching from the Google CDN. This is what
+	// keeps rendering deterministic offline and in regions where Google is
+	// blocked — no third-party request, no IP leak.
+	if ("fonts" in document) {
+		const declared = Array.from(document.fonts).some(
+			(ff) =>
+				ff.family.replace(/['"]/g, "").toLowerCase() ===
+				normalizedFamily.toLowerCase(),
+		);
+		if (declared) {
+			try {
+				await document.fonts.load(`400 16px "${normalizedFamily}"`);
+			} catch {
+				// ignore — the @font-face is present; canvas/CSS will still use it
+			}
+			loadedFonts.add(normalizedFamily);
+			notifyCallbacks([normalizedFamily]);
+			return true;
+		}
+	}
 
-  // Currently loading? Return existing promise
-  const existingLoad = loadingFonts.get(normalizedFamily);
-  if (existingLoad) {
-    return existingLoad;
-  }
+	// Currently loading? Return existing promise
+	const existingLoad = loadingFonts.get(normalizedFamily);
+	if (existingLoad) {
+		return existingLoad;
+	}
 
-  // Create load promise
-  const loadPromise = (async (): Promise<boolean> => {
-    isLoadingAny = true;
+	// Create load promise
+	const loadPromise = (async (): Promise<boolean> => {
+		isLoadingAny = true;
 
-    try {
-      // Skip Google Fonts CDN in Tauri desktop — the webview's CSP blocks
-      // external requests, causing a 5 s timeout. Bundled @font-face fonts
-      // were already handled by the self-hosted guard above; for everything
-      // else the browser falls back to system fonts immediately.
-      if ((window as Window & { __TAURI__?: unknown }).__TAURI__) {
-        return false;
-      }
+		try {
+			// Generate Google Fonts URL
+			const url = getGoogleFontsUrl(
+				normalizedFamily,
+				options?.weights,
+				options?.styles,
+			);
 
-      // Generate Google Fonts URL
-      const url = getGoogleFontsUrl(normalizedFamily, options?.weights, options?.styles);
+			// Create link element
+			const link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.href = url;
 
-      // Create link element
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = url;
+			// Wait for load or error
+			const loaded = await new Promise<boolean>((resolve) => {
+				link.onload = () => resolve(true);
+				link.onerror = () => resolve(false);
 
-      // Wait for load or error
-      const loaded = await new Promise<boolean>((resolve) => {
-        link.onload = () => resolve(true);
-        link.onerror = () => resolve(false);
+				// Append to head
+				document.head.appendChild(link);
 
-        // Append to head
-        document.head.appendChild(link);
+				// Timeout after 5 seconds
+				setTimeout(() => resolve(false), 5000);
+			});
 
-        // Timeout after 5 seconds
-        setTimeout(() => resolve(false), 5000);
-      });
+			if (loaded) {
+				// Wait a bit for the font to be available
+				await waitForFontAvailable(normalizedFamily, 3000);
 
-      if (loaded) {
-        // Wait a bit for the font to be available
-        await waitForFontAvailable(normalizedFamily, 3000);
+				loadedFonts.add(normalizedFamily);
 
-        loadedFonts.add(normalizedFamily);
+				// Notify callbacks
+				notifyCallbacks([normalizedFamily]);
 
-        // Notify callbacks
-        notifyCallbacks([normalizedFamily]);
+				return true;
+			}
 
-        return true;
-      }
+			return false;
+		} catch (error) {
+			console.warn(`Failed to load font "${normalizedFamily}":`, error);
+			return false;
+		} finally {
+			loadingFonts.delete(normalizedFamily);
 
-      return false;
-    } catch (error) {
-      console.warn(`Failed to load font "${normalizedFamily}":`, error);
-      return false;
-    } finally {
-      loadingFonts.delete(normalizedFamily);
+			// Check if still loading any fonts
+			if (loadingFonts.size === 0) {
+				isLoadingAny = false;
+			}
+		}
+	})();
 
-      // Check if still loading any fonts
-      if (loadingFonts.size === 0) {
-        isLoadingAny = false;
-      }
-    }
-  })();
-
-  loadingFonts.set(normalizedFamily, loadPromise);
-  return loadPromise;
+	loadingFonts.set(normalizedFamily, loadPromise);
+	return loadPromise;
 }
 
 /**
@@ -183,21 +181,21 @@ export async function loadFont(
  * @returns Promise resolving when all fonts are loaded (or failed)
  */
 export async function loadFonts(
-  families: string[],
-  options?: {
-    weights?: number[];
-    styles?: ('normal' | 'italic')[];
-  }
+	families: string[],
+	options?: {
+		weights?: number[];
+		styles?: ("normal" | "italic")[];
+	},
 ): Promise<void> {
-  // Filter out already loaded fonts
-  const toLoad = families.filter((family) => !loadedFonts.has(family.trim()));
+	// Filter out already loaded fonts
+	const toLoad = families.filter((family) => !loadedFonts.has(family.trim()));
 
-  if (toLoad.length === 0) {
-    return;
-  }
+	if (toLoad.length === 0) {
+		return;
+	}
 
-  // Load all fonts in parallel
-  await Promise.all(toLoad.map((family) => loadFont(family, options)));
+	// Load all fonts in parallel
+	await Promise.all(toLoad.map((family) => loadFont(family, options)));
 }
 
 /**
@@ -207,7 +205,7 @@ export async function loadFonts(
  * @returns true if the font is loaded, false otherwise
  */
 export function isFontLoaded(fontFamily: string): boolean {
-  return loadedFonts.has(fontFamily.trim());
+	return loadedFonts.has(fontFamily.trim());
 }
 
 /**
@@ -216,7 +214,7 @@ export function isFontLoaded(fontFamily: string): boolean {
  * @returns true if any fonts are loading, false otherwise
  */
 export function isLoading(): boolean {
-  return isLoadingAny;
+	return isLoadingAny;
 }
 
 /**
@@ -225,7 +223,7 @@ export function isLoading(): boolean {
  * @returns Array of loaded font family names
  */
 export function getLoadedFonts(): string[] {
-  return Array.from(loadedFonts);
+	return Array.from(loadedFonts);
 }
 
 /**
@@ -235,25 +233,25 @@ export function getLoadedFonts(): string[] {
  * @returns Cleanup function to remove the callback
  */
 export function onFontsLoaded(callback: (fonts: string[]) => void): () => void {
-  loadCallbacks.add(callback);
+	loadCallbacks.add(callback);
 
-  // Return cleanup function
-  return () => {
-    loadCallbacks.delete(callback);
-  };
+	// Return cleanup function
+	return () => {
+		loadCallbacks.delete(callback);
+	};
 }
 
 /**
  * Notify all registered callbacks
  */
 function notifyCallbacks(fonts: string[]): void {
-  for (const callback of loadCallbacks) {
-    try {
-      callback(fonts);
-    } catch (error) {
-      console.warn('Font load callback error:', error);
-    }
-  }
+	for (const callback of loadCallbacks) {
+		try {
+			callback(fonts);
+		} catch (error) {
+			console.warn("Font load callback error:", error);
+		}
+	}
 }
 
 /**
@@ -263,26 +261,29 @@ function notifyCallbacks(fonts: string[]): void {
  * @param timeout - Maximum time to wait in milliseconds
  * @returns Promise resolving when font is available or timeout
  */
-async function waitForFontAvailable(fontFamily: string, timeout: number): Promise<boolean> {
-  // Use CSS Font Loading API if available
-  if ('fonts' in document) {
-    try {
-      // Try to wait for the font
-      const fontFace = `400 16px "${fontFamily}"`;
-      await Promise.race([
-        document.fonts.load(fontFace),
-        new Promise((resolve) => setTimeout(resolve, timeout)),
-      ]);
+async function waitForFontAvailable(
+	fontFamily: string,
+	timeout: number,
+): Promise<boolean> {
+	// Use CSS Font Loading API if available
+	if ("fonts" in document) {
+		try {
+			// Try to wait for the font
+			const fontFace = `400 16px "${fontFamily}"`;
+			await Promise.race([
+				document.fonts.load(fontFace),
+				new Promise((resolve) => setTimeout(resolve, timeout)),
+			]);
 
-      return document.fonts.check(fontFace);
-    } catch {
-      // Fall through to fallback
-    }
-  }
+			return document.fonts.check(fontFace);
+		} catch {
+			// Fall through to fallback
+		}
+	}
 
-  // Fallback: just wait a bit
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return true;
+	// Fallback: just wait a bit
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	return true;
 }
 
 /**
@@ -295,45 +296,49 @@ async function waitForFontAvailable(fontFamily: string, timeout: number): Promis
  * @param fallbackFont - Fallback font to compare against
  * @returns true if font is available, false otherwise
  */
-export function canRenderFont(fontFamily: string, fallbackFont: string = 'sans-serif'): boolean {
-  // Skip if we're not in a browser
-  if (typeof document === 'undefined') {
-    return false;
-  }
+export function canRenderFont(
+	fontFamily: string,
+	fallbackFont: string = "sans-serif",
+): boolean {
+	// Skip if we're not in a browser
+	if (typeof document === "undefined") {
+		return false;
+	}
 
-  const _canRenderFont = (fontName: string, fallback: string): boolean => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+	const _canRenderFont = (fontName: string, fallback: string): boolean => {
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
 
-    if (!ctx) {
-      return false;
-    }
+		if (!ctx) {
+			return false;
+		}
 
-    ctx.textBaseline = 'top';
+		ctx.textBaseline = "top";
 
-    const text = 'abcdefghijklmnopqrstuvwxyz0123456789';
+		const text = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-    // Measure with fallback font only
-    ctx.font = `72px ${fallback}`;
-    const fallbackWidth = ctx.measureText(text).width;
+		// Measure with fallback font only
+		ctx.font = `72px ${fallback}`;
+		const fallbackWidth = ctx.measureText(text).width;
 
-    // Measure with target font (with fallback)
-    ctx.font = `72px "${fontName}", ${fallback}`;
-    const customWidth = ctx.measureText(text).width;
+		// Measure with target font (with fallback)
+		ctx.font = `72px "${fontName}", ${fallback}`;
+		const customWidth = ctx.measureText(text).width;
 
-    // If widths differ, the custom font was used
-    return customWidth !== fallbackWidth;
-  };
+		// If widths differ, the custom font was used
+		return customWidth !== fallbackWidth;
+	};
 
-  // Check with primary fallback
-  if (_canRenderFont(fontFamily, fallbackFont)) {
-    return true;
-  }
+	// Check with primary fallback
+	if (_canRenderFont(fontFamily, fallbackFont)) {
+		return true;
+	}
 
-  // Check with opposite fallback (handles edge case where font name
-  // matches the browser's default sans-serif or serif)
-  const oppositeFallback = fallbackFont === 'sans-serif' ? 'serif' : 'sans-serif';
-  return _canRenderFont(fontFamily, oppositeFallback);
+	// Check with opposite fallback (handles edge case where font name
+	// matches the browser's default sans-serif or serif)
+	const oppositeFallback =
+		fallbackFont === "sans-serif" ? "serif" : "sans-serif";
+	return _canRenderFont(fontFamily, oppositeFallback);
 }
 
 /**
@@ -345,50 +350,53 @@ export function canRenderFont(fontFamily: string, fallbackFont: string = 'sans-s
  * @returns Promise resolving when font is loaded
  */
 export async function loadFontFromBuffer(
-  fontFamily: string,
-  buffer: ArrayBuffer,
-  options?: {
-    weight?: number | string;
-    style?: 'normal' | 'italic';
-  }
+	fontFamily: string,
+	buffer: ArrayBuffer,
+	options?: {
+		weight?: number | string;
+		style?: "normal" | "italic";
+	},
 ): Promise<boolean> {
-  const normalizedFamily = fontFamily.trim();
+	const normalizedFamily = fontFamily.trim();
 
-  // Already loaded?
-  if (loadedFonts.has(normalizedFamily)) {
-    return true;
-  }
+	// Already loaded?
+	if (loadedFonts.has(normalizedFamily)) {
+		return true;
+	}
 
-  try {
-    // Create blob URL
-    const blob = new Blob([buffer], { type: 'font/ttf' });
-    const url = URL.createObjectURL(blob);
+	try {
+		// Create blob URL
+		const blob = new Blob([buffer], { type: "font/ttf" });
+		const url = URL.createObjectURL(blob);
 
-    // Create @font-face CSS
-    const style = document.createElement('style');
-    style.textContent = `
+		// Create @font-face CSS
+		const style = document.createElement("style");
+		style.textContent = `
       @font-face {
         font-family: "${normalizedFamily}";
         src: url(${url}) format('truetype');
-        font-weight: ${options?.weight ?? 'normal'};
-        font-style: ${options?.style ?? 'normal'};
+        font-weight: ${options?.weight ?? "normal"};
+        font-style: ${options?.style ?? "normal"};
         font-display: swap;
       }
     `;
 
-    document.head.appendChild(style);
+		document.head.appendChild(style);
 
-    // Wait for font to be available
-    await waitForFontAvailable(normalizedFamily, 3000);
+		// Wait for font to be available
+		await waitForFontAvailable(normalizedFamily, 3000);
 
-    loadedFonts.add(normalizedFamily);
-    notifyCallbacks([normalizedFamily]);
+		loadedFonts.add(normalizedFamily);
+		notifyCallbacks([normalizedFamily]);
 
-    return true;
-  } catch (error) {
-    console.warn(`Failed to load font "${normalizedFamily}" from buffer:`, error);
-    return false;
-  }
+		return true;
+	} catch (error) {
+		console.warn(
+			`Failed to load font "${normalizedFamily}" from buffer:`,
+			error,
+		);
+		return false;
+	}
 }
 
 /**
@@ -398,30 +406,30 @@ export async function loadFontFromBuffer(
  * but these are close alternatives that work well for document rendering.
  */
 export const FONT_MAPPING: Record<string, string> = {
-  // Microsoft Office fonts → bundled OFL equivalents (self-hosted; loaded
-  // locally via the @font-face guard in loadFont, no CDN fetch).
-  Calibri: 'Carlito',
-  Cambria: 'Caladea',
-  Arial: 'Liberation Sans',
-  'Times New Roman': 'Liberation Serif',
-  'Courier New': 'Liberation Mono',
-  Garamond: 'EB Garamond',
-  'Book Antiqua': 'EB Garamond',
-  Georgia: 'Tinos',
-  Verdana: 'Open Sans',
-  Tahoma: 'Open Sans',
-  'Trebuchet MS': 'Source Sans Pro',
-  'Century Gothic': 'Poppins',
-  'Franklin Gothic': 'Libre Franklin',
-  Palatino: 'EB Garamond',
-  'Palatino Linotype': 'EB Garamond',
-  'Lucida Sans': 'Open Sans',
-  'Segoe UI': 'Open Sans',
-  Impact: 'Anton',
-  'Comic Sans MS': 'Comic Neue',
-  Consolas: 'Inconsolata',
-  'Lucida Console': 'Inconsolata',
-  Monaco: 'Fira Code',
+	// Microsoft Office fonts → bundled OFL equivalents (self-hosted; loaded
+	// locally via the @font-face guard in loadFont, no CDN fetch).
+	Calibri: "Carlito",
+	Cambria: "Caladea",
+	Arial: "Liberation Sans",
+	"Times New Roman": "Liberation Serif",
+	"Courier New": "Liberation Mono",
+	Garamond: "EB Garamond",
+	"Book Antiqua": "EB Garamond",
+	Georgia: "Tinos",
+	Verdana: "Open Sans",
+	Tahoma: "Open Sans",
+	"Trebuchet MS": "Source Sans Pro",
+	"Century Gothic": "Poppins",
+	"Franklin Gothic": "Libre Franklin",
+	Palatino: "EB Garamond",
+	"Palatino Linotype": "EB Garamond",
+	"Lucida Sans": "Open Sans",
+	"Segoe UI": "Open Sans",
+	Impact: "Anton",
+	"Comic Sans MS": "Comic Neue",
+	Consolas: "Inconsolata",
+	"Lucida Console": "Inconsolata",
+	Monaco: "Fira Code",
 };
 
 /**
@@ -431,8 +439,8 @@ export const FONT_MAPPING: Record<string, string> = {
  * @returns The Google Fonts equivalent, or the original name if no mapping exists
  */
 export function getGoogleFontEquivalent(fontName: string): string {
-  const trimmed = fontName.trim();
-  return FONT_MAPPING[trimmed] || trimmed;
+	const trimmed = fontName.trim();
+	return FONT_MAPPING[trimmed] || trimmed;
 }
 
 /**
@@ -443,25 +451,27 @@ export function getGoogleFontEquivalent(fontName: string): string {
  * @param fontFamily - The font family name (may be an Office font)
  * @returns Promise resolving to true if font loaded
  */
-export async function loadFontWithMapping(fontFamily: string): Promise<boolean> {
-  const trimmed = fontFamily.trim();
-  const googleFont = getGoogleFontEquivalent(trimmed);
+export async function loadFontWithMapping(
+	fontFamily: string,
+): Promise<boolean> {
+	const trimmed = fontFamily.trim();
+	const googleFont = getGoogleFontEquivalent(trimmed);
 
-  // Load the Google Font under its own name (no aliasing).
-  // The font resolver provides CSS fallback stacks that list both the
-  // original DOCX font and the Google equivalent, so the browser will
-  // use whichever is available without @font-face aliasing that would
-  // hijack Canvas measurements.
-  if (googleFont !== trimmed) {
-    const result = await loadFont(googleFont);
-    if (result) {
-      loadedFonts.add(trimmed);
-    }
-    return result;
-  }
+	// Load the Google Font under its own name (no aliasing).
+	// The font resolver provides CSS fallback stacks that list both the
+	// original DOCX font and the Google equivalent, so the browser will
+	// use whichever is available without @font-face aliasing that would
+	// hijack Canvas measurements.
+	if (googleFont !== trimmed) {
+		const result = await loadFont(googleFont);
+		if (result) {
+			loadedFonts.add(trimmed);
+		}
+		return result;
+	}
 
-  // No mapping needed, load directly
-  return loadFont(googleFont);
+	// No mapping needed, load directly
+	return loadFont(googleFont);
 }
 
 /**
@@ -471,10 +481,10 @@ export async function loadFontWithMapping(fontFamily: string): Promise<boolean> 
  * @returns Promise resolving when all fonts are loaded
  */
 export async function loadFontsWithMapping(families: string[]): Promise<void> {
-  // Remove duplicates
-  const uniqueFonts = [...new Set(families.map((f) => f.trim()))];
-  // Load each font with mapping (creates aliases for Office → Google font mappings)
-  await Promise.all(uniqueFonts.map((family) => loadFontWithMapping(family)));
+	// Remove duplicates
+	const uniqueFonts = [...new Set(families.map((f) => f.trim()))];
+	// Load each font with mapping (creates aliases for Office → Google font mappings)
+	await Promise.all(uniqueFonts.map((family) => loadFontWithMapping(family)));
 }
 
 /**
@@ -484,16 +494,16 @@ export async function loadFontsWithMapping(families: string[]): Promise<void> {
  * Google Fonts equivalents.
  */
 export async function preloadCommonFonts(): Promise<void> {
-  const commonFonts = [
-    'Carlito', // Calibri equivalent
-    'Caladea', // Cambria equivalent
-    'Arimo', // Arial equivalent
-    'Tinos', // Times New Roman equivalent
-    'Cousine', // Courier New equivalent
-    'EB Garamond', // Garamond equivalent
-  ];
+	const commonFonts = [
+		"Carlito", // Calibri equivalent
+		"Caladea", // Cambria equivalent
+		"Arimo", // Arial equivalent
+		"Tinos", // Times New Roman equivalent
+		"Cousine", // Courier New equivalent
+		"EB Garamond", // Garamond equivalent
+	];
 
-  await loadFonts(commonFonts);
+	await loadFonts(commonFonts);
 }
 
 /**
@@ -505,41 +515,41 @@ export async function preloadCommonFonts(): Promise<void> {
  * @returns Set of unique font family names
  */
 export function extractFontsFromDocument(document: unknown): Set<string> {
-  const fonts = new Set<string>();
+	const fonts = new Set<string>();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const doc = document as any;
-  if (!doc?.package) return fonts;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const doc = document as any;
+	if (!doc?.package) return fonts;
 
-  // Extract from document content
-  const content = doc.package?.document?.content;
-  if (Array.isArray(content)) {
-    for (const paragraph of content) {
-      if (paragraph?.type === 'paragraph' && Array.isArray(paragraph.content)) {
-        for (const run of paragraph.content) {
-          if (run?.type === 'run' && run.formatting?.fontFamily) {
-            const { ascii, hAnsi } = run.formatting.fontFamily;
-            if (ascii) fonts.add(ascii);
-            if (hAnsi && hAnsi !== ascii) fonts.add(hAnsi);
-          }
-        }
-      }
-    }
-  }
+	// Extract from document content
+	const content = doc.package?.document?.content;
+	if (Array.isArray(content)) {
+		for (const paragraph of content) {
+			if (paragraph?.type === "paragraph" && Array.isArray(paragraph.content)) {
+				for (const run of paragraph.content) {
+					if (run?.type === "run" && run.formatting?.fontFamily) {
+						const { ascii, hAnsi } = run.formatting.fontFamily;
+						if (ascii) fonts.add(ascii);
+						if (hAnsi && hAnsi !== ascii) fonts.add(hAnsi);
+					}
+				}
+			}
+		}
+	}
 
-  // Extract from styles
-  const styles = doc.package?.styles?.styles;
-  if (Array.isArray(styles)) {
-    for (const style of styles) {
-      if (style?.runProperties?.fontFamily) {
-        const { ascii, hAnsi } = style.runProperties.fontFamily;
-        if (ascii) fonts.add(ascii);
-        if (hAnsi && hAnsi !== ascii) fonts.add(hAnsi);
-      }
-    }
-  }
+	// Extract from styles
+	const styles = doc.package?.styles?.styles;
+	if (Array.isArray(styles)) {
+		for (const style of styles) {
+			if (style?.runProperties?.fontFamily) {
+				const { ascii, hAnsi } = style.runProperties.fontFamily;
+				if (ascii) fonts.add(ascii);
+				if (hAnsi && hAnsi !== ascii) fonts.add(hAnsi);
+			}
+		}
+	}
 
-  return fonts;
+	return fonts;
 }
 
 /**
@@ -549,12 +559,12 @@ export function extractFontsFromDocument(document: unknown): Set<string> {
  * @returns Promise resolving when fonts are loaded
  */
 export async function loadDocumentFonts(document: unknown): Promise<void> {
-  const fonts = extractFontsFromDocument(document);
+	const fonts = extractFontsFromDocument(document);
 
-  if (fonts.size === 0) {
-    return;
-  }
+	if (fonts.size === 0) {
+		return;
+	}
 
-  // Loading document fonts
-  await loadFontsWithMapping(Array.from(fonts));
+	// Loading document fonts
+	await loadFontsWithMapping(Array.from(fonts));
 }

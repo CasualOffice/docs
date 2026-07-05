@@ -28,21 +28,21 @@
  * span per word.
  */
 
-export type DiffOp = 'keep' | 'add' | 'remove';
+export type DiffOp = "keep" | "add" | "remove";
 
 export interface DiffSegment {
-  op: DiffOp;
-  text: string;
+	op: DiffOp;
+	text: string;
 }
 
 const TOKEN_RE = /[A-Za-z0-9_]+|[^\sA-Za-z0-9_]|\s+/g;
 
 function tokenise(text: string): string[] {
-  return text.match(TOKEN_RE) ?? [];
+	return text.match(TOKEN_RE) ?? [];
 }
 
 function isWhitespace(token: string): boolean {
-  return /^\s+$/.test(token);
+	return /^\s+$/.test(token);
 }
 
 /**
@@ -51,19 +51,21 @@ function isWhitespace(token: string): boolean {
  * reconstruct segments.
  */
 function lcsTable(a: string[], b: string[]): number[][] {
-  const n = a.length;
-  const m = b.length;
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      if (a[i - 1] === b[j - 1]) {
-        dp[i]![j] = dp[i - 1]![j - 1]! + 1;
-      } else {
-        dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
-      }
-    }
-  }
-  return dp;
+	const n = a.length;
+	const m = b.length;
+	const dp: number[][] = Array.from({ length: n + 1 }, () =>
+		new Array(m + 1).fill(0),
+	);
+	for (let i = 1; i <= n; i++) {
+		for (let j = 1; j <= m; j++) {
+			if (a[i - 1] === b[j - 1]) {
+				dp[i]![j] = dp[i - 1]![j - 1]! + 1;
+			} else {
+				dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+			}
+		}
+	}
+	return dp;
 }
 
 /**
@@ -73,69 +75,69 @@ function lcsTable(a: string[], b: string[]): number[][] {
  * the diff doesn't visually shred at every space.
  */
 function emit(a: string[], b: string[], dp: number[][]): DiffSegment[] {
-  const out: DiffSegment[] = [];
-  const push = (op: DiffOp, text: string): void => {
-    if (!text) return;
-    const last = out[out.length - 1];
-    if (last && last.op === op) {
-      last.text += text;
-    } else {
-      out.push({ op, text });
-    }
-  };
+	const out: DiffSegment[] = [];
+	const push = (op: DiffOp, text: string): void => {
+		if (!text) return;
+		const last = out[out.length - 1];
+		if (last && last.op === op) {
+			last.text += text;
+		} else {
+			out.push({ op, text });
+		}
+	};
 
-  let i = a.length;
-  let j = b.length;
-  // Reverse path: prepend tokens so order is correct.
-  const stack: DiffSegment[] = [];
-  while (i > 0 && j > 0) {
-    if (a[i - 1] === b[j - 1]) {
-      stack.push({ op: 'keep', text: a[i - 1]! });
-      i--;
-      j--;
-    } else if (dp[i - 1]![j]! >= dp[i]![j - 1]!) {
-      stack.push({ op: 'remove', text: a[i - 1]! });
-      i--;
-    } else {
-      stack.push({ op: 'add', text: b[j - 1]! });
-      j--;
-    }
-  }
-  while (i > 0) {
-    stack.push({ op: 'remove', text: a[i - 1]! });
-    i--;
-  }
-  while (j > 0) {
-    stack.push({ op: 'add', text: b[j - 1]! });
-    j--;
-  }
-  for (let k = stack.length - 1; k >= 0; k--) {
-    const s = stack[k]!;
-    // Stick lone whitespace tokens to the previous segment so spaces
-    // don't fragment the diff visually.
-    if (s.op === 'remove' && isWhitespace(s.text) && out.length > 0) {
-      push(out[out.length - 1]!.op, s.text);
-      continue;
-    }
-    if (s.op === 'add' && isWhitespace(s.text) && out.length > 0) {
-      push(out[out.length - 1]!.op, s.text);
-      continue;
-    }
-    push(s.op, s.text);
-  }
-  return out;
+	let i = a.length;
+	let j = b.length;
+	// Reverse path: prepend tokens so order is correct.
+	const stack: DiffSegment[] = [];
+	while (i > 0 && j > 0) {
+		if (a[i - 1] === b[j - 1]) {
+			stack.push({ op: "keep", text: a[i - 1]! });
+			i--;
+			j--;
+		} else if (dp[i - 1]![j]! >= dp[i]![j - 1]!) {
+			stack.push({ op: "remove", text: a[i - 1]! });
+			i--;
+		} else {
+			stack.push({ op: "add", text: b[j - 1]! });
+			j--;
+		}
+	}
+	while (i > 0) {
+		stack.push({ op: "remove", text: a[i - 1]! });
+		i--;
+	}
+	while (j > 0) {
+		stack.push({ op: "add", text: b[j - 1]! });
+		j--;
+	}
+	for (let k = stack.length - 1; k >= 0; k--) {
+		const s = stack[k]!;
+		// Stick lone whitespace tokens to the previous segment so spaces
+		// don't fragment the diff visually.
+		if (s.op === "remove" && isWhitespace(s.text) && out.length > 0) {
+			push(out[out.length - 1]!.op, s.text);
+			continue;
+		}
+		if (s.op === "add" && isWhitespace(s.text) && out.length > 0) {
+			push(out[out.length - 1]!.op, s.text);
+			continue;
+		}
+		push(s.op, s.text);
+	}
+	return out;
 }
 
 export function diffWords(before: string, after: string): DiffSegment[] {
-  if (before === after) {
-    return before ? [{ op: 'keep', text: before }] : [];
-  }
-  if (!before) return after ? [{ op: 'add', text: after }] : [];
-  if (!after) return [{ op: 'remove', text: before }];
-  const a = tokenise(before);
-  const b = tokenise(after);
-  const dp = lcsTable(a, b);
-  return emit(a, b, dp);
+	if (before === after) {
+		return before ? [{ op: "keep", text: before }] : [];
+	}
+	if (!before) return after ? [{ op: "add", text: after }] : [];
+	if (!after) return [{ op: "remove", text: before }];
+	const a = tokenise(before);
+	const b = tokenise(after);
+	const dp = lcsTable(a, b);
+	return emit(a, b, dp);
 }
 
 /**
@@ -147,29 +149,29 @@ export function diffWords(before: string, after: string): DiffSegment[] {
  * and revert.
  */
 export function extractText(node: unknown): string {
-  if (!node || typeof node !== 'object') return '';
-  const n = node as {
-    type?: string;
-    text?: string;
-    content?: unknown[];
-  };
-  if (typeof n.text === 'string') return n.text;
-  if (!Array.isArray(n.content)) return '';
-  const parts: string[] = [];
-  for (const child of n.content) {
-    parts.push(extractText(child));
-  }
-  // Most block types get a trailing newline; tables / inlines don't.
-  const blockTypes = new Set([
-    'paragraph',
-    'heading',
-    'tableRow',
-    'listItem',
-    'bullet_list',
-    'ordered_list',
-  ]);
-  const sep = n.type && blockTypes.has(n.type) ? '\n' : '';
-  return parts.join('') + sep;
+	if (!node || typeof node !== "object") return "";
+	const n = node as {
+		type?: string;
+		text?: string;
+		content?: unknown[];
+	};
+	if (typeof n.text === "string") return n.text;
+	if (!Array.isArray(n.content)) return "";
+	const parts: string[] = [];
+	for (const child of n.content) {
+		parts.push(extractText(child));
+	}
+	// Most block types get a trailing newline; tables / inlines don't.
+	const blockTypes = new Set([
+		"paragraph",
+		"heading",
+		"tableRow",
+		"listItem",
+		"bullet_list",
+		"ordered_list",
+	]);
+	const sep = n.type && blockTypes.has(n.type) ? "\n" : "";
+	return parts.join("") + sep;
 }
 
 /**
@@ -177,16 +179,19 @@ export function extractText(node: unknown): string {
  * compact entry row. Counts WORDS (excluding punctuation + spaces)
  * so the numbers match the user's intuition.
  */
-export function diffStats(segments: DiffSegment[]): { added: number; removed: number } {
-  const countWords = (text: string): number => {
-    const m = text.match(/[A-Za-z0-9_]+/g);
-    return m ? m.length : 0;
-  };
-  let added = 0;
-  let removed = 0;
-  for (const s of segments) {
-    if (s.op === 'add') added += countWords(s.text);
-    else if (s.op === 'remove') removed += countWords(s.text);
-  }
-  return { added, removed };
+export function diffStats(segments: DiffSegment[]): {
+	added: number;
+	removed: number;
+} {
+	const countWords = (text: string): number => {
+		const m = text.match(/[A-Za-z0-9_]+/g);
+		return m ? m.length : 0;
+	};
+	let added = 0;
+	let removed = 0;
+	for (const s of segments) {
+		if (s.op === "add") added += countWords(s.text);
+		else if (s.op === "remove") removed += countWords(s.text);
+	}
+	return { added, removed };
 }

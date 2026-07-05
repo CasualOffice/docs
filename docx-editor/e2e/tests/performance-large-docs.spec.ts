@@ -12,14 +12,17 @@
  *
  * Run: npx playwright test e2e/tests/perf-issue68.spec.ts --timeout=120000 --workers=1
  */
-import { test, expect, Page } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
-import { modifierKey } from '../helpers/keyboard';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { test, expect, type Page } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
+import { modifierKey } from "../helpers/keyboard";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LARGE_DOC_PATH = path.resolve(__dirname, '../fixtures/issue-68-large.docx');
+const LARGE_DOC_PATH = path.resolve(
+	__dirname,
+	"../fixtures/issue-68-large.docx",
+);
 
 // Use `await modifierKey(page)` inline at each callsite — the helper
 // resolves from the page's `navigator.platform` (Playwright Chromium
@@ -29,40 +32,49 @@ const LARGE_DOC_PATH = path.resolve(__dirname, '../fixtures/issue-68-large.docx'
  * Load the large doc fixture and wait for pages to render.
  */
 async function loadLargeDoc(page: Page): Promise<void> {
-  const fileInput = page.locator('input[type="file"][accept*=".docx"]');
-  await fileInput.setInputFiles(LARGE_DOC_PATH);
-  await page.waitForSelector('[data-page-number]', { timeout: 90_000 });
-  await page.waitForTimeout(2000); // let layout settle
+	const fileInput = page.locator('input[type="file"][accept*=".docx"]');
+	await fileInput.setInputFiles(LARGE_DOC_PATH);
+	await page.waitForSelector("[data-page-number]", { timeout: 90_000 });
+	await page.waitForTimeout(2000); // let layout settle
 }
 
 /**
  * Place the cursor at a paragraph via click on visible page content,
  * then verify the hidden ProseMirror actually received focus.
  */
-async function placeCursorOnPage(page: Page, pageNumber: number): Promise<void> {
-  // Click on a paragraph element inside the target page
-  const paragraph = page.locator(`[data-page-number="${pageNumber}"] p`).first();
-  if ((await paragraph.count()) > 0) {
-    await paragraph.click({ position: { x: 50, y: 10 } });
-  } else {
-    // Fallback: click on page element directly
-    const pageEl = page.locator(`[data-page-number="${pageNumber}"]`);
-    const box = await pageEl.boundingBox();
-    if (box) {
-      await page.mouse.click(box.x + 100, box.y + 100);
-    }
-  }
-  await page.waitForTimeout(300);
+async function placeCursorOnPage(
+	page: Page,
+	pageNumber: number,
+): Promise<void> {
+	// Click on a paragraph element inside the target page
+	const paragraph = page
+		.locator(`[data-page-number="${pageNumber}"] p`)
+		.first();
+	if ((await paragraph.count()) > 0) {
+		await paragraph.click({ position: { x: 50, y: 10 } });
+	} else {
+		// Fallback: click on page element directly
+		const pageEl = page.locator(`[data-page-number="${pageNumber}"]`);
+		const box = await pageEl.boundingBox();
+		if (box) {
+			await page.mouse.click(box.x + 100, box.y + 100);
+		}
+	}
+	await page.waitForTimeout(300);
 }
 
 /**
  * Verify the editor has focus by checking the ProseMirror element.
  */
 async function verifyEditorFocused(page: Page): Promise<boolean> {
-  return page.evaluate(() => {
-    const pm = document.querySelector('.ProseMirror');
-    return pm === document.activeElement || pm?.contains(document.activeElement) || false;
-  });
+	return page.evaluate(() => {
+		const pm = document.querySelector(".ProseMirror");
+		return (
+			pm === document.activeElement ||
+			pm?.contains(document.activeElement) ||
+			false
+		);
+	});
 }
 
 /**
@@ -70,196 +82,222 @@ async function verifyEditorFocused(page: Page): Promise<boolean> {
  * the browser to complete a full animation-frame cycle (layout + paint).
  * Returns elapsed ms including Playwright IPC overhead.
  */
-async function measureKeystrokeLatency(page: Page, key: string = 'a'): Promise<number> {
-  const before = performance.now();
-  await page.keyboard.press(key);
-  await page.evaluate(
-    () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
-  );
-  return Math.round(performance.now() - before);
+async function measureKeystrokeLatency(
+	page: Page,
+	key: string = "a",
+): Promise<number> {
+	const before = performance.now();
+	await page.keyboard.press(key);
+	await page.evaluate(
+		() =>
+			new Promise<void>((r) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => r())),
+			),
+	);
+	return Math.round(performance.now() - before);
 }
 
 /**
  * Measure N keystrokes and return latency stats.
  */
 async function measureKeystrokes(
-  page: Page,
-  count: number,
-  key: string = 'a'
+	page: Page,
+	count: number,
+	key: string = "a",
 ): Promise<{ latencies: number[]; avg: number; max: number; min: number }> {
-  const latencies: number[] = [];
-  for (let i = 0; i < count; i++) {
-    latencies.push(await measureKeystrokeLatency(page, key));
-  }
-  const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
-  return { latencies, avg, max: Math.max(...latencies), min: Math.min(...latencies) };
+	const latencies: number[] = [];
+	for (let i = 0; i < count; i++) {
+		latencies.push(await measureKeystrokeLatency(page, key));
+	}
+	const avg = Math.round(
+		latencies.reduce((a, b) => a + b, 0) / latencies.length,
+	);
+	return {
+		latencies,
+		avg,
+		max: Math.max(...latencies),
+		min: Math.min(...latencies),
+	};
 }
 
-test.describe('Large Document Performance (#68)', () => {
-  test.describe.configure({ timeout: 120_000 });
+test.describe("Large Document Performance (#68)", () => {
+	test.describe.configure({ timeout: 120_000 });
 
-  let editor: EditorPage;
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+	});
 
-  test('loads 127K word document without crashing', async ({ page }) => {
-    const loadStart = Date.now();
+	test("loads 127K word document without crashing", async ({ page }) => {
+		const loadStart = Date.now();
 
-    await loadLargeDoc(page);
-    const loadTime = Date.now() - loadStart;
+		await loadLargeDoc(page);
+		const loadTime = Date.now() - loadStart;
 
-    const pageCount = await page.locator('[data-page-number]').count();
-    expect(pageCount).toBeGreaterThan(50);
-    await expect(page.locator('.ProseMirror')).toContainText('Chapter 1');
+		const pageCount = await page.locator("[data-page-number]").count();
+		expect(pageCount).toBeGreaterThan(50);
+		await expect(page.locator(".ProseMirror")).toContainText("Chapter 1");
 
-    console.log(`Load time: ${loadTime}ms, Pages: ${pageCount}`);
-  });
+		console.log(`Load time: ${loadTime}ms, Pages: ${pageCount}`);
+	});
 
-  test('typing at document start stays responsive', async ({ page }) => {
-    await loadLargeDoc(page);
+	test("typing at document start stays responsive", async ({ page }) => {
+		await loadLargeDoc(page);
 
-    // Place cursor at start using Ctrl/Cmd+Home
-    await placeCursorOnPage(page, 1);
-    await page.keyboard.press(`${await modifierKey(page)}+Home`);
-    await page.waitForTimeout(300);
+		// Place cursor at start using Ctrl/Cmd+Home
+		await placeCursorOnPage(page, 1);
+		await page.keyboard.press(`${await modifierKey(page)}+Home`);
+		await page.waitForTimeout(300);
 
-    // Verify cursor is active — type a char and check it appears
-    await page.keyboard.press('x');
-    await page.evaluate(
-      () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
-    );
+		// Verify cursor is active — type a char and check it appears
+		await page.keyboard.press("x");
+		await page.evaluate(
+			() =>
+				new Promise<void>((r) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => r())),
+				),
+		);
 
-    const stats = await measureKeystrokes(page, 10);
-    console.log(
-      `Start-of-doc typing — avg: ${stats.avg}ms, max: ${stats.max}ms, all: [${stats.latencies.join(', ')}]`
-    );
-    // Start-of-doc edits require re-flowing all pages from page 1 (~312 pages),
-    // making each keystroke inherently 10–20× slower than mid/end-of-doc.
-    // CI observations: 533–868ms avg on the 2-vCPU runner.  Raise threshold
-    // from 500→2000ms: still catches catastrophic regressions (10× slowdown
-    // would produce ~8000ms avg) while tolerating normal CI load variation.
-    expect(stats.avg).toBeLessThan(2000);
-  });
+		const stats = await measureKeystrokes(page, 10);
+		console.log(
+			`Start-of-doc typing — avg: ${stats.avg}ms, max: ${stats.max}ms, all: [${stats.latencies.join(", ")}]`,
+		);
+		// Start-of-doc edits require re-flowing all pages from page 1 (~312 pages),
+		// making each keystroke inherently 10–20× slower than mid/end-of-doc.
+		// CI observations: 533–868ms avg on the 2-vCPU runner.  Raise threshold
+		// from 500→2000ms: still catches catastrophic regressions (10× slowdown
+		// would produce ~8000ms avg) while tolerating normal CI load variation.
+		expect(stats.avg).toBeLessThan(2000);
+	});
 
-  test('typing in the middle of document stays responsive', async ({ page }) => {
-    await loadLargeDoc(page);
+	test("typing in the middle of document stays responsive", async ({
+		page,
+	}) => {
+		await loadLargeDoc(page);
 
-    // Scroll to middle
-    await page.evaluate(() => {
-      const container =
-        document.querySelector('.paged-editor__scroll-container') ||
-        document.querySelector('.paged-editor__pages');
-      if (container) container.scrollTop = container.scrollHeight / 2;
-    });
-    await page.waitForTimeout(2000);
+		// Scroll to middle
+		await page.evaluate(() => {
+			const container =
+				document.querySelector(".paged-editor__scroll-container") ||
+				document.querySelector(".paged-editor__pages");
+			if (container) container.scrollTop = container.scrollHeight / 2;
+		});
+		await page.waitForTimeout(2000);
 
-    // Get a page near the middle and click its paragraph content
-    const pageCount = await page.locator('[data-page-number]').count();
-    const midPageNum = Math.floor(pageCount / 2);
-    await placeCursorOnPage(page, midPageNum);
+		// Get a page near the middle and click its paragraph content
+		const pageCount = await page.locator("[data-page-number]").count();
+		const midPageNum = Math.floor(pageCount / 2);
+		await placeCursorOnPage(page, midPageNum);
 
-    // Warm up — first keystroke after cursor placement can be slow
-    await page.keyboard.press('x');
-    await page.evaluate(
-      () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
-    );
+		// Warm up — first keystroke after cursor placement can be slow
+		await page.keyboard.press("x");
+		await page.evaluate(
+			() =>
+				new Promise<void>((r) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => r())),
+				),
+		);
 
-    const stats = await measureKeystrokes(page, 10);
-    console.log(
-      `Mid-doc typing — avg: ${stats.avg}ms, max: ${stats.max}ms, all: [${stats.latencies.join(', ')}]`
-    );
-    expect(stats.avg).toBeLessThan(500);
-  });
+		const stats = await measureKeystrokes(page, 10);
+		console.log(
+			`Mid-doc typing — avg: ${stats.avg}ms, max: ${stats.max}ms, all: [${stats.latencies.join(", ")}]`,
+		);
+		expect(stats.avg).toBeLessThan(500);
+	});
 
-  test('typing near document end stays responsive', async ({ page }) => {
-    await loadLargeDoc(page);
+	test("typing near document end stays responsive", async ({ page }) => {
+		await loadLargeDoc(page);
 
-    // Scroll to end
-    await page.evaluate(() => {
-      const container =
-        document.querySelector('.paged-editor__scroll-container') ||
-        document.querySelector('.paged-editor__pages');
-      if (container) container.scrollTop = container.scrollHeight;
-    });
-    await page.waitForTimeout(2000);
+		// Scroll to end
+		await page.evaluate(() => {
+			const container =
+				document.querySelector(".paged-editor__scroll-container") ||
+				document.querySelector(".paged-editor__pages");
+			if (container) container.scrollTop = container.scrollHeight;
+		});
+		await page.waitForTimeout(2000);
 
-    // Navigate to end of document
-    const pageCount = await page.locator('[data-page-number]').count();
-    await placeCursorOnPage(page, pageCount);
-    await page.keyboard.press(`${await modifierKey(page)}+End`);
-    await page.waitForTimeout(300);
+		// Navigate to end of document
+		const pageCount = await page.locator("[data-page-number]").count();
+		await placeCursorOnPage(page, pageCount);
+		await page.keyboard.press(`${await modifierKey(page)}+End`);
+		await page.waitForTimeout(300);
 
-    // Warm up
-    await page.keyboard.press('x');
-    await page.evaluate(
-      () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
-    );
+		// Warm up
+		await page.keyboard.press("x");
+		await page.evaluate(
+			() =>
+				new Promise<void>((r) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => r())),
+				),
+		);
 
-    const stats = await measureKeystrokes(page, 10);
-    console.log(
-      `End-of-doc typing — avg: ${stats.avg}ms, max: ${stats.max}ms, all: [${stats.latencies.join(', ')}]`
-    );
-    expect(stats.avg).toBeLessThan(500);
-  });
+		const stats = await measureKeystrokes(page, 10);
+		console.log(
+			`End-of-doc typing — avg: ${stats.avg}ms, max: ${stats.max}ms, all: [${stats.latencies.join(", ")}]`,
+		);
+		expect(stats.avg).toBeLessThan(500);
+	});
 
-  test('scrolling remains smooth after edits', async ({ page }) => {
-    await loadLargeDoc(page);
+	test("scrolling remains smooth after edits", async ({ page }) => {
+		await loadLargeDoc(page);
 
-    // Place cursor and type at start
-    await placeCursorOnPage(page, 1);
-    await page.keyboard.press(`${await modifierKey(page)}+Home`);
-    await page.waitForTimeout(300);
-    await page.keyboard.type('edit ');
-    await page.waitForTimeout(1000);
+		// Place cursor and type at start
+		await placeCursorOnPage(page, 1);
+		await page.keyboard.press(`${await modifierKey(page)}+Home`);
+		await page.waitForTimeout(300);
+		await page.keyboard.type("edit ");
+		await page.waitForTimeout(1000);
 
-    // Scroll to middle and verify pages still render
-    const scrollStart = Date.now();
-    await page.evaluate(() => {
-      const container =
-        document.querySelector('.paged-editor__scroll-container') ||
-        document.querySelector('.paged-editor__pages');
-      if (container) container.scrollTop = container.scrollHeight / 2;
-    });
-    await page.waitForTimeout(1500);
-    const scrollTime = Date.now() - scrollStart;
+		// Scroll to middle and verify pages still render
+		const scrollStart = Date.now();
+		await page.evaluate(() => {
+			const container =
+				document.querySelector(".paged-editor__scroll-container") ||
+				document.querySelector(".paged-editor__pages");
+			if (container) container.scrollTop = container.scrollHeight / 2;
+		});
+		await page.waitForTimeout(1500);
+		const scrollTime = Date.now() - scrollStart;
 
-    const visiblePageCount = await page.locator('[data-page-number]').count();
-    expect(visiblePageCount).toBeGreaterThan(0);
+		const visiblePageCount = await page.locator("[data-page-number]").count();
+		expect(visiblePageCount).toBeGreaterThan(0);
 
-    console.log(`Scroll-after-edit time: ${scrollTime}ms, visible pages: ${visiblePageCount}`);
-  });
+		console.log(
+			`Scroll-after-edit time: ${scrollTime}ms, visible pages: ${visiblePageCount}`,
+		);
+	});
 
-  test('undo/redo stays responsive on large document', async ({ page }) => {
-    await loadLargeDoc(page);
+	test("undo/redo stays responsive on large document", async ({ page }) => {
+		await loadLargeDoc(page);
 
-    // Place cursor and type to create undo history
-    await placeCursorOnPage(page, 1);
-    await page.keyboard.press(`${await modifierKey(page)}+Home`);
-    await page.waitForTimeout(300);
-    await page.keyboard.type('undo test ');
-    await page.waitForTimeout(1000);
+		// Place cursor and type to create undo history
+		await placeCursorOnPage(page, 1);
+		await page.keyboard.press(`${await modifierKey(page)}+Home`);
+		await page.waitForTimeout(300);
+		await page.keyboard.type("undo test ");
+		await page.waitForTimeout(1000);
 
-    // Measure undo latency
-    const mod = await modifierKey(page);
-    const undoStats = await measureKeystrokes(page, 5, `${mod}+z`);
-    console.log(
-      `Undo — avg: ${undoStats.avg}ms, max: ${undoStats.max}ms, all: [${undoStats.latencies.join(', ')}]`
-    );
+		// Measure undo latency
+		const mod = await modifierKey(page);
+		const undoStats = await measureKeystrokes(page, 5, `${mod}+z`);
+		console.log(
+			`Undo — avg: ${undoStats.avg}ms, max: ${undoStats.max}ms, all: [${undoStats.latencies.join(", ")}]`,
+		);
 
-    // Measure redo latency
-    const redoStats = await measureKeystrokes(page, 5, `${mod}+Shift+z`);
-    console.log(
-      `Redo — avg: ${redoStats.avg}ms, max: ${redoStats.max}ms, all: [${redoStats.latencies.join(', ')}]`
-    );
+		// Measure redo latency
+		const redoStats = await measureKeystrokes(page, 5, `${mod}+Shift+z`);
+		console.log(
+			`Redo — avg: ${redoStats.avg}ms, max: ${redoStats.max}ms, all: [${redoStats.latencies.join(", ")}]`,
+		);
 
-    // CI runners are substantially slower than local machines on this path.
-    // Keep this as a responsiveness guard, but budget to the observed GitHub
-    // runner range rather than a local-only threshold.
-    expect(undoStats.avg).toBeLessThan(1500);
-    expect(redoStats.avg).toBeLessThan(1500);
-  });
+		// CI runners are substantially slower than local machines on this path.
+		// Keep this as a responsiveness guard, but budget to the observed GitHub
+		// runner range rather than a local-only threshold.
+		expect(undoStats.avg).toBeLessThan(1500);
+		expect(redoStats.avg).toBeLessThan(1500);
+	});
 });

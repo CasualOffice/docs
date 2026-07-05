@@ -6,12 +6,12 @@
  * Text Extension — inline text node
  */
 
-import { createNodeExtension } from '../create';
+import { createNodeExtension } from "../create";
 
 export const TextExtension = createNodeExtension({
-  name: 'text',
-  schemaNodeName: 'text',
-  nodeSpec: {
-    group: 'inline',
-  },
+	name: "text",
+	schemaNodeName: "text",
+	nodeSpec: {
+		group: "inline",
+	},
 });

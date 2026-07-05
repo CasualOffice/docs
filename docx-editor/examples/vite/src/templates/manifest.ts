@@ -17,209 +17,191 @@
  * 5. Reload the editor
  */
 
-export type TemplateCategory = 'Personal' | 'Work' | 'Education' | 'Career';
+export type TemplateCategory = "Personal" | "Work" | "Education" | "Career";
 
 export type TemplateSource =
-  /** Built in code via createEmptyDocument(); no asset fetch. */
-  | { kind: 'synthesized' }
-  /** Fetched from `path` (relative to the dev/prod root) on selection. */
-  | { kind: 'docx'; path: string }
-  /** Empty plain-text / markdown file — opens the source/markdown editor,
-   *  not the DOCX pipeline. `textKind` picks preview vs source-only. */
-  | { kind: 'text'; textKind: 'markdown' | 'text' };
+	/** Built in code via createEmptyDocument(); no asset fetch. */
+	| { kind: "synthesized" }
+	/** Fetched from `path` (relative to the dev/prod root) on selection. */
+	| { kind: "docx"; path: string };
 
 export interface TemplateEntry {
-  id: string;
-  name: string;
-  description: string;
-  category: TemplateCategory;
-  /** Material Symbols Outlined glyph for the small icon overlay on the card. */
-  icon: string;
-  /** Path to the per-template thumbnail. PNG for real renders; SVG for Blank. */
-  thumbnail: string;
-  source: TemplateSource;
-  /** File name suggested when this template lands in the editor. */
-  defaultFileName: string;
-  /** Featured templates appear in the Hero strip when on All + no query. */
-  featured?: boolean;
+	id: string;
+	name: string;
+	description: string;
+	category: TemplateCategory;
+	/** Material Symbols Outlined glyph for the small icon overlay on the card. */
+	icon: string;
+	/** Path to the per-template thumbnail. PNG for real renders; SVG for Blank. */
+	thumbnail: string;
+	source: TemplateSource;
+	/** File name suggested when this template lands in the editor. */
+	defaultFileName: string;
+	/** Featured templates appear in the Hero strip when on All + no query. */
+	featured?: boolean;
 }
 
-export const CATEGORIES: TemplateCategory[] = ['Personal', 'Work', 'Education', 'Career'];
+export const CATEGORIES: TemplateCategory[] = [
+	"Personal",
+	"Work",
+	"Education",
+	"Career",
+];
 
 export const TEMPLATES: TemplateEntry[] = [
-  {
-    id: 'blank',
-    name: 'Blank document',
-    description: 'Start fresh with an empty Word page.',
-    category: 'Personal',
-    icon: 'add',
-    thumbnail: '/templates/thumbs/blank.svg',
-    source: { kind: 'synthesized' },
-    defaultFileName: 'Untitled.docx',
-    featured: true,
-  },
-  {
-    id: 'blank-markdown',
-    name: 'Blank Markdown',
-    description: 'A .md file with live preview and notebook mode.',
-    category: 'Personal',
-    icon: 'article',
-    thumbnail: '/templates/thumbs/blank.svg',
-    source: { kind: 'text', textKind: 'markdown' },
-    defaultFileName: 'Untitled.md',
-    featured: true,
-  },
-  {
-    id: 'blank-text',
-    name: 'Blank Text',
-    description: 'A plain .txt file — source editor, no formatting.',
-    category: 'Personal',
-    icon: 'subject',
-    thumbnail: '/templates/thumbs/blank.svg',
-    source: { kind: 'text', textKind: 'text' },
-    defaultFileName: 'Untitled.txt',
-  },
-  {
-    id: 'resume',
-    name: 'Resume',
-    description: 'Single-column résumé — summary, experience, education, skills.',
-    category: 'Career',
-    icon: 'badge',
-    thumbnail: '/templates/thumbs/resume.png',
-    source: { kind: 'docx', path: '/templates/resume.docx' },
-    defaultFileName: 'Resume.docx',
-    featured: true,
-  },
-  {
-    id: 'cover-letter',
-    name: 'Cover letter',
-    description: 'Application cover letter — sender block, salutation, body.',
-    category: 'Career',
-    icon: 'mail',
-    thumbnail: '/templates/thumbs/cover-letter.png',
-    source: { kind: 'docx', path: '/templates/cover-letter.docx' },
-    defaultFileName: 'Cover letter.docx',
-  },
-  {
-    id: 'meeting-notes',
-    name: 'Meeting notes',
-    description: 'Attendees, agenda, discussion, action items, next meeting.',
-    category: 'Work',
-    icon: 'edit_note',
-    thumbnail: '/templates/thumbs/meeting-notes.png',
-    source: { kind: 'docx', path: '/templates/meeting-notes.docx' },
-    defaultFileName: 'Meeting notes.docx',
-    featured: true,
-  },
-  {
-    id: 'project-proposal',
-    name: 'Project proposal',
-    description: 'Executive summary, objectives, approach, milestones table.',
-    category: 'Work',
-    icon: 'rocket_launch',
-    thumbnail: '/templates/thumbs/project-proposal.png',
-    source: { kind: 'docx', path: '/templates/project-proposal.docx' },
-    defaultFileName: 'Project proposal.docx',
-    featured: true,
-  },
-  {
-    id: 'memo',
-    name: 'Memo',
-    description: 'Internal memo — TO / FROM / DATE / RE header and body.',
-    category: 'Work',
-    icon: 'description',
-    thumbnail: '/templates/thumbs/memo.png',
-    source: { kind: 'docx', path: '/templates/memo.docx' },
-    defaultFileName: 'Memo.docx',
-  },
-  {
-    id: 'weekly-status',
-    name: 'Weekly status',
-    description: 'Shipped, in-flight, blockers, next week, metrics.',
-    category: 'Work',
-    icon: 'pace',
-    thumbnail: '/templates/thumbs/weekly-status.png',
-    source: { kind: 'docx', path: '/templates/weekly-status.docx' },
-    defaultFileName: 'Weekly status.docx',
-  },
-  {
-    id: 'press-release',
-    name: 'Press release',
-    description: 'Embargoed format — headline, dateline, body, boilerplate.',
-    category: 'Work',
-    icon: 'campaign',
-    thumbnail: '/templates/thumbs/press-release.png',
-    source: { kind: 'docx', path: '/templates/press-release.docx' },
-    defaultFileName: 'Press release.docx',
-  },
-  {
-    id: 'letter',
-    name: 'Letter',
-    description: 'Formal letter — sender block, recipient, body, closing.',
-    category: 'Personal',
-    icon: 'outgoing_mail',
-    thumbnail: '/templates/thumbs/letter.png',
-    source: { kind: 'docx', path: '/templates/letter.docx' },
-    defaultFileName: 'Letter.docx',
-  },
-  {
-    id: 'travel-itinerary',
-    name: 'Travel itinerary',
-    description: 'Day-by-day plan with reservations and packing checklist.',
-    category: 'Personal',
-    icon: 'flight_takeoff',
-    thumbnail: '/templates/thumbs/travel-itinerary.png',
-    source: { kind: 'docx', path: '/templates/travel-itinerary.docx' },
-    defaultFileName: 'Travel itinerary.docx',
-  },
-  {
-    id: 'recipe',
-    name: 'Recipe',
-    description: 'Ingredients, numbered method, and chef’s notes.',
-    category: 'Personal',
-    icon: 'restaurant_menu',
-    thumbnail: '/templates/thumbs/recipe.png',
-    source: { kind: 'docx', path: '/templates/recipe.docx' },
-    defaultFileName: 'Recipe.docx',
-  },
-  {
-    id: 'essay',
-    name: 'Essay',
-    description: 'Academic format — abstract, sectioned body, references.',
-    category: 'Education',
-    icon: 'menu_book',
-    thumbnail: '/templates/thumbs/essay.png',
-    source: { kind: 'docx', path: '/templates/essay.docx' },
-    defaultFileName: 'Essay.docx',
-  },
-  {
-    id: 'lab-report',
-    name: 'Lab report',
-    description: 'Objective, apparatus, procedure, data, analysis, conclusion.',
-    category: 'Education',
-    icon: 'science',
-    thumbnail: '/templates/thumbs/lab-report.png',
-    source: { kind: 'docx', path: '/templates/lab-report.docx' },
-    defaultFileName: 'Lab report.docx',
-  },
-  {
-    id: 'syllabus',
-    name: 'Course syllabus',
-    description: 'Description, outcomes, weekly schedule, grading, policies.',
-    category: 'Education',
-    icon: 'school',
-    thumbnail: '/templates/thumbs/syllabus.png',
-    source: { kind: 'docx', path: '/templates/syllabus.docx' },
-    defaultFileName: 'Syllabus.docx',
-  },
-  {
-    id: 'sample',
-    name: 'Sample document',
-    description: 'Mixed showcase — headings, lists, formatting, a small table.',
-    category: 'Personal',
-    icon: 'feed',
-    thumbnail: '/templates/thumbs/sample.png',
-    source: { kind: 'docx', path: '/sample.docx' },
-    defaultFileName: 'Sample.docx',
-  },
+	{
+		id: "blank",
+		name: "Blank document",
+		description: "Start fresh with an empty page.",
+		category: "Personal",
+		icon: "add",
+		thumbnail: "/templates/thumbs/blank.svg",
+		source: { kind: "synthesized" },
+		defaultFileName: "Untitled.docx",
+		featured: true,
+	},
+	{
+		id: "resume",
+		name: "Resume",
+		description:
+			"Single-column résumé — summary, experience, education, skills.",
+		category: "Career",
+		icon: "badge",
+		thumbnail: "/templates/thumbs/resume.png",
+		source: { kind: "docx", path: "/templates/resume.docx" },
+		defaultFileName: "Resume.docx",
+		featured: true,
+	},
+	{
+		id: "cover-letter",
+		name: "Cover letter",
+		description: "Application cover letter — sender block, salutation, body.",
+		category: "Career",
+		icon: "mail",
+		thumbnail: "/templates/thumbs/cover-letter.png",
+		source: { kind: "docx", path: "/templates/cover-letter.docx" },
+		defaultFileName: "Cover letter.docx",
+	},
+	{
+		id: "meeting-notes",
+		name: "Meeting notes",
+		description: "Attendees, agenda, discussion, action items, next meeting.",
+		category: "Work",
+		icon: "edit_note",
+		thumbnail: "/templates/thumbs/meeting-notes.png",
+		source: { kind: "docx", path: "/templates/meeting-notes.docx" },
+		defaultFileName: "Meeting notes.docx",
+		featured: true,
+	},
+	{
+		id: "project-proposal",
+		name: "Project proposal",
+		description: "Executive summary, objectives, approach, milestones table.",
+		category: "Work",
+		icon: "rocket_launch",
+		thumbnail: "/templates/thumbs/project-proposal.png",
+		source: { kind: "docx", path: "/templates/project-proposal.docx" },
+		defaultFileName: "Project proposal.docx",
+		featured: true,
+	},
+	{
+		id: "memo",
+		name: "Memo",
+		description: "Internal memo — TO / FROM / DATE / RE header and body.",
+		category: "Work",
+		icon: "description",
+		thumbnail: "/templates/thumbs/memo.png",
+		source: { kind: "docx", path: "/templates/memo.docx" },
+		defaultFileName: "Memo.docx",
+	},
+	{
+		id: "weekly-status",
+		name: "Weekly status",
+		description: "Shipped, in-flight, blockers, next week, metrics.",
+		category: "Work",
+		icon: "pace",
+		thumbnail: "/templates/thumbs/weekly-status.png",
+		source: { kind: "docx", path: "/templates/weekly-status.docx" },
+		defaultFileName: "Weekly status.docx",
+	},
+	{
+		id: "press-release",
+		name: "Press release",
+		description: "Embargoed format — headline, dateline, body, boilerplate.",
+		category: "Work",
+		icon: "campaign",
+		thumbnail: "/templates/thumbs/press-release.png",
+		source: { kind: "docx", path: "/templates/press-release.docx" },
+		defaultFileName: "Press release.docx",
+	},
+	{
+		id: "letter",
+		name: "Letter",
+		description: "Formal letter — sender block, recipient, body, closing.",
+		category: "Personal",
+		icon: "outgoing_mail",
+		thumbnail: "/templates/thumbs/letter.png",
+		source: { kind: "docx", path: "/templates/letter.docx" },
+		defaultFileName: "Letter.docx",
+	},
+	{
+		id: "travel-itinerary",
+		name: "Travel itinerary",
+		description: "Day-by-day plan with reservations and packing checklist.",
+		category: "Personal",
+		icon: "flight_takeoff",
+		thumbnail: "/templates/thumbs/travel-itinerary.png",
+		source: { kind: "docx", path: "/templates/travel-itinerary.docx" },
+		defaultFileName: "Travel itinerary.docx",
+	},
+	{
+		id: "recipe",
+		name: "Recipe",
+		description: "Ingredients, numbered method, and chef’s notes.",
+		category: "Personal",
+		icon: "restaurant_menu",
+		thumbnail: "/templates/thumbs/recipe.png",
+		source: { kind: "docx", path: "/templates/recipe.docx" },
+		defaultFileName: "Recipe.docx",
+	},
+	{
+		id: "essay",
+		name: "Essay",
+		description: "Academic format — abstract, sectioned body, references.",
+		category: "Education",
+		icon: "menu_book",
+		thumbnail: "/templates/thumbs/essay.png",
+		source: { kind: "docx", path: "/templates/essay.docx" },
+		defaultFileName: "Essay.docx",
+	},
+	{
+		id: "lab-report",
+		name: "Lab report",
+		description: "Objective, apparatus, procedure, data, analysis, conclusion.",
+		category: "Education",
+		icon: "science",
+		thumbnail: "/templates/thumbs/lab-report.png",
+		source: { kind: "docx", path: "/templates/lab-report.docx" },
+		defaultFileName: "Lab report.docx",
+	},
+	{
+		id: "syllabus",
+		name: "Course syllabus",
+		description: "Description, outcomes, weekly schedule, grading, policies.",
+		category: "Education",
+		icon: "school",
+		thumbnail: "/templates/thumbs/syllabus.png",
+		source: { kind: "docx", path: "/templates/syllabus.docx" },
+		defaultFileName: "Syllabus.docx",
+	},
+	{
+		id: "sample",
+		name: "Sample document",
+		description: "Mixed showcase — headings, lists, formatting, a small table.",
+		category: "Personal",
+		icon: "feed",
+		thumbnail: "/templates/thumbs/sample.png",
+		source: { kind: "docx", path: "/sample.docx" },
+		defaultFileName: "Sample.docx",
+	},
 ];

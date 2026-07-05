@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import type { Layout } from './types';
+import type { Layout } from "./types";
 
 /**
  * Page index (0-based) whose layout fragments cover `pmPos`, or null if none.
@@ -14,19 +14,22 @@ import type { Layout } from './types';
  * fragment wins (avoids returning the previous page for the start of the
  * next paragraph).
  */
-export function findPageIndexContainingPmPos(layout: Layout, pmPos: number): number | null {
-  for (let pi = 0; pi < layout.pages.length; pi++) {
-    for (const frag of layout.pages[pi].fragments) {
-      if (frag.pmStart == null) continue;
-      const start = frag.pmStart;
-      // Default span of 1 only when pmEnd is missing — matches a caret-only
-      // position (cursor between two atoms). Fragments with explicit pmEnd
-      // use it as the exclusive upper bound.
-      const end = frag.pmEnd ?? start + 1;
-      if (pmPos >= start && pmPos < end) {
-        return pi;
-      }
-    }
-  }
-  return null;
+export function findPageIndexContainingPmPos(
+	layout: Layout,
+	pmPos: number,
+): number | null {
+	for (let pi = 0; pi < layout.pages.length; pi++) {
+		for (const frag of layout.pages[pi].fragments) {
+			if (frag.pmStart == null) continue;
+			const start = frag.pmStart;
+			// Default span of 1 only when pmEnd is missing — matches a caret-only
+			// position (cursor between two atoms). Fragments with explicit pmEnd
+			// use it as the exclusive upper bound.
+			const end = frag.pmEnd ?? start + 1;
+			if (pmPos >= start && pmPos < end) {
+				return pi;
+			}
+		}
+	}
+	return null;
 }

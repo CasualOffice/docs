@@ -6,18 +6,18 @@
  * Tiny fixture with a doc-level `<w:background>` (OOXML §17.2.1)
  * to pin the "page color" parse → render → save round-trip.
  */
-import JSZip from 'jszip';
-import { writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e/fixtures/page-color.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e/fixtures/page-color.docx");
 
 // Light blue page background — distinctive enough that the e2e can
 // match it from getComputedStyle(...).backgroundColor.
-const PAGE_BG = 'C8E6FF';
+const PAGE_BG = "C8E6FF";
 
 const DOC = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -45,10 +45,10 @@ const RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </Relationships>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CONTENT_TYPES);
-zip.file('_rels/.rels', RELS);
-zip.file('word/document.xml', DOC);
+zip.file("[Content_Types].xml", CONTENT_TYPES);
+zip.file("_rels/.rels", RELS);
+zip.file("word/document.xml", DOC);
 
-const out = await zip.generateAsync({ type: 'nodebuffer' });
+const out = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, out);
 console.log(`wrote ${OUT} (${out.byteLength} bytes), page bg #${PAGE_BG}`);

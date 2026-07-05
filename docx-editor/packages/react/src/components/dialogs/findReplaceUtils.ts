@@ -17,68 +17,71 @@
  * A single match result in the document
  */
 export interface FindMatch {
-  /** Index of the paragraph containing the match */
-  paragraphIndex: number;
-  /** Index of the run/content within the paragraph */
-  contentIndex: number;
-  /** Character offset within the content */
-  startOffset: number;
-  /** Character offset for end of match */
-  endOffset: number;
-  /** The matched text */
-  text: string;
-  /**
-   * ProseMirror document positions of the match. Set by `findInPmDoc` (the
-   * PM-native search, which covers table cells). Navigation + replace prefer
-   * these; the paragraphIndex/offset fields above are the legacy Document-model
-   * coordinates (top-level paragraphs only) kept for back-compat.
-   */
-  pmFrom?: number;
-  pmTo?: number;
+	/** Index of the paragraph containing the match */
+	paragraphIndex: number;
+	/** Index of the run/content within the paragraph */
+	contentIndex: number;
+	/** Character offset within the content */
+	startOffset: number;
+	/** Character offset for end of match */
+	endOffset: number;
+	/** The matched text */
+	text: string;
+	/**
+	 * ProseMirror document positions of the match. Set by `findInPmDoc` (the
+	 * PM-native search, which covers table cells). Navigation + replace prefer
+	 * these; the paragraphIndex/offset fields above are the legacy Document-model
+	 * coordinates (top-level paragraphs only) kept for back-compat.
+	 */
+	pmFrom?: number;
+	pmTo?: number;
 }
 
 /** Minimal structural view of a ProseMirror node — avoids a hard dep here. */
 interface PmNodeLike {
-  isTextblock: boolean;
-  isText: boolean;
-  text?: string | null;
-  content: { size: number };
-  descendants(f: (node: PmNodeLike, pos: number) => boolean | void, ...rest: unknown[]): void;
-  forEach(f: (node: PmNodeLike, offset: number, index: number) => void): void;
+	isTextblock: boolean;
+	isText: boolean;
+	text?: string | null;
+	content: { size: number };
+	descendants(
+		f: (node: PmNodeLike, pos: number) => boolean | void,
+		...rest: unknown[]
+	): void;
+	forEach(f: (node: PmNodeLike, offset: number, index: number) => void): void;
 }
 
 /**
  * Find options for controlling search behavior
  */
 export interface FindOptions {
-  /** Whether to match case */
-  matchCase: boolean;
-  /** Whether to match whole words only */
-  matchWholeWord: boolean;
-  /** Whether to use regular expressions (future) */
-  useRegex?: boolean;
+	/** Whether to match case */
+	matchCase: boolean;
+	/** Whether to match whole words only */
+	matchWholeWord: boolean;
+	/** Whether to use regular expressions (future) */
+	useRegex?: boolean;
 }
 
 /**
  * Find result with all matches
  */
 export interface FindResult {
-  /** All matches found */
-  matches: FindMatch[];
-  /** Total match count */
-  totalCount: number;
-  /** Current match index (0-based) */
-  currentIndex: number;
+	/** All matches found */
+	matches: FindMatch[];
+	/** Total match count */
+	totalCount: number;
+	/** Current match index (0-based) */
+	currentIndex: number;
 }
 
 /**
  * Highlight options for document rendering
  */
 export interface HighlightOptions {
-  /** Background color for current match */
-  currentMatchColor: string;
-  /** Background color for other matches */
-  otherMatchColor: string;
+	/** Background color for current match */
+	currentMatchColor: string;
+	/** Background color for other matches */
+	otherMatchColor: string;
 }
 
 // ============================================================================
@@ -89,167 +92,179 @@ export interface HighlightOptions {
  * Create default find options
  */
 export function createDefaultFindOptions(): FindOptions {
-  return {
-    matchCase: false,
-    matchWholeWord: false,
-    useRegex: false,
-  };
+	return {
+		matchCase: false,
+		matchWholeWord: false,
+		useRegex: false,
+	};
 }
 
 /**
  * Escape string for use in regex pattern
  */
 export function escapeRegexString(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
  * Create a regex pattern from search text and options
  */
-export function createSearchPattern(searchText: string, options: FindOptions): RegExp | null {
-  if (!searchText) return null;
+export function createSearchPattern(
+	searchText: string,
+	options: FindOptions,
+): RegExp | null {
+	if (!searchText) return null;
 
-  try {
-    let pattern: string;
+	try {
+		let pattern: string;
 
-    if (options.useRegex) {
-      pattern = searchText;
-    } else {
-      pattern = escapeRegexString(searchText);
-    }
+		if (options.useRegex) {
+			pattern = searchText;
+		} else {
+			pattern = escapeRegexString(searchText);
+		}
 
-    if (options.matchWholeWord) {
-      pattern = `\\b${pattern}\\b`;
-    }
+		if (options.matchWholeWord) {
+			pattern = `\\b${pattern}\\b`;
+		}
 
-    const flags = options.matchCase ? 'g' : 'gi';
-    return new RegExp(pattern, flags);
-  } catch {
-    return null;
-  }
+		const flags = options.matchCase ? "g" : "gi";
+		return new RegExp(pattern, flags);
+	} catch {
+		return null;
+	}
 }
 
 /**
  * Find all matches of search text in content
  */
 export function findAllMatches(
-  content: string,
-  searchText: string,
-  options: FindOptions
+	content: string,
+	searchText: string,
+	options: FindOptions,
 ): Array<{ start: number; end: number }> {
-  if (!content || !searchText) {
-    return [];
-  }
+	if (!content || !searchText) {
+		return [];
+	}
 
-  const matches: Array<{ start: number; end: number }> = [];
+	const matches: Array<{ start: number; end: number }> = [];
 
-  // Honor `options.useRegex` — when set, the search string is the
-  // regex source verbatim. When unset, every regex metacharacter is
-  // escaped so `1.cat` matches only the literal three-char run.
-  // The matchCase lowercasing was incorrect in the old code path:
-  // /pattern/gi handles case-insensitivity natively, and lowercasing
-  // the source corrupted regex tokens (`\D` → `\d`). The
-  // case-folding is driven by the regex flags instead.
-  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  let pattern: string = options.useRegex ? searchText : escapeRegex(searchText);
+	// Honor `options.useRegex` — when set, the search string is the
+	// regex source verbatim. When unset, every regex metacharacter is
+	// escaped so `1.cat` matches only the literal three-char run.
+	// The matchCase lowercasing was incorrect in the old code path:
+	// /pattern/gi handles case-insensitivity natively, and lowercasing
+	// the source corrupted regex tokens (`\D` → `\d`). The
+	// case-folding is driven by the regex flags instead.
+	const escapeRegex = (str: string) =>
+		str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	let pattern: string = options.useRegex ? searchText : escapeRegex(searchText);
 
-  if (options.matchWholeWord) {
-    pattern = `\\b${pattern}\\b`;
-  }
+	if (options.matchWholeWord) {
+		pattern = `\\b${pattern}\\b`;
+	}
 
-  const flags = options.matchCase ? 'g' : 'gi';
-  let regex: RegExp;
-  try {
-    regex = new RegExp(pattern, flags);
-  } catch {
-    // Invalid regex (e.g. unclosed bracket) → no matches rather than
-    // throwing past the dialog. Matches `createSearchPattern`'s
-    // existing failure mode so the dialog stays responsive.
-    return [];
-  }
+	const flags = options.matchCase ? "g" : "gi";
+	let regex: RegExp;
+	try {
+		regex = new RegExp(pattern, flags);
+	} catch {
+		// Invalid regex (e.g. unclosed bracket) → no matches rather than
+		// throwing past the dialog. Matches `createSearchPattern`'s
+		// existing failure mode so the dialog stays responsive.
+		return [];
+	}
 
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    matches.push({
-      start: match.index,
-      end: match.index + match[0].length,
-    });
-    if (match[0].length === 0) {
-      regex.lastIndex++;
-    }
-  }
+	let match: RegExpExecArray | null;
+	while ((match = regex.exec(content)) !== null) {
+		matches.push({
+			start: match.index,
+			end: match.index + match[0].length,
+		});
+		if (match[0].length === 0) {
+			regex.lastIndex++;
+		}
+	}
 
-  return matches;
+	return matches;
 }
 
 /**
  * Replace text in content
  */
 export function replaceAllInContent(
-  content: string,
-  searchText: string,
-  replaceText: string,
-  options: FindOptions
+	content: string,
+	searchText: string,
+	replaceText: string,
+	options: FindOptions,
 ): string {
-  const pattern = createSearchPattern(searchText, options);
-  if (!pattern) return content;
+	const pattern = createSearchPattern(searchText, options);
+	if (!pattern) return content;
 
-  return content.replace(pattern, replaceText);
+	return content.replace(pattern, replaceText);
 }
 
 /**
  * Replace first match in content
  */
 export function replaceFirstInContent(
-  content: string,
-  searchText: string,
-  replaceText: string,
-  options: FindOptions,
-  startIndex: number = 0
-): { content: string; replaced: boolean; matchStart: number; matchEnd: number } {
-  const matches = findAllMatches(content, searchText, options);
+	content: string,
+	searchText: string,
+	replaceText: string,
+	options: FindOptions,
+	startIndex: number = 0,
+): {
+	content: string;
+	replaced: boolean;
+	matchStart: number;
+	matchEnd: number;
+} {
+	const matches = findAllMatches(content, searchText, options);
 
-  const match = matches.find((m) => m.start >= startIndex) || matches[0];
+	const match = matches.find((m) => m.start >= startIndex) || matches[0];
 
-  if (!match) {
-    return { content, replaced: false, matchStart: -1, matchEnd: -1 };
-  }
+	if (!match) {
+		return { content, replaced: false, matchStart: -1, matchEnd: -1 };
+	}
 
-  const newContent = content.substring(0, match.start) + replaceText + content.substring(match.end);
+	const newContent =
+		content.substring(0, match.start) +
+		replaceText +
+		content.substring(match.end);
 
-  return {
-    content: newContent,
-    replaced: true,
-    matchStart: match.start,
-    matchEnd: match.start + replaceText.length,
-  };
+	return {
+		content: newContent,
+		replaced: true,
+		matchStart: match.start,
+		matchEnd: match.start + replaceText.length,
+	};
 }
 
 /**
  * Get match count for status display
  */
 export function getMatchCountText(result: FindResult | null): string {
-  if (!result) return '';
-  if (result.totalCount === 0) return 'No results';
-  if (result.totalCount === 1) return '1 match';
-  return `${result.currentIndex + 1} of ${result.totalCount} matches`;
+	if (!result) return "";
+	if (result.totalCount === 0) return "No results";
+	if (result.totalCount === 1) return "1 match";
+	return `${result.currentIndex + 1} of ${result.totalCount} matches`;
 }
 
 /**
  * Check if search text is empty or whitespace-only
  */
 export function isEmptySearch(searchText: string): boolean {
-  return !searchText || searchText.trim() === '';
+	return !searchText || searchText.trim() === "";
 }
 
 /**
  * Get default highlight options
  */
 export function getDefaultHighlightOptions(): HighlightOptions {
-  return {
-    currentMatchColor: '#FFFF00',
-    otherMatchColor: '#FFFFAA',
-  };
+	return {
+		currentMatchColor: "#FFFF00",
+		otherMatchColor: "#FFFFAA",
+	};
 }
 
 // ============================================================================
@@ -260,74 +275,79 @@ export function getDefaultHighlightOptions(): HighlightOptions {
  * Get plain text from a run
  */
 function getRunText(run: any): string {
-  if (!run || !run.content) return '';
-  let text = '';
-  for (const item of run.content) {
-    if (item.type === 'text') {
-      text += item.text || '';
-    } else if (item.type === 'tab') {
-      text += '\t';
-    } else if (item.type === 'break' && item.breakType === 'textWrapping') {
-      text += '\n';
-    }
-  }
-  return text;
+	if (!run || !run.content) return "";
+	let text = "";
+	for (const item of run.content) {
+		if (item.type === "text") {
+			text += item.text || "";
+		} else if (item.type === "tab") {
+			text += "\t";
+		} else if (item.type === "break" && item.breakType === "textWrapping") {
+			text += "\n";
+		}
+	}
+	return text;
 }
 
 /**
  * Get plain text from a paragraph
  */
 function getParagraphPlainText(paragraph: any): string {
-  if (!paragraph || !paragraph.content) return '';
-  let text = '';
-  for (const item of paragraph.content) {
-    if (item.type === 'run') {
-      text += getRunText(item);
-    } else if (item.type === 'hyperlink') {
-      for (const child of item.children || []) {
-        if (child.type === 'run') {
-          text += getRunText(child);
-        }
-      }
-    }
-  }
-  return text;
+	if (!paragraph || !paragraph.content) return "";
+	let text = "";
+	for (const item of paragraph.content) {
+		if (item.type === "run") {
+			text += getRunText(item);
+		} else if (item.type === "hyperlink") {
+			for (const child of item.children || []) {
+				if (child.type === "run") {
+					text += getRunText(child);
+				}
+			}
+		}
+	}
+	return text;
 }
 
 /**
  * Find all matches in a document
  */
 export function findInDocument(
-  document: any,
-  searchText: string,
-  options: FindOptions
+	document: any,
+	searchText: string,
+	options: FindOptions,
 ): FindMatch[] {
-  if (!document || !searchText) return [];
+	if (!document || !searchText) return [];
 
-  const matches: FindMatch[] = [];
-  const body = document.package?.document || document.package?.document;
-  if (!body || !body.content) return matches;
+	const matches: FindMatch[] = [];
+	const body = document.package?.document || document.package?.document;
+	if (!body || !body.content) return matches;
 
-  let paragraphIndex = 0;
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      const paragraphMatches = findInParagraph(block, searchText, options, paragraphIndex);
-      matches.push(...paragraphMatches);
-      paragraphIndex++;
-    } else if (block.type === 'table') {
-      for (const row of block.rows || []) {
-        for (const cell of row.cells || []) {
-          for (const cellContent of cell.content || []) {
-            if (cellContent.type === 'paragraph') {
-              // Table paragraphs tracked separately - skip for now
-            }
-          }
-        }
-      }
-    }
-  }
+	let paragraphIndex = 0;
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			const paragraphMatches = findInParagraph(
+				block,
+				searchText,
+				options,
+				paragraphIndex,
+			);
+			matches.push(...paragraphMatches);
+			paragraphIndex++;
+		} else if (block.type === "table") {
+			for (const row of block.rows || []) {
+				for (const cell of row.cells || []) {
+					for (const cellContent of cell.content || []) {
+						if (cellContent.type === "paragraph") {
+							// Table paragraphs tracked separately - skip for now
+						}
+					}
+				}
+			}
+		}
+	}
 
-  return matches;
+	return matches;
 }
 
 /**
@@ -337,128 +357,128 @@ export function findInDocument(
  * whole-word / regex semantics match the Document-model search exactly.
  */
 export function findInPmDoc(
-  doc: PmNodeLike,
-  searchText: string,
-  options: FindOptions
+	doc: PmNodeLike,
+	searchText: string,
+	options: FindOptions,
 ): FindMatch[] {
-  if (!doc || !searchText) return [];
-  const matches: FindMatch[] = [];
+	if (!doc || !searchText) return [];
+	const matches: FindMatch[] = [];
 
-  doc.descendants((node, pos) => {
-    if (!node.isTextblock) return true; // recurse into tables / cells / etc.
+	doc.descendants((node, pos) => {
+		if (!node.isTextblock) return true; // recurse into tables / cells / etc.
 
-    // Build the block's plain text + a PM position for each text-offset
-    // boundary (pmAt[k] = PM pos just before text char k; the final entry is
-    // the position just after the last text char).
-    let text = '';
-    const pmAt: number[] = [];
-    let lastTextPmEnd = pos + 1; // empty block → content start
-    node.forEach((child, offset) => {
-      if (child.isText && child.text) {
-        const base = pos + 1 + offset;
-        for (let i = 0; i < child.text.length; i++) {
-          pmAt.push(base + i);
-          text += child.text.charAt(i);
-        }
-        lastTextPmEnd = base + child.text.length;
-      }
-    });
-    pmAt.push(lastTextPmEnd);
+		// Build the block's plain text + a PM position for each text-offset
+		// boundary (pmAt[k] = PM pos just before text char k; the final entry is
+		// the position just after the last text char).
+		let text = "";
+		const pmAt: number[] = [];
+		let lastTextPmEnd = pos + 1; // empty block → content start
+		node.forEach((child, offset) => {
+			if (child.isText && child.text) {
+				const base = pos + 1 + offset;
+				for (let i = 0; i < child.text.length; i++) {
+					pmAt.push(base + i);
+					text += child.text.charAt(i);
+				}
+				lastTextPmEnd = base + child.text.length;
+			}
+		});
+		pmAt.push(lastTextPmEnd);
 
-    for (const m of findAllMatches(text, searchText, options)) {
-      matches.push({
-        paragraphIndex: -1,
-        contentIndex: -1,
-        startOffset: m.start,
-        endOffset: m.end,
-        text: text.slice(m.start, m.end),
-        pmFrom: pmAt[m.start],
-        pmTo: pmAt[m.end],
-      });
-    }
-    return false; // already consumed this textblock's inline content
-  });
+		for (const m of findAllMatches(text, searchText, options)) {
+			matches.push({
+				paragraphIndex: -1,
+				contentIndex: -1,
+				startOffset: m.start,
+				endOffset: m.end,
+				text: text.slice(m.start, m.end),
+				pmFrom: pmAt[m.start],
+				pmTo: pmAt[m.end],
+			});
+		}
+		return false; // already consumed this textblock's inline content
+	});
 
-  return matches;
+	return matches;
 }
 
 /**
  * Find matches in a single paragraph
  */
 export function findInParagraph(
-  paragraph: any,
-  searchText: string,
-  options: FindOptions,
-  paragraphIndex: number
+	paragraph: any,
+	searchText: string,
+	options: FindOptions,
+	paragraphIndex: number,
 ): FindMatch[] {
-  const matches: FindMatch[] = [];
-  const paragraphText = getParagraphPlainText(paragraph);
+	const matches: FindMatch[] = [];
+	const paragraphText = getParagraphPlainText(paragraph);
 
-  if (!paragraphText) return matches;
+	if (!paragraphText) return matches;
 
-  const textMatches = findAllMatches(paragraphText, searchText, options);
+	const textMatches = findAllMatches(paragraphText, searchText, options);
 
-  for (const match of textMatches) {
-    const contentInfo = findContentAtOffset(paragraph, match.start);
+	for (const match of textMatches) {
+		const contentInfo = findContentAtOffset(paragraph, match.start);
 
-    matches.push({
-      paragraphIndex,
-      contentIndex: contentInfo.contentIndex,
-      startOffset: contentInfo.offsetInContent,
-      endOffset: contentInfo.offsetInContent + (match.end - match.start),
-      text: paragraphText.substring(match.start, match.end),
-    });
-  }
+		matches.push({
+			paragraphIndex,
+			contentIndex: contentInfo.contentIndex,
+			startOffset: contentInfo.offsetInContent,
+			endOffset: contentInfo.offsetInContent + (match.end - match.start),
+			text: paragraphText.substring(match.start, match.end),
+		});
+	}
 
-  return matches;
+	return matches;
 }
 
 /**
  * Find the content (run) at a specific character offset in a paragraph
  */
 function findContentAtOffset(
-  paragraph: any,
-  offset: number
+	paragraph: any,
+	offset: number,
 ): { contentIndex: number; runIndex: number; offsetInContent: number } {
-  if (!paragraph || !paragraph.content) {
-    return { contentIndex: 0, runIndex: 0, offsetInContent: offset };
-  }
+	if (!paragraph || !paragraph.content) {
+		return { contentIndex: 0, runIndex: 0, offsetInContent: offset };
+	}
 
-  let currentOffset = 0;
-  let contentIndex = 0;
+	let currentOffset = 0;
+	let contentIndex = 0;
 
-  for (const item of paragraph.content) {
-    let itemText = '';
+	for (const item of paragraph.content) {
+		let itemText = "";
 
-    if (item.type === 'run') {
-      itemText = getRunText(item);
-    } else if (item.type === 'hyperlink') {
-      for (const child of item.children || []) {
-        if (child.type === 'run') {
-          itemText += getRunText(child);
-        }
-      }
-    }
+		if (item.type === "run") {
+			itemText = getRunText(item);
+		} else if (item.type === "hyperlink") {
+			for (const child of item.children || []) {
+				if (child.type === "run") {
+					itemText += getRunText(child);
+				}
+			}
+		}
 
-    const itemLength = itemText.length;
+		const itemLength = itemText.length;
 
-    if (currentOffset + itemLength > offset) {
-      return {
-        contentIndex,
-        runIndex: contentIndex,
-        offsetInContent: offset - currentOffset,
-      };
-    }
+		if (currentOffset + itemLength > offset) {
+			return {
+				contentIndex,
+				runIndex: contentIndex,
+				offsetInContent: offset - currentOffset,
+			};
+		}
 
-    currentOffset += itemLength;
-    contentIndex++;
-  }
+		currentOffset += itemLength;
+		contentIndex++;
+	}
 
-  return {
-    contentIndex: Math.max(0, paragraph.content.length - 1),
-    runIndex: Math.max(0, paragraph.content.length - 1),
-    offsetInContent: 0,
-  };
+	return {
+		contentIndex: Math.max(0, paragraph.content.length - 1),
+		runIndex: Math.max(0, paragraph.content.length - 1),
+		offsetInContent: 0,
+	};
 }
 
 /**
@@ -474,33 +494,36 @@ function findContentAtOffset(
  * the function silently no-op'd and Cmd+F appeared to do nothing
  * (GH #321).
  */
-export function scrollToMatch(containerElement: HTMLElement | null, match: FindMatch): void {
-  if (!containerElement || !match) return;
+export function scrollToMatch(
+	containerElement: HTMLElement | null,
+	match: FindMatch,
+): void {
+	if (!containerElement || !match) return;
 
-  const paragraphs = Array.from(
-    containerElement.querySelectorAll<HTMLElement>('.layout-paragraph')
-  ).filter((el) => {
-    if (el.closest('.paged-editor__hidden-pm')) return false;
-    if (el.closest('.layout-page-header')) return false;
-    if (el.closest('.layout-page-footer')) return false;
-    if (el.closest('.layout-table')) return false;
-    if (el.closest('.layout-textbox')) return false;
-    return true;
-  });
+	const paragraphs = Array.from(
+		containerElement.querySelectorAll<HTMLElement>(".layout-paragraph"),
+	).filter((el) => {
+		if (el.closest(".paged-editor__hidden-pm")) return false;
+		if (el.closest(".layout-page-header")) return false;
+		if (el.closest(".layout-page-footer")) return false;
+		if (el.closest(".layout-table")) return false;
+		if (el.closest(".layout-textbox")) return false;
+		return true;
+	});
 
-  const seen = new Set<string>();
-  const uniqueParagraphs: HTMLElement[] = [];
-  for (const el of paragraphs) {
-    const blockId = el.dataset.blockId;
-    if (blockId) {
-      if (seen.has(blockId)) continue;
-      seen.add(blockId);
-    }
-    uniqueParagraphs.push(el);
-  }
+	const seen = new Set<string>();
+	const uniqueParagraphs: HTMLElement[] = [];
+	for (const el of paragraphs) {
+		const blockId = el.dataset.blockId;
+		if (blockId) {
+			if (seen.has(blockId)) continue;
+			seen.add(blockId);
+		}
+		uniqueParagraphs.push(el);
+	}
 
-  const target = uniqueParagraphs[match.paragraphIndex];
-  if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
+	const target = uniqueParagraphs[match.paragraphIndex];
+	if (target) {
+		target.scrollIntoView({ behavior: "smooth", block: "center" });
+	}
 }

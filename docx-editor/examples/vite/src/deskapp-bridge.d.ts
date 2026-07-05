@@ -15,105 +15,105 @@
  * global, so the demo falls back to the original browser behavior.
  */
 declare global {
-  interface Window {
-    __deskApp__?: {
-      /** True when running inside the deskApp Tauri shell. */
-      isDesktop: true;
-      /**
-       * Absolute filesystem path of the document this window was opened
-       * with, or null for a blank window.
-       */
-      filePath: string | null;
-      /**
-       * Kind of file the window was opened with, inferred from the path's
-       * extension. `.md`/`.markdown` → 'markdown', `.txt` → 'text',
-       * everything else → 'docx'. Drives whether the app opens the DOCX
-       * surface or the source/markdown editor.
-       */
-      fileKind?: 'docx' | 'markdown' | 'text';
-      /**
-       * Launcher-driven colour theme for this window. Parsed from the
-       * `&theme=` URL param and kept in sync via the `deskapp://theme`
-       * Tauri event. The bootstrap also dispatches a `deskapp:theme`
-       * window CustomEvent whenever this changes.
-       */
-      themeMode?: 'system' | 'light' | 'dark';
-      /**
-       * Read the document at `path` (or the bound `filePath` if omitted)
-       * and return its bytes. Throws if no path is available.
-       */
-      loadDocument(path?: string): Promise<ArrayBuffer>;
-      /**
-       * Read the bound file (or `path`) as UTF-8 text, skipping the DOCX
-       * zip/magic-byte gate. Used for `.txt`/`.md`/`.markdown` documents.
-       */
-      loadText?(path?: string): Promise<string>;
-      /**
-       * Write `bytes` back to the bound `filePath`. Falls through to
-       * `saveAs("untitled", bytes)` when filePath is null.
-       * Returns the path actually written to.
-       */
-      save(bytes: ArrayBuffer): Promise<string>;
-      /**
-       * Show the OS Save As dialog, pre-filled with `suggestedName`,
-       * write the chosen path. Returns the chosen path, or null if the
-       * user cancelled the dialog.
-       */
-      saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null>;
-      /**
-       * Rename the bound file on disk (same folder, new name) and re-bind
-       * filePath. Resolves to the new path, or null for an untitled doc.
-       * Rejects on a name collision / fs error.
-       */
-      rename?(newName: string): Promise<string | null>;
-      /**
-       * Editor → bridge dirty signal for the Rust unsaved-changes close-guard.
-       * App.tsx forwards DocxEditor's `onChange` here so every real document
-       * change (mouse/toolbar/menu edits included) marks the window dirty;
-       * save()/saveAs() clear it.
-       */
-      setDirty?(dirty: boolean): void;
-      /** Native webview print-to-PDF: opens the OS save dialog and renders this
-       *  window to a selectable-text PDF via the shell's export_pdf command.
-       *  Returns the written path, or null if cancelled. */
-      exportPdf?(suggestedName: string): Promise<string | null>;
-      /** File → Open from the editor menu (desktop): native open dialog +
-       *  "this window or a new window?" prompt, honouring open_window_preference.
-       *  The bridge performs the open itself (new window, or navigating this
-       *  one), so the host's in-window open path is not used for it. */
-      openViaMenu?(): Promise<void>;
-      /**
-       * Crash-recovery sidecar I/O (desktop only), keyed by the window's bound
-       * `filePath`. The editor calls `writeRecovery` on a debounced schedule
-       * with the latest serialized `.docx` bytes, `clearRecovery` after a clean
-       * Save, and `readRecovery` on open. A non-null `readRecovery` result means
-       * the previous session ended (crash/kill) with unsaved changes the user
-       * can restore. All three no-op for an untitled (path-less) window, since
-       * there is nothing to key the sidecar on. Best-effort: a failed
-       * `writeRecovery` must never surface as a save error.
-       */
-      writeRecovery?(bytes: ArrayBuffer): Promise<void>;
-      readRecovery?(): Promise<ArrayBuffer | null>;
-      clearRecovery?(): Promise<void>;
-      /**
-       * Dismiss the cold-start boot overlay the bootstrap paints before React
-       * mounts (top-level desktop windows only). Fades it out then removes it.
-       * Idempotent and safe to call from both the document-load success and
-       * error paths; a no-op when no overlay is present (iframe/web mode).
-       */
-      dismissBoot?(): void;
-      /** Returns the local user's profile so the editor can render a
-       *  user chip instead of the collab Share button. Read-only;
-       *  edits go through Casual Office's Settings panel. */
-      getProfile?(): Promise<{
-        name: string;
-        avatar_hue: number;
-        timezone: string | null;
-        email: string | null;
-        avatar_path: string | null;
-      } | null>;
-    };
-  }
+	interface Window {
+		__deskApp__?: {
+			/** True when running inside the deskApp Tauri shell. */
+			isDesktop: true;
+			/**
+			 * Absolute filesystem path of the document this window was opened
+			 * with, or null for a blank window.
+			 */
+			filePath: string | null;
+			/**
+			 * Kind of file the window was opened with, inferred from the path's
+			 * extension. `.md`/`.markdown` → 'markdown', `.txt` → 'text',
+			 * everything else → 'docx'. Drives whether the app opens the DOCX
+			 * surface or the source/markdown editor.
+			 */
+			fileKind?: "docx" | "markdown" | "text";
+			/**
+			 * Launcher-driven colour theme for this window. Parsed from the
+			 * `&theme=` URL param and kept in sync via the `deskapp://theme`
+			 * Tauri event. The bootstrap also dispatches a `deskapp:theme`
+			 * window CustomEvent whenever this changes.
+			 */
+			themeMode?: "system" | "light" | "dark";
+			/**
+			 * Read the document at `path` (or the bound `filePath` if omitted)
+			 * and return its bytes. Throws if no path is available.
+			 */
+			loadDocument(path?: string): Promise<ArrayBuffer>;
+			/**
+			 * Read the bound file (or `path`) as UTF-8 text, skipping the DOCX
+			 * zip/magic-byte gate. Used for `.txt`/`.md`/`.markdown` documents.
+			 */
+			loadText?(path?: string): Promise<string>;
+			/**
+			 * Write `bytes` back to the bound `filePath`. Falls through to
+			 * `saveAs("untitled", bytes)` when filePath is null.
+			 * Returns the path actually written to.
+			 */
+			save(bytes: ArrayBuffer): Promise<string>;
+			/**
+			 * Show the OS Save As dialog, pre-filled with `suggestedName`,
+			 * write the chosen path. Returns the chosen path, or null if the
+			 * user cancelled the dialog.
+			 */
+			saveAs(suggestedName: string, bytes: ArrayBuffer): Promise<string | null>;
+			/**
+			 * Rename the bound file on disk (same folder, new name) and re-bind
+			 * filePath. Resolves to the new path, or null for an untitled doc.
+			 * Rejects on a name collision / fs error.
+			 */
+			rename?(newName: string): Promise<string | null>;
+			/**
+			 * Editor → bridge dirty signal for the Rust unsaved-changes close-guard.
+			 * App.tsx forwards DocxEditor's `onChange` here so every real document
+			 * change (mouse/toolbar/menu edits included) marks the window dirty;
+			 * save()/saveAs() clear it.
+			 */
+			setDirty?(dirty: boolean): void;
+			/** Native webview print-to-PDF: opens the OS save dialog and renders this
+			 *  window to a selectable-text PDF via the shell's export_pdf command.
+			 *  Returns the written path, or null if cancelled. */
+			exportPdf?(suggestedName: string): Promise<string | null>;
+			/** File → Open from the editor menu (desktop): native open dialog +
+			 *  "this window or a new window?" prompt, honouring open_window_preference.
+			 *  The bridge performs the open itself (new window, or navigating this
+			 *  one), so the host's in-window open path is not used for it. */
+			openViaMenu?(): Promise<void>;
+			/**
+			 * Crash-recovery sidecar I/O (desktop only), keyed by the window's bound
+			 * `filePath`. The editor calls `writeRecovery` on a debounced schedule
+			 * with the latest serialized `.docx` bytes, `clearRecovery` after a clean
+			 * Save, and `readRecovery` on open. A non-null `readRecovery` result means
+			 * the previous session ended (crash/kill) with unsaved changes the user
+			 * can restore. All three no-op for an untitled (path-less) window, since
+			 * there is nothing to key the sidecar on. Best-effort: a failed
+			 * `writeRecovery` must never surface as a save error.
+			 */
+			writeRecovery?(bytes: ArrayBuffer): Promise<void>;
+			readRecovery?(): Promise<ArrayBuffer | null>;
+			clearRecovery?(): Promise<void>;
+			/**
+			 * Dismiss the cold-start boot overlay the bootstrap paints before React
+			 * mounts (top-level desktop windows only). Fades it out then removes it.
+			 * Idempotent and safe to call from both the document-load success and
+			 * error paths; a no-op when no overlay is present (iframe/web mode).
+			 */
+			dismissBoot?(): void;
+			/** Returns the local user's profile so the editor can render a
+			 *  user chip instead of the collab Share button. Read-only;
+			 *  edits go through Casual Office's Settings panel. */
+			getProfile?(): Promise<{
+				name: string;
+				avatar_hue: number;
+				timezone: string | null;
+				email: string | null;
+				avatar_path: string | null;
+			} | null>;
+		};
+	}
 }
 
 export {};

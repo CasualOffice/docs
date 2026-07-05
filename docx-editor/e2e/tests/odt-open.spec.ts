@@ -2,9 +2,9 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { test, expect } from "@playwright/test";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,26 +22,32 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * ran, not just that a file was accepted).
  */
 
-const ODT_FIXTURE = path.join(__dirname, '..', 'fixtures', 'casual-sample.odt');
+const ODT_FIXTURE = path.join(__dirname, "..", "fixtures", "casual-sample.odt");
 
-test('opens a .odt file from the Home picker and renders its text', async ({ page }) => {
-  // Plain `/` lands on Home; `?e2e=1` would force the editor and skip the picker.
-  await page.goto('/');
+test("opens a .odt file from the Home picker and renders its text", async ({
+	page,
+}) => {
+	// Plain `/` lands on Home; `?e2e=1` would force the editor and skip the picker.
+	await page.goto("/");
 
-  // Home view renders the picker (DOCX-only accept would have excluded .odt).
-  const fileInput = page.getByTestId('home-file-input');
-  await expect(fileInput).toHaveAttribute('accept', /\.odt/);
+	// Home view renders the picker (DOCX-only accept would have excluded .odt).
+	const fileInput = page.getByTestId("home-file-input");
+	await expect(fileInput).toHaveAttribute("accept", /\.odt/);
 
-  await fileInput.setInputFiles(ODT_FIXTURE);
+	await fileInput.setInputFiles(ODT_FIXTURE);
 
-  // Editor mounts once the WASM converter returns DOCX bytes. The 7 MB WASM is
-  // lazy-loaded on first conversion, so allow a generous mount window.
-  await page.waitForSelector('[data-testid="docx-editor"]', { timeout: 45000 });
-  await page.waitForFunction(() => document.fonts.ready);
+	// Editor mounts once the WASM converter returns DOCX bytes. The 7 MB WASM is
+	// lazy-loaded on first conversion, so allow a generous mount window.
+	await page.waitForSelector('[data-testid="docx-editor"]', { timeout: 45000 });
+	await page.waitForFunction(() => document.fonts.ready);
 
-  // The converted document's text must appear in the painted pages — this is
-  // the real proof the .odt was decoded, not just accepted.
-  const pages = page.locator('.paged-editor__pages');
-  await expect(pages).toContainText('Casual ODT Fixture Heading', { timeout: 15000 });
-  await expect(pages).toContainText('This paragraph proves ODT open works end to end');
+	// The converted document's text must appear in the painted pages — this is
+	// the real proof the .odt was decoded, not just accepted.
+	const pages = page.locator(".paged-editor__pages");
+	await expect(pages).toContainText("Casual ODT Fixture Heading", {
+		timeout: 15000,
+	});
+	await expect(pages).toContainText(
+		"This paragraph proves ODT open works end to end",
+	);
 });

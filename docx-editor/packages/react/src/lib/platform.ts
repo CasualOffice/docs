@@ -13,7 +13,10 @@
 
 /** True when running on a Mac / iPad / iPhone / iPod. */
 export function isMac(): boolean {
-  return typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+	return (
+		typeof navigator !== "undefined" &&
+		/Mac|iPod|iPhone|iPad/.test(navigator.platform)
+	);
 }
 
 /**
@@ -26,21 +29,21 @@ export function isMac(): boolean {
  * tooltip suffixes, the keyboard-shortcuts dialog.
  */
 export function formatShortcut(keys: string): string {
-  if (!keys) return keys;
-  if (isMac()) {
-    return (
-      keys
-        .replace(/CmdOrCtrl\+/g, '⌘')
-        .replace(/Ctrl\+/g, '⌘')
-        .replace(/Alt\+/g, '⌥')
-        .replace(/Shift\+/g, '⇧')
-        // Special-key suffixes — only after a modifier (`⌘Enter` →
-        // `⌘↵`), never standalone words inside a label.
-        .replace(/(⌘|⌥|⇧)Enter\b/g, '$1↵')
-        .replace(/(⌘|⌥|⇧)Space\b/g, '$1␣')
-    );
-  }
-  // Windows / Linux: prefer the literal modifier name. Strip the
-  // CmdOrCtrl marker some shortcuts use for cross-platform definitions.
-  return keys.replace(/CmdOrCtrl\+/g, 'Ctrl+');
+	if (!keys) return keys;
+	if (isMac()) {
+		return (
+			keys
+				.replace(/CmdOrCtrl\+/g, "⌘")
+				.replace(/Ctrl\+/g, "⌘")
+				.replace(/Alt\+/g, "⌥")
+				.replace(/Shift\+/g, "⇧")
+				// Special-key suffixes — only after a modifier (`⌘Enter` →
+				// `⌘↵`), never standalone words inside a label.
+				.replace(/(⌘|⌥|⇧)Enter\b/g, "$1↵")
+				.replace(/(⌘|⌥|⇧)Space\b/g, "$1␣")
+		);
+	}
+	// Windows / Linux: prefer the literal modifier name. Strip the
+	// CmdOrCtrl marker some shortcuts use for cross-platform definitions.
+	return keys.replace(/CmdOrCtrl\+/g, "Ctrl+");
 }

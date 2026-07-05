@@ -15,54 +15,54 @@
  * `anchor.behindDoc`, so behind-doc anchored shapes could not reserve space.
  */
 
-import { describe, test, expect } from 'bun:test';
-import { toProseDoc } from '../../prosemirror/conversion/toProseDoc';
-import { toFlowBlocks } from '../toFlowBlocks';
-import type { Document, Paragraph, Shape } from '../../types/document';
-import type { TextBoxBlock } from '../../layout-engine/types';
+import { describe, test, expect } from "bun:test";
+import { toProseDoc } from "../../prosemirror/conversion/toProseDoc";
+import { toFlowBlocks } from "../toFlowBlocks";
+import type { Document, Paragraph, Shape } from "../../types/document";
+import type { TextBoxBlock } from "../../layout-engine/types";
 
 function paragraphWithShape(shape: Shape): Paragraph {
-  return {
-    type: 'paragraph',
-    content: [{ type: 'run', content: [{ type: 'shape', shape }] }],
-  };
+	return {
+		type: "paragraph",
+		content: [{ type: "run", content: [{ type: "shape", shape }] }],
+	};
 }
 
 function makeDocument(paragraph: Paragraph): Document {
-  return { package: { document: { content: [paragraph] } } };
+	return { package: { document: { content: [paragraph] } } };
 }
 
 function behindShape(): Shape {
-  return {
-    type: 'shape',
-    shapeType: 'rect',
-    size: { width: 914400, height: 914400 }, // 1in × 1in (EMU)
-    position: {
-      horizontal: { relativeTo: 'page', posOffset: 914400 },
-      vertical: { relativeTo: 'paragraph', posOffset: 304800 },
-    },
-    wrap: { type: 'behind' },
-    textBody: { content: [{ type: 'paragraph', content: [] }] },
-  };
+	return {
+		type: "shape",
+		shapeType: "rect",
+		size: { width: 914400, height: 914400 }, // 1in × 1in (EMU)
+		position: {
+			horizontal: { relativeTo: "page", posOffset: 914400 },
+			vertical: { relativeTo: "paragraph", posOffset: 304800 },
+		},
+		wrap: { type: "behind" },
+		textBody: { content: [{ type: "paragraph", content: [] }] },
+	};
 }
 
-describe('toFlowBlocks — behind-doc anchored shape', () => {
-  test('wrap.type "behind" → anchor.behindDoc true on the layout block', () => {
-    const pmDoc = toProseDoc(makeDocument(paragraphWithShape(behindShape())));
-    const blocks = toFlowBlocks(pmDoc, {});
-    const tb = blocks.find((b): b is TextBoxBlock => b.kind === 'textBox');
-    expect(tb).toBeDefined();
-    expect(tb!.anchor?.behindDoc).toBe(true);
-    expect(tb!.anchor?.relFromV).toBe('paragraph');
-  });
+describe("toFlowBlocks — behind-doc anchored shape", () => {
+	test('wrap.type "behind" → anchor.behindDoc true on the layout block', () => {
+		const pmDoc = toProseDoc(makeDocument(paragraphWithShape(behindShape())));
+		const blocks = toFlowBlocks(pmDoc, {});
+		const tb = blocks.find((b): b is TextBoxBlock => b.kind === "textBox");
+		expect(tb).toBeDefined();
+		expect(tb!.anchor?.behindDoc).toBe(true);
+		expect(tb!.anchor?.relFromV).toBe("paragraph");
+	});
 
-  test('a non-behind (inFront) shape leaves behindDoc unset', () => {
-    const shape = behindShape();
-    shape.wrap = { type: 'inFront' };
-    const pmDoc = toProseDoc(makeDocument(paragraphWithShape(shape)));
-    const blocks = toFlowBlocks(pmDoc, {});
-    const tb = blocks.find((b): b is TextBoxBlock => b.kind === 'textBox');
-    expect(tb).toBeDefined();
-    expect(tb!.anchor?.behindDoc).toBeUndefined();
-  });
+	test("a non-behind (inFront) shape leaves behindDoc unset", () => {
+		const shape = behindShape();
+		shape.wrap = { type: "inFront" };
+		const pmDoc = toProseDoc(makeDocument(paragraphWithShape(shape)));
+		const blocks = toFlowBlocks(pmDoc, {});
+		const tb = blocks.find((b): b is TextBoxBlock => b.kind === "textBox");
+		expect(tb).toBeDefined();
+		expect(tb!.anchor?.behindDoc).toBeUndefined();
+	});
 });

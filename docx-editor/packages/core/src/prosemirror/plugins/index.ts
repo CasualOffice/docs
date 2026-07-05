@@ -10,22 +10,21 @@
  */
 
 export {
-  createSelectionTrackerPlugin,
-  extractSelectionContext,
-  getSelectionContext,
-  selectionTrackerKey,
-} from './selectionTracker';
+	createSelectionTrackerPlugin,
+	extractSelectionContext,
+	getSelectionContext,
+	selectionTrackerKey,
+} from "./selectionTracker";
 
-export type { SelectionContext, SelectionChangeCallback } from './selectionTracker';
+export type {
+	SelectionContext,
+	SelectionChangeCallback,
+} from "./selectionTracker";
 
 export {
-  suggestionModeKey,
-  createSuggestionModePlugin,
-  toggleSuggestionMode,
-  setSuggestionMode,
-  isSuggestionModeActive,
-} from './suggestionMode';
-
-export { createMentionPlugin, MENTION_PLUGIN_KEY } from './mentionPlugin';
-
-export type { MentionPluginState } from './mentionPlugin';
+	suggestionModeKey,
+	createSuggestionModePlugin,
+	toggleSuggestionMode,
+	setSuggestionMode,
+	isSuggestionModeActive,
+} from "./suggestionMode";

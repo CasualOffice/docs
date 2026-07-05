@@ -1,2 +1,4 @@
 // Re-export of @casualoffice/docs@1.1.7 ResponsiveToolbarGroup. Implementation is in the root _ds_bundle.js (window.CasualOfficeDocs).
-Object.assign(window, { ResponsiveToolbarGroup: window.CasualOfficeDocs.ResponsiveToolbarGroup });
+Object.assign(window, {
+	ResponsiveToolbarGroup: window.CasualOfficeDocs.ResponsiveToolbarGroup,
+});

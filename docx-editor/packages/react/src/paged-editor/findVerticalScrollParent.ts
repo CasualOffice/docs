@@ -14,18 +14,18 @@
  * @returns `null` when no such ancestor exists before `document.documentElement`.
  */
 export function findVerticalScrollParent(el: HTMLElement): HTMLElement | null {
-  let parent = el.parentElement;
-  while (parent && parent !== document.documentElement) {
-    const { overflowY } = getComputedStyle(parent);
-    if (
-      (overflowY === 'auto' || overflowY === 'scroll') &&
-      parent.scrollHeight > parent.clientHeight + 1
-    ) {
-      return parent;
-    }
-    parent = parent.parentElement;
-  }
-  return null;
+	let parent = el.parentElement;
+	while (parent && parent !== document.documentElement) {
+		const { overflowY } = getComputedStyle(parent);
+		if (
+			(overflowY === "auto" || overflowY === "scroll") &&
+			parent.scrollHeight > parent.clientHeight + 1
+		) {
+			return parent;
+		}
+		parent = parent.parentElement;
+	}
+	return null;
 }
 
 /**
@@ -33,5 +33,5 @@ export function findVerticalScrollParent(el: HTMLElement): HTMLElement | null {
  * so callers always get a valid scroll target (matches legacy `scrollIntoView` root).
  */
 export function findVerticalScrollParentOrRoot(el: HTMLElement): HTMLElement {
-  return findVerticalScrollParent(el) ?? document.documentElement;
+	return findVerticalScrollParent(el) ?? document.documentElement;
 }

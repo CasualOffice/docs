@@ -1,2 +1,4 @@
 // Re-export of @casualoffice/docs@1.1.7 TableBorderColorPicker. Implementation is in the root _ds_bundle.js (window.CasualOfficeDocs).
-Object.assign(window, { TableBorderColorPicker: window.CasualOfficeDocs.TableBorderColorPicker });
+Object.assign(window, {
+	TableBorderColorPicker: window.CasualOfficeDocs.TableBorderColorPicker,
+});

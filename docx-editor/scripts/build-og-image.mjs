@@ -14,13 +14,13 @@
  * deps. Re-run whenever the messaging changes. PNG is committed
  * so we don't rebuild in CI.
  */
-import { chromium } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { chromium } from "@playwright/test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const OUT_DIR = resolve(ROOT, 'examples/vite/public');
+const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const OUT_DIR = resolve(ROOT, "examples/vite/public");
 mkdirSync(OUT_DIR, { recursive: true });
 
 const html = /* html */ `
@@ -155,14 +155,14 @@ const html = /* html */ `
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({
-  viewport: { width: 1200, height: 630 },
-  deviceScaleFactor: 2,
+	viewport: { width: 1200, height: 630 },
+	deviceScaleFactor: 2,
 });
 const page = await ctx.newPage();
-await page.setContent(html, { waitUntil: 'networkidle' });
-const png = await page.screenshot({ type: 'png', omitBackground: false });
+await page.setContent(html, { waitUntil: "networkidle" });
+const png = await page.screenshot({ type: "png", omitBackground: false });
 await browser.close();
 
-const outPath = resolve(OUT_DIR, 'og.png');
+const outPath = resolve(OUT_DIR, "og.png");
 writeFileSync(outPath, png);
 console.info(`✓ ${outPath} (${(png.byteLength / 1024).toFixed(1)} KB)`);

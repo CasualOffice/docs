@@ -12,44 +12,46 @@
  * - Selection range information
  */
 
-import { Plugin, PluginKey, type EditorState } from 'prosemirror-state';
-import type { EditorView } from 'prosemirror-view';
-import type { TextFormatting, ParagraphFormatting } from '../../types/document';
+import { Plugin, PluginKey, type EditorState } from "prosemirror-state";
+import type { EditorView } from "prosemirror-view";
+import type { TextFormatting, ParagraphFormatting } from "../../types/document";
 
 /**
  * Selection context for toolbar state
  */
 export interface SelectionContext {
-  /** Whether there's a non-collapsed selection */
-  hasSelection: boolean;
-  /** Whether selection spans multiple paragraphs */
-  isMultiParagraph: boolean;
-  /** Current text formatting at cursor/selection */
-  textFormatting: TextFormatting;
-  /** Current paragraph formatting */
-  paragraphFormatting: ParagraphFormatting;
-  /** Start paragraph index */
-  startParagraphIndex: number;
-  /** End paragraph index */
-  endParagraphIndex: number;
-  /** Whether cursor is in a list */
-  inList: boolean;
-  /** List type if in list */
-  listType?: 'bullet' | 'numbered';
-  /** List level (0-8) */
-  listLevel?: number;
-  /** Active comment IDs at cursor position */
-  activeCommentIds: number[];
-  /** Whether cursor is inside a tracked insertion */
-  inInsertion: boolean;
-  /** Whether cursor is inside a tracked deletion */
-  inDeletion: boolean;
+	/** Whether there's a non-collapsed selection */
+	hasSelection: boolean;
+	/** Whether selection spans multiple paragraphs */
+	isMultiParagraph: boolean;
+	/** Current text formatting at cursor/selection */
+	textFormatting: TextFormatting;
+	/** Current paragraph formatting */
+	paragraphFormatting: ParagraphFormatting;
+	/** Start paragraph index */
+	startParagraphIndex: number;
+	/** End paragraph index */
+	endParagraphIndex: number;
+	/** Whether cursor is in a list */
+	inList: boolean;
+	/** List type if in list */
+	listType?: "bullet" | "numbered";
+	/** List level (0-8) */
+	listLevel?: number;
+	/** Active comment IDs at cursor position */
+	activeCommentIds: number[];
+	/** Whether cursor is inside a tracked insertion */
+	inInsertion: boolean;
+	/** Whether cursor is inside a tracked deletion */
+	inDeletion: boolean;
 }
 
 /**
  * Plugin key for accessing selection tracker state
  */
-export const selectionTrackerKey = new PluginKey<SelectionContext>('selectionTracker');
+export const selectionTrackerKey = new PluginKey<SelectionContext>(
+	"selectionTracker",
+);
 
 /**
  * Callback type for selection changes
@@ -60,323 +62,342 @@ export type SelectionChangeCallback = (context: SelectionContext) => void;
  * Extract selection context from editor state
  */
 export function extractSelectionContext(state: EditorState): SelectionContext {
-  const { selection, doc } = state;
-  const { from, to, empty } = selection;
-  const $from = doc.resolve(from);
+	const { selection, doc } = state;
+	const { from, to, empty } = selection;
+	const $from = doc.resolve(from);
 
-  // Find paragraph indices
-  let startParagraphIndex = 0;
-  let endParagraphIndex = 0;
+	// Find paragraph indices
+	let startParagraphIndex = 0;
+	let endParagraphIndex = 0;
 
-  doc.forEach((_node, offset, index) => {
-    if (offset > to) return false; // early-exit once past selection
-    if (offset <= from) {
-      startParagraphIndex = index;
-    }
-    if (offset <= to) {
-      endParagraphIndex = index;
-    }
-  });
+	doc.forEach((_node, offset, index) => {
+		if (offset > to) return false; // early-exit once past selection
+		if (offset <= from) {
+			startParagraphIndex = index;
+		}
+		if (offset <= to) {
+			endParagraphIndex = index;
+		}
+	});
 
-  // Extract text formatting from marks
-  const textFormatting = extractTextFormatting(state);
+	// Extract text formatting from marks
+	const textFormatting = extractTextFormatting(state);
 
-  // Extract paragraph formatting
-  const paragraph = $from.parent;
-  const paragraphFormatting: ParagraphFormatting = {};
+	// Extract paragraph formatting
+	const paragraph = $from.parent;
+	const paragraphFormatting: ParagraphFormatting = {};
 
-  if (paragraph.type.name === 'paragraph') {
-    if (paragraph.attrs.alignment) {
-      paragraphFormatting.alignment = paragraph.attrs.alignment;
-    }
-    if (paragraph.attrs.lineSpacing) {
-      paragraphFormatting.lineSpacing = paragraph.attrs.lineSpacing;
-      paragraphFormatting.lineSpacingRule = paragraph.attrs.lineSpacingRule;
-    }
-    if (paragraph.attrs.indentLeft) {
-      paragraphFormatting.indentLeft = paragraph.attrs.indentLeft;
-    }
-    if (paragraph.attrs.indentRight) {
-      paragraphFormatting.indentRight = paragraph.attrs.indentRight;
-    }
-    if (paragraph.attrs.indentFirstLine) {
-      paragraphFormatting.indentFirstLine = paragraph.attrs.indentFirstLine;
-    }
-    if (paragraph.attrs.hangingIndent) {
-      paragraphFormatting.hangingIndent = paragraph.attrs.hangingIndent;
-    }
-    if (paragraph.attrs.tabs) {
-      paragraphFormatting.tabs = paragraph.attrs.tabs;
-    }
-    if (paragraph.attrs.numPr) {
-      paragraphFormatting.numPr = paragraph.attrs.numPr;
-    }
-    if (paragraph.attrs.styleId) {
-      paragraphFormatting.styleId = paragraph.attrs.styleId;
-    }
-    if (paragraph.attrs.spaceBefore != null) {
-      paragraphFormatting.spaceBefore = paragraph.attrs.spaceBefore;
-    }
-    if (paragraph.attrs.spaceAfter != null) {
-      paragraphFormatting.spaceAfter = paragraph.attrs.spaceAfter;
-    }
-  }
+	if (paragraph.type.name === "paragraph") {
+		if (paragraph.attrs.alignment) {
+			paragraphFormatting.alignment = paragraph.attrs.alignment;
+		}
+		if (paragraph.attrs.lineSpacing) {
+			paragraphFormatting.lineSpacing = paragraph.attrs.lineSpacing;
+			paragraphFormatting.lineSpacingRule = paragraph.attrs.lineSpacingRule;
+		}
+		if (paragraph.attrs.indentLeft) {
+			paragraphFormatting.indentLeft = paragraph.attrs.indentLeft;
+		}
+		if (paragraph.attrs.indentRight) {
+			paragraphFormatting.indentRight = paragraph.attrs.indentRight;
+		}
+		if (paragraph.attrs.indentFirstLine) {
+			paragraphFormatting.indentFirstLine = paragraph.attrs.indentFirstLine;
+		}
+		if (paragraph.attrs.hangingIndent) {
+			paragraphFormatting.hangingIndent = paragraph.attrs.hangingIndent;
+		}
+		if (paragraph.attrs.tabs) {
+			paragraphFormatting.tabs = paragraph.attrs.tabs;
+		}
+		if (paragraph.attrs.numPr) {
+			paragraphFormatting.numPr = paragraph.attrs.numPr;
+		}
+		if (paragraph.attrs.styleId) {
+			paragraphFormatting.styleId = paragraph.attrs.styleId;
+		}
+		if (paragraph.attrs.spaceBefore != null) {
+			paragraphFormatting.spaceBefore = paragraph.attrs.spaceBefore;
+		}
+		if (paragraph.attrs.spaceAfter != null) {
+			paragraphFormatting.spaceAfter = paragraph.attrs.spaceAfter;
+		}
+	}
 
-  // List detection
-  const numPr = paragraph.attrs?.numPr;
-  const inList = !!numPr?.numId;
-  const listType = numPr?.numId === 1 ? 'bullet' : numPr?.numId ? 'numbered' : undefined;
-  const listLevel = numPr?.ilvl;
+	// List detection
+	const numPr = paragraph.attrs?.numPr;
+	const inList = !!numPr?.numId;
+	const listType =
+		numPr?.numId === 1 ? "bullet" : numPr?.numId ? "numbered" : undefined;
+	const listLevel = numPr?.ilvl;
 
-  // Comment and tracked change detection
-  const allMarks = state.storedMarks || (empty ? $from.marks() : []);
-  const activeCommentIds: number[] = [];
-  let inInsertion = false;
-  let inDeletion = false;
+	// Comment and tracked change detection
+	const allMarks = state.storedMarks || (empty ? $from.marks() : []);
+	const activeCommentIds: number[] = [];
+	let inInsertion = false;
+	let inDeletion = false;
 
-  for (const mark of allMarks) {
-    if (mark.type.name === 'comment' && mark.attrs.commentId) {
-      activeCommentIds.push(mark.attrs.commentId);
-    }
-    if (mark.type.name === 'insertion') {
-      inInsertion = true;
-    }
-    if (mark.type.name === 'deletion') {
-      inDeletion = true;
-    }
-  }
+	for (const mark of allMarks) {
+		if (mark.type.name === "comment" && mark.attrs.commentId) {
+			activeCommentIds.push(mark.attrs.commentId);
+		}
+		if (mark.type.name === "insertion") {
+			inInsertion = true;
+		}
+		if (mark.type.name === "deletion") {
+			inDeletion = true;
+		}
+	}
 
-  return {
-    hasSelection: !empty,
-    isMultiParagraph: startParagraphIndex !== endParagraphIndex,
-    textFormatting,
-    paragraphFormatting,
-    startParagraphIndex,
-    endParagraphIndex,
-    inList,
-    listType,
-    listLevel,
-    activeCommentIds,
-    inInsertion,
-    inDeletion,
-  };
+	return {
+		hasSelection: !empty,
+		isMultiParagraph: startParagraphIndex !== endParagraphIndex,
+		textFormatting,
+		paragraphFormatting,
+		startParagraphIndex,
+		endParagraphIndex,
+		inList,
+		listType,
+		listLevel,
+		activeCommentIds,
+		inInsertion,
+		inDeletion,
+	};
 }
 
 /**
  * Extract text formatting from current selection/cursor marks
  */
 function extractTextFormatting(state: EditorState): TextFormatting {
-  const { selection } = state;
-  const { empty, $from, from, to } = selection;
+	const { selection } = state;
+	const { empty, $from, from, to } = selection;
 
-  // Get marks. For an empty selection (cursor), stored marks take
-  // precedence (so format-then-type works), otherwise the marks at the
-  // resolved cursor position. For a non-empty selection, walk every
-  // text node in the range and intersect the marks — the toolbar
-  // should reflect a formatting as "active" only when *every* covered
-  // character carries it. (Without this branch, a selection like
-  // "bold" inside `<strong>bold</strong>` returned `[]` and the
-  // toolbar showed bold=inactive even though the entire selection was
-  // bold.)
-  let marks: readonly import('prosemirror-model').Mark[] = [];
-  if (empty) {
-    if (state.storedMarks) {
-      marks = state.storedMarks;
-    } else {
-      // $from.marks() is left-leaning — at the start of a marked
-      // range (cursor between a non-bold space and bold "bold")
-      // it returns the marks of the preceding character (no bold),
-      // so the toolbar reads bold-inactive even though the user
-      // is visually "inside" the bold range. Word + Google Docs
-      // treat boundary cursors as inside the *adjacent* mark for
-      // toolbar state, so also peek at the node *after* the
-      // cursor and union those marks in.
-      const leftMarks = $from.marks();
-      const after = $from.nodeAfter;
-      const rightMarks = after ? after.marks : [];
-      const seen = new Set<string>();
-      const combined: import('prosemirror-model').Mark[] = [];
-      for (const m of [...leftMarks, ...rightMarks]) {
-        // Dedupe by type+attrs so the same mark from both sides
-        // doesn't double up in the toolbar's mark scan below.
-        const key = m.type.name + JSON.stringify(m.attrs);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        combined.push(m);
-      }
-      marks = combined;
-    }
-  } else {
-    let intersection: import('prosemirror-model').Mark[] | null = null;
-    state.doc.nodesBetween(from, to, (node) => {
-      if (!node.isText) return true;
-      if (intersection === null) {
-        intersection = [...node.marks];
-      } else {
-        intersection = intersection.filter((m) => node.marks.some((n) => n.eq(m)));
-      }
-      return false;
-    });
-    marks = intersection ?? [];
-  }
-  const formatting: TextFormatting = {};
+	// Get marks. For an empty selection (cursor), stored marks take
+	// precedence (so format-then-type works), otherwise the marks at the
+	// resolved cursor position. For a non-empty selection, walk every
+	// text node in the range and intersect the marks — the toolbar
+	// should reflect a formatting as "active" only when *every* covered
+	// character carries it. (Without this branch, a selection like
+	// "bold" inside `<strong>bold</strong>` returned `[]` and the
+	// toolbar showed bold=inactive even though the entire selection was
+	// bold.)
+	let marks: readonly import("prosemirror-model").Mark[] = [];
+	if (empty) {
+		if (state.storedMarks) {
+			marks = state.storedMarks;
+		} else {
+			// $from.marks() is left-leaning — at the start of a marked
+			// range (cursor between a non-bold space and bold "bold")
+			// it returns the marks of the preceding character (no bold),
+			// so the toolbar reads bold-inactive even though the user
+			// is visually "inside" the bold range. Word + Google Docs
+			// treat boundary cursors as inside the *adjacent* mark for
+			// toolbar state, so also peek at the node *after* the
+			// cursor and union those marks in.
+			const leftMarks = $from.marks();
+			const after = $from.nodeAfter;
+			const rightMarks = after ? after.marks : [];
+			const seen = new Set<string>();
+			const combined: import("prosemirror-model").Mark[] = [];
+			for (const m of [...leftMarks, ...rightMarks]) {
+				// Dedupe by type+attrs so the same mark from both sides
+				// doesn't double up in the toolbar's mark scan below.
+				const key = m.type.name + JSON.stringify(m.attrs);
+				if (seen.has(key)) continue;
+				seen.add(key);
+				combined.push(m);
+			}
+			marks = combined;
+		}
+	} else {
+		let intersection: import("prosemirror-model").Mark[] | null = null;
+		state.doc.nodesBetween(from, to, (node) => {
+			if (!node.isText) return true;
+			if (intersection === null) {
+				intersection = [...node.marks];
+			} else {
+				intersection = intersection.filter((m) =>
+					node.marks.some((n) => n.eq(m)),
+				);
+			}
+			return false;
+		});
+		marks = intersection ?? [];
+	}
+	const formatting: TextFormatting = {};
 
-  for (const mark of marks) {
-    switch (mark.type.name) {
-      case 'bold':
-        formatting.bold = true;
-        break;
-      case 'italic':
-        formatting.italic = true;
-        break;
-      case 'underline':
-        formatting.underline = {
-          style: mark.attrs.style || 'single',
-          color: mark.attrs.color,
-        };
-        break;
-      case 'strike':
-        if (mark.attrs.double) {
-          formatting.doubleStrike = true;
-        } else {
-          formatting.strike = true;
-        }
-        break;
-      case 'textColor':
-        formatting.color = {
-          rgb: mark.attrs.rgb,
-          themeColor: mark.attrs.themeColor,
-          themeTint: mark.attrs.themeTint,
-          themeShade: mark.attrs.themeShade,
-        };
-        break;
-      case 'highlight':
-        formatting.highlight = mark.attrs.color;
-        break;
-      case 'fontSize':
-        formatting.fontSize = mark.attrs.size;
-        break;
-      case 'fontFamily':
-        formatting.fontFamily = {
-          ascii: mark.attrs.ascii,
-          hAnsi: mark.attrs.hAnsi,
-          asciiTheme: mark.attrs.asciiTheme,
-        };
-        break;
-      case 'superscript':
-        formatting.vertAlign = 'superscript';
-        break;
-      case 'subscript':
-        formatting.vertAlign = 'subscript';
-        break;
-      case 'smallCaps':
-        formatting.smallCaps = true;
-        break;
-      case 'allCaps':
-        formatting.allCaps = true;
-        break;
-      case 'hidden':
-        formatting.hidden = true;
-        break;
-      case 'emboss':
-        formatting.emboss = true;
-        break;
-      case 'imprint':
-        formatting.imprint = true;
-        break;
-      case 'textShadow':
-        formatting.shadow = true;
-        break;
-      case 'textOutline':
-        formatting.outline = true;
-        break;
-      case 'characterSpacing':
-        if (mark.attrs.spacing != null) {
-          formatting.spacing = mark.attrs.spacing;
-        }
-        break;
-    }
-  }
+	for (const mark of marks) {
+		switch (mark.type.name) {
+			case "bold":
+				formatting.bold = true;
+				break;
+			case "italic":
+				formatting.italic = true;
+				break;
+			case "underline":
+				formatting.underline = {
+					style: mark.attrs.style || "single",
+					color: mark.attrs.color,
+				};
+				break;
+			case "strike":
+				if (mark.attrs.double) {
+					formatting.doubleStrike = true;
+				} else {
+					formatting.strike = true;
+				}
+				break;
+			case "textColor":
+				formatting.color = {
+					rgb: mark.attrs.rgb,
+					themeColor: mark.attrs.themeColor,
+					themeTint: mark.attrs.themeTint,
+					themeShade: mark.attrs.themeShade,
+				};
+				break;
+			case "highlight":
+				formatting.highlight = mark.attrs.color;
+				break;
+			case "fontSize":
+				formatting.fontSize = mark.attrs.size;
+				break;
+			case "fontFamily":
+				formatting.fontFamily = {
+					ascii: mark.attrs.ascii,
+					hAnsi: mark.attrs.hAnsi,
+					asciiTheme: mark.attrs.asciiTheme,
+				};
+				break;
+			case "superscript":
+				formatting.vertAlign = "superscript";
+				break;
+			case "subscript":
+				formatting.vertAlign = "subscript";
+				break;
+			case "smallCaps":
+				formatting.smallCaps = true;
+				break;
+			case "allCaps":
+				formatting.allCaps = true;
+				break;
+			case "hidden":
+				formatting.hidden = true;
+				break;
+			case "emboss":
+				formatting.emboss = true;
+				break;
+			case "imprint":
+				formatting.imprint = true;
+				break;
+			case "textShadow":
+				formatting.shadow = true;
+				break;
+			case "textOutline":
+				formatting.outline = true;
+				break;
+			case "characterSpacing":
+				if (mark.attrs.spacing != null) {
+					formatting.spacing = mark.attrs.spacing;
+				}
+				break;
+		}
+	}
 
-  return formatting;
+	return formatting;
 }
 
 /**
  * Create selection tracker plugin
  */
-export function createSelectionTrackerPlugin(onSelectionChange?: SelectionChangeCallback): Plugin {
-  return new Plugin({
-    key: selectionTrackerKey,
+export function createSelectionTrackerPlugin(
+	onSelectionChange?: SelectionChangeCallback,
+): Plugin {
+	return new Plugin({
+		key: selectionTrackerKey,
 
-    state: {
-      init(_, state) {
-        return extractSelectionContext(state);
-      },
+		state: {
+			init(_, state) {
+				return extractSelectionContext(state);
+			},
 
-      apply(tr, prevContext, _, newState) {
-        // Only recalculate if selection or doc changed
-        if (!tr.selectionSet && !tr.docChanged) {
-          return prevContext;
-        }
+			apply(tr, prevContext, _, newState) {
+				// Only recalculate if selection or doc changed
+				if (!tr.selectionSet && !tr.docChanged) {
+					return prevContext;
+				}
 
-        return extractSelectionContext(newState);
-      },
-    },
+				const newContext = extractSelectionContext(newState);
 
-    view() {
-      return {
-        update(view: EditorView, prevState: EditorState) {
-          if (!onSelectionChange) return;
-          // Only emit on selection/doc changes
-          if (view.state.selection.eq(prevState.selection) && view.state.doc.eq(prevState.doc)) {
-            return;
-          }
-          // Reuse contexts already computed in state.apply() — avoid double doc walk.
-          // Compare prev vs new context so we don't fire when the cursor moved within
-          // the same formatting region (e.g. cursor-only motion inside a bold run).
-          const prevContext = selectionTrackerKey.getState(prevState);
-          const newContext = selectionTrackerKey.getState(view.state);
-          if (newContext && (!prevContext || !contextsEqual(prevContext, newContext))) {
-            onSelectionChange(newContext);
-          }
-        },
-      };
-    },
-  });
+				// Notify callback if context changed
+				if (onSelectionChange && !contextsEqual(prevContext, newContext)) {
+					// Defer to next tick to avoid dispatch during dispatch
+					setTimeout(() => onSelectionChange(newContext), 0);
+				}
+
+				return newContext;
+			},
+		},
+
+		view() {
+			return {
+				update(view: EditorView, prevState: EditorState) {
+					if (!onSelectionChange) return;
+					// Only emit on selection/doc changes
+					if (
+						view.state.selection.eq(prevState.selection) &&
+						view.state.doc.eq(prevState.doc)
+					) {
+						return;
+					}
+					// Reuse context already computed in state.apply() — avoid double doc walk
+					const context = selectionTrackerKey.getState(view.state);
+					if (context) {
+						onSelectionChange(context);
+					}
+				},
+			};
+		},
+	});
 }
 
-function arraysEqual(a: number[] | undefined, b: number[] | undefined): boolean {
-  if (a === b) return true;
-  if (!a || !b || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
+function arraysEqual(
+	a: number[] | undefined,
+	b: number[] | undefined,
+): boolean {
+	if (a === b) return true;
+	if (!a || !b || a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) {
+		if (a[i] !== b[i]) return false;
+	}
+	return true;
 }
 
 /**
  * Compare two selection contexts for equality
  */
 function contextsEqual(a: SelectionContext, b: SelectionContext): boolean {
-  return (
-    a.hasSelection === b.hasSelection &&
-    a.isMultiParagraph === b.isMultiParagraph &&
-    a.startParagraphIndex === b.startParagraphIndex &&
-    a.endParagraphIndex === b.endParagraphIndex &&
-    a.inList === b.inList &&
-    a.listType === b.listType &&
-    a.listLevel === b.listLevel &&
-    a.inInsertion === b.inInsertion &&
-    a.inDeletion === b.inDeletion &&
-    arraysEqual(a.activeCommentIds, b.activeCommentIds) &&
-    JSON.stringify(a.textFormatting) === JSON.stringify(b.textFormatting) &&
-    JSON.stringify(a.paragraphFormatting) === JSON.stringify(b.paragraphFormatting)
-  );
+	return (
+		a.hasSelection === b.hasSelection &&
+		a.isMultiParagraph === b.isMultiParagraph &&
+		a.startParagraphIndex === b.startParagraphIndex &&
+		a.endParagraphIndex === b.endParagraphIndex &&
+		a.inList === b.inList &&
+		a.listType === b.listType &&
+		a.listLevel === b.listLevel &&
+		a.inInsertion === b.inInsertion &&
+		a.inDeletion === b.inDeletion &&
+		arraysEqual(a.activeCommentIds, b.activeCommentIds) &&
+		JSON.stringify(a.textFormatting) === JSON.stringify(b.textFormatting) &&
+		JSON.stringify(a.paragraphFormatting) ===
+			JSON.stringify(b.paragraphFormatting)
+	);
 }
 
 /**
  * Get current selection context from editor state
  */
-export function getSelectionContext(state: EditorState): SelectionContext | null {
-  return selectionTrackerKey.getState(state) || null;
+export function getSelectionContext(
+	state: EditorState,
+): SelectionContext | null {
+	return selectionTrackerKey.getState(state) || null;
 }

@@ -16,40 +16,44 @@
  * - Inline properties (highest priority)
  */
 
-import type { Node as PMNode } from 'prosemirror-model';
-import { schema } from '../schema';
-import type { ParagraphAttrs } from '../schema/nodes';
+import type { Node as PMNode } from "prosemirror-model";
+import { schema } from "../schema";
+import type { ParagraphAttrs } from "../schema/nodes";
 import type {
-  Document,
-  Paragraph,
-  Run,
-  TextFormatting,
-  RunContent,
-  Hyperlink,
-  Image,
-  TextBox,
-  Shape,
-  StyleDefinitions,
-  Table,
-  TableRow,
-  TableCell,
-  TableCellFormatting,
-  TableBorders,
-  TableLook,
-  SimpleField,
-  ComplexField,
-  InlineSdt,
-  Insertion,
-  Deletion,
-  MoveFrom,
-  MoveTo,
-  MathEquation,
-} from '../../types/document';
-import { emuToPixels } from '../../docx/imageParser';
-import { isWrapNone } from '../../docx/wrapTypes';
-import { createStyleResolver, type StyleResolver } from '../styles';
-import type { TableAttrs, TableRowAttrs, TableCellAttrs } from '../schema/nodes';
-import { resolveColor, resolveColorToHex } from '../../utils/colorResolver';
+	Document,
+	Paragraph,
+	Run,
+	TextFormatting,
+	RunContent,
+	Hyperlink,
+	Image,
+	TextBox,
+	Shape,
+	StyleDefinitions,
+	Table,
+	TableRow,
+	TableCell,
+	TableCellFormatting,
+	TableBorders,
+	TableLook,
+	SimpleField,
+	ComplexField,
+	InlineSdt,
+	Insertion,
+	Deletion,
+	MoveFrom,
+	MoveTo,
+	MathEquation,
+} from "../../types/document";
+import { emuToPixels } from "../../docx/imageParser";
+import { isWrapNone } from "../../docx/wrapTypes";
+import { createStyleResolver, type StyleResolver } from "../styles";
+import type {
+	TableAttrs,
+	TableRowAttrs,
+	TableCellAttrs,
+} from "../schema/nodes";
+import { resolveColor, resolveColorToHex } from "../../utils/colorResolver";
 
 /**
  * Resolve a DrawingML shape/textbox fill or outline ColorValue to a CSS hex.
@@ -61,19 +65,20 @@ import { resolveColor, resolveColorToHex } from '../../utils/colorResolver';
  * black border. (theme threading through convertRunContent is avoided here.)
  */
 function resolveShapeColor(color: ColorValue | undefined): string | undefined {
-  if (!color || color.auto || (!color.rgb && !color.themeColor)) return undefined;
-  return resolveColor(color, undefined);
+	if (!color || color.auto || (!color.rgb && !color.themeColor))
+		return undefined;
+	return resolveColor(color, undefined);
 }
-import { mergeTextFormatting } from '../../utils/textFormattingMerge';
-import type { Theme } from '../../types/document';
-import type { ColorValue } from '../../types/colors';
+import { mergeTextFormatting } from "../../utils/textFormattingMerge";
+import type { Theme } from "../../types/document";
+import type { ColorValue } from "../../types/colors";
 
 /**
  * Options for document conversion
  */
 export interface ToProseDocOptions {
-  /** Style definitions for resolving paragraph styles */
-  styles?: StyleDefinitions;
+	/** Style definitions for resolving paragraph styles */
+	styles?: StyleDefinitions;
 }
 
 /**
@@ -85,21 +90,21 @@ export interface ToProseDocOptions {
  * outline disappears entirely.
  */
 function ooxmlDashToCssBorderStyle(prstDashVal: string | undefined): string {
-  if (!prstDashVal) return 'solid';
-  const map: Record<string, string> = {
-    solid: 'solid',
-    dot: 'dotted',
-    sysDot: 'dotted',
-    dash: 'dashed',
-    lgDash: 'dashed',
-    sysDash: 'dashed',
-    dashDot: 'dashed',
-    sysDashDot: 'dashed',
-    lgDashDot: 'dashed',
-    sysDashDotDot: 'dashed',
-    lgDashDotDot: 'dashed',
-  };
-  return map[prstDashVal] ?? 'solid';
+	if (!prstDashVal) return "solid";
+	const map: Record<string, string> = {
+		solid: "solid",
+		dot: "dotted",
+		sysDot: "dotted",
+		dash: "dashed",
+		lgDash: "dashed",
+		sysDash: "dashed",
+		dashDot: "dashed",
+		sysDashDot: "dashed",
+		lgDashDot: "dashed",
+		sysDashDotDot: "dashed",
+		lgDashDotDot: "dashed",
+	};
+	return map[prstDashVal] ?? "solid";
 }
 
 /**
@@ -108,38 +113,43 @@ function ooxmlDashToCssBorderStyle(prstDashVal: string | undefined): string {
  * @param document - The Document to convert
  * @param options - Conversion options including style definitions
  */
-export function toProseDoc(document: Document, options?: ToProseDocOptions): PMNode {
-  const paragraphs = document.package.document.content;
-  const nodes: PMNode[] = [];
-  const theme = document.package.theme ?? null;
+export function toProseDoc(
+	document: Document,
+	options?: ToProseDocOptions,
+): PMNode {
+	const paragraphs = document.package.document.content;
+	const nodes: PMNode[] = [];
+	const theme = document.package.theme ?? null;
 
-  // Create style resolver if styles are provided
-  const styleResolver = options?.styles ? createStyleResolver(options.styles) : null;
+	// Create style resolver if styles are provided
+	const styleResolver = options?.styles
+		? createStyleResolver(options.styles)
+		: null;
 
-  for (const block of paragraphs) {
-    if (block.type === 'paragraph') {
-      // Convert paragraph and extract text boxes as sibling nodes
-      nodes.push(...convertParagraphWithTextBoxes(block, styleResolver));
-      // If any run in this paragraph contains a forced page/column break, emit
-      // a pageBreak node after. Column breaks (§17.3.3.1 `w:type="column"`) are
-      // carried via the node's `breakType` attr so they aren't silently
-      // collapsed into page breaks.
-      const forcedBreak = paragraphForcedBreakType(block);
-      if (forcedBreak) {
-        nodes.push(schema.node('pageBreak', { breakType: forcedBreak }));
-      }
-    } else if (block.type === 'table') {
-      const pmTable = convertTable(block, styleResolver, theme);
-      nodes.push(pmTable);
-    }
-  }
+	for (const block of paragraphs) {
+		if (block.type === "paragraph") {
+			// Convert paragraph and extract text boxes as sibling nodes
+			nodes.push(...convertParagraphWithTextBoxes(block, styleResolver));
+			// If any run in this paragraph contains a forced page/column break, emit
+			// a pageBreak node after. Column breaks (§17.3.3.1 `w:type="column"`) are
+			// carried via the node's `breakType` attr so they aren't silently
+			// collapsed into page breaks.
+			const forcedBreak = paragraphForcedBreakType(block);
+			if (forcedBreak) {
+				nodes.push(schema.node("pageBreak", { breakType: forcedBreak }));
+			}
+		} else if (block.type === "table") {
+			const pmTable = convertTable(block, styleResolver, theme);
+			nodes.push(pmTable);
+		}
+	}
 
-  // Ensure we have at least one paragraph
-  if (nodes.length === 0) {
-    nodes.push(schema.node('paragraph', {}, []));
-  }
+	// Ensure we have at least one paragraph
+	if (nodes.length === 0) {
+		nodes.push(schema.node("paragraph", {}, []));
+	}
 
-  return schema.node('doc', null, nodes);
+	return schema.node("doc", null, nodes);
 }
 
 /**
@@ -149,112 +159,132 @@ export function toProseDoc(document: Document, options?: ToProseDocOptions): PMN
  * paragraph styles (like Heading1) apply their font size, color, etc.
  */
 function convertParagraph(
-  paragraph: Paragraph,
-  styleResolver: StyleResolver | null,
-  activeCommentIds?: Set<number>,
-  extraRunFormatting?: TextFormatting
+	paragraph: Paragraph,
+	styleResolver: StyleResolver | null,
+	activeCommentIds?: Set<number>,
+	extraRunFormatting?: TextFormatting,
 ): PMNode {
-  const attrs = paragraphFormattingToAttrs(paragraph, styleResolver);
-  const inlineNodes: PMNode[] = [];
-  let bookmarksArr: Array<{ id: number; name: string }> | undefined;
+	const attrs = paragraphFormattingToAttrs(paragraph, styleResolver);
+	const inlineNodes: PMNode[] = [];
+	let bookmarksArr: Array<{ id: number; name: string }> | undefined;
 
-  // Track active comment ranges for this paragraph
-  const commentIds = activeCommentIds ?? new Set<number>();
+	// Track active comment ranges for this paragraph
+	const commentIds = activeCommentIds ?? new Set<number>();
 
-  // Get style-based text formatting (font size, bold, color, etc.)
-  let styleRunFormatting: TextFormatting | undefined;
-  if (styleResolver) {
-    const resolved = styleResolver.resolveParagraphStyle(paragraph.formatting?.styleId);
-    styleRunFormatting = resolved.runFormatting;
-  }
+	// Get style-based text formatting (font size, bold, color, etc.)
+	let styleRunFormatting: TextFormatting | undefined;
+	if (styleResolver) {
+		const resolved = styleResolver.resolveParagraphStyle(
+			paragraph.formatting?.styleId,
+		);
+		styleRunFormatting = resolved.runFormatting;
+	}
 
-  // NOTE: paragraph.formatting?.runProperties is the paragraph mark formatting (pPr/rPr).
-  // Per ECMA-376, this only applies to the paragraph mark glyph (¶), NOT to text runs.
-  // Style-level rPr (from styleResolver) already provides default run formatting.
+	// NOTE: paragraph.formatting?.runProperties is the paragraph mark formatting (pPr/rPr).
+	// Per ECMA-376, this only applies to the paragraph mark glyph (¶), NOT to text runs.
+	// Style-level rPr (from styleResolver) already provides default run formatting.
 
-  // Merge in extra formatting (e.g., table style conditional rPr)
-  const mergedStyleRunFormatting = mergeTextFormatting(styleRunFormatting, extraRunFormatting);
+	// Merge in extra formatting (e.g., table style conditional rPr)
+	const mergedStyleRunFormatting = mergeTextFormatting(
+		styleRunFormatting,
+		extraRunFormatting,
+	);
 
-  for (const content of paragraph.content) {
-    if (content.type === 'commentRangeStart') {
-      commentIds.add(content.id);
-    } else if (content.type === 'commentRangeEnd') {
-      commentIds.delete(content.id);
-    } else if (content.type === 'run') {
-      let runNodes = convertRun(content, mergedStyleRunFormatting, styleResolver);
-      if (commentIds.size > 0) {
-        runNodes = applyCommentMarks(runNodes, commentIds);
-      }
-      inlineNodes.push(...runNodes);
-    } else if (content.type === 'hyperlink') {
-      const linkNodes = convertHyperlink(content, mergedStyleRunFormatting, styleResolver);
-      inlineNodes.push(...linkNodes);
-    } else if (content.type === 'simpleField' || content.type === 'complexField') {
-      const fieldNode = convertField(content, mergedStyleRunFormatting);
-      if (fieldNode) inlineNodes.push(fieldNode);
-    } else if (content.type === 'inlineSdt') {
-      const sdtNode = convertInlineSdt(content, mergedStyleRunFormatting, styleResolver);
-      if (sdtNode) inlineNodes.push(sdtNode);
-    } else if (content.type === 'insertion') {
-      let insNodes = convertTrackedChange(
-        content,
-        'insertion',
-        mergedStyleRunFormatting,
-        styleResolver
-      );
-      if (commentIds.size > 0) {
-        insNodes = applyCommentMarks(insNodes, commentIds);
-      }
-      inlineNodes.push(...insNodes);
-    } else if (content.type === 'deletion') {
-      let delNodes = convertTrackedChange(
-        content,
-        'deletion',
-        mergedStyleRunFormatting,
-        styleResolver
-      );
-      if (commentIds.size > 0) {
-        delNodes = applyCommentMarks(delNodes, commentIds);
-      }
-      inlineNodes.push(...delNodes);
-    } else if (content.type === 'moveFrom') {
-      let moveFromNodes = convertTrackedChange(
-        content,
-        'deletion',
-        mergedStyleRunFormatting,
-        styleResolver
-      );
-      if (commentIds.size > 0) {
-        moveFromNodes = applyCommentMarks(moveFromNodes, commentIds);
-      }
-      inlineNodes.push(...moveFromNodes);
-    } else if (content.type === 'moveTo') {
-      let moveToNodes = convertTrackedChange(
-        content,
-        'insertion',
-        mergedStyleRunFormatting,
-        styleResolver
-      );
-      if (commentIds.size > 0) {
-        moveToNodes = applyCommentMarks(moveToNodes, commentIds);
-      }
-      inlineNodes.push(...moveToNodes);
-    } else if (content.type === 'mathEquation') {
-      const mathNode = convertMathEquation(content);
-      if (mathNode) inlineNodes.push(mathNode);
-    }
-    // Collect bookmarkStart entries for round-trip
-    if (content.type === 'bookmarkStart') {
-      if (!bookmarksArr) bookmarksArr = [];
-      bookmarksArr.push({ id: content.id, name: content.name });
-    }
-  }
+	for (const content of paragraph.content) {
+		if (content.type === "commentRangeStart") {
+			commentIds.add(content.id);
+		} else if (content.type === "commentRangeEnd") {
+			commentIds.delete(content.id);
+		} else if (content.type === "run") {
+			let runNodes = convertRun(
+				content,
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			if (commentIds.size > 0) {
+				runNodes = applyCommentMarks(runNodes, commentIds);
+			}
+			inlineNodes.push(...runNodes);
+		} else if (content.type === "hyperlink") {
+			const linkNodes = convertHyperlink(
+				content,
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			inlineNodes.push(...linkNodes);
+		} else if (
+			content.type === "simpleField" ||
+			content.type === "complexField"
+		) {
+			const fieldNode = convertField(content, mergedStyleRunFormatting);
+			if (fieldNode) inlineNodes.push(fieldNode);
+		} else if (content.type === "inlineSdt") {
+			const sdtNode = convertInlineSdt(
+				content,
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			if (sdtNode) inlineNodes.push(sdtNode);
+		} else if (content.type === "insertion") {
+			let insNodes = convertTrackedChange(
+				content,
+				"insertion",
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			if (commentIds.size > 0) {
+				insNodes = applyCommentMarks(insNodes, commentIds);
+			}
+			inlineNodes.push(...insNodes);
+		} else if (content.type === "deletion") {
+			let delNodes = convertTrackedChange(
+				content,
+				"deletion",
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			if (commentIds.size > 0) {
+				delNodes = applyCommentMarks(delNodes, commentIds);
+			}
+			inlineNodes.push(...delNodes);
+		} else if (content.type === "moveFrom") {
+			let moveFromNodes = convertTrackedChange(
+				content,
+				"deletion",
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			if (commentIds.size > 0) {
+				moveFromNodes = applyCommentMarks(moveFromNodes, commentIds);
+			}
+			inlineNodes.push(...moveFromNodes);
+		} else if (content.type === "moveTo") {
+			let moveToNodes = convertTrackedChange(
+				content,
+				"insertion",
+				mergedStyleRunFormatting,
+				styleResolver,
+			);
+			if (commentIds.size > 0) {
+				moveToNodes = applyCommentMarks(moveToNodes, commentIds);
+			}
+			inlineNodes.push(...moveToNodes);
+		} else if (content.type === "mathEquation") {
+			const mathNode = convertMathEquation(content);
+			if (mathNode) inlineNodes.push(mathNode);
+		}
+		// Collect bookmarkStart entries for round-trip
+		if (content.type === "bookmarkStart") {
+			if (!bookmarksArr) bookmarksArr = [];
+			bookmarksArr.push({ id: content.id, name: content.name });
+		}
+	}
 
-  if (bookmarksArr) {
-    attrs.bookmarks = bookmarksArr;
-  }
+	if (bookmarksArr) {
+		attrs.bookmarks = bookmarksArr;
+	}
 
-  return schema.node('paragraph', attrs, inlineNodes);
+	return schema.node("paragraph", attrs, inlineNodes);
 }
 
 /**
@@ -262,16 +292,16 @@ function convertParagraph(
  * Only the first active comment ID is used (comments don't overlap visually).
  */
 function applyCommentMarks(nodes: PMNode[], commentIds: Set<number>): PMNode[] {
-  if (commentIds.size === 0) return nodes;
-  const commentId = [...commentIds][0]; // Use first active comment
-  const commentMark = schema.marks.comment.create({ commentId });
+	if (commentIds.size === 0) return nodes;
+	const commentId = [...commentIds][0]; // Use first active comment
+	const commentMark = schema.marks.comment.create({ commentId });
 
-  return nodes.map((node) => {
-    if (node.isText) {
-      return node.mark(commentMark.addToSet(node.marks));
-    }
-    return node;
-  });
+	return nodes.map((node) => {
+		if (node.isText) {
+			return node.mark(commentMark.addToSet(node.marks));
+		}
+		return node;
+	});
 }
 
 /**
@@ -279,32 +309,32 @@ function applyCommentMarks(nodes: PMNode[], commentIds: Set<number>): PMNode[] {
  * an insertion/deletion mark applied.
  */
 function convertTrackedChange(
-  change: Insertion | Deletion | MoveFrom | MoveTo,
-  markType: 'insertion' | 'deletion',
-  styleRunFormatting?: TextFormatting,
-  styleResolver?: StyleResolver | null
+	change: Insertion | Deletion | MoveFrom | MoveTo,
+	markType: "insertion" | "deletion",
+	styleRunFormatting?: TextFormatting,
+	styleResolver?: StyleResolver | null,
 ): PMNode[] {
-  const nodes: PMNode[] = [];
-  for (const item of change.content) {
-    if (item.type === 'run') {
-      nodes.push(...convertRun(item, styleRunFormatting, styleResolver));
-    } else if (item.type === 'hyperlink') {
-      nodes.push(...convertHyperlink(item, styleRunFormatting, styleResolver));
-    }
-  }
+	const nodes: PMNode[] = [];
+	for (const item of change.content) {
+		if (item.type === "run") {
+			nodes.push(...convertRun(item, styleRunFormatting, styleResolver));
+		} else if (item.type === "hyperlink") {
+			nodes.push(...convertHyperlink(item, styleRunFormatting, styleResolver));
+		}
+	}
 
-  const mark = schema.marks[markType].create({
-    revisionId: change.info.id,
-    author: change.info.author,
-    date: change.info.date ?? null,
-  });
+	const mark = schema.marks[markType].create({
+		revisionId: change.info.id,
+		author: change.info.author,
+		date: change.info.date ?? null,
+	});
 
-  return nodes.map((node) => {
-    if (node.isText) {
-      return node.mark(mark.addToSet(node.marks));
-    }
-    return node;
-  });
+	return nodes.map((node) => {
+		if (node.isText) {
+			return node.mark(mark.addToSet(node.marks));
+		}
+		return node;
+	});
 }
 
 /**
@@ -314,133 +344,154 @@ function convertTrackedChange(
  * with inline formatting. Inline formatting takes precedence.
  */
 function paragraphFormattingToAttrs(
-  paragraph: Paragraph,
-  styleResolver: StyleResolver | null
+	paragraph: Paragraph,
+	styleResolver: StyleResolver | null,
 ): ParagraphAttrs {
-  const formatting = paragraph.formatting;
-  const styleId = formatting?.styleId;
+	const formatting = paragraph.formatting;
+	const styleId = formatting?.styleId;
 
-  // Start with base attrs
-  const attrs: ParagraphAttrs = {
-    paraId: paragraph.paraId ?? undefined,
-    textId: paragraph.textId ?? undefined,
-    styleId: styleId,
-    numPr: formatting?.numPr,
-    // List rendering info from parsed numbering definitions
-    listNumFmt: paragraph.listRendering?.numFmt,
-    listIsBullet: paragraph.listRendering?.isBullet,
-    listMarker: paragraph.listRendering?.marker,
-    listMarkerHidden: paragraph.listRendering?.markerHidden || undefined,
-    listMarkerFontFamily: paragraph.listRendering?.markerFontFamily || undefined,
-    listMarkerFontSize: paragraph.listRendering?.markerFontSize || undefined,
-    listLevelNumFmts: paragraph.listRendering?.levelNumFmts || undefined,
-    listAbstractNumId: paragraph.listRendering?.abstractNumId,
-    listStartOverride: paragraph.listRendering?.startOverride,
-    // Store original inline formatting for lossless serialization round-trip
-    _originalFormatting: formatting || undefined,
-  };
+	// Start with base attrs
+	const attrs: ParagraphAttrs = {
+		paraId: paragraph.paraId ?? undefined,
+		textId: paragraph.textId ?? undefined,
+		styleId: styleId,
+		numPr: formatting?.numPr,
+		// List rendering info from parsed numbering definitions
+		listNumFmt: paragraph.listRendering?.numFmt,
+		listIsBullet: paragraph.listRendering?.isBullet,
+		listMarker: paragraph.listRendering?.marker,
+		listMarkerHidden: paragraph.listRendering?.markerHidden || undefined,
+		listMarkerFontFamily:
+			paragraph.listRendering?.markerFontFamily || undefined,
+		listMarkerFontSize: paragraph.listRendering?.markerFontSize || undefined,
+		listLevelNumFmts: paragraph.listRendering?.levelNumFmts || undefined,
+		listAbstractNumId: paragraph.listRendering?.abstractNumId,
+		listStartOverride: paragraph.listRendering?.startOverride,
+		// Store original inline formatting for lossless serialization round-trip
+		_originalFormatting: formatting || undefined,
+	};
 
-  // If we have a style resolver, resolve the style and get base properties
-  if (styleResolver) {
-    const resolved = styleResolver.resolveParagraphStyle(styleId);
-    const stylePpr = resolved.paragraphFormatting;
-    const styleRpr = resolved.runFormatting;
+	// If we have a style resolver, resolve the style and get base properties
+	if (styleResolver) {
+		const resolved = styleResolver.resolveParagraphStyle(styleId);
+		const stylePpr = resolved.paragraphFormatting;
+		const styleRpr = resolved.runFormatting;
 
-    // Apply style-based values as defaults (inline overrides)
-    attrs.alignment = formatting?.alignment ?? stylePpr?.alignment;
-    attrs.spaceBefore = formatting?.spaceBefore ?? stylePpr?.spaceBefore;
-    attrs.spaceAfter = formatting?.spaceAfter ?? stylePpr?.spaceAfter;
-    attrs.lineSpacing = formatting?.lineSpacing ?? stylePpr?.lineSpacing;
-    attrs.lineSpacingRule = formatting?.lineSpacingRule ?? stylePpr?.lineSpacingRule;
-    // Carry through only the inline-explicit flags (never style-resolved).
-    if (formatting?.spacingExplicit) attrs.spacingExplicit = formatting.spacingExplicit;
-    attrs.indentLeft = formatting?.indentLeft ?? stylePpr?.indentLeft;
-    attrs.indentRight = formatting?.indentRight ?? stylePpr?.indentRight;
-    attrs.indentFirstLine = formatting?.indentFirstLine ?? stylePpr?.indentFirstLine;
-    attrs.hangingIndent = formatting?.hangingIndent ?? stylePpr?.hangingIndent;
-    attrs.borders = formatting?.borders ?? stylePpr?.borders;
-    attrs.shading = formatting?.shading ?? stylePpr?.shading;
-    attrs.tabs = formatting?.tabs ?? stylePpr?.tabs;
+		// Apply style-based values as defaults (inline overrides)
+		attrs.alignment = formatting?.alignment ?? stylePpr?.alignment;
+		attrs.spaceBefore = formatting?.spaceBefore ?? stylePpr?.spaceBefore;
+		attrs.spaceAfter = formatting?.spaceAfter ?? stylePpr?.spaceAfter;
+		attrs.lineSpacing = formatting?.lineSpacing ?? stylePpr?.lineSpacing;
+		attrs.lineSpacingRule =
+			formatting?.lineSpacingRule ?? stylePpr?.lineSpacingRule;
+		// Carry through only the inline-explicit flags (never style-resolved).
+		if (formatting?.spacingExplicit)
+			attrs.spacingExplicit = formatting.spacingExplicit;
+		attrs.indentLeft = formatting?.indentLeft ?? stylePpr?.indentLeft;
+		attrs.indentRight = formatting?.indentRight ?? stylePpr?.indentRight;
+		attrs.indentFirstLine =
+			formatting?.indentFirstLine ?? stylePpr?.indentFirstLine;
+		attrs.hangingIndent = formatting?.hangingIndent ?? stylePpr?.hangingIndent;
+		attrs.borders = formatting?.borders ?? stylePpr?.borders;
+		attrs.shading = formatting?.shading ?? stylePpr?.shading;
+		attrs.tabs = formatting?.tabs ?? stylePpr?.tabs;
 
-    // Page break control
-    attrs.pageBreakBefore = formatting?.pageBreakBefore ?? stylePpr?.pageBreakBefore;
-    attrs.keepNext = formatting?.keepNext ?? stylePpr?.keepNext;
-    attrs.keepLines = formatting?.keepLines ?? stylePpr?.keepLines;
-    attrs.contextualSpacing = formatting?.contextualSpacing ?? stylePpr?.contextualSpacing;
+		// Page break control
+		attrs.pageBreakBefore =
+			formatting?.pageBreakBefore ?? stylePpr?.pageBreakBefore;
+		attrs.keepNext = formatting?.keepNext ?? stylePpr?.keepNext;
+		attrs.keepLines = formatting?.keepLines ?? stylePpr?.keepLines;
+		attrs.contextualSpacing =
+			formatting?.contextualSpacing ?? stylePpr?.contextualSpacing;
 
-    // Outline level (for TOC)
-    attrs.outlineLevel = formatting?.outlineLevel ?? stylePpr?.outlineLevel;
+		// Outline level (for TOC)
+		attrs.outlineLevel = formatting?.outlineLevel ?? stylePpr?.outlineLevel;
 
-    // Text direction
-    attrs.bidi = formatting?.bidi ?? stylePpr?.bidi;
+		// Text direction
+		attrs.bidi = formatting?.bidi ?? stylePpr?.bidi;
 
-    // Default run properties for runs in this paragraph that don't carry
-    // explicit marks. ECMA-376 §17.7.4.18 + §17.3.2 cascade for run
-    // formatting:
-    //   1. docDefaults.rPr            (already in styleRpr)
-    //   2. paragraph style's rPr      (already in styleRpr — basedOn flattened)
-    //   3. default character style    (the style marked w:default="1")
-    //   4. paragraph-level rPr        (from <w:pPr><w:rPr>)
-    // The character-style step on the run itself (w:rStyle) applies later in
-    // the per-run conversion. Without merging the default character style
-    // here, runs without an explicit <w:rStyle> never see properties set on
-    // it (e.g. "Default Paragraph Font" / "FontePadrao" font overrides).
-    const defaultCharStyleRpr = styleResolver.getDefaultCharacterStyle()?.rPr;
-    const styleRprWithDefaultChar = defaultCharStyleRpr
-      ? mergeTextFormatting(styleRpr, defaultCharStyleRpr)
-      : styleRpr;
-    const resolvedRunProps = resolveTextFormatting(formatting?.runProperties, styleResolver);
-    attrs.defaultTextFormatting = mergeTextFormatting(styleRprWithDefaultChar, resolvedRunProps);
+		// Default run properties for runs in this paragraph that don't carry
+		// explicit marks. ECMA-376 §17.7.4.18 + §17.3.2 cascade for run
+		// formatting:
+		//   1. docDefaults.rPr            (already in styleRpr)
+		//   2. paragraph style's rPr      (already in styleRpr — basedOn flattened)
+		//   3. default character style    (the style marked w:default="1")
+		//   4. paragraph-level rPr        (from <w:pPr><w:rPr>)
+		// The character-style step on the run itself (w:rStyle) applies later in
+		// the per-run conversion. Without merging the default character style
+		// here, runs without an explicit <w:rStyle> never see properties set on
+		// it (e.g. "Default Paragraph Font" / "FontePadrao" font overrides).
+		const defaultCharStyleRpr = styleResolver.getDefaultCharacterStyle()?.rPr;
+		const styleRprWithDefaultChar = defaultCharStyleRpr
+			? mergeTextFormatting(styleRpr, defaultCharStyleRpr)
+			: styleRpr;
+		const resolvedRunProps = resolveTextFormatting(
+			formatting?.runProperties,
+			styleResolver,
+		);
+		attrs.defaultTextFormatting = mergeTextFormatting(
+			styleRprWithDefaultChar,
+			resolvedRunProps,
+		);
 
-    // If style defines numPr but inline doesn't, use style's numPr
-    // numId === 0 means "no numbering" per OOXML spec — skip it
-    if (!formatting?.numPr && stylePpr?.numPr && stylePpr.numPr.numId !== 0) {
-      attrs.numPr = stylePpr.numPr;
-    }
-  } else {
-    // No style resolver - use inline formatting only
-    attrs.alignment = formatting?.alignment;
-    attrs.spaceBefore = formatting?.spaceBefore;
-    attrs.spaceAfter = formatting?.spaceAfter;
-    attrs.lineSpacing = formatting?.lineSpacing;
-    attrs.lineSpacingRule = formatting?.lineSpacingRule;
-    if (formatting?.spacingExplicit) attrs.spacingExplicit = formatting.spacingExplicit;
-    attrs.indentLeft = formatting?.indentLeft;
-    attrs.indentRight = formatting?.indentRight;
-    attrs.indentFirstLine = formatting?.indentFirstLine;
-    attrs.hangingIndent = formatting?.hangingIndent;
-    attrs.borders = formatting?.borders;
-    attrs.shading = formatting?.shading;
-    attrs.tabs = formatting?.tabs;
+		// If style defines numPr but inline doesn't, use style's numPr
+		// numId === 0 means "no numbering" per OOXML spec — skip it
+		if (!formatting?.numPr && stylePpr?.numPr && stylePpr.numPr.numId !== 0) {
+			attrs.numPr = stylePpr.numPr;
+		}
+	} else {
+		// No style resolver - use inline formatting only
+		attrs.alignment = formatting?.alignment;
+		attrs.spaceBefore = formatting?.spaceBefore;
+		attrs.spaceAfter = formatting?.spaceAfter;
+		attrs.lineSpacing = formatting?.lineSpacing;
+		attrs.lineSpacingRule = formatting?.lineSpacingRule;
+		if (formatting?.spacingExplicit)
+			attrs.spacingExplicit = formatting.spacingExplicit;
+		attrs.indentLeft = formatting?.indentLeft;
+		attrs.indentRight = formatting?.indentRight;
+		attrs.indentFirstLine = formatting?.indentFirstLine;
+		attrs.hangingIndent = formatting?.hangingIndent;
+		attrs.borders = formatting?.borders;
+		attrs.shading = formatting?.shading;
+		attrs.tabs = formatting?.tabs;
 
-    // Page break control
-    attrs.pageBreakBefore = formatting?.pageBreakBefore;
-    attrs.keepNext = formatting?.keepNext;
-    attrs.keepLines = formatting?.keepLines;
+		// Page break control
+		attrs.pageBreakBefore = formatting?.pageBreakBefore;
+		attrs.keepNext = formatting?.keepNext;
+		attrs.keepLines = formatting?.keepLines;
 
-    // Outline level
-    attrs.outlineLevel = formatting?.outlineLevel;
+		// Outline level
+		attrs.outlineLevel = formatting?.outlineLevel;
 
-    // Text direction
-    attrs.bidi = formatting?.bidi;
+		// Text direction
+		attrs.bidi = formatting?.bidi;
 
-    // Default run properties (pPr/rPr)
-    attrs.defaultTextFormatting = resolveTextFormatting(formatting?.runProperties, styleResolver);
-  }
+		// Default run properties (pPr/rPr)
+		attrs.defaultTextFormatting = resolveTextFormatting(
+			formatting?.runProperties,
+			styleResolver,
+		);
+	}
 
-  // Section break type and full section properties for layout + round-trip
-  if (paragraph.sectionProperties) {
-    attrs._sectionProperties = paragraph.sectionProperties;
-    const st = paragraph.sectionProperties.sectionStart;
-    if (st === 'nextPage' || st === 'continuous' || st === 'oddPage' || st === 'evenPage') {
-      attrs.sectionBreakType = st;
-    }
-  }
-  if (paragraph.renderedPageBreakBefore) {
-    attrs.renderedPageBreakBefore = true;
-  }
+	// Section break type and full section properties for layout + round-trip
+	if (paragraph.sectionProperties) {
+		attrs._sectionProperties = paragraph.sectionProperties;
+		const st = paragraph.sectionProperties.sectionStart;
+		if (
+			st === "nextPage" ||
+			st === "continuous" ||
+			st === "oddPage" ||
+			st === "evenPage"
+		) {
+			attrs.sectionBreakType = st;
+		}
+	}
+	if (paragraph.renderedPageBreakBefore) {
+		attrs.renderedPageBreakBefore = true;
+	}
 
-  return attrs;
+	return attrs;
 }
 
 // ============================================================================
@@ -451,90 +502,93 @@ function paragraphFormattingToAttrs(
  * Resolve table style conditional formatting
  */
 function resolveTableStyleConditional(
-  styleResolver: StyleResolver | null,
-  tableStyleId: string | undefined,
-  conditionType: string
+	styleResolver: StyleResolver | null,
+	tableStyleId: string | undefined,
+	conditionType: string,
 ): { tcPr?: TableCellFormatting; rPr?: TextFormatting } | undefined {
-  if (!styleResolver || !tableStyleId) return undefined;
+	if (!styleResolver || !tableStyleId) return undefined;
 
-  const style = styleResolver.getStyle(tableStyleId);
-  if (!style?.tblStylePr) return undefined;
+	const style = styleResolver.getStyle(tableStyleId);
+	if (!style?.tblStylePr) return undefined;
 
-  const conditional = style.tblStylePr.find((p) => p.type === conditionType);
-  if (!conditional) return undefined;
+	const conditional = style.tblStylePr.find((p) => p.type === conditionType);
+	if (!conditional) return undefined;
 
-  const runPropsFromPpr = resolveTextFormatting(conditional.pPr?.runProperties, styleResolver);
-  const resolvedRpr = resolveTextFormatting(conditional.rPr, styleResolver);
-  const mergedRunProps = mergeTextFormatting(runPropsFromPpr, resolvedRpr);
+	const runPropsFromPpr = resolveTextFormatting(
+		conditional.pPr?.runProperties,
+		styleResolver,
+	);
+	const resolvedRpr = resolveTextFormatting(conditional.rPr, styleResolver);
+	const mergedRunProps = mergeTextFormatting(runPropsFromPpr, resolvedRpr);
 
-  return {
-    tcPr: conditional.tcPr,
-    rPr: mergedRunProps,
-  };
+	return {
+		tcPr: conditional.tcPr,
+		rPr: mergedRunProps,
+	};
 }
 
 function mergeConditionalStyles(
-  base?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
-  override?: { tcPr?: TableCellFormatting; rPr?: TextFormatting }
+	base?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
+	override?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
 ): { tcPr?: TableCellFormatting; rPr?: TextFormatting } | undefined {
-  if (!base && !override) return undefined;
-  if (!base) return override;
-  if (!override) return base;
+	if (!base && !override) return undefined;
+	if (!base) return override;
+	if (!override) return base;
 
-  const merged: { tcPr?: TableCellFormatting; rPr?: TextFormatting } = {};
+	const merged: { tcPr?: TableCellFormatting; rPr?: TextFormatting } = {};
 
-  const baseTcPr = base.tcPr;
-  const overrideTcPr = override.tcPr;
-  if (baseTcPr || overrideTcPr) {
-    const tcPr: TableCellFormatting = {
-      ...(baseTcPr ?? {}),
-      ...(overrideTcPr ?? {}),
-    };
+	const baseTcPr = base.tcPr;
+	const overrideTcPr = override.tcPr;
+	if (baseTcPr || overrideTcPr) {
+		const tcPr: TableCellFormatting = {
+			...(baseTcPr ?? {}),
+			...(overrideTcPr ?? {}),
+		};
 
-    if (baseTcPr?.borders || overrideTcPr?.borders) {
-      tcPr.borders = {
-        ...(baseTcPr?.borders ?? {}),
-        ...(overrideTcPr?.borders ?? {}),
-      };
-    }
+		if (baseTcPr?.borders || overrideTcPr?.borders) {
+			tcPr.borders = {
+				...(baseTcPr?.borders ?? {}),
+				...(overrideTcPr?.borders ?? {}),
+			};
+		}
 
-    if (baseTcPr?.shading || overrideTcPr?.shading) {
-      tcPr.shading = {
-        ...(baseTcPr?.shading ?? {}),
-        ...(overrideTcPr?.shading ?? {}),
-      };
-    }
+		if (baseTcPr?.shading || overrideTcPr?.shading) {
+			tcPr.shading = {
+				...(baseTcPr?.shading ?? {}),
+				...(overrideTcPr?.shading ?? {}),
+			};
+		}
 
-    if (baseTcPr?.margins || overrideTcPr?.margins) {
-      tcPr.margins = {
-        ...(baseTcPr?.margins ?? {}),
-        ...(overrideTcPr?.margins ?? {}),
-      };
-    }
+		if (baseTcPr?.margins || overrideTcPr?.margins) {
+			tcPr.margins = {
+				...(baseTcPr?.margins ?? {}),
+				...(overrideTcPr?.margins ?? {}),
+			};
+		}
 
-    merged.tcPr = tcPr;
-  }
+		merged.tcPr = tcPr;
+	}
 
-  merged.rPr = mergeTextFormatting(base.rPr, override.rPr);
+	merged.rPr = mergeTextFormatting(base.rPr, override.rPr);
 
-  return merged;
+	return merged;
 }
 
 function resolveTextFormatting(
-  formatting: TextFormatting | undefined,
-  styleResolver: StyleResolver | null
+	formatting: TextFormatting | undefined,
+	styleResolver: StyleResolver | null,
 ): TextFormatting | undefined {
-  if (!formatting) return undefined;
-  if (!styleResolver) return formatting;
+	if (!formatting) return undefined;
+	if (!styleResolver) return formatting;
 
-  // Even when the run has no explicit <w:rStyle>, OOXML §17.7.4.18 says it
-  // still inherits from the default character style. resolveRunStyle(undef)
-  // returns docDefaults.rPr merged with the default character style's rPr —
-  // pre-PR we skipped this path entirely for runs without a styleId, losing
-  // any property the default character style sets.
-  const styleFormatting = styleResolver.resolveRunStyle(formatting.styleId);
-  if (!styleFormatting) return formatting;
-  return mergeTextFormatting(styleFormatting, formatting);
+	// Even when the run has no explicit <w:rStyle>, OOXML §17.7.4.18 says it
+	// still inherits from the default character style. resolveRunStyle(undef)
+	// returns docDefaults.rPr merged with the default character style's rPr —
+	// pre-PR we skipped this path entirely for runs without a styleId, losing
+	// any property the default character style sets.
+	const styleFormatting = styleResolver.resolveRunStyle(formatting.styleId);
+	if (!styleFormatting) return formatting;
+	return mergeTextFormatting(styleFormatting, formatting);
 }
 
 /**
@@ -549,440 +603,521 @@ function resolveTextFormatting(
  * OOXML uses vMerge="restart" to start a vertical merge and vMerge="continue" for cells that should be merged.
  * This function converts that to rowSpan values and marks which cells should be skipped.
  */
-function calculateRowSpans(table: Table): Map<string, { rowSpan: number; skip: boolean }> {
-  const result = new Map<string, { rowSpan: number; skip: boolean }>();
-  const numRows = table.rows.length;
+function calculateRowSpans(
+	table: Table,
+): Map<string, { rowSpan: number; skip: boolean }> {
+	const result = new Map<string, { rowSpan: number; skip: boolean }>();
+	const numRows = table.rows.length;
 
-  // Track active vertical merges per column (stores the row index where merge started)
-  const activeMerges = new Map<number, number>();
+	// Track active vertical merges per column (stores the row index where merge started)
+	const activeMerges = new Map<number, number>();
 
-  // Process each row
-  for (let rowIndex = 0; rowIndex < numRows; rowIndex++) {
-    const row = table.rows[rowIndex];
-    let colIndex = 0;
+	// Process each row
+	for (let rowIndex = 0; rowIndex < numRows; rowIndex++) {
+		const row = table.rows[rowIndex];
+		let colIndex = 0;
 
-    for (let cellIndex = 0; cellIndex < row.cells.length; cellIndex++) {
-      const cell = row.cells[cellIndex];
-      const colspan = cell.formatting?.gridSpan ?? 1;
-      const vMerge = cell.formatting?.vMerge;
-      const key = `${rowIndex}-${colIndex}`;
+		for (let cellIndex = 0; cellIndex < row.cells.length; cellIndex++) {
+			const cell = row.cells[cellIndex];
+			const colspan = cell.formatting?.gridSpan ?? 1;
+			const vMerge = cell.formatting?.vMerge;
+			const key = `${rowIndex}-${colIndex}`;
 
-      if (vMerge === 'restart') {
-        // Start of a new vertical merge
-        activeMerges.set(colIndex, rowIndex);
-        result.set(key, { rowSpan: 1, skip: false });
-      } else if (vMerge === 'continue') {
-        // Continuation of a merge - this cell should be skipped
-        const startRow = activeMerges.get(colIndex);
-        if (startRow !== undefined) {
-          // Increment rowSpan of the starting cell
-          const startKey = `${startRow}-${colIndex}`;
-          const startCell = result.get(startKey);
-          if (startCell) {
-            startCell.rowSpan++;
-          }
-        }
-        result.set(key, { rowSpan: 1, skip: true });
-      } else {
-        // No vMerge - clear any active merge for this column
-        activeMerges.delete(colIndex);
-        result.set(key, { rowSpan: 1, skip: false });
-      }
+			if (vMerge === "restart") {
+				// Start of a new vertical merge
+				activeMerges.set(colIndex, rowIndex);
+				result.set(key, { rowSpan: 1, skip: false });
+			} else if (vMerge === "continue") {
+				// Continuation of a merge - this cell should be skipped
+				const startRow = activeMerges.get(colIndex);
+				if (startRow !== undefined) {
+					// Increment rowSpan of the starting cell
+					const startKey = `${startRow}-${colIndex}`;
+					const startCell = result.get(startKey);
+					if (startCell) {
+						startCell.rowSpan++;
+					}
+				}
+				result.set(key, { rowSpan: 1, skip: true });
+			} else {
+				// No vMerge - clear any active merge for this column
+				activeMerges.delete(colIndex);
+				result.set(key, { rowSpan: 1, skip: false });
+			}
 
-      colIndex += colspan;
-    }
-  }
+			colIndex += colspan;
+		}
+	}
 
-  return result;
+	return result;
 }
 
 function convertTable(
-  table: Table,
-  styleResolver: StyleResolver | null,
-  theme?: Theme | null
+	table: Table,
+	styleResolver: StyleResolver | null,
+	theme?: Theme | null,
 ): PMNode {
-  // Calculate rowSpan values from vMerge
-  const rowSpanMap = calculateRowSpans(table);
+	// Calculate rowSpan values from vMerge
+	const rowSpanMap = calculateRowSpans(table);
 
-  // Get column widths from table grid
-  const columnWidths = table.columnWidths;
+	// Get column widths from table grid
+	const columnWidths = table.columnWidths;
 
-  // Calculate total width from columnWidths if available (for percentage calculation)
-  const totalWidth = columnWidths?.reduce((sum, w) => sum + w, 0) ?? 0;
+	// Calculate total width from columnWidths if available (for percentage calculation)
+	const totalWidth = columnWidths?.reduce((sum, w) => sum + w, 0) ?? 0;
 
-  // Get the table style's conditional formatting
-  const tableStyleId = table.formatting?.styleId;
-  const look = table.formatting?.look;
+	// Get the table style's conditional formatting
+	const tableStyleId = table.formatting?.styleId;
+	const look = table.formatting?.look;
 
-  // Resolve table borders via the OOXML cascade (§17.4.41 + §17.7.4.18):
-  //   1. inline w:tblBorders on the table
-  //   2. table style's tblPr.borders (basedOn chain already flattened)
-  //   3. default table style's tblPr.borders (the style marked w:default="1")
-  // Pre-PR, when no tblStyle was set we hardcoded a lookup of styleId
-  // "TableGrid" — fragile for non-Word generators (which may not ship that
-  // style) and incorrect for docs whose default table style differs from
-  // TableGrid. Walking through the parsed default flag matches spec and
-  // works for any document language ("Normal Table", "TableNormal", etc.).
-  const tableStyle = tableStyleId ? styleResolver?.getStyle(tableStyleId) : undefined;
-  const defaultTableStyle = styleResolver?.getDefaultTableStyle();
-  const resolvedTableBorders =
-    table.formatting?.borders ?? tableStyle?.tblPr?.borders ?? defaultTableStyle?.tblPr?.borders;
+	// Resolve table borders via the OOXML cascade (§17.4.41 + §17.7.4.18):
+	//   1. inline w:tblBorders on the table
+	//   2. table style's tblPr.borders (basedOn chain already flattened)
+	//   3. default table style's tblPr.borders (the style marked w:default="1")
+	// Pre-PR, when no tblStyle was set we hardcoded a lookup of styleId
+	// "TableGrid" — fragile for non-Word generators (which may not ship that
+	// style) and incorrect for docs whose default table style differs from
+	// TableGrid. Walking through the parsed default flag matches spec and
+	// works for any document language ("Normal Table", "TableNormal", etc.).
+	const tableStyle = tableStyleId
+		? styleResolver?.getStyle(tableStyleId)
+		: undefined;
+	const defaultTableStyle = styleResolver?.getDefaultTableStyle();
+	const resolvedTableBorders =
+		table.formatting?.borders ??
+		tableStyle?.tblPr?.borders ??
+		defaultTableStyle?.tblPr?.borders;
 
-  // Resolve default cell margins via the same cascade as borders. Tables
-  // that don't carry a tblStyle reference still inherit cellMargins from the
-  // default table style per §17.4.41 + §17.7.4.18; pre-PR such tables had
-  // no cellMargins at all and the layout-bridge fell back to a hardcoded
-  // 7 px. `defaultTableStyle` is shared with the borders cascade above.
-  const tableCellMargins =
-    table.formatting?.cellMargins ??
-    tableStyle?.tblPr?.cellMargins ??
-    defaultTableStyle?.tblPr?.cellMargins ??
-    undefined;
-  const cellMarginsAttr = tableCellMargins
-    ? {
-        top: tableCellMargins.top?.value,
-        bottom: tableCellMargins.bottom?.value,
-        left: tableCellMargins.left?.value,
-        right: tableCellMargins.right?.value,
-      }
-    : undefined;
+	// Resolve default cell margins via the same cascade as borders. Tables
+	// that don't carry a tblStyle reference still inherit cellMargins from the
+	// default table style per §17.4.41 + §17.7.4.18; pre-PR such tables had
+	// no cellMargins at all and the layout-bridge fell back to a hardcoded
+	// 7 px. `defaultTableStyle` is shared with the borders cascade above.
+	const tableCellMargins =
+		table.formatting?.cellMargins ??
+		tableStyle?.tblPr?.cellMargins ??
+		defaultTableStyle?.tblPr?.cellMargins ??
+		undefined;
+	const cellMarginsAttr = tableCellMargins
+		? {
+				top: tableCellMargins.top?.value,
+				bottom: tableCellMargins.bottom?.value,
+				left: tableCellMargins.left?.value,
+				right: tableCellMargins.right?.value,
+			}
+		: undefined;
 
-  // Render-only resolved margins. The `cellMargins` attr above stays the
-  // verbatim inline <w:tblCellMar> so round-trip serialization re-emits
-  // exactly what the source had. But the cascade is PER-SIDE for LAYOUT:
-  // a table whose inline tblCellMar specifies only top/bottom (a common
-  // authoring pattern, e.g. medical-incident-form) must still inherit
-  // left/right from the table style / default table style — Word does NOT
-  // treat the unspecified sides as zero. We resolve each side independently
-  // here and stash it in a non-serialized attr the layout bridge prefers;
-  // this is what keeps the label column's left text inset (~108 twips)
-  // matching LibreOffice instead of letting text run to the cell edge
-  // (wider text area → drifted wrap points → taller rows → page drift).
-  const cellMarginSources = [
-    table.formatting?.cellMargins,
-    tableStyle?.tblPr?.cellMargins,
-    defaultTableStyle?.tblPr?.cellMargins,
-  ];
-  const resolveCellMarginSide = (side: 'top' | 'bottom' | 'left' | 'right') => {
-    for (const source of cellMarginSources) {
-      const measurement = source?.[side];
-      if (measurement?.value != null) return measurement.value;
-    }
-    return undefined;
-  };
-  const resolvedCellMarginsAttr = cellMarginSources.some((source) => source != null)
-    ? {
-        top: resolveCellMarginSide('top'),
-        bottom: resolveCellMarginSide('bottom'),
-        left: resolveCellMarginSide('left'),
-        right: resolveCellMarginSide('right'),
-      }
-    : undefined;
+	// Render-only resolved margins. The `cellMargins` attr above stays the
+	// verbatim inline <w:tblCellMar> so round-trip serialization re-emits
+	// exactly what the source had. But the cascade is PER-SIDE for LAYOUT:
+	// a table whose inline tblCellMar specifies only top/bottom (a common
+	// authoring pattern, e.g. medical-incident-form) must still inherit
+	// left/right from the table style / default table style — Word does NOT
+	// treat the unspecified sides as zero. We resolve each side independently
+	// here and stash it in a non-serialized attr the layout bridge prefers;
+	// this is what keeps the label column's left text inset (~108 twips)
+	// matching LibreOffice instead of letting text run to the cell edge
+	// (wider text area → drifted wrap points → taller rows → page drift).
+	const cellMarginSources = [
+		table.formatting?.cellMargins,
+		tableStyle?.tblPr?.cellMargins,
+		defaultTableStyle?.tblPr?.cellMargins,
+	];
+	const resolveCellMarginSide = (side: "top" | "bottom" | "left" | "right") => {
+		for (const source of cellMarginSources) {
+			const measurement = source?.[side];
+			if (measurement?.value != null) return measurement.value;
+		}
+		return undefined;
+	};
+	const resolvedCellMarginsAttr = cellMarginSources.some(
+		(source) => source != null,
+	)
+		? {
+				top: resolveCellMarginSide("top"),
+				bottom: resolveCellMarginSide("bottom"),
+				left: resolveCellMarginSide("left"),
+				right: resolveCellMarginSide("right"),
+			}
+		: undefined;
 
-  const attrs: TableAttrs = {
-    styleId: table.formatting?.styleId,
-    width: table.formatting?.width?.value,
-    widthType: table.formatting?.width?.type,
-    justification: table.formatting?.justification,
-    columnWidths: columnWidths,
-    floating: table.formatting?.floating,
-    cellMargins: cellMarginsAttr,
-    resolvedCellMargins: resolvedCellMarginsAttr,
-    look: table.formatting?.look,
-    _originalFormatting: table.formatting || undefined,
-  };
+	const attrs: TableAttrs = {
+		styleId: table.formatting?.styleId,
+		width: table.formatting?.width?.value,
+		widthType: table.formatting?.width?.type,
+		justification: table.formatting?.justification,
+		columnWidths: columnWidths,
+		floating: table.formatting?.floating,
+		cellMargins: cellMarginsAttr,
+		resolvedCellMargins: resolvedCellMarginsAttr,
+		look: table.formatting?.look,
+		_originalFormatting: table.formatting || undefined,
+	};
 
-  const conditionalStyles = {
-    wholeTable: resolveTableStyleConditional(styleResolver, tableStyleId, 'wholeTable'),
-    firstRow: resolveTableStyleConditional(styleResolver, tableStyleId, 'firstRow'),
-    lastRow: resolveTableStyleConditional(styleResolver, tableStyleId, 'lastRow'),
-    firstCol: resolveTableStyleConditional(styleResolver, tableStyleId, 'firstCol'),
-    lastCol: resolveTableStyleConditional(styleResolver, tableStyleId, 'lastCol'),
-    band1Horz: resolveTableStyleConditional(styleResolver, tableStyleId, 'band1Horz'),
-    band2Horz: resolveTableStyleConditional(styleResolver, tableStyleId, 'band2Horz'),
-    band1Vert: resolveTableStyleConditional(styleResolver, tableStyleId, 'band1Vert'),
-    band2Vert: resolveTableStyleConditional(styleResolver, tableStyleId, 'band2Vert'),
-    nwCell: resolveTableStyleConditional(styleResolver, tableStyleId, 'nwCell'),
-    neCell: resolveTableStyleConditional(styleResolver, tableStyleId, 'neCell'),
-    swCell: resolveTableStyleConditional(styleResolver, tableStyleId, 'swCell'),
-    seCell: resolveTableStyleConditional(styleResolver, tableStyleId, 'seCell'),
-  };
+	const conditionalStyles = {
+		wholeTable: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"wholeTable",
+		),
+		firstRow: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"firstRow",
+		),
+		lastRow: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"lastRow",
+		),
+		firstCol: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"firstCol",
+		),
+		lastCol: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"lastCol",
+		),
+		band1Horz: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"band1Horz",
+		),
+		band2Horz: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"band2Horz",
+		),
+		band1Vert: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"band1Vert",
+		),
+		band2Vert: resolveTableStyleConditional(
+			styleResolver,
+			tableStyleId,
+			"band2Vert",
+		),
+		nwCell: resolveTableStyleConditional(styleResolver, tableStyleId, "nwCell"),
+		neCell: resolveTableStyleConditional(styleResolver, tableStyleId, "neCell"),
+		swCell: resolveTableStyleConditional(styleResolver, tableStyleId, "swCell"),
+		seCell: resolveTableStyleConditional(styleResolver, tableStyleId, "seCell"),
+	};
 
-  const bandingEnabledH = look?.noHBand !== true;
-  const bandingEnabledV = look?.noVBand !== true;
+	const bandingEnabledH = look?.noHBand !== true;
+	const bandingEnabledV = look?.noVBand !== true;
 
-  // Track data row index (excluding header rows) for banding
-  let dataRowIndex = 0;
-  const totalRows = table.rows.length;
-  const totalColumns =
-    columnWidths?.length ??
-    Math.max(
-      0,
-      ...table.rows.map((row) =>
-        row.cells.reduce((sum, cell) => sum + (cell.formatting?.gridSpan ?? 1), 0)
-      )
-    );
-  const rows = table.rows.map((row, rowIndex) => {
-    // Conditional formatting flag: firstRow in tblLook means "apply first-row styling"
-    const isFirstRowStyled = rowIndex === 0 && !!look?.firstRow;
-    const isLastRow = rowIndex === totalRows - 1 && !!look?.lastRow;
+	// Track data row index (excluding header rows) for banding
+	let dataRowIndex = 0;
+	const totalRows = table.rows.length;
+	const totalColumns =
+		columnWidths?.length ??
+		Math.max(
+			0,
+			...table.rows.map((row) =>
+				row.cells.reduce(
+					(sum, cell) => sum + (cell.formatting?.gridSpan ?? 1),
+					0,
+				),
+			),
+		);
+	const rows = table.rows.map((row, rowIndex) => {
+		// Conditional formatting flag: firstRow in tblLook means "apply first-row styling"
+		const isFirstRowStyled = rowIndex === 0 && !!look?.firstRow;
+		const isLastRow = rowIndex === totalRows - 1 && !!look?.lastRow;
 
-    const rowBandStyle =
-      bandingEnabledH && !isFirstRowStyled && !isLastRow
-        ? dataRowIndex % 2 === 0
-          ? conditionalStyles.band1Horz
-          : conditionalStyles.band2Horz
-        : undefined;
-    if (bandingEnabledH && !isFirstRowStyled && !isLastRow) {
-      dataRowIndex++;
-    }
+		const rowBandStyle =
+			bandingEnabledH && !isFirstRowStyled && !isLastRow
+				? dataRowIndex % 2 === 0
+					? conditionalStyles.band1Horz
+					: conditionalStyles.band2Horz
+				: undefined;
+		if (bandingEnabledH && !isFirstRowStyled && !isLastRow) {
+			dataRowIndex++;
+		}
 
-    return convertTableRow(
-      row,
-      styleResolver,
-      isFirstRowStyled,
-      columnWidths,
-      totalWidth,
-      conditionalStyles,
-      rowBandStyle,
-      bandingEnabledV,
-      look,
-      resolvedTableBorders, // Pass resolved table borders (own or from style)
-      rowIndex,
-      totalRows,
-      totalColumns,
-      rowSpanMap,
-      cellMarginsAttr,
-      theme
-    );
-  });
+		return convertTableRow(
+			row,
+			styleResolver,
+			isFirstRowStyled,
+			columnWidths,
+			totalWidth,
+			conditionalStyles,
+			rowBandStyle,
+			bandingEnabledV,
+			look,
+			resolvedTableBorders, // Pass resolved table borders (own or from style)
+			rowIndex,
+			totalRows,
+			totalColumns,
+			rowSpanMap,
+			cellMarginsAttr,
+			theme,
+		);
+	});
 
-  return schema.node('table', attrs, rows);
+	return schema.node("table", attrs, rows);
 }
 
 /**
  * Convert a TableRow to a ProseMirror table row node
  */
 function convertTableRow(
-  row: TableRow,
-  styleResolver: StyleResolver | null,
-  isHeaderRow: boolean,
-  columnWidths?: number[],
-  totalWidth?: number,
-  conditionalStyles?: {
-    wholeTable?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    firstRow?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    lastRow?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    firstCol?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    lastCol?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    band1Horz?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    band2Horz?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    band1Vert?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    band2Vert?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    nwCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    neCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    swCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-    seCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
-  },
-  rowBandStyle?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
-  bandingEnabledV?: boolean,
-  tableLook?: TableLook,
-  tableBorders?: TableBorders,
-  rowIndex?: number,
-  totalRows?: number,
-  totalColumns?: number,
-  rowSpanMap?: Map<string, { rowSpan: number; skip: boolean }>,
-  defaultCellMargins?: { top?: number; bottom?: number; left?: number; right?: number },
-  theme?: Theme | null
+	row: TableRow,
+	styleResolver: StyleResolver | null,
+	isHeaderRow: boolean,
+	columnWidths?: number[],
+	totalWidth?: number,
+	conditionalStyles?: {
+		wholeTable?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		firstRow?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		lastRow?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		firstCol?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		lastCol?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		band1Horz?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		band2Horz?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		band1Vert?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		band2Vert?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		nwCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		neCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		swCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+		seCell?: { tcPr?: TableCellFormatting; rPr?: TextFormatting };
+	},
+	rowBandStyle?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
+	bandingEnabledV?: boolean,
+	tableLook?: TableLook,
+	tableBorders?: TableBorders,
+	rowIndex?: number,
+	totalRows?: number,
+	totalColumns?: number,
+	rowSpanMap?: Map<string, { rowSpan: number; skip: boolean }>,
+	defaultCellMargins?: {
+		top?: number;
+		bottom?: number;
+		left?: number;
+		right?: number;
+	},
+	theme?: Theme | null,
 ): PMNode {
-  const attrs: TableRowAttrs = {
-    height: row.formatting?.height?.value,
-    heightRule: row.formatting?.heightRule,
-    // isHeader controls header row REPETITION on page breaks.
-    // Only w:tblHeader (row.formatting.header) should trigger this — NOT tblLook/firstRow
-    // which is purely a conditional formatting flag (ECMA-376 §17.7.6.1).
-    isHeader: !!row.formatting?.header,
-    _originalFormatting: row.formatting || undefined,
-  };
+	const attrs: TableRowAttrs = {
+		height: row.formatting?.height?.value,
+		heightRule: row.formatting?.heightRule,
+		// isHeader controls header row REPETITION on page breaks.
+		// Only w:tblHeader (row.formatting.header) should trigger this — NOT tblLook/firstRow
+		// which is purely a conditional formatting flag (ECMA-376 §17.7.6.1).
+		isHeader: !!row.formatting?.header,
+		_originalFormatting: row.formatting || undefined,
+	};
 
-  const numCells = row.cells.length;
-  const isFirstRow = rowIndex === 0;
-  const isLastRow = rowIndex === (totalRows ?? 1) - 1;
-  const rowCnf = row.formatting?.conditionalFormat;
-  const rowIsFirstRow = rowCnf?.firstRow ?? isFirstRow;
-  const rowIsLastRow = rowCnf?.lastRow ?? isLastRow;
-  const totalCols = totalColumns ?? numCells;
+	const numCells = row.cells.length;
+	const isFirstRow = rowIndex === 0;
+	const isLastRow = rowIndex === (totalRows ?? 1) - 1;
+	const rowCnf = row.formatting?.conditionalFormat;
+	const rowIsFirstRow = rowCnf?.firstRow ?? isFirstRow;
+	const rowIsLastRow = rowCnf?.lastRow ?? isLastRow;
+	const totalCols = totalColumns ?? numCells;
 
-  // Track column index for mapping to columnWidths (accounting for colspan)
-  let colIndex = 0;
-  const cells: PMNode[] = [];
+	// Track column index for mapping to columnWidths (accounting for colspan)
+	let colIndex = 0;
+	const cells: PMNode[] = [];
 
-  for (let cellIndex = 0; cellIndex < row.cells.length; cellIndex++) {
-    const cell = row.cells[cellIndex];
-    const colspan = cell.formatting?.gridSpan ?? 1;
+	for (let cellIndex = 0; cellIndex < row.cells.length; cellIndex++) {
+		const cell = row.cells[cellIndex];
+		const colspan = cell.formatting?.gridSpan ?? 1;
 
-    // Check if this cell should be skipped (it's a vMerge continue cell)
-    const rowSpanKey = `${rowIndex ?? 0}-${colIndex}`;
-    const rowSpanInfo = rowSpanMap?.get(rowSpanKey);
-    const shouldSkip = rowSpanInfo?.skip ?? false;
-    const calculatedRowSpan = rowSpanInfo?.rowSpan ?? 1;
+		// Check if this cell should be skipped (it's a vMerge continue cell)
+		const rowSpanKey = `${rowIndex ?? 0}-${colIndex}`;
+		const rowSpanInfo = rowSpanMap?.get(rowSpanKey);
+		const shouldSkip = rowSpanInfo?.skip ?? false;
+		const calculatedRowSpan = rowSpanInfo?.rowSpan ?? 1;
 
-    // Calculate the width for this cell from columnWidths if cell doesn't have own width
-    let gridWidth: number | undefined;
-    if (columnWidths && totalWidth && totalWidth > 0) {
-      // Sum widths for all columns this cell spans
-      let cellWidthTwips = 0;
-      for (let i = 0; i < colspan && colIndex + i < columnWidths.length; i++) {
-        cellWidthTwips += columnWidths[colIndex + i];
-      }
-      // Convert to percentage of total table width
-      gridWidth = Math.round((cellWidthTwips / totalWidth) * 100);
-    }
-    colIndex += colspan;
+		// Calculate the width for this cell from columnWidths if cell doesn't have own width
+		let gridWidth: number | undefined;
+		if (columnWidths && totalWidth && totalWidth > 0) {
+			// Sum widths for all columns this cell spans
+			let cellWidthTwips = 0;
+			for (let i = 0; i < colspan && colIndex + i < columnWidths.length; i++) {
+				cellWidthTwips += columnWidths[colIndex + i];
+			}
+			// Convert to percentage of total table width
+			gridWidth = Math.round((cellWidthTwips / totalWidth) * 100);
+		}
+		colIndex += colspan;
 
-    // Skip cells that are part of a vertical merge (vMerge="continue")
-    if (shouldSkip) {
-      continue;
-    }
+		// Skip cells that are part of a vertical merge (vMerge="continue")
+		if (shouldSkip) {
+			continue;
+		}
 
-    // Determine cell position for table border application
-    const isFirstCol = colIndex - colspan === 0;
-    const isLastCol = colIndex === totalCols;
-    const cellCnf = cell.formatting?.conditionalFormat;
-    const cellIsFirstRow = cellCnf?.firstRow ?? rowIsFirstRow;
-    const cellIsLastRow = cellCnf?.lastRow ?? rowIsLastRow;
-    const cellIsFirstCol = cellCnf?.firstColumn ?? isFirstCol;
-    const cellIsLastCol = cellCnf?.lastColumn ?? isLastCol;
+		// Determine cell position for table border application
+		const isFirstCol = colIndex - colspan === 0;
+		const isLastCol = colIndex === totalCols;
+		const cellCnf = cell.formatting?.conditionalFormat;
+		const cellIsFirstRow = cellCnf?.firstRow ?? rowIsFirstRow;
+		const cellIsLastRow = cellCnf?.lastRow ?? rowIsLastRow;
+		const cellIsFirstCol = cellCnf?.firstColumn ?? isFirstCol;
+		const cellIsLastCol = cellCnf?.lastColumn ?? isLastCol;
 
-    // Determine vertical banding style based on column index
-    let vertBandStyle: { tcPr?: TableCellFormatting; rPr?: TextFormatting } | undefined;
-    if (bandingEnabledV) {
-      const firstColOffset = tableLook?.firstColumn ? 1 : 0;
-      const bandColIndex = colIndex - colspan - firstColOffset;
-      const isEligible =
-        bandColIndex >= 0 &&
-        !(tableLook?.lastColumn && cellIsLastCol) &&
-        !(tableLook?.firstColumn && cellIsFirstCol);
-      if (isEligible) {
-        vertBandStyle =
-          bandColIndex % 2 === 0 ? conditionalStyles?.band1Vert : conditionalStyles?.band2Vert;
-      }
-    }
+		// Determine vertical banding style based on column index
+		let vertBandStyle:
+			| { tcPr?: TableCellFormatting; rPr?: TextFormatting }
+			| undefined;
+		if (bandingEnabledV) {
+			const firstColOffset = tableLook?.firstColumn ? 1 : 0;
+			const bandColIndex = colIndex - colspan - firstColOffset;
+			const isEligible =
+				bandColIndex >= 0 &&
+				!(tableLook?.lastColumn && cellIsLastCol) &&
+				!(tableLook?.firstColumn && cellIsFirstCol);
+			if (isEligible) {
+				vertBandStyle =
+					bandColIndex % 2 === 0
+						? conditionalStyles?.band1Vert
+						: conditionalStyles?.band2Vert;
+			}
+		}
 
-    if (cellCnf?.oddVBand) {
-      vertBandStyle = conditionalStyles?.band1Vert;
-    } else if (cellCnf?.evenVBand) {
-      vertBandStyle = conditionalStyles?.band2Vert;
-    }
+		if (cellCnf?.oddVBand) {
+			vertBandStyle = conditionalStyles?.band1Vert;
+		} else if (cellCnf?.evenVBand) {
+			vertBandStyle = conditionalStyles?.band2Vert;
+		}
 
-    let effectiveRowBandStyle = rowBandStyle;
-    if (rowCnf?.oddHBand) {
-      effectiveRowBandStyle = conditionalStyles?.band1Horz;
-    } else if (rowCnf?.evenHBand) {
-      effectiveRowBandStyle = conditionalStyles?.band2Horz;
-    }
-    if (cellCnf?.oddHBand) {
-      effectiveRowBandStyle = conditionalStyles?.band1Horz;
-    } else if (cellCnf?.evenHBand) {
-      effectiveRowBandStyle = conditionalStyles?.band2Horz;
-    }
+		let effectiveRowBandStyle = rowBandStyle;
+		if (rowCnf?.oddHBand) {
+			effectiveRowBandStyle = conditionalStyles?.band1Horz;
+		} else if (rowCnf?.evenHBand) {
+			effectiveRowBandStyle = conditionalStyles?.band2Horz;
+		}
+		if (cellCnf?.oddHBand) {
+			effectiveRowBandStyle = conditionalStyles?.band1Horz;
+		} else if (cellCnf?.evenHBand) {
+			effectiveRowBandStyle = conditionalStyles?.band2Horz;
+		}
 
-    // Build conditional style precedence (wholeTable -> banding -> row/col -> corners)
-    let cellConditionalStyle = conditionalStyles?.wholeTable;
-    cellConditionalStyle = mergeConditionalStyles(cellConditionalStyle, effectiveRowBandStyle);
-    cellConditionalStyle = mergeConditionalStyles(cellConditionalStyle, vertBandStyle);
-    if (cellIsFirstRow && (tableLook?.firstRow || rowCnf?.firstRow || cellCnf?.firstRow)) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.firstRow
-      );
-    }
-    if (cellIsLastRow && (tableLook?.lastRow || rowCnf?.lastRow || cellCnf?.lastRow)) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.lastRow
-      );
-    }
-    if (cellIsFirstCol && (tableLook?.firstColumn || rowCnf?.firstColumn || cellCnf?.firstColumn)) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.firstCol
-      );
-    }
-    if (cellIsLastCol && (tableLook?.lastColumn || rowCnf?.lastColumn || cellCnf?.lastColumn)) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.lastCol
-      );
-    }
-    if (
-      cellIsFirstRow &&
-      cellIsFirstCol &&
-      (tableLook?.firstRow || rowCnf?.firstRow || cellCnf?.firstRow) &&
-      (tableLook?.firstColumn || rowCnf?.firstColumn || cellCnf?.firstColumn)
-    ) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.nwCell
-      );
-    }
-    if (
-      cellIsFirstRow &&
-      cellIsLastCol &&
-      (tableLook?.firstRow || rowCnf?.firstRow || cellCnf?.firstRow) &&
-      (tableLook?.lastColumn || rowCnf?.lastColumn || cellCnf?.lastColumn)
-    ) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.neCell
-      );
-    }
-    if (
-      cellIsLastRow &&
-      cellIsFirstCol &&
-      (tableLook?.lastRow || rowCnf?.lastRow || cellCnf?.lastRow) &&
-      (tableLook?.firstColumn || rowCnf?.firstColumn || cellCnf?.firstColumn)
-    ) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.swCell
-      );
-    }
-    if (
-      cellIsLastRow &&
-      cellIsLastCol &&
-      (tableLook?.lastRow || rowCnf?.lastRow || cellCnf?.lastRow) &&
-      (tableLook?.lastColumn || rowCnf?.lastColumn || cellCnf?.lastColumn)
-    ) {
-      cellConditionalStyle = mergeConditionalStyles(
-        cellConditionalStyle,
-        conditionalStyles?.seCell
-      );
-    }
+		// Build conditional style precedence (wholeTable -> banding -> row/col -> corners)
+		let cellConditionalStyle = conditionalStyles?.wholeTable;
+		cellConditionalStyle = mergeConditionalStyles(
+			cellConditionalStyle,
+			effectiveRowBandStyle,
+		);
+		cellConditionalStyle = mergeConditionalStyles(
+			cellConditionalStyle,
+			vertBandStyle,
+		);
+		if (
+			cellIsFirstRow &&
+			(tableLook?.firstRow || rowCnf?.firstRow || cellCnf?.firstRow)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.firstRow,
+			);
+		}
+		if (
+			cellIsLastRow &&
+			(tableLook?.lastRow || rowCnf?.lastRow || cellCnf?.lastRow)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.lastRow,
+			);
+		}
+		if (
+			cellIsFirstCol &&
+			(tableLook?.firstColumn || rowCnf?.firstColumn || cellCnf?.firstColumn)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.firstCol,
+			);
+		}
+		if (
+			cellIsLastCol &&
+			(tableLook?.lastColumn || rowCnf?.lastColumn || cellCnf?.lastColumn)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.lastCol,
+			);
+		}
+		if (
+			cellIsFirstRow &&
+			cellIsFirstCol &&
+			(tableLook?.firstRow || rowCnf?.firstRow || cellCnf?.firstRow) &&
+			(tableLook?.firstColumn || rowCnf?.firstColumn || cellCnf?.firstColumn)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.nwCell,
+			);
+		}
+		if (
+			cellIsFirstRow &&
+			cellIsLastCol &&
+			(tableLook?.firstRow || rowCnf?.firstRow || cellCnf?.firstRow) &&
+			(tableLook?.lastColumn || rowCnf?.lastColumn || cellCnf?.lastColumn)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.neCell,
+			);
+		}
+		if (
+			cellIsLastRow &&
+			cellIsFirstCol &&
+			(tableLook?.lastRow || rowCnf?.lastRow || cellCnf?.lastRow) &&
+			(tableLook?.firstColumn || rowCnf?.firstColumn || cellCnf?.firstColumn)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.swCell,
+			);
+		}
+		if (
+			cellIsLastRow &&
+			cellIsLastCol &&
+			(tableLook?.lastRow || rowCnf?.lastRow || cellCnf?.lastRow) &&
+			(tableLook?.lastColumn || rowCnf?.lastColumn || cellCnf?.lastColumn)
+		) {
+			cellConditionalStyle = mergeConditionalStyles(
+				cellConditionalStyle,
+				conditionalStyles?.seCell,
+			);
+		}
 
-    cells.push(
-      convertTableCell(
-        cell,
-        styleResolver,
-        isHeaderRow,
-        gridWidth,
-        cellConditionalStyle,
-        tableBorders,
-        isFirstRow,
-        isLastRow,
-        isFirstCol,
-        isLastCol,
-        calculatedRowSpan,
-        defaultCellMargins,
-        theme
-      )
-    );
-  }
+		cells.push(
+			convertTableCell(
+				cell,
+				styleResolver,
+				isHeaderRow,
+				gridWidth,
+				cellConditionalStyle,
+				tableBorders,
+				isFirstRow,
+				isLastRow,
+				isFirstCol,
+				isLastCol,
+				calculatedRowSpan,
+				defaultCellMargins,
+				theme,
+			),
+		);
+	}
 
-  return schema.node('tableRow', attrs, cells);
+	return schema.node("tableRow", attrs, cells);
 }
 
-const CELL_BORDER_SIDES = ['top', 'bottom', 'left', 'right', 'insideH', 'insideV'] as const;
+const CELL_BORDER_SIDES = [
+	"top",
+	"bottom",
+	"left",
+	"right",
+	"insideH",
+	"insideV",
+] as const;
 
 /**
  * Bake themed border colors to RGB up front: the cell schema's `toDOM` has no
@@ -992,135 +1127,147 @@ const CELL_BORDER_SIDES = ['top', 'bottom', 'left', 'right', 'insideH', 'insideV
  * (`resolveColor` defaults the last case downstream).
  */
 function resolveBorderColors(
-  borders: TableBorders | undefined,
-  theme: Theme | null | undefined
+	borders: TableBorders | undefined,
+	theme: Theme | null | undefined,
 ): TableBorders | undefined {
-  if (!borders) return borders;
-  let resolved: TableBorders | undefined;
-  for (const side of CELL_BORDER_SIDES) {
-    const border = borders[side];
-    if (!border?.color?.themeColor || border.color.auto) continue;
-    const hex = resolveColorToHex(border.color, theme);
-    if (!hex) continue;
-    resolved ??= { ...borders };
-    resolved[side] = { ...border, color: { rgb: hex } };
-  }
-  return resolved ?? borders;
+	if (!borders) return borders;
+	let resolved: TableBorders | undefined;
+	for (const side of CELL_BORDER_SIDES) {
+		const border = borders[side];
+		if (!border?.color?.themeColor || border.color.auto) continue;
+		const hex = resolveColorToHex(border.color, theme);
+		if (!hex) continue;
+		resolved ??= { ...borders };
+		resolved[side] = { ...border, color: { rgb: hex } };
+	}
+	return resolved ?? borders;
 }
 
 /**
  * Convert a TableCell to a ProseMirror table cell node
  */
 function convertTableCell(
-  cell: TableCell,
-  styleResolver: StyleResolver | null,
-  isHeader: boolean,
-  gridWidthPercent?: number,
-  conditionalStyle?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
-  tableBorders?: TableBorders,
-  isFirstRow?: boolean,
-  isLastRow?: boolean,
-  isFirstCol?: boolean,
-  isLastCol?: boolean,
-  calculatedRowSpan?: number,
-  defaultCellMargins?: { top?: number; bottom?: number; left?: number; right?: number },
-  theme?: Theme | null
+	cell: TableCell,
+	styleResolver: StyleResolver | null,
+	isHeader: boolean,
+	gridWidthPercent?: number,
+	conditionalStyle?: { tcPr?: TableCellFormatting; rPr?: TextFormatting },
+	tableBorders?: TableBorders,
+	isFirstRow?: boolean,
+	isLastRow?: boolean,
+	isFirstCol?: boolean,
+	isLastCol?: boolean,
+	calculatedRowSpan?: number,
+	defaultCellMargins?: {
+		top?: number;
+		bottom?: number;
+		left?: number;
+		right?: number;
+	},
+	theme?: Theme | null,
 ): PMNode {
-  const formatting = cell.formatting;
+	const formatting = cell.formatting;
 
-  // Use the pre-calculated rowSpan from vMerge analysis
-  const rowspan = calculatedRowSpan ?? 1;
+	// Use the pre-calculated rowSpan from vMerge analysis
+	const rowspan = calculatedRowSpan ?? 1;
 
-  // Determine width: prefer cell's own width, fall back to grid width.
-  // Non-positive values fall through; resolveTableWidthPx maps them to undefined.
-  let width = formatting?.width?.value;
-  let widthType = formatting?.width?.type;
+	// Determine width: prefer cell's own width, fall back to grid width.
+	// Non-positive values fall through; resolveTableWidthPx maps them to undefined.
+	let width = formatting?.width?.value;
+	let widthType = formatting?.width?.type;
 
-  // If cell doesn't have its own width, use the grid-calculated percentage
-  if (width === undefined && gridWidthPercent !== undefined) {
-    width = gridWidthPercent;
-    widthType = 'pct';
-  }
+	// If cell doesn't have its own width, use the grid-calculated percentage
+	if (width === undefined && gridWidthPercent !== undefined) {
+		width = gridWidthPercent;
+		widthType = "pct";
+	}
 
-  // Cell's own shading wins; fall back to the table style's conditional row/col shading.
-  const backgroundColor = resolveColorToHex(
-    formatting?.shading?.fill ?? conditionalStyle?.tcPr?.shading?.fill,
-    theme
-  );
+	// Cell's own shading wins; fall back to the table style's conditional row/col shading.
+	const backgroundColor = resolveColorToHex(
+		formatting?.shading?.fill ?? conditionalStyle?.tcPr?.shading?.fill,
+		theme,
+	);
 
-  // Convert borders — preserve full BorderSpec per side
-  // Priority: cell borders > conditional style borders > table borders
-  const baseBorders = tableBorders
-    ? {
-        top: isFirstRow ? tableBorders.top : tableBorders.insideH,
-        bottom: isLastRow ? tableBorders.bottom : tableBorders.insideH,
-        left: isFirstCol ? tableBorders.left : tableBorders.insideV,
-        right: isLastCol ? tableBorders.right : tableBorders.insideV,
-      }
-    : undefined;
+	// Convert borders — preserve full BorderSpec per side
+	// Priority: cell borders > conditional style borders > table borders
+	const baseBorders = tableBorders
+		? {
+				top: isFirstRow ? tableBorders.top : tableBorders.insideH,
+				bottom: isLastRow ? tableBorders.bottom : tableBorders.insideH,
+				left: isFirstCol ? tableBorders.left : tableBorders.insideV,
+				right: isLastCol ? tableBorders.right : tableBorders.insideV,
+			}
+		: undefined;
 
-  const conditionalBorders = conditionalStyle?.tcPr?.borders;
-  const cellBorders = formatting?.borders;
+	const conditionalBorders = conditionalStyle?.tcPr?.borders;
+	const cellBorders = formatting?.borders;
 
-  const borders = resolveBorderColors(
-    baseBorders || conditionalBorders || cellBorders
-      ? {
-          ...(baseBorders ?? {}),
-          ...(conditionalBorders ?? {}),
-          ...(cellBorders ?? {}),
-        }
-      : undefined,
-    theme
-  );
+	const borders = resolveBorderColors(
+		baseBorders || conditionalBorders || cellBorders
+			? {
+					...(baseBorders ?? {}),
+					...(conditionalBorders ?? {}),
+					...(cellBorders ?? {}),
+				}
+			: undefined,
+		theme,
+	);
 
-  const attrs: TableCellAttrs = {
-    colspan: formatting?.gridSpan ?? 1,
-    rowspan: rowspan,
-    width: width,
-    widthType: widthType,
-    verticalAlign: formatting?.verticalAlign,
-    backgroundColor: backgroundColor,
-    textDirection: formatting?.textDirection,
-    noWrap: formatting?.noWrap,
-    borders: borders,
-    margins: formatting?.margins
-      ? {
-          top: formatting.margins.top?.value,
-          bottom: formatting.margins.bottom?.value,
-          left: formatting.margins.left?.value,
-          right: formatting.margins.right?.value,
-        }
-      : conditionalStyle?.tcPr?.margins
-        ? {
-            top: conditionalStyle.tcPr.margins.top?.value,
-            bottom: conditionalStyle.tcPr.margins.bottom?.value,
-            left: conditionalStyle.tcPr.margins.left?.value,
-            right: conditionalStyle.tcPr.margins.right?.value,
-          }
-        : defaultCellMargins,
-    _originalFormatting: formatting || undefined,
-    _originalResolvedFill: backgroundColor,
-  };
+	const attrs: TableCellAttrs = {
+		colspan: formatting?.gridSpan ?? 1,
+		rowspan: rowspan,
+		width: width,
+		widthType: widthType,
+		verticalAlign: formatting?.verticalAlign,
+		backgroundColor: backgroundColor,
+		textDirection: formatting?.textDirection,
+		noWrap: formatting?.noWrap,
+		borders: borders,
+		margins: formatting?.margins
+			? {
+					top: formatting.margins.top?.value,
+					bottom: formatting.margins.bottom?.value,
+					left: formatting.margins.left?.value,
+					right: formatting.margins.right?.value,
+				}
+			: conditionalStyle?.tcPr?.margins
+				? {
+						top: conditionalStyle.tcPr.margins.top?.value,
+						bottom: conditionalStyle.tcPr.margins.bottom?.value,
+						left: conditionalStyle.tcPr.margins.left?.value,
+						right: conditionalStyle.tcPr.margins.right?.value,
+					}
+				: defaultCellMargins,
+		_originalFormatting: formatting || undefined,
+		_originalResolvedFill: backgroundColor,
+	};
 
-  // Convert cell content (paragraphs and nested tables)
-  const contentNodes: PMNode[] = [];
-  for (const content of cell.content) {
-    if (content.type === 'paragraph') {
-      contentNodes.push(convertParagraph(content, styleResolver, undefined, conditionalStyle?.rPr));
-    } else if (content.type === 'table') {
-      // Nested tables - recursively convert
-      contentNodes.push(convertTable(content, styleResolver));
-    }
-  }
+	// Convert cell content (paragraphs and nested tables)
+	const contentNodes: PMNode[] = [];
+	for (const content of cell.content) {
+		if (content.type === "paragraph") {
+			contentNodes.push(
+				convertParagraph(
+					content,
+					styleResolver,
+					undefined,
+					conditionalStyle?.rPr,
+				),
+			);
+		} else if (content.type === "table") {
+			// Nested tables - recursively convert
+			contentNodes.push(convertTable(content, styleResolver));
+		}
+	}
 
-  // Ensure cell has at least one paragraph
-  if (contentNodes.length === 0) {
-    contentNodes.push(schema.node('paragraph', {}, []));
-  }
+	// Ensure cell has at least one paragraph
+	if (contentNodes.length === 0) {
+		contentNodes.push(schema.node("paragraph", {}, []));
+	}
 
-  // Use tableHeader for header cells, tableCell otherwise
-  const nodeType = isHeader ? 'tableHeader' : 'tableCell';
-  return schema.node(nodeType, attrs, contentNodes);
+	// Use tableHeader for header cells, tableCell otherwise
+	const nodeType = isHeader ? "tableHeader" : "tableCell";
+	return schema.node(nodeType, attrs, contentNodes);
 }
 
 /**
@@ -1130,93 +1277,100 @@ function convertTableCell(
  * (same as convertRun does for regular text runs).
  */
 function convertField(
-  field: SimpleField | ComplexField,
-  styleFormatting?: TextFormatting
+	field: SimpleField | ComplexField,
+	styleFormatting?: TextFormatting,
 ): PMNode | null {
-  // Extract display text and formatting from field content/result
-  let displayText = '';
-  let fieldFormatting: TextFormatting | undefined;
-  const runs = field.type === 'simpleField' ? field.content : field.fieldResult;
-  if (runs) {
-    for (const r of runs) {
-      if (r.type === 'run') {
-        for (const c of r.content) {
-          if (c.type === 'text') displayText += c.text;
-        }
-        // Use formatting from the first run that has it
-        if (!fieldFormatting && r.formatting) {
-          fieldFormatting = r.formatting;
-        }
-      }
-    }
-  }
+	// Extract display text and formatting from field content/result
+	let displayText = "";
+	let fieldFormatting: TextFormatting | undefined;
+	const runs = field.type === "simpleField" ? field.content : field.fieldResult;
+	if (runs) {
+		for (const r of runs) {
+			if (r.type === "run") {
+				for (const c of r.content) {
+					if (c.type === "text") displayText += c.text;
+				}
+				// Use formatting from the first run that has it
+				if (!fieldFormatting && r.formatting) {
+					fieldFormatting = r.formatting;
+				}
+			}
+		}
+	}
 
-  // Merge style formatting with field run formatting (inline takes precedence)
-  const mergedFormatting = mergeTextFormatting(styleFormatting, fieldFormatting);
-  const marks = textFormattingToMarks(mergedFormatting);
+	// Merge style formatting with field run formatting (inline takes precedence)
+	const mergedFormatting = mergeTextFormatting(
+		styleFormatting,
+		fieldFormatting,
+	);
+	const marks = textFormattingToMarks(mergedFormatting);
 
-  return schema.node(
-    'field',
-    {
-      fieldType: field.fieldType,
-      instruction: field.instruction,
-      displayText,
-      fieldKind: field.type === 'simpleField' ? 'simple' : 'complex',
-      fldLock: field.fldLock ?? false,
-      dirty: field.dirty ?? false,
-    },
-    undefined,
-    marks
-  );
+	return schema.node(
+		"field",
+		{
+			fieldType: field.fieldType,
+			instruction: field.instruction,
+			displayText,
+			fieldKind: field.type === "simpleField" ? "simple" : "complex",
+			fldLock: field.fldLock ?? false,
+			dirty: field.dirty ?? false,
+		},
+		undefined,
+		marks,
+	);
 }
 
 /**
  * Convert a MathEquation to a ProseMirror math node.
  */
 function convertMathEquation(math: MathEquation): PMNode | null {
-  return schema.node('math', {
-    display: math.display,
-    ommlXml: math.ommlXml,
-    plainText: math.plainText || '',
-  });
+	return schema.node("math", {
+		display: math.display,
+		ommlXml: math.ommlXml,
+		plainText: math.plainText || "",
+	});
 }
 
 /**
  * Convert an InlineSdt to a ProseMirror sdt node with inline content.
  */
 function convertInlineSdt(
-  sdt: InlineSdt,
-  styleRunFormatting?: TextFormatting,
-  styleResolver?: StyleResolver | null
+	sdt: InlineSdt,
+	styleRunFormatting?: TextFormatting,
+	styleResolver?: StyleResolver | null,
 ): PMNode | null {
-  const props = sdt.properties;
-  const inlineNodes: PMNode[] = [];
+	const props = sdt.properties;
+	const inlineNodes: PMNode[] = [];
 
-  for (const content of sdt.content) {
-    if (content.type === 'run') {
-      const runNodes = convertRun(content, styleRunFormatting, styleResolver);
-      inlineNodes.push(...runNodes);
-    } else if (content.type === 'hyperlink') {
-      const linkNodes = convertHyperlink(content, styleRunFormatting, styleResolver);
-      inlineNodes.push(...linkNodes);
-    }
-  }
+	for (const content of sdt.content) {
+		if (content.type === "run") {
+			const runNodes = convertRun(content, styleRunFormatting, styleResolver);
+			inlineNodes.push(...runNodes);
+		} else if (content.type === "hyperlink") {
+			const linkNodes = convertHyperlink(
+				content,
+				styleRunFormatting,
+				styleResolver,
+			);
+			inlineNodes.push(...linkNodes);
+		}
+	}
 
-  return schema.node(
-    'sdt',
-    {
-      sdtType: props.sdtType,
-      alias: props.alias ?? null,
-      tag: props.tag ?? null,
-      lock: props.lock ?? null,
-      placeholder: props.placeholder ?? null,
-      showingPlaceholder: props.showingPlaceholder ?? false,
-      dateFormat: props.dateFormat ?? null,
-      listItems: props.listItems ? JSON.stringify(props.listItems) : null,
-      checked: props.checked ?? null,
-    },
-    inlineNodes.length > 0 ? inlineNodes : undefined
-  );
+	return schema.node(
+		"sdt",
+		{
+			sdtType: props.sdtType,
+			alias: props.alias ?? null,
+			tag: props.tag ?? null,
+			lock: props.lock ?? null,
+			placeholder: props.placeholder ?? null,
+			showingPlaceholder: props.showingPlaceholder ?? false,
+			dateFormat: props.dateFormat ?? null,
+			listItems: props.listItems ? JSON.stringify(props.listItems) : null,
+			checked: props.checked ?? null,
+		},
+		inlineNodes.length > 0 ? inlineNodes : undefined,
+	);
 }
 
 /**
@@ -1226,129 +1380,137 @@ function convertInlineSdt(
  * @param styleFormatting - Text formatting from the paragraph's style (e.g., Heading1's font size/color)
  */
 function convertRun(
-  run: Run,
-  styleFormatting?: TextFormatting,
-  styleResolver?: StyleResolver | null
+	run: Run,
+	styleFormatting?: TextFormatting,
+	styleResolver?: StyleResolver | null,
 ): PMNode[] {
-  const nodes: PMNode[] = [];
+	const nodes: PMNode[] = [];
 
-  // Merge style formatting with run's inline formatting
-  // Inline formatting takes precedence over style formatting
-  //
-  // Use getRunStyleOwnProperties (not resolveRunStyle) to avoid docDefaults
-  // from the character style overriding paragraph style properties.
-  // The styleFormatting parameter already includes docDefaults from paragraph
-  // style resolution, so we only need the character style's own properties.
-  const runStyleFormatting = run.formatting?.styleId
-    ? styleResolver?.getRunStyleOwnProperties(run.formatting.styleId)
-    : undefined;
-  const mergedFormatting = mergeTextFormatting(
-    mergeTextFormatting(styleFormatting, runStyleFormatting),
-    run.formatting
-  );
-  const marks = textFormattingToMarks(mergedFormatting);
+	// Merge style formatting with run's inline formatting
+	// Inline formatting takes precedence over style formatting
+	//
+	// Use getRunStyleOwnProperties (not resolveRunStyle) to avoid docDefaults
+	// from the character style overriding paragraph style properties.
+	// The styleFormatting parameter already includes docDefaults from paragraph
+	// style resolution, so we only need the character style's own properties.
+	const runStyleFormatting = run.formatting?.styleId
+		? styleResolver?.getRunStyleOwnProperties(run.formatting.styleId)
+		: undefined;
+	const mergedFormatting = mergeTextFormatting(
+		mergeTextFormatting(styleFormatting, runStyleFormatting),
+		run.formatting,
+	);
+	const marks = textFormattingToMarks(mergedFormatting);
 
-  for (const content of run.content) {
-    const contentNodes = convertRunContent(content, marks);
-    nodes.push(...contentNodes);
-  }
+	for (const content of run.content) {
+		const contentNodes = convertRunContent(content, marks);
+		nodes.push(...contentNodes);
+	}
 
-  return nodes;
+	return nodes;
 }
 
 /**
  * Convert RunContent to ProseMirror nodes
  */
-function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.mark>[]): PMNode[] {
-  switch (content.type) {
-    case 'text':
-      if (content.text) {
-        return [schema.text(content.text, marks)];
-      }
-      return [];
+function convertRunContent(
+	content: RunContent,
+	marks: ReturnType<typeof schema.mark>[],
+): PMNode[] {
+	switch (content.type) {
+		case "text":
+			if (content.text) {
+				return [schema.text(content.text, marks)];
+			}
+			return [];
 
-    case 'break':
-      if (content.breakType === 'textWrapping' || !content.breakType) {
-        return [schema.node('hardBreak')];
-      }
-      // Page/column breaks are not inline content; they are re-extracted to a
-      // block-level pageBreak node (see paragraphForcedBreakType in toProseDoc).
-      return [];
+		case "break":
+			if (content.breakType === "textWrapping" || !content.breakType) {
+				return [schema.node("hardBreak")];
+			}
+			// Page/column breaks are not inline content; they are re-extracted to a
+			// block-level pageBreak node (see paragraphForcedBreakType in toProseDoc).
+			return [];
 
-    case 'tab':
-      // Convert to tab node for proper rendering
-      return [schema.node('tab')];
+		case "tab":
+			// Convert to tab node for proper rendering
+			return [schema.node("tab")];
 
-    case 'drawing':
-      if (content.image) {
-        return [convertImage(content.image)];
-      }
-      return [];
+		case "drawing":
+			if (content.image) {
+				return [convertImage(content.image)];
+			}
+			return [];
 
-    case 'shape': {
-      // Shapes with text body are handled as text boxes at block level
-      // Other shapes render as inline SVG
-      const shp = content.shape;
-      if (shp.textBody && shp.textBody.content.length > 0) {
-        // Skip - handled by extractTextBoxesFromParagraph
-        return [];
-      }
-      return [convertShape(shp)];
-    }
+		case "shape": {
+			// Shapes with text body are handled as text boxes at block level
+			// Other shapes render as inline SVG
+			const shp = content.shape;
+			if (shp.textBody && shp.textBody.content.length > 0) {
+				// Skip - handled by extractTextBoxesFromParagraph
+				return [];
+			}
+			return [convertShape(shp)];
+		}
 
-    case 'symbol': {
-      // OOXML §17.3.3.30 `<w:sym w:font="..." w:char="HHHH">` is a single
-      // character from a non-default font (often Wingdings / Symbol /
-      // Webdings). Pre-fix, `convertRunContent` had no case for symbols
-      // and they fell into `default → []`, silently dropping every
-      // checkbox glyph and bullet character. We try a Unicode
-      // translation first so the glyph renders even on browsers that
-      // don't have the source font installed; otherwise we emit the
-      // literal character with the original font applied as a
-      // fontFamily mark so a host that does have the font renders it
-      // natively.
-      const ch = symbolToUnicodeChar(content.font, content.char);
-      if (!ch) return [];
-      // Only attach a fontFamily mark when we DIDN'T translate to a
-      // safe Unicode character — substitution chars (☐ ☒ ➤ etc.) are
-      // universally available so forcing a specific font would hurt
-      // rather than help.
-      //
-      // Exception: tall dingbat fonts (Wingdings/Webdings). Their glyphs have
-      // a much taller ink box than a normal font, so a line set in them gets a
-      // large line height in Word/LibreOffice. We still render the substituted
-      // Unicode glyph (browsers fall back per-glyph), but we KEEP the dingbat
-      // font name so the measurer applies its hardcoded line metrics — without
-      // it, form checkbox rows collapse to ~half height (#11).
-      if (isTranslatedUnicode(ch, content.font, content.char) && !isTallSymbolFont(content.font)) {
-        return [schema.text(ch, marks)];
-      }
-      const fontMark = schema.mark('fontFamily', {
-        ascii: content.font,
-        hAnsi: content.font,
-      });
-      return [schema.text(ch, [...marks, fontMark])];
-    }
+		case "symbol": {
+			// OOXML §17.3.3.30 `<w:sym w:font="..." w:char="HHHH">` is a single
+			// character from a non-default font (often Wingdings / Symbol /
+			// Webdings). Pre-fix, `convertRunContent` had no case for symbols
+			// and they fell into `default → []`, silently dropping every
+			// checkbox glyph and bullet character. We try a Unicode
+			// translation first so the glyph renders even on browsers that
+			// don't have the source font installed; otherwise we emit the
+			// literal character with the original font applied as a
+			// fontFamily mark so a host that does have the font renders it
+			// natively.
+			const ch = symbolToUnicodeChar(content.font, content.char);
+			if (!ch) return [];
+			// Only attach a fontFamily mark when we DIDN'T translate to a
+			// safe Unicode character — substitution chars (☐ ☒ ➤ etc.) are
+			// universally available so forcing a specific font would hurt
+			// rather than help.
+			//
+			// Exception: tall dingbat fonts (Wingdings/Webdings). Their glyphs have
+			// a much taller ink box than a normal font, so a line set in them gets a
+			// large line height in Word/LibreOffice. We still render the substituted
+			// Unicode glyph (browsers fall back per-glyph), but we KEEP the dingbat
+			// font name so the measurer applies its hardcoded line metrics — without
+			// it, form checkbox rows collapse to ~half height (#11).
+			if (
+				isTranslatedUnicode(ch, content.font, content.char) &&
+				!isTallSymbolFont(content.font)
+			) {
+				return [schema.text(ch, marks)];
+			}
+			const fontMark = schema.mark("fontFamily", {
+				ascii: content.font,
+				hAnsi: content.font,
+			});
+			return [schema.text(ch, [...marks, fontMark])];
+		}
 
-    case 'footnoteRef':
-      // Footnote reference - render as superscript number with footnoteRef mark
-      const footnoteMark = schema.mark('footnoteRef', {
-        id: content.id.toString(),
-        noteType: 'footnote',
-      });
-      return [schema.text(content.id.toString(), [...marks, footnoteMark])];
+		case "footnoteRef": {
+			// Footnote reference - render as superscript number with footnoteRef mark
+			const footnoteMark = schema.mark("footnoteRef", {
+				id: content.id.toString(),
+				noteType: "footnote",
+			});
+			return [schema.text(content.id.toString(), [...marks, footnoteMark])];
+		}
 
-    case 'endnoteRef':
-      // Endnote reference - render as superscript number with footnoteRef mark
-      const endnoteMark = schema.mark('footnoteRef', {
-        id: content.id.toString(),
-        noteType: 'endnote',
-      });
-      return [schema.text(content.id.toString(), [...marks, endnoteMark])];
+		case "endnoteRef": {
+			// Endnote reference - render as superscript number with footnoteRef mark
+			const endnoteMark = schema.mark("footnoteRef", {
+				id: content.id.toString(),
+				noteType: "endnote",
+			});
+			return [schema.text(content.id.toString(), [...marks, endnoteMark])];
+		}
 
-    default:
-      return [];
-  }
+		default:
+			return [];
+	}
 }
 
 /**
@@ -1370,58 +1532,63 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
  * FONT_MAPPINGS. `Symbol` (Greek/math) is excluded — it has normal metrics.
  */
 function isTallSymbolFont(font: string | undefined): boolean {
-  const f = (font || '').toLowerCase().trim();
-  return f === 'wingdings' || f === 'wingdings 2' || f === 'wingdings 3' || f === 'webdings';
+	const f = (font || "").toLowerCase().trim();
+	return (
+		f === "wingdings" ||
+		f === "wingdings 2" ||
+		f === "wingdings 3" ||
+		f === "webdings"
+	);
 }
 
 function symbolToUnicodeChar(font: string, char: string): string | null {
-  if (!char) return null;
-  // OOXML stores `w:char` as a hex string. Word also sometimes emits
-  // codepoints in the Private Use Area (0xF000+) for legacy fonts; we
-  // strip that high bit so a "F0A3" matches the same glyph as "00A3".
-  const code = parseInt(char, 16);
-  if (!Number.isFinite(code)) return null;
-  const cp = code >= 0xf000 ? code - 0xf000 : code;
-  const fontKey = (font || '').toLowerCase().trim();
+	if (!char) return null;
+	// OOXML stores `w:char` as a hex string. Word also sometimes emits
+	// codepoints in the Private Use Area (0xF000+) for legacy fonts; we
+	// strip that high bit so a "F0A3" matches the same glyph as "00A3".
+	const code = parseInt(char, 16);
+	if (!Number.isFinite(code)) return null;
+	const cp = code >= 0xf000 ? code - 0xf000 : code;
+	const fontKey = (font || "").toLowerCase().trim();
 
-  const wingdings2: Record<number, string> = {
-    0xa3: '☐', // ☐ empty checkbox
-    0x52: '☑', // ☑ checked checkbox (boxed tick)
-    0x53: '☒', // ☒ x-marked checkbox
-    0xa8: '☐', // ☐ alt empty
-    0xfb: '☒', // ☒ alt x
-    0xfc: '☑', // ☑ alt check
-  };
-  const wingdings: Record<number, string> = {
-    0x6c: '○', // ○ open circle
-    0x6d: '●', // ● solid circle
-    0xa7: '■', // ■ solid square
-    0xa8: '□', // □ open square
-    0xfc: '✓', // ✓ check
-    0xfd: '✔', // ✔ heavy check
-    0xfe: '✗', // ✗ ballot x
-    0xff: '✘', // ✘ heavy x
-  };
-  const symbol: Record<number, string> = {
-    0xb7: '·', // · middle dot
-    0xa1: 'ϒ', // ϒ
-    0xb6: '∂', // ∂
-  };
+	const wingdings2: Record<number, string> = {
+		163: "☐", // ☐ empty checkbox
+		82: "☑", // ☑ checked checkbox (boxed tick)
+		83: "☒", // ☒ x-marked checkbox
+		168: "☐", // ☐ alt empty
+		251: "☒", // ☒ alt x
+		252: "☑", // ☑ alt check
+	};
+	const wingdings: Record<number, string> = {
+		108: "○", // ○ open circle
+		109: "●", // ● solid circle
+		167: "■", // ■ solid square
+		168: "□", // □ open square
+		252: "✓", // ✓ check
+		253: "✔", // ✔ heavy check
+		254: "✗", // ✗ ballot x
+		255: "✘", // ✘ heavy x
+	};
+	const symbol: Record<number, string> = {
+		183: "·", // · middle dot
+		161: "ϒ", // ϒ
+		182: "∂", // ∂
+	};
 
-  const table =
-    fontKey === 'wingdings 2'
-      ? wingdings2
-      : fontKey === 'wingdings'
-        ? wingdings
-        : fontKey === 'symbol'
-          ? symbol
-          : null;
+	const table =
+		fontKey === "wingdings 2"
+			? wingdings2
+			: fontKey === "wingdings"
+				? wingdings
+				: fontKey === "symbol"
+					? symbol
+					: null;
 
-  if (table && table[cp]) return table[cp];
+	if (table && table[cp]) return table[cp];
 
-  // Unknown — return the raw codepoint so the caller can attach the
-  // original font as a fallback and at least something renders.
-  return String.fromCodePoint(cp);
+	// Unknown — return the raw codepoint so the caller can attach the
+	// original font as a fallback and at least something renders.
+	return String.fromCodePoint(cp);
 }
 
 /**
@@ -1429,21 +1596,25 @@ function symbolToUnicodeChar(font: string, char: string): string | null {
  * Unicode glyph (rather than returning the raw codepoint). Used to
  * decide whether to attach the original font as a mark.
  */
-function isTranslatedUnicode(out: string, _font: string, char: string): boolean {
-  if (!out) return false;
-  const code = parseInt(char, 16);
-  if (!Number.isFinite(code)) return false;
-  const cp = code >= 0xf000 ? code - 0xf000 : code;
-  // If the output codepoint differs from the source codepoint, we
-  // translated it — output is universal Unicode.
-  return out.codePointAt(0) !== cp || isStandardUnicode(out);
+function isTranslatedUnicode(
+	out: string,
+	_font: string,
+	char: string,
+): boolean {
+	if (!out) return false;
+	const code = parseInt(char, 16);
+	if (!Number.isFinite(code)) return false;
+	const cp = code >= 0xf000 ? code - 0xf000 : code;
+	// If the output codepoint differs from the source codepoint, we
+	// translated it — output is universal Unicode.
+	return out.codePointAt(0) !== cp || isStandardUnicode(out);
 }
 
 function isStandardUnicode(s: string): boolean {
-  // Treat characters in the BMP outside the Private Use Area as
-  // "universally renderable enough" to not need a font fallback.
-  const cp = s.codePointAt(0) ?? 0;
-  return cp >= 0x20 && cp < 0xe000;
+	// Treat characters in the BMP outside the Private Use Area as
+	// "universally renderable enough" to not need a font fallback.
+	const cp = s.codePointAt(0) ?? 0;
+	return cp >= 0x20 && cp < 0xe000;
 }
 
 /**
@@ -1464,179 +1635,201 @@ function isStandardUnicode(s: string): boolean {
  *    - None/Behind/InFront: positioned image, no text wrap
  */
 function convertImage(image: Image): PMNode {
-  // Convert EMU to pixels for proper sizing
-  const widthPx = image.size?.width ? emuToPixels(image.size.width) : undefined;
-  const heightPx = image.size?.height ? emuToPixels(image.size.height) : undefined;
+	// Convert EMU to pixels for proper sizing
+	const widthPx = image.size?.width ? emuToPixels(image.size.width) : undefined;
+	const heightPx = image.size?.height
+		? emuToPixels(image.size.height)
+		: undefined;
 
-  // Determine wrap type and float direction
-  const wrapType = image.wrap.type;
-  const wrapText = image.wrap.wrapText;
-  const hAlign = image.position?.horizontal?.alignment;
+	// Determine wrap type and float direction
+	const wrapType = image.wrap.type;
+	const wrapText = image.wrap.wrapText;
+	const hAlign = image.position?.horizontal?.alignment;
 
-  // Determine CSS float based on wrap settings
-  // In DOCX: wrapText='left' means "text flows on the left" → image is on right → float: right
-  //          wrapText='right' means "text flows on the right" → image is on left → float: left
-  let cssFloat: 'left' | 'right' | 'none' | undefined;
+	// Determine CSS float based on wrap settings
+	// In DOCX: wrapText='left' means "text flows on the left" → image is on right → float: right
+	//          wrapText='right' means "text flows on the right" → image is on left → float: left
+	let cssFloat: "left" | "right" | "none" | undefined;
 
-  if (wrapType === 'inline') {
-    cssFloat = 'none'; // Inline images don't float
-  } else if (wrapType === 'topAndBottom') {
-    cssFloat = 'none'; // Block images don't float
-  } else if (wrapType === 'square' || wrapType === 'tight' || wrapType === 'through') {
-    // These wrap types support text wrapping around the image
-    if (wrapText === 'left') {
-      cssFloat = 'right'; // Text on left → image floats right
-    } else if (wrapText === 'right') {
-      cssFloat = 'left'; // Text on right → image floats left
-    } else if (wrapText === 'bothSides' || wrapText === 'largest') {
-      // Use horizontal alignment to determine float
-      if (hAlign === 'left') {
-        cssFloat = 'left';
-      } else if (hAlign === 'right') {
-        cssFloat = 'right';
-      } else {
-        cssFloat = 'none'; // Center or no alignment → block
-      }
-    } else {
-      // Default: use horizontal alignment
-      if (hAlign === 'left') {
-        cssFloat = 'left';
-      } else if (hAlign === 'right') {
-        cssFloat = 'right';
-      } else {
-        cssFloat = 'none';
-      }
-    }
-  } else {
-    // Behind, inFront, etc. - positioned images, no float
-    cssFloat = 'none';
-  }
+	if (wrapType === "inline") {
+		cssFloat = "none"; // Inline images don't float
+	} else if (wrapType === "topAndBottom") {
+		cssFloat = "none"; // Block images don't float
+	} else if (
+		wrapType === "square" ||
+		wrapType === "tight" ||
+		wrapType === "through"
+	) {
+		// These wrap types support text wrapping around the image
+		if (wrapText === "left") {
+			cssFloat = "right"; // Text on left → image floats right
+		} else if (wrapText === "right") {
+			cssFloat = "left"; // Text on right → image floats left
+		} else if (wrapText === "bothSides" || wrapText === "largest") {
+			// Use horizontal alignment to determine float
+			if (hAlign === "left") {
+				cssFloat = "left";
+			} else if (hAlign === "right") {
+				cssFloat = "right";
+			} else {
+				cssFloat = "none"; // Center or no alignment → block
+			}
+		} else {
+			// Default: use horizontal alignment
+			if (hAlign === "left") {
+				cssFloat = "left";
+			} else if (hAlign === "right") {
+				cssFloat = "right";
+			} else {
+				cssFloat = "none";
+			}
+		}
+	} else {
+		// Behind, inFront, etc. - positioned images, no float
+		cssFloat = "none";
+	}
 
-  // Determine display mode for CSS
-  let displayMode: 'inline' | 'block' | 'float' = 'inline';
-  if (wrapType === 'inline') {
-    displayMode = 'inline';
-  } else if (wrapType === 'topAndBottom') {
-    displayMode = 'block';
-  } else if (isWrapNone(wrapType)) {
-    // wrapNone (behind / inFront): positioned float, painted out of paragraph flow.
-    displayMode = 'float';
-  } else if (cssFloat && cssFloat !== 'none') {
-    displayMode = 'float';
-  } else {
-    // Centered square/tight/through images without a wrapping side fall back to block.
-    displayMode = 'block';
-  }
+	// Determine display mode for CSS
+	let displayMode: "inline" | "block" | "float" = "inline";
+	if (wrapType === "inline") {
+		displayMode = "inline";
+	} else if (wrapType === "topAndBottom") {
+		displayMode = "block";
+	} else if (isWrapNone(wrapType)) {
+		// wrapNone (behind / inFront): positioned float, painted out of paragraph flow.
+		displayMode = "float";
+	} else if (cssFloat && cssFloat !== "none") {
+		displayMode = "float";
+	} else {
+		// Centered square/tight/through images without a wrapping side fall back to block.
+		displayMode = "block";
+	}
 
-  // Build transform string if needed (rotation, flip)
-  let transform: string | undefined;
-  if (image.transform) {
-    const transforms: string[] = [];
-    if (image.transform.rotation) {
-      transforms.push(`rotate(${image.transform.rotation}deg)`);
-    }
-    if (image.transform.flipH) {
-      transforms.push('scaleX(-1)');
-    }
-    if (image.transform.flipV) {
-      transforms.push('scaleY(-1)');
-    }
-    if (transforms.length > 0) {
-      transform = transforms.join(' ');
-    }
-  }
+	// Build transform string if needed (rotation, flip)
+	let transform: string | undefined;
+	if (image.transform) {
+		const transforms: string[] = [];
+		if (image.transform.rotation) {
+			transforms.push(`rotate(${image.transform.rotation}deg)`);
+		}
+		if (image.transform.flipH) {
+			transforms.push("scaleX(-1)");
+		}
+		if (image.transform.flipV) {
+			transforms.push("scaleY(-1)");
+		}
+		if (transforms.length > 0) {
+			transform = transforms.join(" ");
+		}
+	}
 
-  // Convert wrap distances from EMU to pixels for margins
-  const distTop = image.wrap.distT ? emuToPixels(image.wrap.distT) : undefined;
-  const distBottom = image.wrap.distB ? emuToPixels(image.wrap.distB) : undefined;
-  const distLeft = image.wrap.distL ? emuToPixels(image.wrap.distL) : undefined;
-  const distRight = image.wrap.distR ? emuToPixels(image.wrap.distR) : undefined;
+	// Convert wrap distances from EMU to pixels for margins
+	const distTop = image.wrap.distT ? emuToPixels(image.wrap.distT) : undefined;
+	const distBottom = image.wrap.distB
+		? emuToPixels(image.wrap.distB)
+		: undefined;
+	const distLeft = image.wrap.distL ? emuToPixels(image.wrap.distL) : undefined;
+	const distRight = image.wrap.distR
+		? emuToPixels(image.wrap.distR)
+		: undefined;
 
-  // Build position data for floating images
-  let position:
-    | {
-        horizontal?: { relativeTo?: string; posOffset?: number; align?: string };
-        vertical?: { relativeTo?: string; posOffset?: number; align?: string };
-      }
-    | undefined;
-  if (image.position) {
-    position = {
-      horizontal: image.position.horizontal
-        ? {
-            relativeTo: image.position.horizontal.relativeTo,
-            posOffset: image.position.horizontal.posOffset,
-            align: image.position.horizontal.alignment,
-          }
-        : undefined,
-      vertical: image.position.vertical
-        ? {
-            relativeTo: image.position.vertical.relativeTo,
-            posOffset: image.position.vertical.posOffset,
-            align: image.position.vertical.alignment,
-          }
-        : undefined,
-    };
-  }
+	// Build position data for floating images
+	let position:
+		| {
+				horizontal?: {
+					relativeTo?: string;
+					posOffset?: number;
+					align?: string;
+				};
+				vertical?: { relativeTo?: string; posOffset?: number; align?: string };
+		  }
+		| undefined;
+	if (image.position) {
+		position = {
+			horizontal: image.position.horizontal
+				? {
+						relativeTo: image.position.horizontal.relativeTo,
+						posOffset: image.position.horizontal.posOffset,
+						align: image.position.horizontal.alignment,
+					}
+				: undefined,
+			vertical: image.position.vertical
+				? {
+						relativeTo: image.position.vertical.relativeTo,
+						posOffset: image.position.vertical.posOffset,
+						align: image.position.vertical.alignment,
+					}
+				: undefined,
+		};
+	}
 
-  // Convert outline to border attrs
-  let borderWidth: number | undefined;
-  let borderColor: string | undefined;
-  let borderStyle: string | undefined;
-  if (image.outline && image.outline.width) {
-    // Convert EMU to pixels (1 EMU = 1/914400 inch, 1 inch = 96 px)
-    borderWidth = Math.round((image.outline.width / 914400) * 96 * 100) / 100;
-    if (image.outline.color?.rgb) {
-      borderColor = `#${image.outline.color.rgb}`;
-    }
-    borderStyle = ooxmlDashToCssBorderStyle(image.outline.style);
-  }
+	// Convert outline to border attrs
+	let borderWidth: number | undefined;
+	let borderColor: string | undefined;
+	let borderStyle: string | undefined;
+	if (image.outline && image.outline.width) {
+		// Convert EMU to pixels (1 EMU = 1/914400 inch, 1 inch = 96 px)
+		borderWidth = Math.round((image.outline.width / 914400) * 96 * 100) / 100;
+		if (image.outline.color?.rgb) {
+			borderColor = `#${image.outline.color.rgb}`;
+		}
+		borderStyle = ooxmlDashToCssBorderStyle(image.outline.style);
+	}
 
-  // Effect extent (shadow/glow padding) is parsed in EMU; convert to px so
-  // the renderer can apply it as outer margin.
-  const effectExtentTop = image.padding?.top ? emuToPixels(image.padding.top) : undefined;
-  const effectExtentBottom = image.padding?.bottom ? emuToPixels(image.padding.bottom) : undefined;
-  const effectExtentLeft = image.padding?.left ? emuToPixels(image.padding.left) : undefined;
-  const effectExtentRight = image.padding?.right ? emuToPixels(image.padding.right) : undefined;
+	// Effect extent (shadow/glow padding) is parsed in EMU; convert to px so
+	// the renderer can apply it as outer margin.
+	const effectExtentTop = image.padding?.top
+		? emuToPixels(image.padding.top)
+		: undefined;
+	const effectExtentBottom = image.padding?.bottom
+		? emuToPixels(image.padding.bottom)
+		: undefined;
+	const effectExtentLeft = image.padding?.left
+		? emuToPixels(image.padding.left)
+		: undefined;
+	const effectExtentRight = image.padding?.right
+		? emuToPixels(image.padding.right)
+		: undefined;
 
-  return schema.node('image', {
-    src: image.src || '',
-    alt: image.alt,
-    title: image.title,
-    width: widthPx,
-    height: heightPx,
-    rId: image.rId,
-    wrapType: wrapType,
-    displayMode: displayMode,
-    cssFloat: cssFloat,
-    transform: transform,
-    distTop: distTop,
-    distBottom: distBottom,
-    distLeft: distLeft,
-    distRight: distRight,
-    position: position,
-    borderWidth: borderWidth,
-    borderColor: borderColor,
-    borderStyle: borderStyle,
-    wrapText: wrapText,
-    hlinkHref: image.hlinkHref,
-    cropTop: image.crop?.top,
-    cropRight: image.crop?.right,
-    cropBottom: image.crop?.bottom,
-    cropLeft: image.crop?.left,
-    opacity: image.opacity,
-    effectExtentTop,
-    effectExtentBottom,
-    effectExtentLeft,
-    effectExtentRight,
-    layoutInCell: image.layoutInCell,
-    allowOverlap: image.allowOverlap,
-    relativeSize: image.relativeSize ?? null,
-    hlinkRId: image.hlinkRId ?? null,
-    // Carry the captured envelope so a from-PM rebuild re-emits it verbatim
-    // rather than dropping it (mirrors the shape/text-box path).
-    rawXml: image.rawXml ?? null,
-    envelopeKey: image.envelopeKey ?? null,
-  });
+	return schema.node("image", {
+		src: image.src || "",
+		alt: image.alt,
+		title: image.title,
+		width: widthPx,
+		height: heightPx,
+		rId: image.rId,
+		wrapType: wrapType,
+		displayMode: displayMode,
+		cssFloat: cssFloat,
+		transform: transform,
+		distTop: distTop,
+		distBottom: distBottom,
+		distLeft: distLeft,
+		distRight: distRight,
+		position: position,
+		borderWidth: borderWidth,
+		borderColor: borderColor,
+		borderStyle: borderStyle,
+		wrapText: wrapText,
+		hlinkHref: image.hlinkHref,
+		cropTop: image.crop?.top,
+		cropRight: image.crop?.right,
+		cropBottom: image.crop?.bottom,
+		cropLeft: image.crop?.left,
+		opacity: image.opacity,
+		effectExtentTop,
+		effectExtentBottom,
+		effectExtentLeft,
+		effectExtentRight,
+		layoutInCell: image.layoutInCell,
+		allowOverlap: image.allowOverlap,
+		relativeSize: image.relativeSize ?? null,
+		hlinkRId: image.hlinkRId ?? null,
+		// Carry the captured envelope so a from-PM rebuild re-emits it verbatim
+		// rather than dropping it (mirrors the shape/text-box path).
+		rawXml: image.rawXml ?? null,
+		envelopeKey: image.envelopeKey ?? null,
+	});
 }
 
 /**
@@ -1646,221 +1839,225 @@ function convertImage(image: Image): PMNode {
  * @param styleFormatting - Text formatting from the paragraph's style
  */
 function convertHyperlink(
-  hyperlink: Hyperlink,
-  styleFormatting?: TextFormatting,
-  styleResolver?: StyleResolver | null
+	hyperlink: Hyperlink,
+	styleFormatting?: TextFormatting,
+	styleResolver?: StyleResolver | null,
 ): PMNode[] {
-  const nodes: PMNode[] = [];
+	const nodes: PMNode[] = [];
 
-  // Create link mark — internal anchors use #bookmarkName format
-  const href = hyperlink.href || (hyperlink.anchor ? `#${hyperlink.anchor}` : '');
-  const linkMark = schema.mark('hyperlink', {
-    href,
-    tooltip: hyperlink.tooltip,
-    rId: hyperlink.rId,
-  });
+	// Create link mark — internal anchors use #bookmarkName format
+	const href =
+		hyperlink.href || (hyperlink.anchor ? `#${hyperlink.anchor}` : "");
+	const linkMark = schema.mark("hyperlink", {
+		href,
+		tooltip: hyperlink.tooltip,
+		rId: hyperlink.rId,
+	});
 
-  for (const child of hyperlink.children) {
-    if (child.type === 'run') {
-      // Merge style formatting with run's inline formatting
-      const runStyleFormatting = child.formatting?.styleId
-        ? styleResolver?.resolveRunStyle(child.formatting.styleId)
-        : undefined;
-      const mergedFormatting = mergeTextFormatting(
-        mergeTextFormatting(styleFormatting, runStyleFormatting),
-        child.formatting
-      );
-      const runMarks = textFormattingToMarks(mergedFormatting);
-      // Add link mark to run marks
-      const allMarks = [...runMarks, linkMark];
+	for (const child of hyperlink.children) {
+		if (child.type === "run") {
+			// Merge style formatting with run's inline formatting
+			const runStyleFormatting = child.formatting?.styleId
+				? styleResolver?.resolveRunStyle(child.formatting.styleId)
+				: undefined;
+			const mergedFormatting = mergeTextFormatting(
+				mergeTextFormatting(styleFormatting, runStyleFormatting),
+				child.formatting,
+			);
+			const runMarks = textFormattingToMarks(mergedFormatting);
+			// Add link mark to run marks
+			const allMarks = [...runMarks, linkMark];
 
-      for (const content of child.content) {
-        if (content.type === 'text' && content.text) {
-          nodes.push(schema.text(content.text, allMarks));
-        }
-      }
-    }
-  }
+			for (const content of child.content) {
+				if (content.type === "text" && content.text) {
+					nodes.push(schema.text(content.text, allMarks));
+				}
+			}
+		}
+	}
 
-  return nodes;
+	return nodes;
 }
 
 /**
  * Convert TextFormatting to ProseMirror marks
  */
 function textFormattingToMarks(
-  formatting: TextFormatting | undefined
+	formatting: TextFormatting | undefined,
 ): ReturnType<typeof schema.mark>[] {
-  if (!formatting) return [];
+	if (!formatting) return [];
 
-  const marks: ReturnType<typeof schema.mark>[] = [];
+	const marks: ReturnType<typeof schema.mark>[] = [];
 
-  // Bold
-  if (formatting.bold) {
-    marks.push(schema.mark('bold'));
-  }
+	// Bold
+	if (formatting.bold) {
+		marks.push(schema.mark("bold"));
+	}
 
-  // Italic
-  if (formatting.italic) {
-    marks.push(schema.mark('italic'));
-  }
+	// Italic
+	if (formatting.italic) {
+		marks.push(schema.mark("italic"));
+	}
 
-  // Underline
-  if (formatting.underline && formatting.underline.style !== 'none') {
-    marks.push(
-      schema.mark('underline', {
-        style: formatting.underline.style,
-        color: formatting.underline.color,
-      })
-    );
-  }
+	// Underline
+	if (formatting.underline && formatting.underline.style !== "none") {
+		marks.push(
+			schema.mark("underline", {
+				style: formatting.underline.style,
+				color: formatting.underline.color,
+			}),
+		);
+	}
 
-  // Strikethrough
-  if (formatting.strike || formatting.doubleStrike) {
-    marks.push(
-      schema.mark('strike', {
-        double: formatting.doubleStrike || false,
-      })
-    );
-  }
+	// Strikethrough
+	if (formatting.strike || formatting.doubleStrike) {
+		marks.push(
+			schema.mark("strike", {
+				double: formatting.doubleStrike || false,
+			}),
+		);
+	}
 
-  // Text color
-  // `auto` alone (no theme slot) maps to the contextual default and
-  // doesn't need a mark, but `auto + themeColor` carries Word's
-  // theme-resolved intent and must round-trip — see
-  // `theme-color-roundtrip.test.ts`.
-  if (formatting.color && (!formatting.color.auto || formatting.color.themeColor)) {
-    marks.push(
-      schema.mark('textColor', {
-        rgb: formatting.color.rgb,
-        themeColor: formatting.color.themeColor,
-        themeTint: formatting.color.themeTint,
-        themeShade: formatting.color.themeShade,
-        auto: formatting.color.auto || null,
-      })
-    );
-  }
+	// Text color
+	// `auto` alone (no theme slot) maps to the contextual default and
+	// doesn't need a mark, but `auto + themeColor` carries Word's
+	// theme-resolved intent and must round-trip — see
+	// `theme-color-roundtrip.test.ts`.
+	if (
+		formatting.color &&
+		(!formatting.color.auto || formatting.color.themeColor)
+	) {
+		marks.push(
+			schema.mark("textColor", {
+				rgb: formatting.color.rgb,
+				themeColor: formatting.color.themeColor,
+				themeTint: formatting.color.themeTint,
+				themeShade: formatting.color.themeShade,
+				auto: formatting.color.auto || null,
+			}),
+		);
+	}
 
-  // Highlight
-  if (formatting.highlight && formatting.highlight !== 'none') {
-    marks.push(
-      schema.mark('highlight', {
-        color: formatting.highlight,
-      })
-    );
-  }
+	// Highlight
+	if (formatting.highlight && formatting.highlight !== "none") {
+		marks.push(
+			schema.mark("highlight", {
+				color: formatting.highlight,
+			}),
+		);
+	}
 
-  // Character shading. This is intentionally separate from highlight:
-  // LibreOffice/Word documents commonly use <w:shd> for run-level shading that
-  // should round-trip but should not light up as user text-highlight.
-  if (formatting.shading) {
-    marks.push(
-      schema.mark('runShading', {
-        shading: formatting.shading,
-      })
-    );
-  }
+	// Character shading. This is intentionally separate from highlight:
+	// LibreOffice/Word documents commonly use <w:shd> for run-level shading that
+	// should round-trip but should not light up as user text-highlight.
+	if (formatting.shading) {
+		marks.push(
+			schema.mark("runShading", {
+				shading: formatting.shading,
+			}),
+		);
+	}
 
-  // Font size
-  if (formatting.fontSize) {
-    marks.push(
-      schema.mark('fontSize', {
-        size: formatting.fontSize,
-      })
-    );
-  }
+	// Font size
+	if (formatting.fontSize) {
+		marks.push(
+			schema.mark("fontSize", {
+				size: formatting.fontSize,
+			}),
+		);
+	}
 
-  // Font family
-  if (formatting.fontFamily) {
-    marks.push(
-      schema.mark('fontFamily', {
-        ascii: formatting.fontFamily.ascii,
-        hAnsi: formatting.fontFamily.hAnsi,
-        eastAsia: formatting.fontFamily.eastAsia,
-        cs: formatting.fontFamily.cs,
-        asciiTheme: formatting.fontFamily.asciiTheme,
-        hAnsiTheme: formatting.fontFamily.hAnsiTheme,
-        eastAsiaTheme: formatting.fontFamily.eastAsiaTheme,
-        csTheme: formatting.fontFamily.csTheme,
-      })
-    );
-  }
+	// Font family
+	if (formatting.fontFamily) {
+		marks.push(
+			schema.mark("fontFamily", {
+				ascii: formatting.fontFamily.ascii,
+				hAnsi: formatting.fontFamily.hAnsi,
+				eastAsia: formatting.fontFamily.eastAsia,
+				cs: formatting.fontFamily.cs,
+				asciiTheme: formatting.fontFamily.asciiTheme,
+				hAnsiTheme: formatting.fontFamily.hAnsiTheme,
+				eastAsiaTheme: formatting.fontFamily.eastAsiaTheme,
+				csTheme: formatting.fontFamily.csTheme,
+			}),
+		);
+	}
 
-  // Superscript/Subscript
-  if (formatting.vertAlign === 'superscript') {
-    marks.push(schema.mark('superscript'));
-  } else if (formatting.vertAlign === 'subscript') {
-    marks.push(schema.mark('subscript'));
-  }
+	// Superscript/Subscript
+	if (formatting.vertAlign === "superscript") {
+		marks.push(schema.mark("superscript"));
+	} else if (formatting.vertAlign === "subscript") {
+		marks.push(schema.mark("subscript"));
+	}
 
-  // All caps (w:caps)
-  if (formatting.allCaps) {
-    marks.push(schema.mark('allCaps'));
-  }
+	// All caps (w:caps)
+	if (formatting.allCaps) {
+		marks.push(schema.mark("allCaps"));
+	}
 
-  // Small caps (w:smallCaps)
-  if (formatting.smallCaps) {
-    marks.push(schema.mark('smallCaps'));
-  }
+	// Small caps (w:smallCaps)
+	if (formatting.smallCaps) {
+		marks.push(schema.mark("smallCaps"));
+	}
 
-  // Character spacing (spacing, position, scale, kerning)
-  if (
-    formatting.spacing != null ||
-    formatting.position != null ||
-    formatting.scale != null ||
-    formatting.kerning != null
-  ) {
-    marks.push(
-      schema.mark('characterSpacing', {
-        spacing: formatting.spacing ?? null,
-        position: formatting.position ?? null,
-        scale: formatting.scale ?? null,
-        kerning: formatting.kerning ?? null,
-      })
-    );
-  }
+	// Character spacing (spacing, position, scale, kerning)
+	if (
+		formatting.spacing != null ||
+		formatting.position != null ||
+		formatting.scale != null ||
+		formatting.kerning != null
+	) {
+		marks.push(
+			schema.mark("characterSpacing", {
+				spacing: formatting.spacing ?? null,
+				position: formatting.position ?? null,
+				scale: formatting.scale ?? null,
+				kerning: formatting.kerning ?? null,
+			}),
+		);
+	}
 
-  // Emboss (w:emboss)
-  if (formatting.emboss) {
-    marks.push(schema.mark('emboss'));
-  }
+	// Emboss (w:emboss)
+	if (formatting.emboss) {
+		marks.push(schema.mark("emboss"));
+	}
 
-  // Imprint/Engrave (w:imprint)
-  if (formatting.imprint) {
-    marks.push(schema.mark('imprint'));
-  }
+	// Imprint/Engrave (w:imprint)
+	if (formatting.imprint) {
+		marks.push(schema.mark("imprint"));
+	}
 
-  // Text shadow (w:shadow)
-  if (formatting.shadow) {
-    marks.push(schema.mark('textShadow'));
-  }
+	// Text shadow (w:shadow)
+	if (formatting.shadow) {
+		marks.push(schema.mark("textShadow"));
+	}
 
-  // Emphasis mark (w:em)
-  if (formatting.emphasisMark && formatting.emphasisMark !== 'none') {
-    marks.push(schema.mark('emphasisMark', { type: formatting.emphasisMark }));
-  }
+	// Emphasis mark (w:em)
+	if (formatting.emphasisMark && formatting.emphasisMark !== "none") {
+		marks.push(schema.mark("emphasisMark", { type: formatting.emphasisMark }));
+	}
 
-  // Text outline (w:outline)
-  if (formatting.outline) {
-    marks.push(schema.mark('textOutline'));
-  }
+	// Text outline (w:outline)
+	if (formatting.outline) {
+		marks.push(schema.mark("textOutline"));
+	}
 
-  // Hidden text (w:vanish)
-  if (formatting.hidden) {
-    marks.push(schema.mark('hidden'));
-  }
+	// Hidden text (w:vanish)
+	if (formatting.hidden) {
+		marks.push(schema.mark("hidden"));
+	}
 
-  // Per-run RTL (w:rtl) — independent of paragraph direction
-  if (formatting.rtl) {
-    marks.push(schema.mark('rtl'));
-  }
+	// Per-run RTL (w:rtl) — independent of paragraph direction
+	if (formatting.rtl) {
+		marks.push(schema.mark("rtl"));
+	}
 
-  // Text effect animations (w:effect)
-  if (formatting.effect && formatting.effect !== 'none') {
-    marks.push(schema.mark('textEffect', { effect: formatting.effect }));
-  }
+	// Text effect animations (w:effect)
+	if (formatting.effect && formatting.effect !== "none") {
+		marks.push(schema.mark("textEffect", { effect: formatting.effect }));
+	}
 
-  return marks;
+	return marks;
 }
 
 // ============================================================================
@@ -1871,97 +2068,100 @@ function textFormattingToMarks(
  * Convert a Shape to a ProseMirror shape node (inline SVG)
  */
 function convertShape(shape: Shape): PMNode {
-  const widthPx = shape.size?.width ? emuToPixels(shape.size.width) : 100;
-  const heightPx = shape.size?.height ? emuToPixels(shape.size.height) : 80;
+	const widthPx = shape.size?.width ? emuToPixels(shape.size.width) : 100;
+	const heightPx = shape.size?.height ? emuToPixels(shape.size.height) : 80;
 
-  let fillColor: string | undefined;
-  let fillType: string = 'solid';
-  let gradientType: string | undefined;
-  let gradientAngle: number | undefined;
-  let gradientStops: string | undefined;
-  if (shape.fill) {
-    fillType = shape.fill.type;
-    fillColor = resolveShapeColor(shape.fill.color) ?? fillColor;
-    // Extract gradient data
-    if (shape.fill.type === 'gradient' && shape.fill.gradient) {
-      const g = shape.fill.gradient;
-      gradientType = g.type;
-      gradientAngle = g.angle;
-      // Convert stops to serializable format with CSS colors
-      gradientStops = JSON.stringify(
-        g.stops.map((s) => ({
-          position: s.position,
-          color: s.color.rgb ? `#${s.color.rgb}` : '#000000',
-        }))
-      );
-    }
-  }
+	let fillColor: string | undefined;
+	let fillType: string = "solid";
+	let gradientType: string | undefined;
+	let gradientAngle: number | undefined;
+	let gradientStops: string | undefined;
+	if (shape.fill) {
+		fillType = shape.fill.type;
+		fillColor = resolveShapeColor(shape.fill.color) ?? fillColor;
+		// Extract gradient data
+		if (shape.fill.type === "gradient" && shape.fill.gradient) {
+			const g = shape.fill.gradient;
+			gradientType = g.type;
+			gradientAngle = g.angle;
+			// Convert stops to serializable format with CSS colors
+			gradientStops = JSON.stringify(
+				g.stops.map((s) => ({
+					position: s.position,
+					color: s.color.rgb ? `#${s.color.rgb}` : "#000000",
+				})),
+			);
+		}
+	}
 
-  let outlineWidth: number | undefined;
-  let outlineColor: string | undefined;
-  let outlineStyle: string | undefined;
-  if (shape.outline) {
-    if (shape.outline.width) {
-      outlineWidth = Math.round((shape.outline.width / 914400) * 96 * 100) / 100;
-    }
-    outlineColor = resolveShapeColor(shape.outline.color);
-    outlineStyle = ooxmlDashToCssBorderStyle(shape.outline.style);
-  }
+	let outlineWidth: number | undefined;
+	let outlineColor: string | undefined;
+	let outlineStyle: string | undefined;
+	if (shape.outline) {
+		if (shape.outline.width) {
+			outlineWidth =
+				Math.round((shape.outline.width / 914400) * 96 * 100) / 100;
+		}
+		outlineColor = resolveShapeColor(shape.outline.color);
+		outlineStyle = ooxmlDashToCssBorderStyle(shape.outline.style);
+	}
 
-  let transform: string | undefined;
-  if (shape.transform) {
-    const transforms: string[] = [];
-    if (shape.transform.rotation) {
-      transforms.push(`rotate(${shape.transform.rotation}deg)`);
-    }
-    if (shape.transform.flipH) {
-      transforms.push('scaleX(-1)');
-    }
-    if (shape.transform.flipV) {
-      transforms.push('scaleY(-1)');
-    }
-    if (transforms.length > 0) {
-      transform = transforms.join(' ');
-    }
-  }
+	let transform: string | undefined;
+	if (shape.transform) {
+		const transforms: string[] = [];
+		if (shape.transform.rotation) {
+			transforms.push(`rotate(${shape.transform.rotation}deg)`);
+		}
+		if (shape.transform.flipH) {
+			transforms.push("scaleX(-1)");
+		}
+		if (shape.transform.flipV) {
+			transforms.push("scaleY(-1)");
+		}
+		if (transforms.length > 0) {
+			transform = transforms.join(" ");
+		}
+	}
 
-  // Surface the parsed anchor position and wrap on the PM node so a floating
-  // shape round-trips through save without losing where it's anchored. Mirrors
-  // the textBox node (convertTextBox above): the layout engine doesn't honor
-  // these yet, but carrying the data is safe and unblocks future float work
-  // instead of silently dropping the anchor on the next save.
-  const posH = shape.position?.horizontal;
-  const posV = shape.position?.vertical;
-  const posOffsetH = posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
-  const posOffsetV = posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
+	// Surface the parsed anchor position and wrap on the PM node so a floating
+	// shape round-trips through save without losing where it's anchored. Mirrors
+	// the textBox node (convertTextBox above): the layout engine doesn't honor
+	// these yet, but carrying the data is safe and unblocks future float work
+	// instead of silently dropping the anchor on the next save.
+	const posH = shape.position?.horizontal;
+	const posV = shape.position?.vertical;
+	const posOffsetH =
+		posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
+	const posOffsetV =
+		posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
 
-  return schema.node('shape', {
-    shapeType: shape.shapeType || 'rect',
-    shapeId: shape.id,
-    width: widthPx,
-    height: heightPx,
-    fillColor,
-    fillType,
-    gradientType,
-    gradientAngle,
-    gradientStops,
-    outlineWidth,
-    outlineColor,
-    outlineStyle,
-    transform,
-    wrapType: shape.wrap?.type ?? 'inline',
-    posOffsetH,
-    posOffsetV,
-    posRelFromH: posH?.relativeTo ?? null,
-    posRelFromV: posV?.relativeTo ?? null,
-    posAlignH: posH?.alignment ?? null,
-    posAlignV: posV?.alignment ?? null,
-    // Carry the original OOXML envelope so a from-PM rebuild (structural edit,
-    // collab peer, server snapshot) re-emits the drawing verbatim rather than
-    // dropping it. Survives Yjs intact (verified).
-    rawXml: shape.rawXml ?? null,
-    envelopeKey: shape.envelopeKey ?? null,
-  });
+	return schema.node("shape", {
+		shapeType: shape.shapeType || "rect",
+		shapeId: shape.id,
+		width: widthPx,
+		height: heightPx,
+		fillColor,
+		fillType,
+		gradientType,
+		gradientAngle,
+		gradientStops,
+		outlineWidth,
+		outlineColor,
+		outlineStyle,
+		transform,
+		wrapType: shape.wrap?.type ?? "inline",
+		posOffsetH,
+		posOffsetV,
+		posRelFromH: posH?.relativeTo ?? null,
+		posRelFromV: posV?.relativeTo ?? null,
+		posAlignH: posH?.alignment ?? null,
+		posAlignV: posV?.alignment ?? null,
+		// Carry the original OOXML envelope so a from-PM rebuild (structural edit,
+		// collab peer, server snapshot) re-emits the drawing verbatim rather than
+		// dropping it. Survives Yjs intact (verified).
+		rawXml: shape.rawXml ?? null,
+		envelopeKey: shape.envelopeKey ?? null,
+	});
 }
 
 // ============================================================================
@@ -1973,20 +2173,21 @@ function convertShape(shape: Shape): PMNode {
  * Skips ghost empty paragraphs that only contained text box drawings.
  */
 function convertParagraphWithTextBoxes(
-  block: Paragraph,
-  styleResolver: StyleResolver | null
+	block: Paragraph,
+	styleResolver: StyleResolver | null,
 ): PMNode[] {
-  const textBoxes = extractTextBoxesFromParagraph(block);
-  const pmParagraph = convertParagraph(block, styleResolver);
-  const nodes: PMNode[] = [];
-  const isEmptyAfterExtraction = textBoxes.length > 0 && pmParagraph.content.size === 0;
-  if (!isEmptyAfterExtraction) {
-    nodes.push(pmParagraph);
-  }
-  for (const tb of textBoxes) {
-    nodes.push(convertTextBox(tb, styleResolver));
-  }
-  return nodes;
+	const textBoxes = extractTextBoxesFromParagraph(block);
+	const pmParagraph = convertParagraph(block, styleResolver);
+	const nodes: PMNode[] = [];
+	const isEmptyAfterExtraction =
+		textBoxes.length > 0 && pmParagraph.content.size === 0;
+	if (!isEmptyAfterExtraction) {
+		nodes.push(pmParagraph);
+	}
+	for (const tb of textBoxes) {
+		nodes.push(convertTextBox(tb, styleResolver));
+	}
+	return nodes;
 }
 
 /**
@@ -1995,130 +2196,144 @@ function convertParagraphWithTextBoxes(
  * or as DrawingContent that contains a text box instead of an image.
  */
 function extractTextBoxesFromParagraph(paragraph: Paragraph): TextBox[] {
-  const textBoxes: TextBox[] = [];
-  for (const content of paragraph.content) {
-    if (content.type === 'run') {
-      for (const rc of content.content) {
-        if (rc.type === 'shape' && 'shape' in rc) {
-          const shape = rc.shape as Shape;
-          // Convert any shape with a textBody — including decorative
-          // VML rectangles where the inner content is just a single
-          // empty paragraph. The painter renders the box's
-          // fill/outline regardless of whether the inner content has
-          // text; gating this on non-empty content silently dropped
-          // every decorative `<v:rect>` (SDS-style page dividers).
-          if (shape.textBody) {
-            textBoxes.push({
-              type: 'textBox',
-              id: shape.id,
-              size: shape.size,
-              position: shape.position,
-              wrap: shape.wrap,
-              fill: shape.fill,
-              outline: shape.outline,
-              content:
-                shape.textBody.content.length > 0
-                  ? shape.textBody.content
-                  : [{ type: 'paragraph', content: [] }],
-              margins: shape.textBody.margins,
-              // Carry the original OOXML envelope so a from-PM rebuild re-emits
-              // this drawing verbatim instead of dropping it (collab/snapshot).
-              rawXml: shape.rawXml,
-              envelopeKey: shape.envelopeKey,
-            });
-          }
-        }
-      }
-    }
-  }
-  return textBoxes;
+	const textBoxes: TextBox[] = [];
+	for (const content of paragraph.content) {
+		if (content.type === "run") {
+			for (const rc of content.content) {
+				if (rc.type === "shape" && "shape" in rc) {
+					const shape = rc.shape as Shape;
+					// Convert any shape with a textBody — including decorative
+					// VML rectangles where the inner content is just a single
+					// empty paragraph. The painter renders the box's
+					// fill/outline regardless of whether the inner content has
+					// text; gating this on non-empty content silently dropped
+					// every decorative `<v:rect>` (SDS-style page dividers).
+					if (shape.textBody) {
+						textBoxes.push({
+							type: "textBox",
+							id: shape.id,
+							size: shape.size,
+							position: shape.position,
+							wrap: shape.wrap,
+							fill: shape.fill,
+							outline: shape.outline,
+							content:
+								shape.textBody.content.length > 0
+									? shape.textBody.content
+									: [{ type: "paragraph", content: [] }],
+							margins: shape.textBody.margins,
+							// Carry the original OOXML envelope so a from-PM rebuild re-emits
+							// this drawing verbatim instead of dropping it (collab/snapshot).
+							rawXml: shape.rawXml,
+							envelopeKey: shape.envelopeKey,
+						});
+					}
+				}
+			}
+		}
+	}
+	return textBoxes;
 }
 
 /**
  * Convert a TextBox to a ProseMirror textBox node
  */
-function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): PMNode {
-  const widthPx = textBox.size?.width ? emuToPixels(textBox.size.width) : 200;
-  const heightPx = textBox.size?.height ? emuToPixels(textBox.size.height) : undefined;
+function convertTextBox(
+	textBox: TextBox,
+	styleResolver: StyleResolver | null,
+): PMNode {
+	const widthPx = textBox.size?.width ? emuToPixels(textBox.size.width) : 200;
+	const heightPx = textBox.size?.height
+		? emuToPixels(textBox.size.height)
+		: undefined;
 
-  // Convert fill color
-  const fillColor: string | undefined = resolveShapeColor(textBox.fill?.color);
+	// Convert fill color
+	const fillColor: string | undefined = resolveShapeColor(textBox.fill?.color);
 
-  // Convert outline. Render when the line carries EITHER a width or a
-  // resolvable color — a `<a:ln>` with a fill but no explicit `w` is a
-  // hairline (default ~0.75pt ≈ 1px), and its theme-color fill (e.g.
-  // bg1 + lumMod) must not be dropped.
-  let outlineWidth: number | undefined;
-  let outlineColor: string | undefined;
-  let outlineStyle: string | undefined;
-  if (textBox.outline && (textBox.outline.width || resolveShapeColor(textBox.outline.color))) {
-    outlineWidth = textBox.outline.width
-      ? Math.round((textBox.outline.width / 914400) * 96 * 100) / 100
-      : 1;
-    outlineColor = resolveShapeColor(textBox.outline.color);
-    outlineStyle = ooxmlDashToCssBorderStyle(textBox.outline.style);
-  }
+	// Convert outline. Render when the line carries EITHER a width or a
+	// resolvable color — a `<a:ln>` with a fill but no explicit `w` is a
+	// hairline (default ~0.75pt ≈ 1px), and its theme-color fill (e.g.
+	// bg1 + lumMod) must not be dropped.
+	let outlineWidth: number | undefined;
+	let outlineColor: string | undefined;
+	let outlineStyle: string | undefined;
+	if (
+		textBox.outline &&
+		(textBox.outline.width || resolveShapeColor(textBox.outline.color))
+	) {
+		outlineWidth = textBox.outline.width
+			? Math.round((textBox.outline.width / 914400) * 96 * 100) / 100
+			: 1;
+		outlineColor = resolveShapeColor(textBox.outline.color);
+		outlineStyle = ooxmlDashToCssBorderStyle(textBox.outline.style);
+	}
 
-  // Convert margins from EMU to pixels
-  const marginTop = textBox.margins?.top != null ? emuToPixels(textBox.margins.top) : 4;
-  const marginBottom = textBox.margins?.bottom != null ? emuToPixels(textBox.margins.bottom) : 4;
-  const marginLeft = textBox.margins?.left != null ? emuToPixels(textBox.margins.left) : 7;
-  const marginRight = textBox.margins?.right != null ? emuToPixels(textBox.margins.right) : 7;
+	// Convert margins from EMU to pixels
+	const marginTop =
+		textBox.margins?.top != null ? emuToPixels(textBox.margins.top) : 4;
+	const marginBottom =
+		textBox.margins?.bottom != null ? emuToPixels(textBox.margins.bottom) : 4;
+	const marginLeft =
+		textBox.margins?.left != null ? emuToPixels(textBox.margins.left) : 7;
+	const marginRight =
+		textBox.margins?.right != null ? emuToPixels(textBox.margins.right) : 7;
 
-  // Convert text box content (paragraphs) to PM nodes
-  const contentNodes: PMNode[] = [];
-  for (const para of textBox.content) {
-    contentNodes.push(convertParagraph(para, styleResolver));
-  }
+	// Convert text box content (paragraphs) to PM nodes
+	const contentNodes: PMNode[] = [];
+	for (const para of textBox.content) {
+		contentNodes.push(convertParagraph(para, styleResolver));
+	}
 
-  // Ensure at least one paragraph
-  if (contentNodes.length === 0) {
-    contentNodes.push(schema.node('paragraph', {}, []));
-  }
+	// Ensure at least one paragraph
+	if (contentNodes.length === 0) {
+		contentNodes.push(schema.node("paragraph", {}, []));
+	}
 
-  // Surface the parsed anchor position on the PM node so it round-trips
-  // through save AND is honored at layout time: `layoutAnchoredTextBox`
-  // resolves the full relativeFrom band math via `resolveAnchorX/Y`.
-  // (The naive first attempt that floated every shape was reverted; the
-  // dedicated anchored path only floats genuinely-anchored boxes.)
-  const posH = textBox.position?.horizontal;
-  const posV = textBox.position?.vertical;
-  const posOffsetH = posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
-  const posOffsetV = posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
+	// Surface the parsed anchor position on the PM node so it round-trips
+	// through save AND is honored at layout time: `layoutAnchoredTextBox`
+	// resolves the full relativeFrom band math via `resolveAnchorX/Y`.
+	// (The naive first attempt that floated every shape was reverted; the
+	// dedicated anchored path only floats genuinely-anchored boxes.)
+	const posH = textBox.position?.horizontal;
+	const posV = textBox.position?.vertical;
+	const posOffsetH =
+		posH?.posOffset != null ? emuToPixels(posH.posOffset) : null;
+	const posOffsetV =
+		posV?.posOffset != null ? emuToPixels(posV.posOffset) : null;
 
-  return schema.node(
-    'textBox',
-    {
-      width: widthPx,
-      height: heightPx,
-      textBoxId: textBox.id,
-      fillColor,
-      outlineWidth,
-      outlineColor,
-      outlineStyle,
-      marginTop,
-      marginBottom,
-      marginLeft,
-      marginRight,
-      autoFit: textBox.autoFit,
-      // Behind-text wrap (VML z-index<0) — carried so the layout engine can
-      // both paint the box behind body text AND reserve its band in the flow
-      // (the SDS hazard box). 'inline' is the schema default for non-anchored
-      // boxes; only emit a non-default when the source said so.
-      wrapType: textBox.wrap?.type ?? 'inline',
-      posOffsetH,
-      posOffsetV,
-      posRelFromH: posH?.relativeTo ?? null,
-      posRelFromV: posV?.relativeTo ?? null,
-      posAlignH: posH?.alignment ?? null,
-      posAlignV: posV?.alignment ?? null,
-      // Original OOXML envelope — re-emitted verbatim on a from-PM rebuild so
-      // the drawing survives structural edits / collab peers / server snapshots.
-      rawXml: textBox.rawXml ?? null,
-      envelopeKey: textBox.envelopeKey ?? null,
-    },
-    contentNodes
-  );
+	return schema.node(
+		"textBox",
+		{
+			width: widthPx,
+			height: heightPx,
+			textBoxId: textBox.id,
+			fillColor,
+			outlineWidth,
+			outlineColor,
+			outlineStyle,
+			marginTop,
+			marginBottom,
+			marginLeft,
+			marginRight,
+			autoFit: textBox.autoFit,
+			// Behind-text wrap (VML z-index<0) — carried so the layout engine can
+			// both paint the box behind body text AND reserve its band in the flow
+			// (the SDS hazard box). 'inline' is the schema default for non-anchored
+			// boxes; only emit a non-default when the source said so.
+			wrapType: textBox.wrap?.type ?? "inline",
+			posOffsetH,
+			posOffsetV,
+			posRelFromH: posH?.relativeTo ?? null,
+			posRelFromV: posV?.relativeTo ?? null,
+			posAlignH: posH?.alignment ?? null,
+			posAlignV: posV?.alignment ?? null,
+			// Original OOXML envelope — re-emitted verbatim on a from-PM rebuild so
+			// the drawing survives structural edits / collab peers / server snapshots.
+			rawXml: textBox.rawXml ?? null,
+			envelopeKey: textBox.envelopeKey ?? null,
+		},
+		contentNodes,
+	);
 }
 
 /**
@@ -2129,26 +2344,28 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
  * fills in HF tables fall back to the unresolved theme key.
  */
 export function headerFooterToProseDoc(
-  content: Array<Paragraph | Table>,
-  options?: ToProseDocOptions & { theme?: Theme | null }
+	content: Array<Paragraph | Table>,
+	options?: ToProseDocOptions & { theme?: Theme | null },
 ): PMNode {
-  const nodes: PMNode[] = [];
-  const styleResolver = options?.styles ? createStyleResolver(options.styles) : null;
-  const theme = options?.theme ?? null;
+	const nodes: PMNode[] = [];
+	const styleResolver = options?.styles
+		? createStyleResolver(options.styles)
+		: null;
+	const theme = options?.theme ?? null;
 
-  for (const block of content) {
-    if (block.type === 'paragraph') {
-      nodes.push(...convertParagraphWithTextBoxes(block, styleResolver));
-    } else if (block.type === 'table') {
-      nodes.push(convertTable(block, styleResolver, theme));
-    }
-  }
+	for (const block of content) {
+		if (block.type === "paragraph") {
+			nodes.push(...convertParagraphWithTextBoxes(block, styleResolver));
+		} else if (block.type === "table") {
+			nodes.push(convertTable(block, styleResolver, theme));
+		}
+	}
 
-  if (nodes.length === 0) {
-    nodes.push(schema.node('paragraph', {}, []));
-  }
+	if (nodes.length === 0) {
+		nodes.push(schema.node("paragraph", {}, []));
+	}
 
-  return schema.node('doc', null, nodes);
+	return schema.node("doc", null, nodes);
 }
 
 /**
@@ -2161,10 +2378,10 @@ export function headerFooterToProseDoc(
  * tables, images, and fields nested inside a footnote.
  */
 export function footnoteToProseDoc(
-  content: Array<Paragraph | Table>,
-  options?: ToProseDocOptions & { theme?: Theme | null }
+	content: Array<Paragraph | Table>,
+	options?: ToProseDocOptions & { theme?: Theme | null },
 ): PMNode {
-  return headerFooterToProseDoc(content, options);
+	return headerFooterToProseDoc(content, options);
 }
 
 /**
@@ -2180,55 +2397,57 @@ export function footnoteToProseDoc(
  * forced break — Word renders such paragraphs with the next paragraph on a
  * fresh page.
  */
-function paragraphForcedBreakType(paragraph: Paragraph): 'page' | 'column' | null {
-  function breakTypeOf(content: RunContent): 'page' | 'column' | null {
-    if (content.type !== 'break') return null;
-    if (content.breakType === 'page') return 'page';
-    if (content.breakType === 'column') return 'column';
-    return null;
-  }
+function paragraphForcedBreakType(
+	paragraph: Paragraph,
+): "page" | "column" | null {
+	function breakTypeOf(content: RunContent): "page" | "column" | null {
+		if (content.type !== "break") return null;
+		if (content.breakType === "page") return "page";
+		if (content.breakType === "column") return "column";
+		return null;
+	}
 
-  function visit(item: Paragraph['content'][number]): 'page' | 'column' | null {
-    if (item.type === 'run') {
-      for (const c of (item as Run).content) {
-        const bt = breakTypeOf(c);
-        if (bt) return bt;
-      }
-      return null;
-    }
-    if (item.type === 'hyperlink') {
-      for (const r of (item as Hyperlink).children) {
-        if (r.type === 'run') {
-          const bt = visit(r);
-          if (bt) return bt;
-        }
-      }
-      return null;
-    }
-    if (item.type === 'insertion' || item.type === 'deletion') {
-      // Tracked-change wrappers can themselves contain a forced break.
-      // Descend so a break inside <w:ins> or <w:del> still emits a
-      // pageBreak node downstream.
-      const tc = item as { content: Paragraph['content'] };
-      for (const inner of tc.content) {
-        const bt = visit(inner);
-        if (bt) return bt;
-      }
-      return null;
-    }
-    return null;
-  }
+	function visit(item: Paragraph["content"][number]): "page" | "column" | null {
+		if (item.type === "run") {
+			for (const c of (item as Run).content) {
+				const bt = breakTypeOf(c);
+				if (bt) return bt;
+			}
+			return null;
+		}
+		if (item.type === "hyperlink") {
+			for (const r of (item as Hyperlink).children) {
+				if (r.type === "run") {
+					const bt = visit(r);
+					if (bt) return bt;
+				}
+			}
+			return null;
+		}
+		if (item.type === "insertion" || item.type === "deletion") {
+			// Tracked-change wrappers can themselves contain a forced break.
+			// Descend so a break inside <w:ins> or <w:del> still emits a
+			// pageBreak node downstream.
+			const tc = item as { content: Paragraph["content"] };
+			for (const inner of tc.content) {
+				const bt = visit(inner);
+				if (bt) return bt;
+			}
+			return null;
+		}
+		return null;
+	}
 
-  for (const item of paragraph.content) {
-    const bt = visit(item);
-    if (bt) return bt;
-  }
-  return null;
+	for (const item of paragraph.content) {
+		const bt = visit(item);
+		if (bt) return bt;
+	}
+	return null;
 }
 
 /**
  * Create an empty ProseMirror document
  */
 export function createEmptyDoc(): PMNode {
-  return schema.node('doc', null, [schema.node('paragraph', {}, [])]);
+	return schema.node("doc", null, [schema.node("paragraph", {}, [])]);
 }

@@ -13,27 +13,27 @@
  */
 
 import type {
-  Document,
-  DocumentBody,
-  Paragraph,
-  Table,
-  Run,
-  Hyperlink,
-  Style,
-} from '../types/document';
+	Document,
+	DocumentBody,
+	Paragraph,
+	Table,
+	Run,
+	Hyperlink,
+	Style,
+} from "../types/document";
 
 import type {
-  AgentContext,
-  StyleInfo,
-  ParagraphOutline,
-  SectionInfo,
-  SelectionContext,
-  ParagraphContext,
-  SuggestedAction,
-  Range,
-} from '../types/agentApi';
+	AgentContext,
+	StyleInfo,
+	ParagraphOutline,
+	SectionInfo,
+	SelectionContext,
+	ParagraphContext,
+	SuggestedAction,
+	Range,
+} from "../types/agentApi";
 
-import { detectVariables } from '../utils/variableDetector';
+import { detectVariables } from "../utils/variableDetector";
 
 // ============================================================================
 // TYPES
@@ -43,24 +43,24 @@ import { detectVariables } from '../utils/variableDetector';
  * Options for building agent context
  */
 export interface AgentContextOptions {
-  /** Maximum characters per paragraph in outline (default: 100) */
-  outlineMaxChars?: number;
-  /** Maximum paragraphs to include in outline (default: 50) */
-  maxOutlineParagraphs?: number;
-  /** Include table content in context (default: false) */
-  includeTableContent?: boolean;
-  /** Include detailed formatting info (default: false) */
-  includeFormatting?: boolean;
+	/** Maximum characters per paragraph in outline (default: 100) */
+	outlineMaxChars?: number;
+	/** Maximum paragraphs to include in outline (default: 50) */
+	maxOutlineParagraphs?: number;
+	/** Include table content in context (default: false) */
+	includeTableContent?: boolean;
+	/** Include detailed formatting info (default: false) */
+	includeFormatting?: boolean;
 }
 
 /**
  * Options for building selection context
  */
 export interface SelectionContextOptions {
-  /** Characters of context before/after selection (default: 200) */
-  contextChars?: number;
-  /** Include suggested actions (default: true) */
-  includeSuggestions?: boolean;
+	/** Characters of context before/after selection (default: 200) */
+	contextChars?: number;
+	/** Include suggested actions (default: true) */
+	includeSuggestions?: boolean;
 }
 
 // ============================================================================
@@ -74,48 +74,57 @@ export interface SelectionContextOptions {
  * @param options - Context building options
  * @returns AgentContext object (JSON serializable)
  */
-export function getAgentContext(doc: Document, options: AgentContextOptions = {}): AgentContext {
-  const { outlineMaxChars = 100, maxOutlineParagraphs = 50 } = options;
+export function getAgentContext(
+	doc: Document,
+	options: AgentContextOptions = {},
+): AgentContext {
+	const { outlineMaxChars = 100, maxOutlineParagraphs = 50 } = options;
 
-  const body = doc.package.document;
+	const body = doc.package.document;
 
-  // Get paragraphs
-  const paragraphs = body.content.filter((block): block is Paragraph => block.type === 'paragraph');
+	// Get paragraphs
+	const paragraphs = body.content.filter(
+		(block): block is Paragraph => block.type === "paragraph",
+	);
 
-  // Build outline
-  const outline = buildOutline(paragraphs, outlineMaxChars, maxOutlineParagraphs);
+	// Build outline
+	const outline = buildOutline(
+		paragraphs,
+		outlineMaxChars,
+		maxOutlineParagraphs,
+	);
 
-  // Get variables
-  const variables = detectVariables(doc);
+	// Get variables
+	const variables = detectVariables(doc);
 
-  // Get styles
-  const availableStyles = getStylesFromDoc(doc);
+	// Get styles
+	const availableStyles = getStylesFromDoc(doc);
 
-  // Get sections
-  const sections = getSectionsInfo(body);
+	// Get sections
+	const sections = getSectionsInfo(body);
 
-  // Calculate counts
-  const wordCount = calculateWordCount(body);
-  const characterCount = calculateCharacterCount(body);
+	// Calculate counts
+	const wordCount = calculateWordCount(body);
+	const characterCount = calculateCharacterCount(body);
 
-  // Check for features
-  const hasTables = body.content.some((b) => b.type === 'table');
-  const hasImages = hasDocImages(body);
-  const hasHyperlinks = hasDocHyperlinks(body);
+	// Check for features
+	const hasTables = body.content.some((b) => b.type === "table");
+	const hasImages = hasDocImages(body);
+	const hasHyperlinks = hasDocHyperlinks(body);
 
-  return {
-    paragraphCount: paragraphs.length,
-    wordCount,
-    characterCount,
-    variables,
-    variableCount: variables.length,
-    availableStyles,
-    outline,
-    sections,
-    hasTables,
-    hasImages,
-    hasHyperlinks,
-  };
+	return {
+		paragraphCount: paragraphs.length,
+		wordCount,
+		characterCount,
+		variables,
+		variableCount: variables.length,
+		availableStyles,
+		outline,
+		sections,
+		hasTables,
+		hasImages,
+		hasHyperlinks,
+	};
 }
 
 /**
@@ -127,103 +136,111 @@ export function getAgentContext(doc: Document, options: AgentContextOptions = {}
  * @returns SelectionContext object (JSON serializable)
  */
 export function buildSelectionContext(
-  doc: Document,
-  range: Range,
-  options: SelectionContextOptions = {}
+	doc: Document,
+	range: Range,
+	options: SelectionContextOptions = {},
 ): SelectionContext {
-  const { contextChars = 200, includeSuggestions = true } = options;
+	const { contextChars = 200, includeSuggestions = true } = options;
 
-  const body = doc.package.document;
-  const paragraphs = body.content.filter((block): block is Paragraph => block.type === 'paragraph');
+	const body = doc.package.document;
+	const paragraphs = body.content.filter(
+		(block): block is Paragraph => block.type === "paragraph",
+	);
 
-  // Get the paragraph at the start of the selection
-  const paragraph = paragraphs[range.start.paragraphIndex];
-  if (!paragraph) {
-    throw new Error(`Paragraph not found at index ${range.start.paragraphIndex}`);
-  }
+	// Get the paragraph at the start of the selection
+	const paragraph = paragraphs[range.start.paragraphIndex];
+	if (!paragraph) {
+		throw new Error(
+			`Paragraph not found at index ${range.start.paragraphIndex}`,
+		);
+	}
 
-  // Get paragraph text
-  const paragraphText = getParagraphText(paragraph);
+	// Get paragraph text
+	const paragraphText = getParagraphText(paragraph);
 
-  // Extract selected text
-  let selectedText = '';
-  if (range.start.paragraphIndex === range.end.paragraphIndex) {
-    selectedText = paragraphText.slice(range.start.offset, range.end.offset);
-  } else {
-    // Multi-paragraph selection
-    const texts: string[] = [];
-    for (let i = range.start.paragraphIndex; i <= range.end.paragraphIndex; i++) {
-      const para = paragraphs[i];
-      if (!para) continue;
-      const text = getParagraphText(para);
-      if (i === range.start.paragraphIndex) {
-        texts.push(text.slice(range.start.offset));
-      } else if (i === range.end.paragraphIndex) {
-        texts.push(text.slice(0, range.end.offset));
-      } else {
-        texts.push(text);
-      }
-    }
-    selectedText = texts.join('\n');
-  }
+	// Extract selected text
+	let selectedText = "";
+	if (range.start.paragraphIndex === range.end.paragraphIndex) {
+		selectedText = paragraphText.slice(range.start.offset, range.end.offset);
+	} else {
+		// Multi-paragraph selection
+		const texts: string[] = [];
+		for (
+			let i = range.start.paragraphIndex;
+			i <= range.end.paragraphIndex;
+			i++
+		) {
+			const para = paragraphs[i];
+			if (!para) continue;
+			const text = getParagraphText(para);
+			if (i === range.start.paragraphIndex) {
+				texts.push(text.slice(range.start.offset));
+			} else if (i === range.end.paragraphIndex) {
+				texts.push(text.slice(0, range.end.offset));
+			} else {
+				texts.push(text);
+			}
+		}
+		selectedText = texts.join("\n");
+	}
 
-  // Get context before and after selection
-  const textBefore = getTextBefore(
-    paragraphs,
-    range.start.paragraphIndex,
-    range.start.offset,
-    contextChars
-  );
-  const textAfter = getTextAfter(
-    paragraphs,
-    range.end.paragraphIndex,
-    range.end.offset,
-    contextChars
-  );
+	// Get context before and after selection
+	const textBefore = getTextBefore(
+		paragraphs,
+		range.start.paragraphIndex,
+		range.start.offset,
+		contextChars,
+	);
+	const textAfter = getTextAfter(
+		paragraphs,
+		range.end.paragraphIndex,
+		range.end.offset,
+		contextChars,
+	);
 
-  // Get formatting from first run in selection
-  const formatting = getFormattingAtPosition(paragraph, range.start.offset);
-  const paragraphFormatting = paragraph.formatting || {};
+	// Get formatting from first run in selection
+	const formatting = getFormattingAtPosition(paragraph, range.start.offset);
+	const paragraphFormatting = paragraph.formatting || {};
 
-  // Build paragraph context
-  const paragraphContext: ParagraphContext = {
-    index: range.start.paragraphIndex,
-    fullText: paragraphText,
-    style: paragraph.formatting?.styleId,
-    wordCount: countWords(paragraphText),
-  };
+	// Build paragraph context
+	const paragraphContext: ParagraphContext = {
+		index: range.start.paragraphIndex,
+		fullText: paragraphText,
+		style: paragraph.formatting?.styleId,
+		wordCount: countWords(paragraphText),
+	};
 
-  // Check if in table or hyperlink.
-  //
-  // `inTable` is always false by design: `paragraphs` above filters
-  // `body.content` to top-level paragraph blocks only — table cells
-  // contain their own paragraphs that are never reachable through
-  // `range.start.paragraphIndex` in the current addressing scheme.
-  // Extending the agent to address paragraphs inside tables requires
-  // either (a) a flattened-paragraph walker that recurses into
-  // table / row / cell content, or (b) a separate `tableCell` range
-  // type. Both are out of scope until the agent gets table-editing
-  // actions.
-  const inTable = false;
-  const inHyperlink = isInHyperlink(paragraph, range.start.offset);
+	// Check if in table or hyperlink.
+	//
+	// `inTable` is always false by design: `paragraphs` above filters
+	// `body.content` to top-level paragraph blocks only — table cells
+	// contain their own paragraphs that are never reachable through
+	// `range.start.paragraphIndex` in the current addressing scheme.
+	// Extending the agent to address paragraphs inside tables requires
+	// either (a) a flattened-paragraph walker that recurses into
+	// table / row / cell content, or (b) a separate `tableCell` range
+	// type. Both are out of scope until the agent gets table-editing
+	// actions.
+	const inTable = false;
+	const inHyperlink = isInHyperlink(paragraph, range.start.offset);
 
-  // Build suggested actions
-  const suggestedActions = includeSuggestions
-    ? getSuggestedActions(selectedText, formatting, paragraphContext)
-    : [];
+	// Build suggested actions
+	const suggestedActions = includeSuggestions
+		? getSuggestedActions(selectedText, formatting, paragraphContext)
+		: [];
 
-  return {
-    selectedText,
-    range,
-    formatting,
-    paragraphFormatting,
-    textBefore,
-    textAfter,
-    paragraph: paragraphContext,
-    inTable,
-    inHyperlink,
-    suggestedActions,
-  };
+	return {
+		selectedText,
+		range,
+		formatting,
+		paragraphFormatting,
+		textBefore,
+		textAfter,
+		paragraph: paragraphContext,
+		inTable,
+		inHyperlink,
+		suggestedActions,
+	};
 }
 
 /**
@@ -233,42 +250,44 @@ export function buildSelectionContext(
  * @returns Summary string
  */
 export function getDocumentSummary(doc: Document): string {
-  const context = getAgentContext(doc, {
-    outlineMaxChars: 50,
-    maxOutlineParagraphs: 10,
-  });
+	const context = getAgentContext(doc, {
+		outlineMaxChars: 50,
+		maxOutlineParagraphs: 10,
+	});
 
-  const parts: string[] = [
-    `Document with ${context.paragraphCount} paragraphs, ${context.wordCount} words.`,
-  ];
+	const parts: string[] = [
+		`Document with ${context.paragraphCount} paragraphs, ${context.wordCount} words.`,
+	];
 
-  if (context.hasTables) {
-    parts.push('Contains tables.');
-  }
-  if (context.hasImages) {
-    parts.push('Contains images.');
-  }
-  if (context.hasHyperlinks) {
-    parts.push('Contains hyperlinks.');
-  }
-  if (context.variableCount > 0) {
-    parts.push(`Has ${context.variableCount} template variables: ${context.variables.join(', ')}`);
-  }
+	if (context.hasTables) {
+		parts.push("Contains tables.");
+	}
+	if (context.hasImages) {
+		parts.push("Contains images.");
+	}
+	if (context.hasHyperlinks) {
+		parts.push("Contains hyperlinks.");
+	}
+	if (context.variableCount > 0) {
+		parts.push(
+			`Has ${context.variableCount} template variables: ${context.variables.join(", ")}`,
+		);
+	}
 
-  // Add headings outline
-  const headings = context.outline.filter((p) => p.isHeading);
-  if (headings.length > 0) {
-    parts.push('\nHeadings:');
-    for (const heading of headings.slice(0, 5)) {
-      const level = heading.headingLevel || 1;
-      parts.push(`${'  '.repeat(level - 1)}- ${heading.preview}`);
-    }
-    if (headings.length > 5) {
-      parts.push(`  ... and ${headings.length - 5} more headings`);
-    }
-  }
+	// Add headings outline
+	const headings = context.outline.filter((p) => p.isHeading);
+	if (headings.length > 0) {
+		parts.push("\nHeadings:");
+		for (const heading of headings.slice(0, 5)) {
+			const level = heading.headingLevel || 1;
+			parts.push(`${"  ".repeat(level - 1)}- ${heading.preview}`);
+		}
+		if (headings.length > 5) {
+			parts.push(`  ... and ${headings.length - 5} more headings`);
+		}
+	}
 
-  return parts.join(' ');
+	return parts.join(" ");
 }
 
 // ============================================================================
@@ -279,458 +298,485 @@ export function getDocumentSummary(doc: Document): string {
  * Build document outline
  */
 function buildOutline(
-  paragraphs: Paragraph[],
-  maxChars: number,
-  maxParagraphs: number
+	paragraphs: Paragraph[],
+	maxChars: number,
+	maxParagraphs: number,
 ): ParagraphOutline[] {
-  const outline: ParagraphOutline[] = [];
+	const outline: ParagraphOutline[] = [];
 
-  for (let i = 0; i < Math.min(paragraphs.length, maxParagraphs); i++) {
-    const para = paragraphs[i];
-    const text = getParagraphText(para);
-    const styleId = para.formatting?.styleId;
+	for (let i = 0; i < Math.min(paragraphs.length, maxParagraphs); i++) {
+		const para = paragraphs[i];
+		const text = getParagraphText(para);
+		const styleId = para.formatting?.styleId;
 
-    outline.push({
-      index: i,
-      preview: text.slice(0, maxChars),
-      style: styleId,
-      isHeading: isHeadingStyle(styleId),
-      headingLevel: parseHeadingLevel(styleId),
-      isListItem: !!para.listRendering,
-      isEmpty: text.trim().length === 0,
-    });
-  }
+		outline.push({
+			index: i,
+			preview: text.slice(0, maxChars),
+			style: styleId,
+			isHeading: isHeadingStyle(styleId),
+			headingLevel: parseHeadingLevel(styleId),
+			isListItem: !!para.listRendering,
+			isEmpty: text.trim().length === 0,
+		});
+	}
 
-  return outline;
+	return outline;
 }
 
 /**
  * Get styles from document
  */
 function getStylesFromDoc(doc: Document): StyleInfo[] {
-  const styleDefinitions = doc.package.styles;
-  if (!styleDefinitions?.styles) {
-    return [];
-  }
+	const styleDefinitions = doc.package.styles;
+	if (!styleDefinitions?.styles) {
+		return [];
+	}
 
-  const styleInfos: StyleInfo[] = [];
+	const styleInfos: StyleInfo[] = [];
 
-  for (const [styleId, style] of Object.entries(styleDefinitions.styles)) {
-    if (typeof style === 'object' && style !== null) {
-      const styleObj = style as Style;
-      styleInfos.push({
-        id: styleId,
-        name: styleObj.name || styleId,
-        type: styleObj.type === 'numbering' ? 'paragraph' : styleObj.type || 'paragraph',
-        builtIn: styleObj.default, // Use default property as proxy for built-in
-      });
-    }
-  }
+	for (const [styleId, style] of Object.entries(styleDefinitions.styles)) {
+		if (typeof style === "object" && style !== null) {
+			const styleObj = style as Style;
+			styleInfos.push({
+				id: styleId,
+				name: styleObj.name || styleId,
+				type:
+					styleObj.type === "numbering"
+						? "paragraph"
+						: styleObj.type || "paragraph",
+				builtIn: styleObj.default, // Use default property as proxy for built-in
+			});
+		}
+	}
 
-  return styleInfos;
+	return styleInfos;
 }
 
 /**
  * Get sections info
  */
 function getSectionsInfo(body: DocumentBody): SectionInfo[] {
-  if (!body.sections) {
-    return [];
-  }
+	if (!body.sections) {
+		return [];
+	}
 
-  return body.sections.map((section, index) => ({
-    index,
-    paragraphCount: section.content?.length || 0,
-    pageSize:
-      section.properties?.pageWidth && section.properties?.pageHeight
-        ? {
-            width: section.properties.pageWidth,
-            height: section.properties.pageHeight,
-          }
-        : undefined,
-    isLandscape: section.properties?.orientation === 'landscape',
-    hasHeader: !!section.properties?.headerReferences?.length,
-    hasFooter: !!section.properties?.footerReferences?.length,
-  }));
+	return body.sections.map((section, index) => ({
+		index,
+		paragraphCount: section.content?.length || 0,
+		pageSize:
+			section.properties?.pageWidth && section.properties?.pageHeight
+				? {
+						width: section.properties.pageWidth,
+						height: section.properties.pageHeight,
+					}
+				: undefined,
+		isLandscape: section.properties?.orientation === "landscape",
+		hasHeader: !!section.properties?.headerReferences?.length,
+		hasFooter: !!section.properties?.footerReferences?.length,
+	}));
 }
 
 /**
  * Calculate word count for document body
  */
 function calculateWordCount(body: DocumentBody): number {
-  let count = 0;
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      const text = getParagraphText(block);
-      count += countWords(text);
-    } else if (block.type === 'table') {
-      count += getTableWordCount(block);
-    }
-  }
-  return count;
+	let count = 0;
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			const text = getParagraphText(block);
+			count += countWords(text);
+		} else if (block.type === "table") {
+			count += getTableWordCount(block);
+		}
+	}
+	return count;
 }
 
 /**
  * Count words in text
  */
 function countWords(text: string): number {
-  const words = text.split(/\s+/).filter((w) => w.length > 0);
-  return words.length;
+	const words = text.split(/\s+/).filter((w) => w.length > 0);
+	return words.length;
 }
 
 /**
  * Calculate character count for document body
  */
 function calculateCharacterCount(body: DocumentBody): number {
-  let count = 0;
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      const text = getParagraphText(block);
-      count += text.length;
-    } else if (block.type === 'table') {
-      count += getTableCharacterCount(block);
-    }
-  }
-  return count;
+	let count = 0;
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			const text = getParagraphText(block);
+			count += text.length;
+		} else if (block.type === "table") {
+			count += getTableCharacterCount(block);
+		}
+	}
+	return count;
 }
 
 /**
  * Get word count from table
  */
 function getTableWordCount(table: Table): number {
-  let count = 0;
-  for (const row of table.rows) {
-    for (const cell of row.cells) {
-      for (const block of cell.content) {
-        if (block.type === 'paragraph') {
-          const text = getParagraphText(block);
-          count += countWords(text);
-        }
-      }
-    }
-  }
-  return count;
+	let count = 0;
+	for (const row of table.rows) {
+		for (const cell of row.cells) {
+			for (const block of cell.content) {
+				if (block.type === "paragraph") {
+					const text = getParagraphText(block);
+					count += countWords(text);
+				}
+			}
+		}
+	}
+	return count;
 }
 
 /**
  * Get character count from table
  */
 function getTableCharacterCount(table: Table): number {
-  let count = 0;
-  for (const row of table.rows) {
-    for (const cell of row.cells) {
-      for (const block of cell.content) {
-        if (block.type === 'paragraph') {
-          const text = getParagraphText(block);
-          count += text.length;
-        }
-      }
-    }
-  }
-  return count;
+	let count = 0;
+	for (const row of table.rows) {
+		for (const cell of row.cells) {
+			for (const block of cell.content) {
+				if (block.type === "paragraph") {
+					const text = getParagraphText(block);
+					count += text.length;
+				}
+			}
+		}
+	}
+	return count;
 }
 
 /**
  * Get plain text from paragraph
  */
 function getParagraphText(paragraph: Paragraph): string {
-  const texts: string[] = [];
+	const texts: string[] = [];
 
-  for (const item of paragraph.content) {
-    if (item.type === 'run') {
-      texts.push(getRunText(item));
-    } else if (item.type === 'hyperlink') {
-      texts.push(getHyperlinkText(item));
-    }
-  }
+	for (const item of paragraph.content) {
+		if (item.type === "run") {
+			texts.push(getRunText(item));
+		} else if (item.type === "hyperlink") {
+			texts.push(getHyperlinkText(item));
+		}
+	}
 
-  return texts.join('');
+	return texts.join("");
 }
 
 /**
  * Get plain text from run
  */
 function getRunText(run: Run): string {
-  return run.content
-    .filter((c) => c.type === 'text')
-    .map((c) => (c as { type: 'text'; text: string }).text)
-    .join('');
+	return run.content
+		.filter((c) => c.type === "text")
+		.map((c) => (c as { type: "text"; text: string }).text)
+		.join("");
 }
 
 /**
  * Get plain text from hyperlink
  */
 function getHyperlinkText(hyperlink: Hyperlink): string {
-  const texts: string[] = [];
-  for (const child of hyperlink.children) {
-    if (child.type === 'run') {
-      texts.push(getRunText(child));
-    }
-  }
-  return texts.join('');
+	const texts: string[] = [];
+	for (const child of hyperlink.children) {
+		if (child.type === "run") {
+			texts.push(getRunText(child));
+		}
+	}
+	return texts.join("");
 }
 
 /**
  * Check if document has images
  */
 function hasDocImages(body: DocumentBody): boolean {
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      for (const item of block.content) {
-        if (item.type === 'run') {
-          for (const content of item.content) {
-            if (content.type === 'drawing') {
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-  return false;
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			for (const item of block.content) {
+				if (item.type === "run") {
+					for (const content of item.content) {
+						if (content.type === "drawing") {
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+	return false;
 }
 
 /**
  * Check if document has hyperlinks
  */
 function hasDocHyperlinks(body: DocumentBody): boolean {
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      for (const item of block.content) {
-        if (item.type === 'hyperlink') {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			for (const item of block.content) {
+				if (item.type === "hyperlink") {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 /**
  * Check if style is a heading
  */
 function isHeadingStyle(styleId?: string): boolean {
-  if (!styleId) return false;
-  return styleId.toLowerCase().includes('heading');
+	if (!styleId) return false;
+	return styleId.toLowerCase().includes("heading");
 }
 
 /**
  * Parse heading level from style ID
  */
 function parseHeadingLevel(styleId?: string): number | undefined {
-  if (!styleId) return undefined;
-  const match = styleId.match(/heading\s*(\d)/i);
-  if (match) {
-    return parseInt(match[1], 10);
-  }
-  return undefined;
+	if (!styleId) return undefined;
+	const match = styleId.match(/heading\s*(\d)/i);
+	if (match) {
+		return parseInt(match[1], 10);
+	}
+	return undefined;
 }
 
 /**
  * Get text before a position
  */
 function getTextBefore(
-  paragraphs: Paragraph[],
-  paragraphIndex: number,
-  offset: number,
-  maxChars: number
+	paragraphs: Paragraph[],
+	paragraphIndex: number,
+	offset: number,
+	maxChars: number,
 ): string {
-  const texts: string[] = [];
-  let totalChars = 0;
+	const texts: string[] = [];
+	let totalChars = 0;
 
-  // Get text before offset in current paragraph
-  const currentPara = paragraphs[paragraphIndex];
-  if (currentPara) {
-    const text = getParagraphText(currentPara);
-    const beforeText = text.slice(0, offset);
-    texts.unshift(beforeText);
-    totalChars += beforeText.length;
-  }
+	// Get text before offset in current paragraph
+	const currentPara = paragraphs[paragraphIndex];
+	if (currentPara) {
+		const text = getParagraphText(currentPara);
+		const beforeText = text.slice(0, offset);
+		texts.unshift(beforeText);
+		totalChars += beforeText.length;
+	}
 
-  // Get text from previous paragraphs if needed
-  for (let i = paragraphIndex - 1; i >= 0 && totalChars < maxChars; i--) {
-    const para = paragraphs[i];
-    if (!para) continue;
-    const text = getParagraphText(para);
-    texts.unshift(text);
-    totalChars += text.length;
-  }
+	// Get text from previous paragraphs if needed
+	for (let i = paragraphIndex - 1; i >= 0 && totalChars < maxChars; i--) {
+		const para = paragraphs[i];
+		if (!para) continue;
+		const text = getParagraphText(para);
+		texts.unshift(text);
+		totalChars += text.length;
+	}
 
-  const combined = texts.join('\n');
-  if (combined.length > maxChars) {
-    return '...' + combined.slice(-maxChars);
-  }
-  return combined;
+	const combined = texts.join("\n");
+	if (combined.length > maxChars) {
+		return "..." + combined.slice(-maxChars);
+	}
+	return combined;
 }
 
 /**
  * Get text after a position
  */
 function getTextAfter(
-  paragraphs: Paragraph[],
-  paragraphIndex: number,
-  offset: number,
-  maxChars: number
+	paragraphs: Paragraph[],
+	paragraphIndex: number,
+	offset: number,
+	maxChars: number,
 ): string {
-  const texts: string[] = [];
-  let totalChars = 0;
+	const texts: string[] = [];
+	let totalChars = 0;
 
-  // Get text after offset in current paragraph
-  const currentPara = paragraphs[paragraphIndex];
-  if (currentPara) {
-    const text = getParagraphText(currentPara);
-    const afterText = text.slice(offset);
-    texts.push(afterText);
-    totalChars += afterText.length;
-  }
+	// Get text after offset in current paragraph
+	const currentPara = paragraphs[paragraphIndex];
+	if (currentPara) {
+		const text = getParagraphText(currentPara);
+		const afterText = text.slice(offset);
+		texts.push(afterText);
+		totalChars += afterText.length;
+	}
 
-  // Get text from following paragraphs if needed
-  for (let i = paragraphIndex + 1; i < paragraphs.length && totalChars < maxChars; i++) {
-    const para = paragraphs[i];
-    if (!para) continue;
-    const text = getParagraphText(para);
-    texts.push(text);
-    totalChars += text.length;
-  }
+	// Get text from following paragraphs if needed
+	for (
+		let i = paragraphIndex + 1;
+		i < paragraphs.length && totalChars < maxChars;
+		i++
+	) {
+		const para = paragraphs[i];
+		if (!para) continue;
+		const text = getParagraphText(para);
+		texts.push(text);
+		totalChars += text.length;
+	}
 
-  const combined = texts.join('\n');
-  if (combined.length > maxChars) {
-    return combined.slice(0, maxChars) + '...';
-  }
-  return combined;
+	const combined = texts.join("\n");
+	if (combined.length > maxChars) {
+		return combined.slice(0, maxChars) + "...";
+	}
+	return combined;
 }
 
 /**
  * Get formatting at a specific position in a paragraph
  */
 function getFormattingAtPosition(
-  paragraph: Paragraph,
-  offset: number
-): Partial<import('../types/document').TextFormatting> {
-  let currentOffset = 0;
+	paragraph: Paragraph,
+	offset: number,
+): Partial<import("../types/document").TextFormatting> {
+	let currentOffset = 0;
 
-  for (const item of paragraph.content) {
-    if (item.type === 'run') {
-      const text = getRunText(item);
-      const runStart = currentOffset;
-      const runEnd = currentOffset + text.length;
+	for (const item of paragraph.content) {
+		if (item.type === "run") {
+			const text = getRunText(item);
+			const runStart = currentOffset;
+			const runEnd = currentOffset + text.length;
 
-      if (offset >= runStart && offset < runEnd) {
-        return item.formatting || {};
-      }
+			if (offset >= runStart && offset < runEnd) {
+				return item.formatting || {};
+			}
 
-      currentOffset = runEnd;
-    } else if (item.type === 'hyperlink') {
-      const text = getHyperlinkText(item);
-      const linkStart = currentOffset;
-      const linkEnd = currentOffset + text.length;
+			currentOffset = runEnd;
+		} else if (item.type === "hyperlink") {
+			const text = getHyperlinkText(item);
+			const linkStart = currentOffset;
+			const linkEnd = currentOffset + text.length;
 
-      if (offset >= linkStart && offset < linkEnd) {
-        // Return formatting from first child run
-        for (const child of item.children) {
-          if (child.type === 'run') {
-            return child.formatting || {};
-          }
-        }
-      }
+			if (offset >= linkStart && offset < linkEnd) {
+				// Return formatting from first child run
+				for (const child of item.children) {
+					if (child.type === "run") {
+						return child.formatting || {};
+					}
+				}
+			}
 
-      currentOffset = linkEnd;
-    }
-  }
+			currentOffset = linkEnd;
+		}
+	}
 
-  return {};
+	return {};
 }
 
 /**
  * Check if position is within a hyperlink
  */
 function isInHyperlink(paragraph: Paragraph, offset: number): boolean {
-  let currentOffset = 0;
+	let currentOffset = 0;
 
-  for (const item of paragraph.content) {
-    if (item.type === 'run') {
-      const text = getRunText(item);
-      currentOffset += text.length;
-    } else if (item.type === 'hyperlink') {
-      const text = getHyperlinkText(item);
-      const linkStart = currentOffset;
-      const linkEnd = currentOffset + text.length;
+	for (const item of paragraph.content) {
+		if (item.type === "run") {
+			const text = getRunText(item);
+			currentOffset += text.length;
+		} else if (item.type === "hyperlink") {
+			const text = getHyperlinkText(item);
+			const linkStart = currentOffset;
+			const linkEnd = currentOffset + text.length;
 
-      if (offset >= linkStart && offset < linkEnd) {
-        return true;
-      }
+			if (offset >= linkStart && offset < linkEnd) {
+				return true;
+			}
 
-      currentOffset = linkEnd;
-    }
-  }
+			currentOffset = linkEnd;
+		}
+	}
 
-  return false;
+	return false;
 }
 
 /**
  * Get suggested actions for selection
  */
 function getSuggestedActions(
-  selectedText: string,
-  _formatting: Partial<import('../types/document').TextFormatting>,
-  _paragraphContext: ParagraphContext
+	selectedText: string,
+	_formatting: Partial<import("../types/document").TextFormatting>,
+	_paragraphContext: ParagraphContext,
 ): SuggestedAction[] {
-  const actions: SuggestedAction[] = [];
+	const actions: SuggestedAction[] = [];
 
-  // Basic actions for any text
-  if (selectedText.length > 0) {
-    actions.push(
-      { id: 'rewrite', label: 'Rewrite', description: 'Rewrite this text', priority: 10 },
-      { id: 'summarize', label: 'Summarize', description: 'Summarize this text', priority: 9 }
-    );
+	// Basic actions for any text
+	if (selectedText.length > 0) {
+		actions.push(
+			{
+				id: "rewrite",
+				label: "Rewrite",
+				description: "Rewrite this text",
+				priority: 10,
+			},
+			{
+				id: "summarize",
+				label: "Summarize",
+				description: "Summarize this text",
+				priority: 9,
+			},
+		);
 
-    // Long text suggestions
-    if (selectedText.length > 200) {
-      actions.push({
-        id: 'summarize',
-        label: 'Summarize',
-        description: 'Create a shorter version',
-        priority: 8,
-      });
-    }
+		// Long text suggestions
+		if (selectedText.length > 200) {
+			actions.push({
+				id: "summarize",
+				label: "Summarize",
+				description: "Create a shorter version",
+				priority: 8,
+			});
+		}
 
-    // Short text suggestions
-    if (selectedText.length < 50 && selectedText.split(/\s+/).length < 10) {
-      actions.push({
-        id: 'expand',
-        label: 'Expand',
-        description: 'Add more details',
-        priority: 8,
-      });
-    }
+		// Short text suggestions
+		if (selectedText.length < 50 && selectedText.split(/\s+/).length < 10) {
+			actions.push({
+				id: "expand",
+				label: "Expand",
+				description: "Add more details",
+				priority: 8,
+			});
+		}
 
-    // Grammar fix is always useful
-    actions.push({
-      id: 'fixGrammar',
-      label: 'Fix Grammar',
-      description: 'Fix grammar and spelling',
-      priority: 7,
-    });
+		// Grammar fix is always useful
+		actions.push({
+			id: "fixGrammar",
+			label: "Fix Grammar",
+			description: "Fix grammar and spelling",
+			priority: 7,
+		});
 
-    // Translate
-    actions.push({
-      id: 'translate',
-      label: 'Translate',
-      description: 'Translate to another language',
-      priority: 6,
-    });
+		// Translate
+		actions.push({
+			id: "translate",
+			label: "Translate",
+			description: "Translate to another language",
+			priority: 6,
+		});
 
-    // Tone adjustments
-    actions.push(
-      { id: 'makeFormal', label: 'Make Formal', description: 'Use formal tone', priority: 5 },
-      { id: 'makeCasual', label: 'Make Casual', description: 'Use casual tone', priority: 4 }
-    );
-  }
+		// Tone adjustments
+		actions.push(
+			{
+				id: "makeFormal",
+				label: "Make Formal",
+				description: "Use formal tone",
+				priority: 5,
+			},
+			{
+				id: "makeCasual",
+				label: "Make Casual",
+				description: "Use casual tone",
+				priority: 4,
+			},
+		);
+	}
 
-  // Sort by priority (descending)
-  actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+	// Sort by priority (descending)
+	actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-  return actions;
+	return actions;
 }
 
 // ============================================================================
@@ -738,10 +784,10 @@ function getSuggestedActions(
 // ============================================================================
 
 export {
-  getAgentContext as default,
-  getParagraphText,
-  getRunText,
-  calculateWordCount,
-  calculateCharacterCount,
-  countWords,
+	getAgentContext as default,
+	getParagraphText,
+	getRunText,
+	calculateWordCount,
+	calculateCharacterCount,
+	countWords,
 };

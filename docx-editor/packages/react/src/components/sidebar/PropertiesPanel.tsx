@@ -16,39 +16,43 @@
  * Built on RightDockPanel so it shares the rail behavior (one panel at a
  * time, slide-in, close-✕) with comments / version-history / outline.
  */
-import type { ReactNode } from 'react';
-import { RightDockPanel } from '../RightDockPanel';
-import { MaterialSymbol } from '../ui/Icons';
-import { PanelState } from '../ui/PanelState';
+import type { ReactNode } from "react";
+import { RightDockPanel } from "../RightDockPanel";
+import { MaterialSymbol } from "../ui/Icons";
+import { PanelState } from "../ui/PanelState";
 
-export type PropertiesTargetKind = 'image' | 'table' | 'shape' | 'textbox';
+export type PropertiesTargetKind = "image" | "table" | "shape" | "textbox";
 
 export interface PropertiesPanelProps {
-  /** The kind of object currently selected, or null when none is. */
-  kind: PropertiesTargetKind | null;
-  /** Close the panel (rail toggle off). */
-  onClose: () => void;
-  /** The active object's property section, chosen by the host from `kind`. */
-  children?: ReactNode;
+	/** The kind of object currently selected, or null when none is. */
+	kind: PropertiesTargetKind | null;
+	/** Close the panel (rail toggle off). */
+	onClose: () => void;
+	/** The active object's property section, chosen by the host from `kind`. */
+	children?: ReactNode;
 }
 
-export function PropertiesPanel({ kind, onClose, children }: PropertiesPanelProps) {
-  return (
-    <RightDockPanel
-      title="Format"
-      icon={<MaterialSymbol name="tune" size={18} />}
-      testId="properties-panel"
-      ariaLabel="Format properties"
-      onClose={onClose}
-    >
-      {kind && children ? (
-        children
-      ) : (
-        <PanelState
-          kind="empty"
-          message="Select an image, table, or shape to edit its properties."
-        />
-      )}
-    </RightDockPanel>
-  );
+export function PropertiesPanel({
+	kind,
+	onClose,
+	children,
+}: PropertiesPanelProps) {
+	return (
+		<RightDockPanel
+			title="Format"
+			icon={<MaterialSymbol name="tune" size={18} />}
+			testId="properties-panel"
+			ariaLabel="Format properties"
+			onClose={onClose}
+		>
+			{kind && children ? (
+				children
+			) : (
+				<PanelState
+					kind="empty"
+					message="Select an image, table, or shape to edit its properties."
+				/>
+			)}
+		</RightDockPanel>
+	);
 }

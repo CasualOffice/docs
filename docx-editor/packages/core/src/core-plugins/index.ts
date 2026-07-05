@@ -32,57 +32,58 @@
 // ============================================================================
 
 export type {
-  // Core plugin types
-  CorePlugin,
-  Plugin,
-  PluginCommand,
-  CommandHandler,
-  PluginCommandHandler,
-  CommandResult,
-  PluginOptions,
-  PluginRegistrationResult,
-
-  // MCP tool types
-  McpToolDefinition,
-  ToolDefinition,
-  McpToolHandler,
-  ToolHandler,
-  McpToolResult,
-  ToolResult,
-  McpToolContent,
-  McpToolContext,
-  McpToolAnnotations,
-  McpToolExample,
-  McpSession,
-  LoadedDocument,
-
-  // Schema types
-  JsonSchema,
-  ZodSchemaLike,
-
-  // Event types
-  PluginEvent,
-  PluginEventListener,
-
-  // Utility types
-  TypedCommandHandler,
-  ExtractCommand,
-} from './types';
+	// Core plugin types
+	CorePlugin,
+	Plugin,
+	PluginCommand,
+	CommandHandler,
+	PluginCommandHandler,
+	CommandResult,
+	PluginOptions,
+	PluginRegistrationResult,
+	// MCP tool types
+	McpToolDefinition,
+	ToolDefinition,
+	McpToolHandler,
+	ToolHandler,
+	McpToolResult,
+	ToolResult,
+	McpToolContent,
+	McpToolContext,
+	McpToolAnnotations,
+	McpToolExample,
+	McpSession,
+	LoadedDocument,
+	// Schema types
+	JsonSchema,
+	ZodSchemaLike,
+	// Event types
+	PluginEvent,
+	PluginEventListener,
+	// Utility types
+	TypedCommandHandler,
+	ExtractCommand,
+} from "./types";
 
 // ============================================================================
 // UTILITIES
 // ============================================================================
 
-export { isZodSchema } from './types';
+export { isZodSchema } from "./types";
 
 // ============================================================================
 // REGISTRY
 // ============================================================================
 
-export { PluginRegistry, pluginRegistry, registerPlugins, createPluginRegistrar } from './registry';
+export {
+	PluginRegistry,
+	pluginRegistry,
+	registerPlugins,
+	createPluginRegistrar,
+} from "./registry";
 
 // ============================================================================
 // BUILT-IN PLUGINS
 // ============================================================================
 
-export { docxtemplaterPlugin } from './docxtemplater';
+export { docxtemplaterPlugin } from "./docxtemplater";

@@ -8,85 +8,92 @@
  * Insert row above, insert row below, insert column left, insert column right.
  */
 
-import React, { useCallback } from 'react';
-import { MaterialSymbol } from './MaterialSymbol';
-import { Button } from './Button';
-import { Tooltip } from './Tooltip';
-import { cn } from '../../lib/utils';
-import type { TableAction } from './TableToolbar';
-import { useTranslation } from '../../i18n';
-import type { TranslationKey } from '../../i18n';
+import type React from "react";
+import { useCallback } from "react";
+import { MaterialSymbol } from "./MaterialSymbol";
+import { Button } from "./Button";
+import { Tooltip } from "./Tooltip";
+import { cn } from "../../lib/utils";
+import type { TableAction } from "./TableToolbar";
+import { useTranslation } from "../../i18n";
+import type { TranslationKey } from "../../i18n";
 
 export interface TableInsertButtonsProps {
-  onAction: (action: TableAction) => void;
-  disabled?: boolean;
+	onAction: (action: TableAction) => void;
+	disabled?: boolean;
 }
 
 const INSERT_ACTIONS: {
-  action: TableAction;
-  icon: string;
-  labelKey: TranslationKey;
-  testId: string;
+	action: TableAction;
+	icon: string;
+	labelKey: TranslationKey;
+	testId: string;
 }[] = [
-  {
-    action: 'addRowAbove',
-    icon: 'keyboard_arrow_up',
-    labelKey: 'table.insertRowAbove',
-    testId: 'toolbar-table-add-row-above',
-  },
-  {
-    action: 'addRowBelow',
-    icon: 'keyboard_arrow_down',
-    labelKey: 'table.insertRowBelow',
-    testId: 'toolbar-table-add-row-below',
-  },
-  {
-    action: 'addColumnLeft',
-    icon: 'keyboard_arrow_left',
-    labelKey: 'table.insertColumnLeft',
-    testId: 'toolbar-table-add-col-left',
-  },
-  {
-    action: 'addColumnRight',
-    icon: 'keyboard_arrow_right',
-    labelKey: 'table.insertColumnRight',
-    testId: 'toolbar-table-add-col-right',
-  },
+	{
+		action: "addRowAbove",
+		icon: "keyboard_arrow_up",
+		labelKey: "table.insertRowAbove",
+		testId: "toolbar-table-add-row-above",
+	},
+	{
+		action: "addRowBelow",
+		icon: "keyboard_arrow_down",
+		labelKey: "table.insertRowBelow",
+		testId: "toolbar-table-add-row-below",
+	},
+	{
+		action: "addColumnLeft",
+		icon: "keyboard_arrow_left",
+		labelKey: "table.insertColumnLeft",
+		testId: "toolbar-table-add-col-left",
+	},
+	{
+		action: "addColumnRight",
+		icon: "keyboard_arrow_right",
+		labelKey: "table.insertColumnRight",
+		testId: "toolbar-table-add-col-right",
+	},
 ];
 
-export function TableInsertButtons({ onAction, disabled = false }: TableInsertButtonsProps) {
-  const { t } = useTranslation();
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
+export function TableInsertButtons({
+	onAction,
+	disabled = false,
+}: TableInsertButtonsProps) {
+	const { t } = useTranslation();
+	const handleMouseDown = useCallback((e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+	}, []);
 
-  return (
-    <>
-      {INSERT_ACTIONS.map(({ action, icon, labelKey, testId }) => {
-        const label = t(labelKey);
-        return (
-          <Tooltip key={typeof action === 'string' ? action : action.type} content={label}>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className={cn(
-                'text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]',
-                disabled && 'opacity-30 cursor-not-allowed'
-              )}
-              onMouseDown={handleMouseDown}
-              onClick={() => !disabled && onAction(action)}
-              disabled={disabled}
-              aria-label={label}
-              data-testid={testId}
-            >
-              <MaterialSymbol name={icon} size={20} />
-            </Button>
-          </Tooltip>
-        );
-      })}
-    </>
-  );
+	return (
+		<>
+			{INSERT_ACTIONS.map(({ action, icon, labelKey, testId }) => {
+				const label = t(labelKey);
+				return (
+					<Tooltip
+						key={typeof action === "string" ? action : action.type}
+						content={label}
+					>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className={cn(
+								"text-[color:var(--doc-text-on-surface-muted,#5f6368)] hover:text-[color:var(--doc-text-on-surface,#1f2937)] hover:bg-[color:var(--doc-bg-hover,#f1f3f4)]",
+								disabled && "opacity-30 cursor-not-allowed",
+							)}
+							onMouseDown={handleMouseDown}
+							onClick={() => !disabled && onAction(action)}
+							disabled={disabled}
+							aria-label={label}
+							data-testid={testId}
+						>
+							<MaterialSymbol name={icon} size={20} />
+						</Button>
+					</Tooltip>
+				);
+			})}
+		</>
+	);
 }
 
 export default TableInsertButtons;

@@ -2,21 +2,21 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { GlobalRegistrator } from '@happy-dom/global-registrator';
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import {
-  findBodyEmptyRuns,
-  findBodyPmAnchor,
-  findBodyPmAnchors,
-  findBodyPmSpans,
-} from '../findBodyPmSpans';
+	findBodyEmptyRuns,
+	findBodyPmAnchor,
+	findBodyPmAnchors,
+	findBodyPmSpans,
+} from "../findBodyPmSpans";
 
 beforeAll(() => GlobalRegistrator.register());
 afterAll(() => GlobalRegistrator.unregister());
 
 function buildPage(): HTMLElement {
-  document.body.innerHTML = `
+	document.body.innerHTML = `
     <div class="paged-editor__pages">
       <div class="layout-page">
         <div class="layout-page-header">
@@ -38,18 +38,18 @@ function buildPage(): HTMLElement {
       </div>
     </div>
   `;
-  return document.body.querySelector<HTMLElement>('.paged-editor__pages')!;
+	return document.body.querySelector<HTMLElement>(".paged-editor__pages")!;
 }
 
-describe('findBodyPmSpans', () => {
-  test('returns only body spans, never HF spans', () => {
-    const pages = buildPage();
-    const spans = findBodyPmSpans(pages);
-    expect(spans.map((s) => s.id)).toEqual(['body-span-1', 'body-span-2']);
-  });
+describe("findBodyPmSpans", () => {
+	test("returns only body spans, never HF spans", () => {
+		const pages = buildPage();
+		const spans = findBodyPmSpans(pages);
+		expect(spans.map((s) => s.id)).toEqual(["body-span-1", "body-span-2"]);
+	});
 
-  test('returns empty array when only HF content is present', () => {
-    document.body.innerHTML = `
+	test("returns empty array when only HF content is present", () => {
+		document.body.innerHTML = `
       <div class="paged-editor__pages">
         <div class="layout-page">
           <div class="layout-page-header">
@@ -61,53 +61,55 @@ describe('findBodyPmSpans', () => {
         </div>
       </div>
     `;
-    const pages = document.body.querySelector<HTMLElement>('.paged-editor__pages')!;
-    expect(findBodyPmSpans(pages)).toEqual([]);
-  });
+		const pages = document.body.querySelector<HTMLElement>(
+			".paged-editor__pages",
+		)!;
+		expect(findBodyPmSpans(pages)).toEqual([]);
+	});
 });
 
-describe('findBodyEmptyRuns', () => {
-  test('skips HF empty runs', () => {
-    const pages = buildPage();
-    const runs = findBodyEmptyRuns(pages);
-    expect(runs).toHaveLength(1);
-    expect(runs[0].id).toBe('body-empty-run');
-  });
+describe("findBodyEmptyRuns", () => {
+	test("skips HF empty runs", () => {
+		const pages = buildPage();
+		const runs = findBodyEmptyRuns(pages);
+		expect(runs).toHaveLength(1);
+		expect(runs[0].id).toBe("body-empty-run");
+	});
 });
 
-describe('findBodyPmAnchors', () => {
-  test('includes body paragraphs as well as body spans', () => {
-    const pages = buildPage();
-    const ids = findBodyPmAnchors(pages).map((el) => el.id);
-    expect(ids).toEqual(['body-span-1', 'body-span-2', 'body-paragraph']);
-  });
+describe("findBodyPmAnchors", () => {
+	test("includes body paragraphs as well as body spans", () => {
+		const pages = buildPage();
+		const ids = findBodyPmAnchors(pages).map((el) => el.id);
+		expect(ids).toEqual(["body-span-1", "body-span-2", "body-paragraph"]);
+	});
 });
 
-describe('findBodyPmAnchor', () => {
-  test('returns body element for an exact pmStart match', () => {
-    const pages = buildPage();
-    const el = findBodyPmAnchor(pages, 6);
-    expect(el?.id).toBe('body-span-2');
-  });
+describe("findBodyPmAnchor", () => {
+	test("returns body element for an exact pmStart match", () => {
+		const pages = buildPage();
+		const el = findBodyPmAnchor(pages, 6);
+		expect(el?.id).toBe("body-span-2");
+	});
 
-  test('does not match HF elements with the same pmStart', () => {
-    const pages = buildPage();
-    // pmStart=1 exists on both an HF span and a body span; the helper must
-    // pick the body one. pmStart=9 exists on both an HF anchor div and the
-    // body paragraph div; same rule applies.
-    expect(findBodyPmAnchor(pages, 1)?.id).toBe('body-span-1');
-    expect(findBodyPmAnchor(pages, 9)?.id).toBe('body-paragraph');
-  });
+	test("does not match HF elements with the same pmStart", () => {
+		const pages = buildPage();
+		// pmStart=1 exists on both an HF span and a body span; the helper must
+		// pick the body one. pmStart=9 exists on both an HF anchor div and the
+		// body paragraph div; same rule applies.
+		expect(findBodyPmAnchor(pages, 1)?.id).toBe("body-span-1");
+		expect(findBodyPmAnchor(pages, 9)?.id).toBe("body-paragraph");
+	});
 
-  test('returns null when no body element matches', () => {
-    const pages = buildPage();
-    expect(findBodyPmAnchor(pages, 999)).toBeNull();
-  });
+	test("returns null when no body element matches", () => {
+		const pages = buildPage();
+		expect(findBodyPmAnchor(pages, 999)).toBeNull();
+	});
 
-  test('returns null for non-finite pmStart values', () => {
-    const pages = buildPage();
-    expect(findBodyPmAnchor(pages, NaN)).toBeNull();
-    expect(findBodyPmAnchor(pages, Infinity)).toBeNull();
-    expect(findBodyPmAnchor(pages, -Infinity)).toBeNull();
-  });
+	test("returns null for non-finite pmStart values", () => {
+		const pages = buildPage();
+		expect(findBodyPmAnchor(pages, NaN)).toBeNull();
+		expect(findBodyPmAnchor(pages, Infinity)).toBeNull();
+		expect(findBodyPmAnchor(pages, -Infinity)).toBeNull();
+	});
 });

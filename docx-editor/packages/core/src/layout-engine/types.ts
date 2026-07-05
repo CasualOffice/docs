@@ -23,197 +23,203 @@ export type BlockId = string | number;
  * Common run formatting properties applied to text runs.
  */
 export type RunFormatting = {
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean | { style?: string; color?: string };
-  strike?: boolean;
-  color?: string;
-  highlight?: string;
-  fontFamily?: string;
-  fontSize?: number;
-  letterSpacing?: number;
-  superscript?: boolean;
-  subscript?: boolean;
-  /** Render glyphs as uppercase regardless of source case (OOXML w:caps). */
-  allCaps?: boolean;
-  /** Render lowercase glyphs as small uppercase (OOXML w:smallCaps). */
-  smallCaps?: boolean;
-  /**
-   * Vertical baseline shift in CSS pixels (positive = up). OOXML w:position is
-   * authored in half-points; converted to px during the bridge so the painter
-   * can apply it directly via vertical-align without re-doing the math.
-   */
-  positionPx?: number;
-  /**
-   * Horizontal text scale as a percentage (100 = normal, 50 = half-width,
-   * 200 = double-width). OOXML w:w specifies pct in raw % (e.g. 90 means 90%).
-   */
-  horizontalScale?: number;
-  /**
-   * Minimum font size in points at which kerning kicks in (OOXML w:kern, half-
-   * points in source). When this run's effective font size is at or above this
-   * threshold, the painter enables font-kerning: normal.
-   */
-  kerningMinPt?: number;
-  /** Engraved/imprint effect (OOXML w:imprint, §17.3.2.18). */
-  imprint?: boolean;
-  /** Embossed/raised effect (OOXML w:emboss, §17.3.2.13). */
-  emboss?: boolean;
-  /** Drop-shadow effect (OOXML w:shadow, §17.3.2.31). */
-  textShadow?: boolean;
-  /** Outlined / hollow text (OOXML w:outline, §17.3.2.23). */
-  textOutline?: boolean;
-  /**
-   * CJK emphasis mark (OOXML w:em, §17.3.2.12). Maps to CSS `text-emphasis`
-   * with a position and style; the painter handles the variant lookup.
-   */
-  emphasisMark?: 'dot' | 'comma' | 'circle' | 'underDot';
-  /** Hidden run (OOXML w:vanish, §17.3.2.41). Painter skips the run. */
-  hidden?: boolean;
-  /**
-   * Per-run right-to-left direction (OOXML w:rtl, §17.3.2.30). Independent
-   * from the paragraph's bidi flag — a single run may flip direction within
-   * an LTR paragraph.
-   */
-  rtl?: boolean;
-  /**
-   * Legacy text-effect animation (OOXML w:effect, §17.3.2.11). The painter
-   * surfaces it as a class hook so host CSS can opt in to animations.
-   */
-  textEffect?: 'blinkBackground' | 'lights' | 'antsBlack' | 'antsRed' | 'shimmer' | 'sparkle';
-  /** Hyperlink info if this run is a link */
-  hyperlink?: { href: string; tooltip?: string };
-  /** Footnote reference ID (if this run contains a footnote reference) */
-  footnoteRefId?: number;
-  /** Endnote reference ID (if this run contains an endnote reference) */
-  endnoteRefId?: number;
-  /** Comment IDs if this run is within a comment range */
-  commentIds?: number[];
-  /** Whether this run is a tracked insertion */
-  isInsertion?: boolean;
-  /** Whether this run is a tracked deletion */
-  isDeletion?: boolean;
-  /** Author of the tracked change */
-  changeAuthor?: string;
-  /** Date of the tracked change */
-  changeDate?: string;
-  /** Revision ID of the tracked change (for sidebar matching) */
-  changeRevisionId?: number;
+	bold?: boolean;
+	italic?: boolean;
+	underline?: boolean | { style?: string; color?: string };
+	strike?: boolean;
+	color?: string;
+	highlight?: string;
+	fontFamily?: string;
+	fontSize?: number;
+	letterSpacing?: number;
+	superscript?: boolean;
+	subscript?: boolean;
+	/** Render glyphs as uppercase regardless of source case (OOXML w:caps). */
+	allCaps?: boolean;
+	/** Render lowercase glyphs as small uppercase (OOXML w:smallCaps). */
+	smallCaps?: boolean;
+	/**
+	 * Vertical baseline shift in CSS pixels (positive = up). OOXML w:position is
+	 * authored in half-points; converted to px during the bridge so the painter
+	 * can apply it directly via vertical-align without re-doing the math.
+	 */
+	positionPx?: number;
+	/**
+	 * Horizontal text scale as a percentage (100 = normal, 50 = half-width,
+	 * 200 = double-width). OOXML w:w specifies pct in raw % (e.g. 90 means 90%).
+	 */
+	horizontalScale?: number;
+	/**
+	 * Minimum font size in points at which kerning kicks in (OOXML w:kern, half-
+	 * points in source). When this run's effective font size is at or above this
+	 * threshold, the painter enables font-kerning: normal.
+	 */
+	kerningMinPt?: number;
+	/** Engraved/imprint effect (OOXML w:imprint, §17.3.2.18). */
+	imprint?: boolean;
+	/** Embossed/raised effect (OOXML w:emboss, §17.3.2.13). */
+	emboss?: boolean;
+	/** Drop-shadow effect (OOXML w:shadow, §17.3.2.31). */
+	textShadow?: boolean;
+	/** Outlined / hollow text (OOXML w:outline, §17.3.2.23). */
+	textOutline?: boolean;
+	/**
+	 * CJK emphasis mark (OOXML w:em, §17.3.2.12). Maps to CSS `text-emphasis`
+	 * with a position and style; the painter handles the variant lookup.
+	 */
+	emphasisMark?: "dot" | "comma" | "circle" | "underDot";
+	/** Hidden run (OOXML w:vanish, §17.3.2.41). Painter skips the run. */
+	hidden?: boolean;
+	/**
+	 * Per-run right-to-left direction (OOXML w:rtl, §17.3.2.30). Independent
+	 * from the paragraph's bidi flag — a single run may flip direction within
+	 * an LTR paragraph.
+	 */
+	rtl?: boolean;
+	/**
+	 * Legacy text-effect animation (OOXML w:effect, §17.3.2.11). The painter
+	 * surfaces it as a class hook so host CSS can opt in to animations.
+	 */
+	textEffect?:
+		| "blinkBackground"
+		| "lights"
+		| "antsBlack"
+		| "antsRed"
+		| "shimmer"
+		| "sparkle";
+	/** Hyperlink info if this run is a link */
+	hyperlink?: { href: string; tooltip?: string };
+	/** Footnote reference ID (if this run contains a footnote reference) */
+	footnoteRefId?: number;
+	/** Endnote reference ID (if this run contains an endnote reference) */
+	endnoteRefId?: number;
+	/** Comment IDs if this run is within a comment range */
+	commentIds?: number[];
+	/** Whether this run is a tracked insertion */
+	isInsertion?: boolean;
+	/** Whether this run is a tracked deletion */
+	isDeletion?: boolean;
+	/** Author of the tracked change */
+	changeAuthor?: string;
+	/** Date of the tracked change */
+	changeDate?: string;
+	/** Revision ID of the tracked change (for sidebar matching) */
+	changeRevisionId?: number;
 };
 
 /**
  * Hyperlink information for a run.
  */
 export type HyperlinkInfo = {
-  href: string;
-  tooltip?: string;
+	href: string;
+	tooltip?: string;
 };
 
 /**
  * A text run within a paragraph.
  */
 export type TextRun = RunFormatting & {
-  kind: 'text';
-  text: string;
-  /** MathML for an equation run (converted from the stored OMML). When
-   *  set, the painter renders native `<math>` instead of `text`; `text`
-   *  stays the plain-text fallback and is what the engine MEASURES, so
-   *  line layout is unchanged from the text-only fallback. */
-  mathml?: string;
-  /** Hyperlink information if this run is a link. */
-  hyperlink?: HyperlinkInfo;
-  /** Absolute ProseMirror position (inclusive) of first character. */
-  pmStart?: number;
-  /** Absolute ProseMirror position (exclusive) after last character. */
-  pmEnd?: number;
+	kind: "text";
+	text: string;
+	/** MathML for an equation run (converted from the stored OMML). When
+	 *  set, the painter renders native `<math>` instead of `text`; `text`
+	 *  stays the plain-text fallback and is what the engine MEASURES, so
+	 *  line layout is unchanged from the text-only fallback. */
+	mathml?: string;
+	/** Hyperlink information if this run is a link. */
+	hyperlink?: HyperlinkInfo;
+	/** Absolute ProseMirror position (inclusive) of first character. */
+	pmStart?: number;
+	/** Absolute ProseMirror position (exclusive) after last character. */
+	pmEnd?: number;
 };
 
 /**
  * A tab character run.
  */
 export type TabRun = RunFormatting & {
-  kind: 'tab';
-  width?: number;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "tab";
+	width?: number;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * Position data for floating/anchored images.
  */
 export type ImageRunPosition = {
-  horizontal?: {
-    relativeTo?: string;
-    posOffset?: number;
-    align?: string;
-  };
-  vertical?: {
-    relativeTo?: string;
-    posOffset?: number;
-    align?: string;
-  };
+	horizontal?: {
+		relativeTo?: string;
+		posOffset?: number;
+		align?: string;
+	};
+	vertical?: {
+		relativeTo?: string;
+		posOffset?: number;
+		align?: string;
+	};
 };
 
 /**
  * An inline image run.
  */
 export type ImageRun = {
-  kind: 'image';
-  src: string;
-  width: number;
-  height: number;
-  alt?: string;
-  /** CSS transform string (rotation, flip) */
-  transform?: string;
-  /** Picture border (round-trips via image node attrs; painted by renderImage) */
-  borderWidth?: number;
-  borderColor?: string;
-  borderStyle?: string;
-  /** Position for floating/anchored images */
-  position?: ImageRunPosition;
-  /** Wrap type from DOCX (inline, square, tight, through, topAndBottom, etc.) */
-  wrapType?: string;
-  /** Display mode for CSS rendering */
-  displayMode?: 'inline' | 'block' | 'float';
-  /** CSS float direction */
-  cssFloat?: 'left' | 'right' | 'none';
-  /** Wrap distances in pixels */
-  distTop?: number;
-  distBottom?: number;
-  distLeft?: number;
-  distRight?: number;
-  /** wp:srcRect crop fractions in [0, 1]; emit as CSS clip-path inset. */
-  cropTop?: number;
-  cropRight?: number;
-  cropBottom?: number;
-  cropLeft?: number;
-  /** a:alphaModFix → CSS opacity in [0, 1]. */
-  opacity?: number;
-  /** External URL from `<a:hlinkClick>` on the picture's `pic:cNvPr`. */
-  hlinkHref?: string;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "image";
+	src: string;
+	width: number;
+	height: number;
+	alt?: string;
+	/** CSS transform string (rotation, flip) */
+	transform?: string;
+	/** Picture border (round-trips via image node attrs; painted by renderImage) */
+	borderWidth?: number;
+	borderColor?: string;
+	borderStyle?: string;
+	/** Position for floating/anchored images */
+	position?: ImageRunPosition;
+	/** Wrap type from DOCX (inline, square, tight, through, topAndBottom, etc.) */
+	wrapType?: string;
+	/** Display mode for CSS rendering */
+	displayMode?: "inline" | "block" | "float";
+	/** CSS float direction */
+	cssFloat?: "left" | "right" | "none";
+	/** Wrap distances in pixels */
+	distTop?: number;
+	distBottom?: number;
+	distLeft?: number;
+	distRight?: number;
+	/** wp:srcRect crop fractions in [0, 1]; emit as CSS clip-path inset. */
+	cropTop?: number;
+	cropRight?: number;
+	cropBottom?: number;
+	cropLeft?: number;
+	/** a:alphaModFix → CSS opacity in [0, 1]. */
+	opacity?: number;
+	/** External URL from `<a:hlinkClick>` on the picture's `pic:cNvPr`. */
+	hlinkHref?: string;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * A line break run.
  */
 export type LineBreakRun = {
-  kind: 'lineBreak';
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "lineBreak";
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * A field run (PAGE, NUMPAGES, etc.) that gets substituted at render time.
  */
 export type FieldRun = RunFormatting & {
-  kind: 'field';
-  fieldType: 'PAGE' | 'NUMPAGES' | 'DATE' | 'TIME' | 'OTHER';
-  /** Fallback text if field can't be resolved */
-  fallback?: string;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "field";
+	fieldType: "PAGE" | "NUMPAGES" | "DATE" | "TIME" | "OTHER";
+	/** Fallback text if field can't be resolved */
+	fallback?: string;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
@@ -225,276 +231,282 @@ export type Run = TextRun | TabRun | ImageRun | LineBreakRun | FieldRun;
  * Paragraph spacing configuration.
  */
 export type ParagraphSpacing = {
-  before?: number;
-  after?: number;
-  line?: number;
-  lineUnit?: 'px' | 'multiplier';
-  lineRule?: 'auto' | 'exact' | 'atLeast';
+	before?: number;
+	after?: number;
+	line?: number;
+	lineUnit?: "px" | "multiplier";
+	lineRule?: "auto" | "exact" | "atLeast";
 };
 
 /**
  * Paragraph indentation configuration.
  */
 export type ParagraphIndent = {
-  left?: number;
-  right?: number;
-  firstLine?: number;
-  hanging?: number;
+	left?: number;
+	right?: number;
+	firstLine?: number;
+	hanging?: number;
 };
 
 /**
  * Tab stop alignment types
  */
-export type TabAlignment = 'start' | 'end' | 'center' | 'decimal' | 'bar' | 'clear';
+export type TabAlignment =
+	| "start"
+	| "end"
+	| "center"
+	| "decimal"
+	| "bar"
+	| "clear";
 
 /**
  * Tab stop definition
  */
 export type TabStop = {
-  /** Tab alignment mode */
-  val: TabAlignment;
-  /** Position in twips from left margin */
-  pos: number;
-  /** Optional leader character */
-  leader?: 'none' | 'dot' | 'hyphen' | 'underscore' | 'heavy' | 'middleDot';
+	/** Tab alignment mode */
+	val: TabAlignment;
+	/** Position in twips from left margin */
+	pos: number;
+	/** Optional leader character */
+	leader?: "none" | "dot" | "hyphen" | "underscore" | "heavy" | "middleDot";
 };
 
 /**
  * Border specification for paragraphs.
  */
 export type BorderStyle = {
-  style?: string;
-  width?: number; // in pixels
-  color?: string; // CSS color
-  space?: number; // spacing from text in pixels (from w:space, converted from pt)
+	style?: string;
+	width?: number; // in pixels
+	color?: string; // CSS color
+	space?: number; // spacing from text in pixels (from w:space, converted from pt)
 };
 
 /**
  * Paragraph borders.
  */
 export type ParagraphBorders = {
-  top?: BorderStyle;
-  bottom?: BorderStyle;
-  left?: BorderStyle;
-  right?: BorderStyle;
-  between?: BorderStyle;
-  bar?: BorderStyle;
+	top?: BorderStyle;
+	bottom?: BorderStyle;
+	left?: BorderStyle;
+	right?: BorderStyle;
+	between?: BorderStyle;
+	bar?: BorderStyle;
 };
 
 /**
  * List numbering properties for a paragraph.
  */
 export type ListNumPr = {
-  numId?: number;
-  ilvl?: number;
+	numId?: number;
+	ilvl?: number;
 };
 
 /**
  * Paragraph block attributes.
  */
 export type ParagraphAttrs = {
-  alignment?: 'left' | 'center' | 'right' | 'justify';
-  spacing?: ParagraphSpacing;
-  /** See ParagraphFormatting.spacingExplicit. */
-  spacingExplicit?: { before?: boolean; after?: boolean };
-  indent?: ParagraphIndent;
-  keepNext?: boolean;
-  keepLines?: boolean;
-  pageBreakBefore?: boolean;
-  styleId?: string;
-  contextualSpacing?: boolean;
-  /** Right-to-left paragraph direction */
-  bidi?: boolean;
-  borders?: ParagraphBorders;
-  shading?: string; // CSS background color
-  tabs?: TabStop[]; // Custom tab stops
-  // List properties
-  numPr?: ListNumPr;
-  listMarker?: string; // Pre-computed marker text (e.g., "1.", "•", "a)")
-  listIsBullet?: boolean;
-  listMarkerHidden?: boolean; // w:vanish on numbering level rPr
-  listMarkerFontFamily?: string; // from numbering level rPr (w:rFonts)
-  listMarkerFontSize?: number; // from numbering level rPr, in points
-  // Default font for empty paragraphs (from style's rPr / pPr/rPr)
-  defaultFontSize?: number; // in points
-  defaultFontFamily?: string;
-  /**
-   * Skip the empty-paragraph line-height fallback. Used by HF measurement
-   * for the canonical OOXML "trailing empty paragraph after a table" pattern
-   * — Word renders that paragraph as a zero-height anchor, not as a full
-   * line-height of phantom space. See `normalizeHeaderFooterMeasureBlocks`
-   * (#381).
-   */
-  suppressEmptyParagraphHeight?: boolean;
+	alignment?: "left" | "center" | "right" | "justify";
+	spacing?: ParagraphSpacing;
+	/** See ParagraphFormatting.spacingExplicit. */
+	spacingExplicit?: { before?: boolean; after?: boolean };
+	indent?: ParagraphIndent;
+	keepNext?: boolean;
+	keepLines?: boolean;
+	pageBreakBefore?: boolean;
+	styleId?: string;
+	contextualSpacing?: boolean;
+	/** Right-to-left paragraph direction */
+	bidi?: boolean;
+	borders?: ParagraphBorders;
+	shading?: string; // CSS background color
+	tabs?: TabStop[]; // Custom tab stops
+	// List properties
+	numPr?: ListNumPr;
+	listMarker?: string; // Pre-computed marker text (e.g., "1.", "•", "a)")
+	listIsBullet?: boolean;
+	listMarkerHidden?: boolean; // w:vanish on numbering level rPr
+	listMarkerFontFamily?: string; // from numbering level rPr (w:rFonts)
+	listMarkerFontSize?: number; // from numbering level rPr, in points
+	// Default font for empty paragraphs (from style's rPr / pPr/rPr)
+	defaultFontSize?: number; // in points
+	defaultFontFamily?: string;
+	/**
+	 * Skip the empty-paragraph line-height fallback. Used by HF measurement
+	 * for the canonical OOXML "trailing empty paragraph after a table" pattern
+	 * — Word renders that paragraph as a zero-height anchor, not as a full
+	 * line-height of phantom space. See `normalizeHeaderFooterMeasureBlocks`
+	 * (#381).
+	 */
+	suppressEmptyParagraphHeight?: boolean;
 };
 
 /**
  * A paragraph block containing runs.
  */
 export type ParagraphBlock = {
-  kind: 'paragraph';
-  id: BlockId;
-  runs: Run[];
-  attrs?: ParagraphAttrs;
-  /** ProseMirror start position for this block. */
-  pmStart?: number;
-  /** ProseMirror end position for this block. */
-  pmEnd?: number;
+	kind: "paragraph";
+	id: BlockId;
+	runs: Run[];
+	attrs?: ParagraphAttrs;
+	/** ProseMirror start position for this block. */
+	pmStart?: number;
+	/** ProseMirror end position for this block. */
+	pmEnd?: number;
 };
 
 /**
  * Cell border specification for rendering.
  */
 export type CellBorderSpec = {
-  width?: number; // pixels
-  color?: string; // CSS color
-  style?: string; // CSS border-style (solid, dashed, dotted, double)
+	width?: number; // pixels
+	color?: string; // CSS color
+	style?: string; // CSS border-style (solid, dashed, dotted, double)
 };
 
 /**
  * Cell borders (all four sides).
  */
 export type CellBorders = {
-  top?: CellBorderSpec;
-  bottom?: CellBorderSpec;
-  left?: CellBorderSpec;
-  right?: CellBorderSpec;
+	top?: CellBorderSpec;
+	bottom?: CellBorderSpec;
+	left?: CellBorderSpec;
+	right?: CellBorderSpec;
 };
 
 /**
  * A table cell with content.
  */
 export type TableCell = {
-  id: BlockId;
-  blocks: FlowBlock[];
-  colSpan?: number;
-  rowSpan?: number;
-  width?: number;
-  /** Original DOCX cell width value, before unit conversion. */
-  widthValue?: number;
-  /** Original DOCX cell width type ('auto', 'pct', 'dxa', 'nil'). */
-  widthType?: string;
-  verticalAlign?: 'top' | 'center' | 'bottom';
-  background?: string;
-  borders?: CellBorders;
-  /** Per-cell padding in pixels (from w:tcMar or table-level w:tblCellMar) */
-  padding?: { top: number; right: number; bottom: number; left: number };
-  /**
-   * `w:noWrap`: when true, the cell forbids text wrapping inside it. The
-   * painter renders this as `white-space: nowrap` on the content container
-   * — content stays on one line and the cell expands horizontally.
-   */
-  noWrap?: boolean;
+	id: BlockId;
+	blocks: FlowBlock[];
+	colSpan?: number;
+	rowSpan?: number;
+	width?: number;
+	/** Original DOCX cell width value, before unit conversion. */
+	widthValue?: number;
+	/** Original DOCX cell width type ('auto', 'pct', 'dxa', 'nil'). */
+	widthType?: string;
+	verticalAlign?: "top" | "center" | "bottom";
+	background?: string;
+	borders?: CellBorders;
+	/** Per-cell padding in pixels (from w:tcMar or table-level w:tblCellMar) */
+	padding?: { top: number; right: number; bottom: number; left: number };
+	/**
+	 * `w:noWrap`: when true, the cell forbids text wrapping inside it. The
+	 * painter renders this as `white-space: nowrap` on the content container
+	 * — content stays on one line and the cell expands horizontally.
+	 */
+	noWrap?: boolean;
 };
 
 /**
  * A table row containing cells.
  */
 export type TableRow = {
-  id: BlockId;
-  cells: TableCell[];
-  height?: number;
-  heightRule?: 'auto' | 'atLeast' | 'exact';
-  isHeader?: boolean;
+	id: BlockId;
+	cells: TableCell[];
+	height?: number;
+	heightRule?: "auto" | "atLeast" | "exact";
+	isHeader?: boolean;
 };
 
 /**
  * Floating table positioning info (pixel values).
  */
 export type FloatingTablePosition = {
-  horzAnchor?: 'margin' | 'page' | 'text';
-  vertAnchor?: 'margin' | 'page' | 'text';
-  tblpX?: number;
-  tblpXSpec?: 'left' | 'center' | 'right' | 'inside' | 'outside';
-  tblpY?: number;
-  tblpYSpec?: 'top' | 'center' | 'bottom' | 'inside' | 'outside' | 'inline';
-  topFromText?: number;
-  bottomFromText?: number;
-  leftFromText?: number;
-  rightFromText?: number;
+	horzAnchor?: "margin" | "page" | "text";
+	vertAnchor?: "margin" | "page" | "text";
+	tblpX?: number;
+	tblpXSpec?: "left" | "center" | "right" | "inside" | "outside";
+	tblpY?: number;
+	tblpYSpec?: "top" | "center" | "bottom" | "inside" | "outside" | "inline";
+	topFromText?: number;
+	bottomFromText?: number;
+	leftFromText?: number;
+	rightFromText?: number;
 };
 
 /**
  * A table block containing rows.
  */
 export type TableBlock = {
-  kind: 'table';
-  id: BlockId;
-  rows: TableRow[];
-  columnWidths?: number[];
-  /** Table width value (twips for dxa, 50ths of percent for pct). */
-  width?: number;
-  /** Table width type ('auto', 'pct', 'dxa', 'nil'). */
-  widthType?: string;
-  /** Table horizontal alignment */
-  justification?: 'left' | 'center' | 'right';
-  /** Table indent from left margin (in pixels, from w:tblInd) */
-  indent?: number;
-  /** Floating table properties (pixel values). */
-  floating?: FloatingTablePosition;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "table";
+	id: BlockId;
+	rows: TableRow[];
+	columnWidths?: number[];
+	/** Table width value (twips for dxa, 50ths of percent for pct). */
+	width?: number;
+	/** Table width type ('auto', 'pct', 'dxa', 'nil'). */
+	widthType?: string;
+	/** Table horizontal alignment */
+	justification?: "left" | "center" | "right";
+	/** Table indent from left margin (in pixels, from w:tblInd) */
+	indent?: number;
+	/** Floating table properties (pixel values). */
+	floating?: FloatingTablePosition;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * An anchored/floating image block.
  */
 export type ImageBlock = {
-  kind: 'image';
-  id: BlockId;
-  src: string;
-  width: number;
-  height: number;
-  alt?: string;
-  /** CSS transform string (rotation, flip) */
-  transform?: string;
-  /** Picture border (round-trips via image node attrs; painted by renderImage) */
-  borderWidth?: number;
-  borderColor?: string;
-  borderStyle?: string;
-  anchor?: {
-    isAnchored?: boolean;
-    offsetH?: number;
-    offsetV?: number;
-    behindDoc?: boolean;
-  };
-  /** Hyperlink URL for clickable image */
-  hlinkHref?: string;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "image";
+	id: BlockId;
+	src: string;
+	width: number;
+	height: number;
+	alt?: string;
+	/** CSS transform string (rotation, flip) */
+	transform?: string;
+	/** Picture border (round-trips via image node attrs; painted by renderImage) */
+	borderWidth?: number;
+	borderColor?: string;
+	borderStyle?: string;
+	anchor?: {
+		isAnchored?: boolean;
+		offsetH?: number;
+		offsetV?: number;
+		behindDoc?: boolean;
+	};
+	/** Hyperlink URL for clickable image */
+	hlinkHref?: string;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * Section break block defining page layout changes.
  */
 export type SectionBreakBlock = {
-  kind: 'sectionBreak';
-  id: BlockId;
-  type?: 'continuous' | 'nextPage' | 'evenPage' | 'oddPage';
-  pageSize?: { w: number; h: number };
-  orientation?: 'portrait' | 'landscape';
-  margins?: PageMargins;
-  columns?: ColumnLayout;
+	kind: "sectionBreak";
+	id: BlockId;
+	type?: "continuous" | "nextPage" | "evenPage" | "oddPage";
+	pageSize?: { w: number; h: number };
+	orientation?: "portrait" | "landscape";
+	margins?: PageMargins;
+	columns?: ColumnLayout;
 };
 
 /**
  * Explicit page break block.
  */
 export type PageBreakBlock = {
-  kind: 'pageBreak';
-  id: BlockId;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "pageBreak";
+	id: BlockId;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * Column break block.
  */
 export type ColumnBreakBlock = {
-  kind: 'columnBreak';
-  id: BlockId;
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "columnBreak";
+	id: BlockId;
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /** Default internal margins for text boxes (OOXML defaults in pixels) */
@@ -507,76 +519,76 @@ export const DEFAULT_TEXTBOX_WIDTH = 200;
  * Text box block — positioned container with paragraph content.
  */
 export type TextBoxBlock = {
-  kind: 'textBox';
-  id: BlockId;
-  /** Width in pixels */
-  width: number;
-  /** Height in pixels (may be auto-calculated) */
-  height?: number;
-  /** Fill/background color */
-  fillColor?: string;
-  /** Border width in pixels */
-  outlineWidth?: number;
-  /** Border color */
-  outlineColor?: string;
-  /** Border style */
-  outlineStyle?: string;
-  /** Internal padding */
-  margins?: { top: number; bottom: number; left: number; right: number };
-  /** Paragraph blocks inside the text box */
-  content: ParagraphBlock[];
-  /**
-   * Text-fit mode from wps:bodyPr. When `'spAutoFit'`, the measure treats
-   * `height` as a minimum and grows it to fit content so text doesn't clip
-   * when our font metrics disagree with Word's saved ext.cy.
-   */
-  autoFit?: 'spAutoFit' | 'noAutofit' | 'normAutofit';
-  /**
-   * Anchored position (DrawingML wp:positionH / wp:positionV). Captured
-   * by `convertTextBoxNode` from the PM TextBox attrs and applied at
-   * render time as a `transform: translate()` so the box visually
-   * appears at its intended position WITHOUT changing in-flow space
-   * (pagination unchanged). Pre-fix, these attrs round-tripped through
-   * PM but the renderer ignored them, so anchored shapes rendered at
-   * the cursor regardless of where Word said they belonged.
-   *
-   * Scope: today we only honor `relFromH/V === 'paragraph'` (or
-   * undefined) — those are the most common cases. Page / margin /
-   * column anchors are preserved in the attrs but not visually
-   * applied because a transform from the in-flow origin would land
-   * the box at "wrong-place + offset" instead of "page-edge + offset".
-   * Properly honoring those needs the hybrid cursor-reservation
-   * layout work; until then, conservative non-application is strictly
-   * better than mis-application.
-   *
-   * `offsetH` / `offsetV` are in EMUs (DrawingML units, 914 400 per
-   * inch) — converted to pixels at render time via `emuToPixels`.
-   */
-  anchor?: {
-    offsetH?: number;
-    offsetV?: number;
-    relFromH?: string;
-    relFromV?: string;
-    alignH?: string;
-    alignV?: string;
-    /** VML `z-index` < 0 — paint behind body text. */
-    behindDoc?: boolean;
-  };
-  pmStart?: number;
-  pmEnd?: number;
+	kind: "textBox";
+	id: BlockId;
+	/** Width in pixels */
+	width: number;
+	/** Height in pixels (may be auto-calculated) */
+	height?: number;
+	/** Fill/background color */
+	fillColor?: string;
+	/** Border width in pixels */
+	outlineWidth?: number;
+	/** Border color */
+	outlineColor?: string;
+	/** Border style */
+	outlineStyle?: string;
+	/** Internal padding */
+	margins?: { top: number; bottom: number; left: number; right: number };
+	/** Paragraph blocks inside the text box */
+	content: ParagraphBlock[];
+	/**
+	 * Text-fit mode from wps:bodyPr. When `'spAutoFit'`, the measure treats
+	 * `height` as a minimum and grows it to fit content so text doesn't clip
+	 * when our font metrics disagree with Word's saved ext.cy.
+	 */
+	autoFit?: "spAutoFit" | "noAutofit" | "normAutofit";
+	/**
+	 * Anchored position (DrawingML wp:positionH / wp:positionV). Captured
+	 * by `convertTextBoxNode` from the PM TextBox attrs and applied at
+	 * render time as a `transform: translate()` so the box visually
+	 * appears at its intended position WITHOUT changing in-flow space
+	 * (pagination unchanged). Pre-fix, these attrs round-tripped through
+	 * PM but the renderer ignored them, so anchored shapes rendered at
+	 * the cursor regardless of where Word said they belonged.
+	 *
+	 * Scope: today we only honor `relFromH/V === 'paragraph'` (or
+	 * undefined) — those are the most common cases. Page / margin /
+	 * column anchors are preserved in the attrs but not visually
+	 * applied because a transform from the in-flow origin would land
+	 * the box at "wrong-place + offset" instead of "page-edge + offset".
+	 * Properly honoring those needs the hybrid cursor-reservation
+	 * layout work; until then, conservative non-application is strictly
+	 * better than mis-application.
+	 *
+	 * `offsetH` / `offsetV` are in EMUs (DrawingML units, 914 400 per
+	 * inch) — converted to pixels at render time via `emuToPixels`.
+	 */
+	anchor?: {
+		offsetH?: number;
+		offsetV?: number;
+		relFromH?: string;
+		relFromV?: string;
+		alignH?: string;
+		alignV?: string;
+		/** VML `z-index` < 0 — paint behind body text. */
+		behindDoc?: boolean;
+	};
+	pmStart?: number;
+	pmEnd?: number;
 };
 
 /**
  * Union of all flow block types (input to layout engine).
  */
 export type FlowBlock =
-  | ParagraphBlock
-  | TableBlock
-  | ImageBlock
-  | TextBoxBlock
-  | SectionBreakBlock
-  | PageBreakBlock
-  | ColumnBreakBlock;
+	| ParagraphBlock
+	| TableBlock
+	| ImageBlock
+	| TextBoxBlock
+	| SectionBreakBlock
+	| PageBreakBlock
+	| ColumnBreakBlock;
 
 // =============================================================================
 // MEASURES - Measurement results for blocks
@@ -586,119 +598,119 @@ export type FlowBlock =
  * A measured line within a paragraph.
  */
 export type MeasuredLine = {
-  /** Starting run index (inclusive). */
-  fromRun: number;
-  /** Starting character index within fromRun. */
-  fromChar: number;
-  /** Ending run index (inclusive). */
-  toRun: number;
-  /** Ending character index within toRun (exclusive). */
-  toChar: number;
-  /** Total width of the line in pixels. */
-  width: number;
-  /** Ascent (height above baseline) in pixels. */
-  ascent: number;
-  /** Descent (height below baseline) in pixels. */
-  descent: number;
-  /** Total line height in pixels. */
-  lineHeight: number;
-  /** Left offset from floating images (pixels from content left edge). */
-  leftOffset?: number;
-  /** Right offset from floating images (pixels from content right edge). */
-  rightOffset?: number;
+	/** Starting run index (inclusive). */
+	fromRun: number;
+	/** Starting character index within fromRun. */
+	fromChar: number;
+	/** Ending run index (inclusive). */
+	toRun: number;
+	/** Ending character index within toRun (exclusive). */
+	toChar: number;
+	/** Total width of the line in pixels. */
+	width: number;
+	/** Ascent (height above baseline) in pixels. */
+	ascent: number;
+	/** Descent (height below baseline) in pixels. */
+	descent: number;
+	/** Total line height in pixels. */
+	lineHeight: number;
+	/** Left offset from floating images (pixels from content left edge). */
+	leftOffset?: number;
+	/** Right offset from floating images (pixels from content right edge). */
+	rightOffset?: number;
 };
 
 /**
  * Measurement result for a paragraph block.
  */
 export type ParagraphMeasure = {
-  kind: 'paragraph';
-  lines: MeasuredLine[];
-  totalHeight: number;
+	kind: "paragraph";
+	lines: MeasuredLine[];
+	totalHeight: number;
 };
 
 /**
  * Measurement result for an image block.
  */
 export type ImageMeasure = {
-  kind: 'image';
-  width: number;
-  height: number;
+	kind: "image";
+	width: number;
+	height: number;
 };
 
 /**
  * Measurement result for a table cell.
  */
 export type TableCellMeasure = {
-  blocks: Measure[];
-  width: number;
-  height: number;
-  colSpan?: number;
-  rowSpan?: number;
+	blocks: Measure[];
+	width: number;
+	height: number;
+	colSpan?: number;
+	rowSpan?: number;
 };
 
 /**
  * Measurement result for a table row.
  */
 export type TableRowMeasure = {
-  cells: TableCellMeasure[];
-  height: number;
+	cells: TableCellMeasure[];
+	height: number;
 };
 
 /**
  * Measurement result for a table block.
  */
 export type TableMeasure = {
-  kind: 'table';
-  rows: TableRowMeasure[];
-  columnWidths: number[];
-  totalWidth: number;
-  totalHeight: number;
+	kind: "table";
+	rows: TableRowMeasure[];
+	columnWidths: number[];
+	totalWidth: number;
+	totalHeight: number;
 };
 
 /**
  * Measurement result for section break (no visual size).
  */
 export type SectionBreakMeasure = {
-  kind: 'sectionBreak';
+	kind: "sectionBreak";
 };
 
 /**
  * Measurement result for page break (no visual size).
  */
 export type PageBreakMeasure = {
-  kind: 'pageBreak';
+	kind: "pageBreak";
 };
 
 /**
  * Measurement result for column break (no visual size).
  */
 export type ColumnBreakMeasure = {
-  kind: 'columnBreak';
+	kind: "columnBreak";
 };
 
 /**
  * Measurement result for a text box block.
  */
 export type TextBoxMeasure = {
-  kind: 'textBox';
-  width: number;
-  height: number;
-  /** Pre-measured inner paragraph measures (avoids re-measuring during render) */
-  innerMeasures: ParagraphMeasure[];
+	kind: "textBox";
+	width: number;
+	height: number;
+	/** Pre-measured inner paragraph measures (avoids re-measuring during render) */
+	innerMeasures: ParagraphMeasure[];
 };
 
 /**
  * Union of all measurement types.
  */
 export type Measure =
-  | ParagraphMeasure
-  | ImageMeasure
-  | TableMeasure
-  | TextBoxMeasure
-  | SectionBreakMeasure
-  | PageBreakMeasure
-  | ColumnBreakMeasure;
+	| ParagraphMeasure
+	| ImageMeasure
+	| TableMeasure
+	| TextBoxMeasure
+	| SectionBreakMeasure
+	| PageBreakMeasure
+	| ColumnBreakMeasure;
 
 // =============================================================================
 // FRAGMENTS - Positioned content on pages
@@ -708,18 +720,18 @@ export type Measure =
  * Base fragment properties common to all fragment types.
  */
 export type FragmentBase = {
-  /** Block ID this fragment belongs to. */
-  blockId: BlockId;
-  /** X position on page (relative to page left). */
-  x: number;
-  /** Y position on page (relative to page top). */
-  y: number;
-  /** Width of the fragment. */
-  width: number;
-  /** ProseMirror start position (for click mapping). */
-  pmStart?: number;
-  /** ProseMirror end position (for click mapping). */
-  pmEnd?: number;
+	/** Block ID this fragment belongs to. */
+	blockId: BlockId;
+	/** X position on page (relative to page left). */
+	x: number;
+	/** Y position on page (relative to page top). */
+	y: number;
+	/** Width of the fragment. */
+	width: number;
+	/** ProseMirror start position (for click mapping). */
+	pmStart?: number;
+	/** ProseMirror end position (for click mapping). */
+	pmEnd?: number;
 };
 
 /**
@@ -727,17 +739,17 @@ export type FragmentBase = {
  * May span only part of the paragraph's lines if split across pages.
  */
 export type ParagraphFragment = FragmentBase & {
-  kind: 'paragraph';
-  /** First line index (inclusive) from the measure. */
-  fromLine: number;
-  /** Last line index (exclusive) from the measure. */
-  toLine: number;
-  /** Height of this fragment. */
-  height: number;
-  /** True if this continues from a previous page. */
-  continuesFromPrev?: boolean;
-  /** True if this continues onto the next page. */
-  continuesOnNext?: boolean;
+	kind: "paragraph";
+	/** First line index (inclusive) from the measure. */
+	fromLine: number;
+	/** Last line index (exclusive) from the measure. */
+	toLine: number;
+	/** Height of this fragment. */
+	height: number;
+	/** True if this continues from a previous page. */
+	continuesFromPrev?: boolean;
+	/** True if this continues onto the next page. */
+	continuesOnNext?: boolean;
 };
 
 /**
@@ -745,57 +757,61 @@ export type ParagraphFragment = FragmentBase & {
  * May span only part of the table's rows if split across pages.
  */
 export type TableFragment = FragmentBase & {
-  kind: 'table';
-  /** First row index (inclusive). */
-  fromRow: number;
-  /** Last row index (exclusive). */
-  toRow: number;
-  /** Height of this fragment. */
-  height: number;
-  /** True if this is a floating table. */
-  isFloating?: boolean;
-  /** True if this continues from a previous page. */
-  continuesFromPrev?: boolean;
-  /** True if this continues onto the next page. */
-  continuesOnNext?: boolean;
-  /** Number of header rows prepended to this continuation fragment (0 or undefined for first fragment). */
-  headerRowCount?: number;
+	kind: "table";
+	/** First row index (inclusive). */
+	fromRow: number;
+	/** Last row index (exclusive). */
+	toRow: number;
+	/** Height of this fragment. */
+	height: number;
+	/** True if this is a floating table. */
+	isFloating?: boolean;
+	/** True if this continues from a previous page. */
+	continuesFromPrev?: boolean;
+	/** True if this continues onto the next page. */
+	continuesOnNext?: boolean;
+	/** Number of header rows prepended to this continuation fragment (0 or undefined for first fragment). */
+	headerRowCount?: number;
 };
 
 /**
  * An image fragment positioned on a page.
  */
 export type ImageFragment = FragmentBase & {
-  kind: 'image';
-  /** Height of the image. */
-  height: number;
-  /** True if this is an anchored/floating image. */
-  isAnchored?: boolean;
-  /** Z-index for layering. */
-  zIndex?: number;
+	kind: "image";
+	/** Height of the image. */
+	height: number;
+	/** True if this is an anchored/floating image. */
+	isAnchored?: boolean;
+	/** Z-index for layering. */
+	zIndex?: number;
 };
 
 /**
  * A text box fragment positioned on a page.
  */
 export type TextBoxFragment = FragmentBase & {
-  kind: 'textBox';
-  /** Height of the text box. */
-  height: number;
-  /**
-   * True when positioned absolutely from its anchor (page/margin/column),
-   * NOT advancing the in-flow cursor. The renderer then places it from
-   * `x`/`y` directly instead of the paragraph-relative transform.
-   */
-  isAnchored?: boolean;
-  /** Stacking: negative paints behind body text (VML `z-index` < 0). */
-  zIndex?: number;
+	kind: "textBox";
+	/** Height of the text box. */
+	height: number;
+	/**
+	 * True when positioned absolutely from its anchor (page/margin/column),
+	 * NOT advancing the in-flow cursor. The renderer then places it from
+	 * `x`/`y` directly instead of the paragraph-relative transform.
+	 */
+	isAnchored?: boolean;
+	/** Stacking: negative paints behind body text (VML `z-index` < 0). */
+	zIndex?: number;
 };
 
 /**
  * Union of all fragment types.
  */
-export type Fragment = ParagraphFragment | TableFragment | ImageFragment | TextBoxFragment;
+export type Fragment =
+	| ParagraphFragment
+	| TableFragment
+	| ImageFragment
+	| TextBoxFragment;
 
 // =============================================================================
 // PAGES AND LAYOUT - Output of layout engine
@@ -805,93 +821,93 @@ export type Fragment = ParagraphFragment | TableFragment | ImageFragment | TextB
  * Page margin configuration.
  */
 export type PageMargins = {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-  /** Distance from page top to header content. */
-  header?: number;
-  /** Distance from page bottom to footer content. */
-  footer?: number;
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+	/** Distance from page top to header content. */
+	header?: number;
+	/** Distance from page bottom to footer content. */
+	footer?: number;
 };
 
 /**
  * A rendered page containing positioned fragments.
  */
 export type Page = {
-  /** Page number (1-indexed). */
-  number: number;
-  /** Fragments positioned on this page. */
-  fragments: Fragment[];
-  /** Page margins. */
-  margins: PageMargins;
-  /** Page size (width, height). */
-  size: { w: number; h: number };
-  /** Page orientation. */
-  orientation?: 'portrait' | 'landscape';
-  /** Section index this page belongs to. */
-  sectionIndex?: number;
-  /** Header/footer references for this page. */
-  headerFooterRefs?: {
-    headerDefault?: string;
-    headerFirst?: string;
-    headerEven?: string;
-    footerDefault?: string;
-    footerFirst?: string;
-    footerEven?: string;
-  };
-  /** Footnote IDs that appear on this page (for rendering). */
-  footnoteIds?: number[];
-  /** Height reserved for the footnote area at page bottom (pixels). */
-  footnoteReservedHeight?: number;
-  /** Column layout for this page (if multi-column). */
-  columns?: ColumnLayout;
+	/** Page number (1-indexed). */
+	number: number;
+	/** Fragments positioned on this page. */
+	fragments: Fragment[];
+	/** Page margins. */
+	margins: PageMargins;
+	/** Page size (width, height). */
+	size: { w: number; h: number };
+	/** Page orientation. */
+	orientation?: "portrait" | "landscape";
+	/** Section index this page belongs to. */
+	sectionIndex?: number;
+	/** Header/footer references for this page. */
+	headerFooterRefs?: {
+		headerDefault?: string;
+		headerFirst?: string;
+		headerEven?: string;
+		footerDefault?: string;
+		footerFirst?: string;
+		footerEven?: string;
+	};
+	/** Footnote IDs that appear on this page (for rendering). */
+	footnoteIds?: number[];
+	/** Height reserved for the footnote area at page bottom (pixels). */
+	footnoteReservedHeight?: number;
+	/** Column layout for this page (if multi-column). */
+	columns?: ColumnLayout;
 };
 
 /**
  * Column layout configuration.
  */
 export type ColumnLayout = {
-  count: number;
-  gap: number;
-  equalWidth?: boolean;
-  /** Draw vertical separator line between columns (w:sep). */
-  separator?: boolean;
-  /**
-   * Per-column geometry for unequal columns (`w:equalWidth="0"`), in pixels,
-   * in document order. Each entry's `width` is the column body width and
-   * `space` is the gap to the FOLLOWING column (the trailing column's `space`
-   * is unused). When present and `count` matches, the paginator uses these
-   * directly instead of splitting the content width equally. Absent / empty =
-   * equal columns.
-   */
-  columnWidths?: Array<{ width: number; space: number }>;
+	count: number;
+	gap: number;
+	equalWidth?: boolean;
+	/** Draw vertical separator line between columns (w:sep). */
+	separator?: boolean;
+	/**
+	 * Per-column geometry for unequal columns (`w:equalWidth="0"`), in pixels,
+	 * in document order. Each entry's `width` is the column body width and
+	 * `space` is the gap to the FOLLOWING column (the trailing column's `space`
+	 * is unused). When present and `count` matches, the paginator uses these
+	 * directly instead of splitting the content width equally. Absent / empty =
+	 * equal columns.
+	 */
+	columnWidths?: Array<{ width: number; space: number }>;
 };
 
 /**
  * Header/footer layout for a specific type.
  */
 export type HeaderFooterLayout = {
-  height: number;
-  fragments: Fragment[];
+	height: number;
+	fragments: Fragment[];
 };
 
 /**
  * Final layout output ready for rendering/painting.
  */
 export type Layout = {
-  /** Default page size for the document. */
-  pageSize: { w: number; h: number };
-  /** All rendered pages with positioned fragments. */
-  pages: Page[];
-  /** Column configuration (if multi-column). */
-  columns?: ColumnLayout;
-  /** Header layouts by type (default, first, even). */
-  headers?: Record<string, HeaderFooterLayout>;
-  /** Footer layouts by type (default, first, even). */
-  footers?: Record<string, HeaderFooterLayout>;
-  /** Gap between pages in pixels (for rendering). */
-  pageGap?: number;
+	/** Default page size for the document. */
+	pageSize: { w: number; h: number };
+	/** All rendered pages with positioned fragments. */
+	pages: Page[];
+	/** Column configuration (if multi-column). */
+	columns?: ColumnLayout;
+	/** Header layouts by type (default, first, even). */
+	headers?: Record<string, HeaderFooterLayout>;
+	/** Footer layouts by type (default, first, even). */
+	footers?: Record<string, HeaderFooterLayout>;
+	/** Gap between pages in pixels (for rendering). */
+	pageGap?: number;
 };
 
 // =============================================================================
@@ -902,55 +918,55 @@ export type Layout = {
  * Header/footer content heights by variant type.
  */
 export type HeaderFooterContentHeights = Partial<
-  Record<'default' | 'first' | 'even' | 'odd', number>
+	Record<"default" | "first" | "even" | "odd", number>
 >;
 
 /**
  * Pre-calculated footnote content for layout and rendering.
  */
 export type FootnoteContent = {
-  /** Footnote ID. */
-  id: number;
-  /** Display number (e.g. 1, 2, 3). */
-  displayNumber: number;
-  /** FlowBlocks for rendering the footnote content. */
-  blocks: FlowBlock[];
-  /** Measurements for the blocks. */
-  measures: Measure[];
-  /** Total height in pixels. */
-  height: number;
+	/** Footnote ID. */
+	id: number;
+	/** Display number (e.g. 1, 2, 3). */
+	displayNumber: number;
+	/** FlowBlocks for rendering the footnote content. */
+	blocks: FlowBlock[];
+	/** Measurements for the blocks. */
+	measures: Measure[];
+	/** Total height in pixels. */
+	height: number;
 };
 
 /**
  * Options for the layout engine.
  */
 export type LayoutOptions = {
-  /** Initial page size. */
-  pageSize: { w: number; h: number };
-  /** Initial page margins. */
-  margins: PageMargins;
-  /** Body-level (final section) page size, used after the last explicit section break. */
-  finalPageSize?: { w: number; h: number };
-  /** Body-level (final section) margins, used after the last explicit section break. */
-  finalMargins?: PageMargins;
-  /** Column configuration. */
-  columns?: ColumnLayout;
-  /** Gap between rendered pages (for UI). */
-  pageGap?: number;
-  /** Default line height multiplier. */
-  defaultLineHeight?: number;
-  /** Header content heights by variant. */
-  headerContentHeights?: HeaderFooterContentHeights;
-  /** Footer content heights by variant. */
-  footerContentHeights?: HeaderFooterContentHeights;
-  /** Whether section has different first page header/footer. */
-  titlePage?: boolean;
-  /** Whether section has different even/odd headers/footers. */
-  evenAndOddHeaders?: boolean;
-  /** Per-page footnote reserved heights (pageNumber → height in pixels). */
-  footnoteReservedHeights?: Map<number, number>;
-  /** Section break type for the body-level (final) section (for section transition logic). */
-  bodyBreakType?: 'continuous' | 'nextPage' | 'evenPage' | 'oddPage';
+	/** Initial page size. */
+	pageSize: { w: number; h: number };
+	/** Initial page margins. */
+	margins: PageMargins;
+	/** Body-level (final section) page size, used after the last explicit section break. */
+	finalPageSize?: { w: number; h: number };
+	/** Body-level (final section) margins, used after the last explicit section break. */
+	finalMargins?: PageMargins;
+	/** Column configuration. */
+	columns?: ColumnLayout;
+	/** Gap between rendered pages (for UI). */
+	pageGap?: number;
+	/** Default line height multiplier. */
+	defaultLineHeight?: number;
+	/** Header content heights by variant. */
+	headerContentHeights?: HeaderFooterContentHeights;
+	/** Footer content heights by variant. */
+	footerContentHeights?: HeaderFooterContentHeights;
+	/** Whether section has different first page header/footer. */
+	titlePage?: boolean;
+	/** Whether section has different even/odd headers/footers. */
+	evenAndOddHeaders?: boolean;
+	/** Per-page footnote reserved heights (pageNumber → height in pixels). */
+	footnoteReservedHeights?: Map<number, number>;
+	/** Section break type for the body-level (final) section (for section transition logic). */
+	bodyBreakType?: "continuous" | "nextPage" | "evenPage" | "oddPage";
 };
 
 // =============================================================================
@@ -961,26 +977,26 @@ export type LayoutOptions = {
  * Result of hit-testing a click position.
  */
 export type HitTestResult = {
-  /** Page index (0-based). */
-  pageIndex: number;
-  /** Fragment that was hit, if any. */
-  fragment?: Fragment;
-  /** Local X coordinate within the fragment. */
-  localX?: number;
-  /** Local Y coordinate within the fragment. */
-  localY?: number;
+	/** Page index (0-based). */
+	pageIndex: number;
+	/** Fragment that was hit, if any. */
+	fragment?: Fragment;
+	/** Local X coordinate within the fragment. */
+	localX?: number;
+	/** Local Y coordinate within the fragment. */
+	localY?: number;
 };
 
 /**
  * Position within the document model.
  */
 export type DocumentPosition = {
-  /** Block index. */
-  blockIndex: number;
-  /** Run index within the block (for paragraphs). */
-  runIndex?: number;
-  /** Character offset within the run. */
-  charOffset?: number;
-  /** ProseMirror position. */
-  pmPos?: number;
+	/** Block index. */
+	blockIndex: number;
+	/** Run index within the block (for paragraphs). */
+	runIndex?: number;
+	/** Character offset within the run. */
+	charOffset?: number;
+	/** ProseMirror position. */
+	pmPos?: number;
 };

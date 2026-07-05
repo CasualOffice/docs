@@ -11,12 +11,14 @@
  * coordinates outside the visible window.
  */
 
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
 function isInViewport(el: Element | null): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  const r = el.getBoundingClientRect();
-  return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
+	if (!(el instanceof HTMLElement)) return false;
+	const r = el.getBoundingClientRect();
+	return (
+		r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight
+	);
 }
 
 /**
@@ -24,23 +26,28 @@ function isInViewport(el: Element | null): boolean {
  * the viewport. Used after scrollToPosition / scrollToParaId.
  */
 export async function waitPaintedInViewport(
-  page: Page,
-  pmStart: number | null,
-  timeout = 20000
+	page: Page,
+	pmStart: number | null,
+	timeout = 20000,
 ): Promise<void> {
-  await page.waitForFunction(
-    (pos) => {
-      if (pos == null) return false;
-      const pages = document.querySelector('.paged-editor__pages');
-      if (!pages) return false;
-      const el = pages.querySelector(`[data-pm-start="${pos}"]`);
-      const r = (el as HTMLElement | null)?.getBoundingClientRect();
-      if (!r) return false;
-      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
-    },
-    pmStart,
-    { timeout }
-  );
+	await page.waitForFunction(
+		(pos) => {
+			if (pos == null) return false;
+			const pages = document.querySelector(".paged-editor__pages");
+			if (!pages) return false;
+			const el = pages.querySelector(`[data-pm-start="${pos}"]`);
+			const r = (el as HTMLElement | null)?.getBoundingClientRect();
+			if (!r) return false;
+			return (
+				r.width > 0 &&
+				r.height > 0 &&
+				r.bottom > 0 &&
+				r.top < window.innerHeight
+			);
+		},
+		pmStart,
+		{ timeout },
+	);
 }
 
 /**
@@ -48,21 +55,21 @@ export async function waitPaintedInViewport(
  * Used after scrollToPage.
  */
 export async function waitPageShellInViewport(
-  page: Page,
-  pageNumber: number,
-  timeout = 20000
+	page: Page,
+	pageNumber: number,
+	timeout = 20000,
 ): Promise<void> {
-  await page.waitForFunction(
-    (n) => {
-      const shells = document.querySelectorAll<HTMLElement>('.layout-page');
-      const shell = shells[n - 1];
-      if (!shell) return false;
-      const r = shell.getBoundingClientRect();
-      return r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
-    },
-    pageNumber,
-    { timeout }
-  );
+	await page.waitForFunction(
+		(n) => {
+			const shells = document.querySelectorAll<HTMLElement>(".layout-page");
+			const shell = shells[n - 1];
+			if (!shell) return false;
+			const r = shell.getBoundingClientRect();
+			return r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
+		},
+		pageNumber,
+		{ timeout },
+	);
 }
 
 // Re-export for tests that imported this earlier.

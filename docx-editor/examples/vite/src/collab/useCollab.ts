@@ -12,9 +12,9 @@
 // New code should import from the package directly:
 //   import { useCollab, type CollabState } from '@casualoffice/docs';
 export {
-  useCollab,
-  type CollabPeer,
-  type CollabState,
-  type CollabStatus,
-  type UseCollabOptions,
-} from '@casualoffice/docs';
+	useCollab,
+	type CollabPeer,
+	type CollabState,
+	type CollabStatus,
+	type UseCollabOptions,
+} from "@casualoffice/docs";

@@ -22,14 +22,14 @@
  *   context menu / modal  — top-most, transient surfaces
  */
 export const Z_INDEX = {
-  hfInlineEditor: 10,
-  ruler: 30,
-  // Version-history preview overlay — covers the live canvas (incl. the
-  // ruler) but stays below dropdowns/menus so chrome remains usable.
-  versionPreview: 40,
-  dropdown: 100,
-  menubarBackdrop: 9998,
-  menubarPanel: 9999,
-  contextMenu: 10000,
-  menubarTrigger: 10001,
+	hfInlineEditor: 10,
+	ruler: 30,
+	// Version-history preview overlay — covers the live canvas (incl. the
+	// ruler) but stays below dropdowns/menus so chrome remains usable.
+	versionPreview: 40,
+	dropdown: 100,
+	menubarBackdrop: 9998,
+	menubarPanel: 9999,
+	contextMenu: 10000,
+	menubarTrigger: 10001,
 } as const;

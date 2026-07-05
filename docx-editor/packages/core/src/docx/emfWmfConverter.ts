@@ -29,16 +29,16 @@
  *     parser doesn't fail. The audit script tags-counts; it doesn't
  *     care about rendered image bytes.
  */
-import type { MediaFile } from '../types/document';
+import type { MediaFile } from "../types/document";
 
 // Lazy import so headless callers (audit script) that never actually
 // hit an EMF blob don't pay the bundling cost.
-async function loadConverter(): Promise<typeof import('emf-converter') | null> {
-  try {
-    return await import('emf-converter');
-  } catch {
-    return null;
-  }
+async function loadConverter(): Promise<typeof import("emf-converter") | null> {
+	try {
+		return await import("emf-converter");
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -47,23 +47,26 @@ async function loadConverter(): Promise<typeof import('emf-converter') | null> {
  * per media entry in headless contexts.
  */
 function canvasAvailable(): boolean {
-  if (typeof globalThis === 'undefined') return false;
-  const g = globalThis as unknown as Record<string, unknown>;
-  return typeof g.OffscreenCanvas !== 'undefined' || typeof g.HTMLCanvasElement !== 'undefined';
+	if (typeof globalThis === "undefined") return false;
+	const g = globalThis as unknown as Record<string, unknown>;
+	return (
+		typeof g.OffscreenCanvas !== "undefined" ||
+		typeof g.HTMLCanvasElement !== "undefined"
+	);
 }
 
 const EMF_MIME_PATTERN = /^image\/x?-?emf$/;
 const WMF_MIME_PATTERN = /^image\/x?-?wmf$/;
 
 function rewriteToPng(file: MediaFile, pngDataUrl: string): MediaFile {
-  return {
-    ...file,
-    mimeType: 'image/png',
-    dataUrl: pngDataUrl,
-    // Keep `data` and `path` unchanged so round-trip serialisation
-    // re-emits the original .emf / .wmf bytes — converting to PNG is a
-    // display-time concern, not a storage one.
-  };
+	return {
+		...file,
+		mimeType: "image/png",
+		dataUrl: pngDataUrl,
+		// Keep `data` and `path` unchanged so round-trip serialisation
+		// re-emits the original .emf / .wmf bytes — converting to PNG is a
+		// display-time concern, not a storage one.
+	};
 }
 
 /**
@@ -75,83 +78,87 @@ function rewriteToPng(file: MediaFile, pngDataUrl: string): MediaFile {
  * the converter all leave that single entry untouched and the rest of
  * the map intact. Logs each failure once for operator visibility.
  */
-export async function convertEmfWmfMediaFiles(media: Map<string, MediaFile>): Promise<void> {
-  // Quick exit if there's nothing to convert. Saves the dynamic import
-  // entirely on the common case (no EMF/WMF in the doc).
-  let hasMetafile = false;
-  for (const file of media.values()) {
-    if (
-      file.mimeType &&
-      (EMF_MIME_PATTERN.test(file.mimeType) || WMF_MIME_PATTERN.test(file.mimeType))
-    ) {
-      hasMetafile = true;
-      break;
-    }
-  }
-  if (!hasMetafile) return;
+export async function convertEmfWmfMediaFiles(
+	media: Map<string, MediaFile>,
+): Promise<void> {
+	// Quick exit if there's nothing to convert. Saves the dynamic import
+	// entirely on the common case (no EMF/WMF in the doc).
+	let hasMetafile = false;
+	for (const file of media.values()) {
+		if (
+			file.mimeType &&
+			(EMF_MIME_PATTERN.test(file.mimeType) ||
+				WMF_MIME_PATTERN.test(file.mimeType))
+		) {
+			hasMetafile = true;
+			break;
+		}
+	}
+	if (!hasMetafile) return;
 
-  if (!canvasAvailable()) {
-    // Headless environment (Bun unit tests, audit script). The painter
-    // placeholder handles display in browsers; in headless contexts
-    // image rendering is irrelevant. No-op cleanly.
-    return;
-  }
+	if (!canvasAvailable()) {
+		// Headless environment (Bun unit tests, audit script). The painter
+		// placeholder handles display in browsers; in headless contexts
+		// image rendering is irrelevant. No-op cleanly.
+		return;
+	}
 
-  const mod = await loadConverter();
-  if (!mod) return;
+	const mod = await loadConverter();
+	if (!mod) return;
 
-  // Same MediaFile pointer can be stored under multiple keys (the
-  // parser writes `word/media/x.emf` AND the normalised `media/x.emf`).
-  // Convert once per unique pointer, then update every key that points
-  // at it.
-  const seen = new WeakMap<MediaFile, MediaFile>();
-  for (const [key, file] of media.entries()) {
-    if (
-      !file.mimeType ||
-      (!EMF_MIME_PATTERN.test(file.mimeType) && !WMF_MIME_PATTERN.test(file.mimeType))
-    ) {
-      continue;
-    }
-    const cached = seen.get(file);
-    if (cached) {
-      media.set(key, cached);
-      continue;
-    }
+	// Same MediaFile pointer can be stored under multiple keys (the
+	// parser writes `word/media/x.emf` AND the normalised `media/x.emf`).
+	// Convert once per unique pointer, then update every key that points
+	// at it.
+	const seen = new WeakMap<MediaFile, MediaFile>();
+	for (const [key, file] of media.entries()) {
+		if (
+			!file.mimeType ||
+			(!EMF_MIME_PATTERN.test(file.mimeType) &&
+				!WMF_MIME_PATTERN.test(file.mimeType))
+		) {
+			continue;
+		}
+		const cached = seen.get(file);
+		if (cached) {
+			media.set(key, cached);
+			continue;
+		}
 
-    try {
-      // Always normalise to a fresh ArrayBuffer slice. emf-converter's
-      // signature requires `ArrayBuffer` (not `ArrayBufferLike`), and
-      // `Uint8Array.buffer` resolves to the more permissive
-      // `ArrayBufferLike` (which also admits `SharedArrayBuffer`).
-      const buffer: ArrayBuffer = (() => {
-        if (file.data instanceof ArrayBuffer) return file.data;
-        const u = file.data as Uint8Array;
-        const out = new ArrayBuffer(u.byteLength);
-        new Uint8Array(out).set(u);
-        return out;
-      })();
-      const pngDataUrl = EMF_MIME_PATTERN.test(file.mimeType)
-        ? await mod.convertEmfToDataUrl(buffer)
-        : await mod.convertWmfToDataUrl(buffer);
+		try {
+			// Always normalise to a fresh ArrayBuffer slice. emf-converter's
+			// signature requires `ArrayBuffer` (not `ArrayBufferLike`), and
+			// `Uint8Array.buffer` resolves to the more permissive
+			// `ArrayBufferLike` (which also admits `SharedArrayBuffer`).
+			const buffer: ArrayBuffer = (() => {
+				if (file.data instanceof ArrayBuffer) return file.data;
+				const u = file.data as Uint8Array;
+				const out = new ArrayBuffer(u.byteLength);
+				new Uint8Array(out).set(u);
+				return out;
+			})();
+			const pngDataUrl = EMF_MIME_PATTERN.test(file.mimeType)
+				? await mod.convertEmfToDataUrl(buffer)
+				: await mod.convertWmfToDataUrl(buffer);
 
-      if (pngDataUrl && pngDataUrl.startsWith('data:image/png')) {
-        const replaced = rewriteToPng(file, pngDataUrl);
-        seen.set(file, replaced);
-        media.set(key, replaced);
-      } else {
-        // Converter returned null — leave entry untouched, painter
-        // falls back to the placeholder.
-        seen.set(file, file);
-      }
-    } catch (err) {
-      // One bad metafile shouldn't take down the whole parse. Log
-      // once and leave the rest of the media map intact.
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[emfWmfConverter] failed to convert ${file.path} (${file.mimeType}):`,
-        err instanceof Error ? err.message : err
-      );
-      seen.set(file, file);
-    }
-  }
+			if (pngDataUrl && pngDataUrl.startsWith("data:image/png")) {
+				const replaced = rewriteToPng(file, pngDataUrl);
+				seen.set(file, replaced);
+				media.set(key, replaced);
+			} else {
+				// Converter returned null — leave entry untouched, painter
+				// falls back to the placeholder.
+				seen.set(file, file);
+			}
+		} catch (err) {
+			// One bad metafile shouldn't take down the whole parse. Log
+			// once and leave the rest of the media map intact.
+			// eslint-disable-next-line no-console
+			console.warn(
+				`[emfWmfConverter] failed to convert ${file.path} (${file.mimeType}):`,
+				err instanceof Error ? err.message : err,
+			);
+			seen.set(file, file);
+		}
+	}
 }

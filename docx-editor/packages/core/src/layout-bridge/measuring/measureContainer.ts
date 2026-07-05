@@ -15,7 +15,7 @@
  *   falling back to fontSize * 1.0 (OOXML spec default single spacing)
  */
 
-import { resolveFontFamily } from '../../utils/fontResolver';
+import { resolveFontFamily } from "../../utils/fontResolver";
 
 // Constants for OOXML unit conversions
 const TWIPS_PER_INCH = 1440;
@@ -24,7 +24,7 @@ const TWIPS_PER_PX = TWIPS_PER_INCH / PX_PER_INCH; // 15 twips per pixel
 
 // Default typography values
 const DEFAULT_FONT_SIZE = 11; // 11pt (Word 2007+ default)
-const DEFAULT_FONT_FAMILY = 'Calibri';
+const DEFAULT_FONT_FAMILY = "Calibri";
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.0; // OOXML spec default: single spacing (line=240)
 const DEFAULT_ASCENT_RATIO = 0.8;
 const DEFAULT_DESCENT_RATIO = 0.2;
@@ -33,43 +33,43 @@ const DEFAULT_DESCENT_RATIO = 0.2;
  * Font styling properties for measurement
  */
 export interface FontStyle {
-  fontFamily?: string;
-  fontSize?: number; // in points
-  bold?: boolean;
-  italic?: boolean;
-  letterSpacing?: number; // in pixels
+	fontFamily?: string;
+	fontSize?: number; // in points
+	bold?: boolean;
+	italic?: boolean;
+	letterSpacing?: number; // in pixels
 }
 
 /**
  * Typography metrics for a font
  */
 export interface FontMetrics {
-  fontSize: number;
-  ascent: number;
-  descent: number;
-  lineHeight: number;
-  fontFamily: string;
-  /** OS/2 single-line ratio for OOXML line spacing calculation */
-  singleLineRatio: number;
+	fontSize: number;
+	ascent: number;
+	descent: number;
+	lineHeight: number;
+	fontFamily: string;
+	/** OS/2 single-line ratio for OOXML line spacing calculation */
+	singleLineRatio: number;
 }
 
 /**
  * Result of measuring a text string
  */
 export interface TextMeasurement {
-  width: number;
-  height: number;
-  ascent: number;
-  descent: number;
+	width: number;
+	height: number;
+	ascent: number;
+	descent: number;
 }
 
 /**
  * Result of measuring a run of text
  */
 export interface RunMeasurement {
-  width: number;
-  charWidths: number[]; // Width of each character for click positioning
-  metrics: FontMetrics;
+	width: number;
+	charWidths: number[]; // Width of each character for click positioning
+	metrics: FontMetrics;
 }
 
 // Cached canvas context for text measurement
@@ -79,34 +79,37 @@ let canvasContext: CanvasRenderingContext2D | null = null;
  * Get or create a canvas 2D context for text measurement
  */
 export function getCanvasContext(): CanvasRenderingContext2D {
-  if (!canvasContext) {
-    // Create offscreen canvas
-    const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+	if (!canvasContext) {
+		// Create offscreen canvas
+		const canvas =
+			typeof document !== "undefined" ? document.createElement("canvas") : null;
 
-    if (!canvas) {
-      throw new Error('Canvas not available. Ensure this runs in a DOM environment.');
-    }
+		if (!canvas) {
+			throw new Error(
+				"Canvas not available. Ensure this runs in a DOM environment.",
+			);
+		}
 
-    canvasContext = canvas.getContext('2d');
-    if (!canvasContext) {
-      throw new Error('Failed to get 2D context from canvas');
-    }
-  }
+		canvasContext = canvas.getContext("2d");
+		if (!canvasContext) {
+			throw new Error("Failed to get 2D context from canvas");
+		}
+	}
 
-  return canvasContext;
+	return canvasContext;
 }
 
 /**
  * Reset the canvas context (useful for testing)
  */
 export function resetCanvasContext(): void {
-  canvasContext = null;
+	canvasContext = null;
 }
 
 /** Cached resolved font data (CSS fallback + single-line ratio) */
 interface ResolvedFontCache {
-  cssFallback: string;
-  singleLineRatio: number;
+	cssFallback: string;
+	singleLineRatio: number;
 }
 
 /** Cache for resolved font data */
@@ -116,20 +119,23 @@ const fontResolvedCache = new Map<string, ResolvedFontCache>();
  * Get the resolved font data for a font family, with caching.
  */
 function getResolvedData(fontFamily: string): ResolvedFontCache {
-  let cached = fontResolvedCache.get(fontFamily);
-  if (cached === undefined) {
-    const resolved = resolveFontFamily(fontFamily);
-    cached = { cssFallback: resolved.cssFallback, singleLineRatio: resolved.singleLineRatio };
-    fontResolvedCache.set(fontFamily, cached);
-  }
-  return cached;
+	let cached = fontResolvedCache.get(fontFamily);
+	if (cached === undefined) {
+		const resolved = resolveFontFamily(fontFamily);
+		cached = {
+			cssFallback: resolved.cssFallback,
+			singleLineRatio: resolved.singleLineRatio,
+		};
+		fontResolvedCache.set(fontFamily, cached);
+	}
+	return cached;
 }
 
 /**
  * Get the CSS fallback string for a font family, with caching.
  */
 function getResolvedFallback(fontFamily: string): string {
-  return getResolvedData(fontFamily).cssFallback;
+	return getResolvedData(fontFamily).cssFallback;
 }
 
 /**
@@ -147,21 +153,21 @@ function getResolvedFallback(fontFamily: string): string {
  * // Returns: "bold 16px Arial, Arimo, Helvetica, sans-serif" (12pt = 16px)
  */
 export function buildFontString(style: FontStyle): string {
-  const parts: string[] = [];
+	const parts: string[] = [];
 
-  if (style.italic) parts.push('italic');
-  if (style.bold) parts.push('bold');
+	if (style.italic) parts.push("italic");
+	if (style.bold) parts.push("bold");
 
-  // Convert points to pixels for canvas measurement
-  const fontSizePt = style.fontSize ?? DEFAULT_FONT_SIZE;
-  const fontSizePx = ptToPx(fontSizePt);
-  parts.push(`${fontSizePx}px`);
+	// Convert points to pixels for canvas measurement
+	const fontSizePt = style.fontSize ?? DEFAULT_FONT_SIZE;
+	const fontSizePx = ptToPx(fontSizePt);
+	parts.push(`${fontSizePx}px`);
 
-  // Use the font resolver for category-appropriate fallback stacks
-  const fontFamily = style.fontFamily ?? DEFAULT_FONT_FAMILY;
-  parts.push(getResolvedFallback(fontFamily));
+	// Use the font resolver for category-appropriate fallback stacks
+	const fontFamily = style.fontFamily ?? DEFAULT_FONT_FAMILY;
+	parts.push(getResolvedFallback(fontFamily));
 
-  return parts.join(' ');
+	return parts.join(" ");
 }
 
 /**
@@ -171,57 +177,57 @@ export function buildFontString(style: FontStyle): string {
  * falls back to ratio-based approximations.
  */
 export function getFontMetrics(style: FontStyle): FontMetrics {
-  const fontSize = style.fontSize ?? DEFAULT_FONT_SIZE;
-  const fontFamily = style.fontFamily ?? DEFAULT_FONT_FAMILY;
+	const fontSize = style.fontSize ?? DEFAULT_FONT_SIZE;
+	const fontFamily = style.fontFamily ?? DEFAULT_FONT_FAMILY;
 
-  // Convert font size from points to pixels
-  const fontSizePx = ptToPx(fontSize);
+	// Convert font size from points to pixels
+	const fontSizePx = ptToPx(fontSize);
 
-  // Try to get precise metrics from canvas
-  let ascent = fontSizePx * DEFAULT_ASCENT_RATIO;
-  let descent = fontSizePx * DEFAULT_DESCENT_RATIO;
-  let lineHeight = fontSizePx * DEFAULT_LINE_HEIGHT_MULTIPLIER;
+	// Try to get precise metrics from canvas
+	let ascent = fontSizePx * DEFAULT_ASCENT_RATIO;
+	let descent = fontSizePx * DEFAULT_DESCENT_RATIO;
+	let lineHeight = fontSizePx * DEFAULT_LINE_HEIGHT_MULTIPLIER;
 
-  try {
-    const ctx = getCanvasContext();
-    ctx.font = buildFontString(style);
+	try {
+		const ctx = getCanvasContext();
+		ctx.font = buildFontString(style);
 
-    // Measure a standard character to get metrics
-    const metrics = ctx.measureText('Hg');
+		// Measure a standard character to get metrics
+		const metrics = ctx.measureText("Hg");
 
-    // Use actual bounding box for ascent/descent (ink bounds for baseline positioning)
-    if (
-      typeof metrics.actualBoundingBoxAscent === 'number' &&
-      typeof metrics.actualBoundingBoxDescent === 'number'
-    ) {
-      ascent = metrics.actualBoundingBoxAscent;
-      descent = metrics.actualBoundingBoxDescent;
-    }
+		// Use actual bounding box for ascent/descent (ink bounds for baseline positioning)
+		if (
+			typeof metrics.actualBoundingBoxAscent === "number" &&
+			typeof metrics.actualBoundingBoxDescent === "number"
+		) {
+			ascent = metrics.actualBoundingBoxAscent;
+			descent = metrics.actualBoundingBoxDescent;
+		}
 
-    // Note: We intentionally do NOT use fontBoundingBoxAscent/Descent for lineHeight.
-    // When Google Font substitutes are used (e.g., EB Garamond for Garamond),
-    // their fontBoundingBox metrics are significantly larger than the original font's
-    // OS/2 metrics that Word uses (e.g., EB Garamond 12pt: 21px vs Garamond: 18px).
-    // Using fontSize * 1.0 (OOXML spec default) as the base provides correct
-    // single-line spacing when no explicit line spacing is specified.
-  } catch {
-    // Use fallback ratio-based values
-  }
+		// Note: We intentionally do NOT use fontBoundingBoxAscent/Descent for lineHeight.
+		// When Google Font substitutes are used (e.g., EB Garamond for Garamond),
+		// their fontBoundingBox metrics are significantly larger than the original font's
+		// OS/2 metrics that Word uses (e.g., EB Garamond 12pt: 21px vs Garamond: 18px).
+		// Using fontSize * 1.0 (OOXML spec default) as the base provides correct
+		// single-line spacing when no explicit line spacing is specified.
+	} catch {
+		// Use fallback ratio-based values
+	}
 
-  // Ensure line height is never smaller than actual glyph bounds
-  lineHeight = Math.max(lineHeight, ascent + descent);
+	// Ensure line height is never smaller than actual glyph bounds
+	lineHeight = Math.max(lineHeight, ascent + descent);
 
-  // Look up OS/2 single-line ratio for OOXML line spacing
-  const singleLineRatio = getResolvedData(fontFamily).singleLineRatio;
+	// Look up OS/2 single-line ratio for OOXML line spacing
+	const singleLineRatio = getResolvedData(fontFamily).singleLineRatio;
 
-  return {
-    fontSize, // Keep in points for reference
-    ascent,
-    descent,
-    lineHeight,
-    fontFamily,
-    singleLineRatio,
-  };
+	return {
+		fontSize, // Keep in points for reference
+		ascent,
+		descent,
+		lineHeight,
+		fontFamily,
+		singleLineRatio,
+	};
 }
 
 /**
@@ -232,39 +238,39 @@ export function getFontMetrics(style: FontStyle): FontMetrics {
  * @returns Width in pixels
  */
 export function measureTextWidth(text: string, style: FontStyle): number {
-  if (!text) return 0;
+	if (!text) return 0;
 
-  const ctx = getCanvasContext();
-  ctx.font = buildFontString(style);
+	const ctx = getCanvasContext();
+	ctx.font = buildFontString(style);
 
-  const metrics = ctx.measureText(text);
+	const metrics = ctx.measureText(text);
 
-  // Use advance width for line breaking — this is the standard metric for text flow.
-  // Painted width (actualBoundingBox) includes glyph overhang which is visual only
-  // and should not affect line breaking decisions.
-  let width = metrics.width;
+	// Use advance width for line breaking — this is the standard metric for text flow.
+	// Painted width (actualBoundingBox) includes glyph overhang which is visual only
+	// and should not affect line breaking decisions.
+	let width = metrics.width;
 
-  // Apply letter spacing if specified
-  if (style.letterSpacing && text.length > 1) {
-    width += style.letterSpacing * (text.length - 1);
-  }
+	// Apply letter spacing if specified
+	if (style.letterSpacing && text.length > 1) {
+		width += style.letterSpacing * (text.length - 1);
+	}
 
-  return width;
+	return width;
 }
 
 /**
  * Measure text and return full metrics
  */
 export function measureText(text: string, style: FontStyle): TextMeasurement {
-  const width = measureTextWidth(text, style);
-  const metrics = getFontMetrics(style);
+	const width = measureTextWidth(text, style);
+	const metrics = getFontMetrics(style);
 
-  return {
-    width,
-    height: metrics.ascent + metrics.descent,
-    ascent: metrics.ascent,
-    descent: metrics.descent,
-  };
+	return {
+		width,
+		height: metrics.ascent + metrics.descent,
+		ascent: metrics.ascent,
+		descent: metrics.descent,
+	};
 }
 
 /**
@@ -275,45 +281,45 @@ export function measureText(text: string, style: FontStyle): TextMeasurement {
  * @returns Run measurement with width and per-character widths
  */
 export function measureRun(text: string, style: FontStyle): RunMeasurement {
-  const metrics = getFontMetrics(style);
+	const metrics = getFontMetrics(style);
 
-  if (!text) {
-    return {
-      width: 0,
-      charWidths: [],
-      metrics,
-    };
-  }
+	if (!text) {
+		return {
+			width: 0,
+			charWidths: [],
+			metrics,
+		};
+	}
 
-  const ctx = getCanvasContext();
-  ctx.font = buildFontString(style);
+	const ctx = getCanvasContext();
+	ctx.font = buildFontString(style);
 
-  const letterSpacing = style.letterSpacing ?? 0;
-  const charWidths: number[] = [];
-  let totalWidth = 0;
+	const letterSpacing = style.letterSpacing ?? 0;
+	const charWidths: number[] = [];
+	let totalWidth = 0;
 
-  // Measure each character individually for click positioning
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const charMetrics = ctx.measureText(char);
+	// Measure each character individually for click positioning
+	for (let i = 0; i < text.length; i++) {
+		const char = text[i];
+		const charMetrics = ctx.measureText(char);
 
-    // Use advance width for individual characters
-    let charWidth = charMetrics.width;
+		// Use advance width for individual characters
+		let charWidth = charMetrics.width;
 
-    // Add letter spacing after each character except the last
-    if (letterSpacing && i < text.length - 1) {
-      charWidth += letterSpacing;
-    }
+		// Add letter spacing after each character except the last
+		if (letterSpacing && i < text.length - 1) {
+			charWidth += letterSpacing;
+		}
 
-    charWidths.push(charWidth);
-    totalWidth += charWidth;
-  }
+		charWidths.push(charWidth);
+		totalWidth += charWidth;
+	}
 
-  return {
-    width: totalWidth,
-    charWidths,
-    metrics,
-  };
+	return {
+		width: totalWidth,
+		charWidths,
+		metrics,
+	};
 }
 
 /**
@@ -324,25 +330,25 @@ export function measureRun(text: string, style: FontStyle): RunMeasurement {
  * @returns Character offset (0-based index)
  */
 export function findCharacterAtX(x: number, charWidths: number[]): number {
-  if (charWidths.length === 0) return 0;
-  if (x <= 0) return 0;
+	if (charWidths.length === 0) return 0;
+	if (x <= 0) return 0;
 
-  let accumulatedWidth = 0;
+	let accumulatedWidth = 0;
 
-  for (let i = 0; i < charWidths.length; i++) {
-    const charWidth = charWidths[i];
-    const charMidpoint = accumulatedWidth + charWidth / 2;
+	for (let i = 0; i < charWidths.length; i++) {
+		const charWidth = charWidths[i];
+		const charMidpoint = accumulatedWidth + charWidth / 2;
 
-    // If x is before the midpoint, the cursor is at this character
-    if (x <= charMidpoint) {
-      return i;
-    }
+		// If x is before the midpoint, the cursor is at this character
+		if (x <= charMidpoint) {
+			return i;
+		}
 
-    accumulatedWidth += charWidth;
-  }
+		accumulatedWidth += charWidth;
+	}
 
-  // X is past all characters, return position after last character
-  return charWidths.length;
+	// X is past all characters, return position after last character
+	return charWidths.length;
 }
 
 /**
@@ -353,16 +359,16 @@ export function findCharacterAtX(x: number, charWidths: number[]): number {
  * @returns X position in pixels
  */
 export function getXForCharacter(offset: number, charWidths: number[]): number {
-  if (offset <= 0 || charWidths.length === 0) return 0;
+	if (offset <= 0 || charWidths.length === 0) return 0;
 
-  const clampedOffset = Math.min(offset, charWidths.length);
-  let x = 0;
+	const clampedOffset = Math.min(offset, charWidths.length);
+	let x = 0;
 
-  for (let i = 0; i < clampedOffset; i++) {
-    x += charWidths[i];
-  }
+	for (let i = 0; i < clampedOffset; i++) {
+		x += charWidths[i];
+	}
 
-  return x;
+	return x;
 }
 
 // Unit conversion utilities
@@ -371,28 +377,28 @@ export function getXForCharacter(offset: number, charWidths: number[]): number {
  * Convert twips to pixels
  */
 export function twipsToPx(twips: number): number {
-  return twips / TWIPS_PER_PX;
+	return twips / TWIPS_PER_PX;
 }
 
 /**
  * Convert pixels to twips
  */
 export function pxToTwips(px: number): number {
-  return Math.round(px * TWIPS_PER_PX);
+	return Math.round(px * TWIPS_PER_PX);
 }
 
 /**
  * Convert points to pixels
  */
 export function ptToPx(pt: number): number {
-  return (pt * PX_PER_INCH) / 72;
+	return (pt * PX_PER_INCH) / 72;
 }
 
 /**
  * Convert pixels to points
  */
 export function pxToPt(px: number): number {
-  return (px * 72) / PX_PER_INCH;
+	return (px * 72) / PX_PER_INCH;
 }
 
 /**
@@ -400,12 +406,12 @@ export function pxToPt(px: number): number {
  * OOXML font sizes are in half-points (24 = 12pt)
  */
 export function halfPtToPx(halfPt: number): number {
-  return ptToPx(halfPt / 2);
+	return ptToPx(halfPt / 2);
 }
 
 /**
  * Convert pixels to OOXML half-points
  */
 export function pxToHalfPt(px: number): number {
-  return pxToPt(px) * 2;
+	return pxToPt(px) * 2;
 }

@@ -19,7 +19,7 @@
  * decorations into the void.
  */
 
-import NSpell from 'nspell';
+import NSpell from "nspell";
 
 // Asset URLs are injected at runtime by the consumer (see
 // `setSpellAssetUrls`). The library can't pre-bundle them via `?url`
@@ -37,8 +37,8 @@ let dicUrl: string | null = null;
  * them and treats the bodies as text.
  */
 export function setSpellAssetUrls(aff: string, dic: string): void {
-  affUrl = aff;
-  dicUrl = dic;
+	affUrl = aff;
+	dicUrl = dic;
 }
 
 let spell: NSpell | null = null;
@@ -49,30 +49,9 @@ let enabled = false;
 // this and rebuilds its DecorationSet when it shifts.
 let stateVersion = 0;
 
-const USER_DICT_KEY = 'casual-editor-user-dict';
-
-// Load persisted user-dictionary entries into the ignored set so they
-// survive across sessions.  We do this synchronously at module-init so
-// the set is populated before the first `isMisspelled()` call.
-function loadPersistedDict(): Set<string> {
-  const set = new Set<string>();
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(USER_DICT_KEY) : null;
-    if (raw) {
-      const list = JSON.parse(raw) as unknown;
-      if (Array.isArray(list)) {
-        for (const w of list) if (typeof w === 'string' && w) set.add(w);
-      }
-    }
-  } catch {
-    // Corrupt storage — start fresh.
-  }
-  return set;
-}
-
-// `ignored` covers both the session-ignore list (transient) and the
-// persisted user dictionary (permanent).
-const ignored = loadPersistedDict();
+// `ignored` is the cache of words the user told us to ignore for this
+// session. (We don't yet persist a personal dictionary — that's a v2 thing.)
+const ignored = new Set<string>();
 
 /**
  * True when the user has asked for spell-check (Tools → Spell check).
@@ -80,7 +59,7 @@ const ignored = loadPersistedDict();
  * removes the decoration overhead immediately.
  */
 export function isSpellEnabled(): boolean {
-  return enabled;
+	return enabled;
 }
 
 /**
@@ -88,16 +67,16 @@ export function isSpellEnabled(): boolean {
  * `setSpellEnabled(!isSpellEnabled())` and use the result.
  */
 export function setSpellEnabled(next: boolean): boolean {
-  if (enabled !== next) {
-    enabled = next;
-    stateVersion++;
-  }
-  return enabled;
+	if (enabled !== next) {
+		enabled = next;
+		stateVersion++;
+	}
+	return enabled;
 }
 
 /** Version counter exposed to the PM extension so it can detect on/off + dict-load. */
 export function getSpellVersion(): number {
-  return stateVersion;
+	return stateVersion;
 }
 
 /**
@@ -106,27 +85,30 @@ export function getSpellVersion(): number {
  * if they want the user to see "Loading…" before the first squiggles.
  */
 export function loadSpellChecker(): Promise<NSpell> {
-  if (spell) return Promise.resolve(spell);
-  if (loadPromise) return loadPromise;
-  if (!affUrl || !dicUrl) {
-    return Promise.reject(
-      new Error(
-        'spellcheck assets not configured — call setSpellAssetUrls(aff, dic) at editor mount'
-      )
-    );
-  }
-  const aff = affUrl;
-  const dic = dicUrl;
-  loadPromise = (async () => {
-    const [affRes, dicRes] = await Promise.all([fetch(aff), fetch(dic)]);
-    if (!affRes.ok || !dicRes.ok) throw new Error('dict-fetch-failed');
-    const [affText, dicText] = await Promise.all([affRes.text(), dicRes.text()]);
-    const engine = NSpell(affText, dicText);
-    spell = engine;
-    stateVersion++;
-    return engine;
-  })();
-  return loadPromise;
+	if (spell) return Promise.resolve(spell);
+	if (loadPromise) return loadPromise;
+	if (!affUrl || !dicUrl) {
+		return Promise.reject(
+			new Error(
+				"spellcheck assets not configured — call setSpellAssetUrls(aff, dic) at editor mount",
+			),
+		);
+	}
+	const aff = affUrl;
+	const dic = dicUrl;
+	loadPromise = (async () => {
+		const [affRes, dicRes] = await Promise.all([fetch(aff), fetch(dic)]);
+		if (!affRes.ok || !dicRes.ok) throw new Error("dict-fetch-failed");
+		const [affText, dicText] = await Promise.all([
+			affRes.text(),
+			dicRes.text(),
+		]);
+		const engine = NSpell(affText, dicText);
+		spell = engine;
+		stateVersion++;
+		return engine;
+	})();
+	return loadPromise;
 }
 
 /**
@@ -136,15 +118,15 @@ export function loadSpellChecker(): Promise<NSpell> {
  * silently treated as correct.
  */
 export function isMisspelled(word: string): boolean {
-  if (!enabled || !spell) return false;
-  if (ignored.has(word)) return false;
-  // Hunspell is case-sensitive by default; common proper nouns are
-  // capitalised in the dict, but a user typing them lowercase would
-  // see them flagged. Try both cases before giving up.
-  if (spell.correct(word)) return false;
-  const lower = word.toLowerCase();
-  if (lower !== word && spell.correct(lower)) return false;
-  return true;
+	if (!enabled || !spell) return false;
+	if (ignored.has(word)) return false;
+	// Hunspell is case-sensitive by default; common proper nouns are
+	// capitalised in the dict, but a user typing them lowercase would
+	// see them flagged. Try both cases before giving up.
+	if (spell.correct(word)) return false;
+	const lower = word.toLowerCase();
+	if (lower !== word && spell.correct(lower)) return false;
+	return true;
 }
 
 /**
@@ -152,42 +134,16 @@ export function isMisspelled(word: string): boolean {
  * the dictionary hasn't loaded yet or there are no suggestions.
  */
 export function suggestionsFor(word: string, limit = 6): string[] {
-  if (!spell) return [];
-  return spell.suggest(word).slice(0, limit);
+	if (!spell) return [];
+	return spell.suggest(word).slice(0, limit);
 }
 
 /**
  * Mark a word as "don't flag this again" for the current session.
  */
 export function ignoreWord(word: string): void {
-  ignored.add(word);
-  stateVersion++;
-}
-
-/**
- * Add a word to the persisted user dictionary so it is never flagged
- * again across sessions. Also works as an ignore for the current session.
- */
-export function addWordToDictionary(word: string): void {
-  if (!word) return;
-  ignored.add(word);
-  stateVersion++;
-  try {
-    const existing: string[] = [];
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(USER_DICT_KEY) : null;
-    if (raw) {
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) {
-        for (const w of parsed) if (typeof w === 'string' && w) existing.push(w);
-      }
-    }
-    if (!existing.includes(word)) {
-      existing.push(word);
-      localStorage.setItem(USER_DICT_KEY, JSON.stringify(existing));
-    }
-  } catch {
-    // Storage quota or private-browsing restriction — session-ignore still works.
-  }
+	ignored.add(word);
+	stateVersion++;
 }
 
 /**
@@ -195,23 +151,23 @@ export function addWordToDictionary(word: string): void {
  * editor mount; subsequent toggles flip through `setSpellEnabled`.
  */
 export function getSpellCheckerImpl(): {
-  isEnabled: () => boolean;
-  isMisspelled: (word: string) => boolean;
-  version: () => number;
+	isEnabled: () => boolean;
+	isMisspelled: (word: string) => boolean;
+	version: () => number;
 } {
-  return {
-    isEnabled: isSpellEnabled,
-    isMisspelled,
-    version: getSpellVersion,
-  };
+	return {
+		isEnabled: isSpellEnabled,
+		isMisspelled,
+		version: getSpellVersion,
+	};
 }
 
 /**
  * For tests: drop the loaded state.
  */
 export function resetSpellCheckerForTests(): void {
-  spell = null;
-  loadPromise = null;
-  enabled = false;
-  ignored.clear();
+	spell = null;
+	loadPromise = null;
+	enabled = false;
+	ignored.clear();
 }

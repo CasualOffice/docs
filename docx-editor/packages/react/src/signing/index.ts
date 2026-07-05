@@ -18,31 +18,35 @@
  * and sheet.
  */
 
-export { SigningProvider, useSigning, type SigningProviderProps } from './SigningProvider';
-export { SigningPane, type SigningPaneProps } from './SigningPane';
 export {
-  DrawnSignaturePad,
-  TypedSignatureField,
-  UploadedSignatureField,
-  type CapturedSignature,
-  type DrawnSignaturePadProps,
-  type TypedSignatureFieldProps,
-  type UploadedSignatureFieldProps,
-} from './captures';
+	SigningProvider,
+	useSigning,
+	type SigningProviderProps,
+} from "./SigningProvider";
+export { SigningPane, type SigningPaneProps } from "./SigningPane";
 export {
-  createSigningController,
-  type SigningController,
-  type SigningSnapshot,
-} from './controller';
+	DrawnSignaturePad,
+	TypedSignatureField,
+	UploadedSignatureField,
+	type CapturedSignature,
+	type DrawnSignaturePadProps,
+	type TypedSignatureFieldProps,
+	type UploadedSignatureFieldProps,
+} from "./captures";
+export {
+	createSigningController,
+	type SigningController,
+	type SigningSnapshot,
+} from "./controller";
 export type {
-  CancelReason,
-  DocAnchor,
-  SheetAnchor,
-  SignatureAnchor,
-  SignatureCompletePayload,
-  SignatureField,
-  SignatureMethod,
-  SignatureMode,
-  SignedFieldPayload,
-  SigningSessionConfig,
-} from './types';
+	CancelReason,
+	DocAnchor,
+	SheetAnchor,
+	SignatureAnchor,
+	SignatureCompletePayload,
+	SignatureField,
+	SignatureMethod,
+	SignatureMode,
+	SignedFieldPayload,
+	SigningSessionConfig,
+} from "./types";

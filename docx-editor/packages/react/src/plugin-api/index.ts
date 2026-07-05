@@ -25,23 +25,26 @@
 
 // Types (React-specific + re-exports from core)
 export type {
-  EditorPlugin,
-  ReactEditorPlugin,
-  PluginPanelProps,
-  PanelConfig,
-  PluginContext,
-  PluginHostProps,
-  PluginHostRef,
-  RenderedDomContext,
-  PositionCoordinates,
-  SidebarItem,
-  SidebarItemContext,
-  ReactSidebarItem,
-  SidebarItemRenderProps,
-} from './types';
+	EditorPlugin,
+	ReactEditorPlugin,
+	PluginPanelProps,
+	PanelConfig,
+	PluginContext,
+	PluginHostProps,
+	PluginHostRef,
+	RenderedDomContext,
+	PositionCoordinates,
+	SidebarItem,
+	SidebarItemContext,
+	ReactSidebarItem,
+	SidebarItemRenderProps,
+} from "./types";
 
 // Components
-export { PluginHost, PLUGIN_HOST_STYLES } from './PluginHost';
+export { PluginHost, PLUGIN_HOST_STYLES } from "./PluginHost";
 
 // Rendered DOM Context
-export { createRenderedDomContext, RenderedDomContextImpl } from './RenderedDomContext';
+export {
+	createRenderedDomContext,
+	RenderedDomContextImpl,
+} from "./RenderedDomContext";

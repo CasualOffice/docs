@@ -14,37 +14,48 @@
  * collapsed height.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MEDICAL_DOCX = path.join(__dirname, '..', 'fixtures', 'medical-incident-form.docx');
+const MEDICAL_DOCX = path.join(
+	__dirname,
+	"..",
+	"fixtures",
+	"medical-incident-form.docx",
+);
 
-test.describe('Form checkbox row height', () => {
-  test('checkbox rows render tall (not collapsed) like the reference', async ({ page }) => {
-    const editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.loadDocxFile(MEDICAL_DOCX);
-    await page.waitForSelector('.layout-page', { timeout: 30000 });
-    await page.waitForTimeout(800);
+test.describe("Form checkbox row height", () => {
+	test("checkbox rows render tall (not collapsed) like the reference", async ({
+		page,
+	}) => {
+		const editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.loadDocxFile(MEDICAL_DOCX);
+		await page.waitForSelector(".layout-page", { timeout: 30000 });
+		await page.waitForTimeout(800);
 
-    const heights = await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('.layout-table-row')];
-      return rows
-        .filter((r) => /Medication Error|Fall or Injury|Adverse Reaction/.test(r.textContent || ''))
-        .map((r) => r.getBoundingClientRect().height);
-    });
+		const heights = await page.evaluate(() => {
+			const rows = [...document.querySelectorAll(".layout-table-row")];
+			return rows
+				.filter((r) =>
+					/Medication Error|Fall or Injury|Adverse Reaction/.test(
+						r.textContent || "",
+					),
+				)
+				.map((r) => r.getBoundingClientRect().height);
+		});
 
-    expect(heights.length).toBeGreaterThanOrEqual(3);
-    // LibreOffice renders these ~75px. Collapsed (the bug) was ~34px. Assert
-    // they're clearly in the tall regime — a wide band so font-metric drift
-    // across platforms doesn't make this flaky.
-    for (const h of heights) {
-      expect(h).toBeGreaterThan(60);
-      expect(h).toBeLessThan(95);
-    }
-  });
+		expect(heights.length).toBeGreaterThanOrEqual(3);
+		// LibreOffice renders these ~75px. Collapsed (the bug) was ~34px. Assert
+		// they're clearly in the tall regime — a wide band so font-metric drift
+		// across platforms doesn't make this flaky.
+		for (const h of heights) {
+			expect(h).toBeGreaterThan(60);
+			expect(h).toBeLessThan(95);
+		}
+	});
 });

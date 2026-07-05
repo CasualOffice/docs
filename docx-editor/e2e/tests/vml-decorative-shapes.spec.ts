@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
 /**
  * Decorative VML shapes — openspec `drawing-shapes-render` foundation.
@@ -29,31 +29,35 @@ import { EditorPage } from '../helpers/editor-page';
  * count went 1 → 7 after this change.
  */
 
-test('VML decorative rectangle (v:rect) paints with its fill color', async ({ page }) => {
-  const editor = new EditorPage(page);
-  await editor.goto();
-  await editor.waitForReady();
-  await editor.loadDocxFile('fixtures/vml-rect.docx');
-  await page.waitForTimeout(500);
+test("VML decorative rectangle (v:rect) paints with its fill color", async ({
+	page,
+}) => {
+	const editor = new EditorPage(page);
+	await editor.goto();
+	await editor.waitForReady();
+	await editor.loadDocxFile("fixtures/vml-rect.docx");
+	await page.waitForTimeout(500);
 
-  const data = await page.evaluate(() => {
-    const visible = (el: HTMLElement) => !el.closest('.paged-editor__hidden-pm');
-    const textBoxes = Array.from(document.querySelectorAll<HTMLElement>('.layout-textbox')).filter(
-      visible
-    );
-    return {
-      count: textBoxes.length,
-      bgs: textBoxes.map((el) => el.style.backgroundColor),
-      bodyText:
-        (document.querySelector('.paged-editor__pages') as HTMLElement)?.innerText ?? '',
-    };
-  });
+	const data = await page.evaluate(() => {
+		const visible = (el: HTMLElement) =>
+			!el.closest(".paged-editor__hidden-pm");
+		const textBoxes = Array.from(
+			document.querySelectorAll<HTMLElement>(".layout-textbox"),
+		).filter(visible);
+		return {
+			count: textBoxes.length,
+			bgs: textBoxes.map((el) => el.style.backgroundColor),
+			bodyText:
+				(document.querySelector(".paged-editor__pages") as HTMLElement)
+					?.innerText ?? "",
+		};
+	});
 
-  expect(data.count, 'one painted textbox container for the v:rect').toBe(1);
-  // Browsers normalize CSS colors to rgb() — the painter writes "#FF0000"
-  // and Chromium reports it as "rgb(255, 0, 0)". Accept either.
-  const bg = data.bgs[0]?.toLowerCase() ?? '';
-  expect(bg === '#ff0000' || bg === 'rgb(255, 0, 0)').toBe(true);
-  expect(data.bodyText).toContain('BEFORE-RECT');
-  expect(data.bodyText).toContain('AFTER-RECT');
+	expect(data.count, "one painted textbox container for the v:rect").toBe(1);
+	// Browsers normalize CSS colors to rgb() — the painter writes "#FF0000"
+	// and Chromium reports it as "rgb(255, 0, 0)". Accept either.
+	const bg = data.bgs[0]?.toLowerCase() ?? "";
+	expect(bg === "#ff0000" || bg === "rgb(255, 0, 0)").toBe(true);
+	expect(data.bodyText).toContain("BEFORE-RECT");
+	expect(data.bodyText).toContain("AFTER-RECT");
 });

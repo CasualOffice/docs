@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
 /**
  * Custom-hex highlight round-trip — UI end-to-end.
@@ -26,32 +26,32 @@ import { EditorPage } from '../helpers/editor-page';
  */
 
 async function readHighlightsOnFirstParagraph(
-  page: import('@playwright/test').Page
+	page: import("@playwright/test").Page,
 ): Promise<string[]> {
-  return page.evaluate(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handle = (window as any).__editorRef?.current;
-    if (!handle) return [];
-    const view = handle.getEditorRef?.()?.getView?.();
-    if (!view) return [];
-    const out: string[] = [];
-    const paragraph = view.state.doc.firstChild;
-    if (!paragraph) return [];
-    paragraph.descendants(
-      (node: {
-        isText?: boolean;
-        marks: { type: { name: string }; attrs: Record<string, unknown> }[];
-      }) => {
-        if (!node.isText) return;
-        for (const mark of node.marks) {
-          if (mark.type.name === 'highlight') {
-            out.push(String((mark.attrs as { color?: string }).color ?? ''));
-          }
-        }
-      }
-    );
-    return out;
-  });
+	return page.evaluate(() => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const handle = (window as any).__editorRef?.current;
+		if (!handle) return [];
+		const view = handle.getEditorRef?.()?.getView?.();
+		if (!view) return [];
+		const out: string[] = [];
+		const paragraph = view.state.doc.firstChild;
+		if (!paragraph) return [];
+		paragraph.descendants(
+			(node: {
+				isText?: boolean;
+				marks: { type: { name: string }; attrs: Record<string, unknown> }[];
+			}) => {
+				if (!node.isText) return;
+				for (const mark of node.marks) {
+					if (mark.type.name === "highlight") {
+						out.push(String((mark.attrs as { color?: string }).color ?? ""));
+					}
+				}
+			},
+		);
+		return out;
+	});
 }
 
 /**
@@ -60,74 +60,78 @@ async function readHighlightsOnFirstParagraph(
  * (see `toProseDoc.ts`), so this is where the color lives after reload.
  */
 async function readShadingFillsOnFirstParagraph(
-  page: import('@playwright/test').Page
+	page: import("@playwright/test").Page,
 ): Promise<string[]> {
-  return page.evaluate(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handle = (window as any).__editorRef?.current;
-    if (!handle) return [];
-    const view = handle.getEditorRef?.()?.getView?.();
-    if (!view) return [];
-    const out: string[] = [];
-    const paragraph = view.state.doc.firstChild;
-    if (!paragraph) return [];
-    paragraph.descendants(
-      (node: {
-        isText?: boolean;
-        marks: { type: { name: string }; attrs: Record<string, unknown> }[];
-      }) => {
-        if (!node.isText) return;
-        for (const mark of node.marks) {
-          if (mark.type.name === 'runShading') {
-            const shading = (mark.attrs as { shading?: { fill?: { rgb?: string } } }).shading;
-            const rgb = shading?.fill?.rgb;
-            if (rgb) out.push(String(rgb));
-          }
-        }
-      }
-    );
-    return out;
-  });
+	return page.evaluate(() => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const handle = (window as any).__editorRef?.current;
+		if (!handle) return [];
+		const view = handle.getEditorRef?.()?.getView?.();
+		if (!view) return [];
+		const out: string[] = [];
+		const paragraph = view.state.doc.firstChild;
+		if (!paragraph) return [];
+		paragraph.descendants(
+			(node: {
+				isText?: boolean;
+				marks: { type: { name: string }; attrs: Record<string, unknown> }[];
+			}) => {
+				if (!node.isText) return;
+				for (const mark of node.marks) {
+					if (mark.type.name === "runShading") {
+						const shading = (
+							mark.attrs as { shading?: { fill?: { rgb?: string } } }
+						).shading;
+						const rgb = shading?.fill?.rgb;
+						if (rgb) out.push(String(rgb));
+					}
+				}
+			},
+		);
+		return out;
+	});
 }
 
-test('custom-hex highlight survives a save → reload cycle', async ({ page }) => {
-  const editor = new EditorPage(page);
-  await page.goto('/?e2e=1');
-  await editor.waitForReady();
-  await editor.newDocument();
-  await editor.focus();
+test("custom-hex highlight survives a save → reload cycle", async ({
+	page,
+}) => {
+	const editor = new EditorPage(page);
+	await page.goto("/?e2e=1");
+	await editor.waitForReady();
+	await editor.newDocument();
+	await editor.focus();
 
-  // Type some text and select it.
-  await editor.typeText('Highlight me');
-  await editor.selectAll();
+	// Type some text and select it.
+	await editor.typeText("Highlight me");
+	await editor.selectAll();
 
-  // Apply a custom hex highlight (FFEB3B = material yellow — not in the
-  // named-color enum, so it has to ride the `<w:shd>` fallback).
-  await editor.setHighlightColor('FFEB3B');
-  await page.waitForTimeout(150);
+	// Apply a custom hex highlight (FFEB3B = material yellow — not in the
+	// named-color enum, so it has to ride the `<w:shd>` fallback).
+	await editor.setHighlightColor("FFEB3B");
+	await page.waitForTimeout(150);
 
-  // Sanity: the highlight mark is on the run pre-save (this is the live
-  // editing state, before any OOXML serialization).
-  const before = await readHighlightsOnFirstParagraph(page);
-  expect(before.length).toBeGreaterThan(0);
-  expect(before[0].toUpperCase()).toBe('FFEB3B');
+	// Sanity: the highlight mark is on the run pre-save (this is the live
+	// editing state, before any OOXML serialization).
+	const before = await readHighlightsOnFirstParagraph(page);
+	expect(before.length).toBeGreaterThan(0);
+	expect(before[0].toUpperCase()).toBe("FFEB3B");
 
-  // Save → reload. The save returns the serialized .docx buffer; we
-  // hand it straight back to `loadDocumentBuffer` so the document
-  // is re-parsed from XML (the only path that exercises the
-  // `<w:shd>` → `runShading` rehydration).
-  await page.evaluate(async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handle = (window as any).__editorRef?.current;
-    const buf: ArrayBuffer = await handle.save();
-    await handle.loadDocumentBuffer(buf);
-  });
-  await page.waitForTimeout(400);
+	// Save → reload. The save returns the serialized .docx buffer; we
+	// hand it straight back to `loadDocumentBuffer` so the document
+	// is re-parsed from XML (the only path that exercises the
+	// `<w:shd>` → `runShading` rehydration).
+	await page.evaluate(async () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const handle = (window as any).__editorRef?.current;
+		const buf: ArrayBuffer = await handle.save();
+		await handle.loadDocumentBuffer(buf);
+	});
+	await page.waitForTimeout(400);
 
-  // After reload the same fill should still be on the run — now carried
-  // by `runShading` (the deliberate, unit-pinned destination for a
-  // custom-hex `<w:shd>` fallback), not the `highlight` mark.
-  const shadingFills = await readShadingFillsOnFirstParagraph(page);
-  expect(shadingFills.length).toBeGreaterThan(0);
-  expect(shadingFills[0].toUpperCase()).toBe('FFEB3B');
+	// After reload the same fill should still be on the run — now carried
+	// by `runShading` (the deliberate, unit-pinned destination for a
+	// custom-hex `<w:shd>` fallback), not the `highlight` mark.
+	const shadingFills = await readShadingFillsOnFirstParagraph(page);
+	expect(shadingFills.length).toBeGreaterThan(0);
+	expect(shadingFills[0].toUpperCase()).toBe("FFEB3B");
 });

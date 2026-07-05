@@ -10,8 +10,8 @@
  * generator works in non-secure contexts (file://, web workers).
  */
 export function generateHexId(): string {
-  return Math.floor(Math.random() * 0x100000000)
-    .toString(16)
-    .toUpperCase()
-    .padStart(8, '0');
+	return Math.floor(Math.random() * 0x100000000)
+		.toString(16)
+		.toUpperCase()
+		.padStart(8, "0");
 }

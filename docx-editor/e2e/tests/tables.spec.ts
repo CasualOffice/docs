@@ -15,739 +15,746 @@
  * - Save and load round-trip
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
-test.describe('Table Creation', () => {
-  let editor: EditorPage;
+test.describe("Table Creation", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('insert 2x2 table using grid selector', async ({ page }) => {
-    await editor.insertTable(2, 2);
+	test("insert 2x2 table using grid selector", async ({ page }) => {
+		await editor.insertTable(2, 2);
 
-    const tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
+		const tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(2);
-    expect(dimensions.cols).toBe(2);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(2);
+		expect(dimensions.cols).toBe(2);
+	});
 
-  test('insert 3x3 table', async ({ page }) => {
-    await editor.insertTable(3, 3);
+	test("insert 3x3 table", async ({ page }) => {
+		await editor.insertTable(3, 3);
 
-    const tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
+		const tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(3);
-    expect(dimensions.cols).toBe(3);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(3);
+		expect(dimensions.cols).toBe(3);
+	});
 
-  test('insert minimal 1x1 table', async ({ page }) => {
-    await editor.insertTable(1, 1);
+	test("insert minimal 1x1 table", async ({ page }) => {
+		await editor.insertTable(1, 1);
 
-    const tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
+		const tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(1);
-    expect(dimensions.cols).toBe(1);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(1);
+		expect(dimensions.cols).toBe(1);
+	});
 
-  test('insert 5x5 table', async ({ page }) => {
-    await editor.insertTable(5, 5);
+	test("insert 5x5 table", async ({ page }) => {
+		await editor.insertTable(5, 5);
 
-    const tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
+		const tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(5);
-    expect(dimensions.cols).toBe(5);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(5);
+		expect(dimensions.cols).toBe(5);
+	});
 });
 
-test.describe('Table Content & Text Wrapping', () => {
-  let editor: EditorPage;
+test.describe("Table Content & Text Wrapping", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('type in table cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Cell A1');
+	test("type in table cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Cell A1");
 
-    const content = await editor.getTableCellContent(0, 0, 0);
-    expect(content).toContain('Cell A1');
-  });
+		const content = await editor.getTableCellContent(0, 0, 0);
+		expect(content).toContain("Cell A1");
+	});
 
-  test('type in multiple cells', async ({ page }) => {
-    await editor.insertTable(2, 2);
+	test("type in multiple cells", async ({ page }) => {
+		await editor.insertTable(2, 2);
 
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('A1');
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("A1");
 
-    await editor.clickTableCell(0, 0, 1);
-    await editor.typeText('B1');
+		await editor.clickTableCell(0, 0, 1);
+		await editor.typeText("B1");
 
-    await editor.clickTableCell(0, 1, 0);
-    await editor.typeText('A2');
+		await editor.clickTableCell(0, 1, 0);
+		await editor.typeText("A2");
 
-    await editor.clickTableCell(0, 1, 1);
-    await editor.typeText('B2');
+		await editor.clickTableCell(0, 1, 1);
+		await editor.typeText("B2");
 
-    expect(await editor.getTableCellContent(0, 0, 0)).toContain('A1');
-    expect(await editor.getTableCellContent(0, 0, 1)).toContain('B1');
-    expect(await editor.getTableCellContent(0, 1, 0)).toContain('A2');
-    expect(await editor.getTableCellContent(0, 1, 1)).toContain('B2');
-  });
+		expect(await editor.getTableCellContent(0, 0, 0)).toContain("A1");
+		expect(await editor.getTableCellContent(0, 0, 1)).toContain("B1");
+		expect(await editor.getTableCellContent(0, 1, 0)).toContain("A2");
+		expect(await editor.getTableCellContent(0, 1, 1)).toContain("B2");
+	});
 
-  test('long text wraps within cell', async ({ page }) => {
-    // Heavy editing test (insert table → layout → read back). The one-shot
-    // insert below removes per-keystroke layout, but table insert + first
-    // layout still varies; give loaded CI shards headroom over the 30s default.
-    test.setTimeout(60_000);
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
+	test("long text wraps within cell", async ({ page }) => {
+		// Heavy editing test (insert table → layout → read back). The one-shot
+		// insert below removes per-keystroke layout, but table insert + first
+		// layout still varies; give loaded CI shards headroom over the 30s default.
+		test.setTimeout(60_000);
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
 
-    const longText =
-      'This is a very long text that should wrap within the cell without expanding the column width';
-    // insertText (one InputEvent) rather than per-char typing: this test asserts
-    // wrapping + table width, not key-by-key behavior, and char-by-char typing of
-    // a ~90-char string re-lays out the page per keystroke — fast locally but slow
-    // enough to time out on loaded CI shards (flaked shard 4). typeText only takes
-    // the fast path above 100 chars, and this string is just under.
-    await page.keyboard.insertText(longText);
+		const longText =
+			"This is a very long text that should wrap within the cell without expanding the column width";
+		// insertText (one InputEvent) rather than per-char typing: this test asserts
+		// wrapping + table width, not key-by-key behavior, and char-by-char typing of
+		// a ~90-char string re-lays out the page per keystroke — fast locally but slow
+		// enough to time out on loaded CI shards (flaked shard 4). typeText only takes
+		// the fast path above 100 chars, and this string is just under.
+		await page.keyboard.insertText(longText);
 
-    // Verify text is in the cell
-    const content = await editor.getTableCellContent(0, 0, 0);
-    expect(content).toContain('This is a very long text');
+		// Verify text is in the cell
+		const content = await editor.getTableCellContent(0, 0, 0);
+		expect(content).toContain("This is a very long text");
 
-    // Get table width - should still be 100% or the page width
-    const tableWidth = await page.evaluate(() => {
-      const table = document.querySelector('table');
-      if (!table) return 0;
-      const rect = table.getBoundingClientRect();
-      return rect.width;
-    });
+		// Get table width - should still be 100% or the page width
+		const tableWidth = await page.evaluate(() => {
+			const table = document.querySelector("table");
+			if (!table) return 0;
+			const rect = table.getBoundingClientRect();
+			return rect.width;
+		});
 
-    // Table should maintain reasonable width (not overflow)
-    expect(tableWidth).toBeGreaterThan(0);
-    expect(tableWidth).toBeLessThan(800); // Should fit in normal page width
-  });
+		// Table should maintain reasonable width (not overflow)
+		expect(tableWidth).toBeGreaterThan(0);
+		expect(tableWidth).toBeLessThan(800); // Should fit in normal page width
+	});
 });
 
-test.describe('Table Row/Column Operations', () => {
-  let editor: EditorPage;
+test.describe("Table Row/Column Operations", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('add row below', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.addRowBelow();
+	test("add row below", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.addRowBelow();
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(3);
-    expect(dimensions.cols).toBe(2);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(3);
+		expect(dimensions.cols).toBe(2);
+	});
 
-  test('add row above', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 1, 0);
-    await editor.addRowAbove();
+	test("add row above", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 1, 0);
+		await editor.addRowAbove();
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(3);
-    expect(dimensions.cols).toBe(2);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(3);
+		expect(dimensions.cols).toBe(2);
+	});
 
-  test('add column right', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.addColumnRight();
+	test("add column right", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.addColumnRight();
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(2);
-    expect(dimensions.cols).toBe(3);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(2);
+		expect(dimensions.cols).toBe(3);
+	});
 
-  test('add column left', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 1);
-    await editor.addColumnLeft();
+	test("add column left", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 1);
+		await editor.addColumnLeft();
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(2);
-    expect(dimensions.cols).toBe(3);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(2);
+		expect(dimensions.cols).toBe(3);
+	});
 
-  test('delete row', async ({ page }) => {
-    await editor.insertTable(3, 2);
-    await editor.clickTableCell(0, 1, 0);
-    await editor.deleteRow();
+	test("delete row", async ({ page }) => {
+		await editor.insertTable(3, 2);
+		await editor.clickTableCell(0, 1, 0);
+		await editor.deleteRow();
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(2);
-    expect(dimensions.cols).toBe(2);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(2);
+		expect(dimensions.cols).toBe(2);
+	});
 
-  test('delete column', async ({ page }) => {
-    await editor.insertTable(2, 3);
-    await editor.clickTableCell(0, 0, 1);
-    await editor.deleteColumn();
+	test("delete column", async ({ page }) => {
+		await editor.insertTable(2, 3);
+		await editor.clickTableCell(0, 0, 1);
+		await editor.deleteColumn();
 
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(2);
-    expect(dimensions.cols).toBe(2);
-  });
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(2);
+		expect(dimensions.cols).toBe(2);
+	});
 
-  test('delete entire table', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    expect(await editor.getTableCount()).toBe(1);
+	test("delete entire table", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		expect(await editor.getTableCount()).toBe(1);
 
-    await editor.clickTableCell(0, 0, 0);
-    await editor.deleteTable();
+		await editor.clickTableCell(0, 0, 0);
+		await editor.deleteTable();
 
-    expect(await editor.getTableCount()).toBe(0);
-  });
+		expect(await editor.getTableCount()).toBe(0);
+	});
 
-  test('columns maintain equal width after adding column', async ({ page }) => {
-    test.fixme(
-      true,
-      'Inserted columns are not currently redistributed to equal visual widths in the rendered table.'
-    );
+	test("columns maintain equal width after adding column", async ({ page }) => {
+		test.fixme(
+			true,
+			"Inserted columns are not currently redistributed to equal visual widths in the rendered table.",
+		);
 
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.addColumnRight();
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.addColumnRight();
 
-    // Check that all columns have roughly equal widths
-    const columnWidths = await page.evaluate(() => {
-      const table = document.querySelector('table');
-      if (!table) return [];
-      const firstRow = table.querySelector('tr');
-      if (!firstRow) return [];
-      const cells = firstRow.querySelectorAll('td, th');
-      return Array.from(cells).map((cell) => cell.getBoundingClientRect().width);
-    });
+		// Check that all columns have roughly equal widths
+		const columnWidths = await page.evaluate(() => {
+			const table = document.querySelector("table");
+			if (!table) return [];
+			const firstRow = table.querySelector("tr");
+			if (!firstRow) return [];
+			const cells = firstRow.querySelectorAll("td, th");
+			return Array.from(cells).map(
+				(cell) => cell.getBoundingClientRect().width,
+			);
+		});
 
-    expect(columnWidths.length).toBe(3);
-    // Check widths are approximately equal (within 10%)
-    const avgWidth = columnWidths.reduce((a, b) => a + b, 0) / columnWidths.length;
-    for (const width of columnWidths) {
-      expect(Math.abs(width - avgWidth)).toBeLessThan(avgWidth * 0.15);
-    }
-  });
+		expect(columnWidths.length).toBe(3);
+		// Check widths are approximately equal (within 10%)
+		const avgWidth =
+			columnWidths.reduce((a, b) => a + b, 0) / columnWidths.length;
+		for (const width of columnWidths) {
+			expect(Math.abs(width - avgWidth)).toBeLessThan(avgWidth * 0.15);
+		}
+	});
 });
 
-test.describe('Table Border Operations', () => {
-  let editor: EditorPage;
+test.describe("Table Border Operations", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('remove borders from single cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
+	test("remove borders from single cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
 
-    // By default, cells should have borders
-    let hasBorders = await editor.cellHasBorders(0, 0, 0);
-    expect(hasBorders).toBe(true);
+		// By default, cells should have borders
+		let hasBorders = await editor.cellHasBorders(0, 0, 0);
+		expect(hasBorders).toBe(true);
 
-    // Remove borders from the cell
-    await editor.removeBorders();
+		// Remove borders from the cell
+		await editor.removeBorders();
 
-    // Cell should no longer have visible borders
-    hasBorders = await editor.cellHasBorders(0, 0, 0);
-    expect(hasBorders).toBe(false);
+		// Cell should no longer have visible borders
+		hasBorders = await editor.cellHasBorders(0, 0, 0);
+		expect(hasBorders).toBe(false);
 
-    // Other cells should still have borders
-    const otherCellHasBorders = await editor.cellHasBorders(0, 0, 1);
-    expect(otherCellHasBorders).toBe(true);
-  });
+		// Other cells should still have borders
+		const otherCellHasBorders = await editor.cellHasBorders(0, 0, 1);
+		expect(otherCellHasBorders).toBe(true);
+	});
 
-  test('set all borders on single cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
+	test("set all borders on single cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
 
-    // First remove borders
-    await editor.removeBorders();
-    let hasBorders = await editor.cellHasBorders(0, 0, 0);
-    expect(hasBorders).toBe(false);
+		// First remove borders
+		await editor.removeBorders();
+		let hasBorders = await editor.cellHasBorders(0, 0, 0);
+		expect(hasBorders).toBe(false);
 
-    // Then add them back
-    await editor.setAllBorders();
-    hasBorders = await editor.cellHasBorders(0, 0, 0);
-    expect(hasBorders).toBe(true);
-  });
+		// Then add them back
+		await editor.setAllBorders();
+		hasBorders = await editor.cellHasBorders(0, 0, 0);
+		expect(hasBorders).toBe(true);
+	});
 });
 
-test.describe('Table Cell Fill Color', () => {
-  let editor: EditorPage;
+test.describe("Table Cell Fill Color", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('set cell fill color on single cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
+	test("set cell fill color on single cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
 
-    // Set yellow fill
-    await editor.setCellFillColor('#ffff00');
+		// Set yellow fill
+		await editor.setCellFillColor("#ffff00");
 
-    // Check cell has background color
-    const bgColor = await editor.getCellBackgroundColor(0, 0, 0);
-    expect(bgColor).toMatch(/ffff00|rgb\(255,\s*255,\s*0\)/i);
+		// Check cell has background color
+		const bgColor = await editor.getCellBackgroundColor(0, 0, 0);
+		expect(bgColor).toMatch(/ffff00|rgb\(255,\s*255,\s*0\)/i);
 
-    // Other cells should NOT have the fill color
-    const otherCellBgColor = await editor.getCellBackgroundColor(0, 0, 1);
-    expect(otherCellBgColor).not.toMatch(/ffff00|rgb\(255,\s*255,\s*0\)/i);
-  });
+		// Other cells should NOT have the fill color
+		const otherCellBgColor = await editor.getCellBackgroundColor(0, 0, 1);
+		expect(otherCellBgColor).not.toMatch(/ffff00|rgb\(255,\s*255,\s*0\)/i);
+	});
 
-  test('different colors on different cells', async ({ page }) => {
-    await editor.insertTable(2, 2);
+	test("different colors on different cells", async ({ page }) => {
+		await editor.insertTable(2, 2);
 
-    // Set yellow on first cell
-    await editor.clickTableCell(0, 0, 0);
-    await editor.setCellFillColor('#ffff00');
+		// Set yellow on first cell
+		await editor.clickTableCell(0, 0, 0);
+		await editor.setCellFillColor("#ffff00");
 
-    // Set blue on second cell
-    await editor.clickTableCell(0, 0, 1);
-    await editor.setCellFillColor('#4a86e8');
+		// Set blue on second cell
+		await editor.clickTableCell(0, 0, 1);
+		await editor.setCellFillColor("#4a86e8");
 
-    // Verify colors
-    const cell1Color = await editor.getCellBackgroundColor(0, 0, 0);
-    const cell2Color = await editor.getCellBackgroundColor(0, 0, 1);
+		// Verify colors
+		const cell1Color = await editor.getCellBackgroundColor(0, 0, 0);
+		const cell2Color = await editor.getCellBackgroundColor(0, 0, 1);
 
-    expect(cell1Color).toMatch(/ffff00|rgb\(255,\s*255,\s*0\)/i);
-    expect(cell2Color).toMatch(/4a86e8|rgb\(74,\s*134,\s*232\)/i);
-  });
+		expect(cell1Color).toMatch(/ffff00|rgb\(255,\s*255,\s*0\)/i);
+		expect(cell2Color).toMatch(/4a86e8|rgb\(74,\s*134,\s*232\)/i);
+	});
 });
 
-test.describe('Table Undo/Redo', () => {
-  let editor: EditorPage;
+test.describe("Table Undo/Redo", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('undo table insert', async ({ page }) => {
-    await editor.insertTable(2, 2);
+	test("undo table insert", async ({ page }) => {
+		await editor.insertTable(2, 2);
 
-    let tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
+		let tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
 
-    await editor.undo();
+		await editor.undo();
 
-    tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(0);
-  });
+		tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(0);
+	});
 
-  test('redo table insert', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.undo();
+	test("redo table insert", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.undo();
 
-    let tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(0);
+		let tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(0);
 
-    await editor.redo();
+		await editor.redo();
 
-    tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
-  });
+		tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
+	});
 
-  test('undo add row', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.addRowBelow();
+	test("undo add row", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.addRowBelow();
 
-    let dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(3);
+		let dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(3);
 
-    // Undo may undo the row addition - verify table still has at least original rows
-    // or the entire table might be undone depending on history granularity
-    await editor.undo();
+		// Undo may undo the row addition - verify table still has at least original rows
+		// or the entire table might be undone depending on history granularity
+		await editor.undo();
 
-    const tableCount = await editor.getTableCount();
-    if (tableCount > 0) {
-      dimensions = await editor.getTableDimensions(0);
-      // Accept either 2 rows (row removed) or 3 rows (undo not granular enough)
-      expect(dimensions.rows).toBeGreaterThanOrEqual(2);
-    }
-    // Table might be undone entirely which is also valid undo behavior
-    expect(tableCount).toBeGreaterThanOrEqual(0);
-  });
+		const tableCount = await editor.getTableCount();
+		if (tableCount > 0) {
+			dimensions = await editor.getTableDimensions(0);
+			// Accept either 2 rows (row removed) or 3 rows (undo not granular enough)
+			expect(dimensions.rows).toBeGreaterThanOrEqual(2);
+		}
+		// Table might be undone entirely which is also valid undo behavior
+		expect(tableCount).toBeGreaterThanOrEqual(0);
+	});
 
-  test('undo cell content', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Test content');
+	test("undo cell content", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Test content");
 
-    let content = await editor.getTableCellContent(0, 0, 0);
-    expect(content).toContain('Test content');
+		let content = await editor.getTableCellContent(0, 0, 0);
+		expect(content).toContain("Test content");
 
-    // Undo typing - use keyboard shortcut for more reliable behavior
-    await editor.undoShortcut();
-    await page.waitForTimeout(100);
+		// Undo typing - use keyboard shortcut for more reliable behavior
+		await editor.undoShortcut();
+		await page.waitForTimeout(100);
 
-    // Content should be partially or fully undone
-    const tableCount = await editor.getTableCount();
-    if (tableCount > 0) {
-      content = await editor.getTableCellContent(0, 0, 0);
-      // Verify some change occurred (either partial or full undo)
-      // The exact undo granularity depends on ProseMirror history configuration
-    }
-    // Test passes if we got here without timeout
-    expect(true).toBe(true);
-  });
+		// Content should be partially or fully undone
+		const tableCount = await editor.getTableCount();
+		if (tableCount > 0) {
+			content = await editor.getTableCellContent(0, 0, 0);
+			// Verify some change occurred (either partial or full undo)
+			// The exact undo granularity depends on ProseMirror history configuration
+		}
+		// Test passes if we got here without timeout
+		expect(true).toBe(true);
+	});
 });
 
-test.describe('Table Format Persistence', () => {
-  let editor: EditorPage;
+test.describe("Table Format Persistence", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('text formatting in table cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Bold text');
+	test("text formatting in table cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Bold text");
 
-    // Select the text and apply bold
-    await editor.selectText('Bold text');
-    await editor.applyBold();
+		// Select the text and apply bold
+		await editor.selectText("Bold text");
+		await editor.applyBold();
 
-    // Verify bold is applied
-    const isBold = await editor.expectTextBold('Bold text');
-    expect(isBold).toBe(true);
-  });
+		// Verify bold is applied
+		const isBold = await editor.expectTextBold("Bold text");
+		expect(isBold).toBe(true);
+	});
 
-  test('multiple formatting types in table', async ({ page }) => {
-    await editor.insertTable(2, 2);
+	test("multiple formatting types in table", async ({ page }) => {
+		await editor.insertTable(2, 2);
 
-    // Bold in first cell
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Bold');
-    await editor.selectText('Bold');
-    await editor.applyBold();
+		// Bold in first cell
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Bold");
+		await editor.selectText("Bold");
+		await editor.applyBold();
 
-    // Italic in second cell
-    await editor.clickTableCell(0, 0, 1);
-    await editor.typeText('Italic');
-    await editor.selectText('Italic');
-    await editor.applyItalic();
+		// Italic in second cell
+		await editor.clickTableCell(0, 0, 1);
+		await editor.typeText("Italic");
+		await editor.selectText("Italic");
+		await editor.applyItalic();
 
-    // Verify both
-    const isBold = await editor.expectTextBold('Bold');
-    const isItalic = await editor.expectTextItalic('Italic');
+		// Verify both
+		const isBold = await editor.expectTextBold("Bold");
+		const isItalic = await editor.expectTextItalic("Italic");
 
-    expect(isBold).toBe(true);
-    expect(isItalic).toBe(true);
-  });
+		expect(isBold).toBe(true);
+		expect(isItalic).toBe(true);
+	});
 });
 
-test.describe('Table Navigation', () => {
-  let editor: EditorPage;
+test.describe("Table Navigation", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('Tab moves to next cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('A');
-    await editor.pressTab();
-    await editor.typeText('B');
+	test("Tab moves to next cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("A");
+		await editor.pressTab();
+		await editor.typeText("B");
 
-    const cell1Content = await editor.getTableCellContent(0, 0, 0);
-    const cell2Content = await editor.getTableCellContent(0, 0, 1);
+		const cell1Content = await editor.getTableCellContent(0, 0, 0);
+		const cell2Content = await editor.getTableCellContent(0, 0, 1);
 
-    expect(cell1Content).toContain('A');
-    expect(cell2Content).toContain('B');
-  });
+		expect(cell1Content).toContain("A");
+		expect(cell2Content).toContain("B");
+	});
 
-  test('Arrow keys navigate within cell content', async ({ page }) => {
-    test.fixme(
-      true,
-      'Intra-cell arrow navigation does not currently produce the stable cursor movement this test expects.'
-    );
+	test("Arrow keys navigate within cell content", async ({ page }) => {
+		test.fixme(
+			true,
+			"Intra-cell arrow navigation does not currently produce the stable cursor movement this test expects.",
+		);
 
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Hello World');
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Hello World");
 
-    // Move to start with Home key (more reliable than counting arrow presses)
-    await page.keyboard.press('Home');
-    // Move right 5 chars to position after "Hello"
-    for (let i = 0; i < 5; i++) {
-      await page.keyboard.press('ArrowRight');
-    }
-    await editor.typeText('!');
+		// Move to start with Home key (more reliable than counting arrow presses)
+		await page.keyboard.press("Home");
+		// Move right 5 chars to position after "Hello"
+		for (let i = 0; i < 5; i++) {
+			await page.keyboard.press("ArrowRight");
+		}
+		await editor.typeText("!");
 
-    const content = await editor.getTableCellContent(0, 0, 0);
-    // Verify both "Hello" and "World" exist and "!" was inserted
-    expect(content).toContain('Hello');
-    expect(content).toContain('World');
-    expect(content).toContain('!');
-  });
+		const content = await editor.getTableCellContent(0, 0, 0);
+		// Verify both "Hello" and "World" exist and "!" was inserted
+		expect(content).toContain("Hello");
+		expect(content).toContain("World");
+		expect(content).toContain("!");
+	});
 
-  test('can move cursor below table and type', async ({ page }) => {
-    // Insert a table - this should also create a paragraph after it
-    await editor.insertTable(2, 2);
+	test("can move cursor below table and type", async ({ page }) => {
+		// Insert a table - this should also create a paragraph after it
+		await editor.insertTable(2, 2);
 
-    // Type in the last cell
-    await editor.clickTableCell(0, 1, 1);
-    await editor.typeText('Last cell');
+		// Type in the last cell
+		await editor.clickTableCell(0, 1, 1);
+		await editor.typeText("Last cell");
 
-    // Tab out of the last cell should move to the next paragraph (after table)
-    await editor.pressTab();
-    await page.waitForTimeout(100);
+		// Tab out of the last cell should move to the next paragraph (after table)
+		await editor.pressTab();
+		await page.waitForTimeout(100);
 
-    // Type some text - this should appear below the table
-    await editor.typeText('Text below table');
+		// Type some text - this should appear below the table
+		await editor.typeText("Text below table");
 
-    // Verify the text appears in the document
-    const docText = await editor.getDocumentText();
-    expect(docText).toContain('Text below table');
+		// Verify the text appears in the document
+		const docText = await editor.getDocumentText();
+		expect(docText).toContain("Text below table");
 
-    // Verify table is still intact
-    const tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
-  });
+		// Verify table is still intact
+		const tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
+	});
 });
 
-test.describe('Table Edge Cases', () => {
-  let editor: EditorPage;
+test.describe("Table Edge Cases", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('backspace in empty cell does not break table', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.pressBackspace();
-    await editor.pressBackspace();
-    await editor.pressBackspace();
+	test("backspace in empty cell does not break table", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.pressBackspace();
+		await editor.pressBackspace();
+		await editor.pressBackspace();
 
-    // Table should still exist
-    const tableCount = await editor.getTableCount();
-    expect(tableCount).toBe(1);
-  });
+		// Table should still exist
+		const tableCount = await editor.getTableCount();
+		expect(tableCount).toBe(1);
+	});
 
-  test('cannot delete last row', async ({ page }) => {
-    await editor.insertTable(1, 2);
-    await editor.clickTableCell(0, 0, 0);
+	test("cannot delete last row", async ({ page }) => {
+		await editor.insertTable(1, 2);
+		await editor.clickTableCell(0, 0, 0);
 
-    // Try to delete the only row
-    await editor.openTableMore();
+		// Try to delete the only row
+		await editor.openTableMore();
 
-    // The delete row button should be disabled when there's only one row
-    const deleteRowItem = page.getByRole('menuitem', { name: 'Delete row' });
-    await expect(deleteRowItem).toBeDisabled();
+		// The delete row button should be disabled when there's only one row
+		const deleteRowItem = page.getByRole("menuitem", { name: "Delete row" });
+		await expect(deleteRowItem).toBeDisabled();
 
-    // Close the menu by pressing Escape
-    await page.keyboard.press('Escape');
+		// Close the menu by pressing Escape
+		await page.keyboard.press("Escape");
 
-    // Table should still exist with 1 row
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.rows).toBe(1);
-  });
+		// Table should still exist with 1 row
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.rows).toBe(1);
+	});
 
-  test('cannot delete last column', async ({ page }) => {
-    await editor.insertTable(2, 1);
-    await editor.clickTableCell(0, 0, 0);
+	test("cannot delete last column", async ({ page }) => {
+		await editor.insertTable(2, 1);
+		await editor.clickTableCell(0, 0, 0);
 
-    // Try to delete the only column
-    await editor.openTableMore();
+		// Try to delete the only column
+		await editor.openTableMore();
 
-    // The delete column button should be disabled when there's only one column
-    const deleteColItem = page.getByRole('menuitem', { name: 'Delete column' });
-    await expect(deleteColItem).toBeDisabled();
+		// The delete column button should be disabled when there's only one column
+		const deleteColItem = page.getByRole("menuitem", { name: "Delete column" });
+		await expect(deleteColItem).toBeDisabled();
 
-    // Close the menu by pressing Escape
-    await page.keyboard.press('Escape');
+		// Close the menu by pressing Escape
+		await page.keyboard.press("Escape");
 
-    // Table should still exist with 1 column
-    const dimensions = await editor.getTableDimensions(0);
-    expect(dimensions.cols).toBe(1);
-  });
+		// Table should still exist with 1 column
+		const dimensions = await editor.getTableDimensions(0);
+		expect(dimensions.cols).toBe(1);
+	});
 
-  test('special characters in table cells', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Special: <>&"\'');
+	test("special characters in table cells", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Special: <>&\"'");
 
-    const content = await editor.getTableCellContent(0, 0, 0);
-    // SmartQuotesExtension (on by default) converts the straight quotes
-    // to curly ones as they're typed; the angle brackets + ampersand
-    // (the actual escaping concern) survive verbatim.
-    expect(content).toContain('Special: <>&”’');
-  });
+		const content = await editor.getTableCellContent(0, 0, 0);
+		// SmartQuotesExtension (on by default) converts the straight quotes
+		// to curly ones as they're typed; the angle brackets + ampersand
+		// (the actual escaping concern) survive verbatim.
+		expect(content).toContain("Special: <>&”’");
+	});
 
-  test('multiline content in cell', async ({ page }) => {
-    await editor.insertTable(2, 2);
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Line 1');
-    await editor.pressShiftEnter();
-    await editor.typeText('Line 2');
+	test("multiline content in cell", async ({ page }) => {
+		await editor.insertTable(2, 2);
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Line 1");
+		await editor.pressShiftEnter();
+		await editor.typeText("Line 2");
 
-    const content = await editor.getTableCellContent(0, 0, 0);
-    expect(content).toContain('Line 1');
-    expect(content).toContain('Line 2');
-  });
+		const content = await editor.getTableCellContent(0, 0, 0);
+		expect(content).toContain("Line 1");
+		expect(content).toContain("Line 2");
+	});
 });
 
-test.describe('Table Pin Header Row', () => {
-  let editor: EditorPage;
+test.describe("Table Pin Header Row", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  // Reads the "Pin header row" menu item's text while the More menu is open.
-  // The label is prefixed with a checkmark when the current row is pinned.
-  const pinItemText = (page: import('@playwright/test').Page) =>
-    page.evaluate(() => {
-      const items = Array.from(document.querySelectorAll('[role="menuitem"]'));
-      const el = items.find((e) => (e.textContent ?? '').includes('Pin header row'));
-      return (el?.textContent ?? '').trim();
-    });
+	// Reads the "Pin header row" menu item's text while the More menu is open.
+	// The label is prefixed with a checkmark when the current row is pinned.
+	const pinItemText = (page: import("@playwright/test").Page) =>
+		page.evaluate(() => {
+			const items = Array.from(document.querySelectorAll('[role="menuitem"]'));
+			const el = items.find((e) =>
+				(e.textContent ?? "").includes("Pin header row"),
+			);
+			return (el?.textContent ?? "").trim();
+		});
 
-  test('toggles pinned state and reflects it in the More menu', async ({ page }) => {
-    await editor.insertTable(3, 3);
-    await page.waitForTimeout(300);
-    await editor.clickTableCell(0, 0, 0);
-    await page.waitForTimeout(300);
+	test("toggles pinned state and reflects it in the More menu", async ({
+		page,
+	}) => {
+		await editor.insertTable(3, 3);
+		await page.waitForTimeout(300);
+		await editor.clickTableCell(0, 0, 0);
+		await page.waitForTimeout(300);
 
-    // Initially the first row is not pinned — no checkmark.
-    await editor.openTableMore();
-    expect(await pinItemText(page)).not.toContain('✓');
+		// Initially the first row is not pinned — no checkmark.
+		await editor.openTableMore();
+		expect(await pinItemText(page)).not.toContain("✓");
 
-    // Pin it.
-    await editor.clickTableMenuItem('Pin header row');
-    await editor.clickTableCell(0, 0, 0); // force a selection refresh
-    await page.waitForTimeout(200);
+		// Pin it.
+		await editor.clickTableMenuItem("Pin header row");
+		await editor.clickTableCell(0, 0, 0); // force a selection refresh
+		await page.waitForTimeout(200);
 
-    await editor.openTableMore();
-    expect(await pinItemText(page)).toContain('✓');
+		await editor.openTableMore();
+		expect(await pinItemText(page)).toContain("✓");
 
-    // Unpin it — the active state clears again.
-    await editor.clickTableMenuItem('Pin header row');
-    await editor.clickTableCell(0, 0, 0);
-    await page.waitForTimeout(200);
+		// Unpin it — the active state clears again.
+		await editor.clickTableMenuItem("Pin header row");
+		await editor.clickTableCell(0, 0, 0);
+		await page.waitForTimeout(200);
 
-    await editor.openTableMore();
-    expect(await pinItemText(page)).not.toContain('✓');
-  });
+		await editor.openTableMore();
+		expect(await pinItemText(page)).not.toContain("✓");
+	});
 });
 
-test.describe('Table Sort', () => {
-  let editor: EditorPage;
+test.describe("Table Sort", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.newDocument();
-    await editor.focus();
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.newDocument();
+		await editor.focus();
+	});
 
-  test('sorts data rows ascending by the current column', async ({ page }) => {
-    await editor.insertTable(3, 1);
-    await page.waitForTimeout(200);
+	test("sorts data rows ascending by the current column", async ({ page }) => {
+		await editor.insertTable(3, 1);
+		await page.waitForTimeout(200);
 
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Charlie');
-    await editor.clickTableCell(0, 1, 0);
-    await editor.typeText('Alpha');
-    await editor.clickTableCell(0, 2, 0);
-    await editor.typeText('Bravo');
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Charlie");
+		await editor.clickTableCell(0, 1, 0);
+		await editor.typeText("Alpha");
+		await editor.clickTableCell(0, 2, 0);
+		await editor.typeText("Bravo");
 
-    await editor.clickTableCell(0, 0, 0);
-    await page.waitForTimeout(200);
+		await editor.clickTableCell(0, 0, 0);
+		await page.waitForTimeout(200);
 
-    await editor.openTableMore();
-    await editor.clickTableMenuItem('A → Z'); // "Sort by column N (A → Z)"
-    await page.waitForTimeout(200);
+		await editor.openTableMore();
+		await editor.clickTableMenuItem("A → Z"); // "Sort by column N (A → Z)"
+		await page.waitForTimeout(200);
 
-    expect(await editor.getTableCellContent(0, 0, 0)).toContain('Alpha');
-    expect(await editor.getTableCellContent(0, 1, 0)).toContain('Bravo');
-    expect(await editor.getTableCellContent(0, 2, 0)).toContain('Charlie');
-  });
+		expect(await editor.getTableCellContent(0, 0, 0)).toContain("Alpha");
+		expect(await editor.getTableCellContent(0, 1, 0)).toContain("Bravo");
+		expect(await editor.getTableCellContent(0, 2, 0)).toContain("Charlie");
+	});
 
-  test('descending sort reverses the order', async ({ page }) => {
-    await editor.insertTable(3, 1);
-    await page.waitForTimeout(200);
+	test("descending sort reverses the order", async ({ page }) => {
+		await editor.insertTable(3, 1);
+		await page.waitForTimeout(200);
 
-    await editor.clickTableCell(0, 0, 0);
-    await editor.typeText('Alpha');
-    await editor.clickTableCell(0, 1, 0);
-    await editor.typeText('Bravo');
-    await editor.clickTableCell(0, 2, 0);
-    await editor.typeText('Charlie');
+		await editor.clickTableCell(0, 0, 0);
+		await editor.typeText("Alpha");
+		await editor.clickTableCell(0, 1, 0);
+		await editor.typeText("Bravo");
+		await editor.clickTableCell(0, 2, 0);
+		await editor.typeText("Charlie");
 
-    await editor.clickTableCell(0, 0, 0);
-    await page.waitForTimeout(200);
+		await editor.clickTableCell(0, 0, 0);
+		await page.waitForTimeout(200);
 
-    await editor.openTableMore();
-    await editor.clickTableMenuItem('Z → A'); // "Sort by column N (Z → A)"
-    await page.waitForTimeout(200);
+		await editor.openTableMore();
+		await editor.clickTableMenuItem("Z → A"); // "Sort by column N (Z → A)"
+		await page.waitForTimeout(200);
 
-    expect(await editor.getTableCellContent(0, 0, 0)).toContain('Charlie');
-    expect(await editor.getTableCellContent(0, 1, 0)).toContain('Bravo');
-    expect(await editor.getTableCellContent(0, 2, 0)).toContain('Alpha');
-  });
+		expect(await editor.getTableCellContent(0, 0, 0)).toContain("Charlie");
+		expect(await editor.getTableCellContent(0, 1, 0)).toContain("Bravo");
+		expect(await editor.getTableCellContent(0, 2, 0)).toContain("Alpha");
+	});
 });

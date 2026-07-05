@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import type * as Y from 'yjs';
+import type * as Y from "yjs";
 
 /**
  * Seed a shared `Y.Text` with the opened file's content — but only if it's
@@ -12,7 +12,7 @@ import type * as Y from 'yjs';
  * two synced Y.Docs.
  */
 export function seedYText(ytext: Y.Text, initial: string): void {
-  if (ytext.length === 0 && initial.length > 0) {
-    ytext.insert(0, initial);
-  }
+	if (ytext.length === 0 && initial.length > 0) {
+		ytext.insert(0, initial);
+	}
 }

@@ -31,60 +31,63 @@
  * on the next pass.
  */
 
-import { Plugin, PluginKey } from 'prosemirror-state';
-import { createExtension } from '../create';
-import type { ExtensionRuntime } from '../types';
-import { textFormattingToMarks } from '../marks/markUtils';
-import type { TextFormatting } from '../../../types/document';
+import { Plugin, PluginKey } from "prosemirror-state";
+import { createExtension } from "../create";
+import type { ExtensionRuntime } from "../types";
+import { textFormattingToMarks } from "../marks/markUtils";
+import type { TextFormatting } from "../../../types/document";
 
-export const storedMarksRestoreKey = new PluginKey('storedMarksRestore');
+export const storedMarksRestoreKey = new PluginKey("storedMarksRestore");
 
 function createStoredMarksRestorePlugin(): Plugin {
-  return new Plugin({
-    key: storedMarksRestoreKey,
-    appendTransaction(_transactions, _oldState, newState) {
-      // Fire on EVERY transaction that lands in an empty paragraph
-      // with defaultTextFormatting + null storedMarks. The loop guard
-      // below (storedMarks already populated → return null) prevents
-      // infinite recursion: after we set storedMarks, the next
-      // round-trip's first check exits early.
-      //
-      // We don't gate on `transactions.some(t => t.docChanged)`
-      // because PM clears storedMarks on selection-changing
-      // transactions too, not just doc-changing ones. Linux CI
-      // surfaced this — after select-all + Backspace, a follow-up
-      // selection-only tx (focus / browser sync) cleared the
-      // storedMarks our plugin set on the delete tx, and the
-      // subsequent typeText lost the bold/italic mark.
-      if (newState.storedMarks && newState.storedMarks.length > 0) return null;
+	return new Plugin({
+		key: storedMarksRestoreKey,
+		appendTransaction(_transactions, _oldState, newState) {
+			// Fire on EVERY transaction that lands in an empty paragraph
+			// with defaultTextFormatting + null storedMarks. The loop guard
+			// below (storedMarks already populated → return null) prevents
+			// infinite recursion: after we set storedMarks, the next
+			// round-trip's first check exits early.
+			//
+			// We don't gate on `transactions.some(t => t.docChanged)`
+			// because PM clears storedMarks on selection-changing
+			// transactions too, not just doc-changing ones. Linux CI
+			// surfaced this — after select-all + Backspace, a follow-up
+			// selection-only tx (focus / browser sync) cleared the
+			// storedMarks our plugin set on the delete tx, and the
+			// subsequent typeText lost the bold/italic mark.
+			if (newState.storedMarks && newState.storedMarks.length > 0) return null;
 
-      const { selection, schema } = newState;
-      if (!selection.empty) return null;
+			const { selection, schema } = newState;
+			if (!selection.empty) return null;
 
-      const $from = selection.$from;
-      const parent = $from.parent;
-      if (parent.type.name !== 'paragraph') return null;
-      if (parent.textContent.length > 0) return null;
+			const $from = selection.$from;
+			const parent = $from.parent;
+			if (parent.type.name !== "paragraph") return null;
+			if (parent.textContent.length > 0) return null;
 
-      const dtf = parent.attrs.defaultTextFormatting as TextFormatting | null | undefined;
-      if (!dtf) return null;
+			const dtf = parent.attrs.defaultTextFormatting as
+				| TextFormatting
+				| null
+				| undefined;
+			if (!dtf) return null;
 
-      const marks = textFormattingToMarks(dtf, schema);
-      if (marks.length === 0) return null;
+			const marks = textFormattingToMarks(dtf, schema);
+			if (marks.length === 0) return null;
 
-      const tr = newState.tr.setStoredMarks(marks);
-      tr.setMeta(storedMarksRestoreKey, 'restored');
-      tr.setMeta('addToHistory', false);
-      return tr;
-    },
-  });
+			const tr = newState.tr.setStoredMarks(marks);
+			tr.setMeta(storedMarksRestoreKey, "restored");
+			tr.setMeta("addToHistory", false);
+			return tr;
+		},
+	});
 }
 
 export const StoredMarksRestoreExtension = createExtension({
-  name: 'storedMarksRestore',
-  onSchemaReady(): ExtensionRuntime {
-    return {
-      plugins: [createStoredMarksRestorePlugin()],
-    };
-  },
+	name: "storedMarksRestore",
+	onSchemaReady(): ExtensionRuntime {
+		return {
+			plugins: [createStoredMarksRestorePlugin()],
+		};
+	},
 });

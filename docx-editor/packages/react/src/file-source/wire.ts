@@ -18,11 +18,11 @@
  * in the /auth/* responses — unwrap at the call site.
  */
 export interface UserWire {
-  id: number;
-  username: string;
-  isAdmin: boolean;
-  /** ms since epoch. */
-  createdAt: number;
+	id: number;
+	username: string;
+	isAdmin: boolean;
+	/** ms since epoch. */
+	createdAt: number;
 }
 
 /**
@@ -31,20 +31,20 @@ export interface UserWire {
  * `{ files: FileSummaryWire[] }`; create/replace as `{ file: … }`.
  */
 export interface FileSummaryWire {
-  id: string;
-  name: string;
-  size: number;
-  /** Opaque version, bumped on every write — the If-Match value. */
-  etag: string;
-  /** ms since epoch. */
-  createdAt: number;
-  /** ms since epoch. */
-  modifiedAt: number;
+	id: string;
+	name: string;
+	size: number;
+	/** Opaque version, bumped on every write — the If-Match value. */
+	etag: string;
+	/** ms since epoch. */
+	createdAt: number;
+	/** ms since epoch. */
+	modifiedAt: number;
 }
 
 /** Mirrors collab's error envelope — a single `{ error: "<code>" }`. */
 export interface ErrorWire {
-  error: string;
+	error: string;
 }
 
 /**
@@ -56,12 +56,12 @@ export interface ErrorWire {
  * `hasAvatar` is set.
  */
 export interface ProfileWire {
-  displayName: string | null;
-  email: string | null;
-  /** IANA tz string; defaults to "UTC". */
-  timezone: string;
-  hasAvatar: boolean;
-  preferences: Record<string, unknown>;
+	displayName: string | null;
+	email: string | null;
+	/** IANA tz string; defaults to "UTC". */
+	timezone: string;
+	hasAvatar: boolean;
+	preferences: Record<string, unknown>;
 }
 
 /**
@@ -69,8 +69,8 @@ export interface ProfileWire {
  * unchanged". `displayName` / `email` accept null to clear.
  */
 export interface ProfilePatchWire {
-  displayName?: string | null;
-  email?: string | null;
-  timezone?: string;
-  preferences?: Record<string, unknown>;
+	displayName?: string | null;
+	email?: string | null;
+	timezone?: string;
+	preferences?: Record<string, unknown>;
 }

@@ -25,22 +25,22 @@
  * ```
  */
 
-import { pluginRegistry } from '../core-plugins/registry';
-import { docxtemplaterPlugin } from '../core-plugins/docxtemplater';
-import { startStdioServer, type McpServerConfig } from './server';
+import { pluginRegistry } from "../core-plugins/registry";
+import { docxtemplaterPlugin } from "../core-plugins/docxtemplater";
+import { startStdioServer, type McpServerConfig } from "./server";
 
 // ============================================================================
 // PARSE ARGUMENTS
 // ============================================================================
 
 function parseArgs(): { debug: boolean; help: boolean; version: boolean } {
-  const args = process.argv.slice(2);
+	const args = process.argv.slice(2);
 
-  return {
-    debug: args.includes('--debug') || args.includes('-d'),
-    help: args.includes('--help') || args.includes('-h'),
-    version: args.includes('--version') || args.includes('-v'),
-  };
+	return {
+		debug: args.includes("--debug") || args.includes("-d"),
+		help: args.includes("--help") || args.includes("-h"),
+		version: args.includes("--version") || args.includes("-v"),
+	};
 }
 
 // ============================================================================
@@ -106,39 +106,41 @@ EXAMPLES:
 // ============================================================================
 
 async function main(): Promise<void> {
-  const { debug, help, version } = parseArgs();
+	const { debug, help, version } = parseArgs();
 
-  if (help) {
-    console.log(HELP_TEXT);
-    process.exit(0);
-  }
+	if (help) {
+		console.log(HELP_TEXT);
+		process.exit(0);
+	}
 
-  if (version) {
-    console.log('0.1.0');
-    process.exit(0);
-  }
+	if (version) {
+		console.log("0.1.0");
+		process.exit(0);
+	}
 
-  // Register plugins
-  pluginRegistry.register(docxtemplaterPlugin);
+	// Register plugins
+	pluginRegistry.register(docxtemplaterPlugin);
 
-  if (debug) {
-    console.error('[MCP CLI] Registered docxtemplater plugin');
-    console.error(`[MCP CLI] Total plugins: ${pluginRegistry.size}`);
-    console.error(`[MCP CLI] Total MCP tools: ${pluginRegistry.getMcpTools().length}`);
-  }
+	if (debug) {
+		console.error("[MCP CLI] Registered docxtemplater plugin");
+		console.error(`[MCP CLI] Total plugins: ${pluginRegistry.size}`);
+		console.error(
+			`[MCP CLI] Total MCP tools: ${pluginRegistry.getMcpTools().length}`,
+		);
+	}
 
-  // Start server
-  const config: McpServerConfig = {
-    name: 'docx-editor',
-    version: '0.1.0',
-    debug,
-  };
+	// Start server
+	const config: McpServerConfig = {
+		name: "docx-editor",
+		version: "0.1.0",
+		debug,
+	};
 
-  await startStdioServer(config);
+	await startStdioServer(config);
 }
 
 // Run main
 main().catch((error) => {
-  console.error('[MCP CLI] Fatal error:', error);
-  process.exit(1);
+	console.error("[MCP CLI] Fatal error:", error);
+	process.exit(1);
 });

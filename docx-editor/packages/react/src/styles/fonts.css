@@ -17,142 +17,142 @@
  */
 
 @font-face {
-  font-family: 'Carlito';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/Carlito-Regular.woff2') format('woff2');
+	font-family: "Carlito";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/Carlito-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Carlito';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/Carlito-Bold.woff2') format('woff2');
+	font-family: "Carlito";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/Carlito-Bold.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Carlito';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/Carlito-Italic.woff2') format('woff2');
+	font-family: "Carlito";
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/Carlito-Italic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Carlito';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/Carlito-BoldItalic.woff2') format('woff2');
+	font-family: "Carlito";
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/Carlito-BoldItalic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Caladea';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/Caladea-Regular.woff2') format('woff2');
+	font-family: "Caladea";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/Caladea-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Caladea';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/Caladea-Bold.woff2') format('woff2');
+	font-family: "Caladea";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/Caladea-Bold.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Caladea';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/Caladea-Italic.woff2') format('woff2');
+	font-family: "Caladea";
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/Caladea-Italic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Caladea';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/Caladea-BoldItalic.woff2') format('woff2');
+	font-family: "Caladea";
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/Caladea-BoldItalic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/LiberationSans-Regular.woff2') format('woff2');
+	font-family: "Liberation Sans";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/LiberationSans-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/LiberationSans-Bold.woff2') format('woff2');
+	font-family: "Liberation Sans";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/LiberationSans-Bold.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Sans';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/LiberationSans-Italic.woff2') format('woff2');
+	font-family: "Liberation Sans";
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/LiberationSans-Italic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Sans';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/LiberationSans-BoldItalic.woff2') format('woff2');
+	font-family: "Liberation Sans";
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/LiberationSans-BoldItalic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Serif';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/LiberationSerif-Regular.woff2') format('woff2');
+	font-family: "Liberation Serif";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/LiberationSerif-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Serif';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/LiberationSerif-Bold.woff2') format('woff2');
+	font-family: "Liberation Serif";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/LiberationSerif-Bold.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Serif';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/LiberationSerif-Italic.woff2') format('woff2');
+	font-family: "Liberation Serif";
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/LiberationSerif-Italic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Serif';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/LiberationSerif-BoldItalic.woff2') format('woff2');
+	font-family: "Liberation Serif";
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/LiberationSerif-BoldItalic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/LiberationMono-Regular.woff2') format('woff2');
+	font-family: "Liberation Mono";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/LiberationMono-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Mono';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/LiberationMono-Bold.woff2') format('woff2');
+	font-family: "Liberation Mono";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/LiberationMono-Bold.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Mono';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('./fonts/LiberationMono-Italic.woff2') format('woff2');
+	font-family: "Liberation Mono";
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url("./fonts/LiberationMono-Italic.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'Liberation Mono';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./fonts/LiberationMono-BoldItalic.woff2') format('woff2');
+	font-family: "Liberation Mono";
+	font-style: italic;
+	font-weight: 700;
+	font-display: swap;
+	src: url("./fonts/LiberationMono-BoldItalic.woff2") format("woff2");
 }

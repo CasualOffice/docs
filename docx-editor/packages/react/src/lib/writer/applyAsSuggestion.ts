@@ -22,23 +22,23 @@
  * go through this safety net.
  */
 
-import type { EditorView } from 'prosemirror-view';
-import { Fragment, type Node as ProseMirrorNode } from 'prosemirror-model';
-import { markdownToFragment } from './markdownToFragment';
+import type { EditorView } from "prosemirror-view";
+import { Fragment, type Node as ProseMirrorNode } from "prosemirror-model";
+import { markdownToFragment } from "./markdownToFragment";
 
 const REVISION_BASE = Date.now();
 let nextRevisionId = REVISION_BASE;
 
 function makeAttrs(author: string): {
-  revisionId: number;
-  author: string;
-  date: string;
+	revisionId: number;
+	author: string;
+	date: string;
 } {
-  return {
-    revisionId: nextRevisionId++,
-    author,
-    date: new Date().toISOString(),
-  };
+	return {
+		revisionId: nextRevisionId++,
+		author,
+		date: new Date().toISOString(),
+	};
 }
 
 /**
@@ -47,33 +47,33 @@ function makeAttrs(author: string): {
  * lists / tables) pass through via `node.copy(newContent)`.
  */
 function stampWithInsertion(
-  fragment: Fragment,
-  insertionMark: ProseMirrorNode['marks'][number]
+	fragment: Fragment,
+	insertionMark: ProseMirrorNode["marks"][number],
 ): Fragment {
-  const children: ProseMirrorNode[] = [];
-  for (let i = 0; i < fragment.childCount; i++) {
-    const node = fragment.child(i);
-    if (node.isText) {
-      // PM marks dedupe by type — re-marking is idempotent.
-      const marked = node.mark(node.marks.concat(insertionMark));
-      children.push(marked);
-    } else if (node.isLeaf) {
-      children.push(node);
-    } else {
-      children.push(node.copy(stampWithInsertion(node.content, insertionMark)));
-    }
-  }
-  return Fragment.fromArray(children);
+	const children: ProseMirrorNode[] = [];
+	for (let i = 0; i < fragment.childCount; i++) {
+		const node = fragment.child(i);
+		if (node.isText) {
+			// PM marks dedupe by type — re-marking is idempotent.
+			const marked = node.mark(node.marks.concat(insertionMark));
+			children.push(marked);
+		} else if (node.isLeaf) {
+			children.push(node);
+		} else {
+			children.push(node.copy(stampWithInsertion(node.content, insertionMark)));
+		}
+	}
+	return Fragment.fromArray(children);
 }
 
 export interface ApplyRewriteOpts {
-  view: EditorView;
-  from: number;
-  to: number;
-  /** Translated / rewritten content the AI produced. */
-  replacement: Fragment;
-  /** Author label that lands on the tracked-change marks. */
-  author?: string;
+	view: EditorView;
+	from: number;
+	to: number;
+	/** Translated / rewritten content the AI produced. */
+	replacement: Fragment;
+	/** Author label that lands on the tracked-change marks. */
+	author?: string;
 }
 
 /**
@@ -84,42 +84,42 @@ export interface ApplyRewriteOpts {
  * them as a single change.
  */
 export function applyRewriteAsSuggestion(opts: ApplyRewriteOpts): void {
-  const { view, from, to, replacement, author = 'AI' } = opts;
-  if (from === to) return;
-  const schema = view.state.schema;
-  const insertionType = schema.marks.insertion;
-  const deletionType = schema.marks.deletion;
-  if (!insertionType || !deletionType) {
-    // Editor was built without tracked-change marks (e.g. a test
-    // schema). Fall back to the direct replace path so the call still
-    // does something useful.
-    const tr = view.state.tr.replaceWith(from, to, replacement);
-    view.dispatch(tr);
-    return;
-  }
+	const { view, from, to, replacement, author = "AI" } = opts;
+	if (from === to) return;
+	const schema = view.state.schema;
+	const insertionType = schema.marks.insertion;
+	const deletionType = schema.marks.deletion;
+	if (!insertionType || !deletionType) {
+		// Editor was built without tracked-change marks (e.g. a test
+		// schema). Fall back to the direct replace path so the call still
+		// does something useful.
+		const tr = view.state.tr.replaceWith(from, to, replacement);
+		view.dispatch(tr);
+		return;
+	}
 
-  const attrs = makeAttrs(author);
-  const insertionMark = insertionType.create(attrs);
-  const deletionMark = deletionType.create(attrs);
-  const stamped = stampWithInsertion(replacement, insertionMark);
+	const attrs = makeAttrs(author);
+	const insertionMark = insertionType.create(attrs);
+	const deletionMark = deletionType.create(attrs);
+	const stamped = stampWithInsertion(replacement, insertionMark);
 
-  // One transaction: insert AFTER the range first (positions shift to
-  // the right of `to`), then mark the original range. Doing it in this
-  // order means the deletion marks don't accidentally end up on the
-  // inserted content.
-  const tr = view.state.tr;
-  tr.insert(to, stamped);
-  tr.addMark(from, to, deletionMark);
-  view.dispatch(tr);
+	// One transaction: insert AFTER the range first (positions shift to
+	// the right of `to`), then mark the original range. Doing it in this
+	// order means the deletion marks don't accidentally end up on the
+	// inserted content.
+	const tr = view.state.tr;
+	tr.insert(to, stamped);
+	tr.addMark(from, to, deletionMark);
+	view.dispatch(tr);
 }
 
 export interface ApplyInsertOpts {
-  view: EditorView;
-  at: number;
-  /** Plain text the AI produced (typical for summarize). */
-  text: string;
-  /** Author label that lands on the tracked-change marks. */
-  author?: string;
+	view: EditorView;
+	at: number;
+	/** Plain text the AI produced (typical for summarize). */
+	text: string;
+	/** Author label that lands on the tracked-change marks. */
+	author?: string;
 }
 
 /**
@@ -128,28 +128,28 @@ export interface ApplyInsertOpts {
  * as a reviewable suggestion the user can accept or reject.
  */
 export function applyInsertAsSuggestion(opts: ApplyInsertOpts): void {
-  const { view, at, text, author = 'AI' } = opts;
-  if (!text) return;
-  const schema = view.state.schema;
-  const insertionType = schema.marks.insertion;
-  if (!insertionType) {
-    const tr = view.state.tr.insertText(text, at);
-    view.dispatch(tr);
-    return;
-  }
-  const insertionMark = insertionType.create(makeAttrs(author));
-  const node = schema.text(text, [insertionMark]);
-  const tr = view.state.tr.insert(at, node);
-  view.dispatch(tr);
+	const { view, at, text, author = "AI" } = opts;
+	if (!text) return;
+	const schema = view.state.schema;
+	const insertionType = schema.marks.insertion;
+	if (!insertionType) {
+		const tr = view.state.tr.insertText(text, at);
+		view.dispatch(tr);
+		return;
+	}
+	const insertionMark = insertionType.create(makeAttrs(author));
+	const node = schema.text(text, [insertionMark]);
+	const tr = view.state.tr.insert(at, node);
+	view.dispatch(tr);
 }
 
 export interface ApplyFragmentOpts {
-  view: EditorView;
-  at: number;
-  /** PM fragment the AI produced — paragraphs, headings, tables. */
-  fragment: Fragment;
-  /** Author label that lands on the tracked-change marks. */
-  author?: string;
+	view: EditorView;
+	at: number;
+	/** PM fragment the AI produced — paragraphs, headings, tables. */
+	fragment: Fragment;
+	/** Author label that lands on the tracked-change marks. */
+	author?: string;
 }
 
 /**
@@ -161,28 +161,28 @@ export interface ApplyFragmentOpts {
  * `stampWithInsertion` walker the rewrite path uses.
  */
 export function applyFragmentAsSuggestion(opts: ApplyFragmentOpts): void {
-  const { view, at, fragment, author = 'AI' } = opts;
-  if (fragment.childCount === 0) return;
-  const schema = view.state.schema;
-  const insertionType = schema.marks.insertion;
-  if (!insertionType) {
-    const tr = view.state.tr.insert(at, fragment);
-    view.dispatch(tr);
-    return;
-  }
-  const insertionMark = insertionType.create(makeAttrs(author));
-  const stamped = stampWithInsertion(fragment, insertionMark);
-  const tr = view.state.tr.insert(at, stamped);
-  view.dispatch(tr);
+	const { view, at, fragment, author = "AI" } = opts;
+	if (fragment.childCount === 0) return;
+	const schema = view.state.schema;
+	const insertionType = schema.marks.insertion;
+	if (!insertionType) {
+		const tr = view.state.tr.insert(at, fragment);
+		view.dispatch(tr);
+		return;
+	}
+	const insertionMark = insertionType.create(makeAttrs(author));
+	const stamped = stampWithInsertion(fragment, insertionMark);
+	const tr = view.state.tr.insert(at, stamped);
+	view.dispatch(tr);
 }
 
 export interface ApplyMarkdownOpts {
-  view: EditorView;
-  at: number;
-  /** Markdown-formatted text the model produced. */
-  markdown: string;
-  /** Author label that lands on the tracked-change marks. */
-  author?: string;
+	view: EditorView;
+	at: number;
+	/** Markdown-formatted text the model produced. */
+	markdown: string;
+	/** Author label that lands on the tracked-change marks. */
+	author?: string;
 }
 
 /**
@@ -195,18 +195,18 @@ export interface ApplyMarkdownOpts {
  * accept / reject.
  */
 export function applyMarkdownAsSuggestion(opts: ApplyMarkdownOpts): void {
-  const { view, at, markdown, author = 'AI' } = opts;
-  if (!markdown.trim()) return;
-  const schema = view.state.schema;
-  const insertionType = schema.marks.insertion;
-  if (!insertionType) {
-    const tr = view.state.tr.insertText(markdown, at);
-    view.dispatch(tr);
-    return;
-  }
-  const insertionMark = insertionType.create(makeAttrs(author));
-  const fragment = markdownToFragment(markdown, schema, [insertionMark]);
-  if (fragment.childCount === 0) return;
-  const tr = view.state.tr.insert(at, fragment);
-  view.dispatch(tr);
+	const { view, at, markdown, author = "AI" } = opts;
+	if (!markdown.trim()) return;
+	const schema = view.state.schema;
+	const insertionType = schema.marks.insertion;
+	if (!insertionType) {
+		const tr = view.state.tr.insertText(markdown, at);
+		view.dispatch(tr);
+		return;
+	}
+	const insertionMark = insertionType.create(makeAttrs(author));
+	const fragment = markdownToFragment(markdown, schema, [insertionMark]);
+	if (fragment.childCount === 0) return;
+	const tr = view.state.tr.insert(at, fragment);
+	view.dispatch(tr);
 }

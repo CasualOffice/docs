@@ -16,235 +16,243 @@
  * - Text wrapping modes
  */
 
-import React from 'react';
-import type { CSSProperties, ReactNode } from 'react';
-import type { TextBox as TextBoxType, Paragraph, Table } from '@eigenpal/docx-core/types/document';
+import type React from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type {
+	TextBox as TextBoxType,
+	Paragraph,
+	Table,
+} from "@eigenpal/docx-core/types/document";
 import {
-  getTextBoxDimensionsPx,
-  getTextBoxWidthPx,
-  getTextBoxHeightPx,
-  getTextBoxMarginsPx,
-  isFloatingTextBox,
-  hasTextBoxFill,
-  hasTextBoxOutline,
-  hasTextBoxContent,
-  resolveTextBoxFillColor,
-  resolveTextBoxOutlineColor,
-  getTextBoxOutlineWidthPx,
-} from '@eigenpal/docx-core/docx';
-import { emuToPixels } from '@eigenpal/docx-core/docx';
+	getTextBoxDimensionsPx,
+	getTextBoxWidthPx,
+	getTextBoxHeightPx,
+	getTextBoxMarginsPx,
+	isFloatingTextBox,
+	hasTextBoxFill,
+	hasTextBoxOutline,
+	hasTextBoxContent,
+	resolveTextBoxFillColor,
+	resolveTextBoxOutlineColor,
+	getTextBoxOutlineWidthPx,
+} from "@eigenpal/docx-core/docx";
+import { emuToPixels } from "@eigenpal/docx-core/docx";
 
 /**
  * Props for the TextBox component
  */
 export interface TextBoxProps {
-  /** The text box data to render */
-  textBox: TextBoxType;
-  /** Additional CSS class name */
-  className?: string;
-  /** Additional inline styles */
-  style?: CSSProperties;
-  /** Whether the text box is selected (for editing) */
-  selected?: boolean;
-  /** Callback when text box is clicked */
-  onClick?: () => void;
-  /** Render function for paragraph content */
-  renderParagraph?: (paragraph: Paragraph, index: number) => ReactNode;
-  /** Render function for table content */
-  renderTable?: (table: Table, index: number) => ReactNode;
+	/** The text box data to render */
+	textBox: TextBoxType;
+	/** Additional CSS class name */
+	className?: string;
+	/** Additional inline styles */
+	style?: CSSProperties;
+	/** Whether the text box is selected (for editing) */
+	selected?: boolean;
+	/** Callback when text box is clicked */
+	onClick?: () => void;
+	/** Render function for paragraph content */
+	renderParagraph?: (paragraph: Paragraph, index: number) => ReactNode;
+	/** Render function for table content */
+	renderTable?: (table: Table, index: number) => ReactNode;
 }
 
 /**
  * Selected text box style
  */
 const SELECTED_STYLE: CSSProperties = {
-  outline: '2px solid #0078d4',
-  outlineOffset: '2px',
+	outline: "2px solid #0078d4",
+	outlineOffset: "2px",
 };
 
 /**
  * TextBox component - renders floating text containers
  */
 export function TextBox({
-  textBox,
-  className,
-  style: additionalStyle,
-  selected = false,
-  onClick,
-  renderParagraph,
-  renderTable,
+	textBox,
+	className,
+	style: additionalStyle,
+	selected = false,
+	onClick,
+	renderParagraph,
+	renderTable,
 }: TextBoxProps): React.ReactElement {
-  // Build class names
-  const classNames: string[] = ['docx-textbox'];
-  if (className) {
-    classNames.push(className);
-  }
+	// Build class names
+	const classNames: string[] = ["docx-textbox"];
+	if (className) {
+		classNames.push(className);
+	}
 
-  if (isFloatingTextBox(textBox)) {
-    classNames.push('docx-textbox-floating');
-  }
+	if (isFloatingTextBox(textBox)) {
+		classNames.push("docx-textbox-floating");
+	}
 
-  if (selected) {
-    classNames.push('docx-textbox-selected');
-  }
+	if (selected) {
+		classNames.push("docx-textbox-selected");
+	}
 
-  // Build styles
-  const boxStyle = buildTextBoxStyle(textBox, selected, !!onClick);
-  const combinedStyle: CSSProperties = {
-    ...boxStyle,
-    ...additionalStyle,
-  };
+	// Build styles
+	const boxStyle = buildTextBoxStyle(textBox, selected, !!onClick);
+	const combinedStyle: CSSProperties = {
+		...boxStyle,
+		...additionalStyle,
+	};
 
-  // Render content
-  const content = renderContent(textBox, renderParagraph, renderTable);
+	// Render content
+	const content = renderContent(textBox, renderParagraph, renderTable);
 
-  return (
-    <div
-      className={classNames.join(' ')}
-      style={combinedStyle}
-      onClick={onClick}
-      data-textbox-id={textBox.id}
-    >
-      {content}
-    </div>
-  );
+	return (
+		<div
+			className={classNames.join(" ")}
+			style={combinedStyle}
+			onClick={onClick}
+			data-textbox-id={textBox.id}
+		>
+			{content}
+		</div>
+	);
 }
 
 /**
  * Build CSS styles for the text box
  */
 function buildTextBoxStyle(
-  textBox: TextBoxType,
-  selected: boolean,
-  hasClickHandler: boolean = false
+	textBox: TextBoxType,
+	selected: boolean,
+	hasClickHandler: boolean = false,
 ): CSSProperties {
-  const style: CSSProperties = {
-    display: 'block',
-    boxSizing: 'border-box',
-    overflow: 'hidden',
-  };
+	const style: CSSProperties = {
+		display: "block",
+		boxSizing: "border-box",
+		overflow: "hidden",
+	};
 
-  // Dimensions
-  const { width, height } = getTextBoxDimensionsPx(textBox);
-  if (width > 0) {
-    style.width = `${width}px`;
-  }
-  if (height > 0) {
-    style.height = `${height}px`;
-  }
+	// Dimensions
+	const { width, height } = getTextBoxDimensionsPx(textBox);
+	if (width > 0) {
+		style.width = `${width}px`;
+	}
+	if (height > 0) {
+		style.height = `${height}px`;
+	}
 
-  // Background/fill
-  if (hasTextBoxFill(textBox)) {
-    const fillColor = resolveTextBoxFillColor(textBox);
-    if (fillColor) {
-      style.backgroundColor = fillColor;
-    }
-  }
+	// Background/fill
+	if (hasTextBoxFill(textBox)) {
+		const fillColor = resolveTextBoxFillColor(textBox);
+		if (fillColor) {
+			style.backgroundColor = fillColor;
+		}
+	}
 
-  // Border/outline
-  if (hasTextBoxOutline(textBox)) {
-    const outlineColor = resolveTextBoxOutlineColor(textBox) || '#000000';
-    const outlineWidth = getTextBoxOutlineWidthPx(textBox) || 1;
-    style.border = `${outlineWidth}px solid ${outlineColor}`;
-  }
+	// Border/outline
+	if (hasTextBoxOutline(textBox)) {
+		const outlineColor = resolveTextBoxOutlineColor(textBox) || "#000000";
+		const outlineWidth = getTextBoxOutlineWidthPx(textBox) || 1;
+		style.border = `${outlineWidth}px solid ${outlineColor}`;
+	}
 
-  // Internal margins/padding
-  const margins = getTextBoxMarginsPx(textBox);
-  style.padding = `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`;
+	// Internal margins/padding
+	const margins = getTextBoxMarginsPx(textBox);
+	style.padding = `${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px`;
 
-  // Positioning for floating text boxes
-  if (isFloatingTextBox(textBox) && textBox.position) {
-    style.position = 'absolute';
+	// Positioning for floating text boxes
+	if (isFloatingTextBox(textBox) && textBox.position) {
+		style.position = "absolute";
 
-    // Horizontal position
-    const hPos = textBox.position.horizontal;
-    if (hPos.posOffset !== undefined) {
-      style.left = `${emuToPixels(hPos.posOffset)}px`;
-    } else if (hPos.alignment === 'left') {
-      style.left = '0';
-    } else if (hPos.alignment === 'right') {
-      style.right = '0';
-    } else if (hPos.alignment === 'center') {
-      style.left = '50%';
-      style.transform = 'translateX(-50%)';
-    }
+		// Horizontal position
+		const hPos = textBox.position.horizontal;
+		if (hPos.posOffset !== undefined) {
+			style.left = `${emuToPixels(hPos.posOffset)}px`;
+		} else if (hPos.alignment === "left") {
+			style.left = "0";
+		} else if (hPos.alignment === "right") {
+			style.right = "0";
+		} else if (hPos.alignment === "center") {
+			style.left = "50%";
+			style.transform = "translateX(-50%)";
+		}
 
-    // Vertical position
-    const vPos = textBox.position.vertical;
-    if (vPos.posOffset !== undefined) {
-      style.top = `${emuToPixels(vPos.posOffset)}px`;
-    } else if (vPos.alignment === 'top') {
-      style.top = '0';
-    } else if (vPos.alignment === 'bottom') {
-      style.bottom = '0';
-    } else if (vPos.alignment === 'center') {
-      style.top = '50%';
-      const currentTransform = style.transform || '';
-      style.transform = `${currentTransform} translateY(-50%)`.trim();
-    }
-  }
+		// Vertical position
+		const vPos = textBox.position.vertical;
+		if (vPos.posOffset !== undefined) {
+			style.top = `${emuToPixels(vPos.posOffset)}px`;
+		} else if (vPos.alignment === "top") {
+			style.top = "0";
+		} else if (vPos.alignment === "bottom") {
+			style.bottom = "0";
+		} else if (vPos.alignment === "center") {
+			style.top = "50%";
+			const currentTransform = style.transform || "";
+			style.transform = `${currentTransform} translateY(-50%)`.trim();
+		}
+	}
 
-  // Wrap mode margins
-  if (textBox.wrap) {
-    const wrap = textBox.wrap;
-    if (wrap.distT) style.marginTop = `${emuToPixels(wrap.distT)}px`;
-    if (wrap.distB) style.marginBottom = `${emuToPixels(wrap.distB)}px`;
-    if (wrap.distL) style.marginLeft = `${emuToPixels(wrap.distL)}px`;
-    if (wrap.distR) style.marginRight = `${emuToPixels(wrap.distR)}px`;
+	// Wrap mode margins
+	if (textBox.wrap) {
+		const wrap = textBox.wrap;
+		if (wrap.distT) style.marginTop = `${emuToPixels(wrap.distT)}px`;
+		if (wrap.distB) style.marginBottom = `${emuToPixels(wrap.distB)}px`;
+		if (wrap.distL) style.marginLeft = `${emuToPixels(wrap.distL)}px`;
+		if (wrap.distR) style.marginRight = `${emuToPixels(wrap.distR)}px`;
 
-    // Float for square/tight wrapping
-    if (wrap.type === 'square' || wrap.type === 'tight' || wrap.type === 'through') {
-      style.float = wrap.wrapText === 'left' ? 'right' : 'left';
-    }
+		// Float for square/tight wrapping
+		if (
+			wrap.type === "square" ||
+			wrap.type === "tight" ||
+			wrap.type === "through"
+		) {
+			style.float = wrap.wrapText === "left" ? "right" : "left";
+		}
 
-    // Z-index for behind/inFront
-    if (wrap.type === 'behind') {
-      style.zIndex = -1;
-    } else if (wrap.type === 'inFront') {
-      style.zIndex = 1;
-    }
-  }
+		// Z-index for behind/inFront
+		if (wrap.type === "behind") {
+			style.zIndex = -1;
+		} else if (wrap.type === "inFront") {
+			style.zIndex = 1;
+		}
+	}
 
-  // Selected state
-  if (selected) {
-    Object.assign(style, SELECTED_STYLE);
-    style.cursor = 'pointer';
-  } else if (hasClickHandler) {
-    style.cursor = 'pointer';
-  }
+	// Selected state
+	if (selected) {
+		Object.assign(style, SELECTED_STYLE);
+		style.cursor = "pointer";
+	} else if (hasClickHandler) {
+		style.cursor = "pointer";
+	}
 
-  return style;
+	return style;
 }
 
 /**
  * Render text box content (paragraphs and tables)
  */
 function renderContent(
-  textBox: TextBoxType,
-  renderParagraph?: (paragraph: Paragraph, index: number) => ReactNode,
-  _renderTable?: (table: Table, index: number) => ReactNode
+	textBox: TextBoxType,
+	renderParagraph?: (paragraph: Paragraph, index: number) => ReactNode,
+	_renderTable?: (table: Table, index: number) => ReactNode,
 ): ReactNode {
-  if (!hasTextBoxContent(textBox)) {
-    return null;
-  }
+	if (!hasTextBoxContent(textBox)) {
+		return null;
+	}
 
-  // TypeScript note: textBox.content is Paragraph[], but could contain tables
-  // in a real implementation. For now, we treat all as paragraphs.
-  return (
-    <div className="docx-textbox-content">
-      {textBox.content.map((item, index) => {
-        if (renderParagraph) {
-          return renderParagraph(item, index);
-        }
-        // Default placeholder
-        return (
-          <div key={index} className="docx-textbox-paragraph-placeholder">
-            [Text content]
-          </div>
-        );
-      })}
-    </div>
-  );
+	// TypeScript note: textBox.content is Paragraph[], but could contain tables
+	// in a real implementation. For now, we treat all as paragraphs.
+	return (
+		<div className="docx-textbox-content">
+			{textBox.content.map((item, index) => {
+				if (renderParagraph) {
+					return renderParagraph(item, index);
+				}
+				// Default placeholder
+				return (
+					<div key={index} className="docx-textbox-paragraph-placeholder">
+						[Text content]
+					</div>
+				);
+			})}
+		</div>
+	);
 }
 
 // ============================================================================
@@ -258,7 +266,7 @@ function renderContent(
  * @returns true if text box has fill or outline
  */
 export function hasVisibleStyling(textBox: TextBoxType): boolean {
-  return hasTextBoxFill(textBox) || hasTextBoxOutline(textBox);
+	return hasTextBoxFill(textBox) || hasTextBoxOutline(textBox);
 }
 
 /**
@@ -268,7 +276,7 @@ export function hasVisibleStyling(textBox: TextBoxType): boolean {
  * @returns true if text box has no content
  */
 export function isEmptyTextBox(textBox: TextBoxType): boolean {
-  return !hasTextBoxContent(textBox);
+	return !hasTextBoxContent(textBox);
 }
 
 /**
@@ -278,10 +286,10 @@ export function isEmptyTextBox(textBox: TextBoxType): boolean {
  * @returns Aspect ratio (width / height)
  */
 export function getTextBoxAspectRatio(textBox: TextBoxType): number {
-  const width = getTextBoxWidthPx(textBox);
-  const height = getTextBoxHeightPx(textBox);
-  if (height === 0) return 1;
-  return width / height;
+	const width = getTextBoxWidthPx(textBox);
+	const height = getTextBoxHeightPx(textBox);
+	if (height === 0) return 1;
+	return width / height;
 }
 
 /**
@@ -291,10 +299,10 @@ export function getTextBoxAspectRatio(textBox: TextBoxType): number {
  * @returns Accessible description
  */
 export function getTextBoxDescription(textBox: TextBoxType): string {
-  if (!hasTextBoxContent(textBox)) {
-    return 'Empty text box';
-  }
-  return `Text box with ${textBox.content.length} paragraph(s)`;
+	if (!hasTextBoxContent(textBox)) {
+		return "Empty text box";
+	}
+	return `Text box with ${textBox.content.length} paragraph(s)`;
 }
 
 /**
@@ -304,12 +312,12 @@ export function getTextBoxDescription(textBox: TextBoxType): string {
  * @returns true if text should wrap around it
  */
 export function needsTextWrapping(textBox: TextBoxType): boolean {
-  if (!textBox.wrap) return false;
-  return (
-    textBox.wrap.type === 'square' ||
-    textBox.wrap.type === 'tight' ||
-    textBox.wrap.type === 'through'
-  );
+	if (!textBox.wrap) return false;
+	return (
+		textBox.wrap.type === "square" ||
+		textBox.wrap.type === "tight" ||
+		textBox.wrap.type === "through"
+	);
 }
 
 /**
@@ -319,7 +327,7 @@ export function needsTextWrapping(textBox: TextBoxType): boolean {
  * @returns true if text box is behind text layer
  */
 export function isBehindText(textBox: TextBoxType): boolean {
-  return textBox.wrap?.type === 'behind';
+	return textBox.wrap?.type === "behind";
 }
 
 /**
@@ -329,22 +337,22 @@ export function isBehindText(textBox: TextBoxType): boolean {
  * @returns true if text box is in front of text layer
  */
 export function isInFrontOfText(textBox: TextBoxType): boolean {
-  return textBox.wrap?.type === 'inFront';
+	return textBox.wrap?.type === "inFront";
 }
 
 // Re-export utility functions from parser
 export {
-  getTextBoxWidthPx,
-  getTextBoxHeightPx,
-  getTextBoxDimensionsPx,
-  getTextBoxMarginsPx,
-  isFloatingTextBox,
-  hasTextBoxFill,
-  hasTextBoxOutline,
-  hasTextBoxContent,
-  resolveTextBoxFillColor,
-  resolveTextBoxOutlineColor,
-  getTextBoxOutlineWidthPx,
+	getTextBoxWidthPx,
+	getTextBoxHeightPx,
+	getTextBoxDimensionsPx,
+	getTextBoxMarginsPx,
+	isFloatingTextBox,
+	hasTextBoxFill,
+	hasTextBoxOutline,
+	hasTextBoxContent,
+	resolveTextBoxFillColor,
+	resolveTextBoxOutlineColor,
+	getTextBoxOutlineWidthPx,
 };
 
 export default TextBox;

@@ -6,16 +6,16 @@
  * Horizontal Rule Extension
  */
 
-import { createNodeExtension } from '../create';
+import { createNodeExtension } from "../create";
 
 export const HorizontalRuleExtension = createNodeExtension({
-  name: 'horizontalRule',
-  schemaNodeName: 'horizontalRule',
-  nodeSpec: {
-    group: 'block',
-    parseDOM: [{ tag: 'hr' }],
-    toDOM() {
-      return ['hr'];
-    },
-  },
+	name: "horizontalRule",
+	schemaNodeName: "horizontalRule",
+	nodeSpec: {
+		group: "block",
+		parseDOM: [{ tag: "hr" }],
+		toDOM() {
+			return ["hr"];
+		},
+	},
 });

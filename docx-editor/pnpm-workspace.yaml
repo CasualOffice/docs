@@ -1,3 +1,10 @@
 packages:
-  - 'packages/*'
-  - 'examples/vite'
+  - packages/*
+  - examples/vite
+
+onlyBuiltDependencies:
+  - esbuild
+  - leveldown
+  - onnxruntime-node
+  - protobufjs
+  - sharp

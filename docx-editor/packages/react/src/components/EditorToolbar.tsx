@@ -19,49 +19,60 @@
  *   </EditorToolbar>
  */
 
-import type { ReactNode } from 'react';
-import { EditorToolbarContext } from './EditorToolbarContext';
-import type { EditorToolbarProps } from './EditorToolbarContext';
-import { TitleBar, Logo, DocumentName, MenuBar, TitleBarRight } from './TitleBar';
-import type { TitleBarProps, LogoProps, DocumentNameProps, TitleBarRightProps } from './TitleBar';
-import { FormattingBar } from './FormattingBar';
-import type { FormattingBarProps } from './FormattingBar';
-import { cn } from '../lib/utils';
+import type { ReactNode } from "react";
+import { EditorToolbarContext } from "./EditorToolbarContext";
+import type { EditorToolbarProps } from "./EditorToolbarContext";
+import {
+	TitleBar,
+	Logo,
+	DocumentName,
+	MenuBar,
+	TitleBarRight,
+} from "./TitleBar";
+import type {
+	TitleBarProps,
+	LogoProps,
+	DocumentNameProps,
+	TitleBarRightProps,
+} from "./TitleBar";
+import { FormattingBar } from "./FormattingBar";
+import type { FormattingBarProps } from "./FormattingBar";
+import { cn } from "../lib/utils";
 
 // ============================================================================
 // Main compound component
 // ============================================================================
 
 interface EditorToolbarComponent {
-  (props: EditorToolbarProps & { children: ReactNode }): React.JSX.Element;
-  TitleBar: typeof TitleBar;
-  Logo: typeof Logo;
-  DocumentName: typeof DocumentName;
-  MenuBar: typeof MenuBar;
-  TitleBarRight: typeof TitleBarRight;
-  FormattingBar: typeof FormattingBar;
+	(props: EditorToolbarProps & { children: ReactNode }): React.JSX.Element;
+	TitleBar: typeof TitleBar;
+	Logo: typeof Logo;
+	DocumentName: typeof DocumentName;
+	MenuBar: typeof MenuBar;
+	TitleBarRight: typeof TitleBarRight;
+	FormattingBar: typeof FormattingBar;
 }
 
 function EditorToolbarBase({
-  children,
-  className,
-  style,
-  ...toolbarProps
+	children,
+	className,
+	style,
+	...toolbarProps
 }: EditorToolbarProps & { children: ReactNode; style?: React.CSSProperties }) {
-  return (
-    <EditorToolbarContext.Provider value={toolbarProps}>
-      <div
-        className={cn(
-          'flex flex-col flex-shrink-0 bg-[color:var(--doc-chrome,#eef1f5)] text-[color:var(--doc-text-on-surface,#1f2937)]',
-          className
-        )}
-        style={style}
-        data-testid="editor-toolbar"
-      >
-        {children}
-      </div>
-    </EditorToolbarContext.Provider>
-  );
+	return (
+		<EditorToolbarContext.Provider value={toolbarProps}>
+			<div
+				className={cn(
+					"flex flex-col flex-shrink-0 bg-[color:var(--doc-chrome,#eef1f5)] text-[color:var(--doc-text-on-surface,#1f2937)]",
+					className,
+				)}
+				style={style}
+				data-testid="editor-toolbar"
+			>
+				{children}
+			</div>
+		</EditorToolbarContext.Provider>
+	);
 }
 
 // Attach sub-components as static properties
@@ -75,10 +86,10 @@ EditorToolbar.FormattingBar = FormattingBar;
 
 export { EditorToolbar };
 export type {
-  EditorToolbarProps,
-  TitleBarProps,
-  LogoProps,
-  DocumentNameProps,
-  TitleBarRightProps,
-  FormattingBarProps,
+	EditorToolbarProps,
+	TitleBarProps,
+	LogoProps,
+	DocumentNameProps,
+	TitleBarRightProps,
+	FormattingBarProps,
 };

@@ -9,10 +9,14 @@
  */
 
 export {
-  toProseDoc,
-  createEmptyDoc,
-  headerFooterToProseDoc,
-  footnoteToProseDoc,
-} from './toProseDoc';
-export type { ToProseDocOptions } from './toProseDoc';
-export { fromProseDoc, updateDocumentContent, proseDocToBlocks } from './fromProseDoc';
+	toProseDoc,
+	createEmptyDoc,
+	headerFooterToProseDoc,
+	footnoteToProseDoc,
+} from "./toProseDoc";
+export type { ToProseDocOptions } from "./toProseDoc";
+export {
+	fromProseDoc,
+	updateDocumentContent,
+	proseDocToBlocks,
+} from "./fromProseDoc";

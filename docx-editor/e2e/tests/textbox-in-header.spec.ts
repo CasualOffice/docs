@@ -30,52 +30,61 @@
  * rather than an exact count.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
-const FIXTURE = 'fixtures/header-with-textbox.docx';
+const FIXTURE = "fixtures/header-with-textbox.docx";
 
-test.describe('Textbox in header — issue #318 (header path)', () => {
-  let editor: EditorPage;
+test.describe("Textbox in header — issue #318 (header path)", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.loadDocxFile(FIXTURE);
-    await page.waitForTimeout(500); // give the layout-painter a beat after load
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.loadDocxFile(FIXTURE);
+		await page.waitForTimeout(500); // give the layout-painter a beat after load
+	});
 
-  test('header textbox heading appears in painter output', async ({ page }) => {
-    // Header content lives outside the body `data-testid="docx-editor"`
-    // container — it's painted in per-page header regions. Use page-scoped
-    // `getByText` and assert at least one is visible.
-    await expect(
-      page.getByText('Header Textbox', { exact: true }).first()
-    ).toBeVisible({ timeout: 5000 });
-  });
+	test("header textbox heading appears in painter output", async ({ page }) => {
+		// Header content lives outside the body `data-testid="docx-editor"`
+		// container — it's painted in per-page header regions. Use page-scoped
+		// `getByText` and assert at least one is visible.
+		await expect(
+			page.getByText("Header Textbox", { exact: true }).first(),
+		).toBeVisible({ timeout: 5000 });
+	});
 
-  test('header textbox body appears in painter output', async ({ page }) => {
-    await expect(
-      page.getByText('A textbox inside the page header.').first()
-    ).toBeVisible({ timeout: 5000 });
-  });
+	test("header textbox body appears in painter output", async ({ page }) => {
+		await expect(
+			page.getByText("A textbox inside the page header.").first(),
+		).toBeVisible({ timeout: 5000 });
+	});
 
-  test('at least one .layout-textbox container exists for the header textbox', async ({ page }) => {
-    const containers = page.locator('.layout-textbox');
-    const count = await containers.count();
-    expect(count, 'expected >= 1 header textbox container').toBeGreaterThanOrEqual(1);
-  });
+	test("at least one .layout-textbox container exists for the header textbox", async ({
+		page,
+	}) => {
+		const containers = page.locator(".layout-textbox");
+		const count = await containers.count();
+		expect(
+			count,
+			"expected >= 1 header textbox container",
+		).toBeGreaterThanOrEqual(1);
+	});
 
-  test('every rendered header .layout-textbox is absolutely positioned', async ({ page }) => {
-    const containers = page.locator('.layout-textbox');
-    const count = await containers.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      const pos = await containers.nth(i).evaluate(
-        (el) => getComputedStyle(el).position
-      );
-      expect(pos, `textbox #${i} should be absolutely positioned`).toBe('absolute');
-    }
-  });
+	test("every rendered header .layout-textbox is absolutely positioned", async ({
+		page,
+	}) => {
+		const containers = page.locator(".layout-textbox");
+		const count = await containers.count();
+		expect(count).toBeGreaterThan(0);
+		for (let i = 0; i < count; i++) {
+			const pos = await containers
+				.nth(i)
+				.evaluate((el) => getComputedStyle(el).position);
+			expect(pos, `textbox #${i} should be absolutely positioned`).toBe(
+				"absolute",
+			);
+		}
+	});
 });

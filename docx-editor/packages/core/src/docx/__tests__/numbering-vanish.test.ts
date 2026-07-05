@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { describe, test, expect } from 'bun:test';
-import { parseNumbering } from '../numberingParser';
+import { describe, test, expect } from "bun:test";
+import { parseNumbering } from "../numberingParser";
 
 const NUMBERING_WITH_VANISH = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -47,25 +47,25 @@ const NUMBERING_WITH_VANISH_FALSE = `<?xml version="1.0" encoding="UTF-8" standa
   </w:num>
 </w:numbering>`;
 
-describe('Numbering vanish (hidden list indicators)', () => {
-  test('parses w:vanish on level rPr as hidden=true', () => {
-    const numbering = parseNumbering(NUMBERING_WITH_VANISH);
-    const level0 = numbering.getLevel(1, 0);
-    expect(level0).toBeDefined();
-    expect(level0!.rPr?.hidden).toBe(true);
-  });
+describe("Numbering vanish (hidden list indicators)", () => {
+	test("parses w:vanish on level rPr as hidden=true", () => {
+		const numbering = parseNumbering(NUMBERING_WITH_VANISH);
+		const level0 = numbering.getLevel(1, 0);
+		expect(level0).toBeDefined();
+		expect(level0!.rPr?.hidden).toBe(true);
+	});
 
-  test('level without w:vanish has no hidden flag', () => {
-    const numbering = parseNumbering(NUMBERING_WITH_VANISH);
-    const level1 = numbering.getLevel(1, 1);
-    expect(level1).toBeDefined();
-    expect(level1!.rPr?.hidden).toBeUndefined();
-  });
+	test("level without w:vanish has no hidden flag", () => {
+		const numbering = parseNumbering(NUMBERING_WITH_VANISH);
+		const level1 = numbering.getLevel(1, 1);
+		expect(level1).toBeDefined();
+		expect(level1!.rPr?.hidden).toBeUndefined();
+	});
 
-  test('w:vanish val="false" parses as hidden=false', () => {
-    const numbering = parseNumbering(NUMBERING_WITH_VANISH_FALSE);
-    const level0 = numbering.getLevel(1, 0);
-    expect(level0).toBeDefined();
-    expect(level0!.rPr?.hidden).toBe(false);
-  });
+	test('w:vanish val="false" parses as hidden=false', () => {
+		const numbering = parseNumbering(NUMBERING_WITH_VANISH_FALSE);
+		const level0 = numbering.getLevel(1, 0);
+		expect(level0).toBeDefined();
+		expect(level0!.rPr?.hidden).toBe(false);
+	});
 });

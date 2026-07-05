@@ -12,9 +12,9 @@
  * - MarkExtension: adds a mark spec to the schema
  */
 
-import type { Schema, NodeSpec, MarkSpec } from 'prosemirror-model';
-import type { Plugin as PMPlugin, Command } from 'prosemirror-state';
-import type { ExtensionManager } from './ExtensionManager';
+import type { Schema, NodeSpec, MarkSpec } from "prosemirror-model";
+import type { Plugin as PMPlugin, Command } from "prosemirror-state";
+import type { ExtensionManager } from "./ExtensionManager";
 
 // ============================================================================
 // PRIORITY
@@ -23,11 +23,11 @@ import type { ExtensionManager } from './ExtensionManager';
 export type ExtensionPriority = number;
 
 export const Priority = {
-  Highest: 0,
-  High: 50,
-  Default: 100,
-  Low: 150,
-  Lowest: 200,
+	Highest: 0,
+	High: 50,
+	Default: 100,
+	Low: 150,
+	Lowest: 200,
 } as const;
 
 // ============================================================================
@@ -35,24 +35,24 @@ export const Priority = {
 // ============================================================================
 
 export interface ExtensionContext {
-  schema: Schema;
-  /**
-   * The manager that owns this extension. Use this in runtime callbacks
-   * (e.g. `handleKeyDown`) that need to dispatch commands, instead of
-   * reaching back to the `singletonManager` export — the latter forms a
-   * circular import that breaks when the package is consumed as a built
-   * bundle.
-   */
-  manager: ExtensionManager;
+	schema: Schema;
+	/**
+	 * The manager that owns this extension. Use this in runtime callbacks
+	 * (e.g. `handleKeyDown`) that need to dispatch commands, instead of
+	 * reaching back to the `singletonManager` export — the latter forms a
+	 * circular import that breaks when the package is consumed as a built
+	 * bundle.
+	 */
+	manager: ExtensionManager;
 }
 
 export type CommandMap = Record<string, (...args: any[]) => Command>;
 export type KeyboardShortcutMap = Record<string, Command>;
 
 export interface ExtensionRuntime {
-  commands?: CommandMap;
-  keyboardShortcuts?: KeyboardShortcutMap;
-  plugins?: PMPlugin[];
+	commands?: CommandMap;
+	keyboardShortcuts?: KeyboardShortcutMap;
+	plugins?: PMPlugin[];
 }
 
 // ============================================================================
@@ -60,19 +60,19 @@ export interface ExtensionRuntime {
 // ============================================================================
 
 export interface ExtensionConfig {
-  name: string;
-  priority: ExtensionPriority;
-  options: Record<string, unknown>;
+	name: string;
+	priority: ExtensionPriority;
+	options: Record<string, unknown>;
 }
 
 export interface NodeExtensionConfig extends ExtensionConfig {
-  schemaNodeName: string;
-  nodeSpec: NodeSpec;
+	schemaNodeName: string;
+	nodeSpec: NodeSpec;
 }
 
 export interface MarkExtensionConfig extends ExtensionConfig {
-  schemaMarkName: string;
-  markSpec: MarkSpec;
+	schemaMarkName: string;
+	markSpec: MarkSpec;
 }
 
 // ============================================================================
@@ -80,21 +80,21 @@ export interface MarkExtensionConfig extends ExtensionConfig {
 // ============================================================================
 
 export interface Extension {
-  type: 'extension';
-  config: ExtensionConfig;
-  onSchemaReady(ctx: ExtensionContext): ExtensionRuntime;
+	type: "extension";
+	config: ExtensionConfig;
+	onSchemaReady(ctx: ExtensionContext): ExtensionRuntime;
 }
 
 export interface NodeExtension {
-  type: 'node';
-  config: NodeExtensionConfig;
-  onSchemaReady(ctx: ExtensionContext): ExtensionRuntime;
+	type: "node";
+	config: NodeExtensionConfig;
+	onSchemaReady(ctx: ExtensionContext): ExtensionRuntime;
 }
 
 export interface MarkExtension {
-  type: 'mark';
-  config: MarkExtensionConfig;
-  onSchemaReady(ctx: ExtensionContext): ExtensionRuntime;
+	type: "mark";
+	config: MarkExtensionConfig;
+	onSchemaReady(ctx: ExtensionContext): ExtensionRuntime;
 }
 
 export type AnyExtension = Extension | NodeExtension | MarkExtension;
@@ -104,26 +104,26 @@ export type AnyExtension = Extension | NodeExtension | MarkExtension;
 // ============================================================================
 
 export interface ExtensionDefinition<TOptions = Record<string, unknown>> {
-  name: string;
-  priority?: ExtensionPriority;
-  defaultOptions?: TOptions;
-  onSchemaReady(ctx: ExtensionContext, options: TOptions): ExtensionRuntime;
+	name: string;
+	priority?: ExtensionPriority;
+	defaultOptions?: TOptions;
+	onSchemaReady(ctx: ExtensionContext, options: TOptions): ExtensionRuntime;
 }
 
 export interface NodeExtensionDefinition<TOptions = Record<string, unknown>> {
-  name: string;
-  priority?: ExtensionPriority;
-  defaultOptions?: TOptions;
-  schemaNodeName: string;
-  nodeSpec: NodeSpec | ((options: TOptions) => NodeSpec);
-  onSchemaReady?(ctx: ExtensionContext, options: TOptions): ExtensionRuntime;
+	name: string;
+	priority?: ExtensionPriority;
+	defaultOptions?: TOptions;
+	schemaNodeName: string;
+	nodeSpec: NodeSpec | ((options: TOptions) => NodeSpec);
+	onSchemaReady?(ctx: ExtensionContext, options: TOptions): ExtensionRuntime;
 }
 
 export interface MarkExtensionDefinition<TOptions = Record<string, unknown>> {
-  name: string;
-  priority?: ExtensionPriority;
-  defaultOptions?: TOptions;
-  schemaMarkName: string;
-  markSpec: MarkSpec | ((options: TOptions) => MarkSpec);
-  onSchemaReady?(ctx: ExtensionContext, options: TOptions): ExtensionRuntime;
+	name: string;
+	priority?: ExtensionPriority;
+	defaultOptions?: TOptions;
+	schemaMarkName: string;
+	markSpec: MarkSpec | ((options: TOptions) => MarkSpec);
+	onSchemaReady?(ctx: ExtensionContext, options: TOptions): ExtensionRuntime;
 }

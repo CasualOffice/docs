@@ -10,16 +10,16 @@
  * artwork are generated placeholders.
  */
 
-import JSZip from 'jszip';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, 'e2e/fixtures/border-overlay-layout-demo.docx');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const OUT = path.join(ROOT, "e2e/fixtures/border-overlay-layout-demo.docx");
 
 function svgEmblem(label, fill, stroke) {
-  return `<?xml version="1.0" encoding="UTF-8"?>
+	return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
   <rect width="180" height="180" fill="white"/>
   <circle cx="90" cy="90" r="78" fill="${fill}" stroke="${stroke}" stroke-width="7"/>
@@ -32,7 +32,7 @@ function svgEmblem(label, fill, stroke) {
 }
 
 function anchorImage({ rId, id, name, x, y, cx, cy, relativeHeight }) {
-  return `<w:drawing>
+	return `<w:drawing>
   <wp:anchor behindDoc="1" distT="0" distB="0" distL="114935" distR="114935" simplePos="0" locked="0" layoutInCell="1" allowOverlap="1" relativeHeight="${relativeHeight}">
     <wp:simplePos x="0" y="0"/>
     <wp:positionH relativeFrom="column"><wp:posOffset>${x}</wp:posOffset></wp:positionH>
@@ -101,25 +101,25 @@ const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:styles>`;
 
 const rightArt = anchorImage({
-  rId: 'rIdRightArt',
-  id: 1,
-  name: 'Decorative right art',
-  x: 5259070,
-  y: 412115,
-  cx: 1463040,
-  cy: 1613535,
-  relativeHeight: 2,
+	rId: "rIdRightArt",
+	id: 1,
+	name: "Decorative right art",
+	x: 5259070,
+	y: 412115,
+	cx: 1463040,
+	cy: 1613535,
+	relativeHeight: 2,
 });
 
 const leftArt = anchorImage({
-  rId: 'rIdLeftArt',
-  id: 2,
-  name: 'Decorative left art',
-  x: 104775,
-  y: 635,
-  cx: 1419225,
-  cy: 1409700,
-  relativeHeight: 3,
+	rId: "rIdLeftArt",
+	id: 2,
+	name: "Decorative left art",
+	x: 104775,
+	y: 635,
+	cx: 1419225,
+	cy: 1409700,
+	relativeHeight: 3,
 });
 
 const DOCUMENT_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -204,14 +204,20 @@ const DOCUMENT_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
-zip.file('_rels/.rels', RELS_XML);
-zip.file('word/_rels/document.xml.rels', DOCUMENT_RELS_XML);
-zip.file('word/styles.xml', STYLES_XML);
-zip.file('word/document.xml', DOCUMENT_XML);
-zip.file('word/media/left-art.svg', svgEmblem('LEFT ART', '#dbeafe', '#1d4ed8'));
-zip.file('word/media/right-art.svg', svgEmblem('RIGHT ART', '#fef3c7', '#92400e'));
+zip.file("[Content_Types].xml", CONTENT_TYPES_XML);
+zip.file("_rels/.rels", RELS_XML);
+zip.file("word/_rels/document.xml.rels", DOCUMENT_RELS_XML);
+zip.file("word/styles.xml", STYLES_XML);
+zip.file("word/document.xml", DOCUMENT_XML);
+zip.file(
+	"word/media/left-art.svg",
+	svgEmblem("LEFT ART", "#dbeafe", "#1d4ed8"),
+);
+zip.file(
+	"word/media/right-art.svg",
+	svgEmblem("RIGHT ART", "#fef3c7", "#92400e"),
+);
 
-const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+const buffer = await zip.generateAsync({ type: "nodebuffer" });
 fs.writeFileSync(OUT, buffer);
 console.log(`Created ${OUT}`);

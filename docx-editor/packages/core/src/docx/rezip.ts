@@ -33,33 +33,44 @@
  * - docProps/* - Document properties (preserved)
  */
 
-import JSZip from 'jszip';
-import type { Document } from '../types/document';
-import type { BlockContent, HeaderFooter, Image, Hyperlink } from '../types/content';
-import { serializeDocument } from './serializer/documentSerializer';
-import { serializeHeaderFooter } from './serializer/headerFooterSerializer';
-import { replaceFootnotesInXml, replaceEndnotesInXml } from './serializer/footnoteSerializer';
+import JSZip from "jszip";
+import type { Document } from "../types/document";
+import type {
+	BlockContent,
+	HeaderFooter,
+	Image,
+	Hyperlink,
+} from "../types/content";
+import { serializeDocument } from "./serializer/documentSerializer";
+import { serializeHeaderFooter } from "./serializer/headerFooterSerializer";
 import {
-  serializeCommentsWithInfo,
-  serializeCommentsExtended,
-  serializeCommentsIds,
-  serializeCommentsExtensible,
-} from './serializer/commentSerializer';
-import { RELATIONSHIP_TYPES } from './relsParser';
-import { type RawDocxContent } from './unzip';
-import { escapeXml } from './serializer/xmlUtils';
-import { applyCorePropertiesToXml, EMPTY_CORE_PROPERTIES_XML } from './corePropertiesParser';
+	replaceFootnotesInXml,
+	replaceEndnotesInXml,
+} from "./serializer/footnoteSerializer";
+import {
+	serializeCommentsWithInfo,
+	serializeCommentsExtended,
+	serializeCommentsIds,
+	serializeCommentsExtensible,
+} from "./serializer/commentSerializer";
+import { RELATIONSHIP_TYPES } from "./relsParser";
+import type { RawDocxContent } from "./unzip";
+import { escapeXml } from "./serializer/xmlUtils";
+import {
+	applyCorePropertiesToXml,
+	EMPTY_CORE_PROPERTIES_XML,
+} from "./corePropertiesParser";
 
 /**
  * Find the highest rId number in a relationships XML string.
  */
 export function findMaxRId(relsXml: string): number {
-  let maxId = 0;
-  for (const match of relsXml.matchAll(/Id="rId(\d+)"/g)) {
-    const id = parseInt(match[1], 10);
-    if (id > maxId) maxId = id;
-  }
-  return maxId;
+	let maxId = 0;
+	for (const match of relsXml.matchAll(/Id="rId(\d+)"/g)) {
+		const id = parseInt(match[1], 10);
+		if (id > maxId) maxId = id;
+	}
+	return maxId;
 }
 
 // ============================================================================
@@ -67,47 +78,47 @@ export function findMaxRId(relsXml: string): number {
 // ============================================================================
 
 async function serializeCommentsToZip(
-  doc: Document,
-  zip: JSZip,
-  compressionLevel: number
+	doc: Document,
+	zip: JSZip,
+	compressionLevel: number,
 ): Promise<void> {
-  const comments = doc.package.document.comments;
-  if (!comments || comments.length === 0) return;
+	const comments = doc.package.document.comments;
+	if (!comments || comments.length === 0) return;
 
-  const { xml: commentsXml, paraInfos } = serializeCommentsWithInfo(comments);
-  zip.file('word/comments.xml', commentsXml, {
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	const { xml: commentsXml, paraInfos } = serializeCommentsWithInfo(comments);
+	zip.file("word/comments.xml", commentsXml, {
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  // Write commentsExtended.xml for reply threading (Word/Google Docs interop)
-  const extendedXml = serializeCommentsExtended(paraInfos);
-  if (extendedXml) {
-    zip.file('word/commentsExtended.xml', extendedXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+	// Write commentsExtended.xml for reply threading (Word/Google Docs interop)
+	const extendedXml = serializeCommentsExtended(paraInfos);
+	if (extendedXml) {
+		zip.file("word/commentsExtended.xml", extendedXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  // Write commentsIds.xml for stable IDs (Word Online needs this for replies)
-  const idsXml = serializeCommentsIds(paraInfos);
-  if (idsXml) {
-    zip.file('word/commentsIds.xml', idsXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+	// Write commentsIds.xml for stable IDs (Word Online needs this for replies)
+	const idsXml = serializeCommentsIds(paraInfos);
+	if (idsXml) {
+		zip.file("word/commentsIds.xml", idsXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  // Write commentsExtensible.xml for UTC dates (Pages, Word 2016+)
-  const extensibleXml = serializeCommentsExtensible(paraInfos, comments);
-  if (extensibleXml) {
-    zip.file('word/commentsExtensible.xml', extensibleXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+	// Write commentsExtensible.xml for UTC dates (Pages, Word 2016+)
+	const extensibleXml = serializeCommentsExtensible(paraInfos, comments);
+	if (extensibleXml) {
+		zip.file("word/commentsExtensible.xml", extensibleXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  await ensureAllCommentParts(zip, compressionLevel);
+	await ensureAllCommentParts(zip, compressionLevel);
 }
 
 // ============================================================================
@@ -119,58 +130,61 @@ async function serializeCommentsToZip(
  * These are newly inserted images that need to be added to the ZIP.
  */
 function collectNewImages(blocks: BlockContent[]): Image[] {
-  const images: Image[] = [];
+	const images: Image[] = [];
 
-  for (const block of blocks) {
-    if (block.type === 'paragraph') {
-      for (const item of block.content) {
-        if (item.type === 'run') {
-          for (const c of item.content) {
-            if (c.type === 'drawing' && c.image.src?.startsWith('data:')) {
-              images.push(c.image);
-            }
-          }
-        }
-      }
-    } else if (block.type === 'table') {
-      for (const row of block.rows) {
-        for (const cell of row.cells) {
-          images.push(...collectNewImages(cell.content));
-        }
-      }
-    }
-  }
+	for (const block of blocks) {
+		if (block.type === "paragraph") {
+			for (const item of block.content) {
+				if (item.type === "run") {
+					for (const c of item.content) {
+						if (c.type === "drawing" && c.image.src?.startsWith("data:")) {
+							images.push(c.image);
+						}
+					}
+				}
+			}
+		} else if (block.type === "table") {
+			for (const row of block.rows) {
+				for (const cell of row.cells) {
+					images.push(...collectNewImages(cell.content));
+				}
+			}
+		}
+	}
 
-  return images;
+	return images;
 }
 
 /** Map MIME type to file extension (inverse of getContentTypeForExtension) */
 const MIME_TO_EXT: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpeg',
-  'image/gif': 'gif',
-  'image/bmp': 'bmp',
-  'image/tiff': 'tiff',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
+	"image/png": "png",
+	"image/jpeg": "jpeg",
+	"image/gif": "gif",
+	"image/bmp": "bmp",
+	"image/tiff": "tiff",
+	"image/webp": "webp",
+	"image/svg+xml": "svg",
 };
 
 /**
  * Decode a data URL to binary ArrayBuffer and file extension.
  */
-function decodeDataUrl(dataUrl: string): { data: ArrayBuffer; extension: string } {
-  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) {
-    throw new Error('Invalid data URL');
-  }
+function decodeDataUrl(dataUrl: string): {
+	data: ArrayBuffer;
+	extension: string;
+} {
+	const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+	if (!match) {
+		throw new Error("Invalid data URL");
+	}
 
-  const binary = atob(match[2]);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+	const binary = atob(match[2]);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) {
+		bytes[i] = binary.charCodeAt(i);
+	}
 
-  return { data: bytes.buffer, extension: MIME_TO_EXT[match[1]] || 'png' };
+	return { data: bytes.buffer, extension: MIME_TO_EXT[match[1]] || "png" };
 }
 
 /**
@@ -178,21 +192,21 @@ function decodeDataUrl(dataUrl: string): { data: ArrayBuffer; extension: string 
  * newly inserted images/hyperlinks that need to be registered.
  */
 interface Part {
-  /** Path to the rels file for this part, e.g. `word/_rels/header1.xml.rels` */
-  relsPath: string;
-  blocks: BlockContent[];
+	/** Path to the rels file for this part, e.g. `word/_rels/header1.xml.rels` */
+	relsPath: string;
+	blocks: BlockContent[];
 }
 
 const EMPTY_RELS_XML =
-  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+	'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+	'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
 
 /**
  * Resolve the on-disk filename of a header/footer part from its relationship entry.
  * Returns e.g. `word/header1.xml`.
  */
 function headerFooterFilename(target: string): string {
-  return target.startsWith('/') ? target.slice(1) : `word/${target}`;
+	return target.startsWith("/") ? target.slice(1) : `word/${target}`;
 }
 
 /**
@@ -200,28 +214,37 @@ function headerFooterFilename(target: string): string {
  * the document body plus every header and footer.
  */
 function collectParts(doc: Document): Part[] {
-  const parts: Part[] = [
-    { relsPath: 'word/_rels/document.xml.rels', blocks: doc.package.document.content },
-  ];
+	const parts: Part[] = [
+		{
+			relsPath: "word/_rels/document.xml.rels",
+			blocks: doc.package.document.content,
+		},
+	];
 
-  const rels = doc.package.relationships;
-  if (!rels) return parts;
+	const rels = doc.package.relationships;
+	if (!rels) return parts;
 
-  const addHeaderFooterParts = (map: Map<string, HeaderFooter> | undefined, type: string) => {
-    if (!map) return;
-    for (const [rId, hf] of map.entries()) {
-      const rel = rels.get(rId);
-      if (!rel || rel.type !== type || !rel.target) continue;
-      const filename = headerFooterFilename(rel.target);
-      const basename = filename.replace(/^word\//, '');
-      parts.push({ relsPath: `word/_rels/${basename}.rels`, blocks: hf.content });
-    }
-  };
+	const addHeaderFooterParts = (
+		map: Map<string, HeaderFooter> | undefined,
+		type: string,
+	) => {
+		if (!map) return;
+		for (const [rId, hf] of map.entries()) {
+			const rel = rels.get(rId);
+			if (!rel || rel.type !== type || !rel.target) continue;
+			const filename = headerFooterFilename(rel.target);
+			const basename = filename.replace(/^word\//, "");
+			parts.push({
+				relsPath: `word/_rels/${basename}.rels`,
+				blocks: hf.content,
+			});
+		}
+	};
 
-  addHeaderFooterParts(doc.package.headers, RELATIONSHIP_TYPES.header);
-  addHeaderFooterParts(doc.package.footers, RELATIONSHIP_TYPES.footer);
+	addHeaderFooterParts(doc.package.headers, RELATIONSHIP_TYPES.header);
+	addHeaderFooterParts(doc.package.footers, RELATIONSHIP_TYPES.footer);
 
-  return parts;
+	return parts;
 }
 
 /**
@@ -230,41 +253,44 @@ function collectParts(doc: Document): Part[] {
  * to the open/close form so our `.replace('</Relationships>', ...)` append works.
  */
 async function readRelsOrStub(zip: JSZip, relsPath: string): Promise<string> {
-  const file = zip.file(relsPath);
-  const xml = file ? await file.async('text') : EMPTY_RELS_XML;
-  return xml.replace(/<Relationships([^>]*)\/>/, '<Relationships$1></Relationships>');
+	const file = zip.file(relsPath);
+	const xml = file ? await file.async("text") : EMPTY_RELS_XML;
+	return xml.replace(
+		/<Relationships([^>]*)\/>/,
+		"<Relationships$1></Relationships>",
+	);
 }
 
 /**
  * Register new image extensions in [Content_Types].xml (idempotent).
  */
 async function registerImageExtensions(
-  zip: JSZip,
-  extensions: Set<string>,
-  compressionLevel: number
+	zip: JSZip,
+	extensions: Set<string>,
+	compressionLevel: number,
 ): Promise<void> {
-  if (extensions.size === 0) return;
-  const ctFile = zip.file('[Content_Types].xml');
-  if (!ctFile) return;
+	if (extensions.size === 0) return;
+	const ctFile = zip.file("[Content_Types].xml");
+	if (!ctFile) return;
 
-  let ctXml = await ctFile.async('text');
-  let changed = false;
-  for (const ext of extensions) {
-    if (!ctXml.includes(`Extension="${ext}"`)) {
-      const contentType = getContentTypeForExtension(ext, '');
-      ctXml = ctXml.replace(
-        '</Types>',
-        `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`
-      );
-      changed = true;
-    }
-  }
-  if (changed) {
-    zip.file('[Content_Types].xml', ctXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+	let ctXml = await ctFile.async("text");
+	let changed = false;
+	for (const ext of extensions) {
+		if (!ctXml.includes(`Extension="${ext}"`)) {
+			const contentType = getContentTypeForExtension(ext, "");
+			ctXml = ctXml.replace(
+				"</Types>",
+				`<Default Extension="${ext}" ContentType="${contentType}"/></Types>`,
+			);
+			changed = true;
+		}
+	}
+	if (changed) {
+		zip.file("[Content_Types].xml", ctXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 }
 
 /**
@@ -272,15 +298,15 @@ async function registerImageExtensions(
  * are a shared package-wide namespace, so a single counter is used across parts.
  */
 function findMaxImageNum(zip: JSZip): number {
-  let max = 0;
-  zip.forEach((relativePath) => {
-    const m = relativePath.match(/^word\/media\/image(\d+)\./);
-    if (m) {
-      const num = parseInt(m[1], 10);
-      if (num > max) max = num;
-    }
-  });
-  return max;
+	let max = 0;
+	zip.forEach((relativePath) => {
+		const m = relativePath.match(/^word\/media\/image(\d+)\./);
+		if (m) {
+			const num = parseInt(m[1], 10);
+			if (num > max) max = num;
+		}
+	});
+	return max;
 }
 
 /**
@@ -291,53 +317,53 @@ function findMaxImageNum(zip: JSZip): number {
  * Mutates each image's rId in-place.
  */
 async function processNewImages(
-  parts: Part[],
-  zip: JSZip,
-  compressionLevel: number
+	parts: Part[],
+	zip: JSZip,
+	compressionLevel: number,
 ): Promise<void> {
-  let maxImageNum = findMaxImageNum(zip);
-  const extensionsAdded = new Set<string>();
+	let maxImageNum = findMaxImageNum(zip);
+	const extensionsAdded = new Set<string>();
 
-  for (const { relsPath, blocks } of parts) {
-    const images = collectNewImages(blocks);
-    if (images.length === 0) continue;
+	for (const { relsPath, blocks } of parts) {
+		const images = collectNewImages(blocks);
+		if (images.length === 0) continue;
 
-    const relsXml = await readRelsOrStub(zip, relsPath);
-    let maxId = findMaxRId(relsXml);
-    const relEntries: string[] = [];
+		const relsXml = await readRelsOrStub(zip, relsPath);
+		let maxId = findMaxRId(relsXml);
+		const relEntries: string[] = [];
 
-    for (const image of images) {
-      const { data, extension } = decodeDataUrl(image.src!);
+		for (const image of images) {
+			const { data, extension } = decodeDataUrl(image.src!);
 
-      maxImageNum++;
-      maxId++;
-      const mediaFilename = `image${maxImageNum}.${extension}`;
-      const newRId = `rId${maxId}`;
+			maxImageNum++;
+			maxId++;
+			const mediaFilename = `image${maxImageNum}.${extension}`;
+			const newRId = `rId${maxId}`;
 
-      zip.file(`word/media/${mediaFilename}`, data, {
-        compression: 'DEFLATE',
-        compressionOptions: { level: compressionLevel },
-      });
+			zip.file(`word/media/${mediaFilename}`, data, {
+				compression: "DEFLATE",
+				compressionOptions: { level: compressionLevel },
+			});
 
-      relEntries.push(
-        `<Relationship Id="${newRId}" Type="${RELATIONSHIP_TYPES.image}" Target="media/${mediaFilename}"/>`
-      );
+			relEntries.push(
+				`<Relationship Id="${newRId}" Type="${RELATIONSHIP_TYPES.image}" Target="media/${mediaFilename}"/>`,
+			);
 
-      extensionsAdded.add(extension);
-      image.rId = newRId;
-    }
+			extensionsAdded.add(extension);
+			image.rId = newRId;
+		}
 
-    const updatedRelsXml = relsXml.replace(
-      '</Relationships>',
-      relEntries.join('') + '</Relationships>'
-    );
-    zip.file(relsPath, updatedRelsXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+		const updatedRelsXml = relsXml.replace(
+			"</Relationships>",
+			relEntries.join("") + "</Relationships>",
+		);
+		zip.file(relsPath, updatedRelsXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  await registerImageExtensions(zip, extensionsAdded, compressionLevel);
+	await registerImageExtensions(zip, extensionsAdded, compressionLevel);
 }
 
 // ============================================================================
@@ -349,25 +375,30 @@ async function processNewImages(
  * These are newly created hyperlinks that need relationship entries.
  */
 function collectHyperlinksWithoutRId(blocks: BlockContent[]): Hyperlink[] {
-  const hyperlinks: Hyperlink[] = [];
+	const hyperlinks: Hyperlink[] = [];
 
-  for (const block of blocks) {
-    if (block.type === 'paragraph') {
-      for (const item of block.content) {
-        if (item.type === 'hyperlink' && item.href && !item.rId && !item.anchor) {
-          hyperlinks.push(item);
-        }
-      }
-    } else if (block.type === 'table') {
-      for (const row of block.rows) {
-        for (const cell of row.cells) {
-          hyperlinks.push(...collectHyperlinksWithoutRId(cell.content));
-        }
-      }
-    }
-  }
+	for (const block of blocks) {
+		if (block.type === "paragraph") {
+			for (const item of block.content) {
+				if (
+					item.type === "hyperlink" &&
+					item.href &&
+					!item.rId &&
+					!item.anchor
+				) {
+					hyperlinks.push(item);
+				}
+			}
+		} else if (block.type === "table") {
+			for (const row of block.rows) {
+				for (const cell of row.cells) {
+					hyperlinks.push(...collectHyperlinksWithoutRId(cell.content));
+				}
+			}
+		}
+	}
 
-  return hyperlinks;
+	return hyperlinks;
 }
 
 /**
@@ -377,38 +408,38 @@ function collectHyperlinksWithoutRId(blocks: BlockContent[]): Hyperlink[] {
  * Mutates each hyperlink's rId in-place.
  */
 async function processNewHyperlinks(
-  parts: Part[],
-  zip: JSZip,
-  compressionLevel: number
+	parts: Part[],
+	zip: JSZip,
+	compressionLevel: number,
 ): Promise<void> {
-  for (const { relsPath, blocks } of parts) {
-    const hyperlinks = collectHyperlinksWithoutRId(blocks);
-    if (hyperlinks.length === 0) continue;
+	for (const { relsPath, blocks } of parts) {
+		const hyperlinks = collectHyperlinksWithoutRId(blocks);
+		if (hyperlinks.length === 0) continue;
 
-    const relsXml = await readRelsOrStub(zip, relsPath);
-    let maxId = findMaxRId(relsXml);
-    const relEntries: string[] = [];
+		const relsXml = await readRelsOrStub(zip, relsPath);
+		let maxId = findMaxRId(relsXml);
+		const relEntries: string[] = [];
 
-    for (const hyperlink of hyperlinks) {
-      maxId++;
-      const newRId = `rId${maxId}`;
+		for (const hyperlink of hyperlinks) {
+			maxId++;
+			const newRId = `rId${maxId}`;
 
-      relEntries.push(
-        `<Relationship Id="${newRId}" Type="${RELATIONSHIP_TYPES.hyperlink}" Target="${escapeXml(hyperlink.href!)}" TargetMode="External"/>`
-      );
+			relEntries.push(
+				`<Relationship Id="${newRId}" Type="${RELATIONSHIP_TYPES.hyperlink}" Target="${escapeXml(hyperlink.href!)}" TargetMode="External"/>`,
+			);
 
-      hyperlink.rId = newRId;
-    }
+			hyperlink.rId = newRId;
+		}
 
-    const updatedRelsXml = relsXml.replace(
-      '</Relationships>',
-      relEntries.join('') + '</Relationships>'
-    );
-    zip.file(relsPath, updatedRelsXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+		const updatedRelsXml = relsXml.replace(
+			"</Relationships>",
+			relEntries.join("") + "</Relationships>",
+		);
+		zip.file(relsPath, updatedRelsXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 }
 
 // ============================================================================
@@ -419,12 +450,12 @@ async function processNewHyperlinks(
  * Options for repacking DOCX
  */
 export interface RepackOptions {
-  /** Compression level (0-9, default: 6) */
-  compressionLevel?: number;
-  /** Whether to update modification date in docProps/core.xml */
-  updateModifiedDate?: boolean;
-  /** Custom modifier name for lastModifiedBy */
-  modifiedBy?: string;
+	/** Compression level (0-9, default: 6) */
+	compressionLevel?: number;
+	/** Whether to update modification date in docProps/core.xml */
+	updateModifiedDate?: boolean;
+	/** Custom modifier name for lastModifiedBy */
+	modifiedBy?: string;
 }
 
 /**
@@ -435,130 +466,147 @@ export interface RepackOptions {
  * @returns Promise resolving to DOCX as ArrayBuffer
  * @throws Error if document has no original buffer for round-trip
  */
-export async function repackDocx(doc: Document, options: RepackOptions = {}): Promise<ArrayBuffer> {
-  // Validate we have an original buffer to base on
-  if (!doc.originalBuffer) {
-    throw new Error(
-      'Cannot repack document: no original buffer for round-trip. ' +
-        'Use createDocx() for new documents.'
-    );
-  }
+export async function repackDocx(
+	doc: Document,
+	options: RepackOptions = {},
+): Promise<ArrayBuffer> {
+	// Validate we have an original buffer to base on
+	if (!doc.originalBuffer) {
+		throw new Error(
+			"Cannot repack document: no original buffer for round-trip. " +
+				"Use createDocx() for new documents.",
+		);
+	}
 
-  const { compressionLevel = 6, updateModifiedDate = true, modifiedBy } = options;
-  const exportDocument = doc;
+	const {
+		compressionLevel = 6,
+		updateModifiedDate = true,
+		modifiedBy,
+	} = options;
+	const exportDocument = doc;
 
-  // Load the original ZIP
-  const originalZip = await JSZip.loadAsync(doc.originalBuffer);
+	// Load the original ZIP
+	const originalZip = await JSZip.loadAsync(doc.originalBuffer);
 
-  // Create a new ZIP with all original files
-  const newZip = new JSZip();
+	// Create a new ZIP with all original files
+	const newZip = new JSZip();
 
-  // Copy all files from original ZIP
-  for (const [path, file] of Object.entries(originalZip.files)) {
-    // Skip directories
-    if (file.dir) {
-      newZip.folder(path.replace(/\/$/, ''));
-      continue;
-    }
+	// Copy all files from original ZIP
+	for (const [path, file] of Object.entries(originalZip.files)) {
+		// Skip directories
+		if (file.dir) {
+			newZip.folder(path.replace(/\/$/, ""));
+			continue;
+		}
 
-    // Get original file content
-    const content = await file.async('arraybuffer');
+		// Get original file content
+		const content = await file.async("arraybuffer");
 
-    // Add to new ZIP (we'll update specific files below)
-    newZip.file(path, content, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+		// Add to new ZIP (we'll update specific files below)
+		newZip.file(path, content, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  // Process newly inserted images and hyperlinks across body + headers + footers.
-  // Mutates rIds in-place so serializers emit correct references.
-  const parts = collectParts(exportDocument);
-  await processNewImages(parts, newZip, compressionLevel);
-  await processNewHyperlinks(parts, newZip, compressionLevel);
+	// Process newly inserted images and hyperlinks across body + headers + footers.
+	// Mutates rIds in-place so serializers emit correct references.
+	const parts = collectParts(exportDocument);
+	await processNewImages(parts, newZip, compressionLevel);
+	await processNewHyperlinks(parts, newZip, compressionLevel);
 
-  // Serialize and update document.xml (after image/hyperlink rIds have been rewritten)
-  const documentXml = serializeDocument(exportDocument);
-  newZip.file('word/document.xml', documentXml, {
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	// Serialize and update document.xml (after image/hyperlink rIds have been rewritten)
+	const documentXml = serializeDocument(exportDocument);
+	newZip.file("word/document.xml", documentXml, {
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  // Serialize and update modified headers/footers
-  serializeHeadersFootersToZip(exportDocument, newZip, compressionLevel);
+	// Serialize and update modified headers/footers
+	serializeHeadersFootersToZip(exportDocument, newZip, compressionLevel);
 
-  await ensureHeaderFooterParts(exportDocument, newZip, compressionLevel);
+	await ensureHeaderFooterParts(exportDocument, newZip, compressionLevel);
 
-  // Override footnotes.xml ONLY for footnotes the user edited (opt-in). Each
-  // edited footnote's text is surgically replaced inside the original XML;
-  // untouched footnotes — and every doc that never edits one — stay verbatim.
-  {
-    const editedFootnotes = (exportDocument.package?.footnotes ?? []).filter((f) => f.edited);
-    if (editedFootnotes.length > 0) {
-      const fnFile = originalZip.file('word/footnotes.xml');
-      if (fnFile) {
-        const newFnXml = replaceFootnotesInXml(await fnFile.async('text'), editedFootnotes);
-        newZip.file('word/footnotes.xml', newFnXml, {
-          compression: 'DEFLATE',
-          compressionOptions: { level: compressionLevel },
-        });
-      }
-    }
-    const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter((e) => e.edited);
-    if (editedEndnotes.length > 0) {
-      const enFile = originalZip.file('word/endnotes.xml');
-      if (enFile) {
-        const newEnXml = replaceEndnotesInXml(await enFile.async('text'), editedEndnotes);
-        newZip.file('word/endnotes.xml', newEnXml, {
-          compression: 'DEFLATE',
-          compressionOptions: { level: compressionLevel },
-        });
-      }
-    }
-  }
+	// Override footnotes.xml ONLY for footnotes the user edited (opt-in). Each
+	// edited footnote's text is surgically replaced inside the original XML;
+	// untouched footnotes — and every doc that never edits one — stay verbatim.
+	{
+		const editedFootnotes = (exportDocument.package?.footnotes ?? []).filter(
+			(f) => f.edited,
+		);
+		if (editedFootnotes.length > 0) {
+			const fnFile = originalZip.file("word/footnotes.xml");
+			if (fnFile) {
+				const newFnXml = replaceFootnotesInXml(
+					await fnFile.async("text"),
+					editedFootnotes,
+				);
+				newZip.file("word/footnotes.xml", newFnXml, {
+					compression: "DEFLATE",
+					compressionOptions: { level: compressionLevel },
+				});
+			}
+		}
+		const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter(
+			(e) => e.edited,
+		);
+		if (editedEndnotes.length > 0) {
+			const enFile = originalZip.file("word/endnotes.xml");
+			if (enFile) {
+				const newEnXml = replaceEndnotesInXml(
+					await enFile.async("text"),
+					editedEndnotes,
+				);
+				newZip.file("word/endnotes.xml", newEnXml, {
+					compression: "DEFLATE",
+					compressionOptions: { level: compressionLevel },
+				});
+			}
+		}
+	}
 
-  // Update docProps/core.xml. Two independent inputs are applied:
-  //   1. User-editable fields from `pkg.properties` (set by the File →
-  //      Properties dialog) — `applyCorePropertiesToXml`.
-  //   2. The modified-date stamp (`updateCoreProperties`) — always on
-  //      when `updateModifiedDate` is true so a saved file looks "just
-  //      now" to other Word installs.
-  // The pipeline is property-edits first, then date stamp, so the stamp
-  // always wins over a stale `modified` in `pkg.properties`.
-  const userProps = exportDocument.package?.properties;
-  const hasUserPropEdits = !!userProps && Object.keys(userProps).length > 0;
-  if (updateModifiedDate || hasUserPropEdits) {
-    const corePropsPath = 'docProps/core.xml';
-    const corePropsFile = originalZip.file(corePropsPath);
-    const originalCoreProps = corePropsFile
-      ? await corePropsFile.async('text')
-      : EMPTY_CORE_PROPERTIES_XML;
+	// Update docProps/core.xml. Two independent inputs are applied:
+	//   1. User-editable fields from `pkg.properties` (set by the File →
+	//      Properties dialog) — `applyCorePropertiesToXml`.
+	//   2. The modified-date stamp (`updateCoreProperties`) — always on
+	//      when `updateModifiedDate` is true so a saved file looks "just
+	//      now" to other Word installs.
+	// The pipeline is property-edits first, then date stamp, so the stamp
+	// always wins over a stale `modified` in `pkg.properties`.
+	const userProps = exportDocument.package?.properties;
+	const hasUserPropEdits = !!userProps && Object.keys(userProps).length > 0;
+	if (updateModifiedDate || hasUserPropEdits) {
+		const corePropsPath = "docProps/core.xml";
+		const corePropsFile = originalZip.file(corePropsPath);
+		const originalCoreProps = corePropsFile
+			? await corePropsFile.async("text")
+			: EMPTY_CORE_PROPERTIES_XML;
 
-    let updatedCoreProps = originalCoreProps;
-    if (hasUserPropEdits) {
-      updatedCoreProps = applyCorePropertiesToXml(updatedCoreProps, userProps);
-    }
-    if (updateModifiedDate) {
-      updatedCoreProps = updateCoreProperties(updatedCoreProps, {
-        updateModifiedDate,
-        modifiedBy,
-      });
-    }
+		let updatedCoreProps = originalCoreProps;
+		if (hasUserPropEdits) {
+			updatedCoreProps = applyCorePropertiesToXml(updatedCoreProps, userProps);
+		}
+		if (updateModifiedDate) {
+			updatedCoreProps = updateCoreProperties(updatedCoreProps, {
+				updateModifiedDate,
+				modifiedBy,
+			});
+		}
 
-    newZip.file(corePropsPath, updatedCoreProps, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+		newZip.file(corePropsPath, updatedCoreProps, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  // Generate the new DOCX file
-  const arrayBuffer = await newZip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	// Generate the new DOCX file
+	const arrayBuffer = await newZip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  return arrayBuffer;
+	return arrayBuffer;
 }
 
 /**
@@ -570,101 +618,115 @@ export async function repackDocx(doc: Document, options: RepackOptions = {}): Pr
  * @returns Promise resolving to DOCX as ArrayBuffer
  */
 export async function repackDocxFromRaw(
-  doc: Document,
-  rawContent: RawDocxContent,
-  options: RepackOptions = {}
+	doc: Document,
+	rawContent: RawDocxContent,
+	options: RepackOptions = {},
 ): Promise<ArrayBuffer> {
-  const { compressionLevel = 6, updateModifiedDate = true, modifiedBy } = options;
-  const exportDocument = doc;
+	const {
+		compressionLevel = 6,
+		updateModifiedDate = true,
+		modifiedBy,
+	} = options;
+	const exportDocument = doc;
 
-  // Create a new ZIP with all original files
-  const newZip = new JSZip();
+	// Create a new ZIP with all original files
+	const newZip = new JSZip();
 
-  // Copy all files from original ZIP
-  for (const [path, file] of Object.entries(rawContent.originalZip.files)) {
-    // Skip directories
-    if (file.dir) {
-      newZip.folder(path.replace(/\/$/, ''));
-      continue;
-    }
+	// Copy all files from original ZIP
+	for (const [path, file] of Object.entries(rawContent.originalZip.files)) {
+		// Skip directories
+		if (file.dir) {
+			newZip.folder(path.replace(/\/$/, ""));
+			continue;
+		}
 
-    // Get original file content
-    const content = await file.async('arraybuffer');
+		// Get original file content
+		const content = await file.async("arraybuffer");
 
-    // Add to new ZIP
-    newZip.file(path, content, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+		// Add to new ZIP
+		newZip.file(path, content, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  // Process newly inserted images and hyperlinks across body + headers + footers.
-  const parts = collectParts(exportDocument);
-  await processNewImages(parts, newZip, compressionLevel);
-  await processNewHyperlinks(parts, newZip, compressionLevel);
+	// Process newly inserted images and hyperlinks across body + headers + footers.
+	const parts = collectParts(exportDocument);
+	await processNewImages(parts, newZip, compressionLevel);
+	await processNewHyperlinks(parts, newZip, compressionLevel);
 
-  const documentXml = serializeDocument(exportDocument);
-  newZip.file('word/document.xml', documentXml, {
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	const documentXml = serializeDocument(exportDocument);
+	newZip.file("word/document.xml", documentXml, {
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  // Serialize and update modified headers/footers
-  serializeHeadersFootersToZip(exportDocument, newZip, compressionLevel);
+	// Serialize and update modified headers/footers
+	serializeHeadersFootersToZip(exportDocument, newZip, compressionLevel);
 
-  await ensureHeaderFooterParts(exportDocument, newZip, compressionLevel);
+	await ensureHeaderFooterParts(exportDocument, newZip, compressionLevel);
 
-  // Override footnotes.xml ONLY for footnotes the user edited (opt-in; see
-  // repackDocx for the rationale). Untouched footnotes stay verbatim.
-  {
-    const editedFootnotes = (exportDocument.package?.footnotes ?? []).filter((f) => f.edited);
-    if (editedFootnotes.length > 0) {
-      const fnFile = rawContent.originalZip.file('word/footnotes.xml');
-      if (fnFile) {
-        const newFnXml = replaceFootnotesInXml(await fnFile.async('text'), editedFootnotes);
-        newZip.file('word/footnotes.xml', newFnXml, {
-          compression: 'DEFLATE',
-          compressionOptions: { level: compressionLevel },
-        });
-      }
-    }
-    const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter((e) => e.edited);
-    if (editedEndnotes.length > 0) {
-      const enFile = rawContent.originalZip.file('word/endnotes.xml');
-      if (enFile) {
-        const newEnXml = replaceEndnotesInXml(await enFile.async('text'), editedEndnotes);
-        newZip.file('word/endnotes.xml', newEnXml, {
-          compression: 'DEFLATE',
-          compressionOptions: { level: compressionLevel },
-        });
-      }
-    }
-  }
+	// Override footnotes.xml ONLY for footnotes the user edited (opt-in; see
+	// repackDocx for the rationale). Untouched footnotes stay verbatim.
+	{
+		const editedFootnotes = (exportDocument.package?.footnotes ?? []).filter(
+			(f) => f.edited,
+		);
+		if (editedFootnotes.length > 0) {
+			const fnFile = rawContent.originalZip.file("word/footnotes.xml");
+			if (fnFile) {
+				const newFnXml = replaceFootnotesInXml(
+					await fnFile.async("text"),
+					editedFootnotes,
+				);
+				newZip.file("word/footnotes.xml", newFnXml, {
+					compression: "DEFLATE",
+					compressionOptions: { level: compressionLevel },
+				});
+			}
+		}
+		const editedEndnotes = (exportDocument.package?.endnotes ?? []).filter(
+			(e) => e.edited,
+		);
+		if (editedEndnotes.length > 0) {
+			const enFile = rawContent.originalZip.file("word/endnotes.xml");
+			if (enFile) {
+				const newEnXml = replaceEndnotesInXml(
+					await enFile.async("text"),
+					editedEndnotes,
+				);
+				newZip.file("word/endnotes.xml", newEnXml, {
+					compression: "DEFLATE",
+					compressionOptions: { level: compressionLevel },
+				});
+			}
+		}
+	}
 
-  // Serialize comments
-  await serializeCommentsToZip(exportDocument, newZip, compressionLevel);
+	// Serialize comments
+	await serializeCommentsToZip(exportDocument, newZip, compressionLevel);
 
-  // Optionally update core properties
-  if (updateModifiedDate && rawContent.corePropsXml) {
-    const updatedCoreProps = updateCoreProperties(rawContent.corePropsXml, {
-      updateModifiedDate,
-      modifiedBy,
-    });
+	// Optionally update core properties
+	if (updateModifiedDate && rawContent.corePropsXml) {
+		const updatedCoreProps = updateCoreProperties(rawContent.corePropsXml, {
+			updateModifiedDate,
+			modifiedBy,
+		});
 
-    newZip.file('docProps/core.xml', updatedCoreProps, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+		newZip.file("docProps/core.xml", updatedCoreProps, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  // Generate the new DOCX file
-  const arrayBuffer = await newZip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	// Generate the new DOCX file
+	const arrayBuffer = await newZip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  return arrayBuffer;
+	return arrayBuffer;
 }
 
 // ============================================================================
@@ -672,22 +734,22 @@ export async function repackDocxFromRaw(
 // ============================================================================
 
 const HEADER_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml';
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml";
 
 const FOOTER_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml';
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml";
 
 export const COMMENTS_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml';
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml";
 
 export const COMMENTS_EXTENDED_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml';
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml";
 
 export const COMMENTS_IDS_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml';
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.commentsIds+xml";
 
 export const COMMENTS_EXTENSIBLE_CONTENT_TYPE =
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtensible+xml';
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtensible+xml";
 
 /**
  * Ensure every header/footer in `doc.package.relationships` is wired up in
@@ -696,151 +758,159 @@ export const COMMENTS_EXTENSIBLE_CONTENT_TYPE =
  * know about the new part yet — without this Word silently drops them (#274).
  */
 async function ensureHeaderFooterParts(
-  doc: Document,
-  zip: JSZip,
-  compressionLevel: number
+	doc: Document,
+	zip: JSZip,
+	compressionLevel: number,
 ): Promise<void> {
-  const rels = doc.package.relationships;
-  if (!rels) return;
+	const rels = doc.package.relationships;
+	if (!rels) return;
 
-  const parts: Array<{ rId: string; target: string; contentType: string; relType: string }> = [];
-  for (const [rId, rel] of rels) {
-    if (!rel.target) continue;
-    const contentType =
-      rel.type === RELATIONSHIP_TYPES.header
-        ? HEADER_CONTENT_TYPE
-        : rel.type === RELATIONSHIP_TYPES.footer
-          ? FOOTER_CONTENT_TYPE
-          : null;
-    if (!contentType) continue;
-    parts.push({
-      rId,
-      target: rel.target.replace(/^(\/?word\/)/, ''),
-      contentType,
-      relType: rel.type,
-    });
-  }
-  if (parts.length === 0) return;
+	const parts: Array<{
+		rId: string;
+		target: string;
+		contentType: string;
+		relType: string;
+	}> = [];
+	for (const [rId, rel] of rels) {
+		if (!rel.target) continue;
+		const contentType =
+			rel.type === RELATIONSHIP_TYPES.header
+				? HEADER_CONTENT_TYPE
+				: rel.type === RELATIONSHIP_TYPES.footer
+					? FOOTER_CONTENT_TYPE
+					: null;
+		if (!contentType) continue;
+		parts.push({
+			rId,
+			target: rel.target.replace(/^(\/?word\/)/, ""),
+			contentType,
+			relType: rel.type,
+		});
+	}
+	if (parts.length === 0) return;
 
-  const ctFile = zip.file('[Content_Types].xml');
-  if (ctFile) {
-    let ctXml = await ctFile.async('text');
-    let changed = false;
-    for (const { target, contentType } of parts) {
-      const partName = `/word/${target}`;
-      if (!ctXml.includes(`PartName="${partName}"`)) {
-        ctXml = ctXml.replace(
-          '</Types>',
-          `<Override PartName="${partName}" ContentType="${contentType}"/></Types>`
-        );
-        changed = true;
-      }
-    }
-    if (changed) {
-      zip.file('[Content_Types].xml', ctXml, {
-        compression: 'DEFLATE',
-        compressionOptions: { level: compressionLevel },
-      });
-    }
-  }
+	const ctFile = zip.file("[Content_Types].xml");
+	if (ctFile) {
+		let ctXml = await ctFile.async("text");
+		let changed = false;
+		for (const { target, contentType } of parts) {
+			const partName = `/word/${target}`;
+			if (!ctXml.includes(`PartName="${partName}"`)) {
+				ctXml = ctXml.replace(
+					"</Types>",
+					`<Override PartName="${partName}" ContentType="${contentType}"/></Types>`,
+				);
+				changed = true;
+			}
+		}
+		if (changed) {
+			zip.file("[Content_Types].xml", ctXml, {
+				compression: "DEFLATE",
+				compressionOptions: { level: compressionLevel },
+			});
+		}
+	}
 
-  const relsPath = 'word/_rels/document.xml.rels';
-  let relsXml = await readRelsOrStub(zip, relsPath);
-  let relsChanged = false;
-  for (const { rId, relType, target } of parts) {
-    if (!relsXml.includes(`Id="${rId}"`)) {
-      relsXml = relsXml.replace(
-        '</Relationships>',
-        `<Relationship Id="${rId}" Type="${relType}" Target="${target}"/></Relationships>`
-      );
-      relsChanged = true;
-    }
-  }
-  if (relsChanged) {
-    zip.file(relsPath, relsXml, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+	const relsPath = "word/_rels/document.xml.rels";
+	let relsXml = await readRelsOrStub(zip, relsPath);
+	let relsChanged = false;
+	for (const { rId, relType, target } of parts) {
+		if (!relsXml.includes(`Id="${rId}"`)) {
+			relsXml = relsXml.replace(
+				"</Relationships>",
+				`<Relationship Id="${rId}" Type="${relType}" Target="${target}"/></Relationships>`,
+			);
+			relsChanged = true;
+		}
+	}
+	if (relsChanged) {
+		zip.file(relsPath, relsXml, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 }
 
 /**
  * Ensure content types and relationships exist for all comment parts.
  * Reads each shared file once, applies all modifications, writes once.
  */
-async function ensureAllCommentParts(zip: JSZip, compressionLevel: number): Promise<void> {
-  const COMMENT_PARTS = [
-    {
-      partName: '/word/comments.xml',
-      contentType: COMMENTS_CONTENT_TYPE,
-      target: 'comments.xml',
-      relType: RELATIONSHIP_TYPES.comments,
-    },
-    {
-      partName: '/word/commentsExtended.xml',
-      contentType: COMMENTS_EXTENDED_CONTENT_TYPE,
-      target: 'commentsExtended.xml',
-      relType: RELATIONSHIP_TYPES.commentsExtended,
-    },
-    {
-      partName: '/word/commentsIds.xml',
-      contentType: COMMENTS_IDS_CONTENT_TYPE,
-      target: 'commentsIds.xml',
-      relType: RELATIONSHIP_TYPES.commentsIds,
-    },
-    {
-      partName: '/word/commentsExtensible.xml',
-      contentType: COMMENTS_EXTENSIBLE_CONTENT_TYPE,
-      target: 'commentsExtensible.xml',
-      relType: RELATIONSHIP_TYPES.commentsExtensible,
-    },
-  ];
+async function ensureAllCommentParts(
+	zip: JSZip,
+	compressionLevel: number,
+): Promise<void> {
+	const COMMENT_PARTS = [
+		{
+			partName: "/word/comments.xml",
+			contentType: COMMENTS_CONTENT_TYPE,
+			target: "comments.xml",
+			relType: RELATIONSHIP_TYPES.comments,
+		},
+		{
+			partName: "/word/commentsExtended.xml",
+			contentType: COMMENTS_EXTENDED_CONTENT_TYPE,
+			target: "commentsExtended.xml",
+			relType: RELATIONSHIP_TYPES.commentsExtended,
+		},
+		{
+			partName: "/word/commentsIds.xml",
+			contentType: COMMENTS_IDS_CONTENT_TYPE,
+			target: "commentsIds.xml",
+			relType: RELATIONSHIP_TYPES.commentsIds,
+		},
+		{
+			partName: "/word/commentsExtensible.xml",
+			contentType: COMMENTS_EXTENSIBLE_CONTENT_TYPE,
+			target: "commentsExtensible.xml",
+			relType: RELATIONSHIP_TYPES.commentsExtensible,
+		},
+	];
 
-  // Content types — single read/write
-  const ctFile = zip.file('[Content_Types].xml');
-  if (ctFile) {
-    let ctXml = await ctFile.async('text');
-    let changed = false;
-    for (const { partName, contentType } of COMMENT_PARTS) {
-      if (!ctXml.includes(partName)) {
-        ctXml = ctXml.replace(
-          '</Types>',
-          `<Override PartName="${partName}" ContentType="${contentType}"/></Types>`
-        );
-        changed = true;
-      }
-    }
-    if (changed) {
-      zip.file('[Content_Types].xml', ctXml, {
-        compression: 'DEFLATE',
-        compressionOptions: { level: compressionLevel },
-      });
-    }
-  }
+	// Content types — single read/write
+	const ctFile = zip.file("[Content_Types].xml");
+	if (ctFile) {
+		let ctXml = await ctFile.async("text");
+		let changed = false;
+		for (const { partName, contentType } of COMMENT_PARTS) {
+			if (!ctXml.includes(partName)) {
+				ctXml = ctXml.replace(
+					"</Types>",
+					`<Override PartName="${partName}" ContentType="${contentType}"/></Types>`,
+				);
+				changed = true;
+			}
+		}
+		if (changed) {
+			zip.file("[Content_Types].xml", ctXml, {
+				compression: "DEFLATE",
+				compressionOptions: { level: compressionLevel },
+			});
+		}
+	}
 
-  // Relationships — single read/write
-  const relsPath = 'word/_rels/document.xml.rels';
-  const relsFile = zip.file(relsPath);
-  if (relsFile) {
-    let relsXml = await relsFile.async('text');
-    let changed = false;
-    for (const { target, relType } of COMMENT_PARTS) {
-      if (!relsXml.includes(target)) {
-        const newRId = `rId${findMaxRId(relsXml) + 1}`;
-        relsXml = relsXml.replace(
-          '</Relationships>',
-          `<Relationship Id="${newRId}" Type="${relType}" Target="${target}"/></Relationships>`
-        );
-        changed = true;
-      }
-    }
-    if (changed) {
-      zip.file(relsPath, relsXml, {
-        compression: 'DEFLATE',
-        compressionOptions: { level: compressionLevel },
-      });
-    }
-  }
+	// Relationships — single read/write
+	const relsPath = "word/_rels/document.xml.rels";
+	const relsFile = zip.file(relsPath);
+	if (relsFile) {
+		let relsXml = await relsFile.async("text");
+		let changed = false;
+		for (const { target, relType } of COMMENT_PARTS) {
+			if (!relsXml.includes(target)) {
+				const newRId = `rId${findMaxRId(relsXml) + 1}`;
+				relsXml = relsXml.replace(
+					"</Relationships>",
+					`<Relationship Id="${newRId}" Type="${relType}" Target="${target}"/></Relationships>`,
+				);
+				changed = true;
+			}
+		}
+		if (changed) {
+			zip.file(relsPath, relsXml, {
+				compression: "DEFLATE",
+				compressionOptions: { level: compressionLevel },
+			});
+		}
+	}
 }
 
 // ============================================================================
@@ -856,27 +926,27 @@ async function ensureAllCommentParts(zip: JSZip, compressionLevel: number): Prom
  * @returns Promise resolving to DOCX as ArrayBuffer
  */
 export async function updateDocumentXml(
-  originalBuffer: ArrayBuffer,
-  newDocumentXml: string,
-  options: RepackOptions = {}
+	originalBuffer: ArrayBuffer,
+	newDocumentXml: string,
+	options: RepackOptions = {},
 ): Promise<ArrayBuffer> {
-  const { compressionLevel = 6 } = options;
+	const { compressionLevel = 6 } = options;
 
-  // Load original ZIP
-  const zip = await JSZip.loadAsync(originalBuffer);
+	// Load original ZIP
+	const zip = await JSZip.loadAsync(originalBuffer);
 
-  // Update document.xml
-  zip.file('word/document.xml', newDocumentXml, {
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	// Update document.xml
+	zip.file("word/document.xml", newDocumentXml, {
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  // Generate new DOCX
-  return zip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	// Generate new DOCX
+	return zip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 }
 
 /**
@@ -889,25 +959,25 @@ export async function updateDocumentXml(
  * @returns Promise resolving to DOCX as ArrayBuffer
  */
 export async function updateXmlFile(
-  originalBuffer: ArrayBuffer,
-  path: string,
-  content: string,
-  options: RepackOptions = {}
+	originalBuffer: ArrayBuffer,
+	path: string,
+	content: string,
+	options: RepackOptions = {},
 ): Promise<ArrayBuffer> {
-  const { compressionLevel = 6 } = options;
+	const { compressionLevel = 6 } = options;
 
-  const zip = await JSZip.loadAsync(originalBuffer);
+	const zip = await JSZip.loadAsync(originalBuffer);
 
-  zip.file(path, content, {
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	zip.file(path, content, {
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 
-  return zip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	return zip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 }
 
 /**
@@ -919,12 +989,12 @@ export async function updateXmlFile(
  * @returns Promise resolving to DOCX as ArrayBuffer
  */
 export async function updateMultipleFiles(
-  originalBuffer: ArrayBuffer,
-  updates: Map<string, string | ArrayBuffer>,
-  options: RepackOptions = {}
+	originalBuffer: ArrayBuffer,
+	updates: Map<string, string | ArrayBuffer>,
+	options: RepackOptions = {},
 ): Promise<ArrayBuffer> {
-  const zip = await JSZip.loadAsync(originalBuffer);
-  return applyUpdatesToZip(zip, updates, options);
+	const zip = await JSZip.loadAsync(originalBuffer);
+	return applyUpdatesToZip(zip, updates, options);
 }
 
 /**
@@ -932,24 +1002,24 @@ export async function updateMultipleFiles(
  * Use this when the zip is already loaded to avoid a redundant decompression pass.
  */
 export async function applyUpdatesToZip(
-  zip: JSZip,
-  updates: Map<string, string | ArrayBuffer>,
-  options: RepackOptions = {}
+	zip: JSZip,
+	updates: Map<string, string | ArrayBuffer>,
+	options: RepackOptions = {},
 ): Promise<ArrayBuffer> {
-  const { compressionLevel = 6 } = options;
+	const { compressionLevel = 6 } = options;
 
-  for (const [path, content] of updates) {
-    zip.file(path, content, {
-      compression: 'DEFLATE',
-      compressionOptions: { level: compressionLevel },
-    });
-  }
+	for (const [path, content] of updates) {
+		zip.file(path, content, {
+			compression: "DEFLATE",
+			compressionOptions: { level: compressionLevel },
+		});
+	}
 
-  return zip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: compressionLevel },
-  });
+	return zip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: compressionLevel },
+	});
 }
 
 // ============================================================================
@@ -964,46 +1034,50 @@ export async function applyUpdatesToZip(
  * @returns Promise resolving to { buffer: ArrayBuffer, rId: string }
  */
 export async function addRelationship(
-  originalBuffer: ArrayBuffer,
-  relationship: {
-    type: string;
-    target: string;
-    targetMode?: 'External' | 'Internal';
-  }
+	originalBuffer: ArrayBuffer,
+	relationship: {
+		type: string;
+		target: string;
+		targetMode?: "External" | "Internal";
+	},
 ): Promise<{ buffer: ArrayBuffer; rId: string }> {
-  const zip = await JSZip.loadAsync(originalBuffer);
+	const zip = await JSZip.loadAsync(originalBuffer);
 
-  // Read existing relationships
-  const relsPath = 'word/_rels/document.xml.rels';
-  const relsFile = zip.file(relsPath);
+	// Read existing relationships
+	const relsPath = "word/_rels/document.xml.rels";
+	const relsFile = zip.file(relsPath);
 
-  if (!relsFile) {
-    throw new Error('document.xml.rels not found in DOCX');
-  }
+	if (!relsFile) {
+		throw new Error("document.xml.rels not found in DOCX");
+	}
 
-  const relsXml = await relsFile.async('text');
+	const relsXml = await relsFile.async("text");
 
-  // Generate new rId
-  const newRId = `rId${findMaxRId(relsXml) + 1}`;
+	// Generate new rId
+	const newRId = `rId${findMaxRId(relsXml) + 1}`;
 
-  // Build new relationship element
-  const targetModeAttr = relationship.targetMode === 'External' ? ' TargetMode="External"' : '';
+	// Build new relationship element
+	const targetModeAttr =
+		relationship.targetMode === "External" ? ' TargetMode="External"' : "";
 
-  const newRelElement = `<Relationship Id="${newRId}" Type="${relationship.type}" Target="${escapeXml(relationship.target)}"${targetModeAttr}/>`;
+	const newRelElement = `<Relationship Id="${newRId}" Type="${relationship.type}" Target="${escapeXml(relationship.target)}"${targetModeAttr}/>`;
 
-  // Insert before closing tag
-  const updatedRelsXml = relsXml.replace('</Relationships>', `${newRelElement}</Relationships>`);
+	// Insert before closing tag
+	const updatedRelsXml = relsXml.replace(
+		"</Relationships>",
+		`${newRelElement}</Relationships>`,
+	);
 
-  // Update the ZIP
-  zip.file(relsPath, updatedRelsXml);
+	// Update the ZIP
+	zip.file(relsPath, updatedRelsXml);
 
-  const buffer = await zip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 },
-  });
+	const buffer = await zip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: 6 },
+	});
 
-  return { buffer, rId: newRId };
+	return { buffer, rId: newRId };
 }
 
 /**
@@ -1016,65 +1090,68 @@ export async function addRelationship(
  * @returns Promise resolving to { buffer: ArrayBuffer, rId: string, path: string }
  */
 export async function addMedia(
-  originalBuffer: ArrayBuffer,
-  filename: string,
-  data: ArrayBuffer,
-  mimeType: string
+	originalBuffer: ArrayBuffer,
+	filename: string,
+	data: ArrayBuffer,
+	mimeType: string,
 ): Promise<{ buffer: ArrayBuffer; rId: string; path: string }> {
-  const zip = await JSZip.loadAsync(originalBuffer);
+	const zip = await JSZip.loadAsync(originalBuffer);
 
-  // Determine media path
-  const mediaPath = `word/media/${filename}`;
+	// Determine media path
+	const mediaPath = `word/media/${filename}`;
 
-  // Add media file
-  zip.file(mediaPath, data);
+	// Add media file
+	zip.file(mediaPath, data);
 
-  // Add relationship
-  const relResult = await addRelationship(await zip.generateAsync({ type: 'arraybuffer' }), {
-    type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',
-    target: `media/${filename}`,
-  });
+	// Add relationship
+	const relResult = await addRelationship(
+		await zip.generateAsync({ type: "arraybuffer" }),
+		{
+			type: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+			target: `media/${filename}`,
+		},
+	);
 
-  // Update content types if needed
-  const contentTypesFile = zip.file('[Content_Types].xml');
-  if (contentTypesFile) {
-    const contentTypesXml = await contentTypesFile.async('text');
-    const extension = filename.split('.').pop()?.toLowerCase() || '';
+	// Update content types if needed
+	const contentTypesFile = zip.file("[Content_Types].xml");
+	if (contentTypesFile) {
+		const contentTypesXml = await contentTypesFile.async("text");
+		const extension = filename.split(".").pop()?.toLowerCase() || "";
 
-    // Check if extension is already registered
-    const hasExtension = contentTypesXml.includes(`Extension="${extension}"`);
+		// Check if extension is already registered
+		const hasExtension = contentTypesXml.includes(`Extension="${extension}"`);
 
-    if (!hasExtension && extension) {
-      // Add content type for this extension
-      const contentType = getContentTypeForExtension(extension, mimeType);
-      const extensionElement = `<Default Extension="${extension}" ContentType="${contentType}"/>`;
+		if (!hasExtension && extension) {
+			// Add content type for this extension
+			const contentType = getContentTypeForExtension(extension, mimeType);
+			const extensionElement = `<Default Extension="${extension}" ContentType="${contentType}"/>`;
 
-      // Insert after other defaults
-      const updatedContentTypes = contentTypesXml.replace(
-        '</Types>',
-        `${extensionElement}</Types>`
-      );
+			// Insert after other defaults
+			const updatedContentTypes = contentTypesXml.replace(
+				"</Types>",
+				`${extensionElement}</Types>`,
+			);
 
-      const finalZip = await JSZip.loadAsync(relResult.buffer);
-      finalZip.file('[Content_Types].xml', updatedContentTypes);
+			const finalZip = await JSZip.loadAsync(relResult.buffer);
+			finalZip.file("[Content_Types].xml", updatedContentTypes);
 
-      return {
-        buffer: await finalZip.generateAsync({
-          type: 'arraybuffer',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 },
-        }),
-        rId: relResult.rId,
-        path: mediaPath,
-      };
-    }
-  }
+			return {
+				buffer: await finalZip.generateAsync({
+					type: "arraybuffer",
+					compression: "DEFLATE",
+					compressionOptions: { level: 6 },
+				}),
+				rId: relResult.rId,
+				path: mediaPath,
+			};
+		}
+	}
 
-  return {
-    buffer: relResult.buffer,
-    rId: relResult.rId,
-    path: mediaPath,
-  };
+	return {
+		buffer: relResult.buffer,
+		rId: relResult.rId,
+		path: mediaPath,
+	};
 }
 
 // ============================================================================
@@ -1086,39 +1163,46 @@ export async function addMedia(
  * Uses the relationship map to resolve rId → filename.
  */
 export function collectHeaderFooterUpdates(doc: Document): Map<string, string> {
-  const updates = new Map<string, string>();
-  const rels = doc.package.relationships;
-  if (!rels) return updates;
+	const updates = new Map<string, string>();
+	const rels = doc.package.relationships;
+	if (!rels) return updates;
 
-  const parts: Array<{
-    map: Map<string, import('../types/content').HeaderFooter> | undefined;
-    type: string;
-  }> = [
-    { map: doc.package.headers, type: RELATIONSHIP_TYPES.header },
-    { map: doc.package.footers, type: RELATIONSHIP_TYPES.footer },
-  ];
+	const parts: Array<{
+		map: Map<string, import("../types/content").HeaderFooter> | undefined;
+		type: string;
+	}> = [
+		{ map: doc.package.headers, type: RELATIONSHIP_TYPES.header },
+		{ map: doc.package.footers, type: RELATIONSHIP_TYPES.footer },
+	];
 
-  for (const { map, type } of parts) {
-    if (!map) continue;
-    for (const [rId, headerFooter] of map.entries()) {
-      const rel = rels.get(rId);
-      if (rel && rel.type === type && rel.target) {
-        updates.set(headerFooterFilename(rel.target), serializeHeaderFooter(headerFooter));
-      }
-    }
-  }
+	for (const { map, type } of parts) {
+		if (!map) continue;
+		for (const [rId, headerFooter] of map.entries()) {
+			const rel = rels.get(rId);
+			if (rel && rel.type === type && rel.target) {
+				updates.set(
+					headerFooterFilename(rel.target),
+					serializeHeaderFooter(headerFooter),
+				);
+			}
+		}
+	}
 
-  return updates;
+	return updates;
 }
 
 /**
  * Serialize modified headers and footers into the ZIP
  */
-function serializeHeadersFootersToZip(doc: Document, zip: JSZip, compressionLevel: number): void {
-  const compressionOptions = { level: compressionLevel };
-  for (const [filename, xml] of collectHeaderFooterUpdates(doc)) {
-    zip.file(filename, xml, { compression: 'DEFLATE', compressionOptions });
-  }
+function serializeHeadersFootersToZip(
+	doc: Document,
+	zip: JSZip,
+	compressionLevel: number,
+): void {
+	const compressionOptions = { level: compressionLevel };
+	for (const [filename, xml] of collectHeaderFooterUpdates(doc)) {
+		zip.file(filename, xml, { compression: "DEFLATE", compressionOptions });
+	}
 }
 
 // ============================================================================
@@ -1129,70 +1213,73 @@ function serializeHeadersFootersToZip(doc: Document, zip: JSZip, compressionLeve
  * Update core properties XML with new modification date
  */
 export function updateCoreProperties(
-  corePropsXml: string,
-  options: { updateModifiedDate?: boolean; modifiedBy?: string }
+	corePropsXml: string,
+	options: { updateModifiedDate?: boolean; modifiedBy?: string },
 ): string {
-  let result = corePropsXml;
+	let result = corePropsXml;
 
-  if (options.updateModifiedDate) {
-    const now = new Date().toISOString();
+	if (options.updateModifiedDate) {
+		const now = new Date().toISOString();
 
-    // Update dcterms:modified
-    if (result.includes('<dcterms:modified')) {
-      result = result.replace(
-        /<dcterms:modified[^>]*>[^<]*<\/dcterms:modified>/,
-        `<dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>`
-      );
-    } else {
-      // Add modified date if not present
-      result = result.replace(
-        '</cp:coreProperties>',
-        `<dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`
-      );
-    }
-  }
+		// Update dcterms:modified
+		if (result.includes("<dcterms:modified")) {
+			result = result.replace(
+				/<dcterms:modified[^>]*>[^<]*<\/dcterms:modified>/,
+				`<dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>`,
+			);
+		} else {
+			// Add modified date if not present
+			result = result.replace(
+				"</cp:coreProperties>",
+				`<dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`,
+			);
+		}
+	}
 
-  if (options.modifiedBy) {
-    // Update cp:lastModifiedBy
-    if (result.includes('<cp:lastModifiedBy')) {
-      result = result.replace(
-        /<cp:lastModifiedBy>[^<]*<\/cp:lastModifiedBy>/,
-        `<cp:lastModifiedBy>${escapeXml(options.modifiedBy)}</cp:lastModifiedBy>`
-      );
-    } else {
-      // Add lastModifiedBy if not present
-      result = result.replace(
-        '</cp:coreProperties>',
-        `<cp:lastModifiedBy>${escapeXml(options.modifiedBy)}</cp:lastModifiedBy></cp:coreProperties>`
-      );
-    }
-  }
+	if (options.modifiedBy) {
+		// Update cp:lastModifiedBy
+		if (result.includes("<cp:lastModifiedBy")) {
+			result = result.replace(
+				/<cp:lastModifiedBy>[^<]*<\/cp:lastModifiedBy>/,
+				`<cp:lastModifiedBy>${escapeXml(options.modifiedBy)}</cp:lastModifiedBy>`,
+			);
+		} else {
+			// Add lastModifiedBy if not present
+			result = result.replace(
+				"</cp:coreProperties>",
+				`<cp:lastModifiedBy>${escapeXml(options.modifiedBy)}</cp:lastModifiedBy></cp:coreProperties>`,
+			);
+		}
+	}
 
-  return result;
+	return result;
 }
 
 /**
  * Get content type for a file extension
  */
-function getContentTypeForExtension(extension: string, mimeType: string): string {
-  // Use provided mime type or fall back to common types
-  if (mimeType) return mimeType;
+function getContentTypeForExtension(
+	extension: string,
+	mimeType: string,
+): string {
+	// Use provided mime type or fall back to common types
+	if (mimeType) return mimeType;
 
-  const contentTypes: Record<string, string> = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-    tif: 'image/tiff',
-    tiff: 'image/tiff',
-    svg: 'image/svg+xml',
-    webp: 'image/webp',
-    wmf: 'image/x-wmf',
-    emf: 'image/x-emf',
-  };
+	const contentTypes: Record<string, string> = {
+		png: "image/png",
+		jpg: "image/jpeg",
+		jpeg: "image/jpeg",
+		gif: "image/gif",
+		bmp: "image/bmp",
+		tif: "image/tiff",
+		tiff: "image/tiff",
+		svg: "image/svg+xml",
+		webp: "image/webp",
+		wmf: "image/x-wmf",
+		emf: "image/x-emf",
+	};
 
-  return contentTypes[extension] || 'application/octet-stream';
+	return contentTypes[extension] || "application/octet-stream";
 }
 
 // ============================================================================
@@ -1206,78 +1293,84 @@ function getContentTypeForExtension(extension: string, mimeType: string): string
  * @returns Promise resolving to validation result
  */
 export async function validateDocx(buffer: ArrayBuffer): Promise<{
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
+	valid: boolean;
+	errors: string[];
+	warnings: string[];
 }> {
-  const errors: string[] = [];
-  const warnings: string[] = [];
+	const errors: string[] = [];
+	const warnings: string[] = [];
 
-  try {
-    const zip = await JSZip.loadAsync(buffer);
+	try {
+		const zip = await JSZip.loadAsync(buffer);
 
-    // Check for required files
-    const requiredFiles = ['[Content_Types].xml', 'word/document.xml'];
+		// Check for required files
+		const requiredFiles = ["[Content_Types].xml", "word/document.xml"];
 
-    for (const file of requiredFiles) {
-      if (!zip.file(file)) {
-        errors.push(`Missing required file: ${file}`);
-      }
-    }
+		for (const file of requiredFiles) {
+			if (!zip.file(file)) {
+				errors.push(`Missing required file: ${file}`);
+			}
+		}
 
-    // Check for recommended files
-    const recommendedFiles = ['_rels/.rels', 'word/_rels/document.xml.rels', 'word/styles.xml'];
+		// Check for recommended files
+		const recommendedFiles = [
+			"_rels/.rels",
+			"word/_rels/document.xml.rels",
+			"word/styles.xml",
+		];
 
-    for (const file of recommendedFiles) {
-      if (!zip.file(file)) {
-        warnings.push(`Missing recommended file: ${file}`);
-      }
-    }
+		for (const file of recommendedFiles) {
+			if (!zip.file(file)) {
+				warnings.push(`Missing recommended file: ${file}`);
+			}
+		}
 
-    // Validate document.xml is valid XML
-    const docFile = zip.file('word/document.xml');
-    if (docFile) {
-      const docXml = await docFile.async('text');
+		// Validate document.xml is valid XML
+		const docFile = zip.file("word/document.xml");
+		if (docFile) {
+			const docXml = await docFile.async("text");
 
-      // Basic XML validation
-      if (!docXml.includes('<?xml')) {
-        warnings.push('document.xml missing XML declaration');
-      }
+			// Basic XML validation
+			if (!docXml.includes("<?xml")) {
+				warnings.push("document.xml missing XML declaration");
+			}
 
-      if (!docXml.includes('<w:document')) {
-        errors.push('document.xml missing w:document element');
-      }
+			if (!docXml.includes("<w:document")) {
+				errors.push("document.xml missing w:document element");
+			}
 
-      if (!docXml.includes('<w:body>')) {
-        errors.push('document.xml missing w:body element');
-      }
-    }
+			if (!docXml.includes("<w:body>")) {
+				errors.push("document.xml missing w:body element");
+			}
+		}
 
-    // Validate Content_Types.xml
-    const ctFile = zip.file('[Content_Types].xml');
-    if (ctFile) {
-      const ctXml = await ctFile.async('text');
+		// Validate Content_Types.xml
+		const ctFile = zip.file("[Content_Types].xml");
+		if (ctFile) {
+			const ctXml = await ctFile.async("text");
 
-      if (
-        !ctXml.includes('word/document.xml') &&
-        !ctXml.includes(
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml'
-        )
-      ) {
-        warnings.push('Content_Types.xml may be missing document.xml type declaration');
-      }
-    }
-  } catch (error) {
-    errors.push(
-      `Failed to read as ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
+			if (
+				!ctXml.includes("word/document.xml") &&
+				!ctXml.includes(
+					"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+				)
+			) {
+				warnings.push(
+					"Content_Types.xml may be missing document.xml type declaration",
+				);
+			}
+		}
+	} catch (error) {
+		errors.push(
+			`Failed to read as ZIP: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
+	}
 
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-  };
+	return {
+		valid: errors.length === 0,
+		errors,
+		warnings,
+	};
 }
 
 /**
@@ -1287,12 +1380,12 @@ export async function validateDocx(buffer: ArrayBuffer): Promise<{
  * @returns true if buffer starts with ZIP signature
  */
 export function isDocxBuffer(buffer: ArrayBuffer): boolean {
-  if (buffer.byteLength < 4) return false;
+	if (buffer.byteLength < 4) return false;
 
-  const view = new Uint8Array(buffer);
+	const view = new Uint8Array(buffer);
 
-  // ZIP file signature: PK (0x50, 0x4B)
-  return view[0] === 0x50 && view[1] === 0x4b;
+	// ZIP file signature: PK (0x50, 0x4B)
+	return view[0] === 0x50 && view[1] === 0x4b;
 }
 
 // ============================================================================
@@ -1305,12 +1398,12 @@ export function isDocxBuffer(buffer: ArrayBuffer): boolean {
  * @returns Promise resolving to minimal DOCX as ArrayBuffer
  */
 export async function createEmptyDocx(): Promise<ArrayBuffer> {
-  const zip = new JSZip();
+	const zip = new JSZip();
 
-  // Content Types
-  zip.file(
-    '[Content_Types].xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// Content Types
+	zip.file(
+		"[Content_Types].xml",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -1318,33 +1411,33 @@ export async function createEmptyDocx(): Promise<ArrayBuffer> {
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>`
-  );
+</Types>`,
+	);
 
-  // Package relationships
-  zip.file(
-    '_rels/.rels',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// Package relationships
+	zip.file(
+		"_rels/.rels",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`
-  );
+</Relationships>`,
+	);
 
-  // Document relationships
-  zip.file(
-    'word/_rels/document.xml.rels',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// Document relationships
+	zip.file(
+		"word/_rels/document.xml.rels",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`
-  );
+</Relationships>`,
+	);
 
-  // Document
-  zip.file(
-    'word/document.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// Document
+	zip.file(
+		"word/document.xml",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>
     <w:p>
@@ -1357,13 +1450,13 @@ export async function createEmptyDocx(): Promise<ArrayBuffer> {
       <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>
     </w:sectPr>
   </w:body>
-</w:document>`
-  );
+</w:document>`,
+	);
 
-  // Minimal styles
-  zip.file(
-    'word/styles.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// Minimal styles
+	zip.file(
+		"word/styles.xml",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:docDefaults>
     <w:rPrDefault>
@@ -1381,36 +1474,36 @@ export async function createEmptyDocx(): Promise<ArrayBuffer> {
   <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
     <w:name w:val="Normal"/>
   </w:style>
-</w:styles>`
-  );
+</w:styles>`,
+	);
 
-  // Core properties
-  const now = new Date().toISOString();
-  zip.file(
-    'docProps/core.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// Core properties
+	const now = new Date().toISOString();
+	zip.file(
+		"docProps/core.xml",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <dc:creator>EigenPal DOCX Editor</dc:creator>
   <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
   <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
-</cp:coreProperties>`
-  );
+</cp:coreProperties>`,
+	);
 
-  // App properties
-  zip.file(
-    'docProps/app.xml',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	// App properties
+	zip.file(
+		"docProps/app.xml",
+		`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
   <Application>EigenPal DOCX Editor</Application>
   <AppVersion>1.0.0</AppVersion>
-</Properties>`
-  );
+</Properties>`,
+	);
 
-  return zip.generateAsync({
-    type: 'arraybuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 },
-  });
+	return zip.generateAsync({
+		type: "arraybuffer",
+		compression: "DEFLATE",
+		compressionOptions: { level: 6 },
+	});
 }
 
 /**
@@ -1420,17 +1513,17 @@ export async function createEmptyDocx(): Promise<ArrayBuffer> {
  * @returns Promise resolving to DOCX as ArrayBuffer
  */
 export async function createDocx(doc: Document): Promise<ArrayBuffer> {
-  // Start with an empty DOCX
-  const emptyBuffer = await createEmptyDocx();
+	// Start with an empty DOCX
+	const emptyBuffer = await createEmptyDocx();
 
-  // Add document as original buffer
-  const docWithBuffer: Document = {
-    ...doc,
-    originalBuffer: emptyBuffer,
-  };
+	// Add document as original buffer
+	const docWithBuffer: Document = {
+		...doc,
+		originalBuffer: emptyBuffer,
+	};
 
-  // Repack with the document content
-  return repackDocx(docWithBuffer);
+	// Repack with the document content
+	return repackDocx(docWithBuffer);
 }
 
 // ============================================================================

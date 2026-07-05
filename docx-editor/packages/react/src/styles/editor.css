@@ -24,7 +24,7 @@
 /* Self-hosted metric-compatible fonts (Carlito/Caladea/Liberation, OFL) so
  * rendering is deterministic offline / in CDN-blocked regions. Must precede
  * other rules per the CSS @import ordering requirement. */
-@import './fonts.css';
+@import "./fonts.css";
 
 /* Casual design system tokens (@schnsrw/design-system), vendored as a git
  * submodule at docx-editor/vendor/design-system. The committed dist/ is the
@@ -34,7 +34,7 @@
  * inlines the tokens straight into the published dist/styles.css (the package
  * isn't on npm, so consumers must not need it at runtime). The doc editor maps
  * its own --doc-* vars onto these DS tokens below. */
-@import '../../../../vendor/design-system/dist/tokens.css';
+@import "../../../../vendor/design-system/dist/tokens.css";
 
 @tailwind utilities;
 
@@ -44,28 +44,28 @@
 
 /* Scoped to .ep-root to avoid clashing with host application CSS variables */
 .ep-root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
+	--background: 0 0% 100%;
+	--foreground: 222.2 84% 4.9%;
+	--card: 0 0% 100%;
+	--card-foreground: 222.2 84% 4.9%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 222.2 84% 4.9%;
+	--primary: 221.2 83.2% 53.3%;
+	--primary-foreground: 210 40% 98%;
+	--secondary: 210 40% 96.1%;
+	--secondary-foreground: 222.2 47.4% 11.2%;
+	--muted: 210 40% 96.1%;
+	--muted-foreground: 215.4 16.3% 46.9%;
+	--accent: 210 40% 96.1%;
+	--accent-foreground: 222.2 47.4% 11.2%;
+	--destructive: 0 84.2% 60.2%;
+	--destructive-foreground: 210 40% 98%;
+	--border: 214.3 31.8% 91.4%;
+	--input: 214.3 31.8% 91.4%;
+	--ring: 221.2 83.2% 53.3%;
+	--radius: 0.5rem;
 
-  /* ========================================
+	/* ========================================
    * Document Editor Color System
    *
    * Cross-editor consistency: every --doc-* token below is mapped onto a
@@ -81,84 +81,94 @@
    * is kept and given a dark override in the [data-theme='dark'] block.
    * ======================================== */
 
-  /* Chrome typography — Inter (DS --font-sans). Document CONTENT sets its
+	/* Chrome typography — Inter (DS --font-sans). Document CONTENT sets its
      own metric-compatible fonts on the painted elements, so this only
      styles the surrounding chrome (toolbar, menus, dialogs, status bar). */
-  font-family: var(--font-sans);
+	font-family: var(--font-sans);
 
-  /* Document background - the grey "desk" behind the white page, unified
+	/* Document background - the grey "desk" behind the white page, unified
      with the suite chrome strip. */
-  --doc-bg: var(--color-surface-strip);
+	--doc-bg: var(--color-surface-strip);
 
-  /* The page "paper" fill for the DEFAULT (no explicit `<w:background>`) case.
+	/* The page "paper" fill for the DEFAULT (no explicit `<w:background>`) case.
      White in light mode; dark mode dims it to a soft off-white so a bright
      page doesn't glare against the dark desk. Display-only — the document
      model / export is unaffected (see PagedEditor `pageBackground`). */
-  --doc-page-paper: #ffffff;
+	--doc-page-paper: #ffffff;
 
-  /* Chrome strips (title bar, toolbar, status bar) — one consistent suite
+	/* Chrome strips (title bar, toolbar, status bar) — one consistent suite
      grey so only the page + floating panels read as white cards. */
-  --doc-chrome: var(--color-surface-strip);
+	--doc-chrome: var(--color-surface-strip);
 
-  /* Primary action color — DS accent (cyan under [data-app='docs']). */
-  --doc-primary: var(--color-accent);
-  --doc-primary-hover: var(--color-accent-hover);
-  --doc-primary-light: var(--color-accent-soft); /* selected/active backgrounds */
+	/* Primary action color — DS accent (cyan under [data-app='docs']). */
+	--doc-primary: var(--color-accent);
+	--doc-primary-hover: var(--color-accent-hover);
+	--doc-primary-light: var(
+		--color-accent-soft
+	); /* selected/active backgrounds */
 
-  /* Text colors */
-  --doc-text: var(--color-text); /* primary text */
-  --doc-text-muted: var(--color-text-secondary); /* secondary text */
-  --doc-text-subtle: var(--color-text-muted); /* tertiary/disabled text */
-  --doc-text-placeholder: var(--color-text-disabled); /* placeholder text */
+	/* Text colors */
+	--doc-text: var(--color-text); /* primary text */
+	--doc-text-muted: var(--color-text-secondary); /* secondary text */
+	--doc-text-subtle: var(--color-text-muted); /* tertiary/disabled text */
+	--doc-text-placeholder: var(--color-text-disabled); /* placeholder text */
 
-  /* Border colors — values stratified by contrast: light < base < dark */
-  --doc-border: var(--color-border-strong); /* standard borders */
-  --doc-border-light: var(--color-divider); /* softer separators */
-  --doc-border-dark: var(--color-border-strong); /* darker borders (tables) */
-  --doc-border-input: var(--color-border-strong); /* input borders */
+	/* Border colors — values stratified by contrast: light < base < dark */
+	--doc-border: var(--color-border-strong); /* standard borders */
+	--doc-border-light: var(--color-divider); /* softer separators */
+	--doc-border-dark: var(--color-border-strong); /* darker borders (tables) */
+	--doc-border-input: var(--color-border-strong); /* input borders */
 
-  /* Background colors */
-  --doc-bg-subtle: var(--color-surface-alt); /* subtle backgrounds */
-  --doc-bg-hover: var(--color-hover); /* hover states (translucent — composes on any zone) */
-  --doc-hover: var(--color-hover); /* alias used by some chrome components */
-  --doc-bg-input: var(--color-surface-alt); /* input backgrounds */
+	/* Background colors */
+	--doc-bg-subtle: var(--color-surface-alt); /* subtle backgrounds */
+	--doc-bg-hover: var(
+		--color-hover
+	); /* hover states (translucent — composes on any zone) */
+	--doc-hover: var(--color-hover); /* alias used by some chrome components */
+	--doc-bg-input: var(--color-surface-alt); /* input backgrounds */
 
-  /* Status colors — DS semantic ramp (success/warning/danger/info + soft). */
-  --doc-error: var(--color-danger); /* error states */
-  --doc-error-bg: var(--color-danger-soft); /* error backgrounds */
-  --doc-error-border: var(--color-danger-soft); /* error border on bg */
-  --doc-success: var(--color-success); /* success states */
-  --doc-success-bg: var(--color-success-soft); /* success backgrounds */
-  --doc-warning: var(--color-warning); /* warning states */
-  --doc-warning-bg: var(--color-warning-soft); /* warning backgrounds */
-  --doc-warning-border: var(--color-warning-soft); /* warning border on bg */
-  --doc-warning-text: var(--color-warning); /* readable text on warning bg */
-  --doc-info: var(--color-info); /* informational states */
-  --doc-info-bg: var(--color-info-soft); /* info backgrounds */
-  --doc-info-border: var(--color-info-soft); /* info border on bg */
-  --doc-info-text: var(--color-info); /* readable text on info bg */
+	/* Status colors — DS semantic ramp (success/warning/danger/info + soft). */
+	--doc-error: var(--color-danger); /* error states */
+	--doc-error-bg: var(--color-danger-soft); /* error backgrounds */
+	--doc-error-border: var(--color-danger-soft); /* error border on bg */
+	--doc-success: var(--color-success); /* success states */
+	--doc-success-bg: var(--color-success-soft); /* success backgrounds */
+	--doc-warning: var(--color-warning); /* warning states */
+	--doc-warning-bg: var(--color-warning-soft); /* warning backgrounds */
+	--doc-warning-border: var(--color-warning-soft); /* warning border on bg */
+	--doc-warning-text: var(--color-warning); /* readable text on warning bg */
+	--doc-info: var(--color-info); /* informational states */
+	--doc-info-bg: var(--color-info-soft); /* info backgrounds */
+	--doc-info-border: var(--color-info-soft); /* info border on bg */
+	--doc-info-text: var(--color-info); /* readable text on info bg */
 
-  /* Link color */
-  --doc-link: var(--color-info); /* hyperlinks */
+	/* Link color */
+	--doc-link: var(--color-info); /* hyperlinks */
 
-  /* Surface colors — chrome panels, dialogs, dropdowns. */
-  --doc-surface: var(--color-surface); /* panel / dialog / dropdown background */
-  --doc-surface-raised: var(--color-surface-raised); /* slightly elevated card on a surface */
-  --doc-surface-sunken: var(--color-surface-alt); /* input field background */
-  --doc-surface-muted: var(--color-surface-alt); /* tinted preview pane / inactive tab background */
-  /* Surface text + accent — aliased to the canonical text / primary tokens. */
-  --doc-text-on-surface: var(--doc-text);
-  --doc-text-on-surface-muted: var(--doc-text-muted);
-  --doc-shadow: var(--shadow-2); /* dropdown / dialog shadow */
-  --doc-accent: var(--doc-primary);
-  --doc-accent-soft: var(--doc-primary-light);
+	/* Surface colors — chrome panels, dialogs, dropdowns. */
+	--doc-surface: var(
+		--color-surface
+	); /* panel / dialog / dropdown background */
+	--doc-surface-raised: var(
+		--color-surface-raised
+	); /* slightly elevated card on a surface */
+	--doc-surface-sunken: var(--color-surface-alt); /* input field background */
+	--doc-surface-muted: var(
+		--color-surface-alt
+	); /* tinted preview pane / inactive tab background */
+	/* Surface text + accent — aliased to the canonical text / primary tokens. */
+	--doc-text-on-surface: var(--doc-text);
+	--doc-text-on-surface-muted: var(--doc-text-muted);
+	--doc-shadow: var(--shadow-2); /* dropdown / dialog shadow */
+	--doc-accent: var(--doc-primary);
+	--doc-accent-soft: var(--doc-primary-light);
 
-  /* Animation tier — mapped onto the DS motion scale so every suite app
+	/* Animation tier — mapped onto the DS motion scale so every suite app
      eases the same way. (DS: --motion-fast 90ms, --motion-base 160ms,
      --motion-slow 240ms; --ease-out decelerating curve.) */
-  --doc-anim-fast: var(--motion-fast) var(--ease-out);
-  --doc-anim-base: var(--motion-base) var(--ease-out);
-  --doc-anim-slow: var(--motion-slow) var(--ease-out);
+	--doc-anim-fast: var(--motion-fast) var(--ease-out);
+	--doc-anim-base: var(--motion-base) var(--ease-out);
+	--doc-anim-slow: var(--motion-slow) var(--ease-out);
 }
 
 /* ============================================================================
@@ -181,20 +191,13 @@
  * Google Docs / Word do the same.
  * ============================================================================ */
 
-/* Scoped to `.ep-root` (the editor root — set on the standalone shell, on every
- * Radix portal wrapper, and inherited by inline dialogs) so these overrides
- * NEVER leak onto a host page's <html>. The un-namespaced shadcn bridge vars
- * below (--background / --foreground / --card / --primary …) share their names
- * with tailwind/shadcn defaults; a bare `[data-theme='dark']` selector would
- * have overwritten a host app's own dark tokens the moment the editor went
- * dark. The DS `--color-*` tokens (colors.css) stay global by design — those
- * are namespaced and shared suite-wide. */
-.ep-root[data-theme='dark'],
-[data-theme='dark'] .ep-root {
-  /* Native form controls (selects, scrollbars) inside the editor follow this. */
-  color-scheme: dark;
+.ep-root[data-theme="dark"],
+[data-theme="dark"] .ep-root,
+[data-theme="dark"] {
+	/* Native form controls (selects, scrollbars) follow this. */
+	color-scheme: dark;
 
-  /* WCAG AA overrides for the vendored DS dark tokens. The design-system is a
+	/* WCAG AA overrides for the vendored DS dark tokens. The design-system is a
      read-only submodule, so the doc editor — which already owns its chrome
      palette here — bumps the three tokens that miss AA on the dark surfaces:
        --color-text-muted   4.27 → 4.83:1  (quiet metadata, real text)
@@ -202,35 +205,35 @@
        --color-border-strong 1.94 → 3.33:1 (input outlines + table borders;
                                             1.4.11 UI-component 3:1 floor)
      Everything else in the DS dark ramp already clears AA. */
-  --color-text-muted: #969aa3;
-  --color-text-disabled: #8b8e96;
-  --color-border-strong: #646a76;
-  /* Dim the white page to a soft off-white and deepen the desk to near-black
+	--color-text-muted: #969aa3;
+	--color-text-disabled: #8b8e96;
+	--color-border-strong: #646a76;
+	/* Dim the white page to a soft off-white and deepen the desk to near-black
      so the page reads as a calm card instead of a glaring panel. Paper stays
      light (text unchanged); display-only, export keeps the real colors. */
-  --doc-page-paper: #ececec;
-  --doc-bg: #1b1c1e;
-  /* shadcn vars — used by ui/Button.tsx and any consumer of
+	--doc-page-paper: #ececec;
+	--doc-bg: #1b1c1e;
+	/* shadcn vars — used by ui/Button.tsx and any consumer of
      bg-background / bg-card / bg-popover / bg-muted / text-foreground. */
-  --background: 220 6% 19%; /* #2d2f31 in HSL */
-  --foreground: 220 14% 91%; /* #e8eaed */
-  --card: 220 6% 19%;
-  --card-foreground: 220 14% 91%;
-  --popover: 220 6% 19%;
-  --popover-foreground: 220 14% 91%;
-  --primary: 217 89% 61%; /* keep accent blue close-ish for contrast */
-  --primary-foreground: 220 14% 91%;
-  --secondary: 220 5% 25%;
-  --secondary-foreground: 220 14% 91%;
-  --muted: 220 5% 25%;
-  --muted-foreground: 220 7% 63%;
-  --accent: 220 5% 25%;
-  --accent-foreground: 220 14% 91%;
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 220 14% 91%;
-  --border: 220 5% 25%;
-  --input: 220 5% 25%;
-  --ring: 217 89% 61%;
+	--background: 220 6% 19%; /* #2d2f31 in HSL */
+	--foreground: 220 14% 91%; /* #e8eaed */
+	--card: 220 6% 19%;
+	--card-foreground: 220 14% 91%;
+	--popover: 220 6% 19%;
+	--popover-foreground: 220 14% 91%;
+	--primary: 217 89% 61%; /* keep accent blue close-ish for contrast */
+	--primary-foreground: 220 14% 91%;
+	--secondary: 220 5% 25%;
+	--secondary-foreground: 220 14% 91%;
+	--muted: 220 5% 25%;
+	--muted-foreground: 220 7% 63%;
+	--accent: 220 5% 25%;
+	--accent-foreground: 220 14% 91%;
+	--destructive: 0 70% 50%;
+	--destructive-foreground: 220 14% 91%;
+	--border: 220 5% 25%;
+	--input: 220 5% 25%;
+	--ring: 217 89% 61%;
 }
 
 /* ============================================================================
@@ -238,40 +241,40 @@
  * ============================================================================ */
 
 /* Base cursor styles for all editable elements */
-[contenteditable='true'] {
-  /* Black caret for light backgrounds - highly visible */
-  caret-color: #000;
+[contenteditable="true"] {
+	/* Black caret for light backgrounds - highly visible */
+	caret-color: #000;
 
-  /* Ensure cursor is always visible */
-  outline: none;
+	/* Ensure cursor is always visible */
+	outline: none;
 
-  /* Smooth caret animation */
-  caret-shape: bar;
+	/* Smooth caret animation */
+	caret-shape: bar;
 }
 
 /* Editable runs - the main text editing elements */
-.docx-run-editable[contenteditable='true'] {
-  caret-color: #000;
+.docx-run-editable[contenteditable="true"] {
+	caret-color: #000;
 
-  /* Ensure minimum height for cursor visibility in empty runs */
-  min-height: 1em;
+	/* Ensure minimum height for cursor visibility in empty runs */
+	min-height: 1em;
 
-  /* Display inline for text flow */
-  display: inline;
+	/* Display inline for text flow */
+	display: inline;
 }
 
 /* Empty paragraph cursor placeholder */
-.docx-paragraph-empty [contenteditable='true'] {
-  /* Ensure cursor is visible in empty paragraphs */
-  min-height: 1em;
-  min-width: 1px;
-  display: inline-block;
+.docx-paragraph-empty [contenteditable="true"] {
+	/* Ensure cursor is visible in empty paragraphs */
+	min-height: 1em;
+	min-width: 1px;
+	display: inline-block;
 }
 
 /* Editable paragraphs container */
 .docx-paragraph-editable {
-  /* Allow cursor placement anywhere in paragraph */
-  cursor: text;
+	/* Allow cursor placement anywhere in paragraph */
+	cursor: text;
 }
 
 /* ============================================================================
@@ -279,16 +282,16 @@
  * ============================================================================ */
 
 /* Subtle focus indicator without disrupting layout */
-.docx-run-editable[contenteditable='true']:focus {
-  outline: none;
-  /* Optional: very subtle indicator - uncomment if needed */
-  /* box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2); */
+.docx-run-editable[contenteditable="true"]:focus {
+	outline: none;
+	/* Optional: very subtle indicator - uncomment if needed */
+	/* box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2); */
 }
 
 /* Focus within paragraph */
 .docx-paragraph-editable:focus-within {
-  /* No visible border to maintain WYSIWYG fidelity */
-  outline: none;
+	/* No visible border to maintain WYSIWYG fidelity */
+	outline: none;
 }
 
 /* ============================================================================
@@ -311,10 +314,10 @@
 .docx-run-editable *::selection,
 .docx-run::selection,
 .docx-run *::selection,
-[contenteditable='true']::selection,
-[contenteditable='true'] *::selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+[contenteditable="true"]::selection,
+[contenteditable="true"] *::selection {
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 /* Firefox selection */
@@ -322,10 +325,10 @@
 .docx-run-editable *::-moz-selection,
 .docx-run::-moz-selection,
 .docx-run *::-moz-selection,
-[contenteditable='true']::-moz-selection,
-[contenteditable='true'] *::-moz-selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+[contenteditable="true"]::-moz-selection,
+[contenteditable="true"] *::-moz-selection {
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 /* Selection in paragraphs - ensure runs within get consistent styling */
@@ -333,81 +336,81 @@
 .docx-paragraph *::selection,
 .docx-paragraph-editable::selection,
 .docx-paragraph-editable *::selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 .docx-paragraph::-moz-selection,
 .docx-paragraph *::-moz-selection,
 .docx-paragraph-editable::-moz-selection,
 .docx-paragraph-editable *::-moz-selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 /* Selection in hyperlinks */
 .docx-hyperlink::selection,
 .docx-hyperlink *::selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 .docx-hyperlink::-moz-selection,
 .docx-hyperlink *::-moz-selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 /* Selection on highlighted text - use darker selection for visibility */
 .docx-run-highlighted::selection,
 .docx-run-highlighted *::selection {
-  background-color: rgba(26, 115, 232, 0.5) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.5) !important;
+	color: inherit !important;
 }
 
 .docx-run-highlighted::-moz-selection,
 .docx-run-highlighted *::-moz-selection {
-  background-color: rgba(26, 115, 232, 0.5) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.5) !important;
+	color: inherit !important;
 }
 
 /* Selection on dark background text - lighter selection */
 .docx-run-dark-bg::selection,
 .docx-run-dark-bg *::selection {
-  background-color: rgba(100, 181, 246, 0.5) !important;
-  color: inherit !important;
+	background-color: rgba(100, 181, 246, 0.5) !important;
+	color: inherit !important;
 }
 
 .docx-run-dark-bg::-moz-selection,
 .docx-run-dark-bg *::-moz-selection {
-  background-color: rgba(100, 181, 246, 0.5) !important;
-  color: inherit !important;
+	background-color: rgba(100, 181, 246, 0.5) !important;
+	color: inherit !important;
 }
 
 /* Selection on bold text - ensure same style */
 .docx-run-bold::selection,
 .docx-run-bold *::selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 .docx-run-bold::-moz-selection,
 .docx-run-bold *::-moz-selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 /* Selection on italic text - ensure same style */
 .docx-run-italic::selection,
 .docx-run-italic *::selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 .docx-run-italic::-moz-selection,
 .docx-run-italic *::-moz-selection {
-  background-color: rgba(26, 115, 232, 0.3) !important;
-  color: inherit !important;
+	background-color: rgba(26, 115, 232, 0.3) !important;
+	color: inherit !important;
 }
 
 /* ============================================================================
@@ -426,38 +429,51 @@
  * `pointer-events: none`) — `oncontextmenu` on the visible-pages
  * container then maps the click to the misspelled word's range. */
 .spellcheck-error {
-  background-repeat: repeat-x;
-  background-position: bottom left;
-  background-size: 6px 3px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 3' fill='none' stroke='%23d93025' stroke-width='1' stroke-linecap='round'><path d='M0 1.5 Q1.5 0 3 1.5 T6 1.5'/></svg>");
-  /* Keep the overlay non-interactive so it never steals text-selection
+	background-repeat: repeat-x;
+	background-position: bottom left;
+	background-size: 6px 3px;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 3' fill='none' stroke='%23d93025' stroke-width='1' stroke-linecap='round'><path d='M0 1.5 Q1.5 0 3 1.5 T6 1.5'/></svg>");
+	/* Keep the overlay non-interactive so it never steals text-selection
    * mousedowns from the pages below. Right-click discovery uses
    * `document.elementsFromPoint(x, y)`, which sees this div regardless
    * of `pointer-events`. */
-  pointer-events: none;
+	pointer-events: none;
 }
 
 /* Grammar issues — same wavy-underline mechanism as spell-check, but BLUE
  * (#1a73e8) so the two are visually distinct, matching Google Docs (red =
  * spelling, blue = grammar). */
 .grammar-error {
-  background-repeat: repeat-x;
-  background-position: bottom left;
-  background-size: 6px 3px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 3' fill='none' stroke='%231a73e8' stroke-width='1' stroke-linecap='round'><path d='M0 1.5 Q1.5 0 3 1.5 T6 1.5'/></svg>");
-  pointer-events: none;
+	background-repeat: repeat-x;
+	background-position: bottom left;
+	background-size: 6px 3px;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 3' fill='none' stroke='%231a73e8' stroke-width='1' stroke-linecap='round'><path d='M0 1.5 Q1.5 0 3 1.5 T6 1.5'/></svg>");
+	pointer-events: none;
+}
+
+/* Find/replace match highlighting */
+.docx-find-highlight {
+	background-color: rgba(255, 235, 59, 0.5) !important;
+	border-radius: 2px;
+}
+
+/* Current find/replace match */
+.docx-find-highlight-current {
+	background-color: rgba(255, 152, 0, 0.6) !important;
+	border-radius: 2px;
+	outline: 2px solid rgba(255, 152, 0, 0.8);
 }
 
 /* Find/replace match highlights painted by DecorationLayer over the visible
    pages (findHighlightPlugin inline decorations). Each is an absolute overlay
    rect above the text, so a translucent fill tints the matched run. */
 .find-match {
-  background-color: rgba(255, 235, 59, 0.45);
-  border-radius: 2px;
+	background-color: rgba(255, 235, 59, 0.45);
+	border-radius: 2px;
 }
 .find-match-current {
-  background-color: rgba(255, 152, 0, 0.55);
-  border-radius: 2px;
+	background-color: rgba(255, 152, 0, 0.55);
+	border-radius: 2px;
 }
 
 /* ============================================================================
@@ -466,8 +482,8 @@
 
 /* Text selected for AI action */
 .docx-ai-selection-preview {
-  background-color: rgba(156, 39, 176, 0.2);
-  border-bottom: 2px dashed rgba(156, 39, 176, 0.6);
+	background-color: rgba(156, 39, 176, 0.2);
+	border-bottom: 2px dashed rgba(156, 39, 176, 0.6);
 }
 
 /* ============================================================================
@@ -476,22 +492,22 @@
 
 /* Container for selection overlay rectangles */
 .docx-selection-overlay-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 1;
+	overflow: hidden;
 }
 
 /* Individual selection overlay rectangle */
 .docx-selection-overlay-rect {
-  position: absolute;
-  background-color: rgba(66, 133, 244, 0.25);
-  pointer-events: none;
-  user-select: none;
+	position: absolute;
+	background-color: rgba(66, 133, 244, 0.25);
+	pointer-events: none;
+	user-select: none;
 }
 
 /* ============================================================================
@@ -499,13 +515,13 @@
  * ============================================================================ */
 
 /* Highlighted text - ensure caret is visible against yellow */
-.docx-run-highlighted[contenteditable='true'] {
-  caret-color: #333;
+.docx-run-highlighted[contenteditable="true"] {
+	caret-color: #333;
 }
 
 /* Dark background text - use white caret */
-.docx-run-dark-bg[contenteditable='true'] {
-  caret-color: #fff;
+.docx-run-dark-bg[contenteditable="true"] {
+	caret-color: #fff;
 }
 
 /* ============================================================================
@@ -514,13 +530,13 @@
 
 /* Main editor container */
 .docx-editor {
-  /* Inherit cursor styling */
-  cursor: default;
+	/* Inherit cursor styling */
+	cursor: default;
 }
 
 /* Editor page area */
 .docx-editor-page {
-  cursor: text;
+	cursor: text;
 }
 
 /* Non-editable elements within editor */
@@ -530,8 +546,8 @@
 .docx-field,
 .docx-drawing-placeholder,
 .docx-shape-placeholder {
-  cursor: default;
-  user-select: none;
+	cursor: default;
+	user-select: none;
 }
 
 /* ============================================================================
@@ -539,9 +555,9 @@
  * ============================================================================ */
 
 /* Template variable highlighting - non-editable within run */
-.docx-run-has-variable [contenteditable='false'] {
-  cursor: default;
-  user-select: all;
+.docx-run-has-variable [contenteditable="false"] {
+	cursor: default;
+	user-select: all;
 }
 
 /* ============================================================================
@@ -553,17 +569,17 @@
  * ============================================================================ */
 
 .layout-table-cell-selected {
-  position: relative;
-  outline: 2px solid rgba(66, 133, 244, 0.6);
-  outline-offset: -2px;
+	position: relative;
+	outline: 2px solid rgba(66, 133, 244, 0.6);
+	outline-offset: -2px;
 }
 
 .layout-table-cell-selected::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-color: rgba(66, 133, 244, 0.15);
-  pointer-events: none;
+	content: "";
+	position: absolute;
+	inset: 0;
+	background-color: rgba(66, 133, 244, 0.15);
+	pointer-events: none;
 }
 
 /* ============================================================================
@@ -571,38 +587,38 @@
  * ============================================================================ */
 
 .layout-table-resize-handle {
-  background-color: transparent;
-  transition: background-color var(--doc-anim-base);
+	background-color: transparent;
+	transition: background-color var(--doc-anim-base);
 }
 
 .layout-table-resize-handle:hover,
 .layout-table-resize-handle.dragging {
-  background-color: rgba(66, 133, 244, 0.6);
+	background-color: rgba(66, 133, 244, 0.6);
 }
 
 /* Row resize handles */
 .layout-table-row-resize-handle,
 .layout-table-edge-handle-bottom {
-  background-color: transparent;
-  transition: background-color var(--doc-anim-base);
+	background-color: transparent;
+	transition: background-color var(--doc-anim-base);
 }
 
 .layout-table-row-resize-handle:hover,
 .layout-table-row-resize-handle.dragging,
 .layout-table-edge-handle-bottom:hover,
 .layout-table-edge-handle-bottom.dragging {
-  background-color: rgba(66, 133, 244, 0.6);
+	background-color: rgba(66, 133, 244, 0.6);
 }
 
 /* Right edge handle */
 .layout-table-edge-handle-right {
-  background-color: transparent;
-  transition: background-color var(--doc-anim-base);
+	background-color: transparent;
+	transition: background-color var(--doc-anim-base);
 }
 
 .layout-table-edge-handle-right:hover,
 .layout-table-edge-handle-right.dragging {
-  background-color: rgba(66, 133, 244, 0.6);
+	background-color: rgba(66, 133, 244, 0.6);
 }
 
 /* ============================================================================
@@ -614,24 +630,24 @@
 .paged-editor--readonly .layout-table-row-resize-handle,
 .paged-editor--readonly .layout-table-edge-handle-bottom,
 .paged-editor--readonly .layout-table-edge-handle-right {
-  display: none !important;
+	display: none !important;
 }
 
 /* Remove header/footer hover effects and edit hints */
 .paged-editor--readonly .layout-page-header,
 .paged-editor--readonly .layout-page-footer {
-  cursor: default;
-  pointer-events: none;
+	cursor: default;
+	pointer-events: none;
 }
 
 /* Remove text cursor from page content */
 .paged-editor--readonly .layout-page-content {
-  cursor: default;
+	cursor: default;
 }
 
 /* Outline heading hover */
 .docx-outline-heading-btn:hover {
-  background-color: var(--doc-bg-hover, #f1f3f4);
+	background-color: var(--doc-bg-hover, #f1f3f4);
 }
 
 /* ============================================================================
@@ -644,115 +660,115 @@
 
 /* Page content area — show text cursor when hovering over editable content */
 .layout-page-content {
-  cursor: text;
+	cursor: text;
 }
 
 /* Header/footer areas — double-click hint */
 .layout-page-header,
 .layout-page-footer {
-  cursor: pointer;
-  transition: background-color var(--doc-anim-base);
+	cursor: pointer;
+	transition: background-color var(--doc-anim-base);
 }
 .layout-page-header:hover,
 .layout-page-footer:hover {
-  background-color: rgba(37, 99, 235, 0.06);
+	background-color: rgba(37, 99, 235, 0.06);
 }
 /* Show "Double-click to edit" hint on hover when area is empty */
 .layout-page-header:empty:hover::after {
-  content: 'Double-click to add header';
-  display: block;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 11px;
-  padding: 4px 0;
+	content: "Double-click to add header";
+	display: block;
+	text-align: center;
+	color: #9ca3af;
+	font-size: 11px;
+	padding: 4px 0;
 }
 .layout-page-footer:empty:hover::after {
-  content: 'Double-click to add footer';
-  display: block;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 11px;
-  padding: 4px 0;
+	content: "Double-click to add footer";
+	display: block;
+	text-align: center;
+	color: #9ca3af;
+	font-size: 11px;
+	padding: 4px 0;
 }
 
 /* Header/footer editor ProseMirror styles */
 .hf-editor-pm .ProseMirror {
-  outline: none;
-  min-height: 40px;
-  padding: 0;
+	outline: none;
+	min-height: 40px;
+	padding: 0;
 }
 .hf-editor-pm .ProseMirror:focus {
-  outline: none;
+	outline: none;
 }
 .hf-editor-pm .ProseMirror p {
-  display: block;
-  margin: 0 !important;
-  padding-top: var(--docx-space-before, 0);
-  padding-bottom: var(--docx-space-after, 0);
-  padding-left: 0;
-  padding-right: 0;
-  min-height: 1em;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: normal !important;
+	display: block;
+	margin: 0 !important;
+	padding-top: var(--docx-space-before, 0);
+	padding-bottom: var(--docx-space-after, 0);
+	padding-left: 0;
+	padding-right: 0;
+	min-height: 1em;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	line-height: normal !important;
 }
 
 .hf-editor-pm .ProseMirror td p,
 .hf-editor-pm .ProseMirror th p {
-  margin: 0 !important;
-  padding-top: var(--docx-space-before, 0);
-  padding-bottom: var(--docx-space-after, 0);
-  padding-left: 0;
-  padding-right: 0;
-  min-height: auto;
-  line-height: normal !important;
+	margin: 0 !important;
+	padding-top: var(--docx-space-before, 0);
+	padding-bottom: var(--docx-space-after, 0);
+	padding-left: 0;
+	padding-right: 0;
+	min-height: auto;
+	line-height: normal !important;
 }
 
 .hf-editor-pm .ProseMirror .tableWrapper {
-  overflow: visible;
+	overflow: visible;
 }
 
 .hf-editor-pm .ProseMirror table {
-  border-collapse: collapse !important;
-  border-spacing: 0 !important;
-  table-layout: fixed !important;
-  margin: 0;
+	border-collapse: collapse !important;
+	border-spacing: 0 !important;
+	table-layout: fixed !important;
+	margin: 0;
 }
 
 .hf-editor-pm .ProseMirror td.docx-table-cell,
 .hf-editor-pm .ProseMirror th.docx-table-header {
-  box-sizing: border-box !important;
+	box-sizing: border-box !important;
 }
 
 .hf-editor-pm .ProseMirror td p:has(img),
 .hf-editor-pm .ProseMirror th p:has(img),
 .hf-editor-pm .ProseMirror td p:has(span),
 .hf-editor-pm .ProseMirror th p:has(span) {
-  font-size: 0 !important;
-  line-height: 0 !important;
+	font-size: 0 !important;
+	line-height: 0 !important;
 }
 
 .hf-editor-pm .ProseMirror td p span:not(:has(> span)),
 .hf-editor-pm .ProseMirror th p span:not(:has(> span)) {
-  position: relative;
-  top: 0.4em;
+	position: relative;
+	top: 0.4em;
 }
 
 /* Dim body content when editing header/footer */
 .paged-editor--hf-editing .layout-page-content {
-  opacity: 0.4;
-  pointer-events: none;
-  transition: opacity var(--doc-anim-base);
+	opacity: 0.4;
+	pointer-events: none;
+	transition: opacity var(--doc-anim-base);
 }
 
 /* Dotted border on active header area */
 .paged-editor--editing-header .layout-page-header {
-  border-bottom: 1px dotted #4285f4;
+	border-bottom: 1px dotted #4285f4;
 }
 
 /* Dotted border on active footer area */
 .paged-editor--editing-footer .layout-page-footer {
-  border-top: 1px dotted #4285f4;
+	border-top: 1px dotted #4285f4;
 }
 
 /* Hide the original layout-painter content ONLY in the specific header/footer
@@ -760,58 +776,58 @@
    the scope this matched EVERY page's header, blanking all other pages while
    editing one. */
 .paged-editor--editing-header .layout-page-header.hf-edit-target > * {
-  visibility: hidden;
+	visibility: hidden;
 }
 .paged-editor--editing-footer .layout-page-footer.hf-edit-target > * {
-  visibility: hidden;
+	visibility: hidden;
 }
 
 /* Remove hover effect on header/footer when in editing mode */
 .paged-editor--hf-editing .layout-page-header:hover,
 .paged-editor--hf-editing .layout-page-footer:hover {
-  background-color: transparent;
+	background-color: transparent;
 }
 
 /* Section break indicator */
 .docx-section-break {
-  position: relative;
+	position: relative;
 }
 .docx-section-break::after {
-  content: 'Section Break (' attr(data-section-break) ')';
-  display: block;
-  text-align: center;
-  font-size: 9px;
-  color: var(--doc-text-muted, #9ca3af);
-  border-top: 1px dashed var(--doc-border, #d1d5db);
-  margin-top: 4px;
-  padding-top: 2px;
-  pointer-events: none;
+	content: "Section Break (" attr(data-section-break) ")";
+	display: block;
+	text-align: center;
+	font-size: 9px;
+	color: var(--doc-text-muted, #9ca3af);
+	border-top: 1px dashed var(--doc-border, #d1d5db);
+	margin-top: 4px;
+	padding-top: 2px;
+	pointer-events: none;
 }
 
 /* Hyperlink popup icon button hover */
 .ep-hyperlink-popup__icon-btn:hover {
-  background: var(--doc-bg-hover, #f1f3f4);
+	background: var(--doc-bg-hover, #f1f3f4);
 }
 
 /* Title-bar "Saving…" spinner. */
 @keyframes docx-spin {
-  to {
-    transform: rotate(360deg);
-  }
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* Right-edge panel slide-in (chat panel, AI suggestion panel, writing
    assistant sheet — anywhere we mount a side panel that should ease
    into view rather than pop). */
 @keyframes docx-slide-in {
-  from {
-    transform: translateX(12px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+	from {
+		transform: translateX(12px);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
 }
 
 /* =============================================================================
@@ -827,36 +843,36 @@
  * above the local caret.
  * ============================================================================= */
 .paged-editor__decoration-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 11;
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 11;
 }
 
 /* Default styles for y-prosemirror remote cursor decorations. Consumers can
  * override by providing their own `.ProseMirror-yjs-cursor` rules. */
 .ProseMirror-yjs-cursor {
-  position: relative;
-  margin-left: -1px;
-  margin-right: -1px;
-  border-left: 1px solid;
-  border-right: 1px solid;
-  word-break: normal;
-  pointer-events: none;
+	position: relative;
+	margin-left: -1px;
+	margin-right: -1px;
+	border-left: 1px solid;
+	border-right: 1px solid;
+	word-break: normal;
+	pointer-events: none;
 }
 .ProseMirror-yjs-cursor > div {
-  position: absolute;
-  top: -1.05em;
-  left: -1px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  color: #fff;
-  padding: 2px 4px;
-  border-radius: 3px 3px 3px 0;
-  white-space: nowrap;
-  user-select: none;
-  pointer-events: none;
+	position: absolute;
+	top: -1.05em;
+	left: -1px;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+	color: #fff;
+	padding: 2px 4px;
+	border-radius: 3px 3px 3px 0;
+	white-space: nowrap;
+	user-select: none;
+	pointer-events: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -874,19 +890,19 @@
    widening the layout.
    ───────────────────────────────────────────────────────────────────── */
 @media (max-width: 720px) {
-  .ep-root.paged-editor {
-    max-width: 100vw;
-    overflow-x: clip;
-  }
-  /* Older Safari versions don't recognise `overflow-x: clip` — fall back
+	.ep-root.paged-editor {
+		max-width: 100vw;
+		overflow-x: clip;
+	}
+	/* Older Safari versions don't recognise `overflow-x: clip` — fall back
      to `hidden`. The reflow penalty is negligible at the editor root. */
-  @supports not (overflow-x: clip) {
-    .ep-root.paged-editor {
-      overflow-x: hidden;
-    }
-  }
+	@supports not (overflow-x: clip) {
+		.ep-root.paged-editor {
+			overflow-x: hidden;
+		}
+	}
 
-  /* Touch-friendly tap targets — Apple HIG says 44×44 minimum.
+	/* Touch-friendly tap targets — Apple HIG says 44×44 minimum.
      The title-bar menu buttons (File / Edit / …) and the toolbar
      buttons are inline-styled at 28–32 px on desktop, which is half
      the touchable threshold. Bump everything in the chrome to ≥44 px
@@ -894,35 +910,35 @@
      component source files lose to the media query. Body content
      (the paginated pages themselves) keeps its desktop sizing — the
      user-zoom controls cover that case. */
-  [role='menubar'] button,
-  [data-testid='toolbar'] button,
-  [data-testid='editor-toolbar'] button,
-  /* Status-bar zoom +/- buttons are 22×22 px on desktop — below the
+	[role="menubar"] button,
+	[data-testid="toolbar"] button,
+	[data-testid="editor-toolbar"] button,
+	/* Status-bar zoom +/- buttons are 22×22 px on desktop — below the
      Apple HIG floor. Bump them on mobile so thumbs can hit them. */
-  .docx-status-zoom-btn {
-    min-height: 44px !important;
-    min-width: 44px !important;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-  }
+	.docx-status-zoom-btn {
+		min-height: 44px !important;
+		min-width: 44px !important;
+		padding-top: 10px !important;
+		padding-bottom: 10px !important;
+	}
 
-  /* The doc-name input is 20 px tall on desktop — give it room to
+	/* The doc-name input is 20 px tall on desktop — give it room to
      be tapped + show the cursor when renaming a doc on touch. */
-  [data-testid='title-bar'] input[type='text'] {
-    min-height: 36px !important;
-    font-size: 16px !important; /* iOS Safari won't zoom in on focus at ≥16 px. */
-  }
+	[data-testid="title-bar"] input[type="text"] {
+		min-height: 36px !important;
+		font-size: 16px !important; /* iOS Safari won't zoom in on focus at ≥16 px. */
+	}
 
-  /* Logo-as-home-button and theme toggle live outside the menubar but
+	/* Logo-as-home-button and theme toggle live outside the menubar but
      deserve the same touch floor. The selectors are intentionally
      specific so they don't broaden into the paginated content. */
-  [data-testid='title-bar'] [data-testid='title-bar-home'],
-  [data-testid='title-bar'] > div > button {
-    min-height: 44px !important;
-    min-width: 44px !important;
-  }
+	[data-testid="title-bar"] [data-testid="title-bar-home"],
+	[data-testid="title-bar"] > div > button {
+		min-height: 44px !important;
+		min-width: 44px !important;
+	}
 
-  /* Caret is drawn as a 2 px element inside the viewport's scale
+	/* Caret is drawn as a 2 px element inside the viewport's scale
      transform — at the mobile auto-zoom (≈0.6) it collapses to ~1 px
      and visually disappears, especially mid-blink. Force a minimum
      visible width independent of zoom by counter-scaling the X axis.
@@ -930,10 +946,10 @@
      to the typical mobile zoom (1 / 0.6 ≈ 1.67) and clip with
      transform-origin: left so the caret stays anchored at the cursor
      position rather than expanding outward. */
-  [data-testid='selection-overlay'] [data-testid='caret'] {
-    transform: scaleX(2);
-    transform-origin: left top;
-  }
+	[data-testid="selection-overlay"] [data-testid="caret"] {
+		transform: scaleX(2);
+		transform-origin: left top;
+	}
 }
 
 /* X3 — keyboard focus ring for menu items.
@@ -943,12 +959,12 @@
    shared Button primitive already rings via Tailwind, and menu items are
    never Buttons, so this can't double-ring. :focus-visible keeps the ring
    off mouse clicks; the inset offset stays within the full-width row. */
-.ep-root [role='menuitem']:focus-visible,
-.ep-root [role='menuitemcheckbox']:focus-visible,
-.ep-root [role='menuitemradio']:focus-visible {
-  outline: 2px solid var(--doc-primary);
-  outline-offset: -2px;
-  border-radius: 4px;
+.ep-root [role="menuitem"]:focus-visible,
+.ep-root [role="menuitemcheckbox"]:focus-visible,
+.ep-root [role="menuitemradio"]:focus-visible {
+	outline: 2px solid var(--doc-primary);
+	outline-offset: -2px;
+	border-radius: 4px;
 }
 
 /* X3 — opt-in focus ring utility for raw <button>s outside the menubar
@@ -958,9 +974,9 @@
    buttons usually sit on top of content rather than inside a menu row,
    so an outside ring reads more clearly. */
 .ep-root .ep-focus-ring:focus-visible {
-  outline: 2px solid var(--doc-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
+	outline: 2px solid var(--doc-primary);
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 /* X4 — dialog open animation. Backdrop fades in; the dialog shell
@@ -987,72 +1003,72 @@
    Color: muted accent at 35% opacity, so the marks are visible but
    recede behind the actual content. */
 .paged-editor--show-marks .layout-paragraph > .layout-line:last-child::after {
-  content: '¶';
-  display: inline;
-  margin-left: 1px;
-  color: var(--doc-primary, #1a73e8);
-  opacity: 0.35;
-  pointer-events: none;
-  user-select: none;
+	content: "¶";
+	display: inline;
+	margin-left: 1px;
+	color: var(--doc-primary, #1a73e8);
+	opacity: 0.35;
+	pointer-events: none;
+	user-select: none;
 }
 .paged-editor--show-marks .layout-run-tab::before {
-  content: '→';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--doc-primary, #1a73e8);
-  opacity: 0.35;
-  pointer-events: none;
-  user-select: none;
+	content: "→";
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--doc-primary, #1a73e8);
+	opacity: 0.35;
+	pointer-events: none;
+	user-select: none;
 }
 .paged-editor--show-marks .layout-run-linebreak::before {
-  content: '↵';
-  color: var(--doc-primary, #1a73e8);
-  opacity: 0.35;
-  pointer-events: none;
-  user-select: none;
+	content: "↵";
+	color: var(--doc-primary, #1a73e8);
+	opacity: 0.35;
+	pointer-events: none;
+	user-select: none;
 }
 
 /* X5 — shared spinner for `PanelState`'s loading variant + anywhere else
    that wants a small inline spinner. 800ms full rotation feels brisk but
    not frantic; over a second reads as "stalled." */
 @keyframes ep-spin {
-  to {
-    transform: rotate(360deg);
-  }
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 @keyframes ep-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 @keyframes ep-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+	from {
+		opacity: 0;
+		transform: scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 .ep-dialog-overlay {
-  animation: ep-fade-in var(--doc-anim-base);
+	animation: ep-fade-in var(--doc-anim-base);
 }
 .ep-dialog-shell {
-  animation: ep-scale-in var(--doc-anim-base);
+	animation: ep-scale-in var(--doc-anim-base);
 }
 @media (prefers-reduced-motion: reduce) {
-  .ep-dialog-overlay,
-  .ep-dialog-shell {
-    animation-duration: 0.01ms;
-  }
+	.ep-dialog-overlay,
+	.ep-dialog-shell {
+		animation-duration: 0.01ms;
+	}
 }
 
 /* ============================================================================
@@ -1076,14 +1092,14 @@
 .ep-root input:focus-visible,
 .ep-root textarea:focus-visible,
 .ep-root select:focus-visible,
-.ep-root [role='button']:focus-visible,
-.ep-root [role='slider']:focus-visible,
-.ep-root [role='tab']:focus-visible,
-.ep-root [role='option']:focus-visible,
-.ep-root [tabindex]:not([tabindex='-1']):focus-visible {
-  outline: 2px solid var(--doc-primary) !important;
-  outline-offset: 2px;
-  border-radius: 4px;
+.ep-root [role="button"]:focus-visible,
+.ep-root [role="slider"]:focus-visible,
+.ep-root [role="tab"]:focus-visible,
+.ep-root [role="option"]:focus-visible,
+.ep-root [tabindex]:not([tabindex="-1"]):focus-visible {
+	outline: 2px solid var(--doc-primary) !important;
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 /* (2) Honor prefers-reduced-motion across ALL chrome. Editor animations live
@@ -1091,29 +1107,29 @@
    only way to neutralize them without touching 50+ sites. 0.01ms (not 0) so
    animation-end listeners still fire and dialogs still appear. */
 @media (prefers-reduced-motion: reduce) {
-  .ep-root *,
-  .ep-root *::before,
-  .ep-root *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+	.ep-root *,
+	.ep-root *::before,
+	.ep-root *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
 }
 
 /* (3) One consistent hover/active transition for every chrome control, so
    feedback feels uniform. --doc-anim-fast already carries the DS easing.
    A control that genuinely needs a different curve overrides it inline. */
 .ep-root button,
-.ep-root [role='button'],
-.ep-root [role='menuitem'],
-.ep-root [role='tab'],
-.ep-root [role='option'] {
-  transition:
-    background-color var(--doc-anim-fast),
-    color var(--doc-anim-fast),
-    border-color var(--doc-anim-fast),
-    box-shadow var(--doc-anim-fast);
+.ep-root [role="button"],
+.ep-root [role="menuitem"],
+.ep-root [role="tab"],
+.ep-root [role="option"] {
+	transition:
+		background-color var(--doc-anim-fast),
+		color var(--doc-anim-fast),
+		border-color var(--doc-anim-fast),
+		box-shadow var(--doc-anim-fast);
 }
 
 /* ============================================================================
@@ -1126,33 +1142,33 @@
    ============================================================================ */
 .ep-root,
 .ep-root * {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
 }
 .ep-root ::-webkit-scrollbar,
 .ep-root::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+	width: 12px;
+	height: 12px;
 }
 .ep-root ::-webkit-scrollbar-track,
 .ep-root::-webkit-scrollbar-track {
-  background: transparent;
+	background: transparent;
 }
 .ep-root ::-webkit-scrollbar-thumb,
 .ep-root::-webkit-scrollbar-thumb {
-  background-color: rgba(100, 116, 139, 0.4);
-  border-radius: 8px;
-  /* transparent border + content-box clip makes the thumb read as a slim pill
+	background-color: rgba(100, 116, 139, 0.4);
+	border-radius: 8px;
+	/* transparent border + content-box clip makes the thumb read as a slim pill
      with breathing room, instead of filling the full track width. */
-  border: 3px solid transparent;
-  background-clip: content-box;
+	border: 3px solid transparent;
+	background-clip: content-box;
 }
 .ep-root ::-webkit-scrollbar-thumb:hover,
 .ep-root::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(100, 116, 139, 0.62);
-  background-clip: content-box;
+	background-color: rgba(100, 116, 139, 0.62);
+	background-clip: content-box;
 }
 .ep-root ::-webkit-scrollbar-corner,
 .ep-root::-webkit-scrollbar-corner {
-  background: transparent;
+	background: transparent;
 }

@@ -10,17 +10,17 @@
 //
 // Run: docker compose exec editor bun docx-editor/scripts/make-header-textbox-fixture.mjs
 
-import JSZip from 'jszip';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const fixtureDir = join(projectRoot, 'e2e', 'fixtures');
+const projectRoot = join(here, "..");
+const fixtureDir = join(projectRoot, "e2e", "fixtures");
 
-const SRC = join(fixtureDir, 'template-with-hf-rule.docx');
-const OUT = join(fixtureDir, 'header-with-textbox.docx');
+const SRC = join(fixtureDir, "template-with-hf-rule.docx");
+const OUT = join(fixtureDir, "header-with-textbox.docx");
 
 // Self-contained textbox XML to splice into the header. Roughly the same
 // shape as the simple textboxes inside textbox-test.docx, with a heading
@@ -66,24 +66,26 @@ const headerTextboxXml = `
 const buf = readFileSync(SRC);
 const zip = await JSZip.loadAsync(buf);
 
-const headerFile = zip.file('word/header1.xml');
+const headerFile = zip.file("word/header1.xml");
 if (!headerFile) {
-  console.error('source fixture has no word/header1.xml — pick a different template');
-  process.exit(1);
+	console.error(
+		"source fixture has no word/header1.xml — pick a different template",
+	);
+	process.exit(1);
 }
 
-const original = await headerFile.async('text');
+const original = await headerFile.async("text");
 // Insert the textbox paragraph immediately before </w:hdr>. If the source
 // has unusual whitespace we still want to inject in the right place.
-if (!original.includes('</w:hdr>')) {
-  console.error('source header.xml does not contain </w:hdr>');
-  process.exit(1);
+if (!original.includes("</w:hdr>")) {
+	console.error("source header.xml does not contain </w:hdr>");
+	process.exit(1);
 }
-const patched = original.replace('</w:hdr>', `${headerTextboxXml}</w:hdr>`);
+const patched = original.replace("</w:hdr>", `${headerTextboxXml}</w:hdr>`);
 
-zip.file('word/header1.xml', patched);
+zip.file("word/header1.xml", patched);
 
-const out = await zip.generateAsync({ type: 'nodebuffer' });
+const out = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, out);
 
 console.log(`wrote ${OUT} (${out.byteLength} bytes)`);

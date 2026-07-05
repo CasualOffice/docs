@@ -10,26 +10,26 @@
  */
 
 import type {
-  FlowBlock,
-  ParagraphBlock,
-  Measure,
-  ParagraphMeasure,
-  TableMeasure,
-  ImageMeasure,
-} from './types';
+	FlowBlock,
+	ParagraphBlock,
+	Measure,
+	ParagraphMeasure,
+	TableMeasure,
+	ImageMeasure,
+} from "./types";
 
 /**
  * A chain of consecutive keepNext paragraphs.
  */
 export type KeepNextChain = {
-  /** Index of the first paragraph in the chain. */
-  startIndex: number;
-  /** Index of the last paragraph in the chain. */
-  endIndex: number;
-  /** All paragraph indices in the chain. */
-  memberIndices: number[];
-  /** Index of the anchor paragraph (first non-keepNext after chain), or -1 if none. */
-  anchorIndex: number;
+	/** Index of the first paragraph in the chain. */
+	startIndex: number;
+	/** Index of the last paragraph in the chain. */
+	endIndex: number;
+	/** All paragraph indices in the chain. */
+	memberIndices: number[];
+	/** Index of the anchor paragraph (first non-keepNext after chain), or -1 if none. */
+	anchorIndex: number;
 };
 
 /**
@@ -41,81 +41,83 @@ export type KeepNextChain = {
  *
  * Returns a map from chain start index to chain info.
  */
-export function computeKeepNextChains(blocks: FlowBlock[]): Map<number, KeepNextChain> {
-  const chains = new Map<number, KeepNextChain>();
-  const processed = new Set<number>();
+export function computeKeepNextChains(
+	blocks: FlowBlock[],
+): Map<number, KeepNextChain> {
+	const chains = new Map<number, KeepNextChain>();
+	const processed = new Set<number>();
 
-  for (let i = 0; i < blocks.length; i++) {
-    // Skip already-processed blocks (mid-chain members)
-    if (processed.has(i)) continue;
+	for (let i = 0; i < blocks.length; i++) {
+		// Skip already-processed blocks (mid-chain members)
+		if (processed.has(i)) continue;
 
-    const block = blocks[i];
-    // Only paragraphs can have keepNext
-    if (block.kind !== 'paragraph') continue;
+		const block = blocks[i];
+		// Only paragraphs can have keepNext
+		if (block.kind !== "paragraph") continue;
 
-    const para = block as ParagraphBlock;
-    // Skip paragraphs without keepNext
-    if (!para.attrs?.keepNext) continue;
+		const para = block as ParagraphBlock;
+		// Skip paragraphs without keepNext
+		if (!para.attrs?.keepNext) continue;
 
-    // Found a keepNext paragraph - scan forward to find full chain
-    const memberIndices: number[] = [i];
-    let endIndex = i;
+		// Found a keepNext paragraph - scan forward to find full chain
+		const memberIndices: number[] = [i];
+		let endIndex = i;
 
-    for (let j = i + 1; j < blocks.length; j++) {
-      const nextBlock = blocks[j];
+		for (let j = i + 1; j < blocks.length; j++) {
+			const nextBlock = blocks[j];
 
-      // Breaks terminate the chain
-      if (
-        nextBlock.kind === 'sectionBreak' ||
-        nextBlock.kind === 'pageBreak' ||
-        nextBlock.kind === 'columnBreak'
-      ) {
-        break;
-      }
+			// Breaks terminate the chain
+			if (
+				nextBlock.kind === "sectionBreak" ||
+				nextBlock.kind === "pageBreak" ||
+				nextBlock.kind === "columnBreak"
+			) {
+				break;
+			}
 
-      // Non-paragraphs terminate the chain
-      if (nextBlock.kind !== 'paragraph') {
-        break;
-      }
+			// Non-paragraphs terminate the chain
+			if (nextBlock.kind !== "paragraph") {
+				break;
+			}
 
-      const nextPara = nextBlock as ParagraphBlock;
-      if (nextPara.attrs?.keepNext) {
-        // Continue the chain
-        memberIndices.push(j);
-        endIndex = j;
-        processed.add(j);
-      } else {
-        // Found the anchor - stop here
-        break;
-      }
-    }
+			const nextPara = nextBlock as ParagraphBlock;
+			if (nextPara.attrs?.keepNext) {
+				// Continue the chain
+				memberIndices.push(j);
+				endIndex = j;
+				processed.add(j);
+			} else {
+				// Found the anchor - stop here
+				break;
+			}
+		}
 
-    // Find the anchor (first paragraph after the chain)
-    const potentialAnchor = endIndex + 1;
-    let anchorIndex = -1;
+		// Find the anchor (first paragraph after the chain)
+		const potentialAnchor = endIndex + 1;
+		let anchorIndex = -1;
 
-    if (potentialAnchor < blocks.length) {
-      const anchorBlock = blocks[potentialAnchor];
-      // Anchor must not be a break
-      if (
-        anchorBlock.kind !== 'sectionBreak' &&
-        anchorBlock.kind !== 'pageBreak' &&
-        anchorBlock.kind !== 'columnBreak'
-      ) {
-        anchorIndex = potentialAnchor;
-      }
-    }
+		if (potentialAnchor < blocks.length) {
+			const anchorBlock = blocks[potentialAnchor];
+			// Anchor must not be a break
+			if (
+				anchorBlock.kind !== "sectionBreak" &&
+				anchorBlock.kind !== "pageBreak" &&
+				anchorBlock.kind !== "columnBreak"
+			) {
+				anchorIndex = potentialAnchor;
+			}
+		}
 
-    // Record the chain
-    chains.set(i, {
-      startIndex: i,
-      endIndex,
-      memberIndices,
-      anchorIndex,
-    });
-  }
+		// Record the chain
+		chains.set(i, {
+			startIndex: i,
+			endIndex,
+			memberIndices,
+			anchorIndex,
+		});
+	}
 
-  return chains;
+	return chains;
 }
 
 /**
@@ -124,90 +126,92 @@ export function computeKeepNextChains(blocks: FlowBlock[]): Map<number, KeepNext
  * Includes all chain members plus the first line of the anchor paragraph.
  */
 export function calculateChainHeight(
-  chain: KeepNextChain,
-  blocks: FlowBlock[],
-  measures: Measure[]
+	chain: KeepNextChain,
+	blocks: FlowBlock[],
+	measures: Measure[],
 ): number {
-  let totalHeight = 0;
+	let totalHeight = 0;
 
-  // Sum heights of all chain members
-  for (const memberIndex of chain.memberIndices) {
-    const block = blocks[memberIndex];
-    const measure = measures[memberIndex];
+	// Sum heights of all chain members
+	for (const memberIndex of chain.memberIndices) {
+		const block = blocks[memberIndex];
+		const measure = measures[memberIndex];
 
-    if (block.kind !== 'paragraph' || measure.kind !== 'paragraph') continue;
+		if (block.kind !== "paragraph" || measure.kind !== "paragraph") continue;
 
-    const para = block as ParagraphBlock;
-    const paraMeasure = measure as ParagraphMeasure;
+		const para = block as ParagraphBlock;
+		const paraMeasure = measure as ParagraphMeasure;
 
-    // Add spacing before (simplified - could be more sophisticated with collapse)
-    const spacingBefore = para.attrs?.spacing?.before ?? 0;
-    totalHeight += spacingBefore;
+		// Add spacing before (simplified - could be more sophisticated with collapse)
+		const spacingBefore = para.attrs?.spacing?.before ?? 0;
+		totalHeight += spacingBefore;
 
-    // Add paragraph height
-    totalHeight += paraMeasure.totalHeight;
+		// Add paragraph height
+		totalHeight += paraMeasure.totalHeight;
 
-    // Add spacing after
-    const spacingAfter = para.attrs?.spacing?.after ?? 0;
-    totalHeight += spacingAfter;
-  }
+		// Add spacing after
+		const spacingAfter = para.attrs?.spacing?.after ?? 0;
+		totalHeight += spacingAfter;
+	}
 
-  // Add the leading height of the anchor — enough that the chain stays with
-  // the START of whatever it anchors to, so a caption never separates from its
-  // content. For a paragraph that's the first line; for a table it's the first
-  // row (Word keeps a heading with at least the first table row); for an image
-  // it's the whole image (an image is atomic and can't split).
-  if (chain.anchorIndex !== -1) {
-    const anchorMeasure = measures[chain.anchorIndex];
-    if (anchorMeasure?.kind === 'paragraph') {
-      const anchorPara = anchorMeasure as ParagraphMeasure;
-      if (anchorPara.lines.length > 0) {
-        totalHeight += anchorPara.lines[0].lineHeight;
-      }
-    } else if (anchorMeasure?.kind === 'table') {
-      const anchorTable = anchorMeasure as TableMeasure;
-      if (anchorTable.rows.length > 0) {
-        totalHeight += anchorTable.rows[0].height;
-      }
-    } else if (anchorMeasure?.kind === 'image') {
-      totalHeight += (anchorMeasure as ImageMeasure).height;
-    }
-  }
+	// Add the leading height of the anchor — enough that the chain stays with
+	// the START of whatever it anchors to, so a caption never separates from its
+	// content. For a paragraph that's the first line; for a table it's the first
+	// row (Word keeps a heading with at least the first table row); for an image
+	// it's the whole image (an image is atomic and can't split).
+	if (chain.anchorIndex !== -1) {
+		const anchorMeasure = measures[chain.anchorIndex];
+		if (anchorMeasure?.kind === "paragraph") {
+			const anchorPara = anchorMeasure as ParagraphMeasure;
+			if (anchorPara.lines.length > 0) {
+				totalHeight += anchorPara.lines[0].lineHeight;
+			}
+		} else if (anchorMeasure?.kind === "table") {
+			const anchorTable = anchorMeasure as TableMeasure;
+			if (anchorTable.rows.length > 0) {
+				totalHeight += anchorTable.rows[0].height;
+			}
+		} else if (anchorMeasure?.kind === "image") {
+			totalHeight += (anchorMeasure as ImageMeasure).height;
+		}
+	}
 
-  return totalHeight;
+	return totalHeight;
 }
 
 /**
  * Get the set of indices that are mid-chain (not chain starters).
  * These should skip the keepNext check since their chain starter already decided.
  */
-export function getMidChainIndices(chains: Map<number, KeepNextChain>): Set<number> {
-  const midChain = new Set<number>();
+export function getMidChainIndices(
+	chains: Map<number, KeepNextChain>,
+): Set<number> {
+	const midChain = new Set<number>();
 
-  for (const chain of chains.values()) {
-    // All members except the first are mid-chain
-    for (let i = 1; i < chain.memberIndices.length; i++) {
-      midChain.add(chain.memberIndices[i]);
-    }
-  }
+	for (const chain of chains.values()) {
+		// All members except the first are mid-chain
+		for (let i = 1; i < chain.memberIndices.length; i++) {
+			midChain.add(chain.memberIndices[i]);
+		}
+	}
 
-  return midChain;
+	return midChain;
 }
 
 /**
  * Check if a paragraph has keepLines property (all lines must stay together).
  */
 export function hasKeepLines(block: FlowBlock): boolean {
-  if (block.kind !== 'paragraph') return false;
-  const para = block as ParagraphBlock;
-  return para.attrs?.keepLines === true;
+	if (block.kind !== "paragraph") return false;
+	const para = block as ParagraphBlock;
+	return para.attrs?.keepLines === true;
 }
 
 /**
  * Check if a paragraph should start on a new page (pageBreakBefore).
  */
 export function hasPageBreakBefore(block: FlowBlock): boolean {
-  if (block.kind !== 'paragraph') return false;
-  const para = block as ParagraphBlock;
-  return para.attrs?.pageBreakBefore === true;
+	if (block.kind !== "paragraph") return false;
+	const para = block as ParagraphBlock;
+	return para.attrs?.pageBreakBefore === true;
 }

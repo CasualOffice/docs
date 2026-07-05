@@ -13,11 +13,11 @@
  */
 
 export type {
-  EditorPluginCore,
-  PluginPanelProps,
-  PanelConfig,
-  RenderedDomContext,
-  PositionCoordinates,
-  SidebarItem,
-  SidebarItemContext,
-} from './types';
+	EditorPluginCore,
+	PluginPanelProps,
+	PanelConfig,
+	RenderedDomContext,
+	PositionCoordinates,
+	SidebarItem,
+	SidebarItemContext,
+} from "./types";

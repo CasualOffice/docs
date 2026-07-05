@@ -12,24 +12,24 @@
  */
 
 import type {
-  CancelReason,
-  SignatureCompletePayload,
-  SignatureField,
-  SignatureMode,
-  SignedFieldPayload,
-} from '../signing/types';
+	CancelReason,
+	SignatureCompletePayload,
+	SignatureField,
+	SignatureMode,
+	SignedFieldPayload,
+} from "../signing/types";
 
-export type CasualApp = 'docs' | 'sheet';
+export type CasualApp = "docs" | "sheet";
 
 /** Common envelope shape — every postMessage on the wire matches this. */
 export interface CasualEnvelope<T = unknown> {
-  type: string;
-  app: CasualApp;
-  /** Per-request id for request/response correlation. Empty for fire-and-forget. */
-  id?: string;
-  /** Protocol version. Bumped only on breaking changes. */
-  v: 1;
-  data: T;
+	type: string;
+	app: CasualApp;
+	/** Per-request id for request/response correlation. Empty for fire-and-forget. */
+	id?: string;
+	/** Protocol version. Bumped only on breaking changes. */
+	v: 1;
+	data: T;
 }
 
 // ---------------------------------------------------------------
@@ -37,14 +37,14 @@ export interface CasualEnvelope<T = unknown> {
 // ---------------------------------------------------------------
 
 export interface EditorHelloData {
-  capabilities: string[];
-  version: string;
-  commit: string;
+	capabilities: string[];
+	version: string;
+	commit: string;
 }
 
 export interface HostHelloData {
-  capabilities: string[];
-  authToken?: string;
+	capabilities: string[];
+	authToken?: string;
 }
 
 // ---------------------------------------------------------------
@@ -52,41 +52,41 @@ export interface HostHelloData {
 // ---------------------------------------------------------------
 
 export interface LoadRequestData {
-  docId: string;
+	docId: string;
 }
 
 export interface LoadResponseDataOk {
-  ok: true;
-  bytes: ArrayBuffer;
-  etag?: string;
-  fileName: string;
-  readOnly?: boolean;
+	ok: true;
+	bytes: ArrayBuffer;
+	etag?: string;
+	fileName: string;
+	readOnly?: boolean;
 }
 
 export interface LoadResponseDataErr {
-  ok: false;
-  code: string;
-  message?: string;
+	ok: false;
+	code: string;
+	message?: string;
 }
 
 export type LoadResponseData = LoadResponseDataOk | LoadResponseDataErr;
 
 export interface SaveRequestData {
-  docId: string;
-  bytes: ArrayBuffer;
-  baseEtag?: string;
+	docId: string;
+	bytes: ArrayBuffer;
+	baseEtag?: string;
 }
 
 export interface SaveResponseDataOk {
-  ok: true;
-  etag: string;
+	ok: true;
+	etag: string;
 }
 
 export interface SaveResponseDataErr {
-  ok: false;
-  code: string;
-  etag?: string;
-  message?: string;
+	ok: false;
+	code: string;
+	etag?: string;
+	message?: string;
 }
 
 export type SaveResponseData = SaveResponseDataOk | SaveResponseDataErr;
@@ -96,18 +96,18 @@ export type SaveResponseData = SaveResponseDataOk | SaveResponseDataErr;
 // ---------------------------------------------------------------
 
 export interface SelectionChangedData {
-  docs?: { paraId: string; from: number; to: number; selectedText: string };
-  sheet?: { sheet: string; from: string; to: string };
+	docs?: { paraId: string; from: number; to: number; selectedText: string };
+	sheet?: { sheet: string; from: string; to: string };
 }
 
 export interface TelemetryEventData {
-  kind: string;
-  /** Arbitrary metric fields. */
-  [k: string]: unknown;
+	kind: string;
+	/** Arbitrary metric fields. */
+	[k: string]: unknown;
 }
 
 export interface LockLostData {
-  reason: 'taken_by_other' | 'expired' | 'host_revoked';
+	reason: "taken_by_other" | "expired" | "host_revoked";
 }
 
 // ---------------------------------------------------------------
@@ -115,15 +115,15 @@ export interface LockLostData {
 // ---------------------------------------------------------------
 
 export interface CommandSetReadOnlyData {
-  readOnly: boolean;
+	readOnly: boolean;
 }
 
 export interface CommandSetThemeData {
-  theme: 'light' | 'dark' | 'system';
+	theme: "light" | "dark" | "system";
 }
 
 export interface CommandSetLocaleData {
-  locale: string;
+	locale: string;
 }
 
 /** Host → editor: switch chrome density between the two consumer-facing
@@ -131,7 +131,7 @@ export interface CommandSetLocaleData {
  *  header and runs read-only; `editor` shows the full UI. Mirrors the
  *  `viewMode` prop on `<CasualEditor>`. */
 export interface CommandSetViewModeData {
-  viewMode: 'preview' | 'editor';
+	viewMode: "preview" | "editor";
 }
 
 // ---------------------------------------------------------------
@@ -141,8 +141,13 @@ export interface CommandSetViewModeData {
 /** Editor → host: a fatal error during boot / load. Hosts surface this
  *  via the wrapper's `onError` callback. */
 export interface CasualErrorData {
-  code: 'embed_not_served' | 'load_failed' | 'parse_failed' | 'boot_failed' | 'internal';
-  message: string;
+	code:
+		| "embed_not_served"
+		| "load_failed"
+		| "parse_failed"
+		| "boot_failed"
+		| "internal";
+	message: string;
 }
 
 // ---------------------------------------------------------------
@@ -150,21 +155,21 @@ export interface CasualErrorData {
 // ---------------------------------------------------------------
 
 export interface SignatureRequestData {
-  fields: SignatureField[];
-  mode: SignatureMode;
-  banner?: string;
+	fields: SignatureField[];
+	mode: SignatureMode;
+	banner?: string;
 }
 
 export interface SignatureRequestAckData {
-  ok: boolean;
-  code?: string;
+	ok: boolean;
+	code?: string;
 }
 
 export type SignatureFieldSignedData = SignedFieldPayload;
 export type SignatureCompleteData = SignatureCompletePayload;
 
 export interface SignatureCancelData {
-  reason: CancelReason;
+	reason: CancelReason;
 }
 
 // ---------------------------------------------------------------
@@ -172,13 +177,13 @@ export interface SignatureCancelData {
 // ---------------------------------------------------------------
 
 export function isCasualEnvelope(value: unknown): value is CasualEnvelope {
-  if (!value || typeof value !== 'object') return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.type === 'string' &&
-    v.type.startsWith('casual.') &&
-    (v.app === 'docs' || v.app === 'sheet') &&
-    v.v === 1 &&
-    'data' in v
-  );
+	if (!value || typeof value !== "object") return false;
+	const v = value as Record<string, unknown>;
+	return (
+		typeof v.type === "string" &&
+		v.type.startsWith("casual.") &&
+		(v.app === "docs" || v.app === "sheet") &&
+		v.v === 1 &&
+		"data" in v
+	);
 }

@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import type { Node as PMNode } from 'prosemirror-model';
+import type { Node as PMNode } from "prosemirror-model";
 
 /**
  * ProseMirror position range for the paragraph (or any textblock) whose
@@ -16,18 +16,18 @@ import type { Node as PMNode } from 'prosemirror-model';
  * Returns null if no textblock with that paraId exists.
  */
 export function findParagraphByParaId(
-  doc: PMNode,
-  paraId: string
+	doc: PMNode,
+	paraId: string,
 ): { node: PMNode; from: number; to: number } | null {
-  if (!paraId || !paraId.trim()) return null;
-  let result: { node: PMNode; from: number; to: number } | null = null;
-  doc.descendants((node, pos) => {
-    if (result !== null) return false;
-    if (node.isTextblock && node.attrs?.paraId === paraId) {
-      result = { node, from: pos, to: pos + node.nodeSize };
-      return false;
-    }
-    return true;
-  });
-  return result;
+	if (!paraId || !paraId.trim()) return null;
+	let result: { node: PMNode; from: number; to: number } | null = null;
+	doc.descendants((node, pos) => {
+		if (result !== null) return false;
+		if (node.isTextblock && node.attrs?.paraId === paraId) {
+			result = { node, from: pos, to: pos + node.nodeSize };
+			return false;
+		}
+		return true;
+	});
+	return result;
 }

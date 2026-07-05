@@ -81,14 +81,14 @@
     <script>
       // Detect when Material Symbols font is loaded
       if (document.fonts) {
-        document.fonts.ready.then(function () {
+        document.fonts.ready.then(() => {
           document.documentElement.classList.add('fonts-loaded');
         });
-        document.fonts.load('24px "Material Symbols Outlined"').then(function () {
+        document.fonts.load('24px "Material Symbols Outlined"').then(() => {
           document.documentElement.classList.add('fonts-loaded');
         });
       } else {
-        setTimeout(function () {
+        setTimeout(() => {
           document.documentElement.classList.add('fonts-loaded');
         }, 500);
       }

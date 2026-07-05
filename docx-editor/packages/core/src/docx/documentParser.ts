@@ -16,24 +16,33 @@
  */
 
 import type {
-  DocumentBody,
-  BlockContent,
-  Section,
-  Paragraph,
-  Table,
-  SectionProperties,
-  Theme,
-  RelationshipMap,
-  MediaFile,
-} from '../types/document';
-import type { StyleMap } from './styleParser';
-import type { NumberingMap } from './numberingParser';
-import { parseXml, findChild, getChildElements, getAttribute, type XmlElement } from './xmlParser';
-import type { ThemeColorSlot } from '../types/document';
-import { parseParagraph, getParagraphText } from './paragraphParser';
-import { parseTable } from './tableParser';
-import { parseSectionProperties, getDefaultSectionProperties } from './sectionParser';
-import { enrichParagraphTextBoxes } from './textBoxEnricher';
+	DocumentBody,
+	BlockContent,
+	Section,
+	Paragraph,
+	Table,
+	SectionProperties,
+	Theme,
+	RelationshipMap,
+	MediaFile,
+} from "../types/document";
+import type { StyleMap } from "./styleParser";
+import type { NumberingMap } from "./numberingParser";
+import {
+	parseXml,
+	findChild,
+	getChildElements,
+	getAttribute,
+	type XmlElement,
+} from "./xmlParser";
+import type { ThemeColorSlot } from "../types/document";
+import { parseParagraph, getParagraphText } from "./paragraphParser";
+import { parseTable } from "./tableParser";
+import {
+	parseSectionProperties,
+	getDefaultSectionProperties,
+} from "./sectionParser";
+import { enrichParagraphTextBoxes } from "./textBoxEnricher";
 
 // ============================================================================
 // LIST MARKER COMPUTATION
@@ -47,70 +56,70 @@ import { enrichParagraphTextBoxes } from './textBoxEnricher';
  * standard Unicode bullets that work with any font.
  */
 export function convertBulletToUnicode(bulletChar: string): string {
-  // If empty or whitespace, use standard bullet
-  if (!bulletChar || bulletChar.trim() === '') {
-    return '•';
-  }
+	// If empty or whitespace, use standard bullet
+	if (!bulletChar || bulletChar.trim() === "") {
+		return "•";
+	}
 
-  // Get the character code
-  const charCode = bulletChar.charCodeAt(0);
+	// Get the character code
+	const charCode = bulletChar.charCodeAt(0);
 
-  // Map common Symbol/Wingdings characters to Unicode
-  // Symbol font mappings (often used for bullets)
-  const symbolMap: Record<number, string> = {
-    // Symbol font
-    0x00b7: '•', // Middle dot → bullet
-    0x006f: '○', // lowercase o → white circle (used in Symbol font)
-    0x00a7: '■', // Section sign → black square (Symbol)
-    0x00fc: '✓', // Checkmark in Symbol/Wingdings
+	// Map common Symbol/Wingdings characters to Unicode
+	// Symbol font mappings (often used for bullets)
+	const symbolMap: Record<number, string> = {
+		// Symbol font
+		183: "•", // Middle dot → bullet
+		111: "○", // lowercase o → white circle (used in Symbol font)
+		167: "■", // Section sign → black square (Symbol)
+		252: "✓", // Checkmark in Symbol/Wingdings
 
-    // Wingdings mappings (character codes when Wingdings not available)
-    0x006e: '■', // Wingdings n → black square
-    0x0071: '○', // Wingdings q → white circle
-    0x0075: '◆', // Wingdings u → black diamond
-    0x0076: '❖', // Wingdings v → diamond
-    0x00a8: '✓', // Wingdings checkmark
-    0x00fb: '✓', // Checkmark
-    0x00fe: '✓', // Checkmark variant
+		// Wingdings mappings (character codes when Wingdings not available)
+		110: "■", // Wingdings n → black square
+		113: "○", // Wingdings q → white circle
+		117: "◆", // Wingdings u → black diamond
+		118: "❖", // Wingdings v → diamond
+		168: "✓", // Wingdings checkmark
+		251: "✓", // Checkmark
+		254: "✓", // Checkmark variant
 
-    // Common control characters that might appear
-    0xf0b7: '•', // Private use area bullet
-    0xf06e: '■', // Private use area square
-    0xf06f: '○', // Private use area circle
-    0xf0a7: '■', // Private use area
-    0xf0fc: '✓', // Private use area checkmark
+		// Common control characters that might appear
+		61623: "•", // Private use area bullet
+		61550: "■", // Private use area square
+		61551: "○", // Private use area circle
+		61607: "■", // Private use area
+		61692: "✓", // Private use area checkmark
 
-    // Other common bullet-like characters
-    0x2022: '•', // Already a bullet
-    0x25cf: '●', // Black circle
-    0x25cb: '○', // White circle
-    0x25a0: '■', // Black square
-    0x25a1: '□', // White square
-    0x25c6: '◆', // Black diamond
-    0x25c7: '◇', // White diamond
-    0x2013: '–', // En dash
-    0x2014: '—', // Em dash
-    0x003e: '>', // Greater than (used as arrow)
-    0x002d: '-', // Hyphen
-  };
+		// Other common bullet-like characters
+		8226: "•", // Already a bullet
+		9679: "●", // Black circle
+		9675: "○", // White circle
+		9632: "■", // Black square
+		9633: "□", // White square
+		9670: "◆", // Black diamond
+		9671: "◇", // White diamond
+		8211: "–", // En dash
+		8212: "—", // Em dash
+		62: ">", // Greater than (used as arrow)
+		45: "-", // Hyphen
+	};
 
-  // Check if we have a mapping for this character
-  if (symbolMap[charCode]) {
-    return symbolMap[charCode];
-  }
+	// Check if we have a mapping for this character
+	if (symbolMap[charCode]) {
+		return symbolMap[charCode];
+	}
 
-  // If it's in the private use area (often Symbol/Wingdings), use bullet
-  if (charCode >= 0xe000 && charCode <= 0xf8ff) {
-    return '•';
-  }
+	// If it's in the private use area (often Symbol/Wingdings), use bullet
+	if (charCode >= 0xe000 && charCode <= 0xf8ff) {
+		return "•";
+	}
 
-  // If it's a control character or non-printable, use bullet
-  if (charCode < 32 || (charCode >= 127 && charCode < 160)) {
-    return '•';
-  }
+	// If it's a control character or non-printable, use bullet
+	if (charCode < 32 || (charCode >= 127 && charCode < 160)) {
+		return "•";
+	}
 
-  // Otherwise, use the character as-is (might be a valid Unicode bullet)
-  return bulletChar;
+	// Otherwise, use the character as-is (might be a valid Unicode bullet)
+	return bulletChar;
 }
 
 /**
@@ -122,10 +131,10 @@ export function convertBulletToUnicode(bulletChar: string): string {
  * containers.
  */
 function resolveBulletMarker(paragraph: Paragraph): void {
-  const listRendering = paragraph.listRendering;
-  if (!listRendering) return;
-  if (!listRendering.isBullet) return;
-  listRendering.marker = convertBulletToUnicode(listRendering.marker || '');
+	const listRendering = paragraph.listRendering;
+	if (!listRendering) return;
+	if (!listRendering.isBullet) return;
+	listRendering.marker = convertBulletToUnicode(listRendering.marker || "");
 }
 
 // ============================================================================
@@ -135,7 +144,7 @@ function resolveBulletMarker(paragraph: Paragraph): void {
 /**
  * Regular expression to match template variables {{...}}
  */
-const TEMPLATE_VARIABLE_REGEX = /\{([a-zA-Z_][a-zA-Z0-9_\-\.]*)\}/g;
+const TEMPLATE_VARIABLE_REGEX = /\{([a-zA-Z_][a-zA-Z0-9_\-.]*)\}/g;
 
 /**
  * Extract template variables from text
@@ -144,20 +153,20 @@ const TEMPLATE_VARIABLE_REGEX = /\{([a-zA-Z_][a-zA-Z0-9_\-\.]*)\}/g;
  * @returns Array of unique variable names (without braces)
  */
 export function extractTemplateVariables(text: string): string[] {
-  const variables: string[] = [];
-  let match: RegExpExecArray | null;
+	const variables: string[] = [];
+	let match: RegExpExecArray | null;
 
-  // Reset regex state
-  TEMPLATE_VARIABLE_REGEX.lastIndex = 0;
+	// Reset regex state
+	TEMPLATE_VARIABLE_REGEX.lastIndex = 0;
 
-  while ((match = TEMPLATE_VARIABLE_REGEX.exec(text)) !== null) {
-    const varName = match[1].trim();
-    if (varName && !variables.includes(varName)) {
-      variables.push(varName);
-    }
-  }
+	while ((match = TEMPLATE_VARIABLE_REGEX.exec(text)) !== null) {
+		const varName = match[1].trim();
+		if (varName && !variables.includes(varName)) {
+			variables.push(varName);
+		}
+	}
 
-  return variables;
+	return variables;
 }
 
 /**
@@ -167,62 +176,62 @@ export function extractTemplateVariables(text: string): string[] {
  * @returns Array of unique variable names
  */
 export function extractAllTemplateVariables(content: BlockContent[]): string[] {
-  const variables: string[] = [];
+	const variables: string[] = [];
 
-  for (const block of content) {
-    if (block.type === 'paragraph') {
-      const text = getParagraphText(block);
-      const vars = extractTemplateVariables(text);
-      for (const v of vars) {
-        if (!variables.includes(v)) {
-          variables.push(v);
-        }
-      }
-    } else if (block.type === 'table') {
-      // Recursively check table cells
-      const tableVars = extractTableVariables(block);
-      for (const v of tableVars) {
-        if (!variables.includes(v)) {
-          variables.push(v);
-        }
-      }
-    }
-  }
+	for (const block of content) {
+		if (block.type === "paragraph") {
+			const text = getParagraphText(block);
+			const vars = extractTemplateVariables(text);
+			for (const v of vars) {
+				if (!variables.includes(v)) {
+					variables.push(v);
+				}
+			}
+		} else if (block.type === "table") {
+			// Recursively check table cells
+			const tableVars = extractTableVariables(block);
+			for (const v of tableVars) {
+				if (!variables.includes(v)) {
+					variables.push(v);
+				}
+			}
+		}
+	}
 
-  return variables;
+	return variables;
 }
 
 /**
  * Extract template variables from a table
  */
 function extractTableVariables(table: Table): string[] {
-  const variables: string[] = [];
+	const variables: string[] = [];
 
-  for (const row of table.rows) {
-    for (const cell of row.cells) {
-      for (const cellContent of cell.content) {
-        if (cellContent.type === 'paragraph') {
-          const text = getParagraphText(cellContent);
-          const vars = extractTemplateVariables(text);
-          for (const v of vars) {
-            if (!variables.includes(v)) {
-              variables.push(v);
-            }
-          }
-        } else if (cellContent.type === 'table') {
-          // Nested table
-          const nestedVars = extractTableVariables(cellContent);
-          for (const v of nestedVars) {
-            if (!variables.includes(v)) {
-              variables.push(v);
-            }
-          }
-        }
-      }
-    }
-  }
+	for (const row of table.rows) {
+		for (const cell of row.cells) {
+			for (const cellContent of cell.content) {
+				if (cellContent.type === "paragraph") {
+					const text = getParagraphText(cellContent);
+					const vars = extractTemplateVariables(text);
+					for (const v of vars) {
+						if (!variables.includes(v)) {
+							variables.push(v);
+						}
+					}
+				} else if (cellContent.type === "table") {
+					// Nested table
+					const nestedVars = extractTableVariables(cellContent);
+					for (const v of nestedVars) {
+						if (!variables.includes(v)) {
+							variables.push(v);
+						}
+					}
+				}
+			}
+		}
+	}
 
-  return variables;
+	return variables;
 }
 
 // ============================================================================
@@ -243,60 +252,76 @@ function extractTableVariables(table: Table): string[] {
  * @returns Array of block content (paragraphs, tables)
  */
 function parseBlockContent(
-  parent: XmlElement,
-  styles: StyleMap | null,
-  theme: Theme | null,
-  numbering: NumberingMap | null,
-  rels: RelationshipMap | null,
-  media: Map<string, MediaFile> | null
+	parent: XmlElement,
+	styles: StyleMap | null,
+	theme: Theme | null,
+	numbering: NumberingMap | null,
+	rels: RelationshipMap | null,
+	media: Map<string, MediaFile> | null,
 ): BlockContent[] {
-  const content: BlockContent[] = [];
-  const children = getChildElements(parent);
+	const content: BlockContent[] = [];
+	const children = getChildElements(parent);
 
-  for (const child of children) {
-    const name = child.name ?? '';
+	for (const child of children) {
+		const name = child.name ?? "";
 
-    // Paragraph (w:p)
-    if (name === 'w:p' || name.endsWith(':p')) {
-      const paragraph = parseParagraph(child, styles, theme, numbering, rels, media);
-      // Enrich with text box content (parsed in a second pass to avoid circular deps)
-      enrichParagraphTextBoxes(paragraph, child, styles, theme, numbering, rels, media);
-      // Convert bullet glyphs (Symbol font → Unicode). Numbered marker
-      // resolution happens later in toFlowBlocks where body, table, and
-      // text-box paragraphs share one counter map.
-      resolveBulletMarker(paragraph);
-      content.push(paragraph);
-    }
-    // Table (w:tbl)
-    else if (name === 'w:tbl' || name.endsWith(':tbl')) {
-      const table = parseTable(child, styles, theme, numbering, rels, media);
-      content.push(table);
-    }
-    // Structured Document Tag (w:sdt) - container for content
-    else if (name === 'w:sdt' || name.endsWith(':sdt')) {
-      // Find the content element inside SDT
-      const sdtContent = (child.elements ?? []).find(
-        (el: XmlElement) =>
-          el.type === 'element' && (el.name === 'w:sdtContent' || el.name?.endsWith(':sdtContent'))
-      );
-      if (sdtContent) {
-        // Recursively parse content inside SDT
-        const sdtBlockContent = parseBlockContent(
-          sdtContent,
-          styles,
-          theme,
-          numbering,
-          rels,
-          media
-        );
-        content.push(...sdtBlockContent);
-      }
-    }
-    // Section properties (w:sectPr) - handled separately at body level
-    // Skip here as we handle it after content parsing
-  }
+		// Paragraph (w:p)
+		if (name === "w:p" || name.endsWith(":p")) {
+			const paragraph = parseParagraph(
+				child,
+				styles,
+				theme,
+				numbering,
+				rels,
+				media,
+			);
+			// Enrich with text box content (parsed in a second pass to avoid circular deps)
+			enrichParagraphTextBoxes(
+				paragraph,
+				child,
+				styles,
+				theme,
+				numbering,
+				rels,
+				media,
+			);
+			// Convert bullet glyphs (Symbol font → Unicode). Numbered marker
+			// resolution happens later in toFlowBlocks where body, table, and
+			// text-box paragraphs share one counter map.
+			resolveBulletMarker(paragraph);
+			content.push(paragraph);
+		}
+		// Table (w:tbl)
+		else if (name === "w:tbl" || name.endsWith(":tbl")) {
+			const table = parseTable(child, styles, theme, numbering, rels, media);
+			content.push(table);
+		}
+		// Structured Document Tag (w:sdt) - container for content
+		else if (name === "w:sdt" || name.endsWith(":sdt")) {
+			// Find the content element inside SDT
+			const sdtContent = (child.elements ?? []).find(
+				(el: XmlElement) =>
+					el.type === "element" &&
+					(el.name === "w:sdtContent" || el.name?.endsWith(":sdtContent")),
+			);
+			if (sdtContent) {
+				// Recursively parse content inside SDT
+				const sdtBlockContent = parseBlockContent(
+					sdtContent,
+					styles,
+					theme,
+					numbering,
+					rels,
+					media,
+				);
+				content.push(...sdtBlockContent);
+			}
+		}
+		// Section properties (w:sectPr) - handled separately at body level
+		// Skip here as we handle it after content parsing
+	}
 
-  return content;
+	return content;
 }
 
 // ============================================================================
@@ -315,37 +340,37 @@ function parseBlockContent(
  * @returns Array of sections
  */
 function buildSections(
-  content: BlockContent[],
-  finalSectPr: SectionProperties | undefined
+	content: BlockContent[],
+	finalSectPr: SectionProperties | undefined,
 ): Section[] {
-  const sections: Section[] = [];
-  let currentSectionContent: BlockContent[] = [];
+	const sections: Section[] = [];
+	let currentSectionContent: BlockContent[] = [];
 
-  for (const block of content) {
-    currentSectionContent.push(block);
+	for (const block of content) {
+		currentSectionContent.push(block);
 
-    // Check if this paragraph ends a section
-    if (block.type === 'paragraph' && block.sectionProperties) {
-      // This paragraph ends a section
-      sections.push({
-        properties: block.sectionProperties,
-        content: currentSectionContent,
-      });
+		// Check if this paragraph ends a section
+		if (block.type === "paragraph" && block.sectionProperties) {
+			// This paragraph ends a section
+			sections.push({
+				properties: block.sectionProperties,
+				content: currentSectionContent,
+			});
 
-      // Start new section
-      currentSectionContent = [];
-    }
-  }
+			// Start new section
+			currentSectionContent = [];
+		}
+	}
 
-  // Add final section with remaining content
-  if (currentSectionContent.length > 0 || sections.length === 0) {
-    sections.push({
-      properties: finalSectPr ?? getDefaultSectionProperties(),
-      content: currentSectionContent,
-    });
-  }
+	// Add final section with remaining content
+	if (currentSectionContent.length > 0 || sections.length === 0) {
+		sections.push({
+			properties: finalSectPr ?? getDefaultSectionProperties(),
+			content: currentSectionContent,
+		});
+	}
 
-  return sections;
+	return sections;
 }
 
 // ============================================================================
@@ -364,78 +389,89 @@ function buildSections(
  * @returns DocumentBody with content, sections, and template variables
  */
 export function parseDocumentBody(
-  xml: string,
-  styles: StyleMap | null = null,
-  theme: Theme | null = null,
-  numbering: NumberingMap | null = null,
-  rels: RelationshipMap | null = null,
-  media: Map<string, MediaFile> | null = null
+	xml: string,
+	styles: StyleMap | null = null,
+	theme: Theme | null = null,
+	numbering: NumberingMap | null = null,
+	rels: RelationshipMap | null = null,
+	media: Map<string, MediaFile> | null = null,
 ): DocumentBody {
-  const result: DocumentBody = {
-    content: [],
-  };
+	const result: DocumentBody = {
+		content: [],
+	};
 
-  if (!xml) {
-    return result;
-  }
+	if (!xml) {
+		return result;
+	}
 
-  // Parse XML
-  const doc = parseXml(xml);
-  if (!doc) {
-    return result;
-  }
+	// Parse XML
+	const doc = parseXml(xml);
+	if (!doc) {
+		return result;
+	}
 
-  // Find root document element (w:document)
-  const documentEl = (doc.elements ?? []).find(
-    (el: XmlElement) =>
-      el.type === 'element' && (el.name === 'w:document' || el.name?.endsWith(':document'))
-  );
-  if (!documentEl) {
-    return result;
-  }
+	// Find root document element (w:document)
+	const documentEl = (doc.elements ?? []).find(
+		(el: XmlElement) =>
+			el.type === "element" &&
+			(el.name === "w:document" || el.name?.endsWith(":document")),
+	);
+	if (!documentEl) {
+		return result;
+	}
 
-  // Find body element (w:body)
-  const bodyEl = findChild(documentEl, 'w', 'body');
-  if (!bodyEl) {
-    return result;
-  }
+	// Find body element (w:body)
+	const bodyEl = findChild(documentEl, "w", "body");
+	if (!bodyEl) {
+		return result;
+	}
 
-  // Parse all block content (paragraphs, tables)
-  result.content = parseBlockContent(bodyEl, styles, theme, numbering, rels, media);
+	// Parse all block content (paragraphs, tables)
+	result.content = parseBlockContent(
+		bodyEl,
+		styles,
+		theme,
+		numbering,
+		rels,
+		media,
+	);
 
-  // Parse final section properties (w:body/w:sectPr)
-  const finalSectPr = findChild(bodyEl, 'w', 'sectPr');
-  if (finalSectPr) {
-    result.finalSectionProperties = parseSectionProperties(finalSectPr, rels);
-  }
+	// Parse final section properties (w:body/w:sectPr)
+	const finalSectPr = findChild(bodyEl, "w", "sectPr");
+	if (finalSectPr) {
+		result.finalSectionProperties = parseSectionProperties(finalSectPr, rels);
+	}
 
-  // Parse doc-level `<w:background>` (sibling of w:body, per OOXML
-  // §17.2.1). This is Word's canonical "Page color" location — Google
-  // Docs' Page color setting saves here too. The painter promotes
-  // `body.background.color` to the rendered page background when the
-  // host hasn't overridden `PainterOptions.pageBackground`.
-  const backgroundEl = findChild(documentEl, 'w', 'background');
-  if (backgroundEl) {
-    const bg: NonNullable<DocumentBody['background']> = {};
-    const colorVal = getAttribute(backgroundEl, 'w', 'color');
-    if (colorVal && colorVal !== 'auto') {
-      bg.color = { rgb: colorVal };
-    }
-    const themeColor = getAttribute(backgroundEl, 'w', 'themeColor');
-    if (themeColor) bg.themeColor = themeColor as ThemeColorSlot;
-    const themeTint = getAttribute(backgroundEl, 'w', 'themeTint');
-    if (themeTint) bg.themeTint = themeTint;
-    const themeShade = getAttribute(backgroundEl, 'w', 'themeShade');
-    if (themeShade) bg.themeShade = themeShade;
-    // Even an empty-but-present element counts — preserves the slot
-    // for round-trip and signals "background exists" downstream.
-    result.background = bg;
-  }
+	// Parse doc-level `<w:background>` (sibling of w:body, per OOXML
+	// §17.2.1). This is Word's canonical "Page color" location — Google
+	// Docs' Page color setting saves here too. The painter promotes
+	// `body.background.color` to the rendered page background when the
+	// host hasn't overridden `PainterOptions.pageBackground`.
+	const backgroundEl = findChild(documentEl, "w", "background");
+	if (backgroundEl) {
+		const bg: NonNullable<DocumentBody["background"]> = {};
+		const colorVal = getAttribute(backgroundEl, "w", "color");
+		if (colorVal && colorVal !== "auto") {
+			bg.color = { rgb: colorVal };
+		}
+		const themeColor = getAttribute(backgroundEl, "w", "themeColor");
+		if (themeColor) bg.themeColor = themeColor as ThemeColorSlot;
+		const themeTint = getAttribute(backgroundEl, "w", "themeTint");
+		if (themeTint) bg.themeTint = themeTint;
+		const themeShade = getAttribute(backgroundEl, "w", "themeShade");
+		if (themeShade) bg.themeShade = themeShade;
+		// Even an empty-but-present element counts — preserves the slot
+		// for round-trip and signals "background exists" downstream.
+		result.background = bg;
+	}
 
-  // Build sections from content
-  result.sections = buildSections(result.content, result.finalSectionProperties);
+	// Build sections from content
+	result.sections = buildSections(
+		result.content,
+		result.finalSectionProperties,
+	);
 
-  return result;
+	return result;
 }
 
 // ============================================================================
@@ -446,156 +482,156 @@ export function parseDocumentBody(
  * Get all paragraphs from document body (flattened)
  */
 export function getAllParagraphs(body: DocumentBody): Paragraph[] {
-  const paragraphs: Paragraph[] = [];
+	const paragraphs: Paragraph[] = [];
 
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      paragraphs.push(block);
-    } else if (block.type === 'table') {
-      // Get paragraphs from table cells
-      paragraphs.push(...getTableParagraphs(block));
-    }
-  }
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			paragraphs.push(block);
+		} else if (block.type === "table") {
+			// Get paragraphs from table cells
+			paragraphs.push(...getTableParagraphs(block));
+		}
+	}
 
-  return paragraphs;
+	return paragraphs;
 }
 
 /**
  * Get all paragraphs from a table (recursively)
  */
 function getTableParagraphs(table: Table): Paragraph[] {
-  const paragraphs: Paragraph[] = [];
+	const paragraphs: Paragraph[] = [];
 
-  for (const row of table.rows) {
-    for (const cell of row.cells) {
-      for (const content of cell.content) {
-        if (content.type === 'paragraph') {
-          paragraphs.push(content);
-        } else if (content.type === 'table') {
-          paragraphs.push(...getTableParagraphs(content));
-        }
-      }
-    }
-  }
+	for (const row of table.rows) {
+		for (const cell of row.cells) {
+			for (const content of cell.content) {
+				if (content.type === "paragraph") {
+					paragraphs.push(content);
+				} else if (content.type === "table") {
+					paragraphs.push(...getTableParagraphs(content));
+				}
+			}
+		}
+	}
 
-  return paragraphs;
+	return paragraphs;
 }
 
 /**
  * Get all tables from document body
  */
 export function getAllTables(body: DocumentBody): Table[] {
-  const tables: Table[] = [];
+	const tables: Table[] = [];
 
-  for (const block of body.content) {
-    if (block.type === 'table') {
-      tables.push(block);
-      // Also get nested tables
-      tables.push(...getNestedTables(block));
-    }
-  }
+	for (const block of body.content) {
+		if (block.type === "table") {
+			tables.push(block);
+			// Also get nested tables
+			tables.push(...getNestedTables(block));
+		}
+	}
 
-  return tables;
+	return tables;
 }
 
 /**
  * Get nested tables from a table (recursively)
  */
 function getNestedTables(table: Table): Table[] {
-  const tables: Table[] = [];
+	const tables: Table[] = [];
 
-  for (const row of table.rows) {
-    for (const cell of row.cells) {
-      for (const content of cell.content) {
-        if (content.type === 'table') {
-          tables.push(content);
-          tables.push(...getNestedTables(content));
-        }
-      }
-    }
-  }
+	for (const row of table.rows) {
+		for (const cell of row.cells) {
+			for (const content of cell.content) {
+				if (content.type === "table") {
+					tables.push(content);
+					tables.push(...getNestedTables(content));
+				}
+			}
+		}
+	}
 
-  return tables;
+	return tables;
 }
 
 /**
  * Get plain text from entire document body
  */
 export function getDocumentText(body: DocumentBody): string {
-  const lines: string[] = [];
+	const lines: string[] = [];
 
-  for (const block of body.content) {
-    if (block.type === 'paragraph') {
-      lines.push(getParagraphText(block));
-    } else if (block.type === 'table') {
-      lines.push(getTableText(block));
-    }
-  }
+	for (const block of body.content) {
+		if (block.type === "paragraph") {
+			lines.push(getParagraphText(block));
+		} else if (block.type === "table") {
+			lines.push(getTableText(block));
+		}
+	}
 
-  return lines.join('\n');
+	return lines.join("\n");
 }
 
 /**
  * Get plain text from a table
  */
 function getTableText(table: Table): string {
-  const lines: string[] = [];
+	const lines: string[] = [];
 
-  for (const row of table.rows) {
-    const rowTexts: string[] = [];
-    for (const cell of row.cells) {
-      const cellTexts: string[] = [];
-      for (const content of cell.content) {
-        if (content.type === 'paragraph') {
-          cellTexts.push(getParagraphText(content));
-        } else if (content.type === 'table') {
-          cellTexts.push(getTableText(content));
-        }
-      }
-      rowTexts.push(cellTexts.join('\n'));
-    }
-    lines.push(rowTexts.join('\t'));
-  }
+	for (const row of table.rows) {
+		const rowTexts: string[] = [];
+		for (const cell of row.cells) {
+			const cellTexts: string[] = [];
+			for (const content of cell.content) {
+				if (content.type === "paragraph") {
+					cellTexts.push(getParagraphText(content));
+				} else if (content.type === "table") {
+					cellTexts.push(getTableText(content));
+				}
+			}
+			rowTexts.push(cellTexts.join("\n"));
+		}
+		lines.push(rowTexts.join("\t"));
+	}
 
-  return lines.join('\n');
+	return lines.join("\n");
 }
 
 /**
  * Count total paragraphs in document
  */
 export function getParagraphCount(body: DocumentBody): number {
-  return getAllParagraphs(body).length;
+	return getAllParagraphs(body).length;
 }
 
 /**
  * Count total words in document (approximate)
  */
 export function getWordCount(body: DocumentBody): number {
-  const text = getDocumentText(body);
-  // Simple word counting - split by whitespace
-  const words = text.trim().split(/\s+/);
-  return words.length > 0 && words[0] !== '' ? words.length : 0;
+	const text = getDocumentText(body);
+	// Simple word counting - split by whitespace
+	const words = text.trim().split(/\s+/);
+	return words.length > 0 && words[0] !== "" ? words.length : 0;
 }
 
 /**
  * Count total characters in document
  */
 export function getCharacterCount(body: DocumentBody): number {
-  return getDocumentText(body).length;
+	return getDocumentText(body).length;
 }
 
 /**
  * Get section count
  */
 export function getSectionCount(body: DocumentBody): number {
-  return body.sections?.length ?? 1;
+	return body.sections?.length ?? 1;
 }
 
 /**
  * Check if document has template variables
  */
 export function hasTemplateVariables(body: DocumentBody): boolean {
-  return extractAllTemplateVariables(body.content).length > 0;
+	return extractAllTemplateVariables(body.content).length > 0;
 }
 
 /**
@@ -607,21 +643,23 @@ export function hasTemplateVariables(body: DocumentBody): boolean {
  * @returns Array of paragraph previews
  */
 export function getDocumentOutline(
-  body: DocumentBody,
-  maxCharsPerPara: number = 100,
-  maxParagraphs: number = 50
+	body: DocumentBody,
+	maxCharsPerPara: number = 100,
+	maxParagraphs: number = 50,
 ): string[] {
-  const outline: string[] = [];
-  const paragraphs = getAllParagraphs(body);
+	const outline: string[] = [];
+	const paragraphs = getAllParagraphs(body);
 
-  for (let i = 0; i < Math.min(paragraphs.length, maxParagraphs); i++) {
-    const text = getParagraphText(paragraphs[i]).trim();
-    if (text.length > 0) {
-      outline.push(
-        text.length > maxCharsPerPara ? text.substring(0, maxCharsPerPara) + '...' : text
-      );
-    }
-  }
+	for (let i = 0; i < Math.min(paragraphs.length, maxParagraphs); i++) {
+		const text = getParagraphText(paragraphs[i]).trim();
+		if (text.length > 0) {
+			outline.push(
+				text.length > maxCharsPerPara
+					? text.substring(0, maxCharsPerPara) + "..."
+					: text,
+			);
+		}
+	}
 
-  return outline;
+	return outline;
 }

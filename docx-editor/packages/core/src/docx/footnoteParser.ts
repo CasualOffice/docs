@@ -23,33 +23,33 @@
  */
 
 import type {
-  Footnote,
-  Endnote,
-  FootnoteProperties,
-  EndnoteProperties,
-  FootnotePosition,
-  EndnotePosition,
-  NoteNumberRestart,
-  NumberFormat,
-  Paragraph,
-  Table,
-  Theme,
-  RelationshipMap,
-  MediaFile,
-} from '../types/document';
-import type { StyleMap } from './styleParser';
-import type { NumberingMap } from './numberingParser';
+	Footnote,
+	Endnote,
+	FootnoteProperties,
+	EndnoteProperties,
+	FootnotePosition,
+	EndnotePosition,
+	NoteNumberRestart,
+	NumberFormat,
+	Paragraph,
+	Table,
+	Theme,
+	RelationshipMap,
+	MediaFile,
+} from "../types/document";
+import type { StyleMap } from "./styleParser";
+import type { NumberingMap } from "./numberingParser";
 import {
-  parseXml,
-  findChild,
-  findChildren,
-  getAttribute,
-  getChildElements,
-  parseNumericAttribute,
-  type XmlElement,
-} from './xmlParser';
-import { parseParagraph } from './paragraphParser';
-import { parseTable } from './tableParser';
+	parseXml,
+	findChild,
+	findChildren,
+	getAttribute,
+	getChildElements,
+	parseNumericAttribute,
+	type XmlElement,
+} from "./xmlParser";
+import { parseParagraph } from "./paragraphParser";
+import { parseTable } from "./tableParser";
 
 // ============================================================================
 // FOOTNOTE MAP INTERFACE
@@ -59,52 +59,52 @@ import { parseTable } from './tableParser';
  * Footnote map returned by parseFootnotes
  */
 export interface FootnoteMap {
-  /** All footnotes indexed by ID */
-  byId: Map<number, Footnote>;
+	/** All footnotes indexed by ID */
+	byId: Map<number, Footnote>;
 
-  /** Array of all footnotes in document order */
-  footnotes: Footnote[];
+	/** Array of all footnotes in document order */
+	footnotes: Footnote[];
 
-  /** Get footnote by ID */
-  getFootnote(id: number): Footnote | undefined;
+	/** Get footnote by ID */
+	getFootnote(id: number): Footnote | undefined;
 
-  /** Check if footnote exists */
-  hasFootnote(id: number): boolean;
+	/** Check if footnote exists */
+	hasFootnote(id: number): boolean;
 
-  /** Get all normal (non-separator) footnotes */
-  getNormalFootnotes(): Footnote[];
+	/** Get all normal (non-separator) footnotes */
+	getNormalFootnotes(): Footnote[];
 
-  /** Get separator footnote if exists */
-  getSeparator(): Footnote | undefined;
+	/** Get separator footnote if exists */
+	getSeparator(): Footnote | undefined;
 
-  /** Get continuation separator if exists */
-  getContinuationSeparator(): Footnote | undefined;
+	/** Get continuation separator if exists */
+	getContinuationSeparator(): Footnote | undefined;
 }
 
 /**
  * Endnote map returned by parseEndnotes
  */
 export interface EndnoteMap {
-  /** All endnotes indexed by ID */
-  byId: Map<number, Endnote>;
+	/** All endnotes indexed by ID */
+	byId: Map<number, Endnote>;
 
-  /** Array of all endnotes in document order */
-  endnotes: Endnote[];
+	/** Array of all endnotes in document order */
+	endnotes: Endnote[];
 
-  /** Get endnote by ID */
-  getEndnote(id: number): Endnote | undefined;
+	/** Get endnote by ID */
+	getEndnote(id: number): Endnote | undefined;
 
-  /** Check if endnote exists */
-  hasEndnote(id: number): boolean;
+	/** Check if endnote exists */
+	hasEndnote(id: number): boolean;
 
-  /** Get all normal (non-separator) endnotes */
-  getNormalEndnotes(): Endnote[];
+	/** Get all normal (non-separator) endnotes */
+	getNormalEndnotes(): Endnote[];
 
-  /** Get separator endnote if exists */
-  getSeparator(): Endnote | undefined;
+	/** Get separator endnote if exists */
+	getSeparator(): Endnote | undefined;
 
-  /** Get continuation separator if exists */
-  getContinuationSeparator(): Endnote | undefined;
+	/** Get continuation separator if exists */
+	getContinuationSeparator(): Endnote | undefined;
 }
 
 // ============================================================================
@@ -115,18 +115,18 @@ export interface EndnoteMap {
  * Parse note type attribute
  */
 function parseNoteType(
-  typeAttr: string | null
-): 'normal' | 'separator' | 'continuationSeparator' | 'continuationNotice' {
-  switch (typeAttr) {
-    case 'separator':
-      return 'separator';
-    case 'continuationSeparator':
-      return 'continuationSeparator';
-    case 'continuationNotice':
-      return 'continuationNotice';
-    default:
-      return 'normal';
-  }
+	typeAttr: string | null,
+): "normal" | "separator" | "continuationSeparator" | "continuationNotice" {
+	switch (typeAttr) {
+		case "separator":
+			return "separator";
+		case "continuationSeparator":
+			return "continuationSeparator";
+		case "continuationNotice":
+			return "continuationNotice";
+		default:
+			return "normal";
+	}
 }
 
 // ============================================================================
@@ -140,48 +140,55 @@ function parseNoteType(
  * matters when a footnote interleaves text with a table.
  */
 function parseNoteBlockContent(
-  element: XmlElement,
-  styles: StyleMap | null,
-  theme: Theme | null,
-  numbering: NumberingMap | null,
-  rels: RelationshipMap | null,
-  media: Map<string, MediaFile> | null
+	element: XmlElement,
+	styles: StyleMap | null,
+	theme: Theme | null,
+	numbering: NumberingMap | null,
+	rels: RelationshipMap | null,
+	media: Map<string, MediaFile> | null,
 ): (Paragraph | Table)[] {
-  const blocks: (Paragraph | Table)[] = [];
-  for (const child of getChildElements(element)) {
-    const name = child.name ?? '';
-    if (name === 'w:p') {
-      blocks.push(parseParagraph(child, styles, theme, numbering, rels));
-    } else if (name === 'w:tbl') {
-      blocks.push(parseTable(child, styles, theme, numbering, rels, media));
-    }
-  }
-  return blocks;
+	const blocks: (Paragraph | Table)[] = [];
+	for (const child of getChildElements(element)) {
+		const name = child.name ?? "";
+		if (name === "w:p") {
+			blocks.push(parseParagraph(child, styles, theme, numbering, rels));
+		} else if (name === "w:tbl") {
+			blocks.push(parseTable(child, styles, theme, numbering, rels, media));
+		}
+	}
+	return blocks;
 }
 
 /**
  * Parse a single footnote element (w:footnote)
  */
 function parseFootnote(
-  element: XmlElement,
-  styles: StyleMap | null,
-  theme: Theme | null,
-  numbering: NumberingMap | null,
-  rels: RelationshipMap | null,
-  media: Map<string, MediaFile> | null
+	element: XmlElement,
+	styles: StyleMap | null,
+	theme: Theme | null,
+	numbering: NumberingMap | null,
+	rels: RelationshipMap | null,
+	media: Map<string, MediaFile> | null,
 ): Footnote {
-  const id = parseNumericAttribute(element, 'w', 'id') ?? 0;
-  const typeAttr = getAttribute(element, 'w', 'type');
-  const noteType = parseNoteType(typeAttr);
+	const id = parseNumericAttribute(element, "w", "id") ?? 0;
+	const typeAttr = getAttribute(element, "w", "type");
+	const noteType = parseNoteType(typeAttr);
 
-  const content = parseNoteBlockContent(element, styles, theme, numbering, rels, media);
+	const content = parseNoteBlockContent(
+		element,
+		styles,
+		theme,
+		numbering,
+		rels,
+		media,
+	);
 
-  return {
-    type: 'footnote',
-    id,
-    noteType,
-    content,
-  };
+	return {
+		type: "footnote",
+		id,
+		noteType,
+		content,
+	};
 }
 
 /**
@@ -196,75 +203,79 @@ function parseFootnote(
  * @returns FootnoteMap with all footnotes
  */
 export function parseFootnotes(
-  footnotesXml: string | null,
-  styles: StyleMap | null = null,
-  theme: Theme | null = null,
-  numbering: NumberingMap | null = null,
-  rels: RelationshipMap | null = null,
-  media: Map<string, MediaFile> | null = null
+	footnotesXml: string | null,
+	styles: StyleMap | null = null,
+	theme: Theme | null = null,
+	numbering: NumberingMap | null = null,
+	rels: RelationshipMap | null = null,
+	media: Map<string, MediaFile> | null = null,
 ): FootnoteMap {
-  const byId = new Map<number, Footnote>();
-  const footnotes: Footnote[] = [];
+	const byId = new Map<number, Footnote>();
+	const footnotes: Footnote[] = [];
 
-  if (!footnotesXml) {
-    return createFootnoteMap(byId, footnotes);
-  }
+	if (!footnotesXml) {
+		return createFootnoteMap(byId, footnotes);
+	}
 
-  const doc = parseXml(footnotesXml);
-  if (!doc) {
-    return createFootnoteMap(byId, footnotes);
-  }
+	const doc = parseXml(footnotesXml);
+	if (!doc) {
+		return createFootnoteMap(byId, footnotes);
+	}
 
-  // Find the root footnotes element
-  const rootElement = doc.elements?.find(
-    (el: XmlElement) =>
-      el.type === 'element' && (el.name === 'w:footnotes' || el.name?.endsWith(':footnotes'))
-  ) as XmlElement | undefined;
+	// Find the root footnotes element
+	const rootElement = doc.elements?.find(
+		(el: XmlElement) =>
+			el.type === "element" &&
+			(el.name === "w:footnotes" || el.name?.endsWith(":footnotes")),
+	) as XmlElement | undefined;
 
-  if (!rootElement) {
-    return createFootnoteMap(byId, footnotes);
-  }
+	if (!rootElement) {
+		return createFootnoteMap(byId, footnotes);
+	}
 
-  // Parse all footnote elements
-  const footnoteElements = findChildren(rootElement, 'w', 'footnote');
+	// Parse all footnote elements
+	const footnoteElements = findChildren(rootElement, "w", "footnote");
 
-  for (const fnEl of footnoteElements) {
-    const footnote = parseFootnote(fnEl, styles, theme, numbering, rels, media);
-    byId.set(footnote.id, footnote);
-    footnotes.push(footnote);
-  }
+	for (const fnEl of footnoteElements) {
+		const footnote = parseFootnote(fnEl, styles, theme, numbering, rels, media);
+		byId.set(footnote.id, footnote);
+		footnotes.push(footnote);
+	}
 
-  return createFootnoteMap(byId, footnotes);
+	return createFootnoteMap(byId, footnotes);
 }
 
 /**
  * Create FootnoteMap object with helper methods
  */
-function createFootnoteMap(byId: Map<number, Footnote>, footnotes: Footnote[]): FootnoteMap {
-  return {
-    byId,
-    footnotes,
+function createFootnoteMap(
+	byId: Map<number, Footnote>,
+	footnotes: Footnote[],
+): FootnoteMap {
+	return {
+		byId,
+		footnotes,
 
-    getFootnote(id: number): Footnote | undefined {
-      return byId.get(id);
-    },
+		getFootnote(id: number): Footnote | undefined {
+			return byId.get(id);
+		},
 
-    hasFootnote(id: number): boolean {
-      return byId.has(id);
-    },
+		hasFootnote(id: number): boolean {
+			return byId.has(id);
+		},
 
-    getNormalFootnotes(): Footnote[] {
-      return footnotes.filter((fn) => fn.noteType === 'normal');
-    },
+		getNormalFootnotes(): Footnote[] {
+			return footnotes.filter((fn) => fn.noteType === "normal");
+		},
 
-    getSeparator(): Footnote | undefined {
-      return footnotes.find((fn) => fn.noteType === 'separator');
-    },
+		getSeparator(): Footnote | undefined {
+			return footnotes.find((fn) => fn.noteType === "separator");
+		},
 
-    getContinuationSeparator(): Footnote | undefined {
-      return footnotes.find((fn) => fn.noteType === 'continuationSeparator');
-    },
-  };
+		getContinuationSeparator(): Footnote | undefined {
+			return footnotes.find((fn) => fn.noteType === "continuationSeparator");
+		},
+	};
 }
 
 // ============================================================================
@@ -275,25 +286,32 @@ function createFootnoteMap(byId: Map<number, Footnote>, footnotes: Footnote[]): 
  * Parse a single endnote element (w:endnote)
  */
 function parseEndnote(
-  element: XmlElement,
-  styles: StyleMap | null,
-  theme: Theme | null,
-  numbering: NumberingMap | null,
-  rels: RelationshipMap | null,
-  media: Map<string, MediaFile> | null
+	element: XmlElement,
+	styles: StyleMap | null,
+	theme: Theme | null,
+	numbering: NumberingMap | null,
+	rels: RelationshipMap | null,
+	media: Map<string, MediaFile> | null,
 ): Endnote {
-  const id = parseNumericAttribute(element, 'w', 'id') ?? 0;
-  const typeAttr = getAttribute(element, 'w', 'type');
-  const noteType = parseNoteType(typeAttr);
+	const id = parseNumericAttribute(element, "w", "id") ?? 0;
+	const typeAttr = getAttribute(element, "w", "type");
+	const noteType = parseNoteType(typeAttr);
 
-  const content = parseNoteBlockContent(element, styles, theme, numbering, rels, media);
+	const content = parseNoteBlockContent(
+		element,
+		styles,
+		theme,
+		numbering,
+		rels,
+		media,
+	);
 
-  return {
-    type: 'endnote',
-    id,
-    noteType,
-    content,
-  };
+	return {
+		type: "endnote",
+		id,
+		noteType,
+		content,
+	};
 }
 
 /**
@@ -308,75 +326,79 @@ function parseEndnote(
  * @returns EndnoteMap with all endnotes
  */
 export function parseEndnotes(
-  endnotesXml: string | null,
-  styles: StyleMap | null = null,
-  theme: Theme | null = null,
-  numbering: NumberingMap | null = null,
-  rels: RelationshipMap | null = null,
-  media: Map<string, MediaFile> | null = null
+	endnotesXml: string | null,
+	styles: StyleMap | null = null,
+	theme: Theme | null = null,
+	numbering: NumberingMap | null = null,
+	rels: RelationshipMap | null = null,
+	media: Map<string, MediaFile> | null = null,
 ): EndnoteMap {
-  const byId = new Map<number, Endnote>();
-  const endnotes: Endnote[] = [];
+	const byId = new Map<number, Endnote>();
+	const endnotes: Endnote[] = [];
 
-  if (!endnotesXml) {
-    return createEndnoteMap(byId, endnotes);
-  }
+	if (!endnotesXml) {
+		return createEndnoteMap(byId, endnotes);
+	}
 
-  const doc = parseXml(endnotesXml);
-  if (!doc) {
-    return createEndnoteMap(byId, endnotes);
-  }
+	const doc = parseXml(endnotesXml);
+	if (!doc) {
+		return createEndnoteMap(byId, endnotes);
+	}
 
-  // Find the root endnotes element
-  const rootElement = doc.elements?.find(
-    (el: XmlElement) =>
-      el.type === 'element' && (el.name === 'w:endnotes' || el.name?.endsWith(':endnotes'))
-  ) as XmlElement | undefined;
+	// Find the root endnotes element
+	const rootElement = doc.elements?.find(
+		(el: XmlElement) =>
+			el.type === "element" &&
+			(el.name === "w:endnotes" || el.name?.endsWith(":endnotes")),
+	) as XmlElement | undefined;
 
-  if (!rootElement) {
-    return createEndnoteMap(byId, endnotes);
-  }
+	if (!rootElement) {
+		return createEndnoteMap(byId, endnotes);
+	}
 
-  // Parse all endnote elements
-  const endnoteElements = findChildren(rootElement, 'w', 'endnote');
+	// Parse all endnote elements
+	const endnoteElements = findChildren(rootElement, "w", "endnote");
 
-  for (const enEl of endnoteElements) {
-    const endnote = parseEndnote(enEl, styles, theme, numbering, rels, media);
-    byId.set(endnote.id, endnote);
-    endnotes.push(endnote);
-  }
+	for (const enEl of endnoteElements) {
+		const endnote = parseEndnote(enEl, styles, theme, numbering, rels, media);
+		byId.set(endnote.id, endnote);
+		endnotes.push(endnote);
+	}
 
-  return createEndnoteMap(byId, endnotes);
+	return createEndnoteMap(byId, endnotes);
 }
 
 /**
  * Create EndnoteMap object with helper methods
  */
-function createEndnoteMap(byId: Map<number, Endnote>, endnotes: Endnote[]): EndnoteMap {
-  return {
-    byId,
-    endnotes,
+function createEndnoteMap(
+	byId: Map<number, Endnote>,
+	endnotes: Endnote[],
+): EndnoteMap {
+	return {
+		byId,
+		endnotes,
 
-    getEndnote(id: number): Endnote | undefined {
-      return byId.get(id);
-    },
+		getEndnote(id: number): Endnote | undefined {
+			return byId.get(id);
+		},
 
-    hasEndnote(id: number): boolean {
-      return byId.has(id);
-    },
+		hasEndnote(id: number): boolean {
+			return byId.has(id);
+		},
 
-    getNormalEndnotes(): Endnote[] {
-      return endnotes.filter((en) => en.noteType === 'normal');
-    },
+		getNormalEndnotes(): Endnote[] {
+			return endnotes.filter((en) => en.noteType === "normal");
+		},
 
-    getSeparator(): Endnote | undefined {
-      return endnotes.find((en) => en.noteType === 'separator');
-    },
+		getSeparator(): Endnote | undefined {
+			return endnotes.find((en) => en.noteType === "separator");
+		},
 
-    getContinuationSeparator(): Endnote | undefined {
-      return endnotes.find((en) => en.noteType === 'continuationSeparator');
-    },
-  };
+		getContinuationSeparator(): Endnote | undefined {
+			return endnotes.find((en) => en.noteType === "continuationSeparator");
+		},
+	};
 }
 
 // ============================================================================
@@ -386,151 +408,163 @@ function createEndnoteMap(byId: Map<number, Endnote>, endnotes: Endnote[]): Endn
 /**
  * Parse number format from w:numFmt element
  */
-function parseNumberFormat(numFmtAttr: string | null): NumberFormat | undefined {
-  if (!numFmtAttr) return undefined;
+function parseNumberFormat(
+	numFmtAttr: string | null,
+): NumberFormat | undefined {
+	if (!numFmtAttr) return undefined;
 
-  // Map OOXML numFmt values to our NumberFormat type
-  const formatMap: Record<string, NumberFormat> = {
-    decimal: 'decimal',
-    upperRoman: 'upperRoman',
-    lowerRoman: 'lowerRoman',
-    upperLetter: 'upperLetter',
-    lowerLetter: 'lowerLetter',
-    ordinal: 'ordinal',
-    cardinalText: 'cardinalText',
-    ordinalText: 'ordinalText',
-    bullet: 'bullet',
-    chicago: 'chicago',
-    none: 'none',
-  };
+	// Map OOXML numFmt values to our NumberFormat type
+	const formatMap: Record<string, NumberFormat> = {
+		decimal: "decimal",
+		upperRoman: "upperRoman",
+		lowerRoman: "lowerRoman",
+		upperLetter: "upperLetter",
+		lowerLetter: "lowerLetter",
+		ordinal: "ordinal",
+		cardinalText: "cardinalText",
+		ordinalText: "ordinalText",
+		bullet: "bullet",
+		chicago: "chicago",
+		none: "none",
+	};
 
-  return formatMap[numFmtAttr] as NumberFormat | undefined;
+	return formatMap[numFmtAttr] as NumberFormat | undefined;
 }
 
 /**
  * Parse footnote position
  */
-function parseFootnotePosition(posAttr: string | null): FootnotePosition | undefined {
-  switch (posAttr) {
-    case 'pageBottom':
-      return 'pageBottom';
-    case 'beneathText':
-      return 'beneathText';
-    case 'sectEnd':
-      return 'sectEnd';
-    case 'docEnd':
-      return 'docEnd';
-    default:
-      return undefined;
-  }
+function parseFootnotePosition(
+	posAttr: string | null,
+): FootnotePosition | undefined {
+	switch (posAttr) {
+		case "pageBottom":
+			return "pageBottom";
+		case "beneathText":
+			return "beneathText";
+		case "sectEnd":
+			return "sectEnd";
+		case "docEnd":
+			return "docEnd";
+		default:
+			return undefined;
+	}
 }
 
 /**
  * Parse endnote position
  */
-function parseEndnotePosition(posAttr: string | null): EndnotePosition | undefined {
-  switch (posAttr) {
-    case 'sectEnd':
-      return 'sectEnd';
-    case 'docEnd':
-      return 'docEnd';
-    default:
-      return undefined;
-  }
+function parseEndnotePosition(
+	posAttr: string | null,
+): EndnotePosition | undefined {
+	switch (posAttr) {
+		case "sectEnd":
+			return "sectEnd";
+		case "docEnd":
+			return "docEnd";
+		default:
+			return undefined;
+	}
 }
 
 /**
  * Parse number restart type
  */
-function parseNumberRestart(restartAttr: string | null): NoteNumberRestart | undefined {
-  switch (restartAttr) {
-    case 'continuous':
-      return 'continuous';
-    case 'eachSect':
-      return 'eachSect';
-    case 'eachPage':
-      return 'eachPage';
-    default:
-      return undefined;
-  }
+function parseNumberRestart(
+	restartAttr: string | null,
+): NoteNumberRestart | undefined {
+	switch (restartAttr) {
+		case "continuous":
+			return "continuous";
+		case "eachSect":
+			return "eachSect";
+		case "eachPage":
+			return "eachPage";
+		default:
+			return undefined;
+	}
 }
 
 /**
  * Parse footnote properties from w:footnotePr element
  * (Can appear in w:sectPr or w:settings)
  */
-export function parseFootnoteProperties(element: XmlElement | null): FootnoteProperties {
-  const props: FootnoteProperties = {};
+export function parseFootnoteProperties(
+	element: XmlElement | null,
+): FootnoteProperties {
+	const props: FootnoteProperties = {};
 
-  if (!element) return props;
+	if (!element) return props;
 
-  // Position (w:pos)
-  const posEl = findChild(element, 'w', 'pos');
-  if (posEl) {
-    const posAttr = getAttribute(posEl, 'w', 'val');
-    props.position = parseFootnotePosition(posAttr);
-  }
+	// Position (w:pos)
+	const posEl = findChild(element, "w", "pos");
+	if (posEl) {
+		const posAttr = getAttribute(posEl, "w", "val");
+		props.position = parseFootnotePosition(posAttr);
+	}
 
-  // Number format (w:numFmt)
-  const numFmtEl = findChild(element, 'w', 'numFmt');
-  if (numFmtEl) {
-    const fmtAttr = getAttribute(numFmtEl, 'w', 'val');
-    props.numFmt = parseNumberFormat(fmtAttr);
-  }
+	// Number format (w:numFmt)
+	const numFmtEl = findChild(element, "w", "numFmt");
+	if (numFmtEl) {
+		const fmtAttr = getAttribute(numFmtEl, "w", "val");
+		props.numFmt = parseNumberFormat(fmtAttr);
+	}
 
-  // Start number (w:numStart)
-  const numStartEl = findChild(element, 'w', 'numStart');
-  if (numStartEl) {
-    props.numStart = parseNumericAttribute(numStartEl, 'w', 'val') ?? undefined;
-  }
+	// Start number (w:numStart)
+	const numStartEl = findChild(element, "w", "numStart");
+	if (numStartEl) {
+		props.numStart = parseNumericAttribute(numStartEl, "w", "val") ?? undefined;
+	}
 
-  // Number restart (w:numRestart)
-  const numRestartEl = findChild(element, 'w', 'numRestart');
-  if (numRestartEl) {
-    const restartAttr = getAttribute(numRestartEl, 'w', 'val');
-    props.numRestart = parseNumberRestart(restartAttr);
-  }
+	// Number restart (w:numRestart)
+	const numRestartEl = findChild(element, "w", "numRestart");
+	if (numRestartEl) {
+		const restartAttr = getAttribute(numRestartEl, "w", "val");
+		props.numRestart = parseNumberRestart(restartAttr);
+	}
 
-  return props;
+	return props;
 }
 
 /**
  * Parse endnote properties from w:endnotePr element
  * (Can appear in w:sectPr or w:settings)
  */
-export function parseEndnoteProperties(element: XmlElement | null): EndnoteProperties {
-  const props: EndnoteProperties = {};
+export function parseEndnoteProperties(
+	element: XmlElement | null,
+): EndnoteProperties {
+	const props: EndnoteProperties = {};
 
-  if (!element) return props;
+	if (!element) return props;
 
-  // Position (w:pos)
-  const posEl = findChild(element, 'w', 'pos');
-  if (posEl) {
-    const posAttr = getAttribute(posEl, 'w', 'val');
-    props.position = parseEndnotePosition(posAttr);
-  }
+	// Position (w:pos)
+	const posEl = findChild(element, "w", "pos");
+	if (posEl) {
+		const posAttr = getAttribute(posEl, "w", "val");
+		props.position = parseEndnotePosition(posAttr);
+	}
 
-  // Number format (w:numFmt)
-  const numFmtEl = findChild(element, 'w', 'numFmt');
-  if (numFmtEl) {
-    const fmtAttr = getAttribute(numFmtEl, 'w', 'val');
-    props.numFmt = parseNumberFormat(fmtAttr);
-  }
+	// Number format (w:numFmt)
+	const numFmtEl = findChild(element, "w", "numFmt");
+	if (numFmtEl) {
+		const fmtAttr = getAttribute(numFmtEl, "w", "val");
+		props.numFmt = parseNumberFormat(fmtAttr);
+	}
 
-  // Start number (w:numStart)
-  const numStartEl = findChild(element, 'w', 'numStart');
-  if (numStartEl) {
-    props.numStart = parseNumericAttribute(numStartEl, 'w', 'val') ?? undefined;
-  }
+	// Start number (w:numStart)
+	const numStartEl = findChild(element, "w", "numStart");
+	if (numStartEl) {
+		props.numStart = parseNumericAttribute(numStartEl, "w", "val") ?? undefined;
+	}
 
-  // Number restart (w:numRestart)
-  const numRestartEl = findChild(element, 'w', 'numRestart');
-  if (numRestartEl) {
-    const restartAttr = getAttribute(numRestartEl, 'w', 'val');
-    props.numRestart = parseNumberRestart(restartAttr);
-  }
+	// Number restart (w:numRestart)
+	const numRestartEl = findChild(element, "w", "numRestart");
+	if (numRestartEl) {
+		const restartAttr = getAttribute(numRestartEl, "w", "val");
+		props.numRestart = parseNumberRestart(restartAttr);
+	}
 
-  return props;
+	return props;
 }
 
 // ============================================================================
@@ -541,76 +575,76 @@ export function parseEndnoteProperties(element: XmlElement | null): EndnotePrope
  * Get plain text content of a footnote
  */
 export function getFootnoteText(footnote: Footnote): string {
-  // Now that footnote.content can include tables (per ECMA-376 §17.11.10),
-  // skip non-paragraph blocks for the plain-text representation. Tables are
-  // still rendered visually via the body pipeline; they just don't
-  // contribute to this textual summary.
-  const texts: string[] = [];
+	// Now that footnote.content can include tables (per ECMA-376 §17.11.10),
+	// skip non-paragraph blocks for the plain-text representation. Tables are
+	// still rendered visually via the body pipeline; they just don't
+	// contribute to this textual summary.
+	const texts: string[] = [];
 
-  for (const block of footnote.content) {
-    if (block.type !== 'paragraph') continue;
-    const paraTexts: string[] = [];
-    for (const content of block.content) {
-      if (content.type === 'run') {
-        for (const runContent of content.content) {
-          if (runContent.type === 'text') {
-            paraTexts.push(runContent.text);
-          }
-        }
-      }
-    }
-    texts.push(paraTexts.join(''));
-  }
+	for (const block of footnote.content) {
+		if (block.type !== "paragraph") continue;
+		const paraTexts: string[] = [];
+		for (const content of block.content) {
+			if (content.type === "run") {
+				for (const runContent of content.content) {
+					if (runContent.type === "text") {
+						paraTexts.push(runContent.text);
+					}
+				}
+			}
+		}
+		texts.push(paraTexts.join(""));
+	}
 
-  return texts.join('\n');
+	return texts.join("\n");
 }
 
 /**
  * Get plain text content of an endnote
  */
 export function getEndnoteText(endnote: Endnote): string {
-  // Same as getFootnoteText — skip non-paragraph blocks for the textual
-  // summary; tables still render visually downstream.
-  const texts: string[] = [];
+	// Same as getFootnoteText — skip non-paragraph blocks for the textual
+	// summary; tables still render visually downstream.
+	const texts: string[] = [];
 
-  for (const block of endnote.content) {
-    if (block.type !== 'paragraph') continue;
-    const paraTexts: string[] = [];
-    for (const content of block.content) {
-      if (content.type === 'run') {
-        for (const runContent of content.content) {
-          if (runContent.type === 'text') {
-            paraTexts.push(runContent.text);
-          }
-        }
-      }
-    }
-    texts.push(paraTexts.join(''));
-  }
+	for (const block of endnote.content) {
+		if (block.type !== "paragraph") continue;
+		const paraTexts: string[] = [];
+		for (const content of block.content) {
+			if (content.type === "run") {
+				for (const runContent of content.content) {
+					if (runContent.type === "text") {
+						paraTexts.push(runContent.text);
+					}
+				}
+			}
+		}
+		texts.push(paraTexts.join(""));
+	}
 
-  return texts.join('\n');
+	return texts.join("\n");
 }
 
 /**
  * Check if a footnote is a separator (not regular content)
  */
 export function isSeparatorFootnote(footnote: Footnote): boolean {
-  return (
-    footnote.noteType === 'separator' ||
-    footnote.noteType === 'continuationSeparator' ||
-    footnote.noteType === 'continuationNotice'
-  );
+	return (
+		footnote.noteType === "separator" ||
+		footnote.noteType === "continuationSeparator" ||
+		footnote.noteType === "continuationNotice"
+	);
 }
 
 /**
  * Check if an endnote is a separator (not regular content)
  */
 export function isSeparatorEndnote(endnote: Endnote): boolean {
-  return (
-    endnote.noteType === 'separator' ||
-    endnote.noteType === 'continuationSeparator' ||
-    endnote.noteType === 'continuationNotice'
-  );
+	return (
+		endnote.noteType === "separator" ||
+		endnote.noteType === "continuationSeparator" ||
+		endnote.noteType === "continuationNotice"
+	);
 }
 
 /**
@@ -621,22 +655,22 @@ export function isSeparatorEndnote(endnote: Endnote): boolean {
  * @returns The display number, or null for separator footnotes
  */
 export function getFootnoteDisplayNumber(
-  footnote: Footnote,
-  footnoteMap: FootnoteMap,
-  startNumber: number = 1
+	footnote: Footnote,
+	footnoteMap: FootnoteMap,
+	startNumber: number = 1,
 ): number | null {
-  if (isSeparatorFootnote(footnote)) {
-    return null;
-  }
+	if (isSeparatorFootnote(footnote)) {
+		return null;
+	}
 
-  const normalFootnotes = footnoteMap.getNormalFootnotes();
-  const index = normalFootnotes.findIndex((fn) => fn.id === footnote.id);
+	const normalFootnotes = footnoteMap.getNormalFootnotes();
+	const index = normalFootnotes.findIndex((fn) => fn.id === footnote.id);
 
-  if (index === -1) {
-    return null;
-  }
+	if (index === -1) {
+		return null;
+	}
 
-  return startNumber + index;
+	return startNumber + index;
 }
 
 /**
@@ -647,72 +681,72 @@ export function getFootnoteDisplayNumber(
  * @returns The display number, or null for separator endnotes
  */
 export function getEndnoteDisplayNumber(
-  endnote: Endnote,
-  endnoteMap: EndnoteMap,
-  startNumber: number = 1
+	endnote: Endnote,
+	endnoteMap: EndnoteMap,
+	startNumber: number = 1,
 ): number | null {
-  if (isSeparatorEndnote(endnote)) {
-    return null;
-  }
+	if (isSeparatorEndnote(endnote)) {
+		return null;
+	}
 
-  const normalEndnotes = endnoteMap.getNormalEndnotes();
-  const index = normalEndnotes.findIndex((en) => en.id === endnote.id);
+	const normalEndnotes = endnoteMap.getNormalEndnotes();
+	const index = normalEndnotes.findIndex((en) => en.id === endnote.id);
 
-  if (index === -1) {
-    return null;
-  }
+	if (index === -1) {
+		return null;
+	}
 
-  return startNumber + index;
+	return startNumber + index;
 }
 
 /**
  * Create an empty footnote map
  */
 export function createEmptyFootnoteMap(): FootnoteMap {
-  return createFootnoteMap(new Map(), []);
+	return createFootnoteMap(new Map(), []);
 }
 
 /**
  * Create an empty endnote map
  */
 export function createEmptyEndnoteMap(): EndnoteMap {
-  return createEndnoteMap(new Map(), []);
+	return createEndnoteMap(new Map(), []);
 }
 
 /**
  * Merge multiple footnote maps (e.g., from different documents)
  */
 export function mergeFootnoteMaps(...maps: FootnoteMap[]): FootnoteMap {
-  const byId = new Map<number, Footnote>();
-  const footnotes: Footnote[] = [];
+	const byId = new Map<number, Footnote>();
+	const footnotes: Footnote[] = [];
 
-  for (const map of maps) {
-    for (const fn of map.footnotes) {
-      if (!byId.has(fn.id)) {
-        byId.set(fn.id, fn);
-        footnotes.push(fn);
-      }
-    }
-  }
+	for (const map of maps) {
+		for (const fn of map.footnotes) {
+			if (!byId.has(fn.id)) {
+				byId.set(fn.id, fn);
+				footnotes.push(fn);
+			}
+		}
+	}
 
-  return createFootnoteMap(byId, footnotes);
+	return createFootnoteMap(byId, footnotes);
 }
 
 /**
  * Merge multiple endnote maps (e.g., from different documents)
  */
 export function mergeEndnoteMaps(...maps: EndnoteMap[]): EndnoteMap {
-  const byId = new Map<number, Endnote>();
-  const endnotes: Endnote[] = [];
+	const byId = new Map<number, Endnote>();
+	const endnotes: Endnote[] = [];
 
-  for (const map of maps) {
-    for (const en of map.endnotes) {
-      if (!byId.has(en.id)) {
-        byId.set(en.id, en);
-        endnotes.push(en);
-      }
-    }
-  }
+	for (const map of maps) {
+		for (const en of map.endnotes) {
+			if (!byId.has(en.id)) {
+				byId.set(en.id, en);
+				endnotes.push(en);
+			}
+		}
+	}
 
-  return createEndnoteMap(byId, endnotes);
+	return createEndnoteMap(byId, endnotes);
 }

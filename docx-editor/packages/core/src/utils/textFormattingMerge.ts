@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import type { ColorValue, TextFormatting } from '../types/document';
-import { mergeFontFamily } from './fontFamilyMerge';
+import type { ColorValue, TextFormatting } from "../types/document";
+import { mergeFontFamily } from "./fontFamilyMerge";
 
 /**
  * Merge two `TextFormatting` objects (source overrides target).
@@ -26,44 +26,49 @@ import { mergeFontFamily } from './fontFamilyMerge';
  * - primitives — replace.
  */
 export function mergeTextFormatting(
-  target: TextFormatting | undefined,
-  source: TextFormatting | undefined
+	target: TextFormatting | undefined,
+	source: TextFormatting | undefined,
 ): TextFormatting | undefined {
-  if (!source && !target) return undefined;
-  if (!source) return target;
-  if (!target) return { ...source };
+	if (!source && !target) return undefined;
+	if (!source) return target;
+	if (!target) return { ...source };
 
-  const result: Record<string, unknown> = { ...target };
+	const result: Record<string, unknown> = { ...target };
 
-  for (const key of Object.keys(source) as (keyof TextFormatting)[]) {
-    const value = source[key];
-    if (value === undefined) continue;
+	for (const key of Object.keys(source) as (keyof TextFormatting)[]) {
+		const value = source[key];
+		if (value === undefined) continue;
 
-    if (key === 'fontFamily' && typeof value === 'object' && value !== null) {
-      result.fontFamily = mergeFontFamily(
-        target.fontFamily,
-        value as NonNullable<TextFormatting['fontFamily']>
-      );
-      continue;
-    }
+		if (key === "fontFamily" && typeof value === "object" && value !== null) {
+			result.fontFamily = mergeFontFamily(
+				target.fontFamily,
+				value as NonNullable<TextFormatting["fontFamily"]>,
+			);
+			continue;
+		}
 
-    if (key === 'color' && typeof value === 'object' && value !== null) {
-      const c = value as ColorValue;
-      const hasExplicit = !!(c.rgb || c.themeColor || c.themeTint || c.themeShade);
-      if (!c.auto || hasExplicit) result.color = c;
-      continue;
-    }
+		if (key === "color" && typeof value === "object" && value !== null) {
+			const c = value as ColorValue;
+			const hasExplicit = !!(
+				c.rgb ||
+				c.themeColor ||
+				c.themeTint ||
+				c.themeShade
+			);
+			if (!c.auto || hasExplicit) result.color = c;
+			continue;
+		}
 
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      result[key] = {
-        ...((target[key] as Record<string, unknown> | undefined) ?? {}),
-        ...(value as Record<string, unknown>),
-      };
-      continue;
-    }
+		if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+			result[key] = {
+				...((target[key] as Record<string, unknown> | undefined) ?? {}),
+				...(value as Record<string, unknown>),
+			};
+			continue;
+		}
 
-    result[key] = value;
-  }
+		result[key] = value;
+	}
 
-  return result as TextFormatting;
+	return result as TextFormatting;
 }

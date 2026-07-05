@@ -17,19 +17,26 @@
  * its own splash / auth gate.
  */
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from "react";
 
-import type { FileSource } from './types';
+import type { FileSource } from "./types";
 
 const FileSourceContext = createContext<FileSource | null>(null);
 
 export interface FileSourceProviderProps {
-  source: FileSource;
-  children: ReactNode;
+	source: FileSource;
+	children: ReactNode;
 }
 
-export function FileSourceProvider({ source, children }: FileSourceProviderProps) {
-  return <FileSourceContext.Provider value={source}>{children}</FileSourceContext.Provider>;
+export function FileSourceProvider({
+	source,
+	children,
+}: FileSourceProviderProps) {
+	return (
+		<FileSourceContext.Provider value={source}>
+			{children}
+		</FileSourceContext.Provider>
+	);
 }
 
 /**
@@ -38,11 +45,11 @@ export function FileSourceProvider({ source, children }: FileSourceProviderProps
  * present, so failing loud beats a downstream null-deref.
  */
 export function useFileSource(): FileSource {
-  const ctx = useContext(FileSourceContext);
-  if (ctx === null) {
-    throw new Error(
-      'useFileSource() called outside <FileSourceProvider>. Wrap the editor in a provider after calling chooseFileSource().'
-    );
-  }
-  return ctx;
+	const ctx = useContext(FileSourceContext);
+	if (ctx === null) {
+		throw new Error(
+			"useFileSource() called outside <FileSourceProvider>. Wrap the editor in a provider after calling chooseFileSource().",
+		);
+	}
+	return ctx;
 }

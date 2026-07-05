@@ -2,18 +2,18 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import React from 'react';
-import { MarkdownEditor } from './MarkdownEditor';
-import { useMarkdownCollab } from './useMarkdownCollab';
+import type React from "react";
+import { MarkdownEditor } from "./MarkdownEditor";
+import { useMarkdownCollab } from "./useMarkdownCollab";
 
 export interface MarkdownCollabAppProps {
-  room: string;
-  backend: string;
-  user: { name: string; color: string };
-  /** `markdown` (default) shows the preview; `text` is source-only. */
-  kind?: 'markdown' | 'text';
-  onBack?: () => void;
-  renderLogo?: () => React.ReactNode;
+	room: string;
+	backend: string;
+	user: { name: string; color: string };
+	/** `markdown` (default) shows the preview; `text` is source-only. */
+	kind?: "markdown" | "text";
+	onBack?: () => void;
+	renderLogo?: () => React.ReactNode;
 }
 
 /**
@@ -26,22 +26,22 @@ export interface MarkdownCollabAppProps {
  * local file to seed from in a pure-collab session.
  */
 export function MarkdownCollabApp({
-  room,
-  backend,
-  user,
-  kind = 'markdown',
-  onBack,
-  renderLogo,
+	room,
+	backend,
+	user,
+	kind = "markdown",
+	onBack,
+	renderLogo,
 }: MarkdownCollabAppProps): React.ReactElement {
-  const collab = useMarkdownCollab({ room, backend, user });
-  return (
-    <MarkdownEditor
-      initialText=""
-      fileName={`${room}.${kind === 'text' ? 'txt' : 'md'}`}
-      kind={kind}
-      collab={collab}
-      onBack={onBack}
-      renderLogo={renderLogo}
-    />
-  );
+	const collab = useMarkdownCollab({ room, backend, user });
+	return (
+		<MarkdownEditor
+			initialText=""
+			fileName={`${room}.${kind === "text" ? "txt" : "md"}`}
+			kind={kind}
+			collab={collab}
+			onBack={onBack}
+			renderLogo={renderLogo}
+		/>
+	);
 }

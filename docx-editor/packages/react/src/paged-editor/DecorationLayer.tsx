@@ -29,151 +29,151 @@
  * its `Decoration` spec with `noOverlay: true` to prevent double-painting.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import type { EditorState } from 'prosemirror-state';
-import type { Decoration, EditorView } from 'prosemirror-view';
-import { createRenderedDomContext } from '../plugin-api/RenderedDomContext';
-import type { LayoutSelectionGate } from './LayoutSelectionGate';
+import { useEffect, useRef, useState } from "react";
+import type { EditorState } from "prosemirror-state";
+import type { Decoration, EditorView } from "prosemirror-view";
+import { createRenderedDomContext } from "../plugin-api/RenderedDomContext";
+import type { LayoutSelectionGate } from "./LayoutSelectionGate";
 
 interface DecorationLayerProps {
-  /** Returns the current PM view (or null if not yet mounted). */
-  getView: () => EditorView | null;
-  /** Returns the visible pages container (or null if not yet mounted). */
-  getPagesContainer: () => HTMLElement | null;
-  /** Current zoom — affects coordinate translation. */
-  zoom: number;
-  /** Bumps on every PM transaction; drives recomputation. */
-  transactionVersion: number;
-  /**
-   * Layout/selection gate: blocks decoration sync when layout is mid-update
-   * (otherwise `getCoordinatesForPosition` reads against stale geometry and
-   * decorations visibly jump). The component subscribes to `onRender` so a
-   * sync that's blocked by the gate retriggers when layout completes.
-   */
-  syncCoordinator: LayoutSelectionGate;
+	/** Returns the current PM view (or null if not yet mounted). */
+	getView: () => EditorView | null;
+	/** Returns the visible pages container (or null if not yet mounted). */
+	getPagesContainer: () => HTMLElement | null;
+	/** Current zoom — affects coordinate translation. */
+	zoom: number;
+	/** Bumps on every PM transaction; drives recomputation. */
+	transactionVersion: number;
+	/**
+	 * Layout/selection gate: blocks decoration sync when layout is mid-update
+	 * (otherwise `getCoordinatesForPosition` reads against stale geometry and
+	 * decorations visibly jump). The component subscribes to `onRender` so a
+	 * sync that's blocked by the gate retriggers when layout completes.
+	 */
+	syncCoordinator: LayoutSelectionGate;
 }
 
 const overlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  pointerEvents: 'none',
-  // One above SelectionOverlay (z-index: 10) so cursor name labels render above
-  // the local caret. Decoration-overlay children inherit this z-index.
-  zIndex: 11,
+	position: "absolute",
+	inset: 0,
+	pointerEvents: "none",
+	// One above SelectionOverlay (z-index: 10) so cursor name labels render above
+	// the local caret. Decoration-overlay children inherit this z-index.
+	zIndex: 11,
 };
 
 export function DecorationLayer({
-  getView,
-  getPagesContainer,
-  zoom,
-  transactionVersion,
-  syncCoordinator,
+	getView,
+	getPagesContainer,
+	zoom,
+	transactionVersion,
+	syncCoordinator,
 }: DecorationLayerProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
+	const overlayRef = useRef<HTMLDivElement>(null);
+	const rafRef = useRef<number | null>(null);
 
-  // Bumps when layout completes a render pass. Without this, a doc-changing
-  // transaction would bump `transactionVersion`, the rAF would fire while
-  // layout is still updating, `isSafeToRender()` returns false, and the
-  // decorations would never paint until the next user input.
-  const [renderEpoch, setRenderEpoch] = useState(0);
-  useEffect(() => {
-    return syncCoordinator.onRender(() => setRenderEpoch((e) => e + 1));
-  }, [syncCoordinator]);
+	// Bumps when layout completes a render pass. Without this, a doc-changing
+	// transaction would bump `transactionVersion`, the rAF would fire while
+	// layout is still updating, `isSafeToRender()` returns false, and the
+	// decorations would never paint until the next user input.
+	const [renderEpoch, setRenderEpoch] = useState(0);
+	useEffect(() => {
+		return syncCoordinator.onRender(() => setRenderEpoch((e) => e + 1));
+	}, [syncCoordinator]);
 
-  useEffect(() => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      const view = getView();
-      const pagesContainer = getPagesContainer();
-      const overlay = overlayRef.current;
-      if (!view || !pagesContainer || !overlay) return;
-      if (!syncCoordinator.isSafeToRender()) return;
-      syncDecorations(view, pagesContainer, overlay, zoom);
-    });
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-    // getView/getPagesContainer are stable closures over refs; syncCoordinator
-    // is a useMemo([]) singleton from PagedEditor.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, transactionVersion, renderEpoch]);
+	useEffect(() => {
+		if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+		rafRef.current = requestAnimationFrame(() => {
+			rafRef.current = null;
+			const view = getView();
+			const pagesContainer = getPagesContainer();
+			const overlay = overlayRef.current;
+			if (!view || !pagesContainer || !overlay) return;
+			if (!syncCoordinator.isSafeToRender()) return;
+			syncDecorations(view, pagesContainer, overlay, zoom);
+		});
+		return () => {
+			if (rafRef.current !== null) {
+				cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+		};
+		// getView/getPagesContainer are stable closures over refs; syncCoordinator
+		// is a useMemo([]) singleton from PagedEditor.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [zoom, transactionVersion, renderEpoch]);
 
-  return (
-    <div
-      ref={overlayRef}
-      className="paged-editor__decoration-overlay"
-      style={overlayStyle}
-      aria-hidden="true"
-    />
-  );
+	return (
+		<div
+			ref={overlayRef}
+			className="paged-editor__decoration-overlay"
+			style={overlayStyle}
+			aria-hidden="true"
+		/>
+	);
 }
 
 function syncDecorations(
-  view: EditorView,
-  pagesContainer: HTMLElement,
-  overlay: HTMLElement,
-  zoom: number
+	view: EditorView,
+	pagesContainer: HTMLElement,
+	overlay: HTMLElement,
+	zoom: number,
 ) {
-  // Defer building the RenderedDomContext until we know there are decorations
-  // to position — the common no-op case (no plugin emits decorations) costs
-  // a single state.plugins iteration and one early return.
-  const decorations = collectDecorations(view.state);
-  if (decorations.length === 0) {
-    if (overlay.firstChild) overlay.replaceChildren();
-    return;
-  }
+	// Defer building the RenderedDomContext until we know there are decorations
+	// to position — the common no-op case (no plugin emits decorations) costs
+	// a single state.plugins iteration and one early return.
+	const decorations = collectDecorations(view.state);
+	if (decorations.length === 0) {
+		if (overlay.firstChild) overlay.replaceChildren();
+		return;
+	}
 
-  const ctx = createRenderedDomContext(pagesContainer, zoom);
-  // The overlay div is a SIBLING of the pages container (both inside the
-  // viewport), but `getCoordinatesForPosition` / `getRectsForRange` return
-  // coords relative to the pages container itself. The pages container is
-  // typically centered within the viewport, so we add its offset to every
-  // decoration position before rendering.
-  const offset = ctx.getContainerOffset();
-  const fragment = document.createDocumentFragment();
+	const ctx = createRenderedDomContext(pagesContainer, zoom);
+	// The overlay div is a SIBLING of the pages container (both inside the
+	// viewport), but `getCoordinatesForPosition` / `getRectsForRange` return
+	// coords relative to the pages container itself. The pages container is
+	// typically centered within the viewport, so we add its offset to every
+	// decoration position before rendering.
+	const offset = ctx.getContainerOffset();
+	const fragment = document.createDocumentFragment();
 
-  for (const { decoration, from, to } of decorations) {
-    if (from === to) {
-      // Widget decoration (anchored at one position).
-      const dom = getWidgetDOM(decoration, view);
-      if (!dom) continue;
-      const coords = ctx.getCoordinatesForPosition(from);
-      if (!coords) continue;
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText =
-        `position:absolute;left:${coords.x + offset.x}px;top:${coords.y + offset.y}px;` +
-        `height:${coords.height}px;`;
-      wrapper.appendChild(dom);
-      fragment.appendChild(wrapper);
-      continue;
-    }
+	for (const { decoration, from, to } of decorations) {
+		if (from === to) {
+			// Widget decoration (anchored at one position).
+			const dom = getWidgetDOM(decoration, view);
+			if (!dom) continue;
+			const coords = ctx.getCoordinatesForPosition(from);
+			if (!coords) continue;
+			const wrapper = document.createElement("div");
+			wrapper.style.cssText =
+				`position:absolute;left:${coords.x + offset.x}px;top:${coords.y + offset.y}px;` +
+				`height:${coords.height}px;`;
+			wrapper.appendChild(dom);
+			fragment.appendChild(wrapper);
+			continue;
+		}
 
-    // Inline / node decoration: render one rect per line-wrap.
-    const attrs = getDecorationAttrs(decoration);
-    if (!attrs) continue;
-    const rects = ctx.getRectsForRange(from, to);
-    for (const rect of rects) {
-      const el = document.createElement('div');
-      // Forward every attr that came from the decoration spec — class, style,
-      // data-*, aria-*, title, etc. Plugins wire UX through these.
-      for (const [name, value] of Object.entries(attrs)) {
-        if (name === 'nodeName') continue; // tag name doesn't apply on an overlay div
-        el.setAttribute(name, value);
-      }
-      const baseStyle =
-        `position:absolute;left:${rect.x + offset.x}px;top:${rect.y + offset.y}px;` +
-        `width:${rect.width}px;height:${rect.height}px;`;
-      el.style.cssText = baseStyle + (attrs.style ?? '');
-      fragment.appendChild(el);
-    }
-  }
+		// Inline / node decoration: render one rect per line-wrap.
+		const attrs = getDecorationAttrs(decoration);
+		if (!attrs) continue;
+		const rects = ctx.getRectsForRange(from, to);
+		for (const rect of rects) {
+			const el = document.createElement("div");
+			// Forward every attr that came from the decoration spec — class, style,
+			// data-*, aria-*, title, etc. Plugins wire UX through these.
+			for (const [name, value] of Object.entries(attrs)) {
+				if (name === "nodeName") continue; // tag name doesn't apply on an overlay div
+				el.setAttribute(name, value);
+			}
+			const baseStyle =
+				`position:absolute;left:${rect.x + offset.x}px;top:${rect.y + offset.y}px;` +
+				`width:${rect.width}px;height:${rect.height}px;`;
+			el.style.cssText = baseStyle + (attrs.style ?? "");
+			fragment.appendChild(el);
+		}
+	}
 
-  overlay.replaceChildren(fragment);
+	overlay.replaceChildren(fragment);
 }
 
 // ---------------------------------------------------------------------------
@@ -187,47 +187,50 @@ function syncDecorations(
 // ---------------------------------------------------------------------------
 
 interface CollectedDecoration {
-  decoration: Decoration;
-  from: number;
-  to: number;
+	decoration: Decoration;
+	from: number;
+	to: number;
 }
 
 function collectDecorations(state: EditorState): CollectedDecoration[] {
-  const out: CollectedDecoration[] = [];
-  for (const plugin of state.plugins) {
-    const decorationsFn = plugin.props.decorations;
-    if (!decorationsFn) continue;
-    const source = decorationsFn.call(plugin, state);
-    if (!source) continue;
-    // `decorations` returns a `DecorationSource` (could be a `DecorationSet`
-    // or a `DecorationGroup` of multiple sets) — `forEachSet` iterates each
-    // underlying set so multiple sources aggregate cleanly.
-    source.forEachSet((set) => {
-      set.find().forEach((decoration) => {
-        // Honor opt-out for plugins that already render through their own
-        // overlay (e.g. TemplateHighlightOverlay).
-        if (decoration.spec?.noOverlay) return;
-        out.push({ decoration, from: decoration.from, to: decoration.to });
-      });
-    });
-  }
-  return out;
+	const out: CollectedDecoration[] = [];
+	for (const plugin of state.plugins) {
+		const decorationsFn = plugin.props.decorations;
+		if (!decorationsFn) continue;
+		const source = decorationsFn.call(plugin, state);
+		if (!source) continue;
+		// `decorations` returns a `DecorationSource` (could be a `DecorationSet`
+		// or a `DecorationGroup` of multiple sets) — `forEachSet` iterates each
+		// underlying set so multiple sources aggregate cleanly.
+		source.forEachSet((set) => {
+			set.find().forEach((decoration) => {
+				// Honor opt-out for plugins that already render through their own
+				// overlay (e.g. TemplateHighlightOverlay).
+				if (decoration.spec?.noOverlay) return;
+				out.push({ decoration, from: decoration.from, to: decoration.to });
+			});
+		});
+	}
+	return out;
 }
 
 type WidgetTypeShape = {
-  toDOM: ((view: EditorView, getPos: () => number | undefined) => HTMLElement) | HTMLElement;
+	toDOM:
+		| ((view: EditorView, getPos: () => number | undefined) => HTMLElement)
+		| HTMLElement;
 };
 
 function getWidgetDOM(d: Decoration, view: EditorView): HTMLElement | null {
-  const type = (d as unknown as { type?: WidgetTypeShape }).type;
-  if (!type) return null;
-  const toDOM = type.toDOM;
-  if (typeof toDOM === 'function') return toDOM(view, () => d.from);
-  if (toDOM instanceof HTMLElement) return toDOM.cloneNode(true) as HTMLElement;
-  return null;
+	const type = (d as unknown as { type?: WidgetTypeShape }).type;
+	if (!type) return null;
+	const toDOM = type.toDOM;
+	if (typeof toDOM === "function") return toDOM(view, () => d.from);
+	if (toDOM instanceof HTMLElement) return toDOM.cloneNode(true) as HTMLElement;
+	return null;
 }
 
 function getDecorationAttrs(d: Decoration): Record<string, string> | null {
-  const type = (d as unknown as { type?: { attrs?: Record<string, string> } }).type;
-  return type?.attrs ?? null;
+	const type = (d as unknown as { type?: { attrs?: Record<string, string> } })
+		.type;
+	return type?.attrs ?? null;
 }

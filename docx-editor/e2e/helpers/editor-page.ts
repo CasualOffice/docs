@@ -9,9 +9,9 @@
  * Provides methods for navigation, text editing, formatting, tables, and assertions.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { type Page, type Locator, expect } from "@playwright/test";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,1764 +20,1912 @@ const __dirname = path.dirname(__filename);
  * Formatting options for text
  */
 export interface FormattingOptions {
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  strikethrough?: boolean;
-  fontFamily?: string;
-  fontSize?: number;
-  textColor?: string;
-  highlightColor?: string;
+	bold?: boolean;
+	italic?: boolean;
+	underline?: boolean;
+	strikethrough?: boolean;
+	fontFamily?: string;
+	fontSize?: number;
+	textColor?: string;
+	highlightColor?: string;
 }
 
 /**
  * Table cell reference
  */
 export interface CellRef {
-  tableIndex: number;
-  row: number;
-  col: number;
+	tableIndex: number;
+	row: number;
+	col: number;
 }
 
 /**
  * Selection range in the editor
  */
 export interface SelectionRange {
-  startParagraph: number;
-  startOffset: number;
-  endParagraph: number;
-  endOffset: number;
+	startParagraph: number;
+	startOffset: number;
+	endParagraph: number;
+	endOffset: number;
 }
 
 /**
  * EditorPage - Main Page Object Model for DOCX Editor testing
  */
 export class EditorPage {
-  readonly page: Page;
-  private currentTableCell: CellRef | null = null;
-
-  // Main locators
-  readonly editor: Locator;
-  readonly toolbar: Locator;
-  readonly variablePanel: Locator;
-  readonly zoomControl: Locator;
-
-  // Toolbar button locators
-  readonly boldButton: Locator;
-  readonly italicButton: Locator;
-  readonly underlineButton: Locator;
-  readonly strikethroughButton: Locator;
-  readonly undoButton: Locator;
-  readonly redoButton: Locator;
-  readonly clearFormattingButton: Locator;
-
-  // Dialog locators
-  readonly findReplaceDialog: Locator;
-  readonly insertTableDialog: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-
-    // Main component locators
-    this.editor = page.locator('[data-testid="docx-editor"]');
-    // The demo mounts EditorToolbar (data-testid="editor-toolbar") today;
-    // older tree shapes used FormattingBar (data-testid="formatting-bar") or
-    // the bare Toolbar (data-testid="toolbar"). Match all three so the helper
-    // keeps working through editor-shell refactors.
-    this.toolbar = page.locator(
-      '[data-testid="editor-toolbar"], [data-testid="formatting-bar"], [data-testid="toolbar"]'
-    );
-    this.variablePanel = page.locator('.variable-panel');
-    this.zoomControl = page.locator('.zoom-control');
-
-    // Toolbar buttons
-    this.boldButton = page.locator('[data-testid="toolbar-bold"]');
-    this.italicButton = page.locator('[data-testid="toolbar-italic"]');
-    this.underlineButton = page.locator('[data-testid="toolbar-underline"]');
-    this.strikethroughButton = page.locator('[data-testid="toolbar-strikethrough"]');
-    this.undoButton = page.locator('[data-testid="toolbar-undo"]');
-    this.redoButton = page.locator('[data-testid="toolbar-redo"]');
-    this.clearFormattingButton = page.locator('[data-testid="toolbar-clear-formatting"]');
-
-    // Dialogs
-    this.findReplaceDialog = page.locator('[data-testid="find-replace-dialog"]');
-    this.insertTableDialog = page.locator('[data-testid="insert-table-dialog"]');
-  }
-
-  // ============================================================================
-  // NAVIGATION
-  // ============================================================================
-
-  /**
-   * Navigate to the editor page
-   */
-  async goto(): Promise<void> {
-    // ?e2e opts in to the window.__DOCX_EDITOR_E2E__ debug hooks (see
-    // examples/vite/src/App.tsx). Without it the hooks aren't installed,
-    // so production builds don't leak them.
-    await this.page.goto('/?e2e=1');
-  }
-
-  /**
-   * Wait for the editor to be ready
-   */
-  async waitForReady(): Promise<void> {
-    await this.page.waitForSelector('[data-testid="docx-editor"]', { timeout: 10000 });
-    // Wait for fonts to load
-    await this.page.waitForFunction(() => document.fonts.ready);
-    // Wait for any loading states to complete
-    await this.page.waitForTimeout(500);
-  }
-
-  /**
-   * Load a DOCX file via file input
-   */
-  async loadDocxFile(filePath: string): Promise<void> {
-    const absolutePath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(__dirname, '..', filePath);
-
-    // Find the DOCX file input specifically (not the image file input).
-    // The accept list now also covers .odt/.md/.txt, so use substring match
-    // instead of equals.
-    const fileInput = this.page.locator('input[type="file"][accept*=".docx"]');
-    await fileInput.setInputFiles(absolutePath);
-
-    // Wait for document to load
-    await this.waitForReady();
-  }
-
-  // ============================================================================
-  // TEXT EDITING
-  // ============================================================================
-
-  /**
-   * Get the first editable content area
-   */
-  getContentArea(): Locator {
-    return this.page.locator('[contenteditable="true"]').first();
-  }
-
-  /**
-   * Get a specific paragraph by index (0-based)
-   */
-  getParagraph(index: number): Locator {
-    return this.page.locator(`p[data-paragraph-index="${index}"], .layout-paragraph`).nth(index);
-  }
-
-  /**
-   * Focus on a specific paragraph
-   */
-  async focusParagraph(index: number): Promise<void> {
-    const paragraph = this.getParagraph(index);
-    await paragraph.click({ force: true });
-  }
-
-  /**
-   * Type text at the current cursor position.
-   *
-   * Refocuses ProseMirror first so the keystrokes can't be eaten by a
-   * stale activeElement (toolbar button after a click, document-name
-   * input after the New flow, etc.). Without this guard, the first
-   * typeText() after a cold-start beforeEach would routinely fail on CI
-   * with the PM doc empty.
-   */
-  async typeText(text: string): Promise<void> {
-    await this.refocusEditor();
-    if (text.length > 100) {
-      // Payloads longer than 100 chars: insertText for speed/stability.
-      // Per-char keyboard.type() at Playwright's default timing takes ~30 ms/char
-      // — 109 chars = ~3 s — which burns CI budget and causes flaky timeouts on
-      // loaded 2-vCPU runners.  insertText dispatches a single InputEvent and
-      // is ~30× faster; all scenario assertions operate on doc content, not
-      // individual key events, so the trade-off is safe.
-      await this.page.keyboard.insertText(text);
-      return;
-    }
-    await this.page.keyboard.type(text);
-  }
-
-  /**
-   * Type text slowly (character by character)
-   */
-  async typeTextSlowly(text: string, delay: number = 50): Promise<void> {
-    for (const char of text) {
-      await this.page.keyboard.type(char);
-      await this.page.waitForTimeout(delay);
-    }
-  }
-
-  /**
-   * Press Enter to create a new paragraph
-   * Includes a small delay to allow focus restoration to complete
-   */
-  async pressEnter(): Promise<void> {
-    // Defensive refocus: tests often call pressEnter right after a toolbar
-    // click whose own refocus may race React re-renders. If keyboard.press
-    // fires while focus is on a toolbar button, the button gets activated
-    // (Enter == click) instead of inserting a paragraph.
-    await this.refocusEditor();
-    await this.page.keyboard.press('Enter');
-    // Wait for React to complete re-render and focus restoration
-    await this.page.waitForTimeout(50);
-  }
-
-  /**
-   * Press Shift+Enter for soft line break
-   */
-  async pressShiftEnter(): Promise<void> {
-    await this.page.keyboard.press('Shift+Enter');
-  }
-
-  /**
-   * Press Backspace
-   */
-  async pressBackspace(): Promise<void> {
-    await this.page.keyboard.press('Backspace');
-  }
-
-  /**
-   * Press Delete
-   */
-  async pressDelete(): Promise<void> {
-    await this.page.keyboard.press('Delete');
-    await this.page.waitForTimeout(50);
-  }
-
-  /**
-   * Move cursor to the end of the current line/selection.
-   */
-  async pressEnd(): Promise<void> {
-    await this.page.keyboard.press('End');
-  }
-
-  /**
-   * Collapse the current PM selection to its head (right-edge for forward
-   * selections, equivalent to pressing End / ArrowRight on a range). Routes
-   * through PM dispatch so it works regardless of which DOM element owns
-   * focus — keyboard.press('End') after a toolbar click can be eaten by the
-   * role="toolbar" roving-tabindex handler and never reach PM, leaving the
-   * range selection live and causing a following insertText to replace it.
-   */
-  async collapseSelectionToEnd(): Promise<void> {
-    await this.page.evaluate(() => {
-      type View = {
-        state: { selection: { from: number; to: number; head: number } };
-        focus(): void;
-      };
-      type EditorAPI = {
-        getView?: () => View | null;
-        setSelection?: (anchor: number, head?: number) => void;
-        focus?: () => void;
-      };
-      const w = window as unknown as {
-        __editorRef?: { current?: { getEditorRef?: () => EditorAPI | null } };
-      };
-      const editor = w.__editorRef?.current?.getEditorRef?.();
-      const view = editor?.getView?.();
-      if (!editor || !view) return;
-      const sel = view.state.selection;
-      if (sel.from === sel.to) return;
-      // Use the editor's setSelection(anchor, head) — it handles all
-      // selection kinds (TextSelection, AllSelection, etc.) by routing
-      // through view.state.doc.resolve, whereas trying to call
-      // sel.constructor.create(doc, pos) blows up for AllSelection (which
-      // has no static create method) with "Ctor.create is not a function".
-      editor.setSelection?.(sel.head);
-      editor.focus?.();
-    });
-  }
-
-  /**
-   * Press Tab
-   */
-  async pressTab(): Promise<void> {
-    await this.page.keyboard.press('Tab');
-  }
-
-  /**
-   * Press Shift+Tab
-   */
-  async pressShiftTab(): Promise<void> {
-    await this.page.keyboard.press('Shift+Tab');
-  }
-
-  /**
-   * Select all text in the editor by spanning from first to last text node.
-   * Note: Ctrl+A and selectNodeContents don't work reliably with nested contentEditable elements.
-   * We must walk text nodes and create a range spanning from first to last.
-   */
-  async selectAll(): Promise<void> {
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.locator('.ProseMirror').focus();
-    await this.page.keyboard.press(`${modifier}+a`);
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Select specific text by searching for it in the document
-   */
-  async selectText(searchText: string): Promise<boolean> {
-    const selectedViaEditorRef = await this.page.evaluate((text) => {
-      type E2EWindow = Window & {
-        __editorRef?: {
-          current?: {
-            getEditorRef?: () => {
-              getView?: () => {
-                state: {
-                  doc: {
-                    descendants: (
-                      fn: (
-                        node: { isText?: boolean; text?: string; nodeSize: number },
-                        pos: number
-                      ) => boolean | void
-                    ) => void;
-                  };
-                };
-              } | null;
-              setSelection?: (anchor: number, head?: number) => void;
-              focus?: () => void;
-            } | null;
-          };
-        };
-      };
-
-      const editor = (window as E2EWindow).__editorRef?.current?.getEditorRef?.();
-      const view = editor?.getView?.();
-      if (!editor || !view) return false;
-
-      let match: { from: number; to: number } | null = null;
-      view.state.doc.descendants((node, pos) => {
-        if (!node.isText || typeof node.text !== 'string') return;
-        const index = node.text.indexOf(text);
-        if (index === -1) return;
-        match = { from: pos + index, to: pos + index + text.length };
-        return false;
-      });
-
-      if (!match) return false;
-
-      editor.focus?.();
-      editor.setSelection?.(match.from, match.to);
-      return true;
-    }, searchText);
-
-    if (selectedViaEditorRef) {
-      await this.page.waitForTimeout(100);
-      return true;
-    }
-
-    // First, get the bounding rect of the text we want to select
-    const textInfo = await this.page.evaluate((text) => {
-      // Search only within the editor content area (not toolbar which contains icon text like "format_bold")
-      // ProseMirror uses .ProseMirror, legacy editors use .docx-editor-pages or .docx-ai-editor
-      const contentArea =
-        document.querySelector('.ProseMirror') ||
-        document.querySelector('.docx-editor-pages') ||
-        document.querySelector('.docx-ai-editor');
-      if (!contentArea) return null;
-
-      const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
-
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        const index = node.textContent?.indexOf(text) ?? -1;
-        if (index !== -1) {
-          const range = document.createRange();
-          range.setStart(node, index);
-          range.setEnd(node, index + text.length);
-
-          // Get the bounding rect to use for clicking
-          const rect = range.getBoundingClientRect();
-
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-
-          return {
-            found: true,
-            x: rect.x + rect.width / 2,
-            y: rect.y + rect.height / 2,
-          };
-        }
-      }
-      return null;
-    }, searchText);
-
-    if (!textInfo) return false;
-
-    // Focus the editor by clicking, then re-select
-    // This ensures ProseMirror is focused and will sync selections
-    const pm = this.page.locator('.ProseMirror');
-    await pm.focus();
-
-    // Re-apply the selection after focus
-    await this.page.evaluate((text) => {
-      const contentArea =
-        document.querySelector('.ProseMirror') ||
-        document.querySelector('.docx-editor-pages') ||
-        document.querySelector('.docx-ai-editor');
-      if (!contentArea) return;
-
-      const walker = document.createTreeWalker(contentArea, NodeFilter.SHOW_TEXT, null);
-
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        const index = node.textContent?.indexOf(text) ?? -1;
-        if (index !== -1) {
-          const range = document.createRange();
-          range.setStart(node, index);
-          range.setEnd(node, index + text.length);
-
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-          return;
-        }
-      }
-    }, searchText);
-
-    // Wait for ProseMirror to sync
-    await this.page.waitForTimeout(100);
-    return true;
-  }
-
-  /**
-   * Select text by character range within a paragraph
-   */
-  async selectRange(paragraphIndex: number, startOffset: number, endOffset: number): Promise<void> {
-    await this.page.evaluate(
-      ({ pIndex, start, end }) => {
-        // Try ProseMirror structure first, then fall back to legacy
-        const contentArea =
-          document.querySelector('.ProseMirror') ||
-          document.querySelector('.docx-editor-pages') ||
-          document.querySelector('.docx-ai-editor');
-        if (!contentArea) return;
-
-        // Find paragraph by index
-        let paragraph: Element | null = document.querySelector(
-          `[data-paragraph-index="${pIndex}"]`
-        );
-        if (!paragraph) {
-          // Fall back to finding p elements by position
-          const paragraphs = contentArea.querySelectorAll('p');
-          paragraph = paragraphs[pIndex] || null;
-        }
-        if (!paragraph) return;
-
-        const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, null);
-
-        let currentOffset = 0;
-        let startNode: Node | null = null;
-        let startNodeOffset = 0;
-        let endNode: Node | null = null;
-        let endNodeOffset = 0;
-
-        let node: Text | null;
-        while ((node = walker.nextNode() as Text | null)) {
-          const nodeLength = node.textContent?.length ?? 0;
-
-          if (!startNode && currentOffset + nodeLength >= start) {
-            startNode = node;
-            startNodeOffset = start - currentOffset;
-          }
-
-          if (!endNode && currentOffset + nodeLength >= end) {
-            endNode = node;
-            endNodeOffset = end - currentOffset;
-            break;
-          }
-
-          currentOffset += nodeLength;
-        }
-
-        if (startNode && endNode) {
-          const range = document.createRange();
-          range.setStart(startNode, startNodeOffset);
-          range.setEnd(endNode, endNodeOffset);
-
-          const selection = window.getSelection();
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-
-          // Focus the content area to trigger ProseMirror's selection sync
-          if (contentArea instanceof HTMLElement) {
-            contentArea.focus();
-          }
-
-          // Dispatch selectionchange event to notify ProseMirror
-          document.dispatchEvent(new Event('selectionchange'));
-        }
-      },
-      { pIndex: paragraphIndex, start: startOffset, end: endOffset }
-    );
-
-    // Wait for ProseMirror to sync
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Get the current selection text
-   */
-  async getSelectedText(): Promise<string> {
-    return await this.page.evaluate(() => {
-      return window.getSelection()?.toString() ?? '';
-    });
-  }
-
-  // Page-local clipboard storage for isolated tests
-  private clipboardContent: string = '';
-
-  /**
-   * Copy selected text to page-local clipboard
-   * Note: This does NOT deselect the text - caller must handle that if needed
-   */
-  async copy(): Promise<void> {
-    this.clipboardContent = await this.page.evaluate(() => {
-      const selection = window.getSelection();
-      return selection?.toString() || '';
-    });
-    // Collapse selection to end to deselect without losing cursor position
-    await this.page.evaluate(() => {
-      const selection = window.getSelection();
-      if (selection && !selection.isCollapsed) {
-        selection.collapseToEnd();
-      }
-    });
-  }
-
-  /**
-   * Cut selected text to page-local clipboard
-   */
-  async cut(): Promise<void> {
-    this.clipboardContent = await this.page.evaluate(() => {
-      const selection = window.getSelection();
-      const text = selection?.toString() || '';
-      if (text) {
-        document.execCommand('delete');
-      }
-      return text;
-    });
-  }
-
-  /**
-   * Paste from page-local clipboard
-   */
-  async paste(): Promise<void> {
-    if (this.clipboardContent) {
-      await this.page.keyboard.type(this.clipboardContent);
-    }
-  }
-
-  // ============================================================================
-  // FORMATTING
-  // ============================================================================
-
-  /**
-   * Apply bold formatting via toolbar
-   */
-  async applyBold(): Promise<void> {
-    await this.boldButton.click();
-    await this.page.waitForTimeout(100);
-    await this.refocusEditor();
-  }
-
-  /**
-   * Apply bold formatting via keyboard shortcut
-   */
-  async applyBoldShortcut(): Promise<void> {
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+b`);
-  }
-
-  /**
-   * Apply italic formatting via toolbar
-   */
-  async applyItalic(): Promise<void> {
-    await this.italicButton.click();
-    await this.page.waitForTimeout(100);
-    await this.refocusEditor();
-  }
-
-  /**
-   * Apply italic formatting via keyboard shortcut
-   */
-  async applyItalicShortcut(): Promise<void> {
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+i`);
-  }
-
-  /**
-   * Apply underline formatting via toolbar
-   */
-  async applyUnderline(): Promise<void> {
-    await this.underlineButton.click();
-    await this.page.waitForTimeout(100);
-    await this.refocusEditor();
-  }
-
-  /**
-   * Apply underline formatting via keyboard shortcut
-   */
-  async applyUnderlineShortcut(): Promise<void> {
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+u`);
-  }
-
-  /**
-   * Apply strikethrough formatting via toolbar
-   */
-  async applyStrikethrough(): Promise<void> {
-    await this.strikethroughButton.click();
-    await this.page.waitForTimeout(100);
-    await this.refocusEditor();
-  }
-
-  /**
-   * Clear all formatting
-   */
-  async clearFormatting(): Promise<void> {
-    await this.clearFormattingButton.click();
-  }
-
-  /**
-   * Set font family
-   */
-  async setFontFamily(fontFamily: string): Promise<void> {
-    // FontPicker uses a custom Select combobox, not a native <select>
-    const trigger = this.toolbar.locator('[aria-label="Select font family"]');
-    await trigger.click();
-
-    // Wait for the dropdown content to appear and click the matching option
-    const option = this.page.getByRole('option', { name: fontFamily, exact: true });
-    await option.waitFor({ state: 'visible', timeout: 5000 });
-    await option.click();
-
-    // Refocus editor after selecting from dropdown
-    await this.focus();
-    await this.page.waitForTimeout(50);
-  }
-
-  /**
-   * Set font size
-   */
-  async setFontSize(size: number): Promise<void> {
-    // Click on font size picker display button to open dropdown
-    const fontSizePicker = this.toolbar.locator('[data-testid="font-size-display"]');
-    await fontSizePicker.click();
-    // FontSizePicker's listbox sometimes flickers in/out as the size picker
-    // gets focus. Wait for an option to settle before clicking — otherwise
-    // playwright snaps a still-mid-transition element and the click lands
-    // after the dropdown has already detached.
-    const option = this.page.getByRole('option', { name: size.toString(), exact: true });
-    await option.waitFor({ state: 'visible', timeout: 5000 });
-    await option.click();
-    // Refocus editor after selecting from dropdown
-    await this.focus();
-    await this.page.waitForTimeout(50);
-  }
-
-  /**
-   * Shared helper: pick a color from an AdvancedColorPicker dropdown.
-   * Opens the picker, finds/clicks a matching color button, or falls back to custom hex input.
-   */
-  private async pickColorFromDropdown(
-    buttonTitle: string,
-    hexColor: string,
-    scope: Locator = this.toolbar
-  ): Promise<void> {
-    // Split-button picker (default): two buttons share the same title — apply
-    // half on the left, arrow half on the right (aria-haspopup="true"). Click
-    // the arrow to open the dropdown. Falls through to a single picker for
-    // legacy single-button mode (splitButton={false}). `scope` defaults to the
-    // toolbar; the table cell-fill picker lives in the Format panel instead.
-    const arrowOrSingle = scope.locator(`[title="${buttonTitle}"][aria-haspopup="true"]`).first();
-    await arrowOrSingle.click();
-
-    await this.page.waitForSelector('.docx-color-picker-dropdown', {
-      state: 'visible',
-      timeout: 5000,
-    });
-
-    // Try to click a matching color button, fall back to custom hex input.
-    // Uses page.evaluate to avoid ProseMirror focus-steal issues.
-    const clicked = await this.page.evaluate((hex) => {
-      const dropdown = document.querySelector('.docx-color-picker-dropdown');
-      if (!dropdown) return false;
-      // Match by computed rgb() style (browsers normalize backgroundColor to rgb)
-      const r = parseInt(hex.slice(0, 2), 16);
-      const g = parseInt(hex.slice(2, 4), 16);
-      const b = parseInt(hex.slice(4, 6), 16);
-      const rgbStr = `rgb(${r}, ${g}, ${b})`;
-      for (const btn of dropdown.querySelectorAll('button')) {
-        if (btn.style.backgroundColor === rgbStr) {
-          btn.click();
-          return true;
-        }
-      }
-      // Fall back to custom hex input
-      const input = dropdown.querySelector(
-        'input[aria-label="Custom hex color"]'
-      ) as HTMLInputElement;
-      if (input) {
-        const setter = Object.getOwnPropertyDescriptor(
-          window.HTMLInputElement.prototype,
-          'value'
-        )?.set;
-        setter?.call(input, hex);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-        return true;
-      }
-      return false;
-    }, hexColor);
-
-    // Wait for dropdown to close and React to re-render
-    if (clicked) {
-      await this.page
-        .waitForSelector('.docx-color-picker-dropdown', {
-          state: 'detached',
-          timeout: 3000,
-        })
-        .catch(() => {});
-    }
-    await this.page.waitForTimeout(150);
-    await this.focus();
-    await this.page.waitForTimeout(50);
-  }
-
-  /**
-   * Set text color
-   */
-  async setTextColor(color: string): Promise<void> {
-    const hexColor = color.replace(/^#/, '').toUpperCase();
-    await this.pickColorFromDropdown('Font Color', hexColor);
-  }
-
-  /**
-   * Click the apply half of a split color button — re-applies the picker's
-   * last picked color directly, no dropdown. Mirrors Word's split-button.
-   */
-  private async applyLastColor(buttonTitle: string): Promise<void> {
-    // Two elements share the title — the apply half is the one WITHOUT
-    // aria-haspopup. Use class selector to be unambiguous.
-    const cls =
-      buttonTitle === 'Font Color' || buttonTitle === 'Text Highlight Color'
-        ? '.docx-color-picker-apply'
-        : '.docx-color-picker-apply';
-    const apply = this.toolbar.locator(`${cls}[title="${buttonTitle}"]`).first();
-    await apply.click();
-    await this.page.waitForTimeout(50);
-    await this.focus();
-    await this.page.waitForTimeout(50);
-  }
-
-  /** Click the apply half of the text-color split button. */
-  async applyLastTextColor(): Promise<void> {
-    await this.applyLastColor('Font Color');
-  }
-
-  /** Click the apply half of the highlight-color split button. */
-  async applyLastHighlightColor(): Promise<void> {
-    await this.applyLastColor('Text Highlight Color');
-  }
-
-  /**
-   * Set highlight color
-   */
-  async setHighlightColor(color: string): Promise<void> {
-    // OOXML highlight name → hex mapping (mirrors HIGHLIGHT_COLORS in colorResolver.ts)
-    const highlightHexMap: Record<string, string> = {
-      yellow: 'FFFF00',
-      green: '00FF00',
-      cyan: '00FFFF',
-      magenta: 'FF00FF',
-      blue: '0000FF',
-      red: 'FF0000',
-      darkBlue: '00008B',
-      darkCyan: '008B8B',
-      darkGreen: '006400',
-      darkMagenta: '8B008B',
-      darkRed: '8B0000',
-      darkYellow: '808000',
-      lightGray: 'D3D3D3',
-      darkGray: 'A9A9A9',
-      black: '000000',
-      white: 'FFFFFF',
-    };
-    const hex = highlightHexMap[color] || color.replace(/^#/, '').toUpperCase();
-    await this.pickColorFromDropdown('Text Highlight Color', hex);
-  }
-
-  // ============================================================================
-  // ALIGNMENT & LISTS
-  // ============================================================================
-
-  /**
-   * Align text left
-   */
-  async alignLeft(): Promise<void> {
-    await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
-    await this.page.locator('[data-testid="alignment-left"]').click();
-  }
-
-  /**
-   * Align text center
-   */
-  async alignCenter(): Promise<void> {
-    await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
-    await this.page.locator('[data-testid="alignment-center"]').click();
-  }
-
-  /**
-   * Align text right
-   */
-  async alignRight(): Promise<void> {
-    await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
-    await this.page.locator('[data-testid="alignment-right"]').click();
-  }
-
-  /**
-   * Justify text
-   */
-  async alignJustify(): Promise<void> {
-    await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
-    await this.page.locator('[data-testid="alignment-both"]').click();
-  }
-
-  /**
-   * Toggle bullet list
-   */
-  async toggleBulletList(): Promise<void> {
-    await this.toolbar.locator('[aria-label^="Bullet List"]').click();
-    await this.refocusEditor();
-  }
-
-  /**
-   * Apply bullet list (alias for toggleBulletList)
-   */
-  async applyBulletList(): Promise<void> {
-    await this.toggleBulletList();
-  }
-
-  /**
-   * Toggle numbered list
-   */
-  async toggleNumberedList(): Promise<void> {
-    await this.toolbar.locator('[aria-label^="Numbered List"]').click();
-    await this.refocusEditor();
-  }
-
-  /**
-   * Apply numbered list (alias for toggleNumberedList)
-   */
-  async applyNumberedList(): Promise<void> {
-    await this.toggleNumberedList();
-  }
-
-  /**
-   * Indent paragraph/list item
-   */
-  async indent(): Promise<void> {
-    await this.toolbar.locator('[aria-label^="Increase Indent"]').click();
-  }
-
-  /**
-   * Outdent paragraph/list item
-   */
-  async outdent(): Promise<void> {
-    const button = this.toolbar.locator('[aria-label^="Decrease Indent"]');
-    if (await button.isDisabled()) {
-      await this.pressShiftTab();
-      await this.page.waitForTimeout(100);
-      return;
-    }
-    await button.click();
-  }
-
-  // ============================================================================
-  // LINE SPACING
-  // ============================================================================
-
-  /**
-   * Set line spacing
-   * @param spacing - The spacing value: '1.0', '1.15', '1.5', '2.0' or label like 'Single', 'Double'
-   */
-  async setLineSpacing(spacing: string): Promise<void> {
-    // Click on line spacing dropdown (uses Radix Select with aria-label)
-    const lineSpacingButton = this.toolbar.locator('[aria-label="Line spacing"]');
-    await lineSpacingButton.click();
-
-    // Map spacing values to their display labels
-    const spacingLabels: Record<string, string> = {
-      '1.0': 'Single',
-      '1.15': '1.15',
-      '1.5': '1.5',
-      '2.0': 'Double',
-      Single: 'Single',
-      Double: 'Double',
-    };
-
-    const label = spacingLabels[spacing] || spacing;
-
-    // Select spacing value from dropdown using role="option" with exact match
-    await this.page.getByRole('option', { name: label, exact: true }).click();
-  }
-
-  /**
-   * Set single line spacing
-   */
-  async setLineSpacingSingle(): Promise<void> {
-    await this.setLineSpacing('1.0');
-  }
-
-  /**
-   * Set 1.5 line spacing
-   */
-  async setLineSpacing15(): Promise<void> {
-    await this.setLineSpacing('1.5');
-  }
-
-  /**
-   * Set double line spacing
-   */
-  async setLineSpacingDouble(): Promise<void> {
-    await this.setLineSpacing('2.0');
-  }
-
-  // ============================================================================
-  // PARAGRAPH STYLES
-  // ============================================================================
-
-  /**
-   * Set paragraph style.
-   *
-   * The toolbar now renders a Radix-Select combobox for paragraph styles,
-   * not a native `<select>` element — `selectOption` doesn't apply. We
-   * click the combobox to open its listbox, then click the option whose
-   * accessible name matches `style`. Falls back to the legacy native-
-   * select path in case any older shell variant is still mounted, so the
-   * helper works through editor-shell refactors.
-   *
-   * The StylePicker renders Google-Docs-style display names (e.g.
-   * `Normal text` for the `Normal` styleId), so callers passing the
-   * styleId-style names get auto-translated to the visible label.
-   */
-  async setParagraphStyle(style: string): Promise<void> {
-    const displayAliases: Record<string, string> = {
-      Normal: 'Normal text',
-    };
-    const displayLabel = displayAliases[style] ?? style;
-
-    const nativeSelect = this.toolbar.locator('select[aria-label="Select paragraph style"]');
-    if (await nativeSelect.count()) {
-      // Some older mounts emit a `<select>`; try both name forms before
-      // bailing so the helper works across shell variants.
-      try {
-        await nativeSelect.selectOption({ label: displayLabel });
-      } catch {
-        await nativeSelect.selectOption({ label: style });
-      }
-    } else {
-      const trigger = this.toolbar.getByRole('combobox', { name: 'Select paragraph style' });
-      await trigger.click();
-      // Radix portals the listbox into document.body, so the option
-      // lookup is page-rooted, not toolbar-scoped.
-      await this.page.getByRole('option', { name: displayLabel, exact: true }).click();
-    }
-    // Refocus editor after selecting style
-    await this.focus();
-  }
-
-  /**
-   * Apply Normal style
-   */
-  async applyNormalStyle(): Promise<void> {
-    await this.setParagraphStyle('Normal');
-  }
-
-  /**
-   * Apply Heading 1 style
-   */
-  async applyHeading1(): Promise<void> {
-    await this.setParagraphStyle('Heading 1');
-  }
-
-  /**
-   * Apply Heading 2 style
-   */
-  async applyHeading2(): Promise<void> {
-    await this.setParagraphStyle('Heading 2');
-  }
-
-  /**
-   * Apply Heading 3 style
-   */
-  async applyHeading3(): Promise<void> {
-    await this.setParagraphStyle('Heading 3');
-  }
-
-  /**
-   * Apply Title style
-   */
-  async applyTitleStyle(): Promise<void> {
-    await this.setParagraphStyle('Title');
-  }
-
-  /**
-   * Apply Subtitle style
-   */
-  async applySubtitleStyle(): Promise<void> {
-    await this.setParagraphStyle('Subtitle');
-  }
-
-  // ============================================================================
-  // UNDO / REDO
-  // ============================================================================
-
-  /**
-   * Undo via toolbar
-   */
-  async undo(): Promise<void> {
-    if (await this.undoButton.isDisabled()) {
-      return;
-    }
-    await this.undoButton.click();
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Undo via keyboard shortcut
-   */
-  async undoShortcut(): Promise<void> {
-    // Guarantee PM focus before the shortcut — a preceding toolbar click or
-    // dropdown selection may have moved focus to a toolbar button, in which
-    // case the keystroke would activate the button instead of reaching PM.
-    await this.refocusEditor();
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+z`);
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Redo via toolbar
-   */
-  async redo(): Promise<void> {
-    if (await this.redoButton.isDisabled()) {
-      return;
-    }
-    await this.redoButton.click();
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Redo via keyboard shortcut (Ctrl+Y or Ctrl+Shift+Z)
-   */
-  async redoShortcut(): Promise<void> {
-    // Guarantee PM focus before the shortcut — undo processing can trigger
-    // React re-renders that briefly move the active element; without this
-    // guard the Ctrl+Y lands on whatever the browser thinks has focus and
-    // ProseMirror never sees the redo command.
-    await this.refocusEditor();
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+y`);
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Check if undo is available
-   */
-  async isUndoAvailable(): Promise<boolean> {
-    return !(await this.undoButton.isDisabled());
-  }
-
-  /**
-   * Check if redo is available
-   */
-  async isRedoAvailable(): Promise<boolean> {
-    return !(await this.redoButton.isDisabled());
-  }
-
-  // ============================================================================
-  // TABLES
-  // ============================================================================
-
-  /**
-   * Insert a table with specified dimensions using the grid selector
-   */
-  async insertTable(rows: number, cols: number): Promise<void> {
-    const inlinePicker = this.page.locator('[data-testid="toolbar-insert-table"]');
-
-    if (await inlinePicker.isVisible().catch(() => false)) {
-      await inlinePicker.click();
-    } else {
-      await this.page.getByRole('button', { name: /^Insert$/ }).click();
-      const tableMenuItem = this.page.getByRole('menuitem', { name: /^Table$/ }).first();
-      await tableMenuItem.hover();
-    }
-
-    const grid = this.page.getByRole('grid', { name: 'Table size selector' });
-    await grid.waitFor({ state: 'visible', timeout: 5000 });
-
-    const gridCells = grid.getByRole('gridcell');
-    // Read the actual column count from the CSS grid layout
-    const gridColumns = await grid.evaluate((el) => {
-      const style = window.getComputedStyle(el);
-      const columns = style.gridTemplateColumns.split(/\s+/).filter(Boolean);
-      return columns.length || 6; // fallback to 6 if not a CSS grid
-    });
-    const cellIndex = (rows - 1) * gridColumns + (cols - 1);
-    const targetCell = gridCells.nth(cellIndex);
-
-    await targetCell.hover();
-    await this.page.waitForTimeout(100);
-    await targetCell.click();
-
-    // Wait for table to be inserted (use generic table selector since prosemirror-tables
-    // column resizing plugin may override the table DOM and not include our docx-table class)
-    await this.page.waitForSelector('.ProseMirror table', { state: 'visible', timeout: 5000 });
-    this.currentTableCell = null;
-  }
-
-  /**
-   * Click on a specific table cell
-   */
-  async clickTableCell(tableIndex: number, row: number, col: number): Promise<void> {
-    const table = this.page.locator('.paged-editor__pages .layout-table').nth(tableIndex);
-    const dimensions = await this.getTableDimensions(tableIndex);
-    const targetIndex = row * dimensions.cols + col;
-
-    let currentIndex = -1;
-    if (this.currentTableCell && this.currentTableCell.tableIndex === tableIndex) {
-      currentIndex = this.currentTableCell.row * dimensions.cols + this.currentTableCell.col;
-    }
-
-    if (currentIndex < 0 || currentIndex > targetIndex) {
-      const firstCell = table
-        .locator('.layout-table-row')
-        .first()
-        .locator('.layout-table-cell')
-        .first();
-      await firstCell.scrollIntoViewIfNeeded();
-      await firstCell.click({ force: true });
-      await this.page.locator('.ProseMirror').focus();
-      await this.page.waitForTimeout(50);
-      currentIndex = 0;
-    }
-
-    for (let i = currentIndex; i < targetIndex; i += 1) {
-      await this.pressTab();
-    }
-
-    this.currentTableCell = { tableIndex, row, col };
-  }
-
-  /**
-   * Right-click on a specific visual table cell to open the text context menu
-   */
-  async rightClickTableCell(tableIndex: number, row: number, col: number): Promise<void> {
-    const table = this.page.locator('.paged-editor__pages .layout-table').nth(tableIndex);
-    const cell = table.locator('.layout-table-row').nth(row).locator('.layout-table-cell').nth(col);
-    await cell.scrollIntoViewIfNeeded();
-    await cell.click({ button: 'right', force: true });
-    await this.page.waitForSelector('[role="menu"]', { state: 'visible', timeout: 5000 });
-  }
-
-  /**
-   * Get table cell content
-   */
-  async getTableCellContent(tableIndex: number, row: number, col: number): Promise<string> {
-    const table = this.page.locator('.ProseMirror table').nth(tableIndex);
-    const cell = table.locator('tr').nth(row).locator('td, th').nth(col);
-    return (await cell.textContent()) ?? '';
-  }
-
-  /**
-   * Count tables in the document
-   */
-  async getTableCount(): Promise<number> {
-    return await this.page.locator('.ProseMirror table').count();
-  }
-
-  /**
-   * Get table dimensions (rows x cols)
-   */
-  async getTableDimensions(tableIndex: number): Promise<{ rows: number; cols: number }> {
-    const table = this.page.locator('.ProseMirror table').nth(tableIndex);
-    const rows = await table.locator('tr').count();
-    const cols = await table.locator('tr').first().locator('td, th').count();
-    return { rows, cols };
-  }
-
-  /**
-   * Open table "More" dropdown (must be in a table first)
-   */
-  async openTableMore(): Promise<void> {
-    await this.page.locator('[data-testid="toolbar-table-more"]').click();
-    await this.page.waitForSelector('[role="menu"]', { state: 'visible', timeout: 5000 });
-  }
-
-  /**
-   * Click a table menu item in the More dropdown.
-   *
-   * Uses a direct DOM click() rather than Playwright's `.click()` because
-   * the dropdown's fixed-position container re-positions itself with a
-   * useFixedDropdown effect (setPos via getBoundingClientRect) which can
-   * fire between Playwright's actionability check and its synthesized
-   * click — Playwright sees the element as "detached and retrying" and
-   * the synthesized click never reaches `onClick`. DOM `.click()` is
-   * synchronous and bypasses that race. Behavior is identical from
-   * React's perspective: same MouseEvent reaches the same element.
-   */
-  async clickTableMenuItem(itemName: string): Promise<void> {
-    const ok = await this.page.evaluate((name) => {
-      const items = Array.from(document.querySelectorAll('[role="menuitem"]'));
-      const target = items.find((el) => (el.textContent ?? '').trim().includes(name));
-      if (!(target instanceof HTMLElement)) return false;
-      target.click();
-      return true;
-    }, itemName);
-    if (!ok) throw new Error(`clickTableMenuItem: no menuitem matching ${itemName}`);
-    await this.page.waitForTimeout(100);
-  }
-
-  /**
-   * Add a row above current cell
-   */
-  async addRowAbove(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Insert row above');
-  }
-
-  /**
-   * Add a row below current cell
-   */
-  async addRowBelow(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Insert row below');
-  }
-
-  /**
-   * Add a column to the left
-   */
-  async addColumnLeft(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Insert column left');
-  }
-
-  /**
-   * Add a column to the right
-   */
-  async addColumnRight(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Insert column right');
-  }
-
-  /**
-   * Delete current row
-   */
-  async deleteRow(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Delete row');
-  }
-
-  /**
-   * Delete current column
-   */
-  async deleteColumn(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Delete column');
-  }
-
-  /**
-   * Delete entire table
-   */
-  async deleteTable(): Promise<void> {
-    await this.openTableMore();
-    await this.clickTableMenuItem('Delete table');
-  }
-
-  /**
-   * Open the table Format panel and return its properties section. The
-   * border / border-color / width / cell-fill pickers live here now (not in
-   * the toolbar). Clicking the chip is idempotent enough — if the section is
-   * already showing we skip the click so a second call doesn't toggle it shut.
-   */
-  async openTableFormatPanel(): Promise<Locator> {
-    const section = this.page.locator('[data-testid="properties-table-section"]');
-    if ((await section.count()) === 0 || !(await section.first().isVisible())) {
-      // The chip only renders once the caret-in-table state has settled; under
-      // parallel CI load it can lag the cell click. Wait for it before clicking
-      // so we don't click into the void and time out on the section instead.
-      const chip = this.page.locator('[data-testid="table-format-chip"]');
-      await chip.waitFor({ state: 'visible', timeout: 5_000 });
-      await chip.click();
-      await section.first().waitFor({ state: 'visible', timeout: 5_000 });
-    }
-    return section.first();
-  }
-
-  /**
-   * Set all borders on current cell. The borders flyout renders in a
-   * portal that can land outside the viewport on CI runner sizes;
-   * Playwright refuses to click off-screen elements even with
-   * `force: true`. dispatchEvent fires a synthetic click on the
-   * resolved DOM node so the click lands regardless of geometry —
-   * appropriate here because the test exercises the COMMAND, not the
-   * cursor's ability to reach the button.
-   */
-  async setAllBorders(): Promise<void> {
-    const section = await this.openTableFormatPanel();
-    await section.locator('[data-testid="toolbar-table-borders"]').click();
-    const target = this.page.locator('button[title="All borders"]');
-    await target.waitFor({ state: 'visible', timeout: 5_000 });
-    await target.dispatchEvent('click');
-  }
-
-  /**
-   * Remove borders from current cell. See setAllBorders for the
-   * dispatchEvent rationale.
-   */
-  async removeBorders(): Promise<void> {
-    const section = await this.openTableFormatPanel();
-    await section.locator('[data-testid="toolbar-table-borders"]').click();
-    const target = this.page.locator('button[title="No borders"]');
-    await target.waitFor({ state: 'visible', timeout: 5_000 });
-    await target.dispatchEvent('click');
-  }
-
-  /**
-   * Set cell fill color. The cell-fill picker moved from the toolbar into the
-   * table Format panel, so scope the dropdown lookup to the panel section.
-   */
-  async setCellFillColor(color: string): Promise<void> {
-    const hexColor = color.replace(/^#/, '').toUpperCase();
-    const section = await this.openTableFormatPanel();
-    await this.pickColorFromDropdown('Cell Fill Color', hexColor, section);
-  }
-
-  /**
-   * Get cell background color
-   */
-  async getCellBackgroundColor(tableIndex: number, row: number, col: number): Promise<string> {
-    const table = this.page.locator('.ProseMirror table').nth(tableIndex);
-    const cell = table.locator('tr').nth(row).locator('td, th').nth(col);
-    const style = await cell.getAttribute('style');
-    // Extract background-color from style
-    const match = style?.match(/background-color:\s*([^;]+)/);
-    return match ? match[1].trim() : '';
-  }
-
-  /**
-   * Check if cell has visible borders (not all set to 'none')
-   */
-  async cellHasBorders(tableIndex: number, row: number, col: number): Promise<boolean> {
-    const table = this.page.locator('.ProseMirror table').nth(tableIndex);
-    const cell = table.locator('tr').nth(row).locator('td, th').nth(col);
-    const style = await cell.getAttribute('style');
-
-    if (!style) return false;
-
-    // Browser normalizes 'border: none' to 'border-style: none'
-    if (style.includes('border-style: none')) {
-      return false;
-    }
-
-    // Check if 'border: none' is explicitly set
-    if (style.includes('border: none')) {
-      return false;
-    }
-
-    // Check if all individual borders are set to none
-    const hasTopNone = style.includes('border-top: none');
-    const hasBottomNone = style.includes('border-bottom: none');
-    const hasLeftNone = style.includes('border-left: none');
-    const hasRightNone = style.includes('border-right: none');
-
-    // If all 4 borders are explicitly set to none, no borders
-    if (hasTopNone && hasBottomNone && hasLeftNone && hasRightNone) {
-      return false;
-    }
-
-    // Otherwise, check if there's any border definition (default or explicit)
-    return style.includes('border');
-  }
-
-  /**
-   * Save the document
-   */
-  async saveDocument(): Promise<void> {
-    // Wait for any pending changes
-    await this.page.waitForTimeout(200);
-    // Same story as newDocument(): Save moved inside the File dropdown.
-    // Items inside the dropdown carry role="menuitem" per the popup-menu
-    // pattern — query by that, not by 'button'.
-    await this.page.getByRole('button', { name: 'File' }).click();
-    await this.page.getByRole('menuitem', { name: /^Save\b/ }).click();
-    // Wait for download or save confirmation
-    await this.page.waitForTimeout(500);
-  }
-
-  /**
-   * Click File → New to create a new document
-   */
-  async newDocument(): Promise<void> {
-    // The menu-bar redesign (0da2a75) put "New" inside the File dropdown,
-    // so open File first and then click the item by accessible name.
-    // The trigger keeps the native button role (no menubar parent);
-    // items inside the dropdown carry role="menuitem" per the
-    // popup-menu pattern — query each by its actual ARIA role.
-    await this.page.getByRole('button', { name: 'File' }).click();
-    await this.page.getByRole('menuitem', { name: /^New\b/ }).click();
-    // Wait for the new (empty) ProseMirror to be attached and reporting an
-    // empty doc via the e2e editor ref. The previous 500ms fixed wait raced
-    // with bootstrap on cold CI runs — a subsequent typeText() then landed
-    // on a stale contenteditable from before the remount, and the test saw
-    // an empty PM doc.
-    await this.page.locator('.ProseMirror').first().waitFor({ state: 'attached', timeout: 5000 });
-    await this.page.waitForFunction(
-      () => {
-        const w = window as unknown as {
-          __editorRef?: {
-            current?: {
-              getEditorRef?: () => {
-                getView?: () => { state: { doc: { textContent: string } } } | null;
-              } | null;
-            };
-          };
-        };
-        const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
-        return view ? view.state.doc.textContent.length === 0 : false;
-      },
-      undefined,
-      { timeout: 5000 }
-    );
-    this.currentTableCell = null;
-  }
-
-  /**
-   * Save a named version via the version-history panel. The panel must
-   * already be open. "Save version…" opens a styled prompt modal
-   * (`promptModal`, not a native dialog), so fill its input + confirm.
-   */
-  async saveNamedVersion(name: string): Promise<void> {
-    await this.page.getByTestId('version-history-save-version').click();
-    const input = this.page.locator('[data-act=input]');
-    await input.waitFor({ state: 'visible', timeout: 5000 });
-    await input.fill(name);
-    await this.page.locator('[data-act=ok]').click();
-    await this.page.locator('[data-act=input]').waitFor({ state: 'detached', timeout: 5000 });
-  }
-
-  // ============================================================================
-  // FIND & REPLACE
-  // ============================================================================
-
-  /**
-   * Open find dialog (Ctrl+F / Cmd+F)
-   */
-  async openFind(): Promise<void> {
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+f`);
-    await this.findReplaceDialog.waitFor();
-  }
-
-  /**
-   * Open find & replace dialog (Ctrl+H / Cmd+H)
-   */
-  async openFindReplace(): Promise<void> {
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
-    await this.page.keyboard.press(`${modifier}+h`);
-    await this.findReplaceDialog.waitFor();
-  }
-
-  /**
-   * Perform find operation
-   */
-  async find(searchText: string): Promise<void> {
-    const findInput = this.page.locator('[data-testid="find-input"]');
-    await findInput.click();
-    await findInput.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-    await findInput.type(searchText, { delay: 20 });
-    await this.page.waitForTimeout(100);
-    await findInput.press('Enter');
-    await this.page.waitForTimeout(200);
-  }
-
-  /**
-   * Find next match
-   */
-  async findNext(): Promise<void> {
-    await this.page.locator('[aria-label="Find next"]').click();
-    await this.page.waitForTimeout(150);
-  }
-
-  /**
-   * Find previous match
-   */
-  async findPrevious(): Promise<void> {
-    await this.page.locator('[aria-label="Find previous"]').click();
-    await this.page.waitForTimeout(150);
-  }
-
-  /**
-   * Replace current match
-   */
-  async replace(replaceText: string): Promise<void> {
-    const replaceButton = this.findReplaceDialog.getByRole('button', { name: /^Replace$/ });
-    await this.page.locator('#replace-text').fill(replaceText);
-    for (let i = 0; i < 20; i += 1) {
-      if (!(await replaceButton.isDisabled())) break;
-      await this.page.waitForTimeout(100);
-    }
-    await replaceButton.click();
-    await this.page.waitForTimeout(150);
-  }
-
-  /**
-   * Replace all matches
-   */
-  async replaceAll(searchText: string, replaceText: string): Promise<void> {
-    const replaceAllButton = this.findReplaceDialog.getByRole('button', { name: /^Replace All$/ });
-    await this.page.locator('[data-testid="find-input"]').fill(searchText);
-    await this.page.locator('[data-testid="find-input"]').press('Enter');
-    await this.page.locator('#replace-text').fill(replaceText);
-    for (let i = 0; i < 20; i += 1) {
-      if (!(await replaceAllButton.isDisabled())) break;
-      await this.page.waitForTimeout(100);
-    }
-    await replaceAllButton.click();
-    await this.page.waitForTimeout(150);
-  }
-
-  /**
-   * Close find/replace dialog
-   */
-  async closeFindReplace(): Promise<void> {
-    await this.findReplaceDialog.getByRole('button', { name: /close/i }).click();
-    await this.findReplaceDialog.waitFor({ state: 'hidden' });
-  }
-
-  // ============================================================================
-  // ZOOM
-  // ============================================================================
-
-  /**
-   * Set zoom level
-   */
-  async setZoom(level: number): Promise<void> {
-    const zoomInput = this.page.locator('.zoom-control input');
-    await zoomInput.fill(level.toString());
-    await zoomInput.press('Enter');
-  }
-
-  /**
-   * Zoom in
-   */
-  async zoomIn(): Promise<void> {
-    await this.page.locator('.zoom-control [aria-label="Zoom in"]').click();
-  }
-
-  /**
-   * Zoom out
-   */
-  async zoomOut(): Promise<void> {
-    await this.page.locator('.zoom-control [aria-label="Zoom out"]').click();
-  }
-
-  // ============================================================================
-  // ASSERTIONS
-  // ============================================================================
-
-  /**
-   * Assert the editor is visible and ready
-   */
-  async expectReady(): Promise<void> {
-    await expect(this.editor).toBeVisible();
-  }
-
-  /**
-   * Assert document has specific paragraph count
-   */
-  async expectParagraphCount(count: number): Promise<void> {
-    const paragraphs = this.page.locator('[data-paragraph-index]');
-    await expect(paragraphs).toHaveCount(count);
-  }
-
-  /**
-   * Assert paragraph contains text
-   */
-  async expectParagraphText(index: number, expectedText: string): Promise<void> {
-    const paragraph = this.getParagraph(index);
-    await expect(paragraph).toContainText(expectedText);
-  }
-
-  /**
-   * Assert text is bold (has bold styling)
-   */
-  async expectTextBold(text: string): Promise<boolean> {
-    return await this.page.evaluate((searchText) => {
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
-
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        if (node.textContent?.includes(searchText)) {
-          let element = node.parentElement;
-          while (element) {
-            const style = window.getComputedStyle(element);
-            if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) {
-              return true;
-            }
-            if (element.tagName === 'STRONG' || element.tagName === 'B') {
-              return true;
-            }
-            element = element.parentElement;
-          }
-        }
-      }
-      return false;
-    }, text);
-  }
-
-  /**
-   * Assert text is italic (has italic styling)
-   */
-  async expectTextItalic(text: string): Promise<boolean> {
-    return await this.page.evaluate((searchText) => {
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
-
-      let node: Text | null;
-      while ((node = walker.nextNode() as Text | null)) {
-        if (node.textContent?.includes(searchText)) {
-          let element = node.parentElement;
-          while (element) {
-            const style = window.getComputedStyle(element);
-            if (style.fontStyle === 'italic') {
-              return true;
-            }
-            if (element.tagName === 'EM' || element.tagName === 'I') {
-              return true;
-            }
-            element = element.parentElement;
-          }
-        }
-      }
-      return false;
-    }, text);
-  }
-
-  /**
-   * Assert toolbar button is active
-   */
-  async expectToolbarButtonActive(buttonName: string): Promise<void> {
-    const button = this.toolbar.locator(`[data-testid="toolbar-${buttonName}"]`);
-    await expect(button).toHaveAttribute('aria-pressed', 'true');
-  }
-
-  /**
-   * Assert toolbar button is not active
-   */
-  async expectToolbarButtonInactive(buttonName: string): Promise<void> {
-    const button = this.toolbar.locator(`[data-testid="toolbar-${buttonName}"]`);
-    await expect(button).toHaveAttribute('aria-pressed', 'false');
-  }
-
-  /**
-   * Get the document text content
-   */
-  async getDocumentText(): Promise<string> {
-    const contentArea = this.getContentArea();
-    return (await contentArea.textContent()) ?? '';
-  }
-
-  /**
-   * Assert document contains text
-   */
-  async expectDocumentContains(text: string): Promise<void> {
-    const contentArea = this.getContentArea();
-    await expect(contentArea).toContainText(text);
-  }
-
-  /**
-   * Assert document does not contain text
-   */
-  async expectDocumentNotContains(text: string): Promise<void> {
-    const contentArea = this.getContentArea();
-    await expect(contentArea).not.toContainText(text);
-  }
-
-  /**
-   * Take a screenshot for visual comparison
-   */
-  async takeScreenshot(name: string): Promise<void> {
-    await this.page.screenshot({ path: `screenshots/${name}.png`, fullPage: true });
-  }
-
-  /**
-   * Wait for any animations to complete
-   */
-  async waitForAnimations(): Promise<void> {
-    await this.page.waitForTimeout(300);
-  }
-
-  /**
-   * Focus the hidden ProseMirror and wait until it actually owns focus.
-   *
-   * `.first()` on `[contenteditable="true"]` can match an unrelated editable
-   * region (run-editable spans, dialog fields, etc.), so target the
-   * ProseMirror root explicitly. Then poll until document.activeElement is
-   * inside `.ProseMirror`, since Playwright's focus() returns before
-   * browser-side focus changes settle in CI under load — a typeText() that
-   * runs while focus is still on a previously-clicked button or a stale
-   * contenteditable lands its keystrokes there, and subsequent assertions
-   * see an empty PM doc.
-   *
-   * The toolbar is also role="toolbar" with ARIA roving tabindex — if a
-   * format button still owns focus, a following End / ArrowRight key moves
-   * focus along the toolbar instead of reaching ProseMirror, so we must do
-   * this refocus after every toolbar click as well.
-   */
-  async focus(): Promise<void> {
-    const pm = this.page.locator('.ProseMirror').first();
-    await pm.waitFor({ state: 'attached', timeout: 5000 });
-    // Drive focus through PM's view when the e2e ref is available — that
-    // calls focusPreventScroll(dom) AND selectionToDOM(view), so the DOM
-    // caret reflects the PM selection. A plain dom.focus() preserves
-    // whatever the DOM selection happens to be (often nothing on a fresh
-    // mount), which then makes the first keyboard.type land in a place the
-    // test author didn't expect.
-    const refUsed = await this.page.evaluate(() => {
-      type View = { focus(): void };
-      const w = window as unknown as {
-        __editorRef?: { current?: { getEditorRef?: () => { getView?: () => View | null } | null } };
-      };
-      const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
-      if (!view) return false;
-      view.focus();
-      return true;
-    });
-    if (!refUsed) await pm.focus();
-    await this.page.waitForFunction(
-      () => !!document.activeElement?.closest('.ProseMirror'),
-      undefined,
-      { timeout: 2000 }
-    );
-  }
-
-  /**
-   * Alias kept so existing format-button helpers read clearly. Internally
-   * the same robust focus path as focus().
-   */
-  async refocusEditor(): Promise<void> {
-    await this.focus();
-  }
-
-  /**
-   * Blur the editor (click outside)
-   */
-  async blur(): Promise<void> {
-    await this.page.click('body', { position: { x: 0, y: 0 } });
-  }
+	readonly page: Page;
+	private currentTableCell: CellRef | null = null;
+
+	// Main locators
+	readonly editor: Locator;
+	readonly toolbar: Locator;
+	readonly variablePanel: Locator;
+	readonly zoomControl: Locator;
+
+	// Toolbar button locators
+	readonly boldButton: Locator;
+	readonly italicButton: Locator;
+	readonly underlineButton: Locator;
+	readonly strikethroughButton: Locator;
+	readonly undoButton: Locator;
+	readonly redoButton: Locator;
+	readonly clearFormattingButton: Locator;
+
+	// Dialog locators
+	readonly findReplaceDialog: Locator;
+	readonly insertTableDialog: Locator;
+
+	constructor(page: Page) {
+		this.page = page;
+
+		// Main component locators
+		this.editor = page.locator('[data-testid="docx-editor"]');
+		// The demo mounts EditorToolbar (data-testid="editor-toolbar") today;
+		// older tree shapes used FormattingBar (data-testid="formatting-bar") or
+		// the bare Toolbar (data-testid="toolbar"). Match all three so the helper
+		// keeps working through editor-shell refactors.
+		this.toolbar = page.locator(
+			'[data-testid="editor-toolbar"], [data-testid="formatting-bar"], [data-testid="toolbar"]',
+		);
+		this.variablePanel = page.locator(".variable-panel");
+		this.zoomControl = page.locator(".zoom-control");
+
+		// Toolbar buttons
+		this.boldButton = page.locator('[data-testid="toolbar-bold"]');
+		this.italicButton = page.locator('[data-testid="toolbar-italic"]');
+		this.underlineButton = page.locator('[data-testid="toolbar-underline"]');
+		this.strikethroughButton = page.locator(
+			'[data-testid="toolbar-strikethrough"]',
+		);
+		this.undoButton = page.locator('[data-testid="toolbar-undo"]');
+		this.redoButton = page.locator('[data-testid="toolbar-redo"]');
+		this.clearFormattingButton = page.locator(
+			'[data-testid="toolbar-clear-formatting"]',
+		);
+
+		// Dialogs
+		this.findReplaceDialog = page.locator(
+			'[data-testid="find-replace-dialog"]',
+		);
+		this.insertTableDialog = page.locator(
+			'[data-testid="insert-table-dialog"]',
+		);
+	}
+
+	// ============================================================================
+	// NAVIGATION
+	// ============================================================================
+
+	/**
+	 * Navigate to the editor page
+	 */
+	async goto(): Promise<void> {
+		// ?e2e opts in to the window.__DOCX_EDITOR_E2E__ debug hooks (see
+		// examples/vite/src/App.tsx). Without it the hooks aren't installed,
+		// so production builds don't leak them.
+		await this.page.goto("/?e2e=1");
+	}
+
+	/**
+	 * Wait for the editor to be ready
+	 */
+	async waitForReady(): Promise<void> {
+		await this.page.waitForSelector('[data-testid="docx-editor"]', {
+			timeout: 10000,
+		});
+		// Wait for fonts to load
+		await this.page.waitForFunction(() => document.fonts.ready);
+		// Wait for any loading states to complete
+		await this.page.waitForTimeout(500);
+	}
+
+	/**
+	 * Load a DOCX file via file input
+	 */
+	async loadDocxFile(filePath: string): Promise<void> {
+		const absolutePath = path.isAbsolute(filePath)
+			? filePath
+			: path.join(__dirname, "..", filePath);
+
+		// Find the DOCX file input specifically (not the image file input).
+		// The accept list now also covers .odt/.md/.txt, so use substring match
+		// instead of equals.
+		const fileInput = this.page.locator('input[type="file"][accept*=".docx"]');
+		await fileInput.setInputFiles(absolutePath);
+
+		// Wait for document to load
+		await this.waitForReady();
+	}
+
+	// ============================================================================
+	// TEXT EDITING
+	// ============================================================================
+
+	/**
+	 * Get the first editable content area
+	 */
+	getContentArea(): Locator {
+		return this.page.locator('[contenteditable="true"]').first();
+	}
+
+	/**
+	 * Get a specific paragraph by index (0-based)
+	 */
+	getParagraph(index: number): Locator {
+		return this.page
+			.locator(`p[data-paragraph-index="${index}"], .layout-paragraph`)
+			.nth(index);
+	}
+
+	/**
+	 * Focus on a specific paragraph
+	 */
+	async focusParagraph(index: number): Promise<void> {
+		const paragraph = this.getParagraph(index);
+		await paragraph.click({ force: true });
+	}
+
+	/**
+	 * Type text at the current cursor position.
+	 *
+	 * Refocuses ProseMirror first so the keystrokes can't be eaten by a
+	 * stale activeElement (toolbar button after a click, document-name
+	 * input after the New flow, etc.). Without this guard, the first
+	 * typeText() after a cold-start beforeEach would routinely fail on CI
+	 * with the PM doc empty.
+	 */
+	async typeText(text: string): Promise<void> {
+		await this.refocusEditor();
+		if (text.length > 100) {
+			// Payloads longer than 100 chars: insertText for speed/stability.
+			// Per-char keyboard.type() at Playwright's default timing takes ~30 ms/char
+			// — 109 chars = ~3 s — which burns CI budget and causes flaky timeouts on
+			// loaded 2-vCPU runners.  insertText dispatches a single InputEvent and
+			// is ~30× faster; all scenario assertions operate on doc content, not
+			// individual key events, so the trade-off is safe.
+			await this.page.keyboard.insertText(text);
+			return;
+		}
+		await this.page.keyboard.type(text);
+	}
+
+	/**
+	 * Type text slowly (character by character)
+	 */
+	async typeTextSlowly(text: string, delay: number = 50): Promise<void> {
+		for (const char of text) {
+			await this.page.keyboard.type(char);
+			await this.page.waitForTimeout(delay);
+		}
+	}
+
+	/**
+	 * Press Enter to create a new paragraph
+	 * Includes a small delay to allow focus restoration to complete
+	 */
+	async pressEnter(): Promise<void> {
+		// Defensive refocus: tests often call pressEnter right after a toolbar
+		// click whose own refocus may race React re-renders. If keyboard.press
+		// fires while focus is on a toolbar button, the button gets activated
+		// (Enter == click) instead of inserting a paragraph.
+		await this.refocusEditor();
+		await this.page.keyboard.press("Enter");
+		// Wait for React to complete re-render and focus restoration
+		await this.page.waitForTimeout(50);
+	}
+
+	/**
+	 * Press Shift+Enter for soft line break
+	 */
+	async pressShiftEnter(): Promise<void> {
+		await this.page.keyboard.press("Shift+Enter");
+	}
+
+	/**
+	 * Press Backspace
+	 */
+	async pressBackspace(): Promise<void> {
+		await this.page.keyboard.press("Backspace");
+	}
+
+	/**
+	 * Press Delete
+	 */
+	async pressDelete(): Promise<void> {
+		await this.page.keyboard.press("Delete");
+		await this.page.waitForTimeout(50);
+	}
+
+	/**
+	 * Move cursor to the end of the current line/selection.
+	 */
+	async pressEnd(): Promise<void> {
+		await this.page.keyboard.press("End");
+	}
+
+	/**
+	 * Collapse the current PM selection to its head (right-edge for forward
+	 * selections, equivalent to pressing End / ArrowRight on a range). Routes
+	 * through PM dispatch so it works regardless of which DOM element owns
+	 * focus — keyboard.press('End') after a toolbar click can be eaten by the
+	 * role="toolbar" roving-tabindex handler and never reach PM, leaving the
+	 * range selection live and causing a following insertText to replace it.
+	 */
+	async collapseSelectionToEnd(): Promise<void> {
+		await this.page.evaluate(() => {
+			type View = {
+				state: { selection: { from: number; to: number; head: number } };
+				focus(): void;
+			};
+			type EditorAPI = {
+				getView?: () => View | null;
+				setSelection?: (anchor: number, head?: number) => void;
+				focus?: () => void;
+			};
+			const w = window as unknown as {
+				__editorRef?: { current?: { getEditorRef?: () => EditorAPI | null } };
+			};
+			const editor = w.__editorRef?.current?.getEditorRef?.();
+			const view = editor?.getView?.();
+			if (!editor || !view) return;
+			const sel = view.state.selection;
+			if (sel.from === sel.to) return;
+			// Use the editor's setSelection(anchor, head) — it handles all
+			// selection kinds (TextSelection, AllSelection, etc.) by routing
+			// through view.state.doc.resolve, whereas trying to call
+			// sel.constructor.create(doc, pos) blows up for AllSelection (which
+			// has no static create method) with "Ctor.create is not a function".
+			editor.setSelection?.(sel.head);
+			editor.focus?.();
+		});
+	}
+
+	/**
+	 * Press Tab
+	 */
+	async pressTab(): Promise<void> {
+		await this.page.keyboard.press("Tab");
+	}
+
+	/**
+	 * Press Shift+Tab
+	 */
+	async pressShiftTab(): Promise<void> {
+		await this.page.keyboard.press("Shift+Tab");
+	}
+
+	/**
+	 * Select all text in the editor by spanning from first to last text node.
+	 * Note: Ctrl+A and selectNodeContents don't work reliably with nested contentEditable elements.
+	 * We must walk text nodes and create a range spanning from first to last.
+	 */
+	async selectAll(): Promise<void> {
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.locator(".ProseMirror").focus();
+		await this.page.keyboard.press(`${modifier}+a`);
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Select specific text by searching for it in the document
+	 */
+	async selectText(searchText: string): Promise<boolean> {
+		const selectedViaEditorRef = await this.page.evaluate((text) => {
+			type E2EWindow = Window & {
+				__editorRef?: {
+					current?: {
+						getEditorRef?: () => {
+							getView?: () => {
+								state: {
+									doc: {
+										descendants: (
+											fn: (
+												node: {
+													isText?: boolean;
+													text?: string;
+													nodeSize: number;
+												},
+												pos: number,
+											) => boolean | void,
+										) => void;
+									};
+								};
+							} | null;
+							setSelection?: (anchor: number, head?: number) => void;
+							focus?: () => void;
+						} | null;
+					};
+				};
+			};
+
+			const editor = (
+				window as E2EWindow
+			).__editorRef?.current?.getEditorRef?.();
+			const view = editor?.getView?.();
+			if (!editor || !view) return false;
+
+			let match: { from: number; to: number } | null = null;
+			view.state.doc.descendants((node, pos) => {
+				if (!node.isText || typeof node.text !== "string") return;
+				const index = node.text.indexOf(text);
+				if (index === -1) return;
+				match = { from: pos + index, to: pos + index + text.length };
+				return false;
+			});
+
+			if (!match) return false;
+
+			editor.focus?.();
+			editor.setSelection?.(match.from, match.to);
+			return true;
+		}, searchText);
+
+		if (selectedViaEditorRef) {
+			await this.page.waitForTimeout(100);
+			return true;
+		}
+
+		// First, get the bounding rect of the text we want to select
+		const textInfo = await this.page.evaluate((text) => {
+			// Search only within the editor content area (not toolbar which contains icon text like "format_bold")
+			// ProseMirror uses .ProseMirror, legacy editors use .docx-editor-pages or .docx-ai-editor
+			const contentArea =
+				document.querySelector(".ProseMirror") ||
+				document.querySelector(".docx-editor-pages") ||
+				document.querySelector(".docx-ai-editor");
+			if (!contentArea) return null;
+
+			const walker = document.createTreeWalker(
+				contentArea,
+				NodeFilter.SHOW_TEXT,
+				null,
+			);
+
+			let node: Text | null;
+			while ((node = walker.nextNode() as Text | null)) {
+				const index = node.textContent?.indexOf(text) ?? -1;
+				if (index !== -1) {
+					const range = document.createRange();
+					range.setStart(node, index);
+					range.setEnd(node, index + text.length);
+
+					// Get the bounding rect to use for clicking
+					const rect = range.getBoundingClientRect();
+
+					const selection = window.getSelection();
+					selection?.removeAllRanges();
+					selection?.addRange(range);
+
+					return {
+						found: true,
+						x: rect.x + rect.width / 2,
+						y: rect.y + rect.height / 2,
+					};
+				}
+			}
+			return null;
+		}, searchText);
+
+		if (!textInfo) return false;
+
+		// Focus the editor by clicking, then re-select
+		// This ensures ProseMirror is focused and will sync selections
+		const pm = this.page.locator(".ProseMirror");
+		await pm.focus();
+
+		// Re-apply the selection after focus
+		await this.page.evaluate((text) => {
+			const contentArea =
+				document.querySelector(".ProseMirror") ||
+				document.querySelector(".docx-editor-pages") ||
+				document.querySelector(".docx-ai-editor");
+			if (!contentArea) return;
+
+			const walker = document.createTreeWalker(
+				contentArea,
+				NodeFilter.SHOW_TEXT,
+				null,
+			);
+
+			let node: Text | null;
+			while ((node = walker.nextNode() as Text | null)) {
+				const index = node.textContent?.indexOf(text) ?? -1;
+				if (index !== -1) {
+					const range = document.createRange();
+					range.setStart(node, index);
+					range.setEnd(node, index + text.length);
+
+					const selection = window.getSelection();
+					selection?.removeAllRanges();
+					selection?.addRange(range);
+					return;
+				}
+			}
+		}, searchText);
+
+		// Wait for ProseMirror to sync
+		await this.page.waitForTimeout(100);
+		return true;
+	}
+
+	/**
+	 * Select text by character range within a paragraph
+	 */
+	async selectRange(
+		paragraphIndex: number,
+		startOffset: number,
+		endOffset: number,
+	): Promise<void> {
+		await this.page.evaluate(
+			({ pIndex, start, end }) => {
+				// Try ProseMirror structure first, then fall back to legacy
+				const contentArea =
+					document.querySelector(".ProseMirror") ||
+					document.querySelector(".docx-editor-pages") ||
+					document.querySelector(".docx-ai-editor");
+				if (!contentArea) return;
+
+				// Find paragraph by index
+				let paragraph: Element | null = document.querySelector(
+					`[data-paragraph-index="${pIndex}"]`,
+				);
+				if (!paragraph) {
+					// Fall back to finding p elements by position
+					const paragraphs = contentArea.querySelectorAll("p");
+					paragraph = paragraphs[pIndex] || null;
+				}
+				if (!paragraph) return;
+
+				const walker = document.createTreeWalker(
+					paragraph,
+					NodeFilter.SHOW_TEXT,
+					null,
+				);
+
+				let currentOffset = 0;
+				let startNode: Node | null = null;
+				let startNodeOffset = 0;
+				let endNode: Node | null = null;
+				let endNodeOffset = 0;
+
+				let node: Text | null;
+				while ((node = walker.nextNode() as Text | null)) {
+					const nodeLength = node.textContent?.length ?? 0;
+
+					if (!startNode && currentOffset + nodeLength >= start) {
+						startNode = node;
+						startNodeOffset = start - currentOffset;
+					}
+
+					if (!endNode && currentOffset + nodeLength >= end) {
+						endNode = node;
+						endNodeOffset = end - currentOffset;
+						break;
+					}
+
+					currentOffset += nodeLength;
+				}
+
+				if (startNode && endNode) {
+					const range = document.createRange();
+					range.setStart(startNode, startNodeOffset);
+					range.setEnd(endNode, endNodeOffset);
+
+					const selection = window.getSelection();
+					selection?.removeAllRanges();
+					selection?.addRange(range);
+
+					// Focus the content area to trigger ProseMirror's selection sync
+					if (contentArea instanceof HTMLElement) {
+						contentArea.focus();
+					}
+
+					// Dispatch selectionchange event to notify ProseMirror
+					document.dispatchEvent(new Event("selectionchange"));
+				}
+			},
+			{ pIndex: paragraphIndex, start: startOffset, end: endOffset },
+		);
+
+		// Wait for ProseMirror to sync
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Get the current selection text
+	 */
+	async getSelectedText(): Promise<string> {
+		return await this.page.evaluate(() => {
+			return window.getSelection()?.toString() ?? "";
+		});
+	}
+
+	// Page-local clipboard storage for isolated tests
+	private clipboardContent: string = "";
+
+	/**
+	 * Copy selected text to page-local clipboard
+	 * Note: This does NOT deselect the text - caller must handle that if needed
+	 */
+	async copy(): Promise<void> {
+		this.clipboardContent = await this.page.evaluate(() => {
+			const selection = window.getSelection();
+			return selection?.toString() || "";
+		});
+		// Collapse selection to end to deselect without losing cursor position
+		await this.page.evaluate(() => {
+			const selection = window.getSelection();
+			if (selection && !selection.isCollapsed) {
+				selection.collapseToEnd();
+			}
+		});
+	}
+
+	/**
+	 * Cut selected text to page-local clipboard
+	 */
+	async cut(): Promise<void> {
+		this.clipboardContent = await this.page.evaluate(() => {
+			const selection = window.getSelection();
+			const text = selection?.toString() || "";
+			if (text) {
+				document.execCommand("delete");
+			}
+			return text;
+		});
+	}
+
+	/**
+	 * Paste from page-local clipboard
+	 */
+	async paste(): Promise<void> {
+		if (this.clipboardContent) {
+			await this.page.keyboard.type(this.clipboardContent);
+		}
+	}
+
+	// ============================================================================
+	// FORMATTING
+	// ============================================================================
+
+	/**
+	 * Apply bold formatting via toolbar
+	 */
+	async applyBold(): Promise<void> {
+		await this.boldButton.click();
+		await this.page.waitForTimeout(100);
+		await this.refocusEditor();
+	}
+
+	/**
+	 * Apply bold formatting via keyboard shortcut
+	 */
+	async applyBoldShortcut(): Promise<void> {
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+b`);
+	}
+
+	/**
+	 * Apply italic formatting via toolbar
+	 */
+	async applyItalic(): Promise<void> {
+		await this.italicButton.click();
+		await this.page.waitForTimeout(100);
+		await this.refocusEditor();
+	}
+
+	/**
+	 * Apply italic formatting via keyboard shortcut
+	 */
+	async applyItalicShortcut(): Promise<void> {
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+i`);
+	}
+
+	/**
+	 * Apply underline formatting via toolbar
+	 */
+	async applyUnderline(): Promise<void> {
+		await this.underlineButton.click();
+		await this.page.waitForTimeout(100);
+		await this.refocusEditor();
+	}
+
+	/**
+	 * Apply underline formatting via keyboard shortcut
+	 */
+	async applyUnderlineShortcut(): Promise<void> {
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+u`);
+	}
+
+	/**
+	 * Apply strikethrough formatting via toolbar
+	 */
+	async applyStrikethrough(): Promise<void> {
+		await this.strikethroughButton.click();
+		await this.page.waitForTimeout(100);
+		await this.refocusEditor();
+	}
+
+	/**
+	 * Clear all formatting
+	 */
+	async clearFormatting(): Promise<void> {
+		await this.clearFormattingButton.click();
+	}
+
+	/**
+	 * Set font family
+	 */
+	async setFontFamily(fontFamily: string): Promise<void> {
+		// FontPicker uses a custom Select combobox, not a native <select>
+		const trigger = this.toolbar.locator('[aria-label="Select font family"]');
+		await trigger.click();
+
+		// Wait for the dropdown content to appear and click the matching option
+		const option = this.page.getByRole("option", {
+			name: fontFamily,
+			exact: true,
+		});
+		await option.waitFor({ state: "visible", timeout: 5000 });
+		await option.click();
+
+		// Refocus editor after selecting from dropdown
+		await this.focus();
+		await this.page.waitForTimeout(50);
+	}
+
+	/**
+	 * Set font size
+	 */
+	async setFontSize(size: number): Promise<void> {
+		// Click on font size picker display button to open dropdown
+		const fontSizePicker = this.toolbar.locator(
+			'[data-testid="font-size-display"]',
+		);
+		await fontSizePicker.click();
+		// FontSizePicker's listbox sometimes flickers in/out as the size picker
+		// gets focus. Wait for an option to settle before clicking — otherwise
+		// playwright snaps a still-mid-transition element and the click lands
+		// after the dropdown has already detached.
+		const option = this.page.getByRole("option", {
+			name: size.toString(),
+			exact: true,
+		});
+		await option.waitFor({ state: "visible", timeout: 5000 });
+		await option.click();
+		// Refocus editor after selecting from dropdown
+		await this.focus();
+		await this.page.waitForTimeout(50);
+	}
+
+	/**
+	 * Shared helper: pick a color from an AdvancedColorPicker dropdown.
+	 * Opens the picker, finds/clicks a matching color button, or falls back to custom hex input.
+	 */
+	private async pickColorFromDropdown(
+		buttonTitle: string,
+		hexColor: string,
+		scope: Locator = this.toolbar,
+	): Promise<void> {
+		// Split-button picker (default): two buttons share the same title — apply
+		// half on the left, arrow half on the right (aria-haspopup="true"). Click
+		// the arrow to open the dropdown. Falls through to a single picker for
+		// legacy single-button mode (splitButton={false}). `scope` defaults to the
+		// toolbar; the table cell-fill picker lives in the Format panel instead.
+		const arrowOrSingle = scope
+			.locator(`[title="${buttonTitle}"][aria-haspopup="true"]`)
+			.first();
+		await arrowOrSingle.click();
+
+		await this.page.waitForSelector(".docx-color-picker-dropdown", {
+			state: "visible",
+			timeout: 5000,
+		});
+
+		// Try to click a matching color button, fall back to custom hex input.
+		// Uses page.evaluate to avoid ProseMirror focus-steal issues.
+		const clicked = await this.page.evaluate((hex) => {
+			const dropdown = document.querySelector(".docx-color-picker-dropdown");
+			if (!dropdown) return false;
+			// Match by computed rgb() style (browsers normalize backgroundColor to rgb)
+			const r = parseInt(hex.slice(0, 2), 16);
+			const g = parseInt(hex.slice(2, 4), 16);
+			const b = parseInt(hex.slice(4, 6), 16);
+			const rgbStr = `rgb(${r}, ${g}, ${b})`;
+			for (const btn of dropdown.querySelectorAll("button")) {
+				if (btn.style.backgroundColor === rgbStr) {
+					btn.click();
+					return true;
+				}
+			}
+			// Fall back to custom hex input
+			const input = dropdown.querySelector(
+				'input[aria-label="Custom hex color"]',
+			) as HTMLInputElement;
+			if (input) {
+				const setter = Object.getOwnPropertyDescriptor(
+					window.HTMLInputElement.prototype,
+					"value",
+				)?.set;
+				setter?.call(input, hex);
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+				input.dispatchEvent(new Event("change", { bubbles: true }));
+				input.dispatchEvent(
+					new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+				);
+				return true;
+			}
+			return false;
+		}, hexColor);
+
+		// Wait for dropdown to close and React to re-render
+		if (clicked) {
+			await this.page
+				.waitForSelector(".docx-color-picker-dropdown", {
+					state: "detached",
+					timeout: 3000,
+				})
+				.catch(() => {});
+		}
+		await this.page.waitForTimeout(150);
+		await this.focus();
+		await this.page.waitForTimeout(50);
+	}
+
+	/**
+	 * Set text color
+	 */
+	async setTextColor(color: string): Promise<void> {
+		const hexColor = color.replace(/^#/, "").toUpperCase();
+		await this.pickColorFromDropdown("Font Color", hexColor);
+	}
+
+	/**
+	 * Click the apply half of a split color button — re-applies the picker's
+	 * last picked color directly, no dropdown. Mirrors Word's split-button.
+	 */
+	private async applyLastColor(buttonTitle: string): Promise<void> {
+		// Two elements share the title — the apply half is the one WITHOUT
+		// aria-haspopup. Use class selector to be unambiguous.
+		const cls =
+			buttonTitle === "Font Color" || buttonTitle === "Text Highlight Color"
+				? ".docx-color-picker-apply"
+				: ".docx-color-picker-apply";
+		const apply = this.toolbar
+			.locator(`${cls}[title="${buttonTitle}"]`)
+			.first();
+		await apply.click();
+		await this.page.waitForTimeout(50);
+		await this.focus();
+		await this.page.waitForTimeout(50);
+	}
+
+	/** Click the apply half of the text-color split button. */
+	async applyLastTextColor(): Promise<void> {
+		await this.applyLastColor("Font Color");
+	}
+
+	/** Click the apply half of the highlight-color split button. */
+	async applyLastHighlightColor(): Promise<void> {
+		await this.applyLastColor("Text Highlight Color");
+	}
+
+	/**
+	 * Set highlight color
+	 */
+	async setHighlightColor(color: string): Promise<void> {
+		// OOXML highlight name → hex mapping (mirrors HIGHLIGHT_COLORS in colorResolver.ts)
+		const highlightHexMap: Record<string, string> = {
+			yellow: "FFFF00",
+			green: "00FF00",
+			cyan: "00FFFF",
+			magenta: "FF00FF",
+			blue: "0000FF",
+			red: "FF0000",
+			darkBlue: "00008B",
+			darkCyan: "008B8B",
+			darkGreen: "006400",
+			darkMagenta: "8B008B",
+			darkRed: "8B0000",
+			darkYellow: "808000",
+			lightGray: "D3D3D3",
+			darkGray: "A9A9A9",
+			black: "000000",
+			white: "FFFFFF",
+		};
+		const hex = highlightHexMap[color] || color.replace(/^#/, "").toUpperCase();
+		await this.pickColorFromDropdown("Text Highlight Color", hex);
+	}
+
+	// ============================================================================
+	// ALIGNMENT & LISTS
+	// ============================================================================
+
+	/**
+	 * Align text left
+	 */
+	async alignLeft(): Promise<void> {
+		await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
+		await this.page.locator('[data-testid="alignment-left"]').click();
+	}
+
+	/**
+	 * Align text center
+	 */
+	async alignCenter(): Promise<void> {
+		await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
+		await this.page.locator('[data-testid="alignment-center"]').click();
+	}
+
+	/**
+	 * Align text right
+	 */
+	async alignRight(): Promise<void> {
+		await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
+		await this.page.locator('[data-testid="alignment-right"]').click();
+	}
+
+	/**
+	 * Justify text
+	 */
+	async alignJustify(): Promise<void> {
+		await this.toolbar.locator('[data-testid="toolbar-alignment"]').click();
+		await this.page.locator('[data-testid="alignment-both"]').click();
+	}
+
+	/**
+	 * Toggle bullet list
+	 */
+	async toggleBulletList(): Promise<void> {
+		await this.toolbar.locator('[aria-label^="Bullet List"]').click();
+		await this.refocusEditor();
+	}
+
+	/**
+	 * Apply bullet list (alias for toggleBulletList)
+	 */
+	async applyBulletList(): Promise<void> {
+		await this.toggleBulletList();
+	}
+
+	/**
+	 * Toggle numbered list
+	 */
+	async toggleNumberedList(): Promise<void> {
+		await this.toolbar.locator('[aria-label^="Numbered List"]').click();
+		await this.refocusEditor();
+	}
+
+	/**
+	 * Apply numbered list (alias for toggleNumberedList)
+	 */
+	async applyNumberedList(): Promise<void> {
+		await this.toggleNumberedList();
+	}
+
+	/**
+	 * Indent paragraph/list item
+	 */
+	async indent(): Promise<void> {
+		await this.toolbar.locator('[aria-label^="Increase Indent"]').click();
+	}
+
+	/**
+	 * Outdent paragraph/list item
+	 */
+	async outdent(): Promise<void> {
+		const button = this.toolbar.locator('[aria-label^="Decrease Indent"]');
+		if (await button.isDisabled()) {
+			await this.pressShiftTab();
+			await this.page.waitForTimeout(100);
+			return;
+		}
+		await button.click();
+	}
+
+	// ============================================================================
+	// LINE SPACING
+	// ============================================================================
+
+	/**
+	 * Set line spacing
+	 * @param spacing - The spacing value: '1.0', '1.15', '1.5', '2.0' or label like 'Single', 'Double'
+	 */
+	async setLineSpacing(spacing: string): Promise<void> {
+		// Click on line spacing dropdown (uses Radix Select with aria-label)
+		const lineSpacingButton = this.toolbar.locator(
+			'[aria-label="Line spacing"]',
+		);
+		await lineSpacingButton.click();
+
+		// Map spacing values to their display labels
+		const spacingLabels: Record<string, string> = {
+			"1.0": "Single",
+			"1.15": "1.15",
+			"1.5": "1.5",
+			"2.0": "Double",
+			Single: "Single",
+			Double: "Double",
+		};
+
+		const label = spacingLabels[spacing] || spacing;
+
+		// Select spacing value from dropdown using role="option" with exact match
+		await this.page.getByRole("option", { name: label, exact: true }).click();
+	}
+
+	/**
+	 * Set single line spacing
+	 */
+	async setLineSpacingSingle(): Promise<void> {
+		await this.setLineSpacing("1.0");
+	}
+
+	/**
+	 * Set 1.5 line spacing
+	 */
+	async setLineSpacing15(): Promise<void> {
+		await this.setLineSpacing("1.5");
+	}
+
+	/**
+	 * Set double line spacing
+	 */
+	async setLineSpacingDouble(): Promise<void> {
+		await this.setLineSpacing("2.0");
+	}
+
+	// ============================================================================
+	// PARAGRAPH STYLES
+	// ============================================================================
+
+	/**
+	 * Set paragraph style.
+	 *
+	 * The toolbar now renders a Radix-Select combobox for paragraph styles,
+	 * not a native `<select>` element — `selectOption` doesn't apply. We
+	 * click the combobox to open its listbox, then click the option whose
+	 * accessible name matches `style`. Falls back to the legacy native-
+	 * select path in case any older shell variant is still mounted, so the
+	 * helper works through editor-shell refactors.
+	 *
+	 * The StylePicker renders Google-Docs-style display names (e.g.
+	 * `Normal text` for the `Normal` styleId), so callers passing the
+	 * styleId-style names get auto-translated to the visible label.
+	 */
+	async setParagraphStyle(style: string): Promise<void> {
+		const displayAliases: Record<string, string> = {
+			Normal: "Normal text",
+		};
+		const displayLabel = displayAliases[style] ?? style;
+
+		const nativeSelect = this.toolbar.locator(
+			'select[aria-label="Select paragraph style"]',
+		);
+		if (await nativeSelect.count()) {
+			// Some older mounts emit a `<select>`; try both name forms before
+			// bailing so the helper works across shell variants.
+			try {
+				await nativeSelect.selectOption({ label: displayLabel });
+			} catch {
+				await nativeSelect.selectOption({ label: style });
+			}
+		} else {
+			const trigger = this.toolbar.getByRole("combobox", {
+				name: "Select paragraph style",
+			});
+			await trigger.click();
+			// Radix portals the listbox into document.body, so the option
+			// lookup is page-rooted, not toolbar-scoped.
+			await this.page
+				.getByRole("option", { name: displayLabel, exact: true })
+				.click();
+		}
+		// Refocus editor after selecting style
+		await this.focus();
+	}
+
+	/**
+	 * Apply Normal style
+	 */
+	async applyNormalStyle(): Promise<void> {
+		await this.setParagraphStyle("Normal");
+	}
+
+	/**
+	 * Apply Heading 1 style
+	 */
+	async applyHeading1(): Promise<void> {
+		await this.setParagraphStyle("Heading 1");
+	}
+
+	/**
+	 * Apply Heading 2 style
+	 */
+	async applyHeading2(): Promise<void> {
+		await this.setParagraphStyle("Heading 2");
+	}
+
+	/**
+	 * Apply Heading 3 style
+	 */
+	async applyHeading3(): Promise<void> {
+		await this.setParagraphStyle("Heading 3");
+	}
+
+	/**
+	 * Apply Title style
+	 */
+	async applyTitleStyle(): Promise<void> {
+		await this.setParagraphStyle("Title");
+	}
+
+	/**
+	 * Apply Subtitle style
+	 */
+	async applySubtitleStyle(): Promise<void> {
+		await this.setParagraphStyle("Subtitle");
+	}
+
+	// ============================================================================
+	// UNDO / REDO
+	// ============================================================================
+
+	/**
+	 * Undo via toolbar
+	 */
+	async undo(): Promise<void> {
+		if (await this.undoButton.isDisabled()) {
+			return;
+		}
+		await this.undoButton.click();
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Undo via keyboard shortcut
+	 */
+	async undoShortcut(): Promise<void> {
+		// Guarantee PM focus before the shortcut — a preceding toolbar click or
+		// dropdown selection may have moved focus to a toolbar button, in which
+		// case the keystroke would activate the button instead of reaching PM.
+		await this.refocusEditor();
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+z`);
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Redo via toolbar
+	 */
+	async redo(): Promise<void> {
+		if (await this.redoButton.isDisabled()) {
+			return;
+		}
+		await this.redoButton.click();
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Redo via keyboard shortcut (Ctrl+Y or Ctrl+Shift+Z)
+	 */
+	async redoShortcut(): Promise<void> {
+		// Guarantee PM focus before the shortcut — undo processing can trigger
+		// React re-renders that briefly move the active element; without this
+		// guard the Ctrl+Y lands on whatever the browser thinks has focus and
+		// ProseMirror never sees the redo command.
+		await this.refocusEditor();
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+y`);
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Check if undo is available
+	 */
+	async isUndoAvailable(): Promise<boolean> {
+		return !(await this.undoButton.isDisabled());
+	}
+
+	/**
+	 * Check if redo is available
+	 */
+	async isRedoAvailable(): Promise<boolean> {
+		return !(await this.redoButton.isDisabled());
+	}
+
+	// ============================================================================
+	// TABLES
+	// ============================================================================
+
+	/**
+	 * Insert a table with specified dimensions using the grid selector
+	 */
+	async insertTable(rows: number, cols: number): Promise<void> {
+		const inlinePicker = this.page.locator(
+			'[data-testid="toolbar-insert-table"]',
+		);
+
+		if (await inlinePicker.isVisible().catch(() => false)) {
+			await inlinePicker.click();
+		} else {
+			await this.page.getByRole("button", { name: /^Insert$/ }).click();
+			const tableMenuItem = this.page
+				.getByRole("menuitem", { name: /^Table$/ })
+				.first();
+			await tableMenuItem.hover();
+		}
+
+		const grid = this.page.getByRole("grid", { name: "Table size selector" });
+		await grid.waitFor({ state: "visible", timeout: 5000 });
+
+		const gridCells = grid.getByRole("gridcell");
+		// Read the actual column count from the CSS grid layout
+		const gridColumns = await grid.evaluate((el) => {
+			const style = window.getComputedStyle(el);
+			const columns = style.gridTemplateColumns.split(/\s+/).filter(Boolean);
+			return columns.length || 6; // fallback to 6 if not a CSS grid
+		});
+		const cellIndex = (rows - 1) * gridColumns + (cols - 1);
+		const targetCell = gridCells.nth(cellIndex);
+
+		await targetCell.hover();
+		await this.page.waitForTimeout(100);
+		await targetCell.click();
+
+		// Wait for table to be inserted (use generic table selector since prosemirror-tables
+		// column resizing plugin may override the table DOM and not include our docx-table class)
+		await this.page.waitForSelector(".ProseMirror table", {
+			state: "visible",
+			timeout: 5000,
+		});
+		this.currentTableCell = null;
+	}
+
+	/**
+	 * Click on a specific table cell
+	 */
+	async clickTableCell(
+		tableIndex: number,
+		row: number,
+		col: number,
+	): Promise<void> {
+		const table = this.page
+			.locator(".paged-editor__pages .layout-table")
+			.nth(tableIndex);
+		const dimensions = await this.getTableDimensions(tableIndex);
+		const targetIndex = row * dimensions.cols + col;
+
+		let currentIndex = -1;
+		if (
+			this.currentTableCell &&
+			this.currentTableCell.tableIndex === tableIndex
+		) {
+			currentIndex =
+				this.currentTableCell.row * dimensions.cols + this.currentTableCell.col;
+		}
+
+		if (currentIndex < 0 || currentIndex > targetIndex) {
+			const firstCell = table
+				.locator(".layout-table-row")
+				.first()
+				.locator(".layout-table-cell")
+				.first();
+			await firstCell.scrollIntoViewIfNeeded();
+			await firstCell.click({ force: true });
+			await this.page.locator(".ProseMirror").focus();
+			await this.page.waitForTimeout(50);
+			currentIndex = 0;
+		}
+
+		for (let i = currentIndex; i < targetIndex; i += 1) {
+			await this.pressTab();
+		}
+
+		this.currentTableCell = { tableIndex, row, col };
+	}
+
+	/**
+	 * Right-click on a specific visual table cell to open the text context menu
+	 */
+	async rightClickTableCell(
+		tableIndex: number,
+		row: number,
+		col: number,
+	): Promise<void> {
+		const table = this.page
+			.locator(".paged-editor__pages .layout-table")
+			.nth(tableIndex);
+		const cell = table
+			.locator(".layout-table-row")
+			.nth(row)
+			.locator(".layout-table-cell")
+			.nth(col);
+		await cell.scrollIntoViewIfNeeded();
+		await cell.click({ button: "right", force: true });
+		await this.page.waitForSelector('[role="menu"]', {
+			state: "visible",
+			timeout: 5000,
+		});
+	}
+
+	/**
+	 * Get table cell content
+	 */
+	async getTableCellContent(
+		tableIndex: number,
+		row: number,
+		col: number,
+	): Promise<string> {
+		const table = this.page.locator(".ProseMirror table").nth(tableIndex);
+		const cell = table.locator("tr").nth(row).locator("td, th").nth(col);
+		return (await cell.textContent()) ?? "";
+	}
+
+	/**
+	 * Count tables in the document
+	 */
+	async getTableCount(): Promise<number> {
+		return await this.page.locator(".ProseMirror table").count();
+	}
+
+	/**
+	 * Get table dimensions (rows x cols)
+	 */
+	async getTableDimensions(
+		tableIndex: number,
+	): Promise<{ rows: number; cols: number }> {
+		const table = this.page.locator(".ProseMirror table").nth(tableIndex);
+		const rows = await table.locator("tr").count();
+		const cols = await table.locator("tr").first().locator("td, th").count();
+		return { rows, cols };
+	}
+
+	/**
+	 * Open table "More" dropdown (must be in a table first)
+	 */
+	async openTableMore(): Promise<void> {
+		await this.page.locator('[data-testid="toolbar-table-more"]').click();
+		await this.page.waitForSelector('[role="menu"]', {
+			state: "visible",
+			timeout: 5000,
+		});
+	}
+
+	/**
+	 * Click a table menu item in the More dropdown.
+	 *
+	 * Uses a direct DOM click() rather than Playwright's `.click()` because
+	 * the dropdown's fixed-position container re-positions itself with a
+	 * useFixedDropdown effect (setPos via getBoundingClientRect) which can
+	 * fire between Playwright's actionability check and its synthesized
+	 * click — Playwright sees the element as "detached and retrying" and
+	 * the synthesized click never reaches `onClick`. DOM `.click()` is
+	 * synchronous and bypasses that race. Behavior is identical from
+	 * React's perspective: same MouseEvent reaches the same element.
+	 */
+	async clickTableMenuItem(itemName: string): Promise<void> {
+		const ok = await this.page.evaluate((name) => {
+			const items = Array.from(document.querySelectorAll('[role="menuitem"]'));
+			const target = items.find((el) =>
+				(el.textContent ?? "").trim().includes(name),
+			);
+			if (!(target instanceof HTMLElement)) return false;
+			target.click();
+			return true;
+		}, itemName);
+		if (!ok)
+			throw new Error(`clickTableMenuItem: no menuitem matching ${itemName}`);
+		await this.page.waitForTimeout(100);
+	}
+
+	/**
+	 * Add a row above current cell
+	 */
+	async addRowAbove(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Insert row above");
+	}
+
+	/**
+	 * Add a row below current cell
+	 */
+	async addRowBelow(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Insert row below");
+	}
+
+	/**
+	 * Add a column to the left
+	 */
+	async addColumnLeft(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Insert column left");
+	}
+
+	/**
+	 * Add a column to the right
+	 */
+	async addColumnRight(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Insert column right");
+	}
+
+	/**
+	 * Delete current row
+	 */
+	async deleteRow(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Delete row");
+	}
+
+	/**
+	 * Delete current column
+	 */
+	async deleteColumn(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Delete column");
+	}
+
+	/**
+	 * Delete entire table
+	 */
+	async deleteTable(): Promise<void> {
+		await this.openTableMore();
+		await this.clickTableMenuItem("Delete table");
+	}
+
+	/**
+	 * Open the table Format panel and return its properties section. The
+	 * border / border-color / width / cell-fill pickers live here now (not in
+	 * the toolbar). Clicking the chip is idempotent enough — if the section is
+	 * already showing we skip the click so a second call doesn't toggle it shut.
+	 */
+	async openTableFormatPanel(): Promise<Locator> {
+		const section = this.page.locator(
+			'[data-testid="properties-table-section"]',
+		);
+		if ((await section.count()) === 0 || !(await section.first().isVisible())) {
+			// The chip only renders once the caret-in-table state has settled; under
+			// parallel CI load it can lag the cell click. Wait for it before clicking
+			// so we don't click into the void and time out on the section instead.
+			const chip = this.page.locator('[data-testid="table-format-chip"]');
+			await chip.waitFor({ state: "visible", timeout: 5_000 });
+			await chip.click();
+			await section.first().waitFor({ state: "visible", timeout: 5_000 });
+		}
+		return section.first();
+	}
+
+	/**
+	 * Set all borders on current cell. The borders flyout renders in a
+	 * portal that can land outside the viewport on CI runner sizes;
+	 * Playwright refuses to click off-screen elements even with
+	 * `force: true`. dispatchEvent fires a synthetic click on the
+	 * resolved DOM node so the click lands regardless of geometry —
+	 * appropriate here because the test exercises the COMMAND, not the
+	 * cursor's ability to reach the button.
+	 */
+	async setAllBorders(): Promise<void> {
+		const section = await this.openTableFormatPanel();
+		await section.locator('[data-testid="toolbar-table-borders"]').click();
+		const target = this.page.locator('button[title="All borders"]');
+		await target.waitFor({ state: "visible", timeout: 5_000 });
+		await target.dispatchEvent("click");
+	}
+
+	/**
+	 * Remove borders from current cell. See setAllBorders for the
+	 * dispatchEvent rationale.
+	 */
+	async removeBorders(): Promise<void> {
+		const section = await this.openTableFormatPanel();
+		await section.locator('[data-testid="toolbar-table-borders"]').click();
+		const target = this.page.locator('button[title="No borders"]');
+		await target.waitFor({ state: "visible", timeout: 5_000 });
+		await target.dispatchEvent("click");
+	}
+
+	/**
+	 * Set cell fill color. The cell-fill picker moved from the toolbar into the
+	 * table Format panel, so scope the dropdown lookup to the panel section.
+	 */
+	async setCellFillColor(color: string): Promise<void> {
+		const hexColor = color.replace(/^#/, "").toUpperCase();
+		const section = await this.openTableFormatPanel();
+		await this.pickColorFromDropdown("Cell Fill Color", hexColor, section);
+	}
+
+	/**
+	 * Get cell background color
+	 */
+	async getCellBackgroundColor(
+		tableIndex: number,
+		row: number,
+		col: number,
+	): Promise<string> {
+		const table = this.page.locator(".ProseMirror table").nth(tableIndex);
+		const cell = table.locator("tr").nth(row).locator("td, th").nth(col);
+		const style = await cell.getAttribute("style");
+		// Extract background-color from style
+		const match = style?.match(/background-color:\s*([^;]+)/);
+		return match ? match[1].trim() : "";
+	}
+
+	/**
+	 * Check if cell has visible borders (not all set to 'none')
+	 */
+	async cellHasBorders(
+		tableIndex: number,
+		row: number,
+		col: number,
+	): Promise<boolean> {
+		const table = this.page.locator(".ProseMirror table").nth(tableIndex);
+		const cell = table.locator("tr").nth(row).locator("td, th").nth(col);
+		const style = await cell.getAttribute("style");
+
+		if (!style) return false;
+
+		// Browser normalizes 'border: none' to 'border-style: none'
+		if (style.includes("border-style: none")) {
+			return false;
+		}
+
+		// Check if 'border: none' is explicitly set
+		if (style.includes("border: none")) {
+			return false;
+		}
+
+		// Check if all individual borders are set to none
+		const hasTopNone = style.includes("border-top: none");
+		const hasBottomNone = style.includes("border-bottom: none");
+		const hasLeftNone = style.includes("border-left: none");
+		const hasRightNone = style.includes("border-right: none");
+
+		// If all 4 borders are explicitly set to none, no borders
+		if (hasTopNone && hasBottomNone && hasLeftNone && hasRightNone) {
+			return false;
+		}
+
+		// Otherwise, check if there's any border definition (default or explicit)
+		return style.includes("border");
+	}
+
+	/**
+	 * Save the document
+	 */
+	async saveDocument(): Promise<void> {
+		// Wait for any pending changes
+		await this.page.waitForTimeout(200);
+		// Same story as newDocument(): Save moved inside the File dropdown.
+		// Items inside the dropdown carry role="menuitem" per the popup-menu
+		// pattern — query by that, not by 'button'.
+		await this.page.getByRole("button", { name: "File" }).click();
+		await this.page.getByRole("menuitem", { name: /^Save\b/ }).click();
+		// Wait for download or save confirmation
+		await this.page.waitForTimeout(500);
+	}
+
+	/**
+	 * Click File → New to create a new document
+	 */
+	async newDocument(): Promise<void> {
+		// The menu-bar redesign (0da2a75) put "New" inside the File dropdown,
+		// so open File first and then click the item by accessible name.
+		// The trigger keeps the native button role (no menubar parent);
+		// items inside the dropdown carry role="menuitem" per the
+		// popup-menu pattern — query each by its actual ARIA role.
+		await this.page.getByRole("button", { name: "File" }).click();
+		await this.page.getByRole("menuitem", { name: /^New\b/ }).click();
+		// Wait for the new (empty) ProseMirror to be attached and reporting an
+		// empty doc via the e2e editor ref. The previous 500ms fixed wait raced
+		// with bootstrap on cold CI runs — a subsequent typeText() then landed
+		// on a stale contenteditable from before the remount, and the test saw
+		// an empty PM doc.
+		await this.page
+			.locator(".ProseMirror")
+			.first()
+			.waitFor({ state: "attached", timeout: 5000 });
+		await this.page.waitForFunction(
+			() => {
+				const w = window as unknown as {
+					__editorRef?: {
+						current?: {
+							getEditorRef?: () => {
+								getView?: () => {
+									state: { doc: { textContent: string } };
+								} | null;
+							} | null;
+						};
+					};
+				};
+				const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
+				return view ? view.state.doc.textContent.length === 0 : false;
+			},
+			undefined,
+			{ timeout: 5000 },
+		);
+		this.currentTableCell = null;
+	}
+
+	/**
+	 * Save a named version via the version-history panel. The panel must
+	 * already be open. "Save version…" opens a styled prompt modal
+	 * (`promptModal`, not a native dialog), so fill its input + confirm.
+	 */
+	async saveNamedVersion(name: string): Promise<void> {
+		await this.page.getByTestId("version-history-save-version").click();
+		const input = this.page.locator("[data-act=input]");
+		await input.waitFor({ state: "visible", timeout: 5000 });
+		await input.fill(name);
+		await this.page.locator("[data-act=ok]").click();
+		await this.page
+			.locator("[data-act=input]")
+			.waitFor({ state: "detached", timeout: 5000 });
+	}
+
+	// ============================================================================
+	// FIND & REPLACE
+	// ============================================================================
+
+	/**
+	 * Open find dialog (Ctrl+F / Cmd+F)
+	 */
+	async openFind(): Promise<void> {
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+f`);
+		await this.findReplaceDialog.waitFor();
+	}
+
+	/**
+	 * Open find & replace dialog (Ctrl+H / Cmd+H)
+	 */
+	async openFindReplace(): Promise<void> {
+		const modifier = process.platform === "darwin" ? "Meta" : "Control";
+		await this.page.keyboard.press(`${modifier}+h`);
+		await this.findReplaceDialog.waitFor();
+	}
+
+	/**
+	 * Perform find operation
+	 */
+	async find(searchText: string): Promise<void> {
+		const findInput = this.page.locator('[data-testid="find-input"]');
+		await findInput.click();
+		await findInput.press(
+			process.platform === "darwin" ? "Meta+a" : "Control+a",
+		);
+		await findInput.type(searchText, { delay: 20 });
+		await this.page.waitForTimeout(100);
+		await findInput.press("Enter");
+		await this.page.waitForTimeout(200);
+	}
+
+	/**
+	 * Find next match
+	 */
+	async findNext(): Promise<void> {
+		await this.page.locator('[aria-label="Find next"]').click();
+		await this.page.waitForTimeout(150);
+	}
+
+	/**
+	 * Find previous match
+	 */
+	async findPrevious(): Promise<void> {
+		await this.page.locator('[aria-label="Find previous"]').click();
+		await this.page.waitForTimeout(150);
+	}
+
+	/**
+	 * Replace current match
+	 */
+	async replace(replaceText: string): Promise<void> {
+		const replaceButton = this.findReplaceDialog.getByRole("button", {
+			name: /^Replace$/,
+		});
+		await this.page.locator("#replace-text").fill(replaceText);
+		for (let i = 0; i < 20; i += 1) {
+			if (!(await replaceButton.isDisabled())) break;
+			await this.page.waitForTimeout(100);
+		}
+		await replaceButton.click();
+		await this.page.waitForTimeout(150);
+	}
+
+	/**
+	 * Replace all matches
+	 */
+	async replaceAll(searchText: string, replaceText: string): Promise<void> {
+		const replaceAllButton = this.findReplaceDialog.getByRole("button", {
+			name: /^Replace All$/,
+		});
+		await this.page.locator('[data-testid="find-input"]').fill(searchText);
+		await this.page.locator('[data-testid="find-input"]').press("Enter");
+		await this.page.locator("#replace-text").fill(replaceText);
+		for (let i = 0; i < 20; i += 1) {
+			if (!(await replaceAllButton.isDisabled())) break;
+			await this.page.waitForTimeout(100);
+		}
+		await replaceAllButton.click();
+		await this.page.waitForTimeout(150);
+	}
+
+	/**
+	 * Close find/replace dialog
+	 */
+	async closeFindReplace(): Promise<void> {
+		await this.findReplaceDialog
+			.getByRole("button", { name: /close/i })
+			.click();
+		await this.findReplaceDialog.waitFor({ state: "hidden" });
+	}
+
+	// ============================================================================
+	// ZOOM
+	// ============================================================================
+
+	/**
+	 * Set zoom level
+	 */
+	async setZoom(level: number): Promise<void> {
+		const zoomInput = this.page.locator(".zoom-control input");
+		await zoomInput.fill(level.toString());
+		await zoomInput.press("Enter");
+	}
+
+	/**
+	 * Zoom in
+	 */
+	async zoomIn(): Promise<void> {
+		await this.page.locator('.zoom-control [aria-label="Zoom in"]').click();
+	}
+
+	/**
+	 * Zoom out
+	 */
+	async zoomOut(): Promise<void> {
+		await this.page.locator('.zoom-control [aria-label="Zoom out"]').click();
+	}
+
+	// ============================================================================
+	// ASSERTIONS
+	// ============================================================================
+
+	/**
+	 * Assert the editor is visible and ready
+	 */
+	async expectReady(): Promise<void> {
+		await expect(this.editor).toBeVisible();
+	}
+
+	/**
+	 * Assert document has specific paragraph count
+	 */
+	async expectParagraphCount(count: number): Promise<void> {
+		const paragraphs = this.page.locator("[data-paragraph-index]");
+		await expect(paragraphs).toHaveCount(count);
+	}
+
+	/**
+	 * Assert paragraph contains text
+	 */
+	async expectParagraphText(
+		index: number,
+		expectedText: string,
+	): Promise<void> {
+		const paragraph = this.getParagraph(index);
+		await expect(paragraph).toContainText(expectedText);
+	}
+
+	/**
+	 * Assert text is bold (has bold styling)
+	 */
+	async expectTextBold(text: string): Promise<boolean> {
+		return await this.page.evaluate((searchText) => {
+			const walker = document.createTreeWalker(
+				document.body,
+				NodeFilter.SHOW_TEXT,
+				null,
+			);
+
+			let node: Text | null;
+			while ((node = walker.nextNode() as Text | null)) {
+				if (node.textContent?.includes(searchText)) {
+					let element = node.parentElement;
+					while (element) {
+						const style = window.getComputedStyle(element);
+						if (
+							style.fontWeight === "bold" ||
+							parseInt(style.fontWeight) >= 700
+						) {
+							return true;
+						}
+						if (element.tagName === "STRONG" || element.tagName === "B") {
+							return true;
+						}
+						element = element.parentElement;
+					}
+				}
+			}
+			return false;
+		}, text);
+	}
+
+	/**
+	 * Assert text is italic (has italic styling)
+	 */
+	async expectTextItalic(text: string): Promise<boolean> {
+		return await this.page.evaluate((searchText) => {
+			const walker = document.createTreeWalker(
+				document.body,
+				NodeFilter.SHOW_TEXT,
+				null,
+			);
+
+			let node: Text | null;
+			while ((node = walker.nextNode() as Text | null)) {
+				if (node.textContent?.includes(searchText)) {
+					let element = node.parentElement;
+					while (element) {
+						const style = window.getComputedStyle(element);
+						if (style.fontStyle === "italic") {
+							return true;
+						}
+						if (element.tagName === "EM" || element.tagName === "I") {
+							return true;
+						}
+						element = element.parentElement;
+					}
+				}
+			}
+			return false;
+		}, text);
+	}
+
+	/**
+	 * Assert toolbar button is active
+	 */
+	async expectToolbarButtonActive(buttonName: string): Promise<void> {
+		const button = this.toolbar.locator(
+			`[data-testid="toolbar-${buttonName}"]`,
+		);
+		await expect(button).toHaveAttribute("aria-pressed", "true");
+	}
+
+	/**
+	 * Assert toolbar button is not active
+	 */
+	async expectToolbarButtonInactive(buttonName: string): Promise<void> {
+		const button = this.toolbar.locator(
+			`[data-testid="toolbar-${buttonName}"]`,
+		);
+		await expect(button).toHaveAttribute("aria-pressed", "false");
+	}
+
+	/**
+	 * Get the document text content
+	 */
+	async getDocumentText(): Promise<string> {
+		const contentArea = this.getContentArea();
+		return (await contentArea.textContent()) ?? "";
+	}
+
+	/**
+	 * Assert document contains text
+	 */
+	async expectDocumentContains(text: string): Promise<void> {
+		const contentArea = this.getContentArea();
+		await expect(contentArea).toContainText(text);
+	}
+
+	/**
+	 * Assert document does not contain text
+	 */
+	async expectDocumentNotContains(text: string): Promise<void> {
+		const contentArea = this.getContentArea();
+		await expect(contentArea).not.toContainText(text);
+	}
+
+	/**
+	 * Take a screenshot for visual comparison
+	 */
+	async takeScreenshot(name: string): Promise<void> {
+		await this.page.screenshot({
+			path: `screenshots/${name}.png`,
+			fullPage: true,
+		});
+	}
+
+	/**
+	 * Wait for any animations to complete
+	 */
+	async waitForAnimations(): Promise<void> {
+		await this.page.waitForTimeout(300);
+	}
+
+	/**
+	 * Focus the hidden ProseMirror and wait until it actually owns focus.
+	 *
+	 * `.first()` on `[contenteditable="true"]` can match an unrelated editable
+	 * region (run-editable spans, dialog fields, etc.), so target the
+	 * ProseMirror root explicitly. Then poll until document.activeElement is
+	 * inside `.ProseMirror`, since Playwright's focus() returns before
+	 * browser-side focus changes settle in CI under load — a typeText() that
+	 * runs while focus is still on a previously-clicked button or a stale
+	 * contenteditable lands its keystrokes there, and subsequent assertions
+	 * see an empty PM doc.
+	 *
+	 * The toolbar is also role="toolbar" with ARIA roving tabindex — if a
+	 * format button still owns focus, a following End / ArrowRight key moves
+	 * focus along the toolbar instead of reaching ProseMirror, so we must do
+	 * this refocus after every toolbar click as well.
+	 */
+	async focus(): Promise<void> {
+		const pm = this.page.locator(".ProseMirror").first();
+		await pm.waitFor({ state: "attached", timeout: 5000 });
+		// Drive focus through PM's view when the e2e ref is available — that
+		// calls focusPreventScroll(dom) AND selectionToDOM(view), so the DOM
+		// caret reflects the PM selection. A plain dom.focus() preserves
+		// whatever the DOM selection happens to be (often nothing on a fresh
+		// mount), which then makes the first keyboard.type land in a place the
+		// test author didn't expect.
+		const refUsed = await this.page.evaluate(() => {
+			type View = { focus(): void };
+			const w = window as unknown as {
+				__editorRef?: {
+					current?: {
+						getEditorRef?: () => { getView?: () => View | null } | null;
+					};
+				};
+			};
+			const view = w.__editorRef?.current?.getEditorRef?.()?.getView?.();
+			if (!view) return false;
+			view.focus();
+			return true;
+		});
+		if (!refUsed) await pm.focus();
+		await this.page.waitForFunction(
+			() => !!document.activeElement?.closest(".ProseMirror"),
+			undefined,
+			{ timeout: 2000 },
+		);
+	}
+
+	/**
+	 * Alias kept so existing format-button helpers read clearly. Internally
+	 * the same robust focus path as focus().
+	 */
+	async refocusEditor(): Promise<void> {
+		await this.focus();
+	}
+
+	/**
+	 * Blur the editor (click outside)
+	 */
+	async blur(): Promise<void> {
+		await this.page.click("body", { position: { x: 0, y: 0 } });
+	}
 }

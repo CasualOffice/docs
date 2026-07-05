@@ -40,20 +40,22 @@
  *
  * Output: e2e/fixtures/drawing-fidelity.docx
  */
-import JSZip from 'jszip';
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import JSZip from "jszip";
+import { writeFileSync, readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(here, '..');
-const OUT = join(projectRoot, 'e2e/fixtures/drawing-fidelity.docx');
+const projectRoot = join(here, "..");
+const OUT = join(projectRoot, "e2e/fixtures/drawing-fidelity.docx");
 
 // Reuse the existing test-image.png so we don't ship more binaries.
-const TEST_IMG_PATH = join(projectRoot, 'e2e/fixtures/test-image.png');
+const TEST_IMG_PATH = join(projectRoot, "e2e/fixtures/test-image.png");
 if (!existsSync(TEST_IMG_PATH)) {
-  console.error(`expected ${TEST_IMG_PATH} to exist (reused from existing fixtures)`);
-  process.exit(1);
+	console.error(
+		`expected ${TEST_IMG_PATH} to exist (reused from existing fixtures)`,
+	);
+	process.exit(1);
 }
 const imgBytes = readFileSync(TEST_IMG_PATH);
 
@@ -269,12 +271,12 @@ const DOC = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </w:document>`;
 
 const zip = new JSZip();
-zip.file('[Content_Types].xml', CONTENT_TYPES);
-zip.file('_rels/.rels', RELS);
-zip.file('word/_rels/document.xml.rels', DOC_RELS);
-zip.file('word/document.xml', DOC);
-zip.file('word/media/img1.png', imgBytes);
+zip.file("[Content_Types].xml", CONTENT_TYPES);
+zip.file("_rels/.rels", RELS);
+zip.file("word/_rels/document.xml.rels", DOC_RELS);
+zip.file("word/document.xml", DOC);
+zip.file("word/media/img1.png", imgBytes);
 
-const out = await zip.generateAsync({ type: 'nodebuffer' });
+const out = await zip.generateAsync({ type: "nodebuffer" });
 writeFileSync(OUT, out);
 console.log(`wrote ${OUT} (${out.byteLength} bytes)`);

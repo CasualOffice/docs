@@ -25,26 +25,26 @@
  * a migration just to hold a tiny string.
  */
 
-import type { FileEntry } from './types';
+import type { FileEntry } from "./types";
 
 /**
  * Storage key prefix. The full key is `${PREFIX}.${scope}.${field}` so
  * multiple FileSource instances (eg. a future test runner) don't
  * collide.
  */
-const PREFIX = 'casual.file-source';
+const PREFIX = "casual.file-source";
 
 function storage(): Storage | null {
-  // Use globalThis so SSR / test runtimes that provide localStorage
-  // without window (Bun's testing harness for one) work without a
-  // jsdom shim. In real browsers `window === globalThis`, so the
-  // production behavior is unchanged.
-  try {
-    return (globalThis as { localStorage?: Storage }).localStorage ?? null;
-  } catch {
-    // Embedded contexts (sandboxed iframes, SSR) can throw on access.
-    return null;
-  }
+	// Use globalThis so SSR / test runtimes that provide localStorage
+	// without window (Bun's testing harness for one) work without a
+	// jsdom shim. In real browsers `window === globalThis`, so the
+	// production behavior is unchanged.
+	try {
+		return (globalThis as { localStorage?: Storage }).localStorage ?? null;
+	} catch {
+		// Embedded contexts (sandboxed iframes, SSR) can throw on access.
+		return null;
+	}
 }
 
 /**
@@ -56,46 +56,46 @@ function storage(): Storage | null {
 type Listener = (recent: FileEntry[]) => void;
 
 export class RecentObserver {
-  private listeners = new Set<Listener>();
-  private latest: FileEntry[] = [];
+	private listeners = new Set<Listener>();
+	private latest: FileEntry[] = [];
 
-  watch(cb: Listener): () => void {
-    this.listeners.add(cb);
-    // Fire once on subscribe so the consumer doesn't have to
-    // double-fetch — the latest cached list is what they want.
-    cb(this.latest);
-    return () => {
-      this.listeners.delete(cb);
-    };
-  }
+	watch(cb: Listener): () => void {
+		this.listeners.add(cb);
+		// Fire once on subscribe so the consumer doesn't have to
+		// double-fetch — the latest cached list is what they want.
+		cb(this.latest);
+		return () => {
+			this.listeners.delete(cb);
+		};
+	}
 
-  set(entries: FileEntry[]): void {
-    this.latest = entries;
-    for (const cb of this.listeners) {
-      cb(entries);
-    }
-  }
+	set(entries: FileEntry[]): void {
+		this.latest = entries;
+		for (const cb of this.listeners) {
+			cb(entries);
+		}
+	}
 
-  snapshot(): FileEntry[] {
-    return this.latest;
-  }
+	snapshot(): FileEntry[] {
+		return this.latest;
+	}
 }
 
 /** Read the last-opened doc id for the given scope. */
 export function readLastOpened(scope: string): string | null {
-  const s = storage();
-  if (!s) return null;
-  return s.getItem(`${PREFIX}.${scope}.lastOpened`);
+	const s = storage();
+	if (!s) return null;
+	return s.getItem(`${PREFIX}.${scope}.lastOpened`);
 }
 
 /** Write the last-opened doc id (or clear with null). */
 export function writeLastOpened(scope: string, id: string | null): void {
-  const s = storage();
-  if (!s) return;
-  const key = `${PREFIX}.${scope}.lastOpened`;
-  if (id === null) {
-    s.removeItem(key);
-  } else {
-    s.setItem(key, id);
-  }
+	const s = storage();
+	if (!s) return;
+	const key = `${PREFIX}.${scope}.lastOpened`;
+	if (id === null) {
+		s.removeItem(key);
+	} else {
+		s.setItem(key, id);
+	}
 }

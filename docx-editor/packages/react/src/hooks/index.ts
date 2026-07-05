@@ -8,58 +8,78 @@
  * Export all hooks for public API.
  */
 
-export { useHistory, useAutoHistory, useDocumentHistory, HistoryManager } from './useHistory';
-export type { HistoryEntry, UseHistoryOptions, UseHistoryReturn } from './useHistory';
-
-export { useEditHistory } from './useEditHistory';
+export {
+	useHistory,
+	useAutoHistory,
+	useDocumentHistory,
+	HistoryManager,
+} from "./useHistory";
 export type {
-  EditHistoryEntry,
-  UseEditHistoryOptions,
-  UseEditHistoryReturn,
-} from './useEditHistory';
+	HistoryEntry,
+	UseHistoryOptions,
+	UseHistoryReturn,
+} from "./useHistory";
 
-export { useTableSelection, TABLE_DATA_ATTRIBUTES } from './useTableSelection';
+export { useEditHistory } from "./useEditHistory";
 export type {
-  TableSelectionState,
-  UseTableSelectionReturn,
-  UseTableSelectionOptions,
-} from './useTableSelection';
+	EditHistoryEntry,
+	UseEditHistoryOptions,
+	UseEditHistoryReturn,
+} from "./useEditHistory";
 
-export { useSelectionHighlight, generateOverlayElements } from './useSelectionHighlight';
+export { useTableSelection, TABLE_DATA_ATTRIBUTES } from "./useTableSelection";
 export type {
-  UseSelectionHighlightOptions,
-  UseSelectionHighlightReturn,
-  SelectionOverlayProps,
-} from './useSelectionHighlight';
-
-export { useClipboard, createSelectionFromDOM, getSelectionRuns } from './useClipboard';
-export type { ClipboardSelection, UseClipboardOptions, UseClipboardReturn } from './useClipboard';
+	TableSelectionState,
+	UseTableSelectionReturn,
+	UseTableSelectionOptions,
+} from "./useTableSelection";
 
 export {
-  useAutoSave,
-  formatLastSaveTime,
-  getAutoSaveStatusLabel,
-  getAutoSaveStorageSize,
-  formatStorageSize,
-  isAutoSaveSupported,
-} from './useAutoSave';
+	useSelectionHighlight,
+	generateOverlayElements,
+} from "./useSelectionHighlight";
 export type {
-  AutoSaveStatus,
-  UseAutoSaveOptions,
-  UseAutoSaveReturn,
-  SavedDocumentData,
-} from './useAutoSave';
+	UseSelectionHighlightOptions,
+	UseSelectionHighlightReturn,
+	SelectionOverlayProps,
+} from "./useSelectionHighlight";
 
 export {
-  useWheelZoom,
-  getZoomPresets,
-  findNearestZoomPreset,
-  getNextZoomPreset,
-  getPreviousZoomPreset,
-  formatZoom,
-  parseZoom,
-  isZoomPreset,
-  clampZoom,
-  ZOOM_PRESETS,
-} from './useWheelZoom';
-export type { UseWheelZoomOptions, UseWheelZoomReturn } from './useWheelZoom';
+	useClipboard,
+	createSelectionFromDOM,
+	getSelectionRuns,
+} from "./useClipboard";
+export type {
+	ClipboardSelection,
+	UseClipboardOptions,
+	UseClipboardReturn,
+} from "./useClipboard";
+
+export {
+	useAutoSave,
+	formatLastSaveTime,
+	getAutoSaveStatusLabel,
+	getAutoSaveStorageSize,
+	formatStorageSize,
+	isAutoSaveSupported,
+} from "./useAutoSave";
+export type {
+	AutoSaveStatus,
+	UseAutoSaveOptions,
+	UseAutoSaveReturn,
+	SavedDocumentData,
+} from "./useAutoSave";
+
+export {
+	useWheelZoom,
+	getZoomPresets,
+	findNearestZoomPreset,
+	getNextZoomPreset,
+	getPreviousZoomPreset,
+	formatZoom,
+	parseZoom,
+	isZoomPreset,
+	clampZoom,
+	ZOOM_PRESETS,
+} from "./useWheelZoom";
+export type { UseWheelZoomOptions, UseWheelZoomReturn } from "./useWheelZoom";

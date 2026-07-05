@@ -23,11 +23,11 @@
  */
 
 const RIGHT_DOCK_SELECTORS: readonly string[] = [
-  '[data-testid="chat-panel"]',
-  '[data-testid="writing-assistant-sheet"]',
-  '[data-testid="version-history-panel"]',
-  '[data-testid="ai-suggestion-panel"]',
-  '[data-testid="panel-rail"]',
+	'[data-testid="chat-panel"]',
+	'[data-testid="writing-assistant-sheet"]',
+	'[data-testid="version-history-panel"]',
+	'[data-testid="ai-suggestion-panel"]',
+	'[data-testid="panel-rail"]',
 ];
 
 /**
@@ -37,17 +37,17 @@ const RIGHT_DOCK_SELECTORS: readonly string[] = [
  * panel is hidden behind `display:none`.
  */
 export function rightDockChromeWidth(): number {
-  if (typeof document === 'undefined') return 0;
-  let total = 0;
-  for (const sel of RIGHT_DOCK_SELECTORS) {
-    const nodes = document.querySelectorAll(sel);
-    nodes.forEach((el) => {
-      if (el instanceof HTMLElement && el.offsetParent !== null) {
-        total += el.offsetWidth;
-      }
-    });
-  }
-  return total;
+	if (typeof document === "undefined") return 0;
+	let total = 0;
+	for (const sel of RIGHT_DOCK_SELECTORS) {
+		const nodes = document.querySelectorAll(sel);
+		nodes.forEach((el) => {
+			if (el instanceof HTMLElement && el.offsetParent !== null) {
+				total += el.offsetWidth;
+			}
+		});
+	}
+	return total;
 }
 
 /**
@@ -57,6 +57,6 @@ export function rightDockChromeWidth(): number {
  * in one go without subtracting twice.
  */
 export function usableRightEdge(viewportPad: number): number {
-  if (typeof window === 'undefined') return 0;
-  return window.innerWidth - rightDockChromeWidth() - viewportPad;
+	if (typeof window === "undefined") return 0;
+	return window.innerWidth - rightDockChromeWidth() - viewportPad;
 }

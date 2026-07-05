@@ -20,8 +20,12 @@
  * - Table column bookmarks have colFirst/colLast for column ranges
  */
 
-import type { BookmarkStart, BookmarkEnd } from '../types/document';
-import { getAttribute, parseNumericAttribute, type XmlElement } from './xmlParser';
+import type { BookmarkStart, BookmarkEnd } from "../types/document";
+import {
+	getAttribute,
+	parseNumericAttribute,
+	type XmlElement,
+} from "./xmlParser";
 
 // ============================================================================
 // BOOKMARK PARSING
@@ -40,27 +44,27 @@ import { getAttribute, parseNumericAttribute, type XmlElement } from './xmlParse
  * @returns Parsed BookmarkStart object
  */
 export function parseBookmarkStart(node: XmlElement): BookmarkStart {
-  const id = parseNumericAttribute(node, 'w', 'id') ?? 0;
-  const name = getAttribute(node, 'w', 'name') ?? '';
+	const id = parseNumericAttribute(node, "w", "id") ?? 0;
+	const name = getAttribute(node, "w", "name") ?? "";
 
-  const bookmark: BookmarkStart = {
-    type: 'bookmarkStart',
-    id,
-    name,
-  };
+	const bookmark: BookmarkStart = {
+		type: "bookmarkStart",
+		id,
+		name,
+	};
 
-  // Table column bookmarks (for bookmarks spanning table columns)
-  const colFirst = parseNumericAttribute(node, 'w', 'colFirst');
-  if (colFirst !== undefined) {
-    bookmark.colFirst = colFirst;
-  }
+	// Table column bookmarks (for bookmarks spanning table columns)
+	const colFirst = parseNumericAttribute(node, "w", "colFirst");
+	if (colFirst !== undefined) {
+		bookmark.colFirst = colFirst;
+	}
 
-  const colLast = parseNumericAttribute(node, 'w', 'colLast');
-  if (colLast !== undefined) {
-    bookmark.colLast = colLast;
-  }
+	const colLast = parseNumericAttribute(node, "w", "colLast");
+	if (colLast !== undefined) {
+		bookmark.colLast = colLast;
+	}
 
-  return bookmark;
+	return bookmark;
 }
 
 /**
@@ -72,12 +76,12 @@ export function parseBookmarkStart(node: XmlElement): BookmarkStart {
  * @returns Parsed BookmarkEnd object
  */
 export function parseBookmarkEnd(node: XmlElement): BookmarkEnd {
-  const id = parseNumericAttribute(node, 'w', 'id') ?? 0;
+	const id = parseNumericAttribute(node, "w", "id") ?? 0;
 
-  return {
-    type: 'bookmarkEnd',
-    id,
-  };
+	return {
+		type: "bookmarkEnd",
+		id,
+	};
 }
 
 // ============================================================================
@@ -88,23 +92,23 @@ export function parseBookmarkEnd(node: XmlElement): BookmarkEnd {
  * Bookmark map for quick lookup by ID or name
  */
 export interface BookmarkMap {
-  /** Lookup bookmark start by ID */
-  byId: Map<number, BookmarkStart>;
-  /** Lookup bookmark start by name (for hyperlink resolution) */
-  byName: Map<string, BookmarkStart>;
-  /** All bookmark starts in document order */
-  bookmarks: BookmarkStart[];
+	/** Lookup bookmark start by ID */
+	byId: Map<number, BookmarkStart>;
+	/** Lookup bookmark start by name (for hyperlink resolution) */
+	byName: Map<string, BookmarkStart>;
+	/** All bookmark starts in document order */
+	bookmarks: BookmarkStart[];
 }
 
 /**
  * Create an empty bookmark map
  */
 export function createBookmarkMap(): BookmarkMap {
-  return {
-    byId: new Map(),
-    byName: new Map(),
-    bookmarks: [],
-  };
+	return {
+		byId: new Map(),
+		byName: new Map(),
+		bookmarks: [],
+	};
 }
 
 /**
@@ -114,11 +118,11 @@ export function createBookmarkMap(): BookmarkMap {
  * @param bookmark - The bookmark start to add
  */
 export function addBookmark(map: BookmarkMap, bookmark: BookmarkStart): void {
-  map.byId.set(bookmark.id, bookmark);
-  if (bookmark.name) {
-    map.byName.set(bookmark.name, bookmark);
-  }
-  map.bookmarks.push(bookmark);
+	map.byId.set(bookmark.id, bookmark);
+	if (bookmark.name) {
+		map.byName.set(bookmark.name, bookmark);
+	}
+	map.bookmarks.push(bookmark);
 }
 
 /**
@@ -128,8 +132,11 @@ export function addBookmark(map: BookmarkMap, bookmark: BookmarkStart): void {
  * @param name - Bookmark name to find
  * @returns The BookmarkStart or undefined if not found
  */
-export function getBookmarkByName(map: BookmarkMap, name: string): BookmarkStart | undefined {
-  return map.byName.get(name);
+export function getBookmarkByName(
+	map: BookmarkMap,
+	name: string,
+): BookmarkStart | undefined {
+	return map.byName.get(name);
 }
 
 /**
@@ -139,8 +146,11 @@ export function getBookmarkByName(map: BookmarkMap, name: string): BookmarkStart
  * @param id - Bookmark ID to find
  * @returns The BookmarkStart or undefined if not found
  */
-export function getBookmarkById(map: BookmarkMap, id: number): BookmarkStart | undefined {
-  return map.byId.get(id);
+export function getBookmarkById(
+	map: BookmarkMap,
+	id: number,
+): BookmarkStart | undefined {
+	return map.byId.get(id);
 }
 
 /**
@@ -151,7 +161,7 @@ export function getBookmarkById(map: BookmarkMap, id: number): BookmarkStart | u
  * @returns true if bookmark exists
  */
 export function hasBookmark(map: BookmarkMap, name: string): boolean {
-  return map.byName.has(name);
+	return map.byName.has(name);
 }
 
 /**
@@ -161,7 +171,7 @@ export function hasBookmark(map: BookmarkMap, name: string): boolean {
  * @returns Array of bookmark names
  */
 export function getAllBookmarkNames(map: BookmarkMap): string[] {
-  return Array.from(map.byName.keys());
+	return Array.from(map.byName.keys());
 }
 
 /**
@@ -176,11 +186,11 @@ export function getAllBookmarkNames(map: BookmarkMap): string[] {
  * @returns true if this is a point bookmark
  */
 export function isPointBookmark(
-  start: BookmarkStart,
-  end: BookmarkEnd,
-  contents: unknown[]
+	start: BookmarkStart,
+	end: BookmarkEnd,
+	contents: unknown[],
 ): boolean {
-  return start.id === end.id && contents.length === 0;
+	return start.id === end.id && contents.length === 0;
 }
 
 /**
@@ -193,7 +203,7 @@ export function isPointBookmark(
  * @returns true if bookmark has column range info
  */
 export function isTableBookmark(bookmark: BookmarkStart): boolean {
-  return bookmark.colFirst !== undefined || bookmark.colLast !== undefined;
+	return bookmark.colFirst !== undefined || bookmark.colLast !== undefined;
 }
 
 /**
@@ -205,7 +215,7 @@ export function isTableBookmark(bookmark: BookmarkStart): boolean {
  * @returns Href string (e.g., "#BookmarkName")
  */
 export function bookmarkToHref(bookmarkName: string): string {
-  return `#${bookmarkName}`;
+	return `#${bookmarkName}`;
 }
 
 /**
@@ -215,10 +225,10 @@ export function bookmarkToHref(bookmarkName: string): string {
  * @returns Bookmark name or null if not an internal link
  */
 export function hrefToBookmarkName(href: string): string | null {
-  if (href.startsWith('#')) {
-    return href.substring(1);
-  }
-  return null;
+	if (href.startsWith("#")) {
+		return href.substring(1);
+	}
+	return null;
 }
 
 // ============================================================================
@@ -238,14 +248,14 @@ export function hrefToBookmarkName(href: string): string | null {
  * @returns true if this is a built-in bookmark
  */
 export function isBuiltInBookmark(name: string): boolean {
-  if (!name) return false;
+	if (!name) return false;
 
-  // Check for underscore prefix (Word internal bookmarks)
-  if (name.startsWith('_')) {
-    return true;
-  }
+	// Check for underscore prefix (Word internal bookmarks)
+	if (name.startsWith("_")) {
+		return true;
+	}
 
-  return false;
+	return false;
 }
 
 /**
@@ -255,7 +265,7 @@ export function isBuiltInBookmark(name: string): boolean {
  * @returns true if bookmark is for TOC
  */
 export function isTocBookmark(name: string): boolean {
-  return name.startsWith('_Toc');
+	return name.startsWith("_Toc");
 }
 
 /**
@@ -265,7 +275,7 @@ export function isTocBookmark(name: string): boolean {
  * @returns true if bookmark is for cross-reference
  */
 export function isRefBookmark(name: string): boolean {
-  return name.startsWith('_Ref');
+	return name.startsWith("_Ref");
 }
 
 /**
@@ -274,20 +284,22 @@ export function isRefBookmark(name: string): boolean {
  * @param name - Bookmark name
  * @returns Bookmark type
  */
-export function getBookmarkType(name: string): 'user' | 'toc' | 'ref' | 'goBack' | 'internal' {
-  if (name === '_GoBack') {
-    return 'goBack';
-  }
-  if (isTocBookmark(name)) {
-    return 'toc';
-  }
-  if (isRefBookmark(name)) {
-    return 'ref';
-  }
-  if (isBuiltInBookmark(name)) {
-    return 'internal';
-  }
-  return 'user';
+export function getBookmarkType(
+	name: string,
+): "user" | "toc" | "ref" | "goBack" | "internal" {
+	if (name === "_GoBack") {
+		return "goBack";
+	}
+	if (isTocBookmark(name)) {
+		return "toc";
+	}
+	if (isRefBookmark(name)) {
+		return "ref";
+	}
+	if (isBuiltInBookmark(name)) {
+		return "internal";
+	}
+	return "user";
 }
 
 // ============================================================================
@@ -302,24 +314,24 @@ export function getBookmarkType(name: string): 'user' | 'toc' | 'ref' | 'goBack'
  * @returns Object with validation results
  */
 export function validateBookmarkPairs(
-  starts: BookmarkStart[],
-  ends: BookmarkEnd[]
+	starts: BookmarkStart[],
+	ends: BookmarkEnd[],
 ): {
-  valid: boolean;
-  unmatchedStarts: BookmarkStart[];
-  unmatchedEnds: BookmarkEnd[];
+	valid: boolean;
+	unmatchedStarts: BookmarkStart[];
+	unmatchedEnds: BookmarkEnd[];
 } {
-  const startIds = new Set(starts.map((s) => s.id));
-  const endIds = new Set(ends.map((e) => e.id));
+	const startIds = new Set(starts.map((s) => s.id));
+	const endIds = new Set(ends.map((e) => e.id));
 
-  const unmatchedStarts = starts.filter((s) => !endIds.has(s.id));
-  const unmatchedEnds = ends.filter((e) => !startIds.has(e.id));
+	const unmatchedStarts = starts.filter((s) => !endIds.has(s.id));
+	const unmatchedEnds = ends.filter((e) => !startIds.has(e.id));
 
-  return {
-    valid: unmatchedStarts.length === 0 && unmatchedEnds.length === 0,
-    unmatchedStarts,
-    unmatchedEnds,
-  };
+	return {
+		valid: unmatchedStarts.length === 0 && unmatchedEnds.length === 0,
+		unmatchedStarts,
+		unmatchedEnds,
+	};
 }
 
 /**
@@ -334,30 +346,33 @@ export function validateBookmarkPairs(
  * @param name - Name to validate
  * @returns Object with validation result and error message if invalid
  */
-export function validateBookmarkName(name: string): { valid: boolean; error?: string } {
-  if (!name) {
-    return { valid: false, error: 'Bookmark name cannot be empty' };
-  }
+export function validateBookmarkName(name: string): {
+	valid: boolean;
+	error?: string;
+} {
+	if (!name) {
+		return { valid: false, error: "Bookmark name cannot be empty" };
+	}
 
-  if (name.length > 40) {
-    return { valid: false, error: 'Bookmark name cannot exceed 40 characters' };
-  }
+	if (name.length > 40) {
+		return { valid: false, error: "Bookmark name cannot exceed 40 characters" };
+	}
 
-  // Check first character (letter or underscore)
-  if (!/^[a-zA-Z_]/.test(name)) {
-    return {
-      valid: false,
-      error: 'Bookmark name must start with a letter or underscore',
-    };
-  }
+	// Check first character (letter or underscore)
+	if (!/^[a-zA-Z_]/.test(name)) {
+		return {
+			valid: false,
+			error: "Bookmark name must start with a letter or underscore",
+		};
+	}
 
-  // Check remaining characters (letters, digits, underscores)
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
-    return {
-      valid: false,
-      error: 'Bookmark name can only contain letters, digits, and underscores',
-    };
-  }
+	// Check remaining characters (letters, digits, underscores)
+	if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+		return {
+			valid: false,
+			error: "Bookmark name can only contain letters, digits, and underscores",
+		};
+	}
 
-  return { valid: true };
+	return { valid: true };
 }

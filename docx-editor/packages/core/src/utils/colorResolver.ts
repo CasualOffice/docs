@@ -23,24 +23,29 @@
  * - Value is in hex (00-FF), converted to 0-1 for calculation
  */
 
-import type { ColorValue, Theme, ThemeColorSlot, ThemeColorScheme } from '../types/document';
+import type {
+	ColorValue,
+	Theme,
+	ThemeColorSlot,
+	ThemeColorScheme,
+} from "../types/document";
 
 /**
  * Default theme colors (Office 2016 default theme)
  */
 const DEFAULT_THEME_COLORS: ThemeColorScheme = {
-  dk1: '000000',
-  lt1: 'FFFFFF',
-  dk2: '44546A',
-  lt2: 'E7E6E6',
-  accent1: '4472C4',
-  accent2: 'ED7D31',
-  accent3: 'A5A5A5',
-  accent4: 'FFC000',
-  accent5: '5B9BD5',
-  accent6: '70AD47',
-  hlink: '0563C1',
-  folHlink: '954F72',
+	dk1: "000000",
+	lt1: "FFFFFF",
+	dk2: "44546A",
+	lt2: "E7E6E6",
+	accent1: "4472C4",
+	accent2: "ED7D31",
+	accent3: "A5A5A5",
+	accent4: "FFC000",
+	accent5: "5B9BD5",
+	accent6: "70AD47",
+	hlink: "0563C1",
+	folHlink: "954F72",
 };
 
 /**
@@ -48,23 +53,23 @@ const DEFAULT_THEME_COLORS: ThemeColorScheme = {
  * These are the W3C standard colors for Word highlighting
  */
 const HIGHLIGHT_COLORS: Record<string, string> = {
-  black: '000000',
-  blue: '0000FF',
-  cyan: '00FFFF',
-  darkBlue: '00008B',
-  darkCyan: '008B8B',
-  darkGray: 'A9A9A9',
-  darkGreen: '006400',
-  darkMagenta: '8B008B',
-  darkRed: '8B0000',
-  darkYellow: '808000',
-  green: '00FF00',
-  lightGray: 'D3D3D3',
-  magenta: 'FF00FF',
-  red: 'FF0000',
-  white: 'FFFFFF',
-  yellow: 'FFFF00',
-  none: '',
+	black: "000000",
+	blue: "0000FF",
+	cyan: "00FFFF",
+	darkBlue: "00008B",
+	darkCyan: "008B8B",
+	darkGray: "A9A9A9",
+	darkGreen: "006400",
+	darkMagenta: "8B008B",
+	darkRed: "8B0000",
+	darkYellow: "808000",
+	green: "00FF00",
+	lightGray: "D3D3D3",
+	magenta: "FF00FF",
+	red: "FF0000",
+	white: "FFFFFF",
+	yellow: "FFFF00",
+	none: "",
 };
 
 /**
@@ -72,35 +77,35 @@ const HIGHLIGHT_COLORS: Record<string, string> = {
  * OOXML uses different names in different contexts
  */
 const THEME_COLOR_ALIASES: Record<string, ThemeColorSlot> = {
-  // Standard names
-  dk1: 'dk1',
-  lt1: 'lt1',
-  dk2: 'dk2',
-  lt2: 'lt2',
-  accent1: 'accent1',
-  accent2: 'accent2',
-  accent3: 'accent3',
-  accent4: 'accent4',
-  accent5: 'accent5',
-  accent6: 'accent6',
-  hlink: 'hlink',
-  folHlink: 'folHlink',
-  // Alternative names used in some OOXML contexts
-  dark1: 'dk1',
-  light1: 'lt1',
-  dark2: 'dk2',
-  light2: 'lt2',
-  hyperlink: 'hlink',
-  followedHyperlink: 'folHlink',
-  // Background/text names (map to dk1/lt1)
-  background1: 'lt1',
-  text1: 'dk1',
-  background2: 'lt2',
-  text2: 'dk2',
-  tx1: 'dk1',
-  tx2: 'dk2',
-  bg1: 'lt1',
-  bg2: 'lt2',
+	// Standard names
+	dk1: "dk1",
+	lt1: "lt1",
+	dk2: "dk2",
+	lt2: "lt2",
+	accent1: "accent1",
+	accent2: "accent2",
+	accent3: "accent3",
+	accent4: "accent4",
+	accent5: "accent5",
+	accent6: "accent6",
+	hlink: "hlink",
+	folHlink: "folHlink",
+	// Alternative names used in some OOXML contexts
+	dark1: "dk1",
+	light1: "lt1",
+	dark2: "dk2",
+	light2: "lt2",
+	hyperlink: "hlink",
+	followedHyperlink: "folHlink",
+	// Background/text names (map to dk1/lt1)
+	background1: "lt1",
+	text1: "dk1",
+	background2: "lt2",
+	text2: "dk2",
+	tx1: "dk1",
+	tx2: "dk2",
+	bg1: "lt1",
+	bg2: "lt2",
 };
 
 /**
@@ -111,13 +116,13 @@ const THEME_COLOR_ALIASES: Record<string, ThemeColorSlot> = {
  * @returns Decimal value 0-1
  */
 function parseModifierValue(hexValue: string | undefined): number {
-  if (!hexValue) return 1;
+	if (!hexValue) return 1;
 
-  const parsed = parseInt(hexValue, 16);
-  if (isNaN(parsed)) return 1;
+	const parsed = parseInt(hexValue, 16);
+	if (isNaN(parsed)) return 1;
 
-  // Value is 0-255, convert to 0-1
-  return parsed / 255;
+	// Value is 0-255, convert to 0-1
+	return parsed / 255;
 }
 
 /**
@@ -127,18 +132,18 @@ function parseModifierValue(hexValue: string | undefined): number {
  * @returns RGB object with r, g, b values 0-255
  */
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  // Ensure 6 characters
-  const normalized = hex.padStart(6, '0').slice(0, 6);
+	// Ensure 6 characters
+	const normalized = hex.padStart(6, "0").slice(0, 6);
 
-  const r = parseInt(normalized.slice(0, 2), 16);
-  const g = parseInt(normalized.slice(2, 4), 16);
-  const b = parseInt(normalized.slice(4, 6), 16);
+	const r = parseInt(normalized.slice(0, 2), 16);
+	const g = parseInt(normalized.slice(2, 4), 16);
+	const b = parseInt(normalized.slice(4, 6), 16);
 
-  return {
-    r: isNaN(r) ? 0 : r,
-    g: isNaN(g) ? 0 : g,
-    b: isNaN(b) ? 0 : b,
-  };
+	return {
+		r: isNaN(r) ? 0 : r,
+		g: isNaN(g) ? 0 : g,
+		b: isNaN(b) ? 0 : b,
+	};
 }
 
 /**
@@ -150,12 +155,12 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
  * @returns 6-character hex color (no #)
  */
 function rgbToHex(r: number, g: number, b: number): string {
-  const toHex = (n: number) =>
-    Math.max(0, Math.min(255, Math.round(n)))
-      .toString(16)
-      .padStart(2, '0');
+	const toHex = (n: number) =>
+		Math.max(0, Math.min(255, Math.round(n)))
+			.toString(16)
+			.padStart(2, "0");
 
-  return `${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+	return `${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
 /**
@@ -171,17 +176,17 @@ function rgbToHex(r: number, g: number, b: number): string {
  * @returns Modified hex color
  */
 function applyTint(hex: string, tint: number): string {
-  if (tint >= 1) return hex;
-  if (tint <= 0) return 'FFFFFF';
+	if (tint >= 1) return hex;
+	if (tint <= 0) return "FFFFFF";
 
-  // OOXML per-channel linear interpolation toward white:
-  // new_channel = channel * t + 255 * (1 - t)
-  const rgb = hexToRgb(hex);
-  return rgbToHex(
-    Math.min(255, Math.max(0, Math.round(rgb.r * tint + 255 * (1 - tint)))),
-    Math.min(255, Math.max(0, Math.round(rgb.g * tint + 255 * (1 - tint)))),
-    Math.min(255, Math.max(0, Math.round(rgb.b * tint + 255 * (1 - tint))))
-  );
+	// OOXML per-channel linear interpolation toward white:
+	// new_channel = channel * t + 255 * (1 - t)
+	const rgb = hexToRgb(hex);
+	return rgbToHex(
+		Math.min(255, Math.max(0, Math.round(rgb.r * tint + 255 * (1 - tint)))),
+		Math.min(255, Math.max(0, Math.round(rgb.g * tint + 255 * (1 - tint)))),
+		Math.min(255, Math.max(0, Math.round(rgb.b * tint + 255 * (1 - tint)))),
+	);
 }
 
 /**
@@ -197,17 +202,17 @@ function applyTint(hex: string, tint: number): string {
  * @returns Modified hex color
  */
 function applyShade(hex: string, shade: number): string {
-  if (shade >= 1) return hex;
-  if (shade <= 0) return '000000';
+	if (shade >= 1) return hex;
+	if (shade <= 0) return "000000";
 
-  // OOXML per-channel linear interpolation toward black:
-  // new_channel = channel * s
-  const rgb = hexToRgb(hex);
-  return rgbToHex(
-    Math.min(255, Math.max(0, Math.round(rgb.r * shade))),
-    Math.min(255, Math.max(0, Math.round(rgb.g * shade))),
-    Math.min(255, Math.max(0, Math.round(rgb.b * shade)))
-  );
+	// OOXML per-channel linear interpolation toward black:
+	// new_channel = channel * s
+	const rgb = hexToRgb(hex);
+	return rgbToHex(
+		Math.min(255, Math.max(0, Math.round(rgb.r * shade))),
+		Math.min(255, Math.max(0, Math.round(rgb.g * shade))),
+		Math.min(255, Math.max(0, Math.round(rgb.b * shade))),
+	);
 }
 
 /**
@@ -218,46 +223,50 @@ function applyShade(hex: string, shade: number): string {
  * (their canonical order). Values are fractions 0-1.
  */
 function applyLumModOff(hex: string, lumMod?: number, lumOff?: number): string {
-  if (lumMod === undefined && lumOff === undefined) return hex;
-  const { r, g, b } = hexToRgb(hex);
-  const rn = r / 255;
-  const gn = g / 255;
-  const bn = b / 255;
-  const max = Math.max(rn, gn, bn);
-  const min = Math.min(rn, gn, bn);
-  let h = 0;
-  let s = 0;
-  let l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
-    else if (max === gn) h = (bn - rn) / d + 2;
-    else h = (rn - gn) / d + 4;
-    h /= 6;
-  }
-  if (lumMod !== undefined) l *= lumMod;
-  if (lumOff !== undefined) l += lumOff;
-  l = Math.min(1, Math.max(0, l));
-  const hue2rgb = (p: number, q: number, t: number): number => {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1 / 6) return p + (q - p) * 6 * t;
-    if (t < 1 / 2) return q;
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-    return p;
-  };
-  let or = l;
-  let og = l;
-  let ob = l;
-  if (s !== 0) {
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    or = hue2rgb(p, q, h + 1 / 3);
-    og = hue2rgb(p, q, h);
-    ob = hue2rgb(p, q, h - 1 / 3);
-  }
-  return rgbToHex(Math.round(or * 255), Math.round(og * 255), Math.round(ob * 255));
+	if (lumMod === undefined && lumOff === undefined) return hex;
+	const { r, g, b } = hexToRgb(hex);
+	const rn = r / 255;
+	const gn = g / 255;
+	const bn = b / 255;
+	const max = Math.max(rn, gn, bn);
+	const min = Math.min(rn, gn, bn);
+	let h = 0;
+	let s = 0;
+	let l = (max + min) / 2;
+	if (max !== min) {
+		const d = max - min;
+		s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+		if (max === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
+		else if (max === gn) h = (bn - rn) / d + 2;
+		else h = (rn - gn) / d + 4;
+		h /= 6;
+	}
+	if (lumMod !== undefined) l *= lumMod;
+	if (lumOff !== undefined) l += lumOff;
+	l = Math.min(1, Math.max(0, l));
+	const hue2rgb = (p: number, q: number, t: number): number => {
+		if (t < 0) t += 1;
+		if (t > 1) t -= 1;
+		if (t < 1 / 6) return p + (q - p) * 6 * t;
+		if (t < 1 / 2) return q;
+		if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+		return p;
+	};
+	let or = l;
+	let og = l;
+	let ob = l;
+	if (s !== 0) {
+		const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+		const p = 2 * l - q;
+		or = hue2rgb(p, q, h + 1 / 3);
+		og = hue2rgb(p, q, h);
+		ob = hue2rgb(p, q, h - 1 / 3);
+	}
+	return rgbToHex(
+		Math.round(or * 255),
+		Math.round(og * 255),
+		Math.round(ob * 255),
+	);
 }
 
 /**
@@ -267,41 +276,49 @@ function applyLumModOff(hex: string, lumMod?: number, lumOff?: number): string {
  * @param slot - Color slot name
  * @returns Hex color (6 characters, no #)
  */
-function getThemeColorValue(theme: Theme | null | undefined, slot: ThemeColorSlot): string {
-  // Map alias slots to actual color scheme keys
-  const schemeKey = THEME_COLOR_ALIASES[slot] ?? slot;
+function getThemeColorValue(
+	theme: Theme | null | undefined,
+	slot: ThemeColorSlot,
+): string {
+	// Map alias slots to actual color scheme keys
+	const schemeKey = THEME_COLOR_ALIASES[slot] ?? slot;
 
-  // Define the actual keys that exist on ThemeColorScheme
-  const schemeKeys = [
-    'dk1',
-    'lt1',
-    'dk2',
-    'lt2',
-    'accent1',
-    'accent2',
-    'accent3',
-    'accent4',
-    'accent5',
-    'accent6',
-    'hlink',
-    'folHlink',
-  ] as const;
-  type SchemeKey = (typeof schemeKeys)[number];
+	// Define the actual keys that exist on ThemeColorScheme
+	const schemeKeys = [
+		"dk1",
+		"lt1",
+		"dk2",
+		"lt2",
+		"accent1",
+		"accent2",
+		"accent3",
+		"accent4",
+		"accent5",
+		"accent6",
+		"hlink",
+		"folHlink",
+	] as const;
+	type SchemeKey = (typeof schemeKeys)[number];
 
-  const isSchemeKey = (key: string): key is SchemeKey => schemeKeys.includes(key as SchemeKey);
+	const isSchemeKey = (key: string): key is SchemeKey =>
+		schemeKeys.includes(key as SchemeKey);
 
-  if (!theme?.colorScheme) {
-    if (isSchemeKey(schemeKey)) {
-      return DEFAULT_THEME_COLORS[schemeKey] ?? '000000';
-    }
-    return '000000';
-  }
+	if (!theme?.colorScheme) {
+		if (isSchemeKey(schemeKey)) {
+			return DEFAULT_THEME_COLORS[schemeKey] ?? "000000";
+		}
+		return "000000";
+	}
 
-  if (isSchemeKey(schemeKey)) {
-    return theme.colorScheme[schemeKey] ?? DEFAULT_THEME_COLORS[schemeKey] ?? '000000';
-  }
+	if (isSchemeKey(schemeKey)) {
+		return (
+			theme.colorScheme[schemeKey] ??
+			DEFAULT_THEME_COLORS[schemeKey] ??
+			"000000"
+		);
+	}
 
-  return '000000';
+	return "000000";
 }
 
 /**
@@ -311,12 +328,13 @@ function getThemeColorValue(theme: Theme | null | undefined, slot: ThemeColorSlo
  * @returns Standard ThemeColorSlot or null if unknown
  */
 function resolveThemeColorSlot(colorName: string): ThemeColorSlot | null {
-  if (!colorName) return null;
+	if (!colorName) return null;
 
-  const normalized = colorName.toLowerCase();
-  const slot = THEME_COLOR_ALIASES[colorName] ?? THEME_COLOR_ALIASES[normalized];
+	const normalized = colorName.toLowerCase();
+	const slot =
+		THEME_COLOR_ALIASES[colorName] ?? THEME_COLOR_ALIASES[normalized];
 
-  return slot ?? null;
+	return slot ?? null;
 }
 
 /**
@@ -328,56 +346,60 @@ function resolveThemeColorSlot(colorName: string): ThemeColorSlot | null {
  * @returns CSS color string (e.g., "#FF0000" or "inherit")
  */
 export function resolveColor(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined,
-  defaultColor: string = '000000'
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
+	defaultColor: string = "000000",
 ): string {
-  if (!color) {
-    return `#${defaultColor}`;
-  }
+	if (!color) {
+		return `#${defaultColor}`;
+	}
 
-  // Handle "auto" color
-  if (color.auto) {
-    // Auto typically means black for text, but can be context-dependent
-    return `#${defaultColor}`;
-  }
+	// Handle "auto" color
+	if (color.auto) {
+		// Auto typically means black for text, but can be context-dependent
+		return `#${defaultColor}`;
+	}
 
-  let hexColor: string;
+	let hexColor: string;
 
-  // Check for theme color first
-  if (color.themeColor) {
-    const slot = resolveThemeColorSlot(color.themeColor);
-    if (slot) {
-      hexColor = getThemeColorValue(theme, slot);
-    } else {
-      // Unknown theme color, use RGB if available or default
-      hexColor = color.rgb ?? defaultColor;
-    }
+	// Check for theme color first
+	if (color.themeColor) {
+		const slot = resolveThemeColorSlot(color.themeColor);
+		if (slot) {
+			hexColor = getThemeColorValue(theme, slot);
+		} else {
+			// Unknown theme color, use RGB if available or default
+			hexColor = color.rgb ?? defaultColor;
+		}
 
-    // Apply tint/shade modifiers
-    if (color.themeTint) {
-      const tintValue = parseModifierValue(color.themeTint);
-      hexColor = applyTint(hexColor, tintValue);
-    } else if (color.themeShade) {
-      const shadeValue = parseModifierValue(color.themeShade);
-      hexColor = applyShade(hexColor, shadeValue);
-    }
-  } else if (color.rgb) {
-    // "auto" in OOXML means automatic color (typically black)
-    hexColor = color.rgb === 'auto' ? defaultColor : color.rgb;
-  } else {
-    // No color specified
-    hexColor = defaultColor;
-  }
+		// Apply tint/shade modifiers
+		if (color.themeTint) {
+			const tintValue = parseModifierValue(color.themeTint);
+			hexColor = applyTint(hexColor, tintValue);
+		} else if (color.themeShade) {
+			const shadeValue = parseModifierValue(color.themeShade);
+			hexColor = applyShade(hexColor, shadeValue);
+		}
+	} else if (color.rgb) {
+		// "auto" in OOXML means automatic color (typically black)
+		hexColor = color.rgb === "auto" ? defaultColor : color.rgb;
+	} else {
+		// No color specified
+		hexColor = defaultColor;
+	}
 
-  // DrawingML luminance modulation/offset — applies to both theme- and
-  // rgb-resolved colors (e.g. a:schemeClr bg1 + a:lumMod 85% = light gray).
-  if (color.themeLumMod !== undefined || color.themeLumOff !== undefined) {
-    hexColor = applyLumModOff(hexColor.replace(/^#/, ''), color.themeLumMod, color.themeLumOff);
-  }
+	// DrawingML luminance modulation/offset — applies to both theme- and
+	// rgb-resolved colors (e.g. a:schemeClr bg1 + a:lumMod 85% = light gray).
+	if (color.themeLumMod !== undefined || color.themeLumOff !== undefined) {
+		hexColor = applyLumModOff(
+			hexColor.replace(/^#/, ""),
+			color.themeLumMod,
+			color.themeLumOff,
+		);
+	}
 
-  // Ensure proper format
-  return `#${hexColor.toUpperCase().replace(/^#/, '')}`;
+	// Ensure proper format
+	return `#${hexColor.toUpperCase().replace(/^#/, "")}`;
 }
 
 /**
@@ -394,21 +416,21 @@ export function resolveColor(
  * @returns 6-char uppercase hex without `#`, or `undefined`.
  */
 export function resolveColorToHex(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
 ): string | undefined {
-  if (!color || color.auto) return undefined;
+	if (!color || color.auto) return undefined;
 
-  if (color.themeColor && theme) {
-    // resolveColor always returns `#XXXXXX`; drop the `#`.
-    return resolveColor(color, theme).slice(1);
-  }
+	if (color.themeColor && theme) {
+		// resolveColor always returns `#XXXXXX`; drop the `#`.
+		return resolveColor(color, theme).slice(1);
+	}
 
-  if (color.rgb && color.rgb !== 'auto') {
-    return color.rgb.toUpperCase().replace(/^#/, '');
-  }
+	if (color.rgb && color.rgb !== "auto") {
+		return color.rgb.toUpperCase().replace(/^#/, "");
+	}
 
-  return undefined;
+	return undefined;
 }
 
 /**
@@ -418,12 +440,12 @@ export function resolveColorToHex(
  * @returns CSS color string or empty string for "none"
  */
 export function resolveHighlightColor(highlight: string | undefined): string {
-  if (!highlight || highlight === 'none') {
-    return '';
-  }
+	if (!highlight || highlight === "none") {
+		return "";
+	}
 
-  const hex = HIGHLIGHT_COLORS[highlight];
-  return hex ? `#${hex}` : '';
+	const hex = HIGHLIGHT_COLORS[highlight];
+	return hex ? `#${hex}` : "";
 }
 
 /**
@@ -434,17 +456,17 @@ export function resolveHighlightColor(highlight: string | undefined): string {
  * @returns CSS color string
  */
 export function resolveShadingColor(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
 ): string {
-  if (!color) return '';
+	if (!color) return "";
 
-  // For shading, "auto" typically means transparent
-  if (color.auto) {
-    return 'transparent';
-  }
+	// For shading, "auto" typically means transparent
+	if (color.auto) {
+		return "transparent";
+	}
 
-  return resolveColor(color, theme);
+	return resolveColor(color, theme);
 }
 
 /**
@@ -455,20 +477,20 @@ export function resolveShadingColor(
  * @returns True if color resolves to black or very dark
  */
 export function isBlack(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
 ): boolean {
-  if (!color) return false;
-  if (color.auto) return true;
+	if (!color) return false;
+	if (color.auto) return true;
 
-  const resolved = resolveColor(color, theme);
-  const hex = resolved.replace(/^#/, '').toLowerCase();
+	const resolved = resolveColor(color, theme);
+	const hex = resolved.replace(/^#/, "").toLowerCase();
 
-  // Check if it's black or very dark
-  const rgb = hexToRgb(hex);
-  const luminance = (rgb.r + rgb.g + rgb.b) / 3;
+	// Check if it's black or very dark
+	const rgb = hexToRgb(hex);
+	const luminance = (rgb.r + rgb.g + rgb.b) / 3;
 
-  return luminance < 20;
+	return luminance < 20;
 }
 
 /**
@@ -479,19 +501,19 @@ export function isBlack(
  * @returns True if color resolves to white or very light
  */
 export function isWhite(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
 ): boolean {
-  if (!color) return false;
+	if (!color) return false;
 
-  const resolved = resolveColor(color, theme);
-  const hex = resolved.replace(/^#/, '').toLowerCase();
+	const resolved = resolveColor(color, theme);
+	const hex = resolved.replace(/^#/, "").toLowerCase();
 
-  // Check if it's white or very light
-  const rgb = hexToRgb(hex);
-  const luminance = (rgb.r + rgb.g + rgb.b) / 3;
+	// Check if it's white or very light
+	const rgb = hexToRgb(hex);
+	const luminance = (rgb.r + rgb.g + rgb.b) / 3;
 
-  return luminance > 235;
+	return luminance > 235;
 }
 
 /**
@@ -502,20 +524,20 @@ export function isWhite(
  * @returns Black or white hex color for best contrast
  */
 export function getContrastingColor(
-  backgroundColor: ColorValue | undefined | null,
-  theme: Theme | null | undefined
+	backgroundColor: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
 ): string {
-  if (!backgroundColor) return '#000000';
+	if (!backgroundColor) return "#000000";
 
-  const bgResolved = resolveColor(backgroundColor, theme);
-  const bgHex = bgResolved.replace(/^#/, '');
-  const bgRgb = hexToRgb(bgHex);
+	const bgResolved = resolveColor(backgroundColor, theme);
+	const bgHex = bgResolved.replace(/^#/, "");
+	const bgRgb = hexToRgb(bgHex);
 
-  // Calculate relative luminance using sRGB formula
-  const luminance = (0.299 * bgRgb.r + 0.587 * bgRgb.g + 0.114 * bgRgb.b) / 255;
+	// Calculate relative luminance using sRGB formula
+	const luminance = (0.299 * bgRgb.r + 0.587 * bgRgb.g + 0.114 * bgRgb.b) / 255;
 
-  // Return black for light backgrounds, white for dark
-  return luminance > 0.5 ? '#000000' : '#FFFFFF';
+	// Return black for light backgrounds, white for dark
+	return luminance > 0.5 ? "#000000" : "#FFFFFF";
 }
 
 /**
@@ -524,41 +546,43 @@ export function getContrastingColor(
  * @param colorString - Color string like "FF0000", "auto", or theme color name
  * @returns ColorValue object
  */
-export function parseColorString(colorString: string | undefined): ColorValue | undefined {
-  if (!colorString) return undefined;
+export function parseColorString(
+	colorString: string | undefined,
+): ColorValue | undefined {
+	if (!colorString) return undefined;
 
-  const normalized = colorString.trim();
+	const normalized = colorString.trim();
 
-  if (normalized.toLowerCase() === 'auto') {
-    return { auto: true };
-  }
+	if (normalized.toLowerCase() === "auto") {
+		return { auto: true };
+	}
 
-  // Check if it's a theme color name
-  const themeSlot = resolveThemeColorSlot(normalized);
-  if (themeSlot) {
-    return { themeColor: themeSlot };
-  }
+	// Check if it's a theme color name
+	const themeSlot = resolveThemeColorSlot(normalized);
+	if (themeSlot) {
+		return { themeColor: themeSlot };
+	}
 
-  // Assume it's an RGB hex value
-  // Remove # if present and normalize to 6 chars
-  const hex = normalized.replace(/^#/, '').toUpperCase();
+	// Assume it's an RGB hex value
+	// Remove # if present and normalize to 6 chars
+	const hex = normalized.replace(/^#/, "").toUpperCase();
 
-  // Validate hex format
-  if (/^[0-9A-F]{6}$/i.test(hex)) {
-    return { rgb: hex };
-  }
+	// Validate hex format
+	if (/^[0-9A-F]{6}$/i.test(hex)) {
+		return { rgb: hex };
+	}
 
-  // 3-character shorthand
-  if (/^[0-9A-F]{3}$/i.test(hex)) {
-    const expanded = hex
-      .split('')
-      .map((c) => c + c)
-      .join('');
-    return { rgb: expanded };
-  }
+	// 3-character shorthand
+	if (/^[0-9A-F]{3}$/i.test(hex)) {
+		const expanded = hex
+			.split("")
+			.map((c) => c + c)
+			.join("");
+		return { rgb: expanded };
+	}
 
-  // Unknown format, return as RGB anyway
-  return { rgb: hex.padStart(6, '0').slice(0, 6) };
+	// Unknown format, return as RGB anyway
+	return { rgb: hex.padStart(6, "0").slice(0, 6) };
 }
 
 /**
@@ -570,27 +594,27 @@ export function parseColorString(colorString: string | undefined): ColorValue | 
  * @returns ColorValue object
  */
 export function createThemeColor(
-  themeColor: ThemeColorSlot,
-  tint?: number,
-  shade?: number
+	themeColor: ThemeColorSlot,
+	tint?: number,
+	shade?: number,
 ): ColorValue {
-  const result: ColorValue = { themeColor };
+	const result: ColorValue = { themeColor };
 
-  if (tint !== undefined && tint > 0 && tint < 1) {
-    result.themeTint = Math.round(tint * 255)
-      .toString(16)
-      .toUpperCase()
-      .padStart(2, '0');
-  }
+	if (tint !== undefined && tint > 0 && tint < 1) {
+		result.themeTint = Math.round(tint * 255)
+			.toString(16)
+			.toUpperCase()
+			.padStart(2, "0");
+	}
 
-  if (shade !== undefined && shade > 0 && shade < 1) {
-    result.themeShade = Math.round(shade * 255)
-      .toString(16)
-      .toUpperCase()
-      .padStart(2, '0');
-  }
+	if (shade !== undefined && shade > 0 && shade < 1) {
+		result.themeShade = Math.round(shade * 255)
+			.toString(16)
+			.toUpperCase()
+			.padStart(2, "0");
+	}
 
-  return result;
+	return result;
 }
 
 /**
@@ -600,7 +624,7 @@ export function createThemeColor(
  * @returns ColorValue object
  */
 export function createRgbColor(hex: string): ColorValue {
-  return { rgb: hex.replace(/^#/, '').toUpperCase() };
+	return { rgb: hex.replace(/^#/, "").toUpperCase() };
 }
 
 /**
@@ -612,15 +636,15 @@ export function createRgbColor(hex: string): ColorValue {
  * @returns CSS color string
  */
 export function darkenColor(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined,
-  percent: number
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
+	percent: number,
 ): string {
-  const resolved = resolveColor(color, theme);
-  const hex = resolved.replace(/^#/, '');
-  // percent=80 means darken 80% → keep 20% of original
-  const shade = 1 - percent / 100;
-  return `#${applyShade(hex, shade)}`;
+	const resolved = resolveColor(color, theme);
+	const hex = resolved.replace(/^#/, "");
+	// percent=80 means darken 80% → keep 20% of original
+	const shade = 1 - percent / 100;
+	return `#${applyShade(hex, shade)}`;
 }
 
 /**
@@ -632,15 +656,15 @@ export function darkenColor(
  * @returns CSS color string
  */
 export function lightenColor(
-  color: ColorValue | undefined | null,
-  theme: Theme | null | undefined,
-  percent: number
+	color: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
+	percent: number,
 ): string {
-  const resolved = resolveColor(color, theme);
-  const hex = resolved.replace(/^#/, '');
-  // percent=80 means lighten 80% → keep 20% of original
-  const tint = 1 - percent / 100;
-  return `#${applyTint(hex, tint)}`;
+	const resolved = resolveColor(color, theme);
+	const hex = resolved.replace(/^#/, "");
+	// percent=80 means lighten 80% → keep 20% of original
+	const tint = 1 - percent / 100;
+	return `#${applyTint(hex, tint)}`;
 }
 
 /**
@@ -653,24 +677,24 @@ export function lightenColor(
  * @returns CSS color string
  */
 export function blendColors(
-  color1: ColorValue | undefined | null,
-  color2: ColorValue | undefined | null,
-  ratio: number,
-  theme: Theme | null | undefined
+	color1: ColorValue | undefined | null,
+	color2: ColorValue | undefined | null,
+	ratio: number,
+	theme: Theme | null | undefined,
 ): string {
-  const resolved1 = resolveColor(color1, theme).replace(/^#/, '');
-  const resolved2 = resolveColor(color2, theme).replace(/^#/, '');
+	const resolved1 = resolveColor(color1, theme).replace(/^#/, "");
+	const resolved2 = resolveColor(color2, theme).replace(/^#/, "");
 
-  const rgb1 = hexToRgb(resolved1);
-  const rgb2 = hexToRgb(resolved2);
+	const rgb1 = hexToRgb(resolved1);
+	const rgb2 = hexToRgb(resolved2);
 
-  const blended = {
-    r: Math.round(rgb1.r * (1 - ratio) + rgb2.r * ratio),
-    g: Math.round(rgb1.g * (1 - ratio) + rgb2.g * ratio),
-    b: Math.round(rgb1.b * (1 - ratio) + rgb2.b * ratio),
-  };
+	const blended = {
+		r: Math.round(rgb1.r * (1 - ratio) + rgb2.r * ratio),
+		g: Math.round(rgb1.g * (1 - ratio) + rgb2.g * ratio),
+		b: Math.round(rgb1.b * (1 - ratio) + rgb2.b * ratio),
+	};
 
-  return `#${rgbToHex(blended.r, blended.g, blended.b)}`;
+	return `#${rgbToHex(blended.r, blended.g, blended.b)}`;
 }
 
 // ============================================================================
@@ -681,7 +705,7 @@ export function blendColors(
  * Ensure a hex color string has a '#' prefix.
  */
 export function ensureHexPrefix(hex: string): string {
-  return hex.startsWith('#') ? hex : `#${hex}`;
+	return hex.startsWith("#") ? hex : `#${hex}`;
 }
 
 /**
@@ -689,7 +713,7 @@ export function ensureHexPrefix(hex: string): string {
  * Tries OOXML named highlight first, then ensures hex prefix.
  */
 export function resolveHighlightToCss(value: string): string {
-  return resolveHighlightColor(value) || ensureHexPrefix(value);
+	return resolveHighlightColor(value) || ensureHexPrefix(value);
 }
 
 // ============================================================================
@@ -700,16 +724,16 @@ export function resolveHighlightToCss(value: string): string {
  * Theme color matrix cell
  */
 export interface ThemeMatrixCell {
-  /** Resolved hex color (6 chars, no #) */
-  hex: string;
-  /** Theme color slot */
-  themeSlot: ThemeColorSlot;
-  /** Tint hex modifier if applicable (e.g., "CC") */
-  tint?: string;
-  /** Shade hex modifier if applicable (e.g., "BF") */
-  shade?: string;
-  /** Human-readable label (e.g., "Accent 1, Lighter 60%") */
-  label: string;
+	/** Resolved hex color (6 chars, no #) */
+	hex: string;
+	/** Theme color slot */
+	themeSlot: ThemeColorSlot;
+	/** Tint hex modifier if applicable (e.g., "CC") */
+	tint?: string;
+	/** Shade hex modifier if applicable (e.g., "BF") */
+	shade?: string;
+	/** Human-readable label (e.g., "Accent 1, Lighter 60%") */
+	label: string;
 }
 
 /**
@@ -717,16 +741,16 @@ export interface ThemeMatrixCell {
  * Background 1 (lt1), Text 1 (dk1), Background 2 (lt2), Text 2 (dk2), Accent 1-6
  */
 const THEME_MATRIX_COLUMNS: Array<{ slot: ThemeColorSlot; name: string }> = [
-  { slot: 'lt1', name: 'Background 1' },
-  { slot: 'dk1', name: 'Text 1' },
-  { slot: 'lt2', name: 'Background 2' },
-  { slot: 'dk2', name: 'Text 2' },
-  { slot: 'accent1', name: 'Accent 1' },
-  { slot: 'accent2', name: 'Accent 2' },
-  { slot: 'accent3', name: 'Accent 3' },
-  { slot: 'accent4', name: 'Accent 4' },
-  { slot: 'accent5', name: 'Accent 5' },
-  { slot: 'accent6', name: 'Accent 6' },
+	{ slot: "lt1", name: "Background 1" },
+	{ slot: "dk1", name: "Text 1" },
+	{ slot: "lt2", name: "Background 2" },
+	{ slot: "dk2", name: "Text 2" },
+	{ slot: "accent1", name: "Accent 1" },
+	{ slot: "accent2", name: "Accent 2" },
+	{ slot: "accent3", name: "Accent 3" },
+	{ slot: "accent4", name: "Accent 4" },
+	{ slot: "accent5", name: "Accent 5" },
+	{ slot: "accent6", name: "Accent 6" },
 ];
 
 /**
@@ -734,17 +758,17 @@ const THEME_MATRIX_COLUMNS: Array<{ slot: ThemeColorSlot; name: string }> = [
  * Row 0 = base, rows 1-3 = tints (lighter), rows 4-5 = shades (darker).
  */
 const THEME_MATRIX_ROWS: Array<{
-  type: 'base' | 'tint' | 'shade';
-  value: number; // fraction 0-1
-  hexValue: string; // OOXML hex modifier
-  labelSuffix: string;
+	type: "base" | "tint" | "shade";
+	value: number; // fraction 0-1
+	hexValue: string; // OOXML hex modifier
+	labelSuffix: string;
 }> = [
-  { type: 'base', value: 0, hexValue: '', labelSuffix: '' },
-  { type: 'tint', value: 0.8, hexValue: 'CC', labelSuffix: ', Lighter 80%' },
-  { type: 'tint', value: 0.6, hexValue: '99', labelSuffix: ', Lighter 60%' },
-  { type: 'tint', value: 0.4, hexValue: '66', labelSuffix: ', Lighter 40%' },
-  { type: 'shade', value: 0.75, hexValue: 'BF', labelSuffix: ', Darker 25%' },
-  { type: 'shade', value: 0.5, hexValue: '80', labelSuffix: ', Darker 50%' },
+	{ type: "base", value: 0, hexValue: "", labelSuffix: "" },
+	{ type: "tint", value: 0.8, hexValue: "CC", labelSuffix: ", Lighter 80%" },
+	{ type: "tint", value: 0.6, hexValue: "99", labelSuffix: ", Lighter 60%" },
+	{ type: "tint", value: 0.4, hexValue: "66", labelSuffix: ", Lighter 40%" },
+	{ type: "shade", value: 0.75, hexValue: "BF", labelSuffix: ", Darker 25%" },
+	{ type: "shade", value: 0.5, hexValue: "80", labelSuffix: ", Darker 50%" },
 ];
 
 /**
@@ -756,17 +780,17 @@ const THEME_MATRIX_ROWS: Array<{
  * @returns 6-character hex color (no #)
  */
 export function getThemeTintShadeHex(
-  baseHex: string,
-  type: 'tint' | 'shade',
-  fraction: number
+	baseHex: string,
+	type: "tint" | "shade",
+	fraction: number,
 ): string {
-  if (type === 'tint') {
-    // fraction is "how much to lighten" (0 = no change, 1 = fully white)
-    // applyTint wants "how much to keep" (1 = no change, 0 = fully white) → invert
-    return applyTint(baseHex, 1 - fraction);
-  }
-  // fraction is "how much to keep" (1 = no change, 0 = fully black) — matches applyShade
-  return applyShade(baseHex, fraction);
+	if (type === "tint") {
+		// fraction is "how much to lighten" (0 = no change, 1 = fully white)
+		// applyTint wants "how much to keep" (1 = no change, 0 = fully white) → invert
+		return applyTint(baseHex, 1 - fraction);
+	}
+	// fraction is "how much to keep" (1 = no change, 0 = fully black) — matches applyShade
+	return applyShade(baseHex, fraction);
 }
 
 /**
@@ -779,44 +803,44 @@ export function getThemeTintShadeHex(
  * @returns 6 rows × 10 columns of ThemeMatrixCell
  */
 export function generateThemeTintShadeMatrix(
-  colorScheme?: ThemeColorScheme | null
+	colorScheme?: ThemeColorScheme | null,
 ): ThemeMatrixCell[][] {
-  const scheme = colorScheme ?? DEFAULT_THEME_COLORS;
+	const scheme = colorScheme ?? DEFAULT_THEME_COLORS;
 
-  return THEME_MATRIX_ROWS.map((row) => {
-    return THEME_MATRIX_COLUMNS.map((col) => {
-      const baseHex =
-        scheme[col.slot as keyof ThemeColorScheme] ??
-        DEFAULT_THEME_COLORS[col.slot as keyof ThemeColorScheme] ??
-        '000000';
+	return THEME_MATRIX_ROWS.map((row) => {
+		return THEME_MATRIX_COLUMNS.map((col) => {
+			const baseHex =
+				scheme[col.slot as keyof ThemeColorScheme] ??
+				DEFAULT_THEME_COLORS[col.slot as keyof ThemeColorScheme] ??
+				"000000";
 
-      let hex: string;
-      if (row.type === 'base') {
-        hex = baseHex.toUpperCase();
-      } else if (row.type === 'tint') {
-        // row.value is "how much to lighten" (0.8 = 80% lighter)
-        // applyTint wants "how much to keep" → invert
-        hex = applyTint(baseHex, 1 - row.value);
-      } else {
-        // row.value for shade is "how much to keep" (0.75 = keep 75% = darken 25%)
-        hex = applyShade(baseHex, row.value);
-      }
+			let hex: string;
+			if (row.type === "base") {
+				hex = baseHex.toUpperCase();
+			} else if (row.type === "tint") {
+				// row.value is "how much to lighten" (0.8 = 80% lighter)
+				// applyTint wants "how much to keep" → invert
+				hex = applyTint(baseHex, 1 - row.value);
+			} else {
+				// row.value for shade is "how much to keep" (0.75 = keep 75% = darken 25%)
+				hex = applyShade(baseHex, row.value);
+			}
 
-      const cell: ThemeMatrixCell = {
-        hex,
-        themeSlot: col.slot,
-        label: `${col.name}${row.labelSuffix}`,
-      };
+			const cell: ThemeMatrixCell = {
+				hex,
+				themeSlot: col.slot,
+				label: `${col.name}${row.labelSuffix}`,
+			};
 
-      if (row.type === 'tint' && row.hexValue) {
-        cell.tint = row.hexValue;
-      } else if (row.type === 'shade' && row.hexValue) {
-        cell.shade = row.hexValue;
-      }
+			if (row.type === "tint" && row.hexValue) {
+				cell.tint = row.hexValue;
+			} else if (row.type === "shade" && row.hexValue) {
+				cell.shade = row.hexValue;
+			}
 
-      return cell;
-    });
-  });
+			return cell;
+		});
+	});
 }
 
 /**
@@ -828,15 +852,15 @@ export function generateThemeTintShadeMatrix(
  * @returns True if colors resolve to the same value
  */
 export function colorsEqual(
-  color1: ColorValue | undefined | null,
-  color2: ColorValue | undefined | null,
-  theme: Theme | null | undefined
+	color1: ColorValue | undefined | null,
+	color2: ColorValue | undefined | null,
+	theme: Theme | null | undefined,
 ): boolean {
-  if (!color1 && !color2) return true;
-  if (!color1 || !color2) return false;
+	if (!color1 && !color2) return true;
+	if (!color1 || !color2) return false;
 
-  const resolved1 = resolveColor(color1, theme).toUpperCase();
-  const resolved2 = resolveColor(color2, theme).toUpperCase();
+	const resolved1 = resolveColor(color1, theme).toUpperCase();
+	const resolved2 = resolveColor(color2, theme).toUpperCase();
 
-  return resolved1 === resolved2;
+	return resolved1 === resolved2;
 }

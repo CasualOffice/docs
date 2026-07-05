@@ -10,26 +10,26 @@
  * ExtensionManager directly.
  */
 
-import { createStarterKit } from '../extensions/StarterKit';
-import { ExtensionManager } from '../extensions/ExtensionManager';
+import { createStarterKit } from "../extensions/StarterKit";
+import { ExtensionManager } from "../extensions/ExtensionManager";
 
 // Re-export type interfaces (used by toProseDoc, fromProseDoc, and other modules)
 export type {
-  ParagraphAttrs,
-  ImageAttrs,
-  ImagePositionAttrs,
-  TableAttrs,
-  TableRowAttrs,
-  TableCellAttrs,
-} from './nodes';
+	ParagraphAttrs,
+	ImageAttrs,
+	ImagePositionAttrs,
+	TableAttrs,
+	TableRowAttrs,
+	TableCellAttrs,
+} from "./nodes";
 export type {
-  TextColorAttrs,
-  UnderlineAttrs,
-  RunShadingAttrs,
-  FontSizeAttrs,
-  FontFamilyAttrs,
-  HyperlinkAttrs,
-} from './marks';
+	TextColorAttrs,
+	UnderlineAttrs,
+	RunShadingAttrs,
+	FontSizeAttrs,
+	FontFamilyAttrs,
+	HyperlinkAttrs,
+} from "./marks";
 
 /**
  * Singleton ExtensionManager — builds schema + initializes runtime (plugins, commands, keymaps)

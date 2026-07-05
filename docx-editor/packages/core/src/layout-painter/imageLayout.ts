@@ -10,10 +10,10 @@
  * toolbar dropdown) live in each framework adapter and call into these.
  */
 
-import { pixelsToEmu } from '../utils/units';
-import type { ImageAttrs } from '../prosemirror/schema/nodes';
-import type { ImageLayoutTarget } from '../prosemirror/extensions/nodes/ImageExtension';
-import type { WrapType } from '../docx/wrapTypes';
+import { pixelsToEmu } from "../utils/units";
+import type { ImageAttrs } from "../prosemirror/schema/nodes";
+import type { ImageLayoutTarget } from "../prosemirror/extensions/nodes/ImageExtension";
+import type { WrapType } from "../docx/wrapTypes";
 
 // ============================================================================
 // Class names emitted by the layout painter — single source of truth so hosts
@@ -21,34 +21,34 @@ import type { WrapType } from '../docx/wrapTypes';
 // ============================================================================
 
 export const LAYOUT_IMAGE_CLASSES = {
-  /** Inline image rendered inside `.layout-line`. */
-  runImage: 'layout-run-image',
-  /** Block (centered, topAndBottom) image. */
-  blockImage: 'layout-block-image',
-  /** Anchored image rendered in the page-level floating layer. */
-  pageFloatingImage: 'layout-page-floating-image',
-  /** Anchored image rendered inside a table cell's floating layer. */
-  cellFloatingImage: 'layout-cell-floating-image',
-  pageContent: 'layout-page-content',
-  paragraph: 'layout-paragraph',
+	/** Inline image rendered inside `.layout-line`. */
+	runImage: "layout-run-image",
+	/** Block (centered, topAndBottom) image. */
+	blockImage: "layout-block-image",
+	/** Anchored image rendered in the page-level floating layer. */
+	pageFloatingImage: "layout-page-floating-image",
+	/** Anchored image rendered inside a table cell's floating layer. */
+	cellFloatingImage: "layout-cell-floating-image",
+	pageContent: "layout-page-content",
+	paragraph: "layout-paragraph",
 } as const;
 
 const IMAGE_HIT_SELECTOR = [
-  `.${LAYOUT_IMAGE_CLASSES.pageFloatingImage}`,
-  `.${LAYOUT_IMAGE_CLASSES.cellFloatingImage}`,
-  `.${LAYOUT_IMAGE_CLASSES.blockImage}`,
-  `.${LAYOUT_IMAGE_CLASSES.runImage}`,
-].join(', ');
+	`.${LAYOUT_IMAGE_CLASSES.pageFloatingImage}`,
+	`.${LAYOUT_IMAGE_CLASSES.cellFloatingImage}`,
+	`.${LAYOUT_IMAGE_CLASSES.blockImage}`,
+	`.${LAYOUT_IMAGE_CLASSES.runImage}`,
+].join(", ");
 
 // ============================================================================
 // Hit-test
 // ============================================================================
 
 export interface ImageHitTestResult {
-  /** PM doc position of the image node, read from `data-pm-start`. */
-  pos: number;
-  /** The matched element — pass to `captureInlinePositionEmu` if it's inline. */
-  imageEl: HTMLElement;
+	/** PM doc position of the image node, read from `data-pm-start`. */
+	pos: number;
+	/** The matched element — pass to `captureInlinePositionEmu` if it's inline. */
+	imageEl: HTMLElement;
 }
 
 /**
@@ -56,15 +56,17 @@ export interface ImageHitTestResult {
  * the PM position embedded in `data-pm-start`, or null if the target isn't on
  * an image.
  */
-export function hitTestImage(target: EventTarget | null): ImageHitTestResult | null {
-  if (!(target instanceof Element)) return null;
-  const imageEl = target.closest(IMAGE_HIT_SELECTOR) as HTMLElement | null;
-  if (!imageEl) return null;
-  const pmStartAttr = imageEl.dataset.pmStart;
-  if (pmStartAttr === undefined) return null;
-  const pos = Number(pmStartAttr);
-  if (Number.isNaN(pos)) return null;
-  return { pos, imageEl };
+export function hitTestImage(
+	target: EventTarget | null,
+): ImageHitTestResult | null {
+	if (!(target instanceof Element)) return null;
+	const imageEl = target.closest(IMAGE_HIT_SELECTOR) as HTMLElement | null;
+	if (!imageEl) return null;
+	const pmStartAttr = imageEl.dataset.pmStart;
+	if (pmStartAttr === undefined) return null;
+	const pos = Number(pmStartAttr);
+	if (Number.isNaN(pos)) return null;
+	return { pos, imageEl };
 }
 
 // ============================================================================
@@ -85,21 +87,30 @@ export function hitTestImage(target: EventTarget | null): ImageHitTestResult | n
  * Returns undefined for non-inline images or detached DOM.
  */
 export function captureInlinePositionEmu(
-  imageEl: HTMLElement,
-  zoom = 1
+	imageEl: HTMLElement,
+	zoom = 1,
 ): { horizontalEmu: number; verticalEmu: number } | undefined {
-  if (!imageEl.classList.contains(LAYOUT_IMAGE_CLASSES.runImage)) return undefined;
-  const pageContent = imageEl.closest(`.${LAYOUT_IMAGE_CLASSES.pageContent}`) as HTMLElement | null;
-  const paragraph = imageEl.closest(`.${LAYOUT_IMAGE_CLASSES.paragraph}`) as HTMLElement | null;
-  if (!pageContent || !paragraph) return undefined;
-  const imgRect = imageEl.getBoundingClientRect();
-  const pageRect = pageContent.getBoundingClientRect();
-  const paraRect = paragraph.getBoundingClientRect();
-  const safeZoom = zoom > 0 ? zoom : 1;
-  return {
-    horizontalEmu: Math.round(pixelsToEmu((imgRect.left - pageRect.left) / safeZoom)),
-    verticalEmu: Math.round(pixelsToEmu((imgRect.top - paraRect.top) / safeZoom)),
-  };
+	if (!imageEl.classList.contains(LAYOUT_IMAGE_CLASSES.runImage))
+		return undefined;
+	const pageContent = imageEl.closest(
+		`.${LAYOUT_IMAGE_CLASSES.pageContent}`,
+	) as HTMLElement | null;
+	const paragraph = imageEl.closest(
+		`.${LAYOUT_IMAGE_CLASSES.paragraph}`,
+	) as HTMLElement | null;
+	if (!pageContent || !paragraph) return undefined;
+	const imgRect = imageEl.getBoundingClientRect();
+	const pageRect = pageContent.getBoundingClientRect();
+	const paraRect = paragraph.getBoundingClientRect();
+	const safeZoom = zoom > 0 ? zoom : 1;
+	return {
+		horizontalEmu: Math.round(
+			pixelsToEmu((imgRect.left - pageRect.left) / safeZoom),
+		),
+		verticalEmu: Math.round(
+			pixelsToEmu((imgRect.top - paraRect.top) / safeZoom),
+		),
+	};
 }
 
 // ============================================================================
@@ -115,16 +126,16 @@ export function captureInlinePositionEmu(
  * use either as their "unset" sentinel without an extra normalisation step.
  */
 export function deriveLayoutChoice(
-  wrapType: WrapType,
-  cssFloat?: ImageAttrs['cssFloat'] | null
+	wrapType: WrapType,
+	cssFloat?: ImageAttrs["cssFloat"] | null,
 ): ImageLayoutTarget | null {
-  if (wrapType === 'inline') return 'inline';
-  if (wrapType === 'behind') return 'behind';
-  if (wrapType === 'inFront') return 'inFront';
-  if (wrapType === 'square' || wrapType === 'tight' || wrapType === 'through') {
-    return cssFloat === 'right' ? 'squareRight' : 'squareLeft';
-  }
-  return null;
+	if (wrapType === "inline") return "inline";
+	if (wrapType === "behind") return "behind";
+	if (wrapType === "inFront") return "inFront";
+	if (wrapType === "square" || wrapType === "tight" || wrapType === "through") {
+		return cssFloat === "right" ? "squareRight" : "squareLeft";
+	}
+	return null;
 }
 
 // ============================================================================
@@ -136,51 +147,56 @@ export function deriveLayoutChoice(
  * equivalent — to render alongside each option. Bindings own the icon
  * component itself.
  */
-export type ImageLayoutIconHint = 'inline' | 'squareLeft' | 'squareRight' | 'behind' | 'inFront';
+export type ImageLayoutIconHint =
+	| "inline"
+	| "squareLeft"
+	| "squareRight"
+	| "behind"
+	| "inFront";
 
 export interface ImageLayoutOptionDef {
-  /** Choice value — what gets dispatched on click. */
-  choice: ImageLayoutTarget;
-  /** i18n key under `imageWrap.menu.*`. */
-  i18nLabelKey: string;
-  /** i18n key under `imageWrap.menuDesc.*`. */
-  i18nDescKey: string;
-  /** Hint for the framework's icon registry. */
-  iconHint: ImageLayoutIconHint;
+	/** Choice value — what gets dispatched on click. */
+	choice: ImageLayoutTarget;
+	/** i18n key under `imageWrap.menu.*`. */
+	i18nLabelKey: string;
+	/** i18n key under `imageWrap.menuDesc.*`. */
+	i18nDescKey: string;
+	/** Hint for the framework's icon registry. */
+	iconHint: ImageLayoutIconHint;
 }
 
 /** Mirrors Word's Wrap Text menu — five directional options. */
 export const IMAGE_LAYOUT_OPTIONS: readonly ImageLayoutOptionDef[] = [
-  {
-    choice: 'inline',
-    i18nLabelKey: 'inLineWithText',
-    i18nDescKey: 'inLineWithText',
-    iconHint: 'inline',
-  },
-  {
-    choice: 'squareLeft',
-    i18nLabelKey: 'squareLeft',
-    i18nDescKey: 'squareLeft',
-    iconHint: 'squareLeft',
-  },
-  {
-    choice: 'squareRight',
-    i18nLabelKey: 'squareRight',
-    i18nDescKey: 'squareRight',
-    iconHint: 'squareRight',
-  },
-  {
-    choice: 'behind',
-    i18nLabelKey: 'behindText',
-    i18nDescKey: 'behindText',
-    iconHint: 'behind',
-  },
-  {
-    choice: 'inFront',
-    i18nLabelKey: 'inFrontOfText',
-    i18nDescKey: 'inFrontOfText',
-    iconHint: 'inFront',
-  },
+	{
+		choice: "inline",
+		i18nLabelKey: "inLineWithText",
+		i18nDescKey: "inLineWithText",
+		iconHint: "inline",
+	},
+	{
+		choice: "squareLeft",
+		i18nLabelKey: "squareLeft",
+		i18nDescKey: "squareLeft",
+		iconHint: "squareLeft",
+	},
+	{
+		choice: "squareRight",
+		i18nLabelKey: "squareRight",
+		i18nDescKey: "squareRight",
+		iconHint: "squareRight",
+	},
+	{
+		choice: "behind",
+		i18nLabelKey: "behindText",
+		i18nDescKey: "behindText",
+		iconHint: "behind",
+	},
+	{
+		choice: "inFront",
+		i18nLabelKey: "inFrontOfText",
+		i18nDescKey: "inFrontOfText",
+		iconHint: "inFront",
+	},
 ] as const;
 
 /**
@@ -194,10 +210,10 @@ export const IMAGE_LAYOUT_OPTIONS: readonly ImageLayoutOptionDef[] = [
  * mode), but currently always returns true.
  */
 export function isImageLayoutOptionEnabled(
-  _option: ImageLayoutOptionDef,
-  _currentWrapType: WrapType
+	_option: ImageLayoutOptionDef,
+	_currentWrapType: WrapType,
 ): boolean {
-  return true;
+	return true;
 }
 
 // ============================================================================
@@ -213,25 +229,27 @@ export function isImageLayoutOptionEnabled(
  * Returns `undefined` for unknown values; callers should treat that as
  * "no-op".
  */
-export function toolbarValueToLayoutTarget(value: string): ImageLayoutTarget | undefined {
-  switch (value) {
-    case 'inline':
-      return 'inline';
-    case 'square':
-    case 'tight':
-    case 'through':
-      return 'squareLeft';
-    case 'topAndBottom':
-      return 'topAndBottom';
-    case 'behind':
-      return 'behind';
-    case 'inFront':
-      return 'inFront';
-    case 'wrapRight':
-      return 'squareLeft';
-    case 'wrapLeft':
-      return 'squareRight';
-    default:
-      return undefined;
-  }
+export function toolbarValueToLayoutTarget(
+	value: string,
+): ImageLayoutTarget | undefined {
+	switch (value) {
+		case "inline":
+			return "inline";
+		case "square":
+		case "tight":
+		case "through":
+			return "squareLeft";
+		case "topAndBottom":
+			return "topAndBottom";
+		case "behind":
+			return "behind";
+		case "inFront":
+			return "inFront";
+		case "wrapRight":
+			return "squareLeft";
+		case "wrapLeft":
+			return "squareRight";
+		default:
+			return undefined;
+	}
 }

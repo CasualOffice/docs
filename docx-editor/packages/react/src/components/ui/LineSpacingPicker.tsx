@@ -9,53 +9,55 @@
  * Styled like Google Docs with options: Single, 1.15, 1.5, Double
  */
 
-import * as React from 'react';
+import * as React from "react";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-} from './Select';
-import { cn } from '../../lib/utils';
-import { IconLineSpacing } from './Icons';
-import { useTranslation } from '../../i18n';
-import type { TranslationKey } from '../../i18n';
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectSeparator,
+	SelectTrigger,
+} from "./Select";
+import { cn } from "../../lib/utils";
+import { IconLineSpacing } from "./Icons";
+import { useTranslation } from "../../i18n";
+import type { TranslationKey } from "../../i18n";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 export interface LineSpacingOption {
-  label: string;
-  labelKey?: TranslationKey;
-  value: number;
-  twipsValue: number;
+	label: string;
+	labelKey?: TranslationKey;
+	value: number;
+	twipsValue: number;
 }
 
 export interface LineSpacingPickerProps {
-  value?: number;
-  onChange?: (twipsValue: number) => void;
-  options?: LineSpacingOption[];
-  disabled?: boolean;
-  className?: string;
-  width?: number | string;
-  /** Current spaceBefore value in twips (from paragraph formatting) */
-  spaceBefore?: number;
-  /** Current spaceAfter value in twips (from paragraph formatting) */
-  spaceAfter?: number;
-  onSpaceBeforeChange?: (twips: number) => void;
-  onSpaceAfterChange?: (twips: number) => void;
-  /** Open the Custom spacing dialog (Docs's Custom spacing… leaf). */
-  onOpenCustomSpacing?: () => void;
-  /** Current paragraph pagination attrs. */
-  keepNext?: boolean;
-  keepLines?: boolean;
-  pageBreakBefore?: boolean;
-  widowControl?: boolean;
-  onTogglePagination?: (key: 'keepNext' | 'keepLines' | 'pageBreakBefore' | 'widowControl') => void;
+	value?: number;
+	onChange?: (twipsValue: number) => void;
+	options?: LineSpacingOption[];
+	disabled?: boolean;
+	className?: string;
+	width?: number | string;
+	/** Current spaceBefore value in twips (from paragraph formatting) */
+	spaceBefore?: number;
+	/** Current spaceAfter value in twips (from paragraph formatting) */
+	spaceAfter?: number;
+	onSpaceBeforeChange?: (twips: number) => void;
+	onSpaceAfterChange?: (twips: number) => void;
+	/** Open the Custom spacing dialog (Docs's Custom spacing… leaf). */
+	onOpenCustomSpacing?: () => void;
+	/** Current paragraph pagination attrs. */
+	keepNext?: boolean;
+	keepLines?: boolean;
+	pageBreakBefore?: boolean;
+	widowControl?: boolean;
+	onTogglePagination?: (
+		key: "keepNext" | "keepLines" | "pageBreakBefore" | "widowControl",
+	) => void;
 }
 
 /** 8pt in twips — default paragraph spacing amount */
@@ -71,10 +73,20 @@ export const DEFAULT_PARAGRAPH_SPACE_TWIPS = 160;
  * 240 twips = 1.0 line spacing (single)
  */
 const DEFAULT_OPTIONS: LineSpacingOption[] = [
-  { label: 'Single', labelKey: 'lineSpacing.single', value: 1.0, twipsValue: 240 },
-  { label: '1.15', value: 1.15, twipsValue: 276 },
-  { label: '1.5', value: 1.5, twipsValue: 360 },
-  { label: 'Double', labelKey: 'lineSpacing.double', value: 2.0, twipsValue: 480 },
+	{
+		label: "Single",
+		labelKey: "lineSpacing.single",
+		value: 1.0,
+		twipsValue: 240,
+	},
+	{ label: "1.15", value: 1.15, twipsValue: 276 },
+	{ label: "1.5", value: 1.5, twipsValue: 360 },
+	{
+		label: "Double",
+		labelKey: "lineSpacing.double",
+		value: 2.0,
+		twipsValue: 480,
+	},
 ];
 
 // ============================================================================
@@ -82,146 +94,159 @@ const DEFAULT_OPTIONS: LineSpacingOption[] = [
 // ============================================================================
 
 export function LineSpacingPicker({
-  value,
-  onChange,
-  options = DEFAULT_OPTIONS,
-  disabled = false,
-  className,
-  spaceBefore,
-  spaceAfter,
-  onSpaceBeforeChange,
-  onSpaceAfterChange,
-  onOpenCustomSpacing,
-  keepNext,
-  keepLines,
-  pageBreakBefore,
-  widowControl,
-  onTogglePagination,
+	value,
+	onChange,
+	options = DEFAULT_OPTIONS,
+	disabled = false,
+	className,
+	spaceBefore,
+	spaceAfter,
+	onSpaceBeforeChange,
+	onSpaceAfterChange,
+	onOpenCustomSpacing,
+	keepNext,
+	keepLines,
+	pageBreakBefore,
+	widowControl,
+	onTogglePagination,
 }: LineSpacingPickerProps) {
-  const { t } = useTranslation();
-  // Find current option by twips value
-  const currentOption = React.useMemo(() => {
-    if (value === undefined) return options[0]; // Default to Single
-    return options.find((opt) => opt.twipsValue === value) || options[0];
-  }, [value, options]);
+	const { t } = useTranslation();
+	// Find current option by twips value
+	const currentOption = React.useMemo(() => {
+		if (value === undefined) return options[0]; // Default to Single
+		return options.find((opt) => opt.twipsValue === value) || options[0];
+	}, [value, options]);
 
-  const handleValueChange = React.useCallback(
-    (newValue: string) => {
-      const twips = parseInt(newValue, 10);
-      if (!isNaN(twips)) {
-        onChange?.(twips);
-      }
-    },
-    [onChange]
-  );
+	const handleValueChange = React.useCallback(
+		(newValue: string) => {
+			const twips = parseInt(newValue, 10);
+			if (!isNaN(twips)) {
+				onChange?.(twips);
+			}
+		},
+		[onChange],
+	);
 
-  const getOptionLabel = (option: LineSpacingOption) =>
-    option.labelKey ? t(option.labelKey) : option.label;
+	const getOptionLabel = (option: LineSpacingOption) =>
+		option.labelKey ? t(option.labelKey) : option.label;
 
-  return (
-    <Select
-      value={currentOption.twipsValue.toString()}
-      onValueChange={handleValueChange}
-      disabled={disabled}
-    >
-      <SelectTrigger
-        className={cn('h-8 text-sm gap-0.5 px-2', className)}
-        style={{ width: 'auto' }}
-        title={t('lineSpacing.lineSpacingTitle', { label: getOptionLabel(currentOption) })}
-        aria-label="Line spacing"
-      >
-        <IconLineSpacing className="h-5 w-5 shrink-0" />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.twipsValue} value={option.twipsValue.toString()}>
-            {getOptionLabel(option)}
-          </SelectItem>
-        ))}
-        <SelectSeparator />
-        <SelectGroup>
-          <SelectLabel>{t('lineSpacing.paragraphSpacing')}</SelectLabel>
-          {onSpaceBeforeChange && (
-            <SelectItem
-              value="__spaceBefore__"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onSpaceBeforeChange?.(spaceBefore ? 0 : DEFAULT_PARAGRAPH_SPACE_TWIPS);
-              }}
-            >
-              {spaceBefore ? 'Remove space before paragraph' : 'Add space before paragraph'}
-            </SelectItem>
-          )}
-          {onSpaceAfterChange && (
-            <SelectItem
-              value="__spaceAfter__"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onSpaceAfterChange?.(spaceAfter ? 0 : DEFAULT_PARAGRAPH_SPACE_TWIPS);
-              }}
-            >
-              {spaceAfter ? 'Remove space after paragraph' : 'Add space after paragraph'}
-            </SelectItem>
-          )}
-          {onOpenCustomSpacing && (
-            <SelectItem
-              value="__customSpacing__"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onOpenCustomSpacing?.();
-              }}
-            >
-              Custom spacing…
-            </SelectItem>
-          )}
-        </SelectGroup>
-        {onTogglePagination && (
-          <>
-            <SelectSeparator />
-            <SelectGroup>
-              <SelectLabel>Pagination</SelectLabel>
-              <SelectItem
-                value="__keepNext__"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onTogglePagination('keepNext');
-                }}
-              >
-                {keepNext ? '✓ ' : ''}Keep with next
-              </SelectItem>
-              <SelectItem
-                value="__keepLines__"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onTogglePagination('keepLines');
-                }}
-              >
-                {keepLines ? '✓ ' : ''}Keep lines together
-              </SelectItem>
-              <SelectItem
-                value="__pageBreakBefore__"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onTogglePagination('pageBreakBefore');
-                }}
-              >
-                {pageBreakBefore ? '✓ ' : ''}Page break before
-              </SelectItem>
-              <SelectItem
-                value="__widowControl__"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onTogglePagination('widowControl');
-                }}
-              >
-                {widowControl ? '✓ ' : ''}Prevent single lines
-              </SelectItem>
-            </SelectGroup>
-          </>
-        )}
-      </SelectContent>
-    </Select>
-  );
+	return (
+		<Select
+			value={currentOption.twipsValue.toString()}
+			onValueChange={handleValueChange}
+			disabled={disabled}
+		>
+			<SelectTrigger
+				className={cn("h-8 text-sm gap-0.5 px-2", className)}
+				style={{ width: "auto" }}
+				title={t("lineSpacing.lineSpacingTitle", {
+					label: getOptionLabel(currentOption),
+				})}
+				aria-label="Line spacing"
+			>
+				<IconLineSpacing className="h-5 w-5 shrink-0" />
+			</SelectTrigger>
+			<SelectContent>
+				{options.map((option) => (
+					<SelectItem
+						key={option.twipsValue}
+						value={option.twipsValue.toString()}
+					>
+						{getOptionLabel(option)}
+					</SelectItem>
+				))}
+				<SelectSeparator />
+				<SelectGroup>
+					<SelectLabel>{t("lineSpacing.paragraphSpacing")}</SelectLabel>
+					{onSpaceBeforeChange && (
+						<SelectItem
+							value="__spaceBefore__"
+							onMouseDown={(e) => {
+								e.preventDefault();
+								onSpaceBeforeChange?.(
+									spaceBefore ? 0 : DEFAULT_PARAGRAPH_SPACE_TWIPS,
+								);
+							}}
+						>
+							{spaceBefore
+								? "Remove space before paragraph"
+								: "Add space before paragraph"}
+						</SelectItem>
+					)}
+					{onSpaceAfterChange && (
+						<SelectItem
+							value="__spaceAfter__"
+							onMouseDown={(e) => {
+								e.preventDefault();
+								onSpaceAfterChange?.(
+									spaceAfter ? 0 : DEFAULT_PARAGRAPH_SPACE_TWIPS,
+								);
+							}}
+						>
+							{spaceAfter
+								? "Remove space after paragraph"
+								: "Add space after paragraph"}
+						</SelectItem>
+					)}
+					{onOpenCustomSpacing && (
+						<SelectItem
+							value="__customSpacing__"
+							onMouseDown={(e) => {
+								e.preventDefault();
+								onOpenCustomSpacing?.();
+							}}
+						>
+							Custom spacing…
+						</SelectItem>
+					)}
+				</SelectGroup>
+				{onTogglePagination && (
+					<>
+						<SelectSeparator />
+						<SelectGroup>
+							<SelectLabel>Pagination</SelectLabel>
+							<SelectItem
+								value="__keepNext__"
+								onMouseDown={(e) => {
+									e.preventDefault();
+									onTogglePagination("keepNext");
+								}}
+							>
+								{keepNext ? "✓ " : ""}Keep with next
+							</SelectItem>
+							<SelectItem
+								value="__keepLines__"
+								onMouseDown={(e) => {
+									e.preventDefault();
+									onTogglePagination("keepLines");
+								}}
+							>
+								{keepLines ? "✓ " : ""}Keep lines together
+							</SelectItem>
+							<SelectItem
+								value="__pageBreakBefore__"
+								onMouseDown={(e) => {
+									e.preventDefault();
+									onTogglePagination("pageBreakBefore");
+								}}
+							>
+								{pageBreakBefore ? "✓ " : ""}Page break before
+							</SelectItem>
+							<SelectItem
+								value="__widowControl__"
+								onMouseDown={(e) => {
+									e.preventDefault();
+									onTogglePagination("widowControl");
+								}}
+							>
+								{widowControl ? "✓ " : ""}Prevent single lines
+							</SelectItem>
+						</SelectGroup>
+					</>
+				)}
+			</SelectContent>
+		</Select>
+	);
 }
 
 // ============================================================================
@@ -229,47 +254,47 @@ export function LineSpacingPicker({
 // ============================================================================
 
 export function getDefaultLineSpacingOptions(): LineSpacingOption[] {
-  return [...DEFAULT_OPTIONS];
+	return [...DEFAULT_OPTIONS];
 }
 
 export function lineSpacingMultiplierToTwips(multiplier: number): number {
-  return Math.round(multiplier * 240);
+	return Math.round(multiplier * 240);
 }
 
 export function twipsToLineSpacingMultiplier(twips: number): number {
-  return twips / 240;
+	return twips / 240;
 }
 
 export function getLineSpacingLabel(twips: number): string {
-  const option = DEFAULT_OPTIONS.find((opt) => opt.twipsValue === twips);
-  if (option) return option.label;
-  const multiplier = twipsToLineSpacingMultiplier(twips);
-  return multiplier.toFixed(2).replace(/\.?0+$/, '');
+	const option = DEFAULT_OPTIONS.find((opt) => opt.twipsValue === twips);
+	if (option) return option.label;
+	const multiplier = twipsToLineSpacingMultiplier(twips);
+	return multiplier.toFixed(2).replace(/\.?0+$/, "");
 }
 
 export function isStandardLineSpacing(twips: number): boolean {
-  return DEFAULT_OPTIONS.some((opt) => opt.twipsValue === twips);
+	return DEFAULT_OPTIONS.some((opt) => opt.twipsValue === twips);
 }
 
 export function nearestStandardLineSpacing(twips: number): LineSpacingOption {
-  let nearest = DEFAULT_OPTIONS[0];
-  let minDiff = Math.abs(twips - nearest.twipsValue);
+	let nearest = DEFAULT_OPTIONS[0];
+	let minDiff = Math.abs(twips - nearest.twipsValue);
 
-  for (const option of DEFAULT_OPTIONS) {
-    const diff = Math.abs(twips - option.twipsValue);
-    if (diff < minDiff) {
-      minDiff = diff;
-      nearest = option;
-    }
-  }
+	for (const option of DEFAULT_OPTIONS) {
+		const diff = Math.abs(twips - option.twipsValue);
+		if (diff < minDiff) {
+			minDiff = diff;
+			nearest = option;
+		}
+	}
 
-  return nearest;
+	return nearest;
 }
 
 export function createLineSpacingOption(multiplier: number): LineSpacingOption {
-  const twipsValue = lineSpacingMultiplierToTwips(multiplier);
-  const label = multiplier.toFixed(2).replace(/\.?0+$/, '');
-  return { label, value: multiplier, twipsValue };
+	const twipsValue = lineSpacingMultiplierToTwips(multiplier);
+	const label = multiplier.toFixed(2).replace(/\.?0+$/, "");
+	return { label, value: multiplier, twipsValue };
 }
 
 export default LineSpacingPicker;

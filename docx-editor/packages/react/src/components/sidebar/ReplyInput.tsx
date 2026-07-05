@@ -2,112 +2,119 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { useState } from 'react';
-import { submitButtonStyle, CANCEL_BUTTON_STYLE } from './cardUtils';
-import { useTranslation } from '../../i18n';
+import { useState } from "react";
+import { submitButtonStyle, CANCEL_BUTTON_STYLE } from "./cardUtils";
+import { useTranslation } from "../../i18n";
 
 const ACTIVE_INPUT_STYLE: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid #1a73e8',
-  borderRadius: 20,
-  outline: 'none',
-  fontSize: 14,
-  padding: '8px 16px',
-  fontFamily: 'inherit',
-  boxSizing: 'border-box',
-  color: 'var(--doc-text-on-surface, #1f2937)',
+	width: "100%",
+	border: "1px solid #1a73e8",
+	borderRadius: 20,
+	outline: "none",
+	fontSize: 14,
+	padding: "8px 16px",
+	fontFamily: "inherit",
+	boxSizing: "border-box",
+	color: "var(--doc-text-on-surface, #1f2937)",
 };
 
 const INACTIVE_INPUT_STYLE: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid var(--doc-border, #dadce0)',
-  borderRadius: 20,
-  outline: 'none',
-  fontSize: 14,
-  padding: '8px 16px',
-  fontFamily: 'inherit',
-  color: 'var(--doc-text-subtle)',
-  cursor: 'text',
-  backgroundColor: 'var(--doc-surface, white)',
-  boxSizing: 'border-box',
+	width: "100%",
+	border: "1px solid var(--doc-border, #dadce0)",
+	borderRadius: 20,
+	outline: "none",
+	fontSize: 14,
+	padding: "8px 16px",
+	fontFamily: "inherit",
+	color: "var(--doc-text-subtle)",
+	cursor: "text",
+	backgroundColor: "var(--doc-surface, white)",
+	boxSizing: "border-box",
 };
 
 export interface ReplyInputProps {
-  onSubmit: (text: string) => void;
+	onSubmit: (text: string) => void;
 }
 
 export function ReplyInput({ onSubmit }: ReplyInputProps) {
-  const [active, setActive] = useState(false);
-  const [text, setText] = useState('');
-  const { t } = useTranslation();
+	const [active, setActive] = useState(false);
+	const [text, setText] = useState("");
+	const { t } = useTranslation();
 
-  if (!active) {
-    return (
-      <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
-        <input
-          readOnly
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            setActive(true);
-          }}
-          placeholder={t('comments.replyPlaceholder')}
-          style={INACTIVE_INPUT_STYLE}
-        />
-      </div>
-    );
-  }
+	if (!active) {
+		return (
+			<div onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
+				<input
+					readOnly
+					onMouseDown={(e) => e.stopPropagation()}
+					onClick={(e) => {
+						e.stopPropagation();
+						setActive(true);
+					}}
+					placeholder={t("comments.replyPlaceholder")}
+					style={INACTIVE_INPUT_STYLE}
+				/>
+			</div>
+		);
+	}
 
-  const trimmed = text.trim();
+	const trimmed = text.trim();
 
-  return (
-    <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
-      <input
-        ref={(el) => el?.focus({ preventScroll: true })}
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onMouseDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (trimmed) onSubmit(trimmed);
-            setText('');
-            setActive(false);
-          }
-          if (e.key === 'Escape') {
-            setActive(false);
-            setText('');
-          }
-        }}
-        placeholder={t('comments.replyPlaceholder')}
-        style={ACTIVE_INPUT_STYLE}
-      />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setActive(false);
-            setText('');
-          }}
-          style={CANCEL_BUTTON_STYLE}
-        >
-          {t('common.cancel')}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (trimmed) onSubmit(trimmed);
-            setText('');
-            setActive(false);
-          }}
-          disabled={!trimmed}
-          style={submitButtonStyle(!!trimmed)}
-        >
-          {t('common.reply')}
-        </button>
-      </div>
-    </div>
-  );
+	return (
+		<div onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
+			<input
+				ref={(el) => el?.focus({ preventScroll: true })}
+				type="text"
+				value={text}
+				onChange={(e) => setText(e.target.value)}
+				onMouseDown={(e) => e.stopPropagation()}
+				onKeyDown={(e) => {
+					e.stopPropagation();
+					if (e.key === "Enter") {
+						e.preventDefault();
+						if (trimmed) onSubmit(trimmed);
+						setText("");
+						setActive(false);
+					}
+					if (e.key === "Escape") {
+						setActive(false);
+						setText("");
+					}
+				}}
+				placeholder={t("comments.replyPlaceholder")}
+				style={ACTIVE_INPUT_STYLE}
+			/>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "flex-end",
+					gap: 8,
+					marginTop: 8,
+				}}
+			>
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						setActive(false);
+						setText("");
+					}}
+					style={CANCEL_BUTTON_STYLE}
+				>
+					{t("common.cancel")}
+				</button>
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						if (trimmed) onSubmit(trimmed);
+						setText("");
+						setActive(false);
+					}}
+					disabled={!trimmed}
+					style={submitButtonStyle(!!trimmed)}
+				>
+					{t("common.reply")}
+				</button>
+			</div>
+		</div>
+	);
 }

@@ -14,60 +14,70 @@
  * DOM focus (no "caret blinks but typing is dead" desync).
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const EMPTY_DOCX = path.join(__dirname, '..', 'fixtures', 'empty.docx');
+const EMPTY_DOCX = path.join(__dirname, "..", "fixtures", "empty.docx");
 
-const pmIsFocused = (page: import('@playwright/test').Page) =>
-  page.evaluate(() => !!document.activeElement?.closest('.paged-editor__hidden-pm'));
+const pmIsFocused = (page: import("@playwright/test").Page) =>
+	page.evaluate(
+		() => !!document.activeElement?.closest(".paged-editor__hidden-pm"),
+	);
 
-test.describe('Focus recapture', () => {
-  let editor: EditorPage;
+test.describe("Focus recapture", () => {
+	let editor: EditorPage;
 
-  test.beforeEach(async ({ page }) => {
-    editor = new EditorPage(page);
-    await editor.goto();
-    await editor.waitForReady();
-    await editor.loadDocxFile(EMPTY_DOCX);
-  });
+	test.beforeEach(async ({ page }) => {
+		editor = new EditorPage(page);
+		await editor.goto();
+		await editor.waitForReady();
+		await editor.loadDocxFile(EMPTY_DOCX);
+	});
 
-  test('clicking the blank editor area recaptures focus and lets you type', async ({ page }) => {
-    // Move focus off the editor entirely.
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    expect(await pmIsFocused(page)).toBe(false);
+	test("clicking the blank editor area recaptures focus and lets you type", async ({
+		page,
+	}) => {
+		// Move focus off the editor entirely.
+		await page.evaluate(() =>
+			(document.activeElement as HTMLElement | null)?.blur(),
+		);
+		expect(await pmIsFocused(page)).toBe(false);
 
-    // Click the empty container region (outside the painted pages).
-    await page.locator('.paged-editor__pages').click({ position: { x: 5, y: 5 } });
-    await page.waitForTimeout(100);
-    expect(await pmIsFocused(page)).toBe(true);
+		// Click the empty container region (outside the painted pages).
+		await page
+			.locator(".paged-editor__pages")
+			.click({ position: { x: 5, y: 5 } });
+		await page.waitForTimeout(100);
+		expect(await pmIsFocused(page)).toBe(true);
 
-    await page.keyboard.type('Recaptured.');
-    await expect(page.locator('.paged-editor__hidden-pm .ProseMirror')).toContainText(
-      'Recaptured.'
-    );
-  });
+		await page.keyboard.type("Recaptured.");
+		await expect(
+			page.locator(".paged-editor__hidden-pm .ProseMirror"),
+		).toContainText("Recaptured.");
+	});
 
-  test('focus state stays consistent with DOM focus after a toolbar interaction', async ({
-    page,
-  }) => {
-    await editor.focus();
-    await page.keyboard.type('Before. ');
+	test("focus state stays consistent with DOM focus after a toolbar interaction", async ({
+		page,
+	}) => {
+		await editor.focus();
+		await page.keyboard.type("Before. ");
 
-    // A toolbar button preventDefaults mousedown so DOM focus never leaves the
-    // editor; the caret must stay live and typing must continue at the cursor.
-    const bold = page.locator('[data-testid="toolbar-bold"], button[title*="Bold" i]').first();
-    if (await bold.count()) {
-      await bold.click();
-    }
-    expect(await pmIsFocused(page)).toBe(true);
+		// A toolbar button preventDefaults mousedown so DOM focus never leaves the
+		// editor; the caret must stay live and typing must continue at the cursor.
+		const bold = page
+			.locator('[data-testid="toolbar-bold"], button[title*="Bold" i]')
+			.first();
+		if (await bold.count()) {
+			await bold.click();
+		}
+		expect(await pmIsFocused(page)).toBe(true);
 
-    await page.keyboard.type('after.');
-    await expect(page.locator('.paged-editor__hidden-pm .ProseMirror')).toContainText(
-      'Before. after.'
-    );
-  });
+		await page.keyboard.type("after.");
+		await expect(
+			page.locator(".paged-editor__hidden-pm .ProseMirror"),
+		).toContainText("Before. after.");
+	});
 });

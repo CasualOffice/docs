@@ -25,162 +25,165 @@
  * sequential calls — that's the next ship.
  */
 
-import { Fragment } from 'prosemirror-model';
-import { stripModelPreamble } from '../stripPreamble';
+import { Fragment } from "prosemirror-model";
+import { stripModelPreamble } from "../stripPreamble";
 import {
-  combineValidators,
-  noPlaceholderValidator,
-  runJsonChatWithValidation,
-  type Validator,
-} from '../validateAndRetry';
-import type { Tool, ToolResult } from './types';
+	combineValidators,
+	noPlaceholderValidator,
+	runJsonChatWithValidation,
+	type Validator,
+} from "../validateAndRetry";
+import type { Tool, ToolResult } from "./types";
 
 export interface TranslateArgs {
-  /** Target language. ISO code or natural-language name both accepted. */
-  targetLanguage?: string;
-  /** Optional source language hint. */
-  sourceLanguage?: string;
+	/** Target language. ISO code or natural-language name both accepted. */
+	targetLanguage?: string;
+	/** Optional source language hint. */
+	sourceLanguage?: string;
 }
 
 const SCHEMA = {
-  type: 'object',
-  properties: {
-    translation: { type: 'string', minLength: 1 },
-  },
-  required: ['translation'],
+	type: "object",
+	properties: {
+		translation: { type: "string", minLength: 1 },
+	},
+	required: ["translation"],
 } as const;
 
 const COMMON_LANGS: Record<string, string> = {
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  it: 'Italian',
-  pt: 'Portuguese',
-  nl: 'Dutch',
-  pl: 'Polish',
-  ru: 'Russian',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-  ar: 'Arabic',
-  hi: 'Hindi',
-  tr: 'Turkish',
+	es: "Spanish",
+	fr: "French",
+	de: "German",
+	it: "Italian",
+	pt: "Portuguese",
+	nl: "Dutch",
+	pl: "Polish",
+	ru: "Russian",
+	ja: "Japanese",
+	ko: "Korean",
+	zh: "Chinese",
+	ar: "Arabic",
+	hi: "Hindi",
+	tr: "Turkish",
 };
 
 function resolveLanguageName(input?: string): string | null {
-  if (!input) return null;
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-  const lower = trimmed.toLowerCase();
-  if (COMMON_LANGS[lower]) return COMMON_LANGS[lower];
-  // Already a language name — title-case it.
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+	if (!input) return null;
+	const trimmed = input.trim();
+	if (!trimmed) return null;
+	const lower = trimmed.toLowerCase();
+	if (COMMON_LANGS[lower]) return COMMON_LANGS[lower];
+	// Already a language name — title-case it.
+	return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
 
 export const translateRangeTool: Tool<TranslateArgs> = {
-  name: 'translate',
-  description: 'Translate the selected text via the on-device LLM.',
-  async execute(args, ctx): Promise<ToolResult> {
-    const selection = ctx.getSelectionText().trim();
-    if (!selection) {
-      return {
-        kind: 'error',
-        message: 'Select the text you want translated first.',
-      };
-    }
-    const target = resolveLanguageName(args.targetLanguage);
-    if (!target) {
-      return {
-        kind: 'error',
-        message: 'Tell me which language to translate into (e.g. "translate to Spanish").',
-      };
-    }
-    const view = ctx.getView();
-    if (!view) return { kind: 'error', message: 'Editor is not focused.' };
+	name: "translate",
+	description: "Translate the selected text via the on-device LLM.",
+	async execute(args, ctx): Promise<ToolResult> {
+		const selection = ctx.getSelectionText().trim();
+		if (!selection) {
+			return {
+				kind: "error",
+				message: "Select the text you want translated first.",
+			};
+		}
+		const target = resolveLanguageName(args.targetLanguage);
+		if (!target) {
+			return {
+				kind: "error",
+				message:
+					'Tell me which language to translate into (e.g. "translate to Spanish").',
+			};
+		}
+		const view = ctx.getView();
+		if (!view) return { kind: "error", message: "Editor is not focused." };
 
-    const sourceHint = resolveLanguageName(args.sourceLanguage);
-    const system =
-      `You are a professional translator. ` +
-      `Translate the user's text into ${target}${sourceHint ? ` from ${sourceHint}` : ''}. ` +
-      `Preserve proper nouns, technical terms, and original punctuation style. ` +
-      `Return ONLY a JSON object: {"translation": "<the translation>"}. ` +
-      `No commentary, no quotation marks around the whole reply.`;
+		const sourceHint = resolveLanguageName(args.sourceLanguage);
+		const system =
+			`You are a professional translator. ` +
+			`Translate the user's text into ${target}${sourceHint ? ` from ${sourceHint}` : ""}. ` +
+			`Preserve proper nouns, technical terms, and original punctuation style. ` +
+			`Return ONLY a JSON object: {"translation": "<the translation>"}. ` +
+			`No commentary, no quotation marks around the whole reply.`;
 
-    // Semantic translation check: must be non-empty AND not the same
-    // string as the source (a verbatim echo means the model failed to
-    // translate). Doesn't catch wrong-language output — that's a
-    // model-quality issue beyond a deterministic regex's reach.
-    const semanticTranslateValidator: Validator<{ translation: string }> = (o) => {
-      const t = (o.translation ?? '').trim();
-      if (!t) return [{ field: 'translation', text: '', reason: 'is empty' }];
-      if (t === selection.trim())
-        return [
-          {
-            field: 'translation',
-            text: t.slice(0, 60),
-            reason: 'is identical to the source — model did not translate',
-          },
-        ];
-      return [];
-    };
-    let out: { translation: string };
-    try {
-      out = await runJsonChatWithValidation<{ translation: string }>(
-        [
-          { role: 'system', content: system },
-          { role: 'user', content: selection },
-        ],
-        {
-          schema: SCHEMA,
-          maxTokens: Math.min(768, Math.ceil(selection.length * 1.6) + 64),
-          temperature: 0.2,
-          signal: ctx.signal,
-          validator: combineValidators(
-            noPlaceholderValidator as Validator<{ translation: string }>,
-            semanticTranslateValidator
-          ),
-        }
-      );
-    } catch (err) {
-      return {
-        kind: 'error',
-        message: `Translation failed — ${(err as Error).message}`,
-      };
-    }
+		// Semantic translation check: must be non-empty AND not the same
+		// string as the source (a verbatim echo means the model failed to
+		// translate). Doesn't catch wrong-language output — that's a
+		// model-quality issue beyond a deterministic regex's reach.
+		const semanticTranslateValidator: Validator<{ translation: string }> = (
+			o,
+		) => {
+			const t = (o.translation ?? "").trim();
+			if (!t) return [{ field: "translation", text: "", reason: "is empty" }];
+			if (t === selection.trim())
+				return [
+					{
+						field: "translation",
+						text: t.slice(0, 60),
+						reason: "is identical to the source — model did not translate",
+					},
+				];
+			return [];
+		};
+		let out: { translation: string };
+		try {
+			out = await runJsonChatWithValidation<{ translation: string }>(
+				[
+					{ role: "system", content: system },
+					{ role: "user", content: selection },
+				],
+				{
+					schema: SCHEMA,
+					maxTokens: Math.min(768, Math.ceil(selection.length * 1.6) + 64),
+					temperature: 0.2,
+					signal: ctx.signal,
+					validator: combineValidators(
+						noPlaceholderValidator as Validator<{ translation: string }>,
+						semanticTranslateValidator,
+					),
+				},
+			);
+		} catch (err) {
+			return {
+				kind: "error",
+				message: `Translation failed — ${(err as Error).message}`,
+			};
+		}
 
-    const translation = stripModelPreamble(out.translation);
-    if (!translation) {
-      return { kind: 'error', message: 'Model returned an empty translation.' };
-    }
+		const translation = stripModelPreamble(out.translation);
+		if (!translation) {
+			return { kind: "error", message: "Model returned an empty translation." };
+		}
 
-    const paraType = ctx.schema.nodes.paragraph;
-    if (!paraType) {
-      return { kind: 'error', message: 'Editor schema is missing paragraph.' };
-    }
-    // Translation can be multi-paragraph if the source was. Split on
-    // blank lines and rebuild as paragraph nodes so the OOXML round-
-    // trip preserves the structure.
-    const paragraphs = translation
-      .split(/\n{2,}/)
-      .map((p) => p.trim())
-      .filter(Boolean);
-    const fragment = Fragment.fromArray(
-      paragraphs.map((p) => paraType.create(null, ctx.schema.text(p)))
-    );
+		const paraType = ctx.schema.nodes.paragraph;
+		if (!paraType) {
+			return { kind: "error", message: "Editor schema is missing paragraph." };
+		}
+		// Translation can be multi-paragraph if the source was. Split on
+		// blank lines and rebuild as paragraph nodes so the OOXML round-
+		// trip preserves the structure.
+		const paragraphs = translation
+			.split(/\n{2,}/)
+			.map((p) => p.trim())
+			.filter(Boolean);
+		const fragment = Fragment.fromArray(
+			paragraphs.map((p) => paraType.create(null, ctx.schema.text(p))),
+		);
 
-    const { from, to } = view.state.selection;
-    // Phase 2: stage as a proposal. The popover lets the user see the
-    // translation alongside the original before any text in the doc
-    // changes — and Replace lands the change as a tracked-change
-    // suggestion so the existing review bar owns the final accept.
-    return {
-      kind: 'proposal',
-      what: 'translation',
-      summary: `Translation — ${target}`,
-      fragment,
-      replaceRange: { from, to },
-      intent: 'translate',
-      asTrackedChange: true,
-    };
-  },
+		const { from, to } = view.state.selection;
+		// Phase 2: stage as a proposal. The popover lets the user see the
+		// translation alongside the original before any text in the doc
+		// changes — and Replace lands the change as a tracked-change
+		// suggestion so the existing review bar owns the final accept.
+		return {
+			kind: "proposal",
+			what: "translation",
+			summary: `Translation — ${target}`,
+			fragment,
+			replaceRange: { from, to },
+			intent: "translate",
+			asTrackedChange: true,
+		};
+	},
 };

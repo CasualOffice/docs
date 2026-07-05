@@ -2,12 +2,15 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { createEmptyDocument, type Document as DocxDocument } from '@casualoffice/docs';
-import type { TemplateEntry } from './manifest';
+import {
+	createEmptyDocument,
+	type Document as DocxDocument,
+} from "@casualoffice/docs";
+import type { TemplateEntry } from "./manifest";
 
 export type LoadedTemplate =
-  | { kind: 'document'; document: DocxDocument; fileName: string }
-  | { kind: 'buffer'; buffer: ArrayBuffer; fileName: string };
+	| { kind: "document"; document: DocxDocument; fileName: string }
+	| { kind: "buffer"; buffer: ArrayBuffer; fileName: string };
 
 /**
  * Resolve a template entry into something the editor can mount.
@@ -15,26 +18,23 @@ export type LoadedTemplate =
  * - 'synthesized' → in-memory Document (no network).
  * - 'docx' → fetched ArrayBuffer (the editor parses it on mount).
  */
-export async function loadTemplate(entry: TemplateEntry): Promise<LoadedTemplate> {
-  if (entry.source.kind === 'synthesized') {
-    return {
-      kind: 'document',
-      document: createEmptyDocument(),
-      fileName: entry.defaultFileName,
-    };
-  }
-  if (entry.source.kind !== 'docx') {
-    // Text/markdown blanks are handled by the caller (App.handleSelectTemplate)
-    // via the source editor path and never reach loadTemplate.
-    throw new Error(`loadTemplate: unsupported source kind ${entry.source.kind}`);
-  }
-  const res = await fetch(entry.source.path);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${entry.source.path}: HTTP ${res.status}`);
-  }
-  return {
-    kind: 'buffer',
-    buffer: await res.arrayBuffer(),
-    fileName: entry.defaultFileName,
-  };
+export async function loadTemplate(
+	entry: TemplateEntry,
+): Promise<LoadedTemplate> {
+	if (entry.source.kind === "synthesized") {
+		return {
+			kind: "document",
+			document: createEmptyDocument(),
+			fileName: entry.defaultFileName,
+		};
+	}
+	const res = await fetch(entry.source.path);
+	if (!res.ok) {
+		throw new Error(`Failed to fetch ${entry.source.path}: HTTP ${res.status}`);
+	}
+	return {
+		kind: "buffer",
+		buffer: await res.arrayBuffer(),
+		fileName: entry.defaultFileName,
+	};
 }

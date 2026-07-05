@@ -23,49 +23,49 @@
  * - pic: Pictures
  */
 
-import { xml2js, js2xml, type Element as XmlElement } from 'xml-js';
+import { xml2js, js2xml, type Element as XmlElement } from "xml-js";
 
 // Re-export Element type for consumers
-export type { Element as XmlElement } from 'xml-js';
+export type { Element as XmlElement } from "xml-js";
 
 /**
  * Common OOXML namespace URIs
  */
 export const NAMESPACES = {
-  // Main namespaces
-  w: 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
-  a: 'http://schemas.openxmlformats.org/drawingml/2006/main',
-  r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+	// Main namespaces
+	w: "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+	a: "http://schemas.openxmlformats.org/drawingml/2006/main",
+	r: "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
 
-  // Drawing namespaces
-  wp: 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing',
-  wp14: 'http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing',
-  wps: 'http://schemas.microsoft.com/office/word/2010/wordprocessingShape',
-  wpc: 'http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas',
-  wpg: 'http://schemas.microsoft.com/office/word/2010/wordprocessingGroup',
+	// Drawing namespaces
+	wp: "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+	wp14: "http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing",
+	wps: "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
+	wpc: "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+	wpg: "http://schemas.microsoft.com/office/word/2010/wordprocessingGroup",
 
-  // Picture namespace
-  pic: 'http://schemas.openxmlformats.org/drawingml/2006/picture',
+	// Picture namespace
+	pic: "http://schemas.openxmlformats.org/drawingml/2006/picture",
 
-  // Math namespace
-  m: 'http://schemas.openxmlformats.org/officeDocument/2006/math',
+	// Math namespace
+	m: "http://schemas.openxmlformats.org/officeDocument/2006/math",
 
-  // Markup Compatibility
-  mc: 'http://schemas.openxmlformats.org/markup-compatibility/2006',
+	// Markup Compatibility
+	mc: "http://schemas.openxmlformats.org/markup-compatibility/2006",
 
-  // Legacy VML
-  v: 'urn:schemas-microsoft-com:vml',
-  o: 'urn:schemas-microsoft-com:office:office',
+	// Legacy VML
+	v: "urn:schemas-microsoft-com:vml",
+	o: "urn:schemas-microsoft-com:office:office",
 
-  // Other
-  w14: 'http://schemas.microsoft.com/office/word/2010/wordml',
-  w15: 'http://schemas.microsoft.com/office/word/2012/wordml',
+	// Other
+	w14: "http://schemas.microsoft.com/office/word/2010/wordml",
+	w15: "http://schemas.microsoft.com/office/word/2012/wordml",
 
-  // Content Types
-  ct: 'http://schemas.openxmlformats.org/package/2006/content-types',
+	// Content Types
+	ct: "http://schemas.openxmlformats.org/package/2006/content-types",
 
-  // Relationships
-  pr: 'http://schemas.openxmlformats.org/package/2006/relationships',
+	// Relationships
+	pr: "http://schemas.openxmlformats.org/package/2006/relationships",
 } as const;
 
 /**
@@ -75,51 +75,51 @@ export const NAMESPACES = {
  * @returns Parsed element tree
  */
 export function parseXml(xml: string): XmlElement {
-  const result = xml2js(xml, {
-    compact: false,
-    ignoreComment: true,
-    ignoreInstruction: true,
-    ignoreDoctype: true,
-    alwaysArray: false,
-    // IMPORTANT: Do NOT trim whitespace - it strips significant spaces
-    // around hyperlinks and other inline elements. DOCX uses xml:space="preserve"
-    // to indicate significant whitespace, but we need to preserve all text as-is.
-    trim: false,
-    // IMPORTANT: Without this, xml-js silently drops whitespace-only text nodes
-    // (e.g. <w:t xml:space="preserve"> </w:t> loses the space).
-    captureSpacesBetweenElements: true,
-    attributesKey: 'attributes',
-    textKey: 'text',
-  }) as XmlElement;
+	const result = xml2js(xml, {
+		compact: false,
+		ignoreComment: true,
+		ignoreInstruction: true,
+		ignoreDoctype: true,
+		alwaysArray: false,
+		// IMPORTANT: Do NOT trim whitespace - it strips significant spaces
+		// around hyperlinks and other inline elements. DOCX uses xml:space="preserve"
+		// to indicate significant whitespace, but we need to preserve all text as-is.
+		trim: false,
+		// IMPORTANT: Without this, xml-js silently drops whitespace-only text nodes
+		// (e.g. <w:t xml:space="preserve"> </w:t> loses the space).
+		captureSpacesBetweenElements: true,
+		attributesKey: "attributes",
+		textKey: "text",
+	}) as XmlElement;
 
-  return result;
+	return result;
 }
 
 /**
  * Serialize an XmlElement back to an XML string
  */
 export function elementToXml(element: XmlElement): string {
-  return js2xml({ elements: [element] }, { compact: false, spaces: 0 });
+	return js2xml({ elements: [element] }, { compact: false, spaces: 0 });
 }
 
 /**
  * Parse XML string to a more convenient format
  */
 export function parseXmlDocument(xml: string): XmlElement | null {
-  try {
-    const parsed = parseXml(xml);
+	try {
+		const parsed = parseXml(xml);
 
-    // The root is typically the declaration + elements array
-    if (parsed.elements && parsed.elements.length > 0) {
-      // Return the first real element (skip declarations)
-      return parsed.elements.find((e) => e.type === 'element') ?? null;
-    }
+		// The root is typically the declaration + elements array
+		if (parsed.elements && parsed.elements.length > 0) {
+			// Return the first real element (skip declarations)
+			return parsed.elements.find((e) => e.type === "element") ?? null;
+		}
 
-    return parsed;
-  } catch (error) {
-    console.warn('Failed to parse XML:', error);
-    return null;
-  }
+		return parsed;
+	} catch (error) {
+		console.warn("Failed to parse XML:", error);
+		return null;
+	}
 }
 
 /**
@@ -127,8 +127,8 @@ export function parseXmlDocument(xml: string): XmlElement | null {
  * e.g., "w:p" -> "p", "a:graphic" -> "graphic"
  */
 export function getLocalName(name: string): string {
-  const colonIndex = name.indexOf(':');
-  return colonIndex >= 0 ? name.substring(colonIndex + 1) : name;
+	const colonIndex = name.indexOf(":");
+	return colonIndex >= 0 ? name.substring(colonIndex + 1) : name;
 }
 
 /**
@@ -136,8 +136,8 @@ export function getLocalName(name: string): string {
  * e.g., "w:p" -> "w", "a:graphic" -> "a"
  */
 export function getNamespacePrefix(name: string): string | null {
-  const colonIndex = name.indexOf(':');
-  return colonIndex >= 0 ? name.substring(0, colonIndex) : null;
+	const colonIndex = name.indexOf(":");
+	return colonIndex >= 0 ? name.substring(0, colonIndex) : null;
 }
 
 /**
@@ -147,16 +147,20 @@ export function getNamespacePrefix(name: string): string | null {
  * @param namespace - Namespace prefix (e.g., "w", "a")
  * @param localName - Local element name (e.g., "p", "r")
  */
-export function matchesName(element: XmlElement, namespace: string, localName: string): boolean {
-  if (!element.name) return false;
+export function matchesName(
+	element: XmlElement,
+	namespace: string,
+	localName: string,
+): boolean {
+	if (!element.name) return false;
 
-  const fullName = `${namespace}:${localName}`;
-  if (element.name === fullName) return true;
+	const fullName = `${namespace}:${localName}`;
+	if (element.name === fullName) return true;
 
-  // Also check just the local name if no namespace prefix in element
-  if (getLocalName(element.name) === localName) return true;
+	// Also check just the local name if no namespace prefix in element
+	if (getLocalName(element.name) === localName) return true;
 
-  return false;
+	return false;
 }
 
 /**
@@ -168,28 +172,28 @@ export function matchesName(element: XmlElement, namespace: string, localName: s
  * @returns First matching child or null
  */
 export function findChild(
-  parent: XmlElement | null | undefined,
-  namespace: string,
-  localName: string
+	parent: XmlElement | null | undefined,
+	namespace: string,
+	localName: string,
 ): XmlElement | null {
-  if (!parent || !parent.elements) return null;
+	if (!parent || !parent.elements) return null;
 
-  const fullName = `${namespace}:${localName}`;
+	const fullName = `${namespace}:${localName}`;
 
-  for (const child of parent.elements) {
-    if (child.type !== 'element') continue;
+	for (const child of parent.elements) {
+		if (child.type !== "element") continue;
 
-    if (child.name === fullName) {
-      return child;
-    }
+		if (child.name === fullName) {
+			return child;
+		}
 
-    // Check local name match
-    if (getLocalName(child.name || '') === localName) {
-      return child;
-    }
-  }
+		// Check local name match
+		if (getLocalName(child.name || "") === localName) {
+			return child;
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -201,24 +205,27 @@ export function findChild(
  * @returns Array of matching children
  */
 export function findChildren(
-  parent: XmlElement | null | undefined,
-  namespace: string,
-  localName: string
+	parent: XmlElement | null | undefined,
+	namespace: string,
+	localName: string,
 ): XmlElement[] {
-  if (!parent || !parent.elements) return [];
+	if (!parent || !parent.elements) return [];
 
-  const fullName = `${namespace}:${localName}`;
-  const results: XmlElement[] = [];
+	const fullName = `${namespace}:${localName}`;
+	const results: XmlElement[] = [];
 
-  for (const child of parent.elements) {
-    if (child.type !== 'element') continue;
+	for (const child of parent.elements) {
+		if (child.type !== "element") continue;
 
-    if (child.name === fullName || getLocalName(child.name || '') === localName) {
-      results.push(child);
-    }
-  }
+		if (
+			child.name === fullName ||
+			getLocalName(child.name || "") === localName
+		) {
+			results.push(child);
+		}
+	}
 
-  return results;
+	return results;
 }
 
 /**
@@ -229,20 +236,20 @@ export function findChildren(
  * @returns First matching child or null
  */
 export function findChildByLocalName(
-  parent: XmlElement | null | undefined,
-  localName: string
+	parent: XmlElement | null | undefined,
+	localName: string,
 ): XmlElement | null {
-  if (!parent || !parent.elements) return null;
+	if (!parent || !parent.elements) return null;
 
-  for (const child of parent.elements) {
-    if (child.type !== 'element') continue;
+	for (const child of parent.elements) {
+		if (child.type !== "element") continue;
 
-    if (getLocalName(child.name || '') === localName) {
-      return child;
-    }
-  }
+		if (getLocalName(child.name || "") === localName) {
+			return child;
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -253,14 +260,15 @@ export function findChildByLocalName(
  * @returns Array of matching children
  */
 export function findChildrenByLocalName(
-  parent: XmlElement | null | undefined,
-  localName: string
+	parent: XmlElement | null | undefined,
+	localName: string,
 ): XmlElement[] {
-  if (!parent || !parent.elements) return [];
+	if (!parent || !parent.elements) return [];
 
-  return parent.elements.filter(
-    (child) => child.type === 'element' && getLocalName(child.name || '') === localName
-  );
+	return parent.elements.filter(
+		(child) =>
+			child.type === "element" && getLocalName(child.name || "") === localName,
+	);
 }
 
 /**
@@ -271,17 +279,17 @@ export function findChildrenByLocalName(
  * @returns First matching child or null
  */
 export function findByFullName(
-  parent: XmlElement | null | undefined,
-  fullName: string
+	parent: XmlElement | null | undefined,
+	fullName: string,
 ): XmlElement | null {
-  if (!parent || !parent.elements) return null;
+	if (!parent || !parent.elements) return null;
 
-  for (const child of parent.elements) {
-    if (child.type !== 'element') continue;
-    if (child.name === fullName) return child;
-  }
+	for (const child of parent.elements) {
+		if (child.type !== "element") continue;
+		if (child.name === fullName) return child;
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -290,9 +298,11 @@ export function findByFullName(
  * @param parent - Parent element
  * @returns Array of child elements
  */
-export function getChildElements(parent: XmlElement | null | undefined): XmlElement[] {
-  if (!parent || !parent.elements) return [];
-  return parent.elements.filter((child) => child.type === 'element');
+export function getChildElements(
+	parent: XmlElement | null | undefined,
+): XmlElement[] {
+	if (!parent || !parent.elements) return [];
+	return parent.elements.filter((child) => child.type === "element");
 }
 
 /**
@@ -304,28 +314,28 @@ export function getChildElements(parent: XmlElement | null | undefined): XmlElem
  * @returns Attribute value or null if not found
  */
 export function getAttribute(
-  element: XmlElement | null | undefined,
-  namespace: string | null,
-  name: string
+	element: XmlElement | null | undefined,
+	namespace: string | null,
+	name: string,
 ): string | null {
-  if (!element || !element.attributes) return null;
+	if (!element || !element.attributes) return null;
 
-  const attrs = element.attributes as Record<string, string>;
+	const attrs = element.attributes as Record<string, string>;
 
-  // Try with namespace prefix first
-  if (namespace) {
-    const prefixedName = `${namespace}:${name}`;
-    if (prefixedName in attrs) {
-      return attrs[prefixedName];
-    }
-  }
+	// Try with namespace prefix first
+	if (namespace) {
+		const prefixedName = `${namespace}:${name}`;
+		if (prefixedName in attrs) {
+			return attrs[prefixedName];
+		}
+	}
 
-  // Try without namespace
-  if (name in attrs) {
-    return attrs[name];
-  }
+	// Try without namespace
+	if (name in attrs) {
+		return attrs[name];
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -336,20 +346,20 @@ export function getAttribute(
  * @returns First found attribute value or null
  */
 export function getAttributeAny(
-  element: XmlElement | null | undefined,
-  names: string[]
+	element: XmlElement | null | undefined,
+	names: string[],
 ): string | null {
-  if (!element || !element.attributes) return null;
+	if (!element || !element.attributes) return null;
 
-  const attrs = element.attributes as Record<string, string>;
+	const attrs = element.attributes as Record<string, string>;
 
-  for (const name of names) {
-    if (name in attrs) {
-      return attrs[name];
-    }
-  }
+	for (const name of names) {
+		if (name in attrs) {
+			return attrs[name];
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -358,9 +368,11 @@ export function getAttributeAny(
  * @param element - Element to get attributes from
  * @returns Record of attribute name -> value
  */
-export function getAttributes(element: XmlElement | null | undefined): Record<string, string> {
-  if (!element || !element.attributes) return {};
-  return element.attributes as Record<string, string>;
+export function getAttributes(
+	element: XmlElement | null | undefined,
+): Record<string, string> {
+	if (!element || !element.attributes) return {};
+	return element.attributes as Record<string, string>;
 }
 
 /**
@@ -370,27 +382,27 @@ export function getAttributes(element: XmlElement | null | undefined): Record<st
  * @returns Text content or empty string
  */
 export function getTextContent(element: XmlElement | null | undefined): string {
-  if (!element) return '';
+	if (!element) return "";
 
-  // Check for direct text property
-  if ('text' in element && typeof element.text === 'string') {
-    return element.text;
-  }
+	// Check for direct text property
+	if ("text" in element && typeof element.text === "string") {
+		return element.text;
+	}
 
-  // Check elements array for text nodes
-  if (!element.elements) return '';
+	// Check elements array for text nodes
+	if (!element.elements) return "";
 
-  let text = '';
-  for (const child of element.elements) {
-    if (child.type === 'text' && 'text' in child) {
-      text += child.text ?? '';
-    } else if (child.type === 'element') {
-      // Recurse into child elements
-      text += getTextContent(child);
-    }
-  }
+	let text = "";
+	for (const child of element.elements) {
+		if (child.type === "text" && "text" in child) {
+			text += child.text ?? "";
+		} else if (child.type === "element") {
+			// Recurse into child elements
+			text += getTextContent(child);
+		}
+	}
 
-  return text;
+	return text;
 }
 
 /**
@@ -402,25 +414,25 @@ export function getTextContent(element: XmlElement | null | undefined): string {
  * @returns true if attribute exists and is truthy
  */
 export function hasFlag(
-  element: XmlElement | null | undefined,
-  namespace: string | null,
-  name: string
+	element: XmlElement | null | undefined,
+	namespace: string | null,
+	name: string,
 ): boolean {
-  const value = getAttribute(element, namespace, name);
+	const value = getAttribute(element, namespace, name);
 
-  // In OOXML, presence of element often means true, absence means false
-  // If value is null, check if the element itself exists
-  if (value === null) {
-    return false;
-  }
+	// In OOXML, presence of element often means true, absence means false
+	// If value is null, check if the element itself exists
+	if (value === null) {
+		return false;
+	}
 
-  // Explicitly false
-  if (value === '0' || value === 'false' || value === 'off') {
-    return false;
-  }
+	// Explicitly false
+	if (value === "0" || value === "false" || value === "off") {
+		return false;
+	}
 
-  // Any other value (including "1", "true", "on", or empty string) means true
-  return true;
+	// Any other value (including "1", "true", "on", or empty string) means true
+	return true;
 }
 
 /**
@@ -432,11 +444,11 @@ export function hasFlag(
  * @returns true if child element exists
  */
 export function hasChild(
-  parent: XmlElement | null | undefined,
-  namespace: string,
-  localName: string
+	parent: XmlElement | null | undefined,
+	namespace: string,
+	localName: string,
 ): boolean {
-  return findChild(parent, namespace, localName) !== null;
+	return findChild(parent, namespace, localName) !== null;
 }
 
 /**
@@ -446,19 +458,19 @@ export function hasChild(
  * @returns Object with val, themeColor, themeTint, themeShade
  */
 export function parseColorElement(element: XmlElement | null | undefined): {
-  val?: string;
-  themeColor?: string;
-  themeTint?: string;
-  themeShade?: string;
+	val?: string;
+	themeColor?: string;
+	themeTint?: string;
+	themeShade?: string;
 } | null {
-  if (!element) return null;
+	if (!element) return null;
 
-  return {
-    val: getAttribute(element, 'w', 'val') ?? undefined,
-    themeColor: getAttribute(element, 'w', 'themeColor') ?? undefined,
-    themeTint: getAttribute(element, 'w', 'themeTint') ?? undefined,
-    themeShade: getAttribute(element, 'w', 'themeShade') ?? undefined,
-  };
+	return {
+		val: getAttribute(element, "w", "val") ?? undefined,
+		themeColor: getAttribute(element, "w", "themeColor") ?? undefined,
+		themeTint: getAttribute(element, "w", "themeTint") ?? undefined,
+		themeShade: getAttribute(element, "w", "themeShade") ?? undefined,
+	};
 }
 
 /**
@@ -471,18 +483,18 @@ export function parseColorElement(element: XmlElement | null | undefined): {
  * @returns Parsed number or undefined
  */
 export function parseNumericAttribute(
-  element: XmlElement | null | undefined,
-  namespace: string | null,
-  name: string,
-  scale: number = 1
+	element: XmlElement | null | undefined,
+	namespace: string | null,
+	name: string,
+	scale: number = 1,
 ): number | undefined {
-  const value = getAttribute(element, namespace, name);
-  if (value === null) return undefined;
+	const value = getAttribute(element, namespace, name);
+	if (value === null) return undefined;
 
-  const num = parseInt(value, 10);
-  if (isNaN(num)) return undefined;
+	const num = parseInt(value, 10);
+	if (isNaN(num)) return undefined;
 
-  return num * scale;
+	return num * scale;
 }
 
 /**
@@ -498,22 +510,22 @@ export function parseNumericAttribute(
  * @returns boolean value
  */
 export function parseBooleanElement(
-  element: XmlElement | null | undefined,
-  namespace: string = 'w'
+	element: XmlElement | null | undefined,
+	namespace: string = "w",
 ): boolean {
-  if (!element) return false;
+	if (!element) return false;
 
-  const val = getAttribute(element, namespace, 'val');
+	const val = getAttribute(element, namespace, "val");
 
-  // No val attribute = true (element presence implies true)
-  if (val === null) return true;
+	// No val attribute = true (element presence implies true)
+	if (val === null) return true;
 
-  // Explicit false values
-  if (val === '0' || val === 'false' || val === 'off') {
-    return false;
-  }
+	// Explicit false values
+	if (val === "0" || val === "false" || val === "off") {
+		return false;
+	}
 
-  return true;
+	return true;
 }
 
 /**
@@ -525,28 +537,28 @@ export function parseBooleanElement(
  * @returns First matching element found or null
  */
 export function findDeep(
-  root: XmlElement | null | undefined,
-  namespace: string,
-  localName: string
+	root: XmlElement | null | undefined,
+	namespace: string,
+	localName: string,
 ): XmlElement | null {
-  if (!root) return null;
+	if (!root) return null;
 
-  // Check if this element matches
-  if (matchesName(root, namespace, localName)) {
-    return root;
-  }
+	// Check if this element matches
+	if (matchesName(root, namespace, localName)) {
+		return root;
+	}
 
-  // Search children
-  if (root.elements) {
-    for (const child of root.elements) {
-      if (child.type !== 'element') continue;
+	// Search children
+	if (root.elements) {
+		for (const child of root.elements) {
+			if (child.type !== "element") continue;
 
-      const found = findDeep(child, namespace, localName);
-      if (found) return found;
-    }
-  }
+			const found = findDeep(child, namespace, localName);
+			if (found) return found;
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -558,28 +570,28 @@ export function findDeep(
  * @returns Array of all matching elements
  */
 export function findAllDeep(
-  root: XmlElement | null | undefined,
-  namespace: string,
-  localName: string
+	root: XmlElement | null | undefined,
+	namespace: string,
+	localName: string,
 ): XmlElement[] {
-  const results: XmlElement[] = [];
+	const results: XmlElement[] = [];
 
-  function search(element: XmlElement | null | undefined): void {
-    if (!element) return;
+	function search(element: XmlElement | null | undefined): void {
+		if (!element) return;
 
-    if (matchesName(element, namespace, localName)) {
-      results.push(element);
-    }
+		if (matchesName(element, namespace, localName)) {
+			results.push(element);
+		}
 
-    if (element.elements) {
-      for (const child of element.elements) {
-        if (child.type === 'element') {
-          search(child);
-        }
-      }
-    }
-  }
+		if (element.elements) {
+			for (const child of element.elements) {
+				if (child.type === "element") {
+					search(child);
+				}
+			}
+		}
+	}
 
-  search(root);
-  return results;
+	search(root);
+	return results;
 }

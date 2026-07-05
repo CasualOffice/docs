@@ -19,7 +19,7 @@
  * scoped to those classes.
  */
 
-const BODY_SCOPE = '.layout-page-content';
+const BODY_SCOPE = ".layout-page-content";
 
 /**
  * All body-tree run spans carrying both `data-pm-start` and `data-pm-end`.
@@ -27,9 +27,11 @@ const BODY_SCOPE = '.layout-page-content';
  * This is the workhorse for caret resolution and selection-rect painting.
  */
 export function findBodyPmSpans(container: ParentNode): HTMLElement[] {
-  return Array.from(
-    container.querySelectorAll<HTMLElement>(`${BODY_SCOPE} span[data-pm-start][data-pm-end]`)
-  );
+	return Array.from(
+		container.querySelectorAll<HTMLElement>(
+			`${BODY_SCOPE} span[data-pm-start][data-pm-end]`,
+		),
+	);
 }
 
 /**
@@ -37,7 +39,9 @@ export function findBodyPmSpans(container: ParentNode): HTMLElement[] {
  * paragraph has no painted text spans.
  */
 export function findBodyEmptyRuns(container: ParentNode): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(`${BODY_SCOPE} .layout-empty-run`));
+	return Array.from(
+		container.querySelectorAll<HTMLElement>(`${BODY_SCOPE} .layout-empty-run`),
+	);
 }
 
 /**
@@ -48,7 +52,9 @@ export function findBodyEmptyRuns(container: ParentNode): HTMLElement[] {
  * filters down to run spans only.
  */
 export function findBodyPmAnchors(container: ParentNode): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(`${BODY_SCOPE} [data-pm-start]`));
+	return Array.from(
+		container.querySelectorAll<HTMLElement>(`${BODY_SCOPE} [data-pm-start]`),
+	);
 }
 
 /**
@@ -58,13 +64,18 @@ export function findBodyPmAnchors(container: ParentNode): HTMLElement[] {
  * caller already knows the exact PM position it wants to find. Returns
  * `null` for non-finite inputs so callers don't need to guard.
  */
-export function findBodyPmAnchor(container: ParentNode, pmStart: number): HTMLElement | null {
-  if (!Number.isFinite(pmStart)) return null;
-  return container.querySelector<HTMLElement>(`${BODY_SCOPE} [data-pm-start="${pmStart}"]`);
+export function findBodyPmAnchor(
+	container: ParentNode,
+	pmStart: number,
+): HTMLElement | null {
+	if (!Number.isFinite(pmStart)) return null;
+	return container.querySelector<HTMLElement>(
+		`${BODY_SCOPE} [data-pm-start="${pmStart}"]`,
+	);
 }
 
-const HEADER_SCOPE = '.layout-page-header';
-const FOOTER_SCOPE = '.layout-page-footer';
+const HEADER_SCOPE = ".layout-page-header";
+const FOOTER_SCOPE = ".layout-page-footer";
 
 /**
  * First header- or footer-tree element whose `data-pm-start` exactly
@@ -81,11 +92,13 @@ const FOOTER_SCOPE = '.layout-page-footer';
  * `which === 'footer'` under `.layout-page-footer`.
  */
 export function findHeaderFooterPmAnchor(
-  container: ParentNode,
-  pmStart: number,
-  which: 'header' | 'footer'
+	container: ParentNode,
+	pmStart: number,
+	which: "header" | "footer",
 ): HTMLElement | null {
-  if (!Number.isFinite(pmStart)) return null;
-  const scope = which === 'header' ? HEADER_SCOPE : FOOTER_SCOPE;
-  return container.querySelector<HTMLElement>(`${scope} [data-pm-start="${pmStart}"]`);
+	if (!Number.isFinite(pmStart)) return null;
+	const scope = which === "header" ? HEADER_SCOPE : FOOTER_SCOPE;
+	return container.querySelector<HTMLElement>(
+		`${scope} [data-pm-start="${pmStart}"]`,
+	);
 }

@@ -2,8 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
-import { test, expect } from '@playwright/test';
-import { EditorPage } from '../helpers/editor-page';
+import { test, expect } from "@playwright/test";
+import { EditorPage } from "../helpers/editor-page";
 
 /**
  * table-indent-offset — openspec `table-rendering-fidelity`.
@@ -29,39 +29,41 @@ import { EditorPage } from '../helpers/editor-page';
  *     → expected marginLeft = -108/1440 * 96 ≈ -7.2 px
  */
 
-test('table marginLeft compensates for the default left cell margin', async ({ page }) => {
-  const editor = new EditorPage(page);
-  await editor.goto();
-  await editor.waitForReady();
-  await editor.loadDocxFile('fixtures/table-indent.docx');
-  await page.waitForTimeout(600);
+test("table marginLeft compensates for the default left cell margin", async ({
+	page,
+}) => {
+	const editor = new EditorPage(page);
+	await editor.goto();
+	await editor.waitForReady();
+	await editor.loadDocxFile("fixtures/table-indent.docx");
+	await page.waitForTimeout(600);
 
-  const data = await page.evaluate(() => {
-    const tables = Array.from(document.querySelectorAll<HTMLElement>('.layout-table')).filter(
-      (el) => !el.closest('.paged-editor__hidden-pm')
-    );
-    const findByCellText = (text: string) =>
-      tables.find((t) => t.textContent?.includes(text)) ?? null;
-    const indented = findByCellText('INDENTED-TABLE-CELL-1');
-    const flush = findByCellText('FLUSH-TABLE-CELL-1');
-    // Body-level tables render with `position: absolute` and the indent
-    // flows into `left`. The nested-table path (e.g. inside text boxes)
-    // uses `marginLeft` on a relative wrapper; we check both so the
-    // test stays robust if the painter changes.
-    const leftOrMargin = (el: HTMLElement | null) =>
-      el ? el.style.left || el.style.marginLeft || '' : '';
-    return {
-      indentedLeft: leftOrMargin(indented),
-      flushLeft: leftOrMargin(flush),
-    };
-  });
+	const data = await page.evaluate(() => {
+		const tables = Array.from(
+			document.querySelectorAll<HTMLElement>(".layout-table"),
+		).filter((el) => !el.closest(".paged-editor__hidden-pm"));
+		const findByCellText = (text: string) =>
+			tables.find((t) => t.textContent?.includes(text)) ?? null;
+		const indented = findByCellText("INDENTED-TABLE-CELL-1");
+		const flush = findByCellText("FLUSH-TABLE-CELL-1");
+		// Body-level tables render with `position: absolute` and the indent
+		// flows into `left`. The nested-table path (e.g. inside text boxes)
+		// uses `marginLeft` on a relative wrapper; we check both so the
+		// test stays robust if the painter changes.
+		const leftOrMargin = (el: HTMLElement | null) =>
+			el ? el.style.left || el.style.marginLeft || "" : "";
+		return {
+			indentedLeft: leftOrMargin(indented),
+			flushLeft: leftOrMargin(flush),
+		};
+	});
 
-  const TOL = 0.5;
-  const indentedPx = parseFloat(data.indentedLeft);
-  expect(Number.isFinite(indentedPx)).toBe(true);
-  expect(Math.abs(indentedPx - 40.8)).toBeLessThan(TOL);
+	const TOL = 0.5;
+	const indentedPx = parseFloat(data.indentedLeft);
+	expect(Number.isFinite(indentedPx)).toBe(true);
+	expect(Math.abs(indentedPx - 40.8)).toBeLessThan(TOL);
 
-  const flushPx = parseFloat(data.flushLeft);
-  expect(Number.isFinite(flushPx)).toBe(true);
-  expect(Math.abs(flushPx - -7.2)).toBeLessThan(TOL);
+	const flushPx = parseFloat(data.flushLeft);
+	expect(Number.isFinite(flushPx)).toBe(true);
+	expect(Math.abs(flushPx - -7.2)).toBeLessThan(TOL);
 });

@@ -11,8 +11,8 @@
  * - Error handling with useful messages
  */
 
-import PizZip from 'pizzip';
-import Docxtemplater from 'docxtemplater';
+import PizZip from "pizzip";
+import Docxtemplater from "docxtemplater";
 
 // ============================================================================
 // TYPES
@@ -22,45 +22,47 @@ import Docxtemplater from 'docxtemplater';
  * Options for template processing
  */
 export interface ProcessTemplateOptions {
-  /** How to handle undefined variables */
-  nullGetter?: 'keep' | 'empty' | 'error';
-  /** Custom parser for variable names */
-  parser?: (tag: string) => { get: (scope: Record<string, unknown>) => unknown };
-  /** Line breaks: keep raw \n or convert to w:br */
-  linebreaks?: boolean;
-  /** Delimiter settings */
-  delimiters?: {
-    start?: string;
-    end?: string;
-  };
+	/** How to handle undefined variables */
+	nullGetter?: "keep" | "empty" | "error";
+	/** Custom parser for variable names */
+	parser?: (tag: string) => {
+		get: (scope: Record<string, unknown>) => unknown;
+	};
+	/** Line breaks: keep raw \n or convert to w:br */
+	linebreaks?: boolean;
+	/** Delimiter settings */
+	delimiters?: {
+		start?: string;
+		end?: string;
+	};
 }
 
 /**
  * Result of template processing
  */
 export interface ProcessTemplateResult {
-  /** The processed document buffer */
-  buffer: ArrayBuffer;
-  /** Variables that were found and replaced */
-  replacedVariables: string[];
-  /** Variables that were not replaced (no value provided) */
-  unreplacedVariables: string[];
-  /** Any warnings during processing */
-  warnings: string[];
+	/** The processed document buffer */
+	buffer: ArrayBuffer;
+	/** Variables that were found and replaced */
+	replacedVariables: string[];
+	/** Variables that were not replaced (no value provided) */
+	unreplacedVariables: string[];
+	/** Any warnings during processing */
+	warnings: string[];
 }
 
 /**
  * Error details from template processing
  */
 export interface TemplateError {
-  /** Error message */
-  message: string;
-  /** Variable name that caused the error (if applicable) */
-  variable?: string;
-  /** Error type */
-  type: 'parse' | 'render' | 'undefined' | 'unknown';
-  /** Original error */
-  originalError?: Error;
+	/** Error message */
+	message: string;
+	/** Variable name that caused the error (if applicable) */
+	variable?: string;
+	/** Error type */
+	type: "parse" | "render" | "undefined" | "unknown";
+	/** Original error */
+	originalError?: Error;
 }
 
 // ============================================================================
@@ -76,12 +78,12 @@ export interface TemplateError {
  * @returns Processed DOCX as ArrayBuffer
  */
 export function processTemplate(
-  buffer: ArrayBuffer,
-  variables: Record<string, string>,
-  options: ProcessTemplateOptions = {}
+	buffer: ArrayBuffer,
+	variables: Record<string, string>,
+	options: ProcessTemplateOptions = {},
 ): ArrayBuffer {
-  const result = processTemplateDetailed(buffer, variables, options);
-  return result.buffer;
+	const result = processTemplateDetailed(buffer, variables, options);
+	return result.buffer;
 }
 
 /**
@@ -93,76 +95,76 @@ export function processTemplate(
  * @returns Detailed processing result
  */
 export function processTemplateDetailed(
-  buffer: ArrayBuffer,
-  variables: Record<string, string>,
-  options: ProcessTemplateOptions = {}
+	buffer: ArrayBuffer,
+	variables: Record<string, string>,
+	options: ProcessTemplateOptions = {},
 ): ProcessTemplateResult {
-  const { nullGetter = 'keep', linebreaks = true, delimiters } = options;
+	const { nullGetter = "keep", linebreaks = true, delimiters } = options;
 
-  const warnings: string[] = [];
-  const replacedVariables: string[] = [];
-  const unreplacedVariables: string[] = [];
+	const warnings: string[] = [];
+	const replacedVariables: string[] = [];
+	const unreplacedVariables: string[] = [];
 
-  try {
-    // Load the docx as a zip
-    const zip = new PizZip(buffer);
+	try {
+		// Load the docx as a zip
+		const zip = new PizZip(buffer);
 
-    // Create docxtemplater instance
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks,
-      // Handle undefined tags based on option
-      nullGetter: (part: { module?: string; value?: string }) => {
-        const varName = part.value || '';
+		// Create docxtemplater instance
+		const doc = new Docxtemplater(zip, {
+			paragraphLoop: true,
+			linebreaks,
+			// Handle undefined tags based on option
+			nullGetter: (part: { module?: string; value?: string }) => {
+				const varName = part.value || "";
 
-        if (nullGetter === 'error') {
-          throw new Error(`Undefined variable: ${varName}`);
-        }
+				if (nullGetter === "error") {
+					throw new Error(`Undefined variable: ${varName}`);
+				}
 
-        if (nullGetter === 'empty') {
-          unreplacedVariables.push(varName);
-          return '';
-        }
+				if (nullGetter === "empty") {
+					unreplacedVariables.push(varName);
+					return "";
+				}
 
-        // Default: keep the tag as-is
-        unreplacedVariables.push(varName);
-        return `{${varName}}`;
-      },
-      // Custom delimiters if specified (docxtemplater uses single braces by default)
-      delimiters: delimiters
-        ? { start: delimiters.start || '{', end: delimiters.end || '}' }
-        : undefined,
-    });
+				// Default: keep the tag as-is
+				unreplacedVariables.push(varName);
+				return `{${varName}}`;
+			},
+			// Custom delimiters if specified (docxtemplater uses single braces by default)
+			delimiters: delimiters
+				? { start: delimiters.start || "{", end: delimiters.end || "}" }
+				: undefined,
+		});
 
-    // Track which variables are being replaced
-    Object.keys(variables).forEach((key) => {
-      if (variables[key] !== undefined && variables[key] !== null) {
-        replacedVariables.push(key);
-      }
-    });
+		// Track which variables are being replaced
+		Object.keys(variables).forEach((key) => {
+			if (variables[key] !== undefined && variables[key] !== null) {
+				replacedVariables.push(key);
+			}
+		});
 
-    // Set the data
-    doc.setData(variables);
+		// Set the data
+		doc.setData(variables);
 
-    // Render the document
-    doc.render();
+		// Render the document
+		doc.render();
 
-    // Get the output buffer
-    const outputBuffer = doc.getZip().generate({
-      type: 'arraybuffer',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 6 },
-    });
+		// Get the output buffer
+		const outputBuffer = doc.getZip().generate({
+			type: "arraybuffer",
+			compression: "DEFLATE",
+			compressionOptions: { level: 6 },
+		});
 
-    return {
-      buffer: outputBuffer,
-      replacedVariables,
-      unreplacedVariables,
-      warnings,
-    };
-  } catch (error) {
-    throw formatTemplateError(error);
-  }
+		return {
+			buffer: outputBuffer,
+			replacedVariables,
+			unreplacedVariables,
+			warnings,
+		};
+	} catch (error) {
+		throw formatTemplateError(error);
+	}
 }
 
 /**
@@ -174,14 +176,14 @@ export function processTemplateDetailed(
  * @returns Processed DOCX as Blob
  */
 export function processTemplateAsBlob(
-  buffer: ArrayBuffer,
-  variables: Record<string, string>,
-  options: ProcessTemplateOptions = {}
+	buffer: ArrayBuffer,
+	variables: Record<string, string>,
+	options: ProcessTemplateOptions = {},
 ): Blob {
-  const resultBuffer = processTemplate(buffer, variables, options);
-  return new Blob([resultBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  });
+	const resultBuffer = processTemplate(buffer, variables, options);
+	return new Blob([resultBuffer], {
+		type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	});
 }
 
 /**
@@ -193,13 +195,13 @@ export function processTemplateAsBlob(
  * @param options - Processing options
  */
 export function processTemplateAndDownload(
-  buffer: ArrayBuffer,
-  variables: Record<string, string>,
-  filename: string = 'document',
-  options: ProcessTemplateOptions = {}
+	buffer: ArrayBuffer,
+	variables: Record<string, string>,
+	filename: string = "document",
+	options: ProcessTemplateOptions = {},
 ): void {
-  const blob = processTemplateAsBlob(buffer, variables, options);
-  downloadBlob(blob, `${filename}.docx`);
+	const blob = processTemplateAsBlob(buffer, variables, options);
+	downloadBlob(blob, `${filename}.docx`);
 }
 
 // ============================================================================
@@ -213,19 +215,19 @@ export function processTemplateAndDownload(
  * @returns List of tag names found
  */
 export function getTemplateTags(buffer: ArrayBuffer): string[] {
-  try {
-    const zip = new PizZip(buffer);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
+	try {
+		const zip = new PizZip(buffer);
+		const doc = new Docxtemplater(zip, {
+			paragraphLoop: true,
+			linebreaks: true,
+		});
 
-    // Get the full text to extract tags
-    const fullText = doc.getFullText();
-    return extractTagsFromText(fullText);
-  } catch (error) {
-    throw formatTemplateError(error);
-  }
+		// Get the full text to extract tags
+		const fullText = doc.getFullText();
+		return extractTagsFromText(fullText);
+	} catch (error) {
+		throw formatTemplateError(error);
+	}
 }
 
 /**
@@ -235,47 +237,47 @@ export function getTemplateTags(buffer: ArrayBuffer): string[] {
  * @returns Validation result
  */
 export function validateTemplate(buffer: ArrayBuffer): {
-  valid: boolean;
-  errors: TemplateError[];
-  tags: string[];
+	valid: boolean;
+	errors: TemplateError[];
+	tags: string[];
 } {
-  const errors: TemplateError[] = [];
-  let tags: string[] = [];
+	const errors: TemplateError[] = [];
+	let tags: string[] = [];
 
-  try {
-    const zip = new PizZip(buffer);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
+	try {
+		const zip = new PizZip(buffer);
+		const doc = new Docxtemplater(zip, {
+			paragraphLoop: true,
+			linebreaks: true,
+		});
 
-    // Try to get full text (validates structure)
-    const fullText = doc.getFullText();
-    tags = extractTagsFromText(fullText);
+		// Try to get full text (validates structure)
+		const fullText = doc.getFullText();
+		tags = extractTagsFromText(fullText);
 
-    // Check for unclosed tags
-    const unclosedTags = findUnclosedTags(fullText);
-    for (const tag of unclosedTags) {
-      errors.push({
-        message: `Unclosed tag: ${tag}`,
-        variable: tag,
-        type: 'parse',
-      });
-    }
+		// Check for unclosed tags
+		const unclosedTags = findUnclosedTags(fullText);
+		for (const tag of unclosedTags) {
+			errors.push({
+				message: `Unclosed tag: ${tag}`,
+				variable: tag,
+				type: "parse",
+			});
+		}
 
-    return {
-      valid: errors.length === 0,
-      errors,
-      tags,
-    };
-  } catch (error) {
-    errors.push(formatTemplateError(error));
-    return {
-      valid: false,
-      errors,
-      tags,
-    };
-  }
+		return {
+			valid: errors.length === 0,
+			errors,
+			tags,
+		};
+	} catch (error) {
+		errors.push(formatTemplateError(error));
+		return {
+			valid: false,
+			errors,
+			tags,
+		};
+	}
 }
 
 /**
@@ -285,10 +287,16 @@ export function validateTemplate(buffer: ArrayBuffer): {
  * @param variables - Provided variable values
  * @returns Missing variable names
  */
-export function getMissingVariables(tags: string[], variables: Record<string, string>): string[] {
-  return tags.filter(
-    (tag) => !(tag in variables) || variables[tag] === undefined || variables[tag] === null
-  );
+export function getMissingVariables(
+	tags: string[],
+	variables: Record<string, string>,
+): string[] {
+	return tags.filter(
+		(tag) =>
+			!(tag in variables) ||
+			variables[tag] === undefined ||
+			variables[tag] === null,
+	);
 }
 
 /**
@@ -299,25 +307,28 @@ export function getMissingVariables(tags: string[], variables: Record<string, st
  * @param variables - Map of variable names to values
  * @returns Preview text
  */
-export function previewTemplate(buffer: ArrayBuffer, variables: Record<string, string>): string {
-  try {
-    const zip = new PizZip(buffer);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-      nullGetter: (part: { value?: string }) => {
-        const varName = part.value || '';
-        return `[${varName}]`;
-      },
-    });
+export function previewTemplate(
+	buffer: ArrayBuffer,
+	variables: Record<string, string>,
+): string {
+	try {
+		const zip = new PizZip(buffer);
+		const doc = new Docxtemplater(zip, {
+			paragraphLoop: true,
+			linebreaks: true,
+			nullGetter: (part: { value?: string }) => {
+				const varName = part.value || "";
+				return `[${varName}]`;
+			},
+		});
 
-    doc.setData(variables);
-    doc.render();
+		doc.setData(variables);
+		doc.render();
 
-    return doc.getFullText();
-  } catch (error) {
-    throw formatTemplateError(error);
-  }
+		return doc.getFullText();
+	} catch (error) {
+		throw formatTemplateError(error);
+	}
 }
 
 // ============================================================================
@@ -328,132 +339,135 @@ export function previewTemplate(buffer: ArrayBuffer, variables: Record<string, s
  * Extract tag names from text
  */
 function extractTagsFromText(text: string): string[] {
-  const tags: string[] = [];
-  const regex = /\{([^{}]+)\}/g;
-  let match: RegExpExecArray | null;
+	const tags: string[] = [];
+	const regex = /\{([^{}]+)\}/g;
+	let match: RegExpExecArray | null;
 
-  while ((match = regex.exec(text)) !== null) {
-    // docxtemplater uses single braces internally
-    const tag = match[1].trim();
-    if (tag && !tags.includes(tag)) {
-      tags.push(tag);
-    }
-  }
+	while ((match = regex.exec(text)) !== null) {
+		// docxtemplater uses single braces internally
+		const tag = match[1].trim();
+		if (tag && !tags.includes(tag)) {
+			tags.push(tag);
+		}
+	}
 
-  return tags.sort();
+	return tags.sort();
 }
 
 /**
  * Find unclosed template tags
  */
 function findUnclosedTags(text: string): string[] {
-  const unclosed: string[] = [];
+	const unclosed: string[] = [];
 
-  // Check for { without matching }
-  let depth = 0;
-  let currentTag = '';
+	// Check for { without matching }
+	let depth = 0;
+	let currentTag = "";
 
-  for (const char of text) {
-    if (char === '{') {
-      depth++;
-      currentTag = '';
-    } else if (char === '}') {
-      depth--;
-      if (depth < 0) {
-        depth = 0; // Reset on extra close brace
-      }
-    } else if (depth > 0) {
-      currentTag += char;
-    }
-  }
+	for (const char of text) {
+		if (char === "{") {
+			depth++;
+			currentTag = "";
+		} else if (char === "}") {
+			depth--;
+			if (depth < 0) {
+				depth = 0; // Reset on extra close brace
+			}
+		} else if (depth > 0) {
+			currentTag += char;
+		}
+	}
 
-  if (depth > 0 && currentTag.trim()) {
-    unclosed.push(currentTag.trim());
-  }
+	if (depth > 0 && currentTag.trim()) {
+		unclosed.push(currentTag.trim());
+	}
 
-  return unclosed;
+	return unclosed;
 }
 
 /** Type guard for docxtemplater multi-error */
 interface DocxTemplaterError extends Error {
-  properties?: {
-    errors?: Array<{
-      message?: string;
-      properties?: { tag?: string };
-    }>;
-  };
+	properties?: {
+		errors?: Array<{
+			message?: string;
+			properties?: { tag?: string };
+		}>;
+	};
 }
 
 function isDocxTemplaterError(error: Error): error is DocxTemplaterError {
-  return 'properties' in error && typeof (error as DocxTemplaterError).properties === 'object';
+	return (
+		"properties" in error &&
+		typeof (error as DocxTemplaterError).properties === "object"
+	);
 }
 
 /**
  * Format docxtemplater errors into useful messages
  */
 function formatTemplateError(error: unknown): TemplateError {
-  if (error instanceof Error) {
-    // Check for docxtemplater specific errors
-    if (isDocxTemplaterError(error) && error.properties?.errors) {
-      // Multi-error from docxtemplater
-      const firstError = error.properties.errors[0];
-      return {
-        message: firstError?.message || 'Template processing error',
-        variable: firstError?.properties?.tag,
-        type: 'render',
-        originalError: error,
-      };
-    }
+	if (error instanceof Error) {
+		// Check for docxtemplater specific errors
+		if (isDocxTemplaterError(error) && error.properties?.errors) {
+			// Multi-error from docxtemplater
+			const firstError = error.properties.errors[0];
+			return {
+				message: firstError?.message || "Template processing error",
+				variable: firstError?.properties?.tag,
+				type: "render",
+				originalError: error,
+			};
+		}
 
-    // Check for undefined tag errors
-    if (error.message.includes('undefined')) {
-      const match = error.message.match(/undefined (?:variable|tag):\s*(\S+)/i);
-      return {
-        message: error.message,
-        variable: match ? match[1] : undefined,
-        type: 'undefined',
-        originalError: error,
-      };
-    }
+		// Check for undefined tag errors
+		if (error.message.includes("undefined")) {
+			const match = error.message.match(/undefined (?:variable|tag):\s*(\S+)/i);
+			return {
+				message: error.message,
+				variable: match ? match[1] : undefined,
+				type: "undefined",
+				originalError: error,
+			};
+		}
 
-    // Check for parse errors
-    if (
-      error.message.includes('parse') ||
-      error.message.includes('unclosed') ||
-      error.message.includes('syntax')
-    ) {
-      return {
-        message: error.message,
-        type: 'parse',
-        originalError: error,
-      };
-    }
+		// Check for parse errors
+		if (
+			error.message.includes("parse") ||
+			error.message.includes("unclosed") ||
+			error.message.includes("syntax")
+		) {
+			return {
+				message: error.message,
+				type: "parse",
+				originalError: error,
+			};
+		}
 
-    return {
-      message: error.message,
-      type: 'unknown',
-      originalError: error,
-    };
-  }
+		return {
+			message: error.message,
+			type: "unknown",
+			originalError: error,
+		};
+	}
 
-  return {
-    message: String(error),
-    type: 'unknown',
-  };
+	return {
+		message: String(error),
+		type: "unknown",
+	};
 }
 
 /**
  * Download a blob as a file
  */
 function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
 }
 
 // ============================================================================
@@ -470,43 +484,43 @@ function downloadBlob(blob: Blob, filename: string): void {
  * @returns Processed DOCX as ArrayBuffer
  */
 export function processTemplateAdvanced(
-  buffer: ArrayBuffer,
-  data: Record<string, unknown>,
-  options: ProcessTemplateOptions = {}
+	buffer: ArrayBuffer,
+	data: Record<string, unknown>,
+	options: ProcessTemplateOptions = {},
 ): ArrayBuffer {
-  const { linebreaks = true, delimiters } = options;
+	const { linebreaks = true, delimiters } = options;
 
-  try {
-    const zip = new PizZip(buffer);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks,
-      delimiters: delimiters
-        ? { start: delimiters.start || '{', end: delimiters.end || '}' }
-        : undefined,
-    });
+	try {
+		const zip = new PizZip(buffer);
+		const doc = new Docxtemplater(zip, {
+			paragraphLoop: true,
+			linebreaks,
+			delimiters: delimiters
+				? { start: delimiters.start || "{", end: delimiters.end || "}" }
+				: undefined,
+		});
 
-    doc.setData(data);
-    doc.render();
+		doc.setData(data);
+		doc.render();
 
-    return doc.getZip().generate({
-      type: 'arraybuffer',
-      compression: 'DEFLATE',
-    });
-  } catch (error) {
-    throw formatTemplateError(error);
-  }
+		return doc.getZip().generate({
+			type: "arraybuffer",
+			compression: "DEFLATE",
+		});
+	} catch (error) {
+		throw formatTemplateError(error);
+	}
 }
 
 /**
  * Create a template processor with preset options
  */
 export function createTemplateProcessor(
-  defaultOptions: ProcessTemplateOptions = {}
+	defaultOptions: ProcessTemplateOptions = {},
 ): (buffer: ArrayBuffer, variables: Record<string, string>) => ArrayBuffer {
-  return (buffer: ArrayBuffer, variables: Record<string, string>) => {
-    return processTemplate(buffer, variables, defaultOptions);
-  };
+	return (buffer: ArrayBuffer, variables: Record<string, string>) => {
+		return processTemplate(buffer, variables, defaultOptions);
+	};
 }
 
 export default processTemplate;
