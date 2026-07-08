@@ -1,5 +1,11 @@
 # @eigenpal/docx-js-editor
 
+## 1.3.0
+
+### Minor Changes
+
+- de0c480: CasualEditor now threads `collab.token` through to the Hocuspocus handshake (previously reserved/unwired). Hosts with a JWT-protected collab server — e.g. Drive minting a per-file room token — can pass `collab={{ server, room, user, token }}` and the token reaches the provider's onAuthenticate hook.
+
 ## 1.2.0
 
 ### Minor Changes
