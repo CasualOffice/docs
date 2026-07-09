@@ -1,6 +1,6 @@
 {
   "name": "@casualoffice/docs",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "A browser-based DOCX template editor with variable insertion support",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
