@@ -2011,10 +2011,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
   // Table properties dialog state
   const [tablePropsOpen, setTablePropsOpen] = useState(false);
+  // Modal dialog open/close state, centralised in one registry
+  // (docs/internal/40 — DocxEditor decomposition, batches 1-3).
+  const dialogs = useDialogs();
   // Bookmarks dialog state (Phase 1.5 U14)
-  const [bookmarksDialogOpen, setBookmarksDialogOpen] = useState(false);
+  const bookmarksDialogOpen = dialogs.isOpen('bookmarks');
+  const setBookmarksDialogOpen = (v: boolean) =>
+    v ? dialogs.open('bookmarks') : dialogs.close('bookmarks');
   // Character spacing dialog state (Phase 1.5 U1)
-  const [characterSpacingDialogOpen, setCharacterSpacingDialogOpen] = useState(false);
+  const characterSpacingDialogOpen = dialogs.isOpen('characterSpacing');
+  const setCharacterSpacingDialogOpen = (v: boolean) =>
+    v ? dialogs.open('characterSpacing') : dialogs.close('characterSpacing');
   const [characterSpacingInitial, setCharacterSpacingInitial] = useState<{
     scale: number | null;
     spacing: number | null;
@@ -2022,9 +2029,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     kerning: number | null;
   }>({ scale: null, spacing: null, position: null, kerning: null });
   // Paragraph dialog state (Phase 1.5 U5)
-  const [paragraphDialogOpen, setParagraphDialogOpen] = useState(false);
+  const paragraphDialogOpen = dialogs.isOpen('paragraph');
+  const setParagraphDialogOpen = (v: boolean) =>
+    v ? dialogs.open('paragraph') : dialogs.close('paragraph');
   // Borders + Shading dialog state (Phase 1.5 U6)
-  const [bordersShadingOpen, setBordersShadingOpen] = useState(false);
+  const bordersShadingOpen = dialogs.isOpen('bordersShading');
+  const setBordersShadingOpen = (v: boolean) =>
+    v ? dialogs.open('bordersShading') : dialogs.close('bordersShading');
   const [bordersShadingInitial, setBordersShadingInitial] = useState<BordersAndShadingValue>({
     borders: {},
     shading: { fillHex: '', pattern: 'clear', patternColorHex: '' },
@@ -2043,7 +2054,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Image position dialog state
   const [imagePositionOpen, setImagePositionOpen] = useState(false);
   // Image properties dialog state
-  const [imagePropsOpen, setImagePropsOpen] = useState(false);
+  const imagePropsOpen = dialogs.isOpen('imageProperties');
+  const setImagePropsOpen = (v: boolean) =>
+    v ? dialogs.open('imageProperties') : dialogs.close('imageProperties');
   // Footnote properties dialog state
   const [footnotePropsOpen, setFootnotePropsOpen] = useState(false);
   // Header/footer editing state
@@ -2059,7 +2072,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
   // Wire-up batch (Docs parity #1.5): dialogs that already existed but
   // had no menu entry. Each is open/close + a trigger handler.
-  const [insertSymbolOpen, setInsertSymbolOpen] = useState(false);
+  const insertSymbolOpen = dialogs.isOpen('insertSymbol');
+  const setInsertSymbolOpen = (v: boolean) =>
+    v ? dialogs.open('insertSymbol') : dialogs.close('insertSymbol');
   // Ruler visibility override — once the user toggles it, this takes
   // precedence over the showRuler prop. Initialised from the prop.
   const [showRulerLocal, setShowRulerLocal] = useState<boolean | null>(null);
@@ -3034,9 +3049,6 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const hyperlinkDialog = useHyperlinkDialog();
 
   // Page setup dialog state
-  // Modal dialog open/close state, centralised in one registry
-  // (docs/internal/40 — DocxEditor decomposition, batch 1).
-  const dialogs = useDialogs();
   const showPageSetup = dialogs.isOpen('pageSetup');
   const setShowPageSetup = (v: boolean) =>
     v ? dialogs.open('pageSetup') : dialogs.close('pageSetup');
