@@ -149,3 +149,40 @@ surface, read from `DocxEditor.tsx` `<EditorToolbar>` (81 props) and its consume
 2. DialogContext (~12 props + the 7-dialog registry migration — medium, ~100 edits).
 3. useDocumentIO (handleSave/loadBuffer — high, 39-fixture gate) THEN DocumentIOContext.
 4. Formatting / Insert contexts last (largest, most entangled with selection state).
+
+### DialogContext — the exact prop→handler map + edge cases (2026-07-20)
+
+Prerequisite DONE: all modal dialog state is now on the `useDialogs` registry
+(batches 1–3, PRs #324/#325/#332). versionHistory intentionally stays a rail panel.
+
+The 18 dialog handlers on `<EditorToolbar>` (DocxEditor.tsx ~9856-9960) split THREE ways —
+a uniform "route all to `dialogs.open()`" pass WILL introduce bugs:
+
+**A. Simple — safe to route to `dialogs.open('<key>')` and delete the prop:**
+onOpenCommandPalette, onOpenKeyboardShortcuts, onOpenPreferences, onOpenWatermark (all
+`() => setShowX(true)`); onOpenBookmarks (`() => setBookmarksDialogOpen(true)`);
+onOpenParagraphDialog, onOpenInsertSymbol, onOpenImageProperties (trivial `handleOpenX =
+setXOpen(true)`); onPageSetup, onFileProperties, onOpenWordCount, onOpenAccessibility,
+onOpenBuildingBlocks, onOpenDictionary, onOpenCitations (VERIFY each `handleOpenX` body is
+trivial before treating as pure-open — a couple may do light setup).
+
+**B. Extra-work handlers — MUST keep calling the handler, NOT `dialogs.open()`:**
+`onOpenCharacterSpacing → handleOpenCharacterSpacing` and `onOpenBordersShading →
+handleOpenBordersShading` read the active editor view and capture selection/initial state
+BEFORE opening. Provide these via the context as the FULL handler (a `dialogActions` object,
+not the raw registry), or leave them as props. Routing them to raw `dialogs.open()` silently
+drops the setup — a real defect.
+
+**C. Conditional / special:**
+`onShowAbout = appShellHidden ? undefined : handleShowAbout` — the About item HIDES in
+embedded mode; preserve that (context action must be undefined when appShellHidden, or the
+menu keeps gating on appShellHidden). `onOpenVersionHistory` — rail panel, exclude.
+
+**Recommended shape:** a `DialogContext` providing a stable `dialogActions` object
+(`{ openWordCount, openCharacterSpacing, … }`) where simple entries are
+`() => dialogs.open('key')` and extra-work entries are the existing handlers — so consumers
+are uniform and bucket B is preserved. Convert `Toolbar.tsx` + `TitleBar.tsx` to
+`useDialogActions()`, delete the ~18 props from both interfaces + the call site. Typecheck is
+the completeness net. Verify: open EVERY dialog from BOTH the menu bar and the command
+palette, plus confirm character-spacing/borders capture selection and About hides when
+embedded. Full-attention PR.
