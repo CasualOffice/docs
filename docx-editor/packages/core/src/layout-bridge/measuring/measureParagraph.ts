@@ -416,10 +416,17 @@ export function measureParagraph(
   const floatingZones = options?.floatingZones;
   const paragraphYOffset = options?.paragraphYOffset ?? 0;
 
-  // Handle indentation
+  // Handle indentation. Clamp block left/right indent to >= 0 to match the
+  // renderer, which only applies positive indents (renderParagraph.ts). A
+  // negative left/right indent used to WIDEN the measured wrap width here
+  // (maxWidth - negative = maxWidth + |indent|), so lines were packed wider
+  // than the renderer's content box and then painted (white-space: pre) past
+  // the page margin — the "text runs off the page" bug. firstLine/hanging are
+  // deliberately left signed: those are handled separately and legitimately go
+  // negative (hanging indents).
   const indent = attrs?.indent;
-  const indentLeft = indent?.left ?? 0;
-  const indentRight = indent?.right ?? 0;
+  const indentLeft = Math.max(0, indent?.left ?? 0);
+  const indentRight = Math.max(0, indent?.right ?? 0);
   const firstLineOffset = (indent?.firstLine ?? 0) - (indent?.hanging ?? 0);
 
   // Calculate base available widths (before floating image adjustment)
