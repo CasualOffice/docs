@@ -56,6 +56,34 @@ Whole-corpus staleness triage (37 docs). Deleted `docs/DEPLOYMENT.md` (supersede
 backend-truth drift and shipped-status drift across 22 docs. This tracker is now the single
 live production tracker.
 
+### DocxEditor decomposition (Spec #6) — progress (2026-07-21)
+
+- **Dialog registry** — all 22 modal dialogs on the `useDialogs` reducer registry
+  (batches 1–3, #324/#325/#332); download/IO primitives extracted to `utils/download.ts`
+  (#326–#329).
+- **DialogActionsContext (option 3, #333)** — ~18 dialog-open handlers grouped into one
+  context; DocxEditor's `<EditorToolbar>` call site 81 → 63 props. **Non-breaking** —
+  `Toolbar`/`ToolbarProps`/`FormattingBar` are published API, so their prop contracts were
+  left intact. Verified typecheck + 61 e2e.
+- **Still open (dedicated sessions):** `useDocumentIO` (handleSave/loadBuffer behind the
+  39-fixture round-trip gate), ViewState/Formatting/Insert contexts. Specs in
+  [40-hardening-followups-specs.md](./40-hardening-followups-specs.md).
+
+### Hands-on product bugs (2026-07-21) — all fixed
+
+Found through real use; each root-caused (multi-agent), fixed, and regression-tested:
+- **B1 — `.md` open rendered as garbage** → **Fixed (#335)**. The FileSource / home-open path
+  fed markdown bytes straight to the DOCX zip parser (the in-editor picker already converted).
+  Shared `toDocxBytes()` helper applied at the open boundary; `.docx` still passes through
+  with no worker. 6 unit tests + `odt-open` e2e.
+- **B2 — watermark missing on some pages of 8+ page docs** → **Fixed (#334)**. The
+  incremental-render cache key (`computeOptionsHash`) ignored the watermark, so virtualized
+  docs kept stale per-page overlay state. Hash the watermark. 5 unit tests.
+- **B3 — text ran off the page** → **Fixed (#336)**. Wrapping used the signed block indent
+  (a negative indent *widened* the wrap width) while the renderer clamps negatives to 0.
+  Clamp measurement to match. Regression test fails on pre-fix code; 179 layout tests green.
+  _Follow-up: renderer honoring negative indents (pull text into the margin) for full Word
+  fidelity — the reported defect was the overflow, now fixed._
 
 **Target:** A reliable, polished, production-grade self-hosted office suite where Casual Docs can stand credibly against LibreOffice Writer and OnlyOffice Document Editor, and share one collaboration protocol/server with Casual Sheets and Casual Slides.
 
