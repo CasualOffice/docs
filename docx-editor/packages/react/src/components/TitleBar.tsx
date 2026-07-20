@@ -22,6 +22,7 @@ import { Tooltip } from './ui/Tooltip';
 import { TableGridInline } from './ui/TableGridInline';
 import { WriterStatusPill } from './WriterStatusPill';
 import { useEditorToolbar } from './EditorToolbarContext';
+import { useDialogActions } from './DialogActionsContext';
 import type { FormattingAction } from './Toolbar';
 import { useTranslation } from '../i18n';
 import { openReportIssue } from './reportIssue';
@@ -258,23 +259,13 @@ export function MenuBar() {
     onMakeCopy,
     onEmailAsAttachment,
     onOpenVersionHistory,
-    onPageSetup,
-    onFileProperties,
     onExportPdf,
     onExportOdt,
     onExportMd,
     onExportTxt,
     onReportBug,
-    onShowAbout,
-    onOpenCommandPalette,
-    onOpenKeyboardShortcuts,
-    onOpenPreferences,
-    onOpenWatermark,
-    onOpenAccessibility,
-    onOpenBuildingBlocks,
     onConvertSelectionToTable,
     onConvertTableToText,
-    onOpenDictionary,
     onOpenTranslate,
     onTranslateDocument,
     onToggleSpellcheck,
@@ -283,7 +274,6 @@ export function MenuBar() {
     grammarEnabled,
     onOpenWritingAssistant,
     onOpenExplore,
-    onOpenCitations,
     onInsertShape,
     onInsertTextBox,
     onSetColorTheme,
@@ -296,7 +286,6 @@ export function MenuBar() {
     canRedo,
     onOpenFind,
     onOpenFindReplace,
-    onOpenWordCount,
     onToggleVoiceTyping,
     voiceTypingActive,
     onToggleSpellCheck,
@@ -309,11 +298,7 @@ export function MenuBar() {
     onInsertSectionBreak,
     onInsertField,
     onInsertTOC,
-    onOpenBookmarks,
-    onOpenParagraphDialog,
-    onOpenBordersShading,
     onInsertHorizontalRule,
-    onOpenInsertSymbol,
     onInsertFootnote,
     onToggleShowRuler,
     rulerVisible,
@@ -323,6 +308,29 @@ export function MenuBar() {
     outlineVisible,
     onRefocusEditor,
   } = ctx;
+
+  // Dialog-open handlers now arrive via DialogActionsContext instead of ~16
+  // individual props on the <EditorToolbar> call site (see
+  // DialogActionsContext.tsx). Re-bound to their historical `onOpen*` names
+  // so the menu-building bodies below are unchanged.
+  const {
+    openPageSetup: onPageSetup,
+    openFileProperties: onFileProperties,
+    showAbout: onShowAbout,
+    openCommandPalette: onOpenCommandPalette,
+    openKeyboardShortcuts: onOpenKeyboardShortcuts,
+    openPreferences: onOpenPreferences,
+    openWatermark: onOpenWatermark,
+    openAccessibility: onOpenAccessibility,
+    openBuildingBlocks: onOpenBuildingBlocks,
+    openDictionary: onOpenDictionary,
+    openCitations: onOpenCitations,
+    openWordCount: onOpenWordCount,
+    openBookmarks: onOpenBookmarks,
+    openParagraphDialog: onOpenParagraphDialog,
+    openBordersShading: onOpenBordersShading,
+    openInsertSymbol: onOpenInsertSymbol,
+  } = useDialogActions();
 
   const handleFormat = useCallback(
     (action: FormattingAction) => {

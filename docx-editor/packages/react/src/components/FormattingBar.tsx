@@ -33,6 +33,7 @@ import { formatShortcut } from '../lib/platform';
 import { ToolbarButton, ToolbarGroup } from './Toolbar';
 import type { ToolbarProps, FormattingAction } from './Toolbar';
 import { EditorToolbarContext } from './EditorToolbarContext';
+import { useDialogActions } from './DialogActionsContext';
 
 const ICON_SIZE = 18;
 
@@ -114,6 +115,13 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
     paintFormatArmed,
     inline = false,
   } = props as FormattingBarProps;
+
+  // These two dialog opens now flow through DialogActionsContext when the bar
+  // is used inside <EditorToolbar>. An explicitly-passed prop still wins, so
+  // standalone <FormattingBar onOpenImageProperties=… /> use is unchanged.
+  const dialogActions = useDialogActions();
+  const openImageProperties = onOpenImageProperties ?? dialogActions.openImageProperties;
+  const openParagraphDialog = onOpenParagraphDialog ?? dialogActions.openParagraphDialog;
 
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -666,7 +674,7 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
               spaceAfter={currentFormatting.spaceAfter}
               onSpaceBeforeChange={(twips) => onFormat?.({ type: 'spaceBefore', value: twips })}
               onSpaceAfterChange={(twips) => onFormat?.({ type: 'spaceAfter', value: twips })}
-              onOpenCustomSpacing={onOpenParagraphDialog}
+              onOpenCustomSpacing={openParagraphDialog}
               keepNext={currentFormatting.keepNext}
               keepLines={currentFormatting.keepLines}
               pageBreakBefore={currentFormatting.pageBreakBefore}
@@ -694,9 +702,9 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           {onImageTransform && (
             <ImageTransformDropdown onTransform={onImageTransform} disabled={disabled} />
           )}
-          {onOpenImageProperties && (
+          {openImageProperties && (
             <ToolbarButton
-              onClick={onOpenImageProperties}
+              onClick={openImageProperties}
               disabled={disabled}
               title={t('formattingBar.imagePropertiesShortcut')}
               ariaLabel={t('formattingBar.imageProperties')}

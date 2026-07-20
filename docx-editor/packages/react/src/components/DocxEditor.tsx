@@ -44,6 +44,7 @@ import {
 } from './Toolbar';
 import type { FontOption } from './ui/FontPicker';
 import { EditorToolbar } from './EditorToolbar';
+import { DialogActionsContext, type DialogActions } from './DialogActionsContext';
 import { StatusBar } from './StatusBar';
 import { FocusModeBar } from './FocusModeBar';
 import { useStatPrefs } from './statbar-prefs';
@@ -7458,6 +7459,34 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     setShowDictionary(true);
   }, [getActiveEditorView]);
 
+  // Dialog-open handlers, grouped into one object delivered to the toolbar
+  // chrome (MenuBar / FormattingBar) via DialogActionsContext instead of ~18
+  // individual props on the <EditorToolbar> call site below. A plain object
+  // (not memoized) is intentional: the call site already passed fresh inline
+  // arrows every render, so the toolbar subtree's re-render cadence is
+  // unchanged. `showAbout`/... stay presence-gated (undefined ⇒ menu entry
+  // hidden), preserving the embedded-mode behavior.
+  const dialogActions: DialogActions = {
+    openBookmarks: () => setBookmarksDialogOpen(true),
+    openCharacterSpacing: handleOpenCharacterSpacing,
+    openParagraphDialog: handleOpenParagraphDialog,
+    openBordersShading: handleOpenBordersShading,
+    openInsertSymbol: handleOpenInsertSymbol,
+    openImageProperties: handleOpenImageProperties,
+    openPageSetup: handleOpenPageSetup,
+    openFileProperties: handleOpenFileProperties,
+    openWordCount: handleOpenWordCount,
+    showAbout: appShellHidden ? undefined : handleShowAbout,
+    openCommandPalette: () => setShowCommandPalette(true),
+    openKeyboardShortcuts: () => setShowKeyboardShortcuts(true),
+    openPreferences: () => setShowPreferences(true),
+    openWatermark: () => setShowWatermarkDialog(true),
+    openAccessibility: handleOpenAccessibility,
+    openBuildingBlocks: handleOpenBuildingBlocks,
+    openDictionary: handleOpenDictionary,
+    openCitations: handleOpenCitations,
+  };
+
   // Watermark apply/clear handler (C5) — writes into the doc-level
   // body.watermark slot so the painter draws the overlay on the next
   // render. `undefined` clears it. Round-trip to header XML lands in a
@@ -9855,150 +9884,134 @@ body { background: white; }
                       ref={toolbarRefCallback}
                       className="z-50 flex flex-col gap-0 flex-shrink-0"
                     >
-                      <EditorToolbar
-                        // When the agent panel is open, round the toolbar's
-                        // bottom-right corner so it mirrors the panel's top-left.
-                        // The radius transition (inline style on the inner div)
-                        // makes opening / closing ease instead of snap.
-                        className={agentPanelOpen ? 'rounded-br-2xl' : undefined}
-                        style={{
-                          transition: 'border-radius var(--doc-anim-slow)',
-                        }}
-                        currentFormatting={state.selectionFormatting}
-                        onFormat={handleFormat}
-                        onUndo={undoActiveEditor}
-                        onRedo={redoActiveEditor}
-                        canUndo={canUndoActiveEditor}
-                        canRedo={canRedoActiveEditor}
-                        disabled={readOnly}
-                        documentStyles={history.state?.package.styles?.styles}
-                        theme={history.state?.package.theme || theme}
-                        showPrintButton={showPrintButtonEffective}
-                        fontFamilies={fontFamilies}
-                        onPrint={handleDirectPrint}
-                        /* When the app shell is hidden (embedded), the host
+                      <DialogActionsContext.Provider value={dialogActions}>
+                        <EditorToolbar
+                          // When the agent panel is open, round the toolbar's
+                          // bottom-right corner so it mirrors the panel's top-left.
+                          // The radius transition (inline style on the inner div)
+                          // makes opening / closing ease instead of snap.
+                          className={agentPanelOpen ? 'rounded-br-2xl' : undefined}
+                          style={{
+                            transition: 'border-radius var(--doc-anim-slow)',
+                          }}
+                          currentFormatting={state.selectionFormatting}
+                          onFormat={handleFormat}
+                          onUndo={undoActiveEditor}
+                          onRedo={redoActiveEditor}
+                          canUndo={canUndoActiveEditor}
+                          canRedo={canRedoActiveEditor}
+                          disabled={readOnly}
+                          documentStyles={history.state?.package.styles?.styles}
+                          theme={history.state?.package.theme || theme}
+                          showPrintButton={showPrintButtonEffective}
+                          fontFamilies={fontFamilies}
+                          onPrint={handleDirectPrint}
+                          /* When the app shell is hidden (embedded), the host
                           owns file identity/lifecycle and versions — prune the
                           File-menu entries it provides so the editing menus
                           stay without a redundant "second product" File menu.
                           A MenuBar item disappears when its callback is
                           undefined (presence-gated). */
-                        onOpen={appShellHidden ? undefined : handleOpenDocument}
-                        onSave={handleDownloadDocument}
-                        onMakeCopy={appShellHidden ? undefined : handleMakeCopy}
-                        onEmailAsAttachment={appShellHidden ? undefined : handleEmailAsAttachment}
-                        onOpenVersionHistory={
-                          appShellHidden
-                            ? undefined
-                            : () => {
-                                if (!showVersionHistory) handleToggleVersionHistory();
-                              }
-                        }
-                        onNew={appShellHidden ? undefined : onNew}
-                        showZoomControl={showZoomControlEffective}
-                        zoom={state.zoom}
-                        onZoomChange={handleZoomChange}
-                        onRefocusEditor={focusActiveEditor}
-                        onInsertTable={handleInsertTable}
-                        showTableInsert={true}
-                        onInsertImage={handleInsertImageClick}
-                        onInsertPageBreak={handleInsertPageBreak}
-                        onInsertSectionBreak={handleInsertSectionBreak}
-                        onInsertField={handleInsertField}
-                        onInsertTOC={handleInsertTOC}
-                        onOpenBookmarks={() => setBookmarksDialogOpen(true)}
-                        onOpenCharacterSpacing={handleOpenCharacterSpacing}
-                        onOpenParagraphDialog={handleOpenParagraphDialog}
-                        onOpenBordersShading={handleOpenBordersShading}
-                        onAddComment={handleStartAddComment}
-                        onPaintFormat={handleTogglePaintFormat}
-                        paintFormatArmed={paintFormatMarks != null}
-                        onInsertHorizontalRule={handleInsertHorizontalRule}
-                        onInsertFootnote={handleInsertFootnote}
-                        onOpenInsertSymbol={handleOpenInsertSymbol}
-                        onToggleShowRuler={handleToggleShowRuler}
-                        rulerVisible={showRulerEffective}
-                        onToggleShowFormattingMarks={handleToggleShowFormattingMarks}
-                        showFormattingMarks={showFormattingMarks}
-                        onToggleOutline={handleToggleOutline}
-                        outlineVisible={showOutlineEffective}
-                        imageContext={state.pmImageContext}
-                        onImageWrapType={handleImageWrapType}
-                        onImageTransform={handleImageTransform}
-                        onOpenImageProperties={handleOpenImageProperties}
-                        onPageSetup={handleOpenPageSetup}
-                        onFileProperties={handleOpenFileProperties}
-                        onOpenWordCount={handleOpenWordCount}
-                        // Voice typing hidden — Web Speech API is
-                        // inconsistent across browsers. Re-enable when
-                        // we standardize on a backend.
-                        onExportPdf={handleExportPdf}
-                        onExportOdt={handleExportOdt}
-                        onExportMd={handleExportMd}
-                        /* Branding/support entries the host owns in embedded. */
-                        onReportBug={appShellHidden ? undefined : handleReportBug}
-                        onShowAbout={appShellHidden ? undefined : handleShowAbout}
-                        onOpenCommandPalette={() => setShowCommandPalette(true)}
-                        onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
-                        onOpenPreferences={() => setShowPreferences(true)}
-                        onOpenWatermark={() => setShowWatermarkDialog(true)}
-                        onOpenAccessibility={handleOpenAccessibility}
-                        onOpenBuildingBlocks={handleOpenBuildingBlocks}
-                        onConvertSelectionToTable={handleConvertSelectionToTable}
-                        onConvertTableToText={
-                          state.pmTableContext?.isInTable ? handleConvertTableToText : undefined
-                        }
-                        onOpenDictionary={handleOpenDictionary}
-                        // LLM-stack entry points hidden: onOpenTranslate,
-                        // onTranslateDocument, onOpenWritingAssistant,
-                        // onOpenExplore. WebLLM inference blocks the main
-                        // thread on long docs; until that lands a yielding
-                        // path, these surfaces stay off. Re-wire with the
-                        // existing handlers when ready.
-                        onToggleSpellcheck={handleToggleSpellcheck}
-                        spellcheckEnabled={spellOn}
-                        onToggleGrammar={handleToggleGrammar}
-                        grammarEnabled={grammarOn}
-                        onOpenCitations={handleOpenCitations}
-                        onInsertShape={handleInsertShape}
-                        onInsertTextBox={handleInsertTextBox}
-                        onSetColorTheme={handleSetColorTheme}
-                        colorTheme={colorTheme}
-                        isDirty={isDirty}
-                        isSaving={isSaving}
-                        tableContext={state.pmTableContext}
-                        onTableAction={handleTableAction}
-                      >
-                        {/* The title row (logo + document name) is the app
+                          onOpen={appShellHidden ? undefined : handleOpenDocument}
+                          onSave={handleDownloadDocument}
+                          onMakeCopy={appShellHidden ? undefined : handleMakeCopy}
+                          onEmailAsAttachment={appShellHidden ? undefined : handleEmailAsAttachment}
+                          onOpenVersionHistory={
+                            appShellHidden
+                              ? undefined
+                              : () => {
+                                  if (!showVersionHistory) handleToggleVersionHistory();
+                                }
+                          }
+                          onNew={appShellHidden ? undefined : onNew}
+                          showZoomControl={showZoomControlEffective}
+                          zoom={state.zoom}
+                          onZoomChange={handleZoomChange}
+                          onRefocusEditor={focusActiveEditor}
+                          onInsertTable={handleInsertTable}
+                          showTableInsert={true}
+                          onInsertImage={handleInsertImageClick}
+                          onInsertPageBreak={handleInsertPageBreak}
+                          onInsertSectionBreak={handleInsertSectionBreak}
+                          onInsertField={handleInsertField}
+                          onInsertTOC={handleInsertTOC}
+                          onAddComment={handleStartAddComment}
+                          onPaintFormat={handleTogglePaintFormat}
+                          paintFormatArmed={paintFormatMarks != null}
+                          onInsertHorizontalRule={handleInsertHorizontalRule}
+                          onInsertFootnote={handleInsertFootnote}
+                          onToggleShowRuler={handleToggleShowRuler}
+                          rulerVisible={showRulerEffective}
+                          onToggleShowFormattingMarks={handleToggleShowFormattingMarks}
+                          showFormattingMarks={showFormattingMarks}
+                          onToggleOutline={handleToggleOutline}
+                          outlineVisible={showOutlineEffective}
+                          imageContext={state.pmImageContext}
+                          onImageWrapType={handleImageWrapType}
+                          onImageTransform={handleImageTransform}
+                          // Voice typing hidden — Web Speech API is
+                          // inconsistent across browsers. Re-enable when
+                          // we standardize on a backend.
+                          onExportPdf={handleExportPdf}
+                          onExportOdt={handleExportOdt}
+                          onExportMd={handleExportMd}
+                          /* Branding/support entries the host owns in embedded. */
+                          onReportBug={appShellHidden ? undefined : handleReportBug}
+                          onConvertSelectionToTable={handleConvertSelectionToTable}
+                          onConvertTableToText={
+                            state.pmTableContext?.isInTable ? handleConvertTableToText : undefined
+                          }
+                          // LLM-stack entry points hidden: onOpenTranslate,
+                          // onTranslateDocument, onOpenWritingAssistant,
+                          // onOpenExplore. WebLLM inference blocks the main
+                          // thread on long docs; until that lands a yielding
+                          // path, these surfaces stay off. Re-wire with the
+                          // existing handlers when ready.
+                          onToggleSpellcheck={handleToggleSpellcheck}
+                          spellcheckEnabled={spellOn}
+                          onToggleGrammar={handleToggleGrammar}
+                          grammarEnabled={grammarOn}
+                          onInsertShape={handleInsertShape}
+                          onInsertTextBox={handleInsertTextBox}
+                          onSetColorTheme={handleSetColorTheme}
+                          colorTheme={colorTheme}
+                          isDirty={isDirty}
+                          isSaving={isSaving}
+                          tableContext={state.pmTableContext}
+                          onTableAction={handleTableAction}
+                        >
+                          {/* The title row (logo + document name) is the app
                           shell — hidden in `chrome:"embedded"`. The menu bar is
                           the editing surface, gated independently, so embedded
                           keeps the Insert/Format/Tools/… menus while dropping
                           only the logo/name row (doc 39). */}
-                        {(showTitleBarEffective || showMenuBarEffective) && (
-                          <EditorToolbar.TitleBar>
-                            {showTitleBarEffective && renderLogo && (
-                              <EditorToolbar.Logo>{renderLogo()}</EditorToolbar.Logo>
-                            )}
-                            {showTitleBarEffective && documentName !== undefined && (
-                              <EditorToolbar.DocumentName
-                                value={documentName}
-                                onChange={onDocumentNameChange}
-                                editable={documentNameEditable}
-                              />
-                            )}
-                            {showTitleBarEffective && renderTitleBarRight && (
-                              <EditorToolbar.TitleBarRight>
-                                {renderTitleBarRight()}
-                              </EditorToolbar.TitleBarRight>
-                            )}
-                            {showMenuBarEffective && <EditorToolbar.MenuBar />}
-                          </EditorToolbar.TitleBar>
-                        )}
-                        {showToolbarEffective && (
-                          <EditorToolbar.FormattingBar>
-                            {toolbarChildren}
-                          </EditorToolbar.FormattingBar>
-                        )}
-                      </EditorToolbar>
+                          {(showTitleBarEffective || showMenuBarEffective) && (
+                            <EditorToolbar.TitleBar>
+                              {showTitleBarEffective && renderLogo && (
+                                <EditorToolbar.Logo>{renderLogo()}</EditorToolbar.Logo>
+                              )}
+                              {showTitleBarEffective && documentName !== undefined && (
+                                <EditorToolbar.DocumentName
+                                  value={documentName}
+                                  onChange={onDocumentNameChange}
+                                  editable={documentNameEditable}
+                                />
+                              )}
+                              {showTitleBarEffective && renderTitleBarRight && (
+                                <EditorToolbar.TitleBarRight>
+                                  {renderTitleBarRight()}
+                                </EditorToolbar.TitleBarRight>
+                              )}
+                              {showMenuBarEffective && <EditorToolbar.MenuBar />}
+                            </EditorToolbar.TitleBar>
+                          )}
+                          {showToolbarEffective && (
+                            <EditorToolbar.FormattingBar>
+                              {toolbarChildren}
+                            </EditorToolbar.FormattingBar>
+                          )}
+                        </EditorToolbar>
+                      </DialogActionsContext.Provider>
                     </div>
                   )}
 
