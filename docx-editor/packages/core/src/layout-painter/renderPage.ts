@@ -1921,7 +1921,10 @@ function computePageFingerprint(page: Page): string {
  * Compute a hash for render options that affect all pages globally.
  * When this changes, all pages need a full re-render.
  */
-function computeOptionsHash(options: RenderPageOptions): string {
+// Exported for unit testing: the incremental-render cache key. Any option that
+// affects every page's shell (headers, borders, watermark, …) must be reflected
+// here, or applying it on a virtualized (8+ page) doc won't invalidate the cache.
+export function computeOptionsHash(options: RenderPageOptions): string {
   const parts: string[] = [];
 
   // Header/footer content changes affect all pages
@@ -1969,6 +1972,17 @@ function computeOptionsHash(options: RenderPageOptions): string {
   // Header/footer distances
   if (options.headerDistance !== undefined) parts.push(`hd:${options.headerDistance}`);
   if (options.footerDistance !== undefined) parts.push(`fd:${options.footerDistance}`);
+
+  // Watermark — drawn on every page shell, so applying/removing/changing it must
+  // invalidate the incremental-render cache. Omitting this let the watermark go
+  // missing on already-rendered pages of virtualized (8+ page) docs, since
+  // `canIncremental` stayed true and pages kept their stale overlay state.
+  if (options.watermark?.text) {
+    const w = options.watermark;
+    parts.push(
+      `wm:${w.text},${w.color ?? ''},${w.opacity ?? ''},${w.fontSize ?? ''},${w.rotation ?? ''}`
+    );
+  }
 
   return parts.join('|');
 }
