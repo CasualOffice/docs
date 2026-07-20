@@ -300,9 +300,16 @@ export const CasualEditor = forwardRef<CasualEditorRef, CasualEditorProps>(
         try {
           const result = await fileSource.open(docId);
           if (cancelled) return;
+          // Normalize foreign formats (e.g. .md / .odt / .txt) to DOCX before
+          // handing bytes to the editor. Without this a stored/recent .md was
+          // fed to the DOCX zip parser and rendered as garbage. DOCX passes
+          // through untouched (no worker spun up).
+          const { toDocxBytes } = await import('../lib/format-converter');
+          const buffer = await toDocxBytes(result.bytes, result.name);
+          if (cancelled) return;
           setLoadState({
             kind: 'ready',
-            buffer: result.bytes,
+            buffer,
             fileName: result.name,
             etag: result.etag,
           });

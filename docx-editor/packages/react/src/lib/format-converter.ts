@@ -85,6 +85,32 @@ export async function convertToDocx(bytes: Uint8Array, from: ForeignFormat): Pro
 }
 
 /**
+ * Normalize opened-file bytes to DOCX bytes for the editor's DOCX parser.
+ *
+ * If `fileName` names a foreign format we can convert (.odt / .md / .markdown /
+ * .txt / config sources), route the bytes through the WASM converter; otherwise
+ * return them unchanged (DOCX and unknown types feed the parser as before).
+ *
+ * This is the shared entry point for EVERY file-open path. The in-editor
+ * File → Open picker already did this inline; the FileSource / home-screen open
+ * path did not, so a stored/recent `.md` was handed straight to the DOCX zip
+ * parser and rendered as garbage. Both paths now funnel through here.
+ *
+ * Note: on the conversion branch the input buffer is transferred to the worker
+ * (neutered); callers must use the returned buffer and not the original. The
+ * pass-through branch leaves the input untouched.
+ */
+export async function toDocxBytes(bytes: ArrayBuffer, fileName?: string): Promise<ArrayBuffer> {
+  const fmt = fileName ? formatFromFilename(fileName) : null;
+  if (fmt && isForeignFormat(fmt)) {
+    const out = await convertToDocx(new Uint8Array(bytes), fmt);
+    // Own exactly the converter's output slice.
+    return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
+  }
+  return bytes;
+}
+
+/**
  * Convert DOCX bytes to a foreign format. Used by File → Export As — the
  * existing serializer produces the DOCX bytes, we hand them off here.
  *

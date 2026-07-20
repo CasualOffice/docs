@@ -8068,21 +8068,11 @@ body { background: white; }
       if (!file) return;
       try {
         const buffer = await file.arrayBuffer();
-        const { formatFromFilename, isForeignFormat, convertToDocx } =
-          await import('../lib/format-converter');
-        const fmt = formatFromFilename(file.name);
-        let docxBuffer: ArrayBuffer = buffer;
-        if (fmt && isForeignFormat(fmt)) {
-          // .odt / .md / .txt → DOCX via the WASM worker, then feed the
-          // existing parser. PDF is intentionally not handled.
-          const out = await convertToDocx(new Uint8Array(buffer), fmt);
-          // Take ownership of just the populated slice so the buffer
-          // passed to loadBuffer is exactly the converter's output.
-          docxBuffer = out.buffer.slice(
-            out.byteOffset,
-            out.byteOffset + out.byteLength
-          ) as ArrayBuffer;
-        }
+        // .odt / .md / .txt → DOCX via the WASM worker, then feed the existing
+        // parser (PDF is intentionally not handled). Shared with the
+        // FileSource/home open path so both convert identically.
+        const { toDocxBytes } = await import('../lib/format-converter');
+        const docxBuffer = await toDocxBytes(buffer, file.name);
         await loadBuffer(docxBuffer);
         const cleanName = file.name.replace(/\.(docx|odt|md|markdown|txt)$/i, '');
         onDocumentNameChange?.(cleanName);
