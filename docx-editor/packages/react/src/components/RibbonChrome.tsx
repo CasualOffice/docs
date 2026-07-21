@@ -17,7 +17,15 @@
  * (light/dark) with the rest of the chrome.
  */
 
-import { useCallback, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type CSSProperties,
+} from 'react';
 import type { JSX } from 'react';
 import { useEditorToolbar } from './EditorToolbarContext';
 import { useDialogActions } from './DialogActionsContext';
@@ -26,6 +34,7 @@ import { MenuDropdown, type MenuEntry } from './ui/MenuDropdown';
 import { MenuBarProvider } from './ui/MenuBarContext';
 import { ColorPicker } from './ui/ColorPicker';
 import type { FormattingAction } from './Toolbar';
+import type { TableAction } from './ui/TableToolbar';
 import type { ParagraphAlignment, ColorValue } from '@eigenpal/docx-core/types/document';
 
 export interface RibbonChromeProps {
@@ -36,7 +45,7 @@ export interface RibbonChromeProps {
   renderTitleBarRight?: () => ReactNode;
 }
 
-type Tab = 'home' | 'insert' | 'view';
+type Tab = 'home' | 'insert' | 'view' | 'table' | 'image';
 
 const RIBBON_CSS = `
 .dcx-rib{display:flex;flex-direction:column;font-family:var(--doc-font-ui,inherit);color:var(--doc-text);
@@ -104,6 +113,9 @@ const RIBBON_CSS = `
 .dcx-rib-searchtxt{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;text-align:left}
 .dcx-rib-k{font-family:var(--doc-font-mono,ui-monospace,monospace);font-size:10px;border:1px solid var(--doc-border,#d5dae0);
   border-radius:5px;padding:1px 5px;color:var(--doc-text-subtle,#8b949e);flex:none}
+.dcx-rib-saved{font-size:12px;color:var(--doc-text-subtle,#8b949e);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.dcx-rib-saved.saved::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--doc-success,#1a8a52)}
+.dcx-rib-tab-ctx{color:var(--doc-primary,#1b66c9);font-weight:600}
 `;
 
 function Icon({ d }: { d: string }): JSX.Element {
@@ -185,7 +197,28 @@ export function RibbonChrome({
     rulerVisible,
     onToggleShowFormattingMarks,
     showFormattingMarks,
+    isSaving,
+    isDirty,
+    // Contextual tabs (auto-appear like Word's Picture/Table tools).
+    tableContext,
+    onTableAction,
+    imageContext,
+    onImageWrapType,
+    onImageTransform,
   } = ctx;
+
+  const inTable = !!tableContext?.isInTable;
+  const hasImage = !!imageContext;
+  // Follow Word: when a table/image becomes the selection, surface its
+  // contextual tab; when it goes away, fall back to Home.
+  useEffect(() => {
+    if (inTable) setTab('table');
+    else setTab((t) => (t === 'table' ? 'home' : t));
+  }, [inTable]);
+  useEffect(() => {
+    if (hasImage) setTab('image');
+    else setTab((t) => (t === 'image' ? 'home' : t));
+  }, [hasImage]);
 
   // Every command re-focuses the hidden editor next frame (mirrors FormattingBar),
   // so a toolbar click never strands focus away from ProseMirror.
@@ -238,6 +271,13 @@ export function RibbonChrome({
   );
 
   const align = (v: ParagraphAlignment) => run({ type: 'alignment', value: v });
+  const tableAct = useCallback(
+    (action: TableAction) => {
+      onTableAction?.(action);
+      requestAnimationFrame(() => onRefocusEditor?.());
+    },
+    [onTableAction, onRefocusEditor]
+  );
 
   const setTextColor = useCallback(
     (color: ColorValue | string) => {
@@ -314,6 +354,14 @@ export function RibbonChrome({
               {documentName}
             </span>
           ))}
+        {(isSaving || typeof isDirty === 'boolean') && (
+          <span
+            className={`dcx-rib-saved${isSaving || isDirty ? '' : ' saved'}`}
+            data-testid="ribbon-saved"
+          >
+            {isSaving ? 'Saving…' : isDirty ? 'Unsaved changes' : 'Saved'}
+          </span>
+        )}
         <button
           className="dcx-rib-btn"
           title="Undo"
@@ -414,6 +462,28 @@ export function RibbonChrome({
         >
           View
         </button>
+        {inTable && (
+          <button
+            className="dcx-rib-tab dcx-rib-tab-ctx"
+            role="tab"
+            aria-selected={tab === 'table'}
+            data-testid="ribbon-tab-table"
+            onClick={() => setTab('table')}
+          >
+            Table
+          </button>
+        )}
+        {hasImage && (
+          <button
+            className="dcx-rib-tab dcx-rib-tab-ctx"
+            role="tab"
+            aria-selected={tab === 'image'}
+            data-testid="ribbon-tab-image"
+            onClick={() => setTab('image')}
+          >
+            Picture
+          </button>
+        )}
       </div>
 
       {/* body */}
@@ -719,6 +789,191 @@ export function RibbonChrome({
               </div>
               <div className="dcx-rib-lbl">Show</div>
             </div>
+          </>
+        )}
+
+        {tab === 'table' && (
+          <>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {btn(
+                  'tbl-row-above',
+                  'Insert row above',
+                  <Icon d="M4 5h16|M4 5v6h16V5|M12 15v4|M10 17h4" />,
+                  () => tableAct('addRowAbove')
+                )}
+                {btn(
+                  'tbl-row-below',
+                  'Insert row below',
+                  <Icon d="M4 19h16|M4 19v-6h16v6|M12 5v4|M10 7h4" />,
+                  () => tableAct('addRowBelow')
+                )}
+                {btn('tbl-row-del', 'Delete row', <Icon d="M4 8h16v8H4z|M8 4l8 16" />, () =>
+                  tableAct('deleteRow')
+                )}
+              </div>
+              <div className="dcx-rib-lbl">Rows</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {btn(
+                  'tbl-col-left',
+                  'Insert column left',
+                  <Icon d="M5 4v16|M5 4h6v16H5|M15 12h4|M17 10v4" />,
+                  () => tableAct('addColumnLeft')
+                )}
+                {btn(
+                  'tbl-col-right',
+                  'Insert column right',
+                  <Icon d="M19 4v16|M13 4h6v16h-6|M5 12h4|M7 10v4" />,
+                  () => tableAct('addColumnRight')
+                )}
+                {btn('tbl-col-del', 'Delete column', <Icon d="M8 4v16h8V4z|M4 8l16 8" />, () =>
+                  tableAct('deleteColumn')
+                )}
+              </div>
+              <div className="dcx-rib-lbl">Columns</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {btn('tbl-merge', 'Merge cells', <Icon d="M4 6h16v12H4z|M12 6v3|M12 15v3" />, () =>
+                  tableAct('mergeCells')
+                )}
+                {btn(
+                  'tbl-split',
+                  'Split cell',
+                  <Icon d="M4 6h16v12H4z|M12 6v12" />,
+                  () => tableAct('splitCell'),
+                  {
+                    disabled: disabled || !tableContext?.canSplitCell,
+                  }
+                )}
+              </div>
+              <div className="dcx-rib-lbl">Merge</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {btn(
+                  'tbl-border-all',
+                  'All borders',
+                  <Icon d="M3 3h18v18H3z|M3 9h18|M3 15h18|M9 3v18|M15 3v18" />,
+                  () => tableAct('borderAll')
+                )}
+                {btn('tbl-border-none', 'No borders', <Icon d="M3 3h18v18H3z" />, () =>
+                  tableAct('borderNone')
+                )}
+                {btn('tbl-valign-top', 'Align top', <Icon d="M4 4h16|M12 8v10" />, () =>
+                  tableAct({ type: 'cellVerticalAlign', align: 'top' })
+                )}
+                {btn('tbl-valign-mid', 'Align middle', <Icon d="M4 12h16|M12 5v3|M12 15v4" />, () =>
+                  tableAct({ type: 'cellVerticalAlign', align: 'center' })
+                )}
+                {btn('tbl-valign-bot', 'Align bottom', <Icon d="M4 20h16|M12 6v10" />, () =>
+                  tableAct({ type: 'cellVerticalAlign', align: 'bottom' })
+                )}
+              </div>
+              <div className="dcx-rib-lbl">Cells</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {btn(
+                  'tbl-delete',
+                  'Delete table',
+                  <Icon d="M4 4h16v16H4z|M8 8l8 8|M16 8l-8 8" />,
+                  () => tableAct('deleteTable')
+                )}
+              </div>
+              <div className="dcx-rib-lbl">Table</div>
+            </div>
+          </>
+        )}
+
+        {tab === 'image' && (
+          <>
+            {onImageWrapType && (
+              <div className="dcx-rib-grp">
+                <div className="dcx-rib-row">
+                  {btn(
+                    'img-inline',
+                    'In line with text',
+                    <Icon d="M4 6h16|M4 12h16|M4 18h16" />,
+                    () => onImageWrapType('inline'),
+                    { pressed: imageContext?.wrapType === 'inline' }
+                  )}
+                  {btn(
+                    'img-wrap-left',
+                    'Wrap right',
+                    <Icon d="M3 5h8v8H3z|M13 6h8|M13 10h8|M3 16h18|M3 20h18" />,
+                    () => onImageWrapType('wrapRight')
+                  )}
+                  {btn(
+                    'img-wrap-right',
+                    'Wrap left',
+                    <Icon d="M13 5h8v8h-8z|M3 6h8|M3 10h8|M3 16h18|M3 20h18" />,
+                    () => onImageWrapType('wrapLeft')
+                  )}
+                  {btn(
+                    'img-behind',
+                    'Behind text',
+                    <Icon d="M8 8h11v11H8z|M5 5h9v9" />,
+                    () => onImageWrapType('behind'),
+                    { pressed: imageContext?.wrapType === 'behind' }
+                  )}
+                  {btn(
+                    'img-front',
+                    'In front of text',
+                    <Icon d="M5 5h9v9H5z|M10 10h9v9h-9z" />,
+                    () => onImageWrapType('inFront'),
+                    { pressed: imageContext?.wrapType === 'inFront' }
+                  )}
+                </div>
+                <div className="dcx-rib-lbl">Text wrap</div>
+              </div>
+            )}
+            {onImageTransform && (
+              <div className="dcx-rib-grp">
+                <div className="dcx-rib-row">
+                  {btn(
+                    'img-rot-ccw',
+                    'Rotate left',
+                    <Icon d="M3 12a9 9 0 1 0 3-6.7L3 8|M3 3v5h5" />,
+                    () => onImageTransform('rotateCCW')
+                  )}
+                  {btn(
+                    'img-rot-cw',
+                    'Rotate right',
+                    <Icon d="M21 12a9 9 0 1 1-3-6.7L21 8|M21 3v5h-5" />,
+                    () => onImageTransform('rotateCW')
+                  )}
+                  {btn(
+                    'img-flip-h',
+                    'Flip horizontal',
+                    <Icon d="M12 3v18|M8 7l-4 5 4 5|M16 7l4 5-4 5" />,
+                    () => onImageTransform('flipH')
+                  )}
+                  {btn(
+                    'img-flip-v',
+                    'Flip vertical',
+                    <Icon d="M3 12h18|M7 8l5-4 5 4|M7 16l5 4 5-4" />,
+                    () => onImageTransform('flipV')
+                  )}
+                </div>
+                <div className="dcx-rib-lbl">Arrange</div>
+              </div>
+            )}
+            {dialogs.openImageProperties && (
+              <div className="dcx-rib-grp">
+                <div className="dcx-rib-row">
+                  {btn(
+                    'img-props',
+                    'Image properties',
+                    <Icon d="M4 4h16v16H4z|M8 12h8|M8 16h5" />,
+                    () => dialogs.openImageProperties?.()
+                  )}
+                </div>
+                <div className="dcx-rib-lbl">Properties</div>
+              </div>
+            )}
           </>
         )}
       </div>

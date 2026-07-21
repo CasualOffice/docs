@@ -118,4 +118,31 @@ test.describe('Ribbon UI (new chrome) toggle', () => {
       .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(size).toBeGreaterThan(16);
   });
+
+  test('a contextual Table tab auto-appears when the cursor enters a table', async ({ page }) => {
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await editor.newDocument();
+    await editor.focus();
+
+    await page.getByRole('button', { name: 'View' }).click();
+    await page.getByRole('menuitem', { name: /Ribbon UI/ }).click();
+    await expect(page.locator(RIBBON)).toBeVisible();
+
+    // No table yet → no contextual tab.
+    await expect(page.locator('[data-testid="ribbon-tab-table"]')).toHaveCount(0);
+
+    // Insert a table from the Insert tab.
+    await page.locator('[data-testid="ribbon-tab-insert"]').click();
+    await page.locator('[data-testid="ribbon-insert-table"]').click();
+    await page.waitForTimeout(400);
+
+    // The contextual Table tab appears with its row/column actions.
+    await expect(page.locator('[data-testid="ribbon-tab-table"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ribbon-tbl-row-below"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ribbon-tbl-col-right"]')).toBeVisible();
+
+    await page.screenshot({ path: 'screenshots/ux/ribbon-real-v4.png' });
+  });
 });
