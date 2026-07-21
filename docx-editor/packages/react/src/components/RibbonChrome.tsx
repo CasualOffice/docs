@@ -17,7 +17,7 @@
  * (light/dark) with the rest of the chrome.
  */
 
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react';
 import type { JSX } from 'react';
 import { useEditorToolbar } from './EditorToolbarContext';
 import { useDialogActions } from './DialogActionsContext';
@@ -88,6 +88,22 @@ const RIBBON_CSS = `
 .dcx-rib-zoom{display:flex;align-items:center;gap:2px}
 .dcx-rib-zoomval{font-size:12.5px;color:var(--doc-text-muted,#57606a);min-width:38px;text-align:center;font-variant-numeric:tabular-nums}
 .dcx-rib-colors{display:inline-flex;align-items:center;gap:1px}
+.dcx-rib-gallery{gap:6px}
+.dcx-rib-chip{width:78px;height:56px;border:1px solid var(--doc-border,#d5dae0);border-radius:8px;
+  background:var(--doc-surface,#fff);display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;
+  padding:8px 9px 6px;cursor:pointer;overflow:hidden;font-family:inherit;flex:none}
+.dcx-rib-chip:hover:not(:disabled){border-color:var(--doc-primary,#1b66c9);box-shadow:0 0 0 2px var(--doc-primary-light,#e9f1fd)}
+.dcx-rib-chip:disabled{opacity:.5;cursor:default}
+.dcx-chip-prev{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.1}
+.dcx-chip-lbl{font-size:9px;color:var(--doc-text-subtle,#8b949e)}
+.dcx-rib-search{display:flex;align-items:center;gap:8px;height:32px;width:320px;max-width:34vw;padding:0 12px;
+  border:1px solid var(--doc-border,#d5dae0);border-radius:8px;background:var(--doc-surface,#fff);
+  color:var(--doc-text-subtle,#8b949e);font-size:12.5px;font-family:inherit;cursor:text}
+.dcx-rib-search:hover{border-color:var(--doc-primary,#1b66c9)}
+.dcx-rib-search svg{width:14px;height:14px;flex:none}
+.dcx-rib-searchtxt{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;text-align:left}
+.dcx-rib-k{font-family:var(--doc-font-mono,ui-monospace,monospace);font-size:10px;border:1px solid var(--doc-border,#d5dae0);
+  border-radius:5px;padding:1px 5px;color:var(--doc-text-subtle,#8b949e);flex:none}
 `;
 
 function Icon({ d }: { d: string }): JSX.Element {
@@ -98,6 +114,27 @@ function Icon({ d }: { d: string }): JSX.Element {
       ))}
     </svg>
   );
+}
+
+// Shown when the document exposes no font table (e.g. a blank doc) so the font
+// picker is always usable; a real font list overrides these.
+const DEFAULT_FONTS = ['Arial', 'Calibri', 'Times New Roman', 'Georgia', 'Verdana', 'Courier New'];
+// The style gallery's curated set (applied by name; the doc's own definition
+// wins when present).
+const GALLERY_STYLE_NAMES = ['Normal', 'Title', 'Heading 1', 'Heading 2', 'Heading 3'];
+
+function chipPreview(name: string): { text: string; style: CSSProperties } {
+  if (name === 'Title')
+    return { text: 'Title', style: { fontSize: 13, fontWeight: 700, color: 'var(--doc-text)' } };
+  if (name.toLowerCase().startsWith('heading'))
+    return {
+      text: 'Heading',
+      style: { fontSize: 12, fontWeight: 700, color: 'var(--doc-primary, #1b66c9)' },
+    };
+  return {
+    text: 'Normal text',
+    style: { fontSize: 10, fontWeight: 400, color: 'var(--doc-text-muted, #57606a)' },
+  };
 }
 
 export function RibbonChrome({
@@ -161,13 +198,21 @@ export function RibbonChrome({
     [disabled, onFormat, onRefocusEditor]
   );
 
-  const styleNames = useMemo(
-    () => (documentStyles ?? []).map((s) => s.name ?? s.styleId).filter(Boolean) as string[],
-    [documentStyles]
-  );
   const fontNames = useMemo(
     () => (fontFamilies ?? []).map((f) => (typeof f === 'string' ? f : f.fontFamily)),
     [fontFamilies]
+  );
+  const fontList = fontNames.length > 0 ? fontNames : DEFAULT_FONTS;
+  const galleryChips = useMemo(
+    () =>
+      GALLERY_STYLE_NAMES.map((name) => {
+        const match = (documentStyles ?? []).find(
+          (s) => (s.name ?? s.styleId)?.toLowerCase() === name.toLowerCase()
+        );
+        // applyStyle expects the styleId (e.g. "Heading1"), not the display name.
+        return { name, apply: match?.styleId ?? name.replace(/\s+/g, '') };
+      }),
+    [documentStyles]
   );
 
   const btn = (
@@ -290,6 +335,19 @@ export function RibbonChrome({
           <Icon d="m15 14 5-5-5-5|M20 9H9a5 5 0 0 0 0 10h3" />
         </button>
         <span className="dcx-rib-grow" />
+        {dialogs.openCommandPalette && (
+          <button
+            className="dcx-rib-search"
+            data-testid="ribbon-search"
+            title="Search or run a command"
+            onClick={() => dialogs.openCommandPalette?.()}
+          >
+            <Icon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z|M21 21l-4-4" />
+            <span className="dcx-rib-searchtxt">Search or run a command</span>
+            <span className="dcx-rib-k">⌘K</span>
+          </button>
+        )}
+        <span className="dcx-rib-grow" />
         {renderTitleBarRight?.()}
         {onZoomChange && (
           <span className="dcx-rib-zoom">
@@ -363,49 +421,48 @@ export function RibbonChrome({
         {tab === 'home' && (
           <>
             <div className="dcx-rib-grp">
-              <div className="dcx-rib-row">
-                {styleNames.length > 0 && (
-                  <select
-                    className="dcx-rib-sel"
-                    aria-label="Paragraph style"
-                    data-testid="ribbon-style"
-                    disabled={disabled}
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) run({ type: 'applyStyle', value: e.target.value });
-                    }}
-                  >
-                    <option value="">Styles…</option>
-                    {styleNames.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                )}
+              <div className="dcx-rib-row dcx-rib-gallery" data-testid="ribbon-style-gallery">
+                {galleryChips.map((c) => {
+                  const p = chipPreview(c.name);
+                  return (
+                    <button
+                      key={c.name}
+                      type="button"
+                      className="dcx-rib-chip"
+                      data-testid={`ribbon-style-${c.name.replace(/\s+/g, '-').toLowerCase()}`}
+                      title={`Apply ${c.name}`}
+                      disabled={disabled}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => run({ type: 'applyStyle', value: c.apply })}
+                    >
+                      <span className="dcx-chip-prev" style={p.style}>
+                        {p.text}
+                      </span>
+                      <span className="dcx-chip-lbl">{c.name}</span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="dcx-rib-lbl">Styles</div>
             </div>
 
             <div className="dcx-rib-grp">
               <div className="dcx-rib-row" style={{ marginBottom: 4 }}>
-                {fontNames.length > 0 && (
-                  <select
-                    className="dcx-rib-sel"
-                    aria-label="Font"
-                    data-testid="ribbon-font"
-                    disabled={disabled}
-                    value={fmt?.fontFamily ?? ''}
-                    onChange={(e) => run({ type: 'fontFamily', value: e.target.value })}
-                  >
-                    <option value="">Font</option>
-                    {fontNames.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <select
+                  className="dcx-rib-sel"
+                  aria-label="Font"
+                  data-testid="ribbon-font"
+                  disabled={disabled}
+                  value={fmt?.fontFamily ?? ''}
+                  onChange={(e) => run({ type: 'fontFamily', value: e.target.value })}
+                >
+                  <option value="">Font</option>
+                  {fontList.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
                 <select
                   className="dcx-rib-sel"
                   style={{ maxWidth: 60 }}

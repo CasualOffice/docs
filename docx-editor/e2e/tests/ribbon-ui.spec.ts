@@ -78,14 +78,44 @@ test.describe('Ribbon UI (new chrome) toggle', () => {
     await expect(page.getByRole('menuitem', { name: /Save/ })).toBeVisible();
     await page.keyboard.press('Escape');
 
-    // Home tab exposes text/highlight color controls.
+    // Home tab exposes the style gallery, color controls, and the command search.
+    await expect(page.locator('[data-testid="ribbon-style-gallery"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ribbon-style-heading-1"]')).toBeVisible();
     await expect(page.locator('[data-testid="ribbon-colors"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ribbon-search"]')).toBeVisible();
 
     // View tab exposes zoom.
     await page.locator('[data-testid="ribbon-tab-view"]').click();
     await expect(page.locator('[data-testid="ribbon-zoom-in"]')).toBeVisible();
     await page.locator('[data-testid="ribbon-tab-home"]').click();
 
-    await page.screenshot({ path: 'screenshots/ux/ribbon-real-v2.png' });
+    await page.screenshot({ path: 'screenshots/ux/ribbon-real-v3.png' });
+  });
+
+  test('applying Heading 1 from the style gallery changes the paragraph style', async ({
+    page,
+  }) => {
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await editor.newDocument();
+    await editor.focus();
+    await editor.typeText('Section title');
+
+    await page.getByRole('button', { name: 'View' }).click();
+    await page.getByRole('menuitem', { name: /Ribbon UI/ }).click();
+    await expect(page.locator(RIBBON)).toBeVisible();
+
+    await editor.selectText('Section title');
+    await page.locator('[data-testid="ribbon-style-heading-1"]').click();
+    await page.waitForTimeout(200);
+
+    // The paragraph should now render as a heading (larger than body text).
+    const size = await page
+      .locator('.paged-editor__pages')
+      .locator('text=Section title')
+      .first()
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(size).toBeGreaterThan(16);
   });
 });
