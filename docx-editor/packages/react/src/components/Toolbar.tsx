@@ -183,6 +183,10 @@ export interface ToolbarProps {
   spellCheckEnabled?: boolean;
   /** Whether the toolbar is disabled */
   disabled?: boolean;
+  /** Active chrome presentation. Additive; `classic` is the default. */
+  uiMode?: 'classic' | 'ribbon';
+  /** Toggle between the classic toolbar and the new ribbon UI (View menu / in-ribbon button). */
+  onToggleUiMode?: () => void;
   /** Additional CSS class name */
   className?: string;
   /** Additional inline styles */

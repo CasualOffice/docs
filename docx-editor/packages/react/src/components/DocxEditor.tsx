@@ -44,6 +44,7 @@ import {
 } from './Toolbar';
 import type { FontOption } from './ui/FontPicker';
 import { EditorToolbar } from './EditorToolbar';
+import { RibbonChrome } from './RibbonChrome';
 import { DialogActionsContext, type DialogActions } from './DialogActionsContext';
 import { StatusBar } from './StatusBar';
 import { FocusModeBar } from './FocusModeBar';
@@ -658,6 +659,14 @@ export interface DocxEditorProps {
    * `features.menuBar` override the shell visibility independently.
    */
   chrome?: 'none' | 'minimal' | 'embedded' | 'full';
+  /**
+   * Chrome presentation. `'classic'` (default) is the current toolbar; `'ribbon'`
+   * opts into the new Word-2026-style tabbed ribbon (preview). Seeds the initial
+   * mode; the user can switch at runtime via View → "Ribbon UI (preview)", and
+   * the choice is remembered in localStorage. Orthogonal to `chrome` (which
+   * controls *which* regions show, not *how* the toolbar looks).
+   */
+  uiMode?: 'classic' | 'ribbon';
   /**
    * Per-control on/off map (docs#272, doc 38 §5a) — the shared shape the sister
    * sheet SDK uses. Each key is a control id (see `DOCX_FEATURE_IDS`); `false`
@@ -1758,6 +1767,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     onFontsLoaded: onFontsLoadedCallback,
     theme,
     chrome,
+    uiMode: uiModeProp,
     features,
     onReady,
     // `chrome` sets the default UI level; an explicit show* prop still wins
@@ -1936,6 +1946,32 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   // Ruler visibility override — once the user toggles it, this takes
   // precedence over the showRuler prop. Initialised from the prop.
   const [showRulerLocal, setShowRulerLocal] = useState<boolean | null>(null);
+  // Chrome presentation (classic toolbar vs new ribbon). Seeded by the `uiMode`
+  // prop, then remembered in localStorage so a user's choice sticks across
+  // sessions. Presentation-only — both modes drive the same command handlers.
+  const UI_MODE_KEY = 'docx-editor-ui-mode';
+  const [uiMode, setUiMode] = useState<'classic' | 'ribbon'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem(UI_MODE_KEY);
+        if (stored === 'ribbon' || stored === 'classic') return stored;
+      } catch {
+        /* ignore */
+      }
+    }
+    return uiModeProp ?? 'classic';
+  });
+  const toggleUiMode = useCallback(() => {
+    setUiMode((m) => {
+      const next = m === 'ribbon' ? 'classic' : 'ribbon';
+      try {
+        window.localStorage.setItem(UI_MODE_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
   // Focus mode (Phase 5) — declared early so it can gate the ruler
   // (and any other chrome) without TDZ errors. The keydown handler +
   // chrome conditionals further below consume the same state.
@@ -9615,36 +9651,52 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                           isSaving={isSaving}
                           tableContext={state.pmTableContext}
                           onTableAction={handleTableAction}
+                          uiMode={uiMode}
+                          onToggleUiMode={toggleUiMode}
                         >
-                          {/* The title row (logo + document name) is the app
+                          {uiMode === 'ribbon' ? (
+                            /* New UI (preview): a modern tabbed ribbon. Presentation
+                               only — it consumes the same EditorToolbar/DialogActions
+                               context, so commands behave identically to classic. */
+                            <RibbonChrome
+                              documentName={documentName}
+                              onDocumentNameChange={onDocumentNameChange}
+                              documentNameEditable={documentNameEditable}
+                              renderTitleBarRight={renderTitleBarRight}
+                            />
+                          ) : (
+                            <>
+                              {/* The title row (logo + document name) is the app
                           shell — hidden in `chrome:"embedded"`. The menu bar is
                           the editing surface, gated independently, so embedded
                           keeps the Insert/Format/Tools/… menus while dropping
                           only the logo/name row (doc 39). */}
-                          {(showTitleBarEffective || showMenuBarEffective) && (
-                            <EditorToolbar.TitleBar>
-                              {showTitleBarEffective && renderLogo && (
-                                <EditorToolbar.Logo>{renderLogo()}</EditorToolbar.Logo>
+                              {(showTitleBarEffective || showMenuBarEffective) && (
+                                <EditorToolbar.TitleBar>
+                                  {showTitleBarEffective && renderLogo && (
+                                    <EditorToolbar.Logo>{renderLogo()}</EditorToolbar.Logo>
+                                  )}
+                                  {showTitleBarEffective && documentName !== undefined && (
+                                    <EditorToolbar.DocumentName
+                                      value={documentName}
+                                      onChange={onDocumentNameChange}
+                                      editable={documentNameEditable}
+                                    />
+                                  )}
+                                  {showTitleBarEffective && renderTitleBarRight && (
+                                    <EditorToolbar.TitleBarRight>
+                                      {renderTitleBarRight()}
+                                    </EditorToolbar.TitleBarRight>
+                                  )}
+                                  {showMenuBarEffective && <EditorToolbar.MenuBar />}
+                                </EditorToolbar.TitleBar>
                               )}
-                              {showTitleBarEffective && documentName !== undefined && (
-                                <EditorToolbar.DocumentName
-                                  value={documentName}
-                                  onChange={onDocumentNameChange}
-                                  editable={documentNameEditable}
-                                />
+                              {showToolbarEffective && (
+                                <EditorToolbar.FormattingBar>
+                                  {toolbarChildren}
+                                </EditorToolbar.FormattingBar>
                               )}
-                              {showTitleBarEffective && renderTitleBarRight && (
-                                <EditorToolbar.TitleBarRight>
-                                  {renderTitleBarRight()}
-                                </EditorToolbar.TitleBarRight>
-                              )}
-                              {showMenuBarEffective && <EditorToolbar.MenuBar />}
-                            </EditorToolbar.TitleBar>
-                          )}
-                          {showToolbarEffective && (
-                            <EditorToolbar.FormattingBar>
-                              {toolbarChildren}
-                            </EditorToolbar.FormattingBar>
+                            </>
                           )}
                         </EditorToolbar>
                       </DialogActionsContext.Provider>

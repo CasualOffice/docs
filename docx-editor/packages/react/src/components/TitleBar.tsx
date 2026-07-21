@@ -307,6 +307,8 @@ export function MenuBar() {
     onToggleOutline,
     outlineVisible,
     onRefocusEditor,
+    uiMode,
+    onToggleUiMode,
   } = ctx;
 
   // Dialog-open handlers now arrive via DialogActionsContext instead of ~16
@@ -702,7 +704,8 @@ export function MenuBar() {
           onSetColorTheme ||
           onToggleShowRuler ||
           onToggleShowFormattingMarks ||
-          onToggleOutline) && (
+          onToggleOutline ||
+          onToggleUiMode) && (
           <MenuDropdown
             label="View"
             disabled={disabled}
@@ -755,6 +758,15 @@ export function MenuBar() {
                       label: `${outlineVisible ? '✓ ' : ''}${t('toolbar.showOutline')}`,
                       shortcut: 'Ctrl+Shift+H',
                       onClick: onToggleOutline,
+                    } as MenuEntry,
+                  ]
+                : []),
+              ...(onToggleUiMode
+                ? [
+                    { type: 'separator' as const } as MenuEntry,
+                    {
+                      label: `${uiMode === 'ribbon' ? '✓ ' : ''}Ribbon UI (preview)`,
+                      onClick: onToggleUiMode,
                     } as MenuEntry,
                   ]
                 : []),
