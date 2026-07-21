@@ -62,4 +62,30 @@ test.describe('Ribbon UI (new chrome) toggle', () => {
 
     await assertions.assertTextIsBold(page, 'bold');
   });
+
+  test('ribbon is self-sufficient: File menu, colors, and a View tab with zoom', async ({
+    page,
+  }) => {
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await page.getByRole('button', { name: 'View' }).click();
+    await page.getByRole('menuitem', { name: /Ribbon UI/ }).click();
+    await expect(page.locator(RIBBON)).toBeVisible();
+
+    // File menu (classic menu bar is hidden in ribbon mode — file ops must live here).
+    await page.getByRole('button', { name: 'File' }).click();
+    await expect(page.getByRole('menuitem', { name: /Save/ })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // Home tab exposes text/highlight color controls.
+    await expect(page.locator('[data-testid="ribbon-colors"]')).toBeVisible();
+
+    // View tab exposes zoom.
+    await page.locator('[data-testid="ribbon-tab-view"]').click();
+    await expect(page.locator('[data-testid="ribbon-zoom-in"]')).toBeVisible();
+    await page.locator('[data-testid="ribbon-tab-home"]').click();
+
+    await page.screenshot({ path: 'screenshots/ux/ribbon-real-v2.png' });
+  });
 });

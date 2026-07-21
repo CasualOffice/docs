@@ -22,8 +22,11 @@ import type { JSX } from 'react';
 import { useEditorToolbar } from './EditorToolbarContext';
 import { useDialogActions } from './DialogActionsContext';
 import { useRovingTabindex } from '../hooks/useRovingTabindex';
+import { MenuDropdown, type MenuEntry } from './ui/MenuDropdown';
+import { MenuBarProvider } from './ui/MenuBarContext';
+import { ColorPicker } from './ui/ColorPicker';
 import type { FormattingAction } from './Toolbar';
-import type { ParagraphAlignment } from '@eigenpal/docx-core/types/document';
+import type { ParagraphAlignment, ColorValue } from '@eigenpal/docx-core/types/document';
 
 export interface RibbonChromeProps {
   documentName?: string;
@@ -33,7 +36,7 @@ export interface RibbonChromeProps {
   renderTitleBarRight?: () => ReactNode;
 }
 
-type Tab = 'home' | 'insert';
+type Tab = 'home' | 'insert' | 'view';
 
 const RIBBON_CSS = `
 .dcx-rib{display:flex;flex-direction:column;font-family:var(--doc-font-ui,inherit);color:var(--doc-text);
@@ -82,6 +85,9 @@ const RIBBON_CSS = `
 .dcx-rib-sel{height:32px;border:1px solid var(--doc-border,#d5dae0);border-radius:7px;background:var(--doc-surface,#fff);
   color:var(--doc-text);font-size:13px;font-family:inherit;padding:0 6px;cursor:pointer;max-width:140px}
 .dcx-rib-sel:focus{outline:2px solid var(--doc-primary,#1b66c9);outline-offset:-1px}
+.dcx-rib-zoom{display:flex;align-items:center;gap:2px}
+.dcx-rib-zoomval{font-size:12.5px;color:var(--doc-text-muted,#57606a);min-width:38px;text-align:center;font-variant-numeric:tabular-nums}
+.dcx-rib-colors{display:inline-flex;align-items:center;gap:1px}
 `;
 
 function Icon({ d }: { d: string }): JSX.Element {
@@ -117,6 +123,7 @@ export function RibbonChrome({
     disabled,
     documentStyles,
     fontFamilies,
+    theme,
     onToggleUiMode,
     onInsertImage,
     onInsertTable,
@@ -124,6 +131,23 @@ export function RibbonChrome({
     onInsertHorizontalRule,
     onInsertFootnote,
     onInsertTOC,
+    // File ops + view controls — surfaced so ribbon mode is self-sufficient
+    // (it hides the classic menu bar).
+    onNew,
+    onOpen,
+    onSave,
+    onMakeCopy,
+    onPrint,
+    onOpenVersionHistory,
+    onExportPdf,
+    onExportOdt,
+    onExportMd,
+    zoom,
+    onZoomChange,
+    onToggleShowRuler,
+    rulerVisible,
+    onToggleShowFormattingMarks,
+    showFormattingMarks,
   } = ctx;
 
   // Every command re-focuses the hidden editor next frame (mirrors FormattingBar),
@@ -170,12 +194,68 @@ export function RibbonChrome({
 
   const align = (v: ParagraphAlignment) => run({ type: 'alignment', value: v });
 
+  const setTextColor = useCallback(
+    (color: ColorValue | string) => {
+      onFormat?.({ type: 'textColor', value: color });
+      requestAnimationFrame(() => onRefocusEditor?.());
+    },
+    [onFormat, onRefocusEditor]
+  );
+  const setHighlight = useCallback(
+    (color: ColorValue | string) => {
+      onFormat?.({ type: 'highlightColor', value: typeof color === 'string' ? color : '' });
+      requestAnimationFrame(() => onRefocusEditor?.());
+    },
+    [onFormat, onRefocusEditor]
+  );
+
+  // File menu — reuses the shared MenuDropdown so ribbon mode keeps file ops
+  // (the classic menu bar is hidden in ribbon mode). Icons omitted to avoid
+  // Material-Symbol name coupling; presence-gated on the handlers.
+  const fileItems = useMemo<MenuEntry[]>(() => {
+    const items: MenuEntry[] = [];
+    if (onNew) items.push({ label: 'New', shortcut: 'Ctrl+N', onClick: onNew });
+    if (onOpen) items.push({ label: 'Open', shortcut: 'Ctrl+O', onClick: onOpen });
+    if (onSave) items.push({ label: 'Save', shortcut: 'Ctrl+S', onClick: onSave });
+    if (onMakeCopy) items.push({ label: 'Make a copy', onClick: onMakeCopy });
+    if (onOpenVersionHistory)
+      items.push({ label: 'Version history', onClick: onOpenVersionHistory });
+    if (onPrint || onExportPdf || onExportOdt || onExportMd) items.push({ type: 'separator' });
+    if (onPrint) items.push({ label: 'Print', shortcut: 'Ctrl+P', onClick: onPrint });
+    if (onExportPdf) items.push({ label: 'Export as PDF', onClick: onExportPdf });
+    if (onExportOdt) items.push({ label: 'Export as ODT', onClick: onExportOdt });
+    if (onExportMd) items.push({ label: 'Export as Markdown', onClick: onExportMd });
+    if (dialogs.openPageSetup || dialogs.openFileProperties) items.push({ type: 'separator' });
+    if (dialogs.openPageSetup) items.push({ label: 'Page setup', onClick: dialogs.openPageSetup });
+    if (dialogs.openFileProperties)
+      items.push({ label: 'Properties', onClick: dialogs.openFileProperties });
+    return items;
+  }, [
+    onNew,
+    onOpen,
+    onSave,
+    onMakeCopy,
+    onOpenVersionHistory,
+    onPrint,
+    onExportPdf,
+    onExportOdt,
+    onExportMd,
+    dialogs,
+  ]);
+
+  const zoomPct = Math.round((zoom ?? 1) * 100);
+
   return (
     <div className="dcx-rib" data-testid="ribbon-chrome">
       <style>{RIBBON_CSS}</style>
 
       {/* command bar */}
       <div className="dcx-rib-cmd">
+        {fileItems.length > 0 && (
+          <MenuBarProvider>
+            <MenuDropdown label="File" items={fileItems} disabled={disabled} />
+          </MenuBarProvider>
+        )}
         {documentName !== undefined &&
           (documentNameEditable && onDocumentNameChange ? (
             <input
@@ -211,6 +291,31 @@ export function RibbonChrome({
         </button>
         <span className="dcx-rib-grow" />
         {renderTitleBarRight?.()}
+        {onZoomChange && (
+          <span className="dcx-rib-zoom">
+            <button
+              className="dcx-rib-btn"
+              title="Zoom out"
+              aria-label="Zoom out"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onZoomChange(Math.max((zoom ?? 1) / 1.1, 0.25))}
+            >
+              −
+            </button>
+            <span className="dcx-rib-zoomval" data-testid="ribbon-zoom">
+              {zoomPct}%
+            </span>
+            <button
+              className="dcx-rib-btn"
+              title="Zoom in"
+              aria-label="Zoom in"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onZoomChange(Math.min((zoom ?? 1) * 1.1, 4))}
+            >
+              +
+            </button>
+          </span>
+        )}
         <button
           className="dcx-rib-classic"
           data-testid="ribbon-exit"
@@ -241,6 +346,15 @@ export function RibbonChrome({
           onClick={() => setTab('insert')}
         >
           Insert
+        </button>
+        <button
+          className="dcx-rib-tab"
+          role="tab"
+          aria-selected={tab === 'view'}
+          data-testid="ribbon-tab-view"
+          onClick={() => setTab('view')}
+        >
+          View
         </button>
       </div>
 
@@ -331,6 +445,26 @@ export function RibbonChrome({
                   <span className="s">S</span>,
                   () => run('strikethrough'),
                   { pressed: fmt?.strike }
+                )}
+                {onFormat && (
+                  <span className="dcx-rib-colors" data-testid="ribbon-colors">
+                    <ColorPicker
+                      mode="text"
+                      value={fmt?.color?.replace(/^#/, '')}
+                      onChange={setTextColor}
+                      theme={theme}
+                      disabled={disabled}
+                      title="Text color"
+                    />
+                    <ColorPicker
+                      mode="highlight"
+                      value={fmt?.highlight}
+                      onChange={setHighlight}
+                      theme={theme}
+                      disabled={disabled}
+                      title="Highlight color"
+                    />
+                  </span>
                 )}
                 {btn(
                   'clear',
@@ -482,6 +616,51 @@ export function RibbonChrome({
                   )}
               </div>
               <div className="dcx-rib-lbl">References</div>
+            </div>
+          </>
+        )}
+
+        {tab === 'view' && (
+          <>
+            {onZoomChange && (
+              <div className="dcx-rib-grp">
+                <div className="dcx-rib-row">
+                  {btn('zoom-out', 'Zoom out', <Icon d="M5 12h14" />, () =>
+                    onZoomChange(Math.max((zoom ?? 1) / 1.1, 0.25))
+                  )}
+                  {btn(
+                    'zoom-reset',
+                    'Reset zoom',
+                    <span style={{ fontSize: 12 }}>{zoomPct}%</span>,
+                    () => onZoomChange(1)
+                  )}
+                  {btn('zoom-in', 'Zoom in', <Icon d="M12 5v14|M5 12h14" />, () =>
+                    onZoomChange(Math.min((zoom ?? 1) * 1.1, 4))
+                  )}
+                </div>
+                <div className="dcx-rib-lbl">Zoom</div>
+              </div>
+            )}
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {onToggleShowRuler &&
+                  btn(
+                    'toggle-ruler',
+                    'Show ruler',
+                    <Icon d="M3 8h18v8H3z|M7 8v3|M11 8v4|M15 8v3|M19 8v4" />,
+                    () => onToggleShowRuler(),
+                    { pressed: rulerVisible }
+                  )}
+                {onToggleShowFormattingMarks &&
+                  btn(
+                    'toggle-marks',
+                    'Formatting marks',
+                    <Icon d="M9 4h9|M13 4v16|M9 4a4 4 0 0 0 0 8h4" />,
+                    () => onToggleShowFormattingMarks(),
+                    { pressed: showFormattingMarks }
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Show</div>
             </div>
           </>
         )}
