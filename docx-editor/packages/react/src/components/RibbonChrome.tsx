@@ -67,10 +67,11 @@ const RIBBON_CSS = `
   border-radius:99px;padding:6px 13px;cursor:pointer}
 .dcx-rib-classic:hover{filter:brightness(.97)}
 /* tabs */
-.dcx-rib-tabs{display:flex;align-items:center;gap:2px;height:38px;padding:0 10px;
+.dcx-rib-tabs{display:flex;align-items:center;gap:2px;height:38px;padding:0 10px;overflow-x:auto;scrollbar-width:none;
   background:linear-gradient(180deg,var(--doc-primary-light,#eef4fd),var(--doc-surface,#fff) 90%);
   border-bottom:1px solid var(--doc-border-light,#e5e8ec)}
-.dcx-rib-tab{position:relative;height:38px;padding:0 14px;display:flex;align-items:center;font-size:13.5px;
+.dcx-rib-tabs::-webkit-scrollbar{display:none}
+.dcx-rib-tab{position:relative;height:38px;padding:0 14px;display:flex;align-items:center;font-size:13.5px;flex:none;
   font-weight:550;color:var(--doc-text-muted,#57606a);background:none;border:0;cursor:pointer}
 .dcx-rib-tab:hover{color:var(--doc-text)}
 .dcx-rib-tab[aria-selected="true"]{color:var(--doc-primary,#1b66c9);font-weight:650}
@@ -117,6 +118,18 @@ const RIBBON_CSS = `
 .dcx-rib-saved{font-size:12px;color:var(--doc-text-subtle,#8b949e);white-space:nowrap;display:flex;align-items:center;gap:6px}
 .dcx-rib-saved.saved::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--doc-success,#1a8a52)}
 .dcx-rib-tab-ctx{color:var(--doc-primary,#1b66c9);font-weight:600}
+/* Narrow / mobile: collapse the command bar so nothing is clipped; the ribbon
+   body and tab strip already scroll horizontally (the mobile-Word pattern). */
+@media (max-width:640px){
+  .dcx-rib-cmd{gap:6px;padding:0 8px}
+  .dcx-rib-name{max-width:110px}
+  .dcx-rib-saved{display:none}
+  .dcx-rib-searchtxt,.dcx-rib-k{display:none}
+  .dcx-rib-search{width:36px;min-width:36px;max-width:36px;padding:0;justify-content:center}
+  .dcx-rib-zoom{display:none}
+  .dcx-rib-classictxt{display:none}
+  .dcx-rib-classic{padding:6px 9px}
+}
 `;
 
 function Icon({ d }: { d: string }): JSX.Element {
@@ -459,7 +472,7 @@ export function RibbonChrome({
           title="Switch back to the classic toolbar"
         >
           <Icon d="M4 6h16|M4 12h16|M4 18h10" />
-          Classic view
+          <span className="dcx-rib-classictxt">Classic view</span>
         </button>
       </div>
 

@@ -166,4 +166,23 @@ test.describe('Ribbon UI (new chrome) toggle', () => {
 
     await page.screenshot({ path: 'screenshots/ux/ribbon-real-v5.png' });
   });
+
+  test('the ribbon adapts to a narrow (mobile) viewport without clipping', async ({ page }) => {
+    // Preset ribbon mode + phone viewport before load.
+    await page.addInitScript(() => window.localStorage.setItem('docx-editor-ui-mode', 'ribbon'));
+    await page.setViewportSize({ width: 390, height: 844 });
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await expect(page.locator(RIBBON)).toBeVisible();
+
+    // The command bar collapses: the search label + zoom are hidden, so the row
+    // fits the viewport instead of overflowing.
+    await expect(page.locator('.dcx-rib-searchtxt')).toBeHidden();
+    const box = await page.locator('.dcx-rib-cmd').boundingBox();
+    expect(box).not.toBeNull();
+    if (box) expect(box.width).toBeLessThanOrEqual(392);
+
+    await page.screenshot({ path: 'screenshots/ux/ribbon-real-mobile.png' });
+  });
 });
