@@ -50,7 +50,8 @@ type Tab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'ta
 
 const RIBBON_CSS = `
 .dcx-rib{display:flex;flex-direction:column;font-family:var(--doc-font-ui,inherit);color:var(--doc-text);
-  background:var(--doc-surface,#fff);border-bottom:1px solid var(--doc-border-light,#e5e8ec)}
+  background:var(--doc-surface,#fff);border-bottom:1px solid var(--doc-border-light,#e5e8ec);
+  box-shadow:0 6px 16px -12px rgba(20,22,28,.18);position:relative;z-index:1}
 .dcx-rib *{box-sizing:border-box}
 .dcx-rib svg{display:block;width:17px;height:17px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
 /* command bar */
@@ -58,7 +59,7 @@ const RIBBON_CSS = `
   background:linear-gradient(180deg,var(--doc-primary-light,#eef4fd),var(--doc-surface,#fff) 85%);
   border-bottom:1px solid var(--doc-border-light,#e5e8ec)}
 .dcx-rib-name{font-weight:650;font-size:14px;color:var(--doc-text);background:transparent;border:1px solid transparent;
-  border-radius:7px;padding:4px 8px;max-width:240px;min-width:60px}
+  border-radius:7px;padding:4px 8px;max-width:240px;min-width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dcx-rib-name:hover{background:var(--doc-bg-hover,rgba(0,0,0,.04))}
 .dcx-rib-name:focus{outline:none;background:var(--doc-surface,#fff);border-color:var(--doc-primary,#1b66c9)}
 .dcx-rib-grow{flex:1}
@@ -115,7 +116,8 @@ const RIBBON_CSS = `
 .dcx-rib-searchtxt{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;text-align:left}
 .dcx-rib-k{font-family:var(--doc-font-mono,ui-monospace,monospace);font-size:10px;border:1px solid var(--doc-border,#d5dae0);
   border-radius:5px;padding:1px 5px;color:var(--doc-text-subtle,#8b949e);flex:none}
-.dcx-rib-saved{font-size:12px;color:var(--doc-text-subtle,#8b949e);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.dcx-rib-saved{font-size:12px;color:var(--doc-text-subtle,#8b949e);white-space:nowrap;display:flex;align-items:center;gap:6px;
+  background:var(--doc-bg-subtle,#f6f8fa);border:1px solid var(--doc-border-light,#e5e8ec);border-radius:99px;padding:3px 11px}
 .dcx-rib-saved.saved::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--doc-success,#1a8a52)}
 .dcx-rib-tab-ctx{color:var(--doc-primary,#1b66c9);font-weight:600}
 /* Narrow / mobile: collapse the command bar so nothing is clipped; the ribbon
