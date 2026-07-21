@@ -11,10 +11,11 @@
  * here, so classic and ribbon stay behaviourally identical. Toggle via the View
  * menu ("Ribbon UI (preview)") or the in-ribbon "Classic view" button.
  *
- * Scope (v1): a functional Home + Insert tab covering the core formatting and
- * insert commands. Anything not yet surfaced here remains reachable by toggling
- * back to Classic. Styled with the editor's own `--doc-*` tokens so it themes
- * (light/dark) with the rest of the chrome.
+ * Tabs: Home · Insert · Layout · References · Review · View, plus contextual
+ * Table/Picture tabs that auto-appear for the selection. Every tab/group is
+ * presence-gated on the handlers the host actually provides. Styled with the
+ * editor's own `--doc-*` tokens so it themes (light/dark) with the rest of the
+ * chrome.
  */
 
 import {
@@ -45,7 +46,7 @@ export interface RibbonChromeProps {
   renderTitleBarRight?: () => ReactNode;
 }
 
-type Tab = 'home' | 'insert' | 'view' | 'table' | 'image';
+type Tab = 'home' | 'insert' | 'layout' | 'references' | 'review' | 'view' | 'table' | 'image';
 
 const RIBBON_CSS = `
 .dcx-rib{display:flex;flex-direction:column;font-family:var(--doc-font-ui,inherit);color:var(--doc-text);
@@ -199,6 +200,12 @@ export function RibbonChrome({
     showFormattingMarks,
     isSaving,
     isDirty,
+    onAddComment,
+    onToggleSpellcheck,
+    spellcheckEnabled,
+    onToggleGrammar,
+    grammarEnabled,
+    onInsertSectionBreak,
     // Contextual tabs (auto-appear like Word's Picture/Table tools).
     tableContext,
     onTableAction,
@@ -206,6 +213,29 @@ export function RibbonChrome({
     onImageWrapType,
     onImageTransform,
   } = ctx;
+
+  const hasLayout = !!(
+    dialogs.openPageSetup ||
+    onInsertPageBreak ||
+    onInsertSectionBreak ||
+    dialogs.openWatermark ||
+    dialogs.openBordersShading ||
+    dialogs.openParagraphDialog
+  );
+  const hasReferences = !!(
+    onInsertTOC ||
+    onInsertFootnote ||
+    dialogs.openCitations ||
+    dialogs.openBookmarks
+  );
+  const hasReview = !!(
+    dialogs.openWordCount ||
+    onAddComment ||
+    onToggleSpellcheck ||
+    onToggleGrammar ||
+    dialogs.openAccessibility ||
+    dialogs.openDictionary
+  );
 
   const inTable = !!tableContext?.isInTable;
   const hasImage = !!imageContext;
@@ -453,6 +483,39 @@ export function RibbonChrome({
         >
           Insert
         </button>
+        {hasLayout && (
+          <button
+            className="dcx-rib-tab"
+            role="tab"
+            aria-selected={tab === 'layout'}
+            data-testid="ribbon-tab-layout"
+            onClick={() => setTab('layout')}
+          >
+            Layout
+          </button>
+        )}
+        {hasReferences && (
+          <button
+            className="dcx-rib-tab"
+            role="tab"
+            aria-selected={tab === 'references'}
+            data-testid="ribbon-tab-references"
+            onClick={() => setTab('references')}
+          >
+            References
+          </button>
+        )}
+        {hasReview && (
+          <button
+            className="dcx-rib-tab"
+            role="tab"
+            aria-selected={tab === 'review'}
+            data-testid="ribbon-tab-review"
+            onClick={() => setTab('review')}
+          >
+            Review
+          </button>
+        )}
         <button
           className="dcx-rib-tab"
           role="tab"
@@ -743,6 +806,177 @@ export function RibbonChrome({
                   )}
               </div>
               <div className="dcx-rib-lbl">References</div>
+            </div>
+          </>
+        )}
+
+        {tab === 'layout' && (
+          <>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {dialogs.openPageSetup &&
+                  btn(
+                    'layout-pagesetup',
+                    'Page setup',
+                    <Icon d="M6 3h12v18H6z|M9 7h6|M9 11h6|M9 15h4" />,
+                    () => dialogs.openPageSetup?.()
+                  )}
+                {dialogs.openParagraphDialog &&
+                  btn(
+                    'layout-paragraph',
+                    'Paragraph',
+                    <Icon d="M8 4h9|M8 9h9|M8 14h5|M4 4v16" />,
+                    () => dialogs.openParagraphDialog?.()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Page setup</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {onInsertPageBreak &&
+                  btn(
+                    'layout-pagebreak',
+                    'Page break',
+                    <Icon d="M4 4h16v6H4z|M4 14h16v6H4z|M2 12h20" />,
+                    () => onInsertPageBreak()
+                  )}
+                {onInsertSectionBreak &&
+                  btn(
+                    'layout-sectionbreak',
+                    'Section break',
+                    <Icon d="M4 6h16|M4 18h16|M4 12h9|M10 9l3 3-3 3" />,
+                    () => onInsertSectionBreak('nextPage')
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Breaks</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {dialogs.openWatermark &&
+                  btn(
+                    'layout-watermark',
+                    'Watermark',
+                    <Icon d="M12 3s6 6 6 11a6 6 0 0 1-12 0c0-5 6-11 6-11z" />,
+                    () => dialogs.openWatermark?.()
+                  )}
+                {dialogs.openBordersShading &&
+                  btn(
+                    'layout-borders',
+                    'Borders & shading',
+                    <Icon d="M3 3h18v18H3z|M3 9h18|M9 3v18" />,
+                    () => dialogs.openBordersShading?.()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Design</div>
+            </div>
+          </>
+        )}
+
+        {tab === 'references' && (
+          <>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {onInsertTOC &&
+                  btn(
+                    'ref-toc',
+                    'Table of contents',
+                    <Icon d="M4 6h6|M4 12h6|M4 18h6|M14 6h6|M14 12h6|M14 18h6" />,
+                    () => onInsertTOC()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Contents</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {onInsertFootnote &&
+                  btn(
+                    'ref-footnote',
+                    'Footnote',
+                    <Icon d="M6 4h9l3 3v13H6z|M9 20l2-4h2l-2 4" />,
+                    () => onInsertFootnote()
+                  )}
+                {dialogs.openCitations &&
+                  btn(
+                    'ref-citations',
+                    'Citations',
+                    <Icon d="M7 7h4v4H7z|M7 8c0 3-1 4-3 5|M15 7h4v4h-4z|M15 8c0 3-1 4-3 5" />,
+                    () => dialogs.openCitations?.()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Notes &amp; citations</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {dialogs.openBookmarks &&
+                  btn('ref-bookmarks', 'Bookmarks', <Icon d="M6 3h12v18l-6-4-6 4z" />, () =>
+                    dialogs.openBookmarks?.()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Links</div>
+            </div>
+          </>
+        )}
+
+        {tab === 'review' && (
+          <>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {onToggleSpellcheck &&
+                  btn(
+                    'review-spelling',
+                    'Spelling',
+                    <Icon d="M4 18 8 6l4 12|M5.5 14h5|M15 11a3 3 0 1 0 3 3v-3" />,
+                    () => onToggleSpellcheck(),
+                    { pressed: spellcheckEnabled }
+                  )}
+                {onToggleGrammar &&
+                  btn(
+                    'review-grammar',
+                    'Grammar',
+                    <Icon d="M4 18 8 6l4 12|M5.5 14h5|M20 8l-6 8-3-3" />,
+                    () => onToggleGrammar(),
+                    { pressed: grammarEnabled }
+                  )}
+                {dialogs.openDictionary &&
+                  btn(
+                    'review-dictionary',
+                    'Dictionary',
+                    <Icon d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z|M4 18h13" />,
+                    () => dialogs.openDictionary?.()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Proofing</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {onAddComment &&
+                  btn(
+                    'review-comment',
+                    'New comment',
+                    <Icon d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z|M12 8v4|M10 10h4" />,
+                    () => onAddComment()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Comments</div>
+            </div>
+            <div className="dcx-rib-grp">
+              <div className="dcx-rib-row">
+                {dialogs.openWordCount &&
+                  btn(
+                    'review-wordcount',
+                    'Word count',
+                    <Icon d="M4 7h16|M4 12h16|M4 17h10" />,
+                    () => dialogs.openWordCount?.()
+                  )}
+                {dialogs.openAccessibility &&
+                  btn(
+                    'review-a11y',
+                    'Accessibility',
+                    <Icon d="M12 5.5a1 1 0 1 0 0-.01|M5 9h14|M12 9v5|M9 20l3-6 3 6" />,
+                    () => dialogs.openAccessibility?.()
+                  )}
+              </div>
+              <div className="dcx-rib-lbl">Insights</div>
             </div>
           </>
         )}

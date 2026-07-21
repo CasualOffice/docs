@@ -145,4 +145,25 @@ test.describe('Ribbon UI (new chrome) toggle', () => {
 
     await page.screenshot({ path: 'screenshots/ux/ribbon-real-v4.png' });
   });
+
+  test('Layout, References, and Review tabs are present and populated', async ({ page }) => {
+    const editor = new EditorPage(page);
+    await editor.goto();
+    await editor.waitForReady();
+    await page.getByRole('button', { name: 'View' }).click();
+    await page.getByRole('menuitem', { name: /Ribbon UI/ }).click();
+    await expect(page.locator(RIBBON)).toBeVisible();
+
+    await expect(page.locator('[data-testid="ribbon-tab-layout"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ribbon-tab-references"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ribbon-tab-review"]')).toBeVisible();
+
+    await page.locator('[data-testid="ribbon-tab-review"]').click();
+    await expect(page.locator('[data-testid="ribbon-review-wordcount"]')).toBeVisible();
+
+    await page.locator('[data-testid="ribbon-tab-layout"]').click();
+    await expect(page.locator('[data-testid="ribbon-layout-pagesetup"]')).toBeVisible();
+
+    await page.screenshot({ path: 'screenshots/ux/ribbon-real-v5.png' });
+  });
 });
