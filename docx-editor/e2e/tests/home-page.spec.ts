@@ -20,7 +20,8 @@ test.describe('Home page', () => {
     await page.goto('/');
     await expect(page.locator('[data-testid="home-page"]')).toBeVisible();
     // The Blank-document card is always present (synthesized, no fetch).
-    await expect(page.locator('[data-testid="template-card-blank"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="template-card-blank"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Blank Markdown — Personal' })).toBeVisible();
     // Open-from-disk affordance is always there too.
     await expect(page.locator('[data-testid="home-open-from-disk"]')).toBeVisible();
     // The editor should NOT be mounted yet.
@@ -29,7 +30,7 @@ test.describe('Home page', () => {
 
   test('clicking Blank document transitions to the editor', async ({ page }) => {
     await page.goto('/');
-    await page.locator('[data-testid="template-card-blank"]').first().click();
+    await page.getByRole('button', { name: 'Blank document — Personal' }).click();
     await expect(page.locator('[data-testid="docx-editor"]')).toBeVisible({ timeout: 10_000 });
     // Home should be gone.
     await expect(page.locator('[data-testid="home-page"]')).toHaveCount(0);

@@ -28,11 +28,15 @@ function useIsMobile(): boolean {
 }
 
 interface HomeProps {
+  onNewDocument: () => void;
   onSelectTemplate: (entry: TemplateEntry) => void;
   onOpenFile: (file: File) => void;
 }
 
 type CategoryFilter = 'All' | TemplateCategory;
+
+const isCreationTemplate = (template: TemplateEntry) =>
+  template.id === 'blank' || template.id === 'blank-markdown';
 
 // Theme-aware — these resolve through the editor's design tokens (loaded
 // globally via styles.css -> editor.css -> tokens.css), which flip on
@@ -755,7 +759,7 @@ function RecentCard({
   );
 }
 
-export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Element {
+export function Home({ onNewDocument, onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
@@ -807,8 +811,8 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return TEMPLATES.filter((t) => {
-      // Blank always shows (cosmetic Personal, but useful from every filter).
-      if (category !== 'All' && t.category !== category && t.id !== 'blank') return false;
+      if (isCreationTemplate(t)) return false;
+      if (category !== 'All' && t.category !== category) return false;
       if (!q) return true;
       return (
         t.name.toLowerCase().includes(q) ||
@@ -825,11 +829,15 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
     () => TEMPLATES.filter((t) => t.featured && !isBlankEntry(t)).slice(0, 4),
     []
   );
+  const blankDocument = TEMPLATES.find((t) => t.id === 'blank');
+  const blankMarkdown = TEMPLATES.find((t) => t.id === 'blank-markdown');
 
   const byCategory = useMemo(() => {
     const m = new Map<TemplateCategory, TemplateEntry[]>();
     for (const c of CATEGORIES) m.set(c, []);
-    for (const t of TEMPLATES) m.get(t.category)?.push(t);
+    for (const t of TEMPLATES) {
+      if (!isCreationTemplate(t)) m.get(t.category)?.push(t);
+    }
     // Sort the blank cards to the end of each category so the rich previews
     // lead and the sparse tiles group together instead of holing the grid.
     for (const list of m.values()) {
@@ -888,6 +896,22 @@ export function Home({ onSelectTemplate, onOpenFile }: HomeProps): React.JSX.Ele
           template designed for the way you actually work — or open a file from your computer.
         </p>
       </section>
+
+      {blankDocument && blankMarkdown && (
+        <section style={{ ...styles.section, ...(isMobile && mobile.section) }} aria-label="Create new">
+          <div style={{ ...styles.sectionHead, ...(isMobile && mobile.sectionHead) }}>
+            <h2 style={styles.sectionTitle}>Create new</h2>
+          </div>
+          <div style={{ ...styles.featuredRow, ...(isMobile && mobile.featuredRow) }}>
+            <TemplateCard
+              entry={blankDocument}
+              onSelect={onNewDocument}
+              isMobile={isMobile}
+            />
+            <TemplateCard entry={blankMarkdown} onSelect={onSelectTemplate} isMobile={isMobile} />
+          </div>
+        </section>
+      )}
 
       <section style={{ ...styles.controls, ...(isMobile && mobile.controls) }}>
         <label style={{ ...styles.searchWrap, ...(isMobile && mobile.searchWrap) }}>

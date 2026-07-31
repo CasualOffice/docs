@@ -396,6 +396,7 @@ export function App() {
   );
   const editorRef = useRef<DocxEditorRef>(null);
   const suppressSeedDocumentRef = useRef(false);
+  const documentLoadRequestRef = useRef(0);
   const [view, setView] = useState<'home' | 'editor'>(getInitialView);
 
   // Desktop (Tauri shell) feature flag. The host injects
@@ -805,9 +806,13 @@ export function App() {
   // gallery is the *initial* entry; users get back to it by
   // navigating to /.
   const handleNewDocument = useCallback(() => {
+    documentLoadRequestRef.current += 1;
     suppressSeedDocumentRef.current = true;
     setCurrentDocument(createEmptyDocument());
     setDocumentBuffer(null);
+    setTextDoc(null);
+    setRecoveryBuffer(null);
+    setLoadError(null);
     setFileName('Untitled.docx');
     setStatus('');
     // Desktop: a brand-new blank document must NOT stay bound to the path of
@@ -829,6 +834,7 @@ export function App() {
 
   const handleSelectTemplate = useCallback(
     async (entry: TemplateEntry) => {
+      const requestId = ++documentLoadRequestRef.current;
       try {
         // Blank markdown / text files open the source editor, not the DOCX
         // pipeline — start with an empty document.
@@ -836,14 +842,20 @@ export function App() {
           suppressSeedDocumentRef.current = true;
           setDocumentBuffer(null);
           setCurrentDocument(null);
+          setRecoveryBuffer(null);
+          setLoadError(null);
           setTextDoc({ text: '', fileName: entry.defaultFileName, kind: entry.source.textKind });
+          setFileName(entry.defaultFileName);
           setStatus('');
+          const bridge = typeof window !== 'undefined' ? window.__deskApp__ : undefined;
+          if (bridge?.isDesktop) bridge.filePath = null;
           if (!legacyForcedEditor) navigate('/document/new');
           setView('editor');
           return;
         }
         if (entry.source.kind === 'docx') setStatus('Loading template…');
         const loaded = await loadTemplate(entry);
+        if (requestId !== documentLoadRequestRef.current) return;
         suppressSeedDocumentRef.current = true;
         if (loaded.kind === 'document') {
           setDocumentBuffer(null);
@@ -857,6 +869,7 @@ export function App() {
         if (!legacyForcedEditor) navigate('/document/new');
         setView('editor');
       } catch (err) {
+        if (requestId !== documentLoadRequestRef.current) return;
         const message = err instanceof Error ? err.message : String(err);
         setStatus(`Failed to load template: ${message}`);
       }
@@ -866,6 +879,7 @@ export function App() {
 
   const handleOpenFromHome = useCallback(
     async (file: File) => {
+      const requestId = ++documentLoadRequestRef.current;
       try {
         suppressSeedDocumentRef.current = true;
         setStatus('Loading…');
@@ -879,8 +893,10 @@ export function App() {
         // .rtf and .eml open in dedicated read-only viewers.
         if (fmt === 'md' || fmt === 'txt' || fmt === 'rtf' || fmt === 'eml') {
           const text = await file.text();
+          if (requestId !== documentLoadRequestRef.current) return;
           setDocumentBuffer(null);
           setCurrentDocument(null);
+          setFileName(file.name);
           setTextDoc({
             text,
             fileName: file.name,
@@ -896,6 +912,7 @@ export function App() {
             ?.isDesktop;
           if (!onDesktopOpen) {
             const bytes = await file.arrayBuffer();
+            if (requestId !== documentLoadRequestRef.current) return;
             void recordRecentFile({
               name: file.name,
               buffer: bytes,
@@ -910,6 +927,7 @@ export function App() {
         }
 
         const raw = await file.arrayBuffer();
+        if (requestId !== documentLoadRequestRef.current) return;
         // Other non-DOCX uploads (.odt) are converted to the DOCX model via
         // the WASM worker before the editor loads them — mirrors the editor's
         // File → Open path so the Home picker isn't DOCX-only.
@@ -917,6 +935,7 @@ export function App() {
         if (fmt && isForeignFormat(fmt)) {
           setStatus('Converting…');
           const out = await convertToDocx(new Uint8Array(raw), fmt);
+          if (requestId !== documentLoadRequestRef.current) return;
           buffer = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
         }
         const cleanName = file.name.replace(/\.odt$/i, '.docx');
@@ -928,6 +947,7 @@ export function App() {
         if (!legacyForcedEditor) navigate('/document/new');
         setView('editor');
       } catch {
+        if (requestId !== documentLoadRequestRef.current) return;
         setStatus('Error loading file');
       }
     },
@@ -1442,7 +1462,13 @@ export function App() {
   }
 
   if (view === 'home') {
-    return <Home onSelectTemplate={handleSelectTemplate} onOpenFile={handleOpenFromHome} />;
+    return (
+      <Home
+        onNewDocument={handleNewDocument}
+        onSelectTemplate={handleSelectTemplate}
+        onOpenFile={handleOpenFromHome}
+      />
+    );
   }
 
   if (textDoc) {
