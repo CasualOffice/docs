@@ -9,6 +9,7 @@
 
 import { useState, useCallback } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from '../../i18n';
 
 interface TableGridInlineProps {
   onInsert: (rows: number, columns: number) => void;
@@ -44,6 +45,7 @@ const labelStyle: CSSProperties = {
 };
 
 export function TableGridInline({ onInsert, gridRows = 6, gridColumns = 6 }: TableGridInlineProps) {
+  const { t } = useTranslation();
   const [hoverRows, setHoverRows] = useState(0);
   const [hoverCols, setHoverCols] = useState(0);
 
@@ -73,7 +75,8 @@ export function TableGridInline({ onInsert, gridRows = 6, gridColumns = 6 }: Tab
     }
   }
 
-  const gridLabel = hoverRows > 0 && hoverCols > 0 ? `${hoverCols} × ${hoverRows}` : 'Select size';
+  const gridLabel =
+    hoverRows > 0 && hoverCols > 0 ? `${hoverCols} × ${hoverRows}` : t('tableGrid.selectSize');
 
   return (
     <div>
@@ -88,7 +91,7 @@ export function TableGridInline({ onInsert, gridRows = 6, gridColumns = 6 }: Tab
           setHoverCols(0);
         }}
         role="grid"
-        aria-label="Table size selector"
+        aria-label={t('dialogs.insertTable.sizeSelector')}
       >
         {gridCells}
       </div>

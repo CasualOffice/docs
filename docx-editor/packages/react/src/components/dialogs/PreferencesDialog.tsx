@@ -24,6 +24,7 @@
 import type { CSSProperties } from 'react';
 import type { EditorPreferences } from '@eigenpal/docx-core/prosemirror/extensions';
 import { Dialog } from '../ui/Dialog';
+import { useTranslation } from '../../i18n';
 
 export interface PreferencesDialogProps {
   isOpen: boolean;
@@ -181,16 +182,17 @@ export function PreferencesDialog({
   preferences,
   onChange,
 }: PreferencesDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Preferences"
+      title={t('dialogs.preferences.title')}
       width={520}
       testId="preferences-dialog"
       footer={
         <button type="button" style={primaryBtnStyle} onClick={onClose}>
-          Done
+          {t('common.done')}
         </button>
       }
     >
@@ -199,12 +201,13 @@ export function PreferencesDialog({
           checked={preferences.smartQuotes}
           onChange={(v) => onChange('smartQuotes', v)}
           testId="pref-smartquotes"
-          title="Use smart quotes"
+          title={t('dialogs.preferences.smartQuotesTitle')}
           description={
             <>
-              Replace straight quotes, dashes, and ellipses as you type (
+              {t('dialogs.preferences.smartQuotesDescPart1')}
               <code style={codeStyle}>" → “</code>, <code style={codeStyle}>-- → —</code>,{' '}
-              <code style={codeStyle}>... → …</code>).
+              <code style={codeStyle}>... → …</code>
+              {t('dialogs.preferences.smartQuotesDescPart2')}
             </>
           }
         />
@@ -212,11 +215,14 @@ export function PreferencesDialog({
           checked={preferences.autocorrect}
           onChange={(v) => onChange('autocorrect', v)}
           testId="pref-autocorrect"
-          title="Autocorrect"
+          title={t('dialogs.preferences.autocorrectTitle')}
           description={
             <>
-              Symbol sequences (<code style={codeStyle}>(c) → ©</code>) and common-typo fixes (
-              <code style={codeStyle}>teh → the</code>).
+              {t('dialogs.preferences.autocorrectDescPart1')}
+              <code style={codeStyle}>(c) → ©</code>
+              {t('dialogs.preferences.autocorrectDescPart2')}
+              <code style={codeStyle}>teh → the</code>
+              {t('dialogs.preferences.autocorrectDescPart3')}
             </>
           }
         />

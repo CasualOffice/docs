@@ -171,7 +171,7 @@ export function PanelRail({
   const outlineShortcut = formatShortcut('Ctrl+Shift+H');
 
   return (
-    <aside style={railStyle} aria-label="Panels" data-testid="panel-rail">
+    <aside style={railStyle} aria-label={t('panelRail.ariaLabel')} data-testid="panel-rail">
       {onToggleOutline && (
         <RailButton
           testId="rail-outline"
@@ -184,7 +184,7 @@ export function PanelRail({
       {onToggleComments && (
         <RailButton
           testId="rail-comments"
-          label={commentsVisible ? 'Hide comments' : 'Comments'}
+          label={commentsVisible ? t('panelRail.hideComments') : t('panelRail.comments')}
           icon="comment"
           active={!!commentsVisible}
           onClick={onToggleComments}
@@ -193,7 +193,7 @@ export function PanelRail({
       {onToggleHistory && (
         <RailButton
           testId="rail-history"
-          label={historyVisible ? 'Hide version history' : 'Version history'}
+          label={historyVisible ? t('commandPalette.hideVersionHistory') : t('sidebar.versionHistory.title')}
           icon="history"
           active={!!historyVisible}
           onClick={onToggleHistory}
@@ -202,7 +202,7 @@ export function PanelRail({
       {onToggleProperties && (
         <RailButton
           testId="rail-properties"
-          label={propertiesVisible ? 'Hide format panel' : 'Format'}
+          label={propertiesVisible ? t('panelRail.hideFormatPanel') : t('toolbar.format')}
           icon="tune"
           active={!!propertiesVisible}
           onClick={onToggleProperties}
@@ -211,7 +211,7 @@ export function PanelRail({
       {onToggleWriter && (
         <RailButton
           testId="rail-writer"
-          label={writerVisible ? 'Hide Writing Assistant' : 'Writing Assistant'}
+          label={writerVisible ? t('panelRail.hideWritingAssistant') : t('dialogs.writingAssistant.panelTitle')}
           // Distinct from DocOps (auto_awesome) — the writing assistant reads as
           // an editing/writing aide, not the same sparkle as document ops.
           icon="edit_note"
@@ -222,7 +222,7 @@ export function PanelRail({
       {onToggleChat && (
         <RailButton
           testId="rail-chat"
-          label={chatVisible ? 'Hide chat' : 'Ask AI'}
+          label={chatVisible ? t('panelRail.hideChat') : t('chat.title')}
           icon="chat_bubble_outline"
           active={!!chatVisible}
           onClick={onToggleChat}
@@ -231,7 +231,7 @@ export function PanelRail({
       {onToggleDocOps && (
         <RailButton
           testId="rail-docops"
-          label={docopsVisible ? 'Hide DocOps AI' : 'DocOps AI'}
+          label={docopsVisible ? t('panelRail.hideDocOpsAi') : t('docops.panelTitle')}
           icon="auto_awesome"
           active={!!docopsVisible}
           onClick={onToggleDocOps}

@@ -13,6 +13,12 @@
  */
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useTranslation } from '../i18n';
+
+// New keys, not yet in en.json — see keys_l3_render.json deliverable.
+const USE_THIS_SIGNATURE_KEY = 'signing.captures.useThisSignature';
+const TYPE_FULL_NAME_PLACEHOLDER_KEY = 'signing.captures.typeFullNamePlaceholder';
+const CHOOSE_IMAGE_KEY = 'signing.captures.chooseImage';
 
 export interface CapturedSignature {
   bytes: ArrayBuffer;
@@ -37,11 +43,14 @@ export interface DrawnSignaturePadProps {
 
 export function DrawnSignaturePad({
   onCapture,
-  clearLabel = 'Clear',
-  saveLabel = 'Use this signature',
+  clearLabel,
+  saveLabel,
   width = 480,
   height = 160,
 }: DrawnSignaturePadProps) {
+  const { t } = useTranslation();
+  const resolvedClearLabel = clearLabel ?? t('chat.clearButton');
+  const resolvedSaveLabel = saveLabel ?? t(USE_THIS_SIGNATURE_KEY);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
   const [hasInk, setHasInk] = useState(false);
@@ -125,7 +134,7 @@ export function DrawnSignaturePad({
       />
       <div style={padActionsStyle}>
         <button type="button" onClick={clear} style={secondaryBtnStyle(false)}>
-          {clearLabel}
+          {resolvedClearLabel}
         </button>
         <button
           type="button"
@@ -134,7 +143,7 @@ export function DrawnSignaturePad({
           style={primaryBtnStyle(!hasInk)}
           data-testid="drawn-signature-save"
         >
-          {saveLabel}
+          {resolvedSaveLabel}
         </button>
       </div>
     </div>
@@ -164,8 +173,10 @@ export interface TypedSignatureFieldProps {
 export function TypedSignatureField({
   onCapture,
   defaultText = '',
-  saveLabel = 'Use this signature',
+  saveLabel,
 }: TypedSignatureFieldProps) {
+  const { t } = useTranslation();
+  const resolvedSaveLabel = saveLabel ?? t(USE_THIS_SIGNATURE_KEY);
   const [value, setValue] = useState(defaultText);
   const save = () => {
     const trimmed = value.trim();
@@ -180,7 +191,7 @@ export function TypedSignatureField({
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Type your full name"
+        placeholder={t(TYPE_FULL_NAME_PLACEHOLDER_KEY)}
         style={typedInputStyle}
         data-testid="typed-signature-input"
         autoFocus
@@ -193,7 +204,7 @@ export function TypedSignatureField({
           style={primaryBtnStyle(!value.trim())}
           data-testid="typed-signature-save"
         >
-          {saveLabel}
+          {resolvedSaveLabel}
         </button>
       </div>
     </div>
@@ -214,6 +225,7 @@ export function UploadedSignatureField({
   onCapture,
   accept = 'image/png,image/jpeg,image/svg+xml',
 }: UploadedSignatureFieldProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,7 +247,7 @@ export function UploadedSignatureField({
           style={{ display: 'none' }}
           data-testid="uploaded-signature-input"
         />
-        <span>{fileName ?? 'Choose image…'}</span>
+        <span>{fileName ?? t(CHOOSE_IMAGE_KEY)}</span>
       </label>
     </div>
   );

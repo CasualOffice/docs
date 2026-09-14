@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { FocusTrap } from '../ui/FocusTrap';
 import { formatShortcut } from '../../lib/platform';
+import { useTranslation } from '../../i18n';
 
 // Recently-used tracker: persists the last 5 picked item ids so repeat
 // users see their habits without typing. Lives in localStorage so the
@@ -234,6 +235,7 @@ const kbdHintStyle: CSSProperties = {
 };
 
 export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteDialogProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState<string[]>(() => loadRecents());
@@ -245,11 +247,11 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
     setQuery('');
     setActiveIndex(0);
     // Focus the input on next tick to defeat any focus competition.
-    const t = window.setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
     }, 0);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timeoutId);
   }, [isOpen]);
 
   const filtered = useMemo(() => {
@@ -344,7 +346,7 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
         onMouseDown={onClose}
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
+        aria-label={t('dialogs.commandPalette.ariaLabel')}
       >
         <div style={dialogStyle} onMouseDown={(e) => e.stopPropagation()}>
           <div style={inputWrapStyle}>
@@ -366,8 +368,8 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
             <input
               ref={inputRef}
               type="text"
-              aria-label="Search commands, files, or settings"
-              placeholder="Search commands, files, or settings…"
+              aria-label={t('dialogs.commandPalette.searchAriaLabel')}
+              placeholder={t('dialogs.commandPalette.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -405,7 +407,7 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
               named + keyboard-operable, so we keep it simple and compliant. */}
           <div ref={listRef} style={listStyle}>
             {filtered.length === 0 ? (
-              <div style={emptyStyle}>No commands match — try a different search.</div>
+              <div style={emptyStyle}>{t('dialogs.commandPalette.noResults')}</div>
             ) : (
               filtered.map((item, index) => (
                 <button
@@ -431,15 +433,15 @@ export function CommandPaletteDialog({ isOpen, onClose, items }: CommandPaletteD
             <span style={kbdHintStyle}>
               <span style={shortcutChipStyle}>↑</span>
               <span style={shortcutChipStyle}>↓</span>
-              <span>navigate</span>
+              <span>{t('dialogs.commandPalette.navigateHint')}</span>
               <span style={{ margin: '0 6px', opacity: 0.5 }}>·</span>
               <span style={shortcutChipStyle}>↵</span>
-              <span>run</span>
+              <span>{t('dialogs.commandPalette.runHint')}</span>
               <span style={{ margin: '0 6px', opacity: 0.5 }}>·</span>
               <span style={shortcutChipStyle}>esc</span>
-              <span>close</span>
+              <span>{t('dialogs.commandPalette.closeHint')}</span>
             </span>
-            <span>{filtered.length} commands</span>
+            <span>{t('dialogs.commandPalette.resultCount', { count: filtered.length })}</span>
           </div>
         </div>
       </div>

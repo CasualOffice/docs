@@ -41,6 +41,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { FocusTrap } from './FocusTrap';
+import { useTranslation } from '../../i18n';
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
@@ -200,6 +201,7 @@ export function Dialog({
   ariaLabel,
   testId,
 }: DialogProps) {
+  const { t } = useTranslation();
   const [closeHover, setCloseHover] = useState(false);
 
   useEffect(() => {
@@ -235,7 +237,7 @@ export function Dialog({
         }}
         role="dialog"
         aria-modal="true"
-        aria-label={ariaLabel ?? (typeof title === 'string' ? title : 'Dialog')}
+        aria-label={ariaLabel ?? (typeof title === 'string' ? title : t('ui.dialog.defaultAriaLabel'))}
         data-testid={testId}
       >
         <div style={shellStyle(width)} onMouseDown={(e) => e.stopPropagation()}>
@@ -255,7 +257,7 @@ export function Dialog({
                 onMouseLeave={() => setCloseHover(false)}
                 onFocus={() => setCloseHover(true)}
                 onBlur={() => setCloseHover(false)}
-                aria-label="Close dialog"
+                aria-label={t('common.closeDialog')}
                 data-testid={testId ? `${testId}-close` : undefined}
               >
                 <svg

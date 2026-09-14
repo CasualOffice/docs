@@ -3,6 +3,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from '@casualoffice/docs';
 
 interface RtfViewerProps {
   content: string;
@@ -59,6 +60,7 @@ function stripRtf(rtf: string): string {
 }
 
 export function RtfViewer({ content, fileName, onBack }: RtfViewerProps): React.ReactElement {
+  const { t } = useTranslation();
   const plainText = useMemo(() => {
     try {
       return stripRtf(content);
@@ -76,8 +78,8 @@ export function RtfViewer({ content, fileName, onBack }: RtfViewerProps): React.
               type="button"
               onClick={onBack}
               style={styles.backBtn}
-              title="Return to home"
-              aria-label="Return to home"
+              title={t('viewers.returnToHome')}
+              aria-label={t('viewers.returnToHome')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -92,7 +94,7 @@ export function RtfViewer({ content, fileName, onBack }: RtfViewerProps): React.
           )}
           <span style={styles.fileName}>{fileName}</span>
           <span style={styles.badge}>RTF</span>
-          <span style={styles.note}>Read-only plain text view</span>
+          <span style={styles.note}>{t('viewers.readOnlyPlainTextView')}</span>
         </div>
       </header>
       <main style={styles.body}>

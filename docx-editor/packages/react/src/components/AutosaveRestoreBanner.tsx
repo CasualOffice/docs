@@ -24,6 +24,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { clearAutosave, formatAgo, readAutosave, type AutosaveRecord } from '../utils/autosave';
+import { useTranslation } from '../i18n';
 
 export interface AutosaveRestoreBannerProps {
   /** Called when the user clicks Restore — host swaps in the buffer. */
@@ -88,6 +89,7 @@ const SECONDARY_BTN_STYLE: CSSProperties = {
 };
 
 export function AutosaveRestoreBanner({ onRestore, suppress }: AutosaveRestoreBannerProps) {
+  const { t } = useTranslation();
   const [rec, setRec] = useState<AutosaveRecord | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -121,9 +123,10 @@ export function AutosaveRestoreBanner({ onRestore, suppress }: AutosaveRestoreBa
   return (
     <div role="status" aria-live="polite" data-testid="autosave-banner" style={ROOT_STYLE}>
       <div style={MESSAGE_STYLE}>
-        <span style={STRONG_STYLE}>Unsaved changes</span>
+        <span style={STRONG_STYLE}>{t('titleBar.unsavedChanges')}</span>
         <span>
-          from <em>{rec.name}</em> ({formatAgo(Date.now() - rec.savedAt)}) — restore them?
+          {t('autosaveBanner.from')} <em>{rec.name}</em>{' '}
+          {t('autosaveBanner.agoRestore', { ago: formatAgo(Date.now() - rec.savedAt) })}
         </span>
       </div>
       <button
@@ -136,7 +139,7 @@ export function AutosaveRestoreBanner({ onRestore, suppress }: AutosaveRestoreBa
           setDismissed(true);
         }}
       >
-        Restore
+        {t('autosaveBanner.restore')}
       </button>
       <button
         type="button"
@@ -147,7 +150,7 @@ export function AutosaveRestoreBanner({ onRestore, suppress }: AutosaveRestoreBa
           setDismissed(true);
         }}
       >
-        Discard
+        {t('common.discard')}
       </button>
     </div>
   );

@@ -4,6 +4,7 @@
 
 import React, { useMemo } from 'react';
 import DOMPurify from 'dompurify';
+import { useTranslation, type TranslationKey } from '@casualoffice/docs';
 
 interface EmlViewerProps {
   content: string;
@@ -22,6 +23,17 @@ interface ParsedEmail {
 }
 
 const VISIBLE_HEADERS = ['from', 'to', 'cc', 'bcc', 'reply-to', 'subject', 'date'];
+
+/** Header field label i18n keys — 'subject' is excluded (rendered as the
+ *  page's <h1>, never as a "Subject" row; see the .filter() at the call site). */
+const HEADER_LABEL_KEYS: Record<string, TranslationKey> = {
+  from: 'viewers.headerFrom',
+  to: 'viewers.headerTo',
+  cc: 'viewers.headerCc',
+  bcc: 'viewers.headerBcc',
+  'reply-to': 'viewers.headerReplyTo',
+  date: 'viewers.headerDate',
+};
 
 function decodeQuotedPrintable(text: string): string {
   return text
@@ -105,7 +117,7 @@ function parseEmail(raw: string): ParsedEmail {
           from: headers['from'] ?? '',
           to: headers['to'] ?? '',
           cc: headers['cc'] ?? '',
-          subject: headers['subject'] ?? '(no subject)',
+          subject: headers['subject'] ?? '',
           date: headers['date'] ?? '',
           body: bestBody,
           isHtml: bestIsHtml,
@@ -126,6 +138,7 @@ function parseEmail(raw: string): ParsedEmail {
 }
 
 export function EmlViewer({ content, fileName, onBack }: EmlViewerProps): React.ReactElement {
+  const { t } = useTranslation();
   const email = useMemo(() => {
     try {
       return parseEmail(content);
@@ -158,8 +171,8 @@ export function EmlViewer({ content, fileName, onBack }: EmlViewerProps): React.
               type="button"
               onClick={onBack}
               style={styles.backBtn}
-              title="Return to home"
-              aria-label="Return to home"
+              title={t('viewers.returnToHome')}
+              aria-label={t('viewers.returnToHome')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -181,7 +194,7 @@ export function EmlViewer({ content, fileName, onBack }: EmlViewerProps): React.
         <div style={styles.card}>
           {/* Header fields */}
           <div style={styles.headerBlock}>
-            <h1 style={styles.subject}>{email.subject || '(no subject)'}</h1>
+            <h1 style={styles.subject}>{email.subject || t('viewers.noSubject')}</h1>
             {VISIBLE_HEADERS.filter((h) => h !== 'subject').map((key) => {
               const val =
                 key === 'from'
@@ -196,7 +209,7 @@ export function EmlViewer({ content, fileName, onBack }: EmlViewerProps): React.
               if (!val) return null;
               return (
                 <div key={key} style={styles.headerRow}>
-                  <span style={styles.headerKey}>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                  <span style={styles.headerKey}>{t(HEADER_LABEL_KEYS[key])}</span>
                   <span style={styles.headerVal}>{val}</span>
                 </div>
               );

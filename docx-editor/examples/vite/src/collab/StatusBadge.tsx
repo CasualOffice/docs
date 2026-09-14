@@ -6,6 +6,7 @@
 // surface connection state at a glance. Reads from the
 // useCollab() hook's `status` field.
 import type { CSSProperties } from 'react';
+import { useTranslation } from '@casualoffice/docs';
 import type { CollabStatus, CollabPeer } from './useCollab';
 
 const styles: Record<string, CSSProperties> = {
@@ -44,13 +45,13 @@ const colorByStatus: Record<CollabStatus, string> = {
   disconnected: '#ef4444',
 };
 
-const labelByStatus: Record<CollabStatus, string> = {
-  connecting: 'Connecting',
-  connected: 'Live',
-  disconnected: 'Disconnected',
-};
-
 export function StatusBadge({ status, peers }: { status: CollabStatus; peers: CollabPeer[] }) {
+  const { t } = useTranslation();
+  const labelByStatus: Record<CollabStatus, string> = {
+    connecting: t('collab.connecting'),
+    connected: t('collab.live'),
+    disconnected: t('collab.disconnected'),
+  };
   const remote = peers.filter((p) => !p.isLocal).length;
   return (
     <div style={styles.badge}>
@@ -58,7 +59,7 @@ export function StatusBadge({ status, peers }: { status: CollabStatus; peers: Co
       <span>{labelByStatus[status]}</span>
       {remote > 0 && (
         <span style={styles.peers}>
-          · {remote} {remote === 1 ? 'other editor' : 'others'}
+          · {t('collab.otherEditorCount', { count: remote })}
         </span>
       )}
     </div>

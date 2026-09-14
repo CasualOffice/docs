@@ -128,7 +128,7 @@ export function LineSpacingPicker({
         className={cn('h-8 text-sm gap-0.5 px-2', className)}
         style={{ width: 'auto' }}
         title={t('lineSpacing.lineSpacingTitle', { label: getOptionLabel(currentOption) })}
-        aria-label="Line spacing"
+        aria-label={t('dialogs.customSpacing.lineSpacing')}
       >
         <IconLineSpacing className="h-5 w-5 shrink-0" />
       </SelectTrigger>
@@ -149,7 +149,7 @@ export function LineSpacingPicker({
                 onSpaceBeforeChange?.(spaceBefore ? 0 : DEFAULT_PARAGRAPH_SPACE_TWIPS);
               }}
             >
-              {spaceBefore ? 'Remove space before paragraph' : 'Add space before paragraph'}
+              {spaceBefore ? t('lineSpacing.removeSpaceBefore') : t('lineSpacing.addSpaceBefore')}
             </SelectItem>
           )}
           {onSpaceAfterChange && (
@@ -160,7 +160,7 @@ export function LineSpacingPicker({
                 onSpaceAfterChange?.(spaceAfter ? 0 : DEFAULT_PARAGRAPH_SPACE_TWIPS);
               }}
             >
-              {spaceAfter ? 'Remove space after paragraph' : 'Add space after paragraph'}
+              {spaceAfter ? t('lineSpacing.removeSpaceAfter') : t('lineSpacing.addSpaceAfter')}
             </SelectItem>
           )}
           {onOpenCustomSpacing && (
@@ -171,7 +171,7 @@ export function LineSpacingPicker({
                 onOpenCustomSpacing?.();
               }}
             >
-              Custom spacing…
+              {t('toolbar.customSpacing')}
             </SelectItem>
           )}
         </SelectGroup>
@@ -179,7 +179,7 @@ export function LineSpacingPicker({
           <>
             <SelectSeparator />
             <SelectGroup>
-              <SelectLabel>Pagination</SelectLabel>
+              <SelectLabel>{t('dialogs.customSpacing.pagination')}</SelectLabel>
               <SelectItem
                 value="__keepNext__"
                 onMouseDown={(e) => {
@@ -187,7 +187,8 @@ export function LineSpacingPicker({
                   onTogglePagination('keepNext');
                 }}
               >
-                {keepNext ? '✓ ' : ''}Keep with next
+                {keepNext ? '✓ ' : ''}
+                {t('dialogs.customSpacing.keepNext')}
               </SelectItem>
               <SelectItem
                 value="__keepLines__"
@@ -196,7 +197,8 @@ export function LineSpacingPicker({
                   onTogglePagination('keepLines');
                 }}
               >
-                {keepLines ? '✓ ' : ''}Keep lines together
+                {keepLines ? '✓ ' : ''}
+                {t('dialogs.customSpacing.keepLines')}
               </SelectItem>
               <SelectItem
                 value="__pageBreakBefore__"
@@ -205,7 +207,8 @@ export function LineSpacingPicker({
                   onTogglePagination('pageBreakBefore');
                 }}
               >
-                {pageBreakBefore ? '✓ ' : ''}Page break before
+                {pageBreakBefore ? '✓ ' : ''}
+                {t('dialogs.customSpacing.pageBreakBefore')}
               </SelectItem>
               <SelectItem
                 value="__widowControl__"
@@ -214,7 +217,8 @@ export function LineSpacingPicker({
                   onTogglePagination('widowControl');
                 }}
               >
-                {widowControl ? '✓ ' : ''}Prevent single lines
+                {widowControl ? '✓ ' : ''}
+                {t('lineSpacing.preventSingleLines')}
               </SelectItem>
             </SelectGroup>
           </>

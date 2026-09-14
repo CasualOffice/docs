@@ -20,7 +20,9 @@
     "px": "px",
     "closeDialog": "Fechar diálogo",
     "ok": "OK",
-    "add": "Adicionar"
+    "add": "Adicionar",
+    "done": "Concluído",
+    "discard": "Descartar"
   },
   "toolbar": {
     "ariaLabel": "Barra de formatação",
@@ -121,7 +123,7 @@
     "hidden": "Oculto",
     "textEffects": "Efeitos de texto",
     "emboss": "Relevo",
-    "imprint": "Gravado",
+    "imprint": "Baixo relevo",
     "textOutline": "Contorno",
     "textShadow": "Sombra",
     "characterSpacingExpanded1": "Expandido (+1pt)",
@@ -192,7 +194,12 @@
     "single": "Simples",
     "double": "Duplo",
     "lineSpacingTitle": "Espaçamento entre linhas: {label}",
-    "paragraphSpacing": "Espaçamento entre parágrafos"
+    "paragraphSpacing": "Espaçamento entre parágrafos",
+    "removeSpaceBefore": "Remover espaço antes do parágrafo",
+    "addSpaceBefore": "Adicionar espaço antes do parágrafo",
+    "removeSpaceAfter": "Remover espaço depois do parágrafo",
+    "addSpaceAfter": "Adicionar espaço depois do parágrafo",
+    "preventSingleLines": "Evitar linhas órfãs"
   },
   "styles": {
     "selectAriaLabel": "Selecionar estilo de parágrafo",
@@ -270,7 +277,9 @@
       "lightMagenta": "Magenta claro",
       "brightGreen": "Verde brilhante",
       "violet": "Violeta"
-    }
+    },
+    "customHexColorAriaLabel": "Cor hexadecimal personalizada",
+    "pickerSuffix": "seletor"
   },
   "dialogs": {
     "findReplace": {
@@ -416,7 +425,8 @@
         "character": "Caractere",
         "paragraph": "Parágrafo",
         "line": "Linha"
-      }
+      },
+      "distanceFromText": "Distância do texto (px)"
     },
     "pageSetup": {
       "title": "Configurar página",
@@ -786,6 +796,118 @@
       "statusRunning": "Executando…",
       "statusUnloadingModel": "Descarregando modelo…",
       "statusPaused": "Pausado — veja a mensagem abaixo"
+    },
+    "accessibility": {
+      "title": "Verificação de acessibilidade",
+      "missingAltTitle": "Imagem sem texto alternativo",
+      "missingAltHint": "Leitores de tela descrevem imagens pelo texto alternativo. Adicione uma descrição curta nas propriedades da imagem.",
+      "noIssues": "Nenhum problema de acessibilidade encontrado.",
+      "issueCount": "{count, plural, one {# problema} other {# problemas}}",
+      "goTo": "Ir para",
+      "headingJumpTitle": "Título {level} segue Título {previousLevel}",
+      "headingJumpHintOne": "Adicione um Título {nextLevel} entre eles para que a estrutura do documento não pule um nível. (“{text}”)",
+      "headingJumpHintMany": "{missing} níveis de título foram pulados. (“{text}”)"
+    },
+    "buildingBlocks": {
+      "title": "Blocos de construção",
+      "saveSelectionHeading": "Salvar seleção atual",
+      "noSelectionHint": "Selecione texto ou conteúdo no documento e reabra esta caixa de diálogo para salvá-lo como um bloco reutilizável.",
+      "namePlaceholder": "Nome do bloco (ex. Assinatura)",
+      "savedBlocksHeading": "Blocos salvos",
+      "empty": "Nenhum bloco de construção salvo ainda.",
+      "deleteAriaLabel": "Excluir {name}"
+    },
+    "commandPalette": {
+      "ariaLabel": "Paleta de comandos",
+      "searchAriaLabel": "Buscar comandos, arquivos ou configurações",
+      "searchPlaceholder": "Buscar comandos, arquivos ou configurações…",
+      "noResults": "Nenhum comando encontrado — tente outra busca.",
+      "navigateHint": "navegar",
+      "runHint": "executar",
+      "closeHint": "fechar",
+      "resultCount": "{count, plural, one {# comando} other {# comandos}}"
+    },
+    "dictionary": {
+      "title": "Dicionário",
+      "placeholder": "Buscar uma palavra",
+      "lookupButton": "Buscar",
+      "loading": "Buscando “{query}”…",
+      "notFound": "Nenhuma definição encontrada para “{query}”.",
+      "notFoundHint": "Tente outra grafia ou o radical da palavra.",
+      "errorMessage": "Não foi possível conectar ao serviço de dicionário.",
+      "errorHint": "Verifique sua conexão e tente novamente."
+    },
+    "explore": {
+      "title": "Explorar",
+      "searchPlaceholder": "Buscar na Wikipédia",
+      "searchButton": "Buscar",
+      "loading": "Buscando “{query}”…",
+      "notFound": "Nenhum artigo da Wikipédia encontrado para “{query}”.",
+      "notFoundHint": "Tente um termo de busca mais específico.",
+      "errorMessage": "Não foi possível conectar à Wikipédia.",
+      "errorHint": "Verifique sua conexão e tente novamente.",
+      "sourceLabel": "Wikipédia",
+      "openLink": "Abrir na Wikipédia ↗",
+      "citeThis": "Citar isto"
+    },
+    "preferences": {
+      "title": "Preferências",
+      "smartQuotesTitle": "Usar aspas curvas",
+      "smartQuotesDescPart1": "Substitui aspas retas, travessões e reticências ao digitar (",
+      "smartQuotesDescPart2": ").",
+      "autocorrectTitle": "Autocorreção",
+      "autocorrectDescPart1": "Sequências de símbolos (",
+      "autocorrectDescPart2": ") e correções de erros de digitação comuns (",
+      "autocorrectDescPart3": ")."
+    },
+    "translate": {
+      "title": "Traduzir",
+      "sourceLanguage": "Idioma de origem",
+      "swapLanguages": "Inverter idiomas",
+      "targetLanguage": "Idioma de destino",
+      "original": "Original",
+      "translation": "Tradução",
+      "noSelection": "(sem seleção)",
+      "translatingLoading": "Traduzindo…",
+      "errorMessage": "Não foi possível conectar ao serviço de tradução.",
+      "errorHint": "Verifique sua conexão e tente novamente.",
+      "idleHint": "Selecione um texto no documento ou cole-o à esquerda.",
+      "copyButton": "Copiar",
+      "copied": "Copiado",
+      "replaceButton": "Substituir no documento",
+      "replacing": "Substituindo…"
+    },
+    "translateDocument": {
+      "title": "Traduzir documento",
+      "helper": "Seu documento aberto continua inalterado — só a cópia baixada é traduzida.",
+      "pickDifferentLanguage": "Escolha outro idioma",
+      "translateToButton": "Traduzir para {language}",
+      "stop": "Parar",
+      "downloading": "Baixando…",
+      "downloadButton": "Baixar .docx",
+      "swapLanguages": "Inverter idioma de origem e destino",
+      "pickLanguagePrompt": "Escolha um idioma de destino e clique em Traduzir para gerar {language}.",
+      "nothingRunsHint": "Nada roda até você iniciar — abrir esta caixa de diálogo nunca modifica seu documento.",
+      "snapshotting": "Capturando o original…",
+      "translatingChunk": "Traduzindo trecho {chunk} de {totalChunks}",
+      "translatingRuns": "Traduzindo… {completed} de {total} trechos de texto",
+      "translatingDocument": "Traduzindo seu documento…",
+      "chunkPreviewHint": "“{preview}”",
+      "formattingRunHint": "Cada trecho de formatação é traduzido separadamente para manter os limites de negrito / itálico / link alinhados.",
+      "serializeError": "Não foi possível serializar o documento traduzido.",
+      "onDeviceError": "A tradução no dispositivo falhou no meio do documento. Tente novamente ou escolha um trecho menor.",
+      "serviceError": "O serviço de tradução está limitando taxa ou inacessível. Tente novamente em instantes, escolha uma seleção menor, ou ative o nível de LLM avançado para traduzir no dispositivo."
+    },
+    "watermark": {
+      "title": "Marca d'água",
+      "remove": "Remover",
+      "textLabel": "Texto",
+      "textPlaceholder": "ex. RASCUNHO, CONFIDENCIAL",
+      "colorLabel": "Cor",
+      "colorAriaLabel": "Cor da marca d'água",
+      "opacityLabel": "Opacidade",
+      "rotationLabel": "Rotação",
+      "hint": "A marca d'água fica atrás do conteúdo da página, não é clicável nem selecionável, e aparece em todas as páginas."
     }
   },
   "comments": {
@@ -956,7 +1078,8 @@
     "tryAgain": "Tentar novamente",
     "showDetails": "Mostrar detalhes",
     "hideDetails": "Ocultar detalhes",
-    "unsavedChanges": "Você tem alterações não salvas. Tem certeza que deseja sair?"
+    "unsavedChanges": "Você tem alterações não salvas. Tem certeza que deseja sair?",
+    "couldntLoadDocument": "Não foi possível carregar o documento"
   },
   "table": {
     "insertRowAbove": "Inserir linha acima",
@@ -1119,7 +1242,9 @@
     "remove": "Remover {label}",
     "closeEditing": "Fechar edição de {label}",
     "differentEvenOdd": "Páginas pares e ímpares diferentes",
-    "differentFirstPage": "Primeira página diferente"
+    "differentFirstPage": "Primeira página diferente",
+    "dragToMove": "Arraste para mover",
+    "closeContextMenu": "Fechar menu"
   },
   "image": {
     "placeholder": "Espaço reservado para imagem",
@@ -1186,7 +1311,24 @@
   "statusBar": {
     "readabilityUnknown": "Legibilidade: —",
     "readingTime": "~{minutes} min de leitura",
-    "readingTimeAria": "Tempo estimado de leitura: {minutes} minutos"
+    "readingTimeAria": "Tempo estimado de leitura: {minutes} minutos",
+    "charUnit": "{count, plural, =1 {caractere} other {caracteres}}",
+    "documentStatus": "Status do documento",
+    "pageOf": "Página {current} de {total}",
+    "customisation": "Personalização da barra de status",
+    "zoomOutTooltip": "Diminuir zoom (⌘−)",
+    "zoomPresetsTooltip": "Predefinições de zoom (⌘0 para redefinir)",
+    "zoomAriaLabel": "Zoom: {percent} por cento. Clique para escolher uma predefinição.",
+    "zoomPresets": "Predefinições de zoom",
+    "zoomInTooltip": "Aumentar zoom (⌘=)",
+    "readability": {
+      "sentenceCount": "{count, plural, one {# frase} other {# frases}}",
+      "avgWordsPerSentence": "{avg} palavras/frase",
+      "longSentences": "{count, plural, one {# frase longa} other {# frases longas}} (> 25 palavras)",
+      "readingTimeLabel": "Tempo de leitura: {time}",
+      "fleschKincaid": "Flesch-Kincaid: {grade}",
+      "ariaLabel": "Legibilidade: {compact}. {detail}"
+    }
   },
   "writerStatus": {
     "ariaLabel": "Status do assistente de escrita — clique para abrir as configurações",
@@ -1267,7 +1409,8 @@
     "editTitle": "Editar nota de rodapé"
   },
   "rightPanel": {
-    "closeButton": "Fechar painel"
+    "closeButton": "Fechar painel",
+    "sidePanelAriaLabel": "Painel lateral"
   },
   "selectionAskAi": {
     "dialogAriaLabel": "Perguntar à IA sobre a seleção",
@@ -1299,7 +1442,11 @@
   },
   "presence": {
     "aiEditing": "A IA está editando…",
-    "askingAi": "{name} está perguntando à IA…"
+    "askingAi": "{name} está perguntando à IA…",
+    "live": "Ao vivo",
+    "connecting": "Conectando…",
+    "offline": "Offline",
+    "share": "Compartilhar"
   },
   "docops": {
     "panelTitle": "DocOps AI",
@@ -1455,5 +1602,253 @@
     "translatingTo": "Traduzindo para {target}…",
     "loadingSpellcheckDictionary": "Carregando dicionário do corretor ortográfico…",
     "convertingTo": "Convertendo para {label}…"
+  },
+  "render": {
+    "footnoteArea": {
+      "goToFootnoteAriaLabel": "Ir para a referência da nota de rodapé {number}",
+      "goToEndnoteAriaLabel": "Ir para a referência da nota de fim {number}"
+    }
+  },
+  "pagedEditor": {
+    "endnoteSection": {
+      "editHint": "Clique duas vezes para editar a nota de fim"
+    },
+    "imageChip": {
+      "ariaLabel": "Formatar imagem"
+    },
+    "tableChip": {
+      "ariaLabel": "Formatar tabela"
+    },
+    "textBoxChip": {
+      "ariaLabel": "Formatar caixa de texto",
+      "dragToMove": "Arrastar para mover"
+    }
+  },
+  "signing": {
+    "pane": {
+      "ariaLabel": "Painel de assinatura",
+      "optionalAriaLabel": "Opcional",
+      "optionalChip": "opcional",
+      "allSignedMessage": "Todas as assinaturas obrigatórias foram coletadas. Pronto para finalizar.",
+      "completeButton": "Concluir",
+      "methodDraw": "Desenhar",
+      "methodType": "Digitar",
+      "methodUpload": "Carregar"
+    },
+    "captures": {
+      "useThisSignature": "Usar esta assinatura",
+      "typeFullNamePlaceholder": "Digite seu nome completo",
+      "chooseImage": "Escolher imagem…"
+    }
+  },
+  "aiSuggestion": {
+    "source": "Origem",
+    "tone": "Tom",
+    "suggested": "Sugestão",
+    "summary": "Resumo",
+    "stop": "Parar",
+    "suggestReplacement": "Sugerir substituição",
+    "suggestInsert": "Sugerir inserção",
+    "rewriting": "Reescrevendo…",
+    "waiting": "Aguardando…",
+    "msOnDevice": "{ms} ms · no dispositivo",
+    "onDevice": "No dispositivo",
+    "aiProposalAriaLabel": "Proposta de IA — {summary}",
+    "refinePlaceholder": "Refinar — ex.: deixar cronológico, mais conciso",
+    "cancelRefine": "Cancelar refinamento",
+    "tryAgain": "Tentar novamente",
+    "insertBelow": "Inserir abaixo"
+  },
+  "autosaveBanner": {
+    "from": "de",
+    "agoRestore": "({ago}) — restaurar?",
+    "restore": "Restaurar"
+  },
+  "grammar": {
+    "suggestionAriaLabel": "Sugestão de gramática"
+  },
+  "panelRail": {
+    "ariaLabel": "Painéis",
+    "comments": "Comentários",
+    "hideComments": "Ocultar comentários",
+    "hideFormatPanel": "Ocultar painel de formatação",
+    "hideWritingAssistant": "Ocultar assistente de escrita",
+    "hideChat": "Ocultar chat",
+    "hideDocOpsAi": "Ocultar DocOps AI"
+  },
+  "spellcheck": {
+    "suggestionsAriaLabel": "Sugestões de ortografia",
+    "noSuggestions": "Nenhuma sugestão",
+    "ignore": "Ignorar",
+    "addToDictionary": "Adicionar ao dicionário"
+  },
+  "propertiesPanel": {
+    "ariaLabel": "Propriedades de formatação",
+    "emptyMessage": "Selecione uma imagem, tabela ou forma para editar suas propriedades."
+  },
+  "ui": {
+    "dialog": {
+      "defaultAriaLabel": "Diálogo"
+    }
+  },
+  "tableGrid": {
+    "selectSize": "Selecione o tamanho"
+  },
+  "auth": {
+    "signInHeading": "Entrar no Casual Editor",
+    "username": "Usuário",
+    "password": "Senha",
+    "signingIn": "Entrando…",
+    "creatingAccount": "Criando conta…",
+    "signIn": "Entrar",
+    "createAccount": "Criar conta",
+    "createAnAccount": "Criar uma conta",
+    "alreadyHaveAccount": "Já tenho uma conta",
+    "forgotPassword": "Esqueceu a senha?",
+    "forgotPasswordInfo1": "O Modo 3 não recupera senha por e-mail — não há servidor SMTP num deploy de nó único. Peça ao operador para entrar via ssh no container e rodar:",
+    "forgotPasswordInfo2": "Ele vai definir uma nova senha para você entrar.",
+    "error": {
+      "invalidCredentials": "Esse usuário e senha não correspondem a nenhuma conta.",
+      "usernameTaken": "Esse nome de usuário já está em uso. Tente entrar.",
+      "invalidUsername": "Esse nome de usuário não é permitido. Use letras, números, ponto, hífen ou sublinhado.",
+      "weakPassword": "A senha precisa ter pelo menos 8 caracteres.",
+      "signupClosed": "Os cadastros estão fechados neste servidor. Peça uma conta ao operador.",
+      "modeDisabled": "Contas não estão habilitadas neste servidor.",
+      "badBody": "Informe um usuário e uma senha.",
+      "generic": "Algo deu errado. Tente novamente."
+    }
+  },
+  "markdownEditor": {
+    "headingTitle": "Título (## )",
+    "linkTitle": "Link",
+    "inlineCodeTitle": "Código inline",
+    "codeBlockTitle": "Bloco de código",
+    "blockquoteTitle": "Citação",
+    "bulletListTitle": "Lista com marcadores",
+    "numberedListTitle": "Lista numerada",
+    "insertTableTitle": "Inserir tabela",
+    "insertImageTitle": "Inserir imagem",
+    "mermaidDiagramTitle": "Diagrama Mermaid",
+    "returnToHome": "Voltar ao início",
+    "viewMode": "Modo de visualização",
+    "exportPdf": "Exportar PDF",
+    "download": "Baixar",
+    "formattingToolbar": "Formatação",
+    "modeNotebook": "Notebook",
+    "modeSource": "Código",
+    "modeSplit": "Lado a lado",
+    "modePreview": "Visualização"
+  },
+  "home": {
+    "heroTitle": "Comece algo hoje.",
+    "heroLedePart1": "Um editor",
+    "heroLedePart2": "colaborativo em tempo real, direto no navegador. Escolha um modelo pensado para o jeito como você trabalha, ou abra um arquivo do computador.",
+    "createNew": "Criar novo",
+    "searchPlaceholder": "Buscar modelos",
+    "filterByCategory": "Filtrar por categoria",
+    "openFile": "Abrir arquivo",
+    "reopenLastDocument": "Reabrir último documento",
+    "pickUpWhereYouLeftOff": "Continue de onde parou",
+    "reopen": "Reabrir",
+    "removeFromRecents": "Remover dos recentes",
+    "removeFromRecentsAria": "Remover {name} dos recentes",
+    "reopenDocumentAria": "Reabrir {name}",
+    "recent": "Recentes",
+    "recentHint": "Continue de onde parou.",
+    "clearAll": "Limpar tudo",
+    "featured": "Em destaque",
+    "featuredHint": "Algumas sugestões para começar.",
+    "resultsFor": "Resultados para “{query}”",
+    "templateCount": "{count, plural, one {# modelo} other {# modelos}}",
+    "noTemplatesMatch": "Nenhum modelo encontrado. Tente outra palavra-chave.",
+    "aiFeaturesPreRelease": "Recursos de IA em pré-lançamento",
+    "preRelease": "Pré-lançamento",
+    "aiFeaturesComingSoon": "Recursos de IA estão a caminho",
+    "aiFeaturesDetail": "— perguntas inline, painel de reescrita e um painel de chat DocOps. No dispositivo no app desktop, ou via API da Anthropic na web.",
+    "learnMore": "Saiba mais",
+    "footerCredit": "Fork MIT de eigenpal/docx-editor · Servidor de colaboração Node (Hocuspocus + Yjs)",
+    "categoryAll": "Todos",
+    "categoryPersonal": "Pessoal",
+    "categoryWork": "Trabalho",
+    "categoryEducation": "Educação",
+    "categoryCareer": "Carreira",
+    "templateBlankDocument": "Documento em branco",
+    "templateBlankMarkdown": "Markdown em branco",
+    "templateBlankText": "Texto em branco",
+    "templateResume": "Currículo",
+    "templateCoverLetter": "Carta de apresentação",
+    "templateMeetingNotes": "Ata de reunião",
+    "templateProjectProposal": "Proposta de projeto",
+    "templateMemo": "Memorando",
+    "templateWeeklyStatus": "Status semanal",
+    "templatePressRelease": "Press release",
+    "templateLetter": "Carta",
+    "templateTravelItinerary": "Roteiro de viagem",
+    "templateRecipe": "Receita",
+    "templateEssay": "Redação",
+    "templateLabReport": "Relatório de laboratório",
+    "templateSyllabus": "Plano de curso",
+    "templateSample": "Documento de exemplo",
+    "justNow": "agora mesmo",
+    "minutesAgo": "há {n} min",
+    "hoursAgo": "há {n} h",
+    "daysAgo": "{n, plural, one {há # dia} other {há # dias}}"
+  },
+  "app": {
+    "statusLoadingTemplate": "Carregando modelo…",
+    "statusFailedToLoadTemplate": "Falha ao carregar o modelo: {message}",
+    "statusConverting": "Convertendo…",
+    "statusErrorLoadingFile": "Erro ao carregar o arquivo",
+    "statusSavedBang": "Salvo!",
+    "statusSaveFailed": "Falha ao salvar",
+    "statusSaveAsFailed": "Falha em Salvar como",
+    "statusError": "Erro: {message}",
+    "statusFileDeleted": "O arquivo foi apagado do disco — suas edições em memória continuam aqui. Use Arquivo → Salvar como para salvar uma cópia.",
+    "statusFileRenamedMoved": "O arquivo foi renomeado ou movido — Salvar vai pedir que você escolha um novo local.",
+    "confirmLeaveDocument": "Sair deste documento e voltar para a página inicial?\n\nAs alterações não salvas serão perdidas.",
+    "returnToHome": "Voltar para o início",
+    "backToCasualOffice": "Voltar para o Casual Office",
+    "share": "Compartilhar",
+    "badConfig": "Configuração inválida",
+    "embedConfigError": "Erro de configuração do embed:",
+    "signedIn": "Conectado",
+    "autosaveFixture": "Fixture de salvamento automático",
+    "couldntOpenFile": "Não foi possível abrir {fileName}",
+    "fileLeftUnchanged": "O arquivo não foi alterado — nada foi salvo sobre ele.",
+    "restoreUnsavedChanges": "Este documento tinha alterações não salvas de uma sessão anterior. Restaurar?",
+    "restore": "Restaurar",
+    "discard": "Descartar"
+  },
+  "collab": {
+    "shareTitle": "Compartilhar para colaboração",
+    "shareDescription": "Qualquer pessoa com este link pode abrir o documento e editá-lo ao vivo. A sessão existe só enquanto alguém está com ela aberta — quando todos saem, o documento é descartado.",
+    "noDocumentLoaded": "Nenhum documento carregado ainda.",
+    "preparingShareLink": "Preparando link de compartilhamento…",
+    "stayInSingleUserMode": "Continuar no modo de usuário único",
+    "joinTheSession": "Entrar na sessão",
+    "joiningSession": "Entrando na sessão…",
+    "loadingSharedDocument": "Carregando o documento compartilhado…",
+    "couldntJoinSession": "Não foi possível entrar na sessão",
+    "errorDetailDefault": "O documento compartilhado pode ter encerrado, ou o servidor não está acessível. Você pode tentar de novo, ou começar do zero no modo de usuário único.",
+    "openSingleUserMode": "Abrir modo de usuário único",
+    "tryAgain": "Tentar de novo",
+    "reload": "Recarregar",
+    "reconnecting": "Reconectando à sessão…",
+    "offlineNotice": "Você está offline — as edições são salvas localmente e sincronizam quando a conexão voltar.",
+    "connecting": "Conectando",
+    "live": "Ao vivo",
+    "disconnected": "Desconectado",
+    "otherEditorCount": "{count, plural, one {# outro editor} other {# outros}}"
+  },
+  "viewers": {
+    "returnToHome": "Voltar para o início",
+    "noSubject": "(sem assunto)",
+    "readOnlyPlainTextView": "Visualização de texto simples, somente leitura",
+    "headerFrom": "De",
+    "headerTo": "Para",
+    "headerCc": "Cc",
+    "headerBcc": "Cco",
+    "headerReplyTo": "Responder a",
+    "headerDate": "Data"
   }
 }

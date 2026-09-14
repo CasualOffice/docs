@@ -22,6 +22,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
+import { useTranslation } from '../../i18n';
 
 export interface WatermarkValue {
   text: string;
@@ -113,6 +114,7 @@ function stripHash(hex: string): string {
 }
 
 export function WatermarkDialog({ isOpen, onClose, current, onApply }: WatermarkDialogProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState(current?.text ?? '');
   const [color, setColor] = useState(current?.color ?? DEFAULT_COLOR);
   const [opacity, setOpacity] = useState(current?.opacity ?? DEFAULT_OPACITY);
@@ -154,7 +156,7 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Watermark"
+      title={t('dialogs.watermark.title')}
       width={480}
       testId="watermark-dialog"
       footer={
@@ -171,11 +173,11 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
                 onClose();
               }}
             >
-              Remove
+              {t('dialogs.watermark.remove')}
             </Button>
           )}
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -185,7 +187,7 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
             disabled={trimmed.length === 0}
             onClick={apply}
           >
-            Apply
+            {t('common.apply')}
           </Button>
         </>
       }
@@ -193,14 +195,14 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
       <div style={bodyStyle}>
         <div style={knobsRowStyle}>
           <label style={labelStyle} htmlFor="watermark-text">
-            Text
+            {t('dialogs.watermark.textLabel')}
           </label>
           <input
             id="watermark-text"
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="e.g. DRAFT, CONFIDENTIAL"
+            placeholder={t('dialogs.watermark.textPlaceholder')}
             data-testid="watermark-text-input"
             style={inputStyle}
             autoFocus
@@ -209,7 +211,7 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
 
         <div style={knobsRowStyle}>
           <label style={labelStyle} htmlFor="watermark-color">
-            Color
+            {t('dialogs.watermark.colorLabel')}
           </label>
           <input
             id="watermark-color"
@@ -218,13 +220,13 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
             onChange={(e) => setColor(stripHash(e.target.value))}
             data-testid="watermark-color-input"
             style={colorInputStyle}
-            aria-label="Watermark color"
+            aria-label={t('dialogs.watermark.colorAriaLabel')}
           />
         </div>
 
         <div style={sliderRowStyle}>
           <label style={labelStyle} htmlFor="watermark-opacity">
-            Opacity
+            {t('dialogs.watermark.opacityLabel')}
           </label>
           <input
             id="watermark-opacity"
@@ -241,7 +243,7 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
 
         <div style={sliderRowStyle}>
           <label style={labelStyle} htmlFor="watermark-size">
-            Font size
+            {t('fontSize.label')}
           </label>
           <input
             id="watermark-size"
@@ -258,7 +260,7 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
 
         <div style={sliderRowStyle}>
           <label style={labelStyle} htmlFor="watermark-rotation">
-            Rotation
+            {t('dialogs.watermark.rotationLabel')}
           </label>
           <input
             id="watermark-rotation"
@@ -273,10 +275,7 @@ export function WatermarkDialog({ isOpen, onClose, current, onApply }: Watermark
           <span style={valueStyle}>{rotation}°</span>
         </div>
 
-        <div style={hintStyle}>
-          The watermark sits behind page content, not clickable or selectable, and shows on every
-          page.
-        </div>
+        <div style={hintStyle}>{t('dialogs.watermark.hint')}</div>
       </div>
     </Dialog>
   );

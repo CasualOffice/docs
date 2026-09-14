@@ -19,6 +19,7 @@ import { useEffect, type CSSProperties } from 'react';
 import { MaterialSymbol } from './ui/Icons';
 import { RightDockPanel } from './RightDockPanel';
 import { PanelState } from './ui/PanelState';
+import { useTranslation } from '../i18n';
 
 export type AISuggestionMode = 'rewrite' | 'summarize';
 
@@ -177,6 +178,7 @@ export function AISuggestionPanel({
   busy,
   error,
 }: AISuggestionPanelProps) {
+  const { t } = useTranslation();
   // Esc closes; ⌘/Ctrl+Enter accepts when there's a suggestion.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -194,12 +196,12 @@ export function AISuggestionPanel({
     return () => document.removeEventListener('keydown', onKey);
   }, [onAccept, onReject, suggestion, busy]);
 
-  const title = mode === 'rewrite' ? 'Rewrite with AI' : 'Summarize with AI';
+  const title = mode === 'rewrite' ? t('contextMenu.rewriteWithAi') : t('contextMenu.summarizeWithAi');
   // Accept stages the change as a tracked suggestion (deletion +
   // insertion marks) — the doc body shows it with the standard
   // red-strike / green-underline UI so the user can Accept / Reject
   // it permanently through the existing tracked-change controls.
-  const acceptLabel = mode === 'rewrite' ? 'Suggest replacement' : 'Suggest insert';
+  const acceptLabel = mode === 'rewrite' ? t('aiSuggestion.suggestReplacement') : t('aiSuggestion.suggestInsert');
 
   const footer = (
     <div style={footerStyle}>
@@ -210,7 +212,7 @@ export function AISuggestionPanel({
           onClick={onCancel}
           data-testid="ai-suggestion-stop"
         >
-          Stop
+          {t('aiSuggestion.stop')}
         </button>
       ) : (
         <button
@@ -220,7 +222,7 @@ export function AISuggestionPanel({
           disabled={busy}
           data-testid="ai-suggestion-retry"
         >
-          Retry
+          {t('common.retry')}
         </button>
       )}
       <button
@@ -229,7 +231,7 @@ export function AISuggestionPanel({
         onClick={onReject}
         data-testid="ai-suggestion-reject"
       >
-        Reject
+        {t('common.reject')}
       </button>
       <button
         type="button"
@@ -254,7 +256,7 @@ export function AISuggestionPanel({
     >
       <div style={bodyStyle}>
         <section>
-          <p style={sectionHeadingStyle}>Source</p>
+          <p style={sectionHeadingStyle}>{t('aiSuggestion.source')}</p>
           <div style={sourceCardStyle} data-testid="ai-original-pane">
             {original || <em>(empty selection)</em>}
           </div>
@@ -262,7 +264,7 @@ export function AISuggestionPanel({
 
         {mode === 'rewrite' && tones && tones.length > 0 && (
           <section>
-            <p style={sectionHeadingStyle}>Tone</p>
+            <p style={sectionHeadingStyle}>{t('aiSuggestion.tone')}</p>
             <div style={toneRowStyle}>
               {tones.map((t) => (
                 <button
@@ -281,7 +283,9 @@ export function AISuggestionPanel({
         )}
 
         <section>
-          <p style={sectionHeadingStyle}>{mode === 'rewrite' ? 'Suggested' : 'Summary'}</p>
+          <p style={sectionHeadingStyle}>
+            {mode === 'rewrite' ? t('aiSuggestion.suggested') : t('aiSuggestion.summary')}
+          </p>
           {/* The `ai-suggestion-pane` testid is kept on the wrapper in every
               state so selectors stay stable; the rest-states (error / loading /
               idle) are routed through the shared `PanelState` primitive, while
@@ -298,12 +302,16 @@ export function AISuggestionPanel({
             <div data-testid="ai-suggestion-pane">
               <PanelState
                 kind="loading"
-                message={mode === 'rewrite' ? 'Rewriting…' : 'Summarizing…'}
+                message={
+                  mode === 'rewrite'
+                    ? t('aiSuggestion.rewriting')
+                    : t('docops.quickActions.summarizingStatus')
+                }
               />
             </div>
           ) : (
             <div data-testid="ai-suggestion-pane">
-              <PanelState kind="empty" icon="auto_awesome" message="Waiting…" />
+              <PanelState kind="empty" icon="auto_awesome" message={t('aiSuggestion.waiting')} />
             </div>
           )}
           {/* Latency / provenance line — only meaningful once there's a result
@@ -315,11 +323,11 @@ export function AISuggestionPanel({
               <span>
                 {busy
                   ? mode === 'rewrite'
-                    ? 'Rewriting…'
-                    : 'Summarizing…'
+                    ? t('aiSuggestion.rewriting')
+                    : t('docops.quickActions.summarizingStatus')
                   : inferenceMs !== null
-                    ? `${inferenceMs} ms · on-device`
-                    : 'On-device'}
+                    ? t('aiSuggestion.msOnDevice', { ms: inferenceMs })
+                    : t('aiSuggestion.onDevice')}
               </span>
             </div>
           )}

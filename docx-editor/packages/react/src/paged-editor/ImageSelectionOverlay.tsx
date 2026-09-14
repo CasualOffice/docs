@@ -15,6 +15,10 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { CSSProperties } from 'react';
+import { useTranslation } from '../i18n';
+
+// New key, not yet in en.json — see keys_l3_render.json deliverable.
+const FORMAT_IMAGE_ARIA_LABEL_KEY = 'pagedEditor.imageChip.ariaLabel';
 
 // =============================================================================
 // TYPES
@@ -189,6 +193,7 @@ export function ImageSelectionOverlay({
   onContextMenu,
   onOpenProperties,
 }: ImageSelectionOverlayProps): React.ReactElement | null {
+  const { t } = useTranslation();
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [resizeWidth, setResizeWidth] = useState(0);
@@ -535,8 +540,8 @@ export function ImageSelectionOverlay({
         <button
           type="button"
           data-testid="image-format-chip"
-          aria-label="Format image"
-          title="Format"
+          aria-label={t(FORMAT_IMAGE_ARIA_LABEL_KEY)}
+          title={t('toolbar.format')}
           onMouseDown={(e) => {
             // Don't let the mousedown reach the image body (would start a drag)
             // or the hidden PM view (would move the caret).
@@ -575,7 +580,7 @@ export function ImageSelectionOverlay({
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
           </svg>
-          Format
+          {t('toolbar.format')}
         </button>
       )}
 

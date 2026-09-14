@@ -12,6 +12,10 @@
 import { getEndnoteText } from '@eigenpal/docx-core/docx';
 import type { Endnote } from '@eigenpal/docx-core/types/content';
 import type { CSSProperties } from 'react';
+import { useTranslation } from '../i18n';
+
+// New key, not yet in en.json — see keys_l3_render.json deliverable.
+const EDIT_ENDNOTE_HINT_KEY = 'pagedEditor.endnoteSection.editHint';
 
 export interface EndnoteSectionProps {
   endnotes: Endnote[];
@@ -46,20 +50,21 @@ const ITEM: CSSProperties = { marginBottom: '4px', cursor: 'text' };
 const SUP: CSSProperties = { fontSize: '7px', marginRight: '2px' };
 
 export function EndnoteSection({ endnotes, width, onEditEndnote }: EndnoteSectionProps) {
+  const { t } = useTranslation();
   const items = endnotes.filter((e) => (e.noteType ?? 'normal') === 'normal');
   if (items.length === 0) return null;
 
   return (
     <div style={WRAP} data-testid="endnote-section">
       <div style={{ ...CARD, width: width ?? 816 }}>
-        <div style={TITLE}>Endnotes</div>
+        <div style={TITLE}>{t('dialogs.footnoteProperties.endnotes')}</div>
         {items.map((en, i) => (
           <div
             key={en.id}
             className="layout-endnote"
             data-endnote-id={en.id}
             style={ITEM}
-            title={onEditEndnote ? 'Double-click to edit endnote' : undefined}
+            title={onEditEndnote ? t(EDIT_ENDNOTE_HINT_KEY) : undefined}
             onDoubleClick={() => onEditEndnote?.(en.id)}
           >
             <sup style={SUP}>{i + 1}</sup>

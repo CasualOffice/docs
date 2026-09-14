@@ -20,7 +20,9 @@
     "px": "px",
     "closeDialog": "关闭对话框",
     "ok": null,
-    "add": null
+    "add": null,
+    "discard": null,
+    "done": null
   },
   "toolbar": {
     "ariaLabel": "格式工具栏",
@@ -192,7 +194,12 @@
     "single": "单倍行距",
     "double": "双倍行距",
     "lineSpacingTitle": "行距: {label}",
-    "paragraphSpacing": "段间距"
+    "paragraphSpacing": "段间距",
+    "addSpaceAfter": null,
+    "addSpaceBefore": null,
+    "preventSingleLines": null,
+    "removeSpaceAfter": null,
+    "removeSpaceBefore": null
   },
   "styles": {
     "selectAriaLabel": "选择段落样式",
@@ -270,7 +277,9 @@
       "lightMagenta": "浅品红",
       "brightGreen": "亮绿",
       "violet": "紫罗兰色"
-    }
+    },
+    "customHexColorAriaLabel": null,
+    "pickerSuffix": null
   },
   "dialogs": {
     "findReplace": {
@@ -416,7 +425,8 @@
         "character": "字符",
         "paragraph": "段落",
         "line": "行"
-      }
+      },
+      "distanceFromText": null
     },
     "pageSetup": {
       "title": "页面设置",
@@ -786,6 +796,118 @@
       "statusUnloadingModel": null,
       "statusWaitingConfirmation": null,
       "unavailable": null
+    },
+    "accessibility": {
+      "goTo": null,
+      "headingJumpHintMany": null,
+      "headingJumpHintOne": null,
+      "headingJumpTitle": null,
+      "issueCount": null,
+      "missingAltHint": null,
+      "missingAltTitle": null,
+      "noIssues": null,
+      "title": null
+    },
+    "buildingBlocks": {
+      "deleteAriaLabel": null,
+      "empty": null,
+      "namePlaceholder": null,
+      "noSelectionHint": null,
+      "saveSelectionHeading": null,
+      "savedBlocksHeading": null,
+      "title": null
+    },
+    "commandPalette": {
+      "ariaLabel": null,
+      "closeHint": null,
+      "navigateHint": null,
+      "noResults": null,
+      "resultCount": null,
+      "runHint": null,
+      "searchAriaLabel": null,
+      "searchPlaceholder": null
+    },
+    "dictionary": {
+      "errorHint": null,
+      "errorMessage": null,
+      "loading": null,
+      "lookupButton": null,
+      "notFound": null,
+      "notFoundHint": null,
+      "placeholder": null,
+      "title": null
+    },
+    "explore": {
+      "citeThis": null,
+      "errorHint": null,
+      "errorMessage": null,
+      "loading": null,
+      "notFound": null,
+      "notFoundHint": null,
+      "openLink": null,
+      "searchButton": null,
+      "searchPlaceholder": null,
+      "sourceLabel": null,
+      "title": null
+    },
+    "preferences": {
+      "autocorrectDescPart1": null,
+      "autocorrectDescPart2": null,
+      "autocorrectDescPart3": null,
+      "autocorrectTitle": null,
+      "smartQuotesDescPart1": null,
+      "smartQuotesDescPart2": null,
+      "smartQuotesTitle": null,
+      "title": null
+    },
+    "translate": {
+      "copied": null,
+      "copyButton": null,
+      "errorHint": null,
+      "errorMessage": null,
+      "idleHint": null,
+      "noSelection": null,
+      "original": null,
+      "replaceButton": null,
+      "replacing": null,
+      "sourceLanguage": null,
+      "swapLanguages": null,
+      "targetLanguage": null,
+      "title": null,
+      "translatingLoading": null,
+      "translation": null
+    },
+    "translateDocument": {
+      "chunkPreviewHint": null,
+      "downloadButton": null,
+      "downloading": null,
+      "formattingRunHint": null,
+      "helper": null,
+      "nothingRunsHint": null,
+      "onDeviceError": null,
+      "pickDifferentLanguage": null,
+      "pickLanguagePrompt": null,
+      "serializeError": null,
+      "serviceError": null,
+      "snapshotting": null,
+      "stop": null,
+      "swapLanguages": null,
+      "title": null,
+      "translateToButton": null,
+      "translatingChunk": null,
+      "translatingDocument": null,
+      "translatingRuns": null
+    },
+    "watermark": {
+      "colorAriaLabel": null,
+      "colorLabel": null,
+      "hint": null,
+      "opacityLabel": null,
+      "remove": null,
+      "rotationLabel": null,
+      "textLabel": null,
+      "textPlaceholder": null,
+      "title": null
     }
   },
   "comments": {
@@ -956,7 +1078,8 @@
     "tryAgain": "请重试",
     "showDetails": "显示详情",
     "hideDetails": "隐藏详情",
-    "unsavedChanges": "您有未保存的更改，是否确定离开？"
+    "unsavedChanges": "您有未保存的更改，是否确定离开？",
+    "couldntLoadDocument": null
   },
   "table": {
     "insertRowAbove": "在上方插入行",
@@ -1119,7 +1242,9 @@
     "remove": "删除 {label}",
     "closeEditing": "关闭 {label} 编辑",
     "differentEvenOdd": null,
-    "differentFirstPage": null
+    "differentFirstPage": null,
+    "closeContextMenu": null,
+    "dragToMove": null
   },
   "image": {
     "placeholder": "图片占位符",
@@ -1186,7 +1311,24 @@
   "statusBar": {
     "readabilityUnknown": null,
     "readingTime": null,
-    "readingTimeAria": null
+    "readingTimeAria": null,
+    "charUnit": null,
+    "customisation": null,
+    "documentStatus": null,
+    "pageOf": null,
+    "readability": {
+      "ariaLabel": null,
+      "avgWordsPerSentence": null,
+      "fleschKincaid": null,
+      "longSentences": null,
+      "readingTimeLabel": null,
+      "sentenceCount": null
+    },
+    "zoomAriaLabel": null,
+    "zoomInTooltip": null,
+    "zoomOutTooltip": null,
+    "zoomPresets": null,
+    "zoomPresetsTooltip": null
   },
   "writerStatus": {
     "ariaLabel": null,
@@ -1267,7 +1409,8 @@
     "editTitle": null
   },
   "rightPanel": {
-    "closeButton": null
+    "closeButton": null,
+    "sidePanelAriaLabel": null
   },
   "selectionAskAi": {
     "dialogAriaLabel": null,
@@ -1299,7 +1442,11 @@
   },
   "presence": {
     "aiEditing": null,
-    "askingAi": null
+    "askingAi": null,
+    "connecting": null,
+    "live": null,
+    "offline": null,
+    "share": null
   },
   "docops": {
     "agentModeLabel": null,
@@ -1455,5 +1602,253 @@
     "translateFailedRetry": null,
     "translatedReplaced": null,
     "translatingTo": null
+  },
+  "aiSuggestion": {
+    "aiProposalAriaLabel": null,
+    "cancelRefine": null,
+    "insertBelow": null,
+    "msOnDevice": null,
+    "onDevice": null,
+    "refinePlaceholder": null,
+    "rewriting": null,
+    "source": null,
+    "stop": null,
+    "suggestInsert": null,
+    "suggestReplacement": null,
+    "suggested": null,
+    "summary": null,
+    "tone": null,
+    "tryAgain": null,
+    "waiting": null
+  },
+  "auth": {
+    "alreadyHaveAccount": null,
+    "createAccount": null,
+    "createAnAccount": null,
+    "creatingAccount": null,
+    "error": {
+      "badBody": null,
+      "generic": null,
+      "invalidCredentials": null,
+      "invalidUsername": null,
+      "modeDisabled": null,
+      "signupClosed": null,
+      "usernameTaken": null,
+      "weakPassword": null
+    },
+    "forgotPassword": null,
+    "forgotPasswordInfo1": null,
+    "forgotPasswordInfo2": null,
+    "password": null,
+    "signIn": null,
+    "signInHeading": null,
+    "signingIn": null,
+    "username": null
+  },
+  "autosaveBanner": {
+    "agoRestore": null,
+    "from": null,
+    "restore": null
+  },
+  "grammar": {
+    "suggestionAriaLabel": null
+  },
+  "markdownEditor": {
+    "blockquoteTitle": null,
+    "bulletListTitle": null,
+    "codeBlockTitle": null,
+    "download": null,
+    "exportPdf": null,
+    "formattingToolbar": null,
+    "headingTitle": null,
+    "inlineCodeTitle": null,
+    "insertImageTitle": null,
+    "insertTableTitle": null,
+    "linkTitle": null,
+    "mermaidDiagramTitle": null,
+    "modeNotebook": null,
+    "modePreview": null,
+    "modeSource": null,
+    "modeSplit": null,
+    "numberedListTitle": null,
+    "returnToHome": null,
+    "viewMode": null
+  },
+  "pagedEditor": {
+    "endnoteSection": {
+      "editHint": null
+    },
+    "imageChip": {
+      "ariaLabel": null
+    },
+    "tableChip": {
+      "ariaLabel": null
+    },
+    "textBoxChip": {
+      "ariaLabel": null,
+      "dragToMove": null
+    }
+  },
+  "panelRail": {
+    "ariaLabel": null,
+    "comments": null,
+    "hideChat": null,
+    "hideComments": null,
+    "hideDocOpsAi": null,
+    "hideFormatPanel": null,
+    "hideWritingAssistant": null
+  },
+  "propertiesPanel": {
+    "ariaLabel": null,
+    "emptyMessage": null
+  },
+  "render": {
+    "footnoteArea": {
+      "goToEndnoteAriaLabel": null,
+      "goToFootnoteAriaLabel": null
+    }
+  },
+  "signing": {
+    "captures": {
+      "chooseImage": null,
+      "typeFullNamePlaceholder": null,
+      "useThisSignature": null
+    },
+    "pane": {
+      "allSignedMessage": null,
+      "ariaLabel": null,
+      "completeButton": null,
+      "methodDraw": null,
+      "methodType": null,
+      "methodUpload": null,
+      "optionalAriaLabel": null,
+      "optionalChip": null
+    }
+  },
+  "spellcheck": {
+    "addToDictionary": null,
+    "ignore": null,
+    "noSuggestions": null,
+    "suggestionsAriaLabel": null
+  },
+  "tableGrid": {
+    "selectSize": null
+  },
+  "ui": {
+    "dialog": {
+      "defaultAriaLabel": null
+    }
+  },
+  "app": {
+    "autosaveFixture": null,
+    "backToCasualOffice": null,
+    "badConfig": null,
+    "confirmLeaveDocument": null,
+    "couldntOpenFile": null,
+    "discard": null,
+    "embedConfigError": null,
+    "fileLeftUnchanged": null,
+    "restore": null,
+    "restoreUnsavedChanges": null,
+    "returnToHome": null,
+    "share": null,
+    "signedIn": null,
+    "statusConverting": null,
+    "statusError": null,
+    "statusErrorLoadingFile": null,
+    "statusFailedToLoadTemplate": null,
+    "statusFileDeleted": null,
+    "statusFileRenamedMoved": null,
+    "statusLoadingTemplate": null,
+    "statusSaveAsFailed": null,
+    "statusSaveFailed": null,
+    "statusSavedBang": null
+  },
+  "collab": {
+    "connecting": null,
+    "couldntJoinSession": null,
+    "disconnected": null,
+    "errorDetailDefault": null,
+    "joinTheSession": null,
+    "joiningSession": null,
+    "live": null,
+    "loadingSharedDocument": null,
+    "noDocumentLoaded": null,
+    "offlineNotice": null,
+    "openSingleUserMode": null,
+    "otherEditorCount": null,
+    "preparingShareLink": null,
+    "reconnecting": null,
+    "reload": null,
+    "shareDescription": null,
+    "shareTitle": null,
+    "stayInSingleUserMode": null,
+    "tryAgain": null
+  },
+  "home": {
+    "aiFeaturesComingSoon": null,
+    "aiFeaturesDetail": null,
+    "aiFeaturesPreRelease": null,
+    "categoryAll": null,
+    "categoryCareer": null,
+    "categoryEducation": null,
+    "categoryPersonal": null,
+    "categoryWork": null,
+    "clearAll": null,
+    "createNew": null,
+    "daysAgo": null,
+    "featured": null,
+    "featuredHint": null,
+    "filterByCategory": null,
+    "footerCredit": null,
+    "heroLedePart1": null,
+    "heroLedePart2": null,
+    "heroTitle": null,
+    "hoursAgo": null,
+    "justNow": null,
+    "learnMore": null,
+    "minutesAgo": null,
+    "noTemplatesMatch": null,
+    "openFile": null,
+    "pickUpWhereYouLeftOff": null,
+    "preRelease": null,
+    "recent": null,
+    "recentHint": null,
+    "removeFromRecents": null,
+    "removeFromRecentsAria": null,
+    "reopen": null,
+    "reopenDocumentAria": null,
+    "reopenLastDocument": null,
+    "resultsFor": null,
+    "searchPlaceholder": null,
+    "templateBlankDocument": null,
+    "templateBlankMarkdown": null,
+    "templateBlankText": null,
+    "templateCount": null,
+    "templateCoverLetter": null,
+    "templateEssay": null,
+    "templateLabReport": null,
+    "templateLetter": null,
+    "templateMeetingNotes": null,
+    "templateMemo": null,
+    "templatePressRelease": null,
+    "templateProjectProposal": null,
+    "templateRecipe": null,
+    "templateResume": null,
+    "templateSample": null,
+    "templateSyllabus": null,
+    "templateTravelItinerary": null,
+    "templateWeeklyStatus": null
+  },
+  "viewers": {
+    "headerBcc": null,
+    "headerCc": null,
+    "headerDate": null,
+    "headerFrom": null,
+    "headerReplyTo": null,
+    "headerTo": null,
+    "noSubject": null,
+    "readOnlyPlainTextView": null,
+    "returnToHome": null
   }
 }

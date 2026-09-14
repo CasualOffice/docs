@@ -2,6 +2,8 @@
  * Copyright (c) 2026 Casual Office. All rights reserved.
  */
 
+import type { TranslationKey } from '@casualoffice/docs';
+
 /**
  * Template registry for the Casual Editor home page.
  *
@@ -45,6 +47,37 @@ export interface TemplateEntry {
 }
 
 export const CATEGORIES: TemplateCategory[] = ['Personal', 'Work', 'Education', 'Career'];
+
+/** Category ids double as filter/lookup values (data-testid, filtering logic) — only
+ *  the label shown to the user is translated, via these i18n keys. */
+export const CATEGORY_LABEL_KEYS: Record<TemplateCategory, TranslationKey> = {
+  Personal: 'home.categoryPersonal',
+  Work: 'home.categoryWork',
+  Education: 'home.categoryEducation',
+  Career: 'home.categoryCareer',
+};
+
+/** Template display-name i18n keys, keyed by TemplateEntry.id. `id` stays the
+ *  lookup/logic value (search, routing); only the rendered name is translated. */
+export const TEMPLATE_NAME_KEYS: Record<string, TranslationKey> = {
+  blank: 'home.templateBlankDocument',
+  'blank-markdown': 'home.templateBlankMarkdown',
+  'blank-text': 'home.templateBlankText',
+  resume: 'home.templateResume',
+  'cover-letter': 'home.templateCoverLetter',
+  'meeting-notes': 'home.templateMeetingNotes',
+  'project-proposal': 'home.templateProjectProposal',
+  memo: 'home.templateMemo',
+  'weekly-status': 'home.templateWeeklyStatus',
+  'press-release': 'home.templatePressRelease',
+  letter: 'home.templateLetter',
+  'travel-itinerary': 'home.templateTravelItinerary',
+  recipe: 'home.templateRecipe',
+  essay: 'home.templateEssay',
+  'lab-report': 'home.templateLabReport',
+  syllabus: 'home.templateSyllabus',
+  sample: 'home.templateSample',
+};
 
 export const TEMPLATES: TemplateEntry[] = [
   {

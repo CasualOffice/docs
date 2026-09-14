@@ -357,7 +357,7 @@ export function InsertTableDialog({
               setHoverCols(0);
             }}
             role="grid"
-            aria-label="Table size selector"
+            aria-label={t('dialogs.insertTable.sizeSelector')}
           >
             {gridCells}
           </div>

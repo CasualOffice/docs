@@ -53,6 +53,7 @@ import {
 
 import { DocxEditor, type DocxEditorProps, type DocxEditorRef } from './DocxEditor';
 import { PresenceCluster } from './PresenceCluster';
+import { useTranslation } from '../i18n';
 import { ShareDialog } from './ShareDialog';
 import { createDocOpsTransport } from '../docops';
 import { createEmptyDocument } from '@eigenpal/docx-core/utils';
@@ -604,6 +605,7 @@ function blankDoc(): Document {
 }
 
 function DefaultLoading() {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -615,12 +617,13 @@ function DefaultLoading() {
         fontSize: 14,
       }}
     >
-      Loading…
+      {t('writerStatus.loading')}
     </div>
   );
 }
 
 function DefaultError({ err }: { err: Error }) {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -629,7 +632,7 @@ function DefaultError({ err }: { err: Error }) {
         fontSize: 14,
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: 6 }}>Couldn’t load the document</div>
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('errors.couldntLoadDocument')}</div>
       <div style={{ color: 'var(--doc-text-muted, #64748b)' }}>{err.message}</div>
     </div>
   );

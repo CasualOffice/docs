@@ -23,6 +23,11 @@ import type {
   EndnoteProperties,
 } from '@eigenpal/docx-core/types/document';
 import { formatNoteNumber } from './FootnoteRef';
+import { useTranslation } from '../../i18n';
+
+// New keys, not yet in en.json — see keys_l3_render.json deliverable.
+const GOTO_FOOTNOTE_KEY = 'render.footnoteArea.goToFootnoteAriaLabel';
+const GOTO_ENDNOTE_KEY = 'render.footnoteArea.goToEndnoteAriaLabel';
 
 // ============================================================================
 // TYPES
@@ -114,6 +119,8 @@ export function FootnoteArea({
   renderParagraph,
   onFootnoteClick,
 }: FootnoteAreaProps): React.ReactElement | null {
+  const { t } = useTranslation();
+
   // Filter out separator footnotes
   const displayableFootnotes = footnotes.filter(
     (fn) => fn.noteType === 'normal' || fn.noteType === undefined
@@ -141,7 +148,12 @@ export function FootnoteArea({
   const numberFormat = properties?.numFmt;
 
   return (
-    <div className={classNames.join(' ')} style={style} role="region" aria-label="Footnotes">
+    <div
+      className={classNames.join(' ')}
+      style={style}
+      role="region"
+      aria-label={t('dialogs.footnoteProperties.footnotes')}
+    >
       {/* Separator line */}
       {showSeparator && (separator || <FootnoteSeparator />)}
 
@@ -174,10 +186,13 @@ export function EndnoteArea({
   className,
   style: additionalStyle,
   showTitle = true,
-  title = 'Endnotes',
+  title,
   renderParagraph,
   onEndnoteClick,
 }: EndnoteAreaProps): React.ReactElement | null {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t('dialogs.footnoteProperties.endnotes');
+
   // Filter out separator endnotes
   const displayableEndnotes = endnotes.filter(
     (en) => en.noteType === 'normal' || en.noteType === undefined
@@ -205,14 +220,19 @@ export function EndnoteArea({
   const numberFormat = properties?.numFmt;
 
   return (
-    <div className={classNames.join(' ')} style={style} role="region" aria-label="Endnotes">
+    <div
+      className={classNames.join(' ')}
+      style={style}
+      role="region"
+      aria-label={t('dialogs.footnoteProperties.endnotes')}
+    >
       {/* Title */}
       {showTitle && (
         <div
           className="docx-endnote-title"
           style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '12px' }}
         >
-          {title}
+          {resolvedTitle}
         </div>
       )}
 
@@ -267,6 +287,7 @@ function FootnoteItem({
   renderParagraph,
   onClick,
 }: FootnoteItemProps): React.ReactElement {
+  const { t } = useTranslation();
   const formattedNumber = formatNoteNumber(displayNumber, numberFormat);
 
   const handleClick = () => {
@@ -296,7 +317,7 @@ function FootnoteItem({
         onClick={handleClick}
         role={onClick ? 'link' : undefined}
         tabIndex={onClick ? 0 : undefined}
-        aria-label={`Go to footnote ${formattedNumber} reference`}
+        aria-label={t(GOTO_FOOTNOTE_KEY, { number: formattedNumber })}
       >
         {formattedNumber}.
       </span>
@@ -339,6 +360,7 @@ function EndnoteItem({
   renderParagraph?: (paragraph: Paragraph, index: number) => ReactNode;
   onClick?: (id: number) => void;
 }): React.ReactElement {
+  const { t } = useTranslation();
   const formattedNumber = formatNoteNumber(displayNumber, numberFormat);
 
   const handleClick = () => {
@@ -368,7 +390,7 @@ function EndnoteItem({
         onClick={handleClick}
         role={onClick ? 'link' : undefined}
         tabIndex={onClick ? 0 : undefined}
-        aria-label={`Go to endnote ${formattedNumber} reference`}
+        aria-label={t(GOTO_ENDNOTE_KEY, { number: formattedNumber })}
       >
         {formattedNumber}.
       </span>

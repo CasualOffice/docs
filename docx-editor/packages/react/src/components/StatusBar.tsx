@@ -163,10 +163,9 @@ const zoomReadoutStyle: CSSProperties = {
   fontSize: 12,
 };
 
-function formatCount(n: number | undefined, singular: string, plural?: string): string {
+function formatCount(n: number | undefined, unit: string): string {
   if (n === undefined) return '';
-  const word = n === 1 ? singular : (plural ?? singular + 's');
-  return `${n.toLocaleString()} ${word}`;
+  return `${n.toLocaleString()} ${unit}`;
 }
 
 export function StatusBar({
@@ -242,28 +241,37 @@ export function StatusBar({
   return (
     <div
       role="status"
-      aria-label="Document status"
+      aria-label={t('statusBar.documentStatus')}
       style={barStyle}
       data-testid="status-bar"
       onContextMenu={handleContextMenu}
     >
       {hasPages && prefs.page && (
         <>
-          <span style={cellStyle} aria-label={`Page ${currentPage ?? 1} of ${totalPages}`}>
-            Page {currentPage ?? 1} of {totalPages}
+          <span
+            style={cellStyle}
+            aria-label={t('statusBar.pageOf', { current: currentPage ?? 1, total: totalPages ?? 0 })}
+          >
+            {t('statusBar.pageOf', { current: currentPage ?? 1, total: totalPages ?? 0 })}
           </span>
           {((wordCount !== undefined && prefs.words) ||
             (charCount !== undefined && prefs.chars)) && <span style={dividerStyle} />}
         </>
       )}
       {wordCount !== undefined && prefs.words && (
-        <span style={cellStyle} aria-label={`${wordCount} words`}>
-          {formatCount(wordCount, 'word')}
+        <span
+          style={cellStyle}
+          aria-label={`${wordCount} ${t('sidebar.versionHistory.wordUnit', { count: wordCount })}`}
+        >
+          {formatCount(wordCount, t('sidebar.versionHistory.wordUnit', { count: wordCount }))}
         </span>
       )}
       {charCount !== undefined && prefs.chars && (
-        <span style={cellStyle} aria-label={`${charCount} characters`}>
-          {formatCount(charCount, 'character')}
+        <span
+          style={cellStyle}
+          aria-label={`${charCount} ${t('statusBar.charUnit', { count: charCount })}`}
+        >
+          {formatCount(charCount, t('statusBar.charUnit', { count: charCount }))}
         </span>
       )}
       {wordCount !== undefined &&
@@ -290,7 +298,7 @@ export function StatusBar({
         <div
           ref={checklistWrapRef}
           role="menu"
-          aria-label="Status bar customisation"
+          aria-label={t('statusBar.customisation')}
           data-testid="statbar-checklist"
           style={checklistStyle}
         >
@@ -313,27 +321,27 @@ export function StatusBar({
 
       {onZoomChange && (
         <span style={cellStyle}>
-          <Tooltip content="Zoom out (⌘−)">
+          <Tooltip content={t('statusBar.zoomOutTooltip')}>
             <button
               type="button"
               className="docx-status-zoom-btn"
               style={zoomButtonStyle}
               onClick={zoomOut}
               onMouseDown={(e) => e.preventDefault()}
-              aria-label="Zoom out"
+              aria-label={t('toolbar.zoomOut')}
               disabled={(zoom ?? 1) <= minZoom + 1e-3}
             >
               <MaterialSymbol name="remove" size={14} />
             </button>
           </Tooltip>
           <span ref={presetWrapRef} style={{ position: 'relative' }}>
-            <Tooltip content="Zoom presets (⌘0 to reset)">
+            <Tooltip content={t('statusBar.zoomPresetsTooltip')}>
               <button
                 type="button"
                 style={zoomReadoutStyle}
                 onClick={() => setPresetsOpen((o) => !o)}
                 onMouseDown={(e) => e.preventDefault()}
-                aria-label={`Zoom: ${zoomPct} percent. Click to choose a preset.`}
+                aria-label={t('statusBar.zoomAriaLabel', { percent: zoomPct })}
                 aria-haspopup="menu"
                 aria-expanded={presetsOpen}
                 data-testid="zoom-readout"
@@ -344,7 +352,7 @@ export function StatusBar({
             {presetsOpen && (
               <div
                 role="menu"
-                aria-label="Zoom presets"
+                aria-label={t('statusBar.zoomPresets')}
                 data-testid="zoom-presets-menu"
                 style={zoomMenuStyle}
               >
@@ -370,14 +378,14 @@ export function StatusBar({
               </div>
             )}
           </span>
-          <Tooltip content="Zoom in (⌘=)">
+          <Tooltip content={t('statusBar.zoomInTooltip')}>
             <button
               type="button"
               className="docx-status-zoom-btn"
               style={zoomButtonStyle}
               onClick={zoomIn}
               onMouseDown={(e) => e.preventDefault()}
-              aria-label="Zoom in"
+              aria-label={t('toolbar.zoomIn')}
               disabled={(zoom ?? 1) >= maxZoom - 1e-3}
             >
               <MaterialSymbol name="add" size={14} />
@@ -403,17 +411,17 @@ function ReadabilityCell({ docText }: { docText: string }) {
     return `${gradeLabel(stats.gradeLevel)}`;
   })();
   const detailLines: string[] = [
-    `${stats.sentences} sentence${stats.sentences === 1 ? '' : 's'}`,
-    `${stats.avgSentenceLength} words/sentence`,
+    t('statusBar.readability.sentenceCount', { count: stats.sentences }),
+    t('statusBar.readability.avgWordsPerSentence', { avg: stats.avgSentenceLength }),
   ];
   if (stats.longSentences > 0) {
-    detailLines.push(
-      `${stats.longSentences} long sentence${stats.longSentences === 1 ? '' : 's'} (> 25 words)`
-    );
+    detailLines.push(t('statusBar.readability.longSentences', { count: stats.longSentences }));
   }
-  detailLines.push(`Reading time: ${formatReadingTime(stats.readingTimeMs)}`);
+  detailLines.push(
+    t('statusBar.readability.readingTimeLabel', { time: formatReadingTime(stats.readingTimeMs) })
+  );
   if (stats.gradeLevel != null) {
-    detailLines.push(`Flesch-Kincaid: ${stats.gradeLevel}`);
+    detailLines.push(t('statusBar.readability.fleschKincaid', { grade: stats.gradeLevel }));
   }
   const detail = detailLines.join('\n');
 
@@ -422,7 +430,10 @@ function ReadabilityCell({ docText }: { docText: string }) {
       <span
         style={cellStyle}
         data-testid="status-readability"
-        aria-label={`Readability: ${compact}. ${detail.replace(/\n/g, ', ')}`}
+        aria-label={t('statusBar.readability.ariaLabel', {
+          compact,
+          detail: detail.replace(/\n/g, ', '),
+        })}
         tabIndex={0}
       >
         {compact}

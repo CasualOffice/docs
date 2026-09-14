@@ -8,6 +8,7 @@
 // flush on reconnect) but the user sees that their changes aren't
 // being broadcast right now.
 import type { CSSProperties } from 'react';
+import { useTranslation } from '@casualoffice/docs';
 import type { CollabStatus } from './useCollab';
 
 const styles: Record<CollabStatus | 'base', CSSProperties> = {
@@ -35,14 +36,13 @@ const styles: Record<CollabStatus | 'base', CSSProperties> = {
   },
 };
 
-const labels: Record<CollabStatus, string> = {
-  connecting: 'Reconnecting to the session…',
-  connected: '',
-  disconnected:
-    "You're offline — edits are saved locally and will sync when the connection comes back.",
-};
-
 export function DisconnectedBanner({ status }: { status: CollabStatus }) {
+  const { t } = useTranslation();
   if (status === 'connected') return null;
+  const labels: Record<CollabStatus, string> = {
+    connecting: t('collab.reconnecting'),
+    connected: '',
+    disconnected: t('collab.offlineNotice'),
+  };
   return <div style={{ ...styles.base, ...styles[status] }}>{labels[status]}</div>;
 }
