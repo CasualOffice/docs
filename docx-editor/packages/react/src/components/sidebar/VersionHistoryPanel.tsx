@@ -16,6 +16,8 @@
  * in-canvas preview with an optional changes-vs-previous diff.
  */
 import { useCallback, useMemo, useState, type CSSProperties } from 'react';
+import { useTranslation } from '../../i18n';
+import type { TranslationKey } from '../../i18n';
 import { confirmModal, promptModal } from '../../utils/modals';
 import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { PanelState } from '../ui/PanelState';
@@ -255,17 +257,22 @@ const CURRENT_ROW_STYLE: CSSProperties = {
 
 const DIFF_TRUNCATE_LIMIT = 50_000; // chars per side — safety for huge docs
 
-function relativeTime(time: number, now: number): string {
+// Passed explicitly into module-level helpers (groupByDay, relativeTime)
+// that aren't components/hooks themselves but are invoked from ones that
+// hold a `useTranslation()` result.
+type Translate = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+function relativeTime(time: number, now: number, t: Translate): string {
   const diff = Math.max(0, now - time);
   const s = Math.round(diff / 1000);
-  if (s < 5) return 'just now';
-  if (s < 60) return `${s}s ago`;
+  if (s < 5) return t('sidebar.versionHistory.justNow');
+  if (s < 60) return t('sidebar.versionHistory.secondsAgo', { s });
   const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t('sidebar.versionHistory.minutesAgo', { m });
   const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t('sidebar.versionHistory.hoursAgo', { h });
   const d = Math.round(h / 24);
-  return `${d}d ago`;
+  return t('sidebar.versionHistory.daysAgo', { d });
 }
 
 export function VersionHistoryPanel({
@@ -276,28 +283,29 @@ export function VersionHistoryPanel({
   onShowCurrent,
   isPreviewing = false,
   onClose,
-  title = 'Version history',
+  title,
   serverBackend,
   onRestoreServerVersion,
 }: VersionHistoryPanelProps) {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t('sidebar.versionHistory.title');
   // Render via the shared RightDockPanel shell so every right-edge
   // panel inherits the same width, header chrome, slide-in motion,
   // and close-X affordance. The tab strip + tab body live in
   // children so they sit below the standard header.
   return (
     <RightDockPanel
-      title={title}
+      title={resolvedTitle}
       icon={<MaterialSymbol name="history" size={18} />}
       testId="version-history-panel"
-      ariaLabel={title}
+      ariaLabel={resolvedTitle}
       onClose={onClose ?? (() => {})}
     >
       {/* Single Google-Docs-style timeline. Versions are captured
           automatically — there's no manual "create version" step; the
           optional "Save version…" action only NAMES the current one. */}
       <div style={TAB_CAPTION_STYLE} data-testid="version-history-caption">
-        Versions save automatically as you edit — on save and about every 10 minutes. Open one to
-        preview or restore it.
+        {t('sidebar.versionHistory.caption')}
       </div>
       <VersionsTab
         docId={docId}
@@ -343,6 +351,7 @@ function VersionsTab({
   serverBackend?: ServerVersionBackend;
   onRestoreServerVersion?: (version: number) => void;
 }) {
+  const { t } = useTranslation();
   const list = useLiveVersionList(docId, serverBackend);
   // "Only named versions" filter (Google-Docs pattern) — narrows the
   // list to manual milestones. Diffs still compare against the true
@@ -353,7 +362,7 @@ function VersionsTab({
     () => (namedOnly ? list.filter((s) => s.kind === 'manual') : list),
     [list, namedOnly]
   );
-  const groups = useMemo(() => groupByDay(visible), [visible]);
+  const groups = useMemo(() => groupByDay(visible, t), [visible, t]);
   const now = Date.now();
   // Chronological neighbor for diffing: the list is newest-first, so
   // each row's "previous version" is the entry one slot later in the
@@ -371,12 +380,15 @@ function VersionsTab({
 
   const handleSaveVersion = useCallback(async () => {
     if (!saveNamedVersion) return;
-    const raw = await promptModal({ title: 'Name this version', confirmLabel: 'Save' });
+    const raw = await promptModal({
+      title: t('sidebar.versionHistory.nameThisVersion'),
+      confirmLabel: t('common.save'),
+    });
     if (raw == null) return;
     const trimmed = raw.trim();
     if (!trimmed) return;
     await saveNamedVersion(trimmed);
-  }, [saveNamedVersion]);
+  }, [saveNamedVersion, t]);
 
   const handleRestore = useCallback(
     async (snap: VersionSnapshot) => {
@@ -394,31 +406,37 @@ function VersionsTab({
     [onRestoreSnapshot, onRestoreServerVersion]
   );
 
-  const handleRename = useCallback(async (snap: VersionSnapshot) => {
-    if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
-    const next = await promptModal({
-      title: 'Rename version',
-      defaultValue: snap.name,
-      confirmLabel: 'Rename',
-    });
-    if (next == null) return;
-    const trimmed = next.trim();
-    if (!trimmed || trimmed === snap.name) return;
-    await renameVersion(snap.id, trimmed);
-  }, []);
+  const handleRename = useCallback(
+    async (snap: VersionSnapshot) => {
+      if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
+      const next = await promptModal({
+        title: t('sidebar.versionHistory.renameVersion'),
+        defaultValue: snap.name,
+        confirmLabel: t('sidebar.versionHistory.rename'),
+      });
+      if (next == null) return;
+      const trimmed = next.trim();
+      if (!trimmed || trimmed === snap.name) return;
+      await renameVersion(snap.id, trimmed);
+    },
+    [t]
+  );
 
-  const handleDelete = useCallback(async (snap: VersionSnapshot) => {
-    if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
-    // eslint-disable-next-line no-alert
-    const ok = await confirmModal({
-      title: 'Delete version',
-      body: `Delete "${snap.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
-      danger: true,
-    });
-    if (!ok) return;
-    await deleteVersion(snap.id);
-  }, []);
+  const handleDelete = useCallback(
+    async (snap: VersionSnapshot) => {
+      if (snap.serverVersion != null || snap.id == null) return; // server versions are host-owned
+      // eslint-disable-next-line no-alert
+      const ok = await confirmModal({
+        title: t('sidebar.versionHistory.deleteVersion'),
+        body: t('sidebar.versionHistory.deleteConfirmBody', { name: snap.name }),
+        confirmLabel: t('common.delete'),
+        danger: true,
+      });
+      if (!ok) return;
+      await deleteVersion(snap.id);
+    },
+    [t]
+  );
 
   // Open the in-canvas preview. Local snapshots carry their `data`; the
   // previous (older) snapshot is the diff baseline. Server-backed
@@ -438,13 +456,13 @@ function VersionsTab({
   );
 
   if (!docId) {
-    return <PanelState kind="empty" message="Open a document to see its version history." />;
+    return <PanelState kind="empty" message={t('sidebar.versionHistory.openDocumentEmpty')} />;
   }
 
   return (
     <>
       <div style={SUBHEADER_STYLE}>
-        <span>Versions</span>
+        <span>{t('sidebar.versionHistory.versions')}</span>
         <span style={COUNT_STYLE} data-testid="version-history-versions-count">
           {visible.length}
         </span>
@@ -455,7 +473,7 @@ function VersionsTab({
             style={SAVE_VERSION_BTN_STYLE}
             data-testid="version-history-save-version"
           >
-            Save version…
+            {t('sidebar.versionHistory.saveVersion')}
           </button>
         )}
       </div>
@@ -469,14 +487,11 @@ function VersionsTab({
             onChange={(e) => setNamedOnly(e.target.checked)}
             data-testid="version-history-named-only"
           />
-          Only named versions
+          {t('sidebar.versionHistory.onlyNamedVersions')}
         </label>
       )}
       {list.length === 0 ? (
-        <PanelState
-          kind="empty"
-          message='No saved versions yet. "Save version…" bookmarks the current doc, or wait ~10 minutes for the first auto snapshot.'
-        />
+        <PanelState kind="empty" message={t('sidebar.versionHistory.noSavedVersionsYet')} />
       ) : (
         <ol style={LIST_STYLE} role="list">
           {/* Pinned "Current version" — the live document. Clicking it
@@ -488,7 +503,7 @@ function VersionsTab({
           )}
           {namedOnly && visible.length === 0 && (
             <li style={{ ...ENTRY_STYLE, color: 'var(--doc-text-muted)', fontSize: 12 }}>
-              No named versions yet. Use “Save version…” to bookmark one.
+              {t('sidebar.versionHistory.noNamedVersionsYet')}
             </li>
           )}
           {groups.map(({ label, items }) => (
@@ -559,14 +574,19 @@ function VersionRow({
   // interaction. Falls back to a plain <li> for server revisions.
   const interactive = !!onPreview;
   const [hover, setHover] = useState(false);
+  const { t } = useTranslation();
 
   // Per-row actions are consolidated into a kebab (⋮) menu so the row
   // stays clean and scannable (Google-Docs pattern). Restore is always
   // present; Rename / Delete only for client-owned local snapshots.
   const menuItems: KebabItem[] = [
-    { icon: 'history', label: 'Restore this version', onClick: onRestore },
-    ...(onRename ? [{ icon: 'edit_note', label: 'Rename', onClick: onRename }] : []),
-    ...(onDelete ? [{ icon: 'delete', label: 'Delete', onClick: onDelete, danger: true }] : []),
+    { icon: 'history', label: t('sidebar.versionHistory.restoreThisVersion'), onClick: onRestore },
+    ...(onRename
+      ? [{ icon: 'edit_note', label: t('sidebar.versionHistory.rename'), onClick: onRename }]
+      : []),
+    ...(onDelete
+      ? [{ icon: 'delete', label: t('common.delete'), onClick: onDelete, danger: true }]
+      : []),
   ];
 
   return (
@@ -596,9 +616,11 @@ function VersionRow({
       <div style={ENTRY_HEAD_STYLE}>
         {/* Auto snapshots show a clean "Auto-saved" label (the time sits on
             the right); only named versions surface their user-given name. */}
-        <span style={AUTHOR_STYLE}>{snap.kind === 'manual' ? snap.name : 'Auto-saved'}</span>
+        <span style={AUTHOR_STYLE}>
+          {snap.kind === 'manual' ? snap.name : t('sidebar.versionHistory.autoSaved')}
+        </span>
         {snap.kind === 'manual' && (
-          <Tooltip content="Named version — kept until deleted">
+          <Tooltip content={t('sidebar.versionHistory.namedVersionTooltip')}>
             <span style={KIND_BADGE_STYLE} tabIndex={0}>
               <MaterialSymbol name="star" size={12} />
             </span>
@@ -607,7 +629,7 @@ function VersionRow({
         <span style={{ marginLeft: 'auto' }}>
           <Tooltip content={new Date(snap.savedAt).toLocaleString()}>
             <span tabIndex={0} style={{ outline: 'none' }}>
-              {relativeTime(snap.savedAt, now)}
+              {relativeTime(snap.savedAt, now, t)}
             </span>
           </Tooltip>
         </span>
@@ -633,7 +655,9 @@ function VersionRow({
           {stats.added > 0 && <span style={STAT_ADD_STYLE}>+{stats.added}</span>}
           {stats.added > 0 && stats.removed > 0 && <span>·</span>}
           {stats.removed > 0 && <span style={STAT_REMOVE_STYLE}>-{stats.removed}</span>}
-          <span>word{stats.added + stats.removed === 1 ? '' : 's'}</span>
+          <span>
+            {t('sidebar.versionHistory.wordUnit', { count: stats.added + stats.removed })}
+          </span>
         </div>
       )}
     </li>
@@ -645,6 +669,7 @@ function VersionRow({
    ============================================================ */
 
 function CurrentVersionRow({ active, onClick }: { active: boolean; onClick: () => void }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -657,7 +682,7 @@ function CurrentVersionRow({ active, onClick }: { active: boolean; onClick: () =
         color: active ? 'var(--doc-primary, #1a73e8)' : 'var(--doc-text)',
       }}
     >
-      <span>Current version</span>
+      <span>{t('sidebar.versionHistory.currentVersion')}</span>
       {active && <MaterialSymbol name="check" size={16} style={{ marginLeft: 'auto' }} />}
     </button>
   );
@@ -672,6 +697,7 @@ interface KebabItem {
 
 function RowKebabMenu({ items }: { items: KebabItem[] }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
   const { containerRef, dropdownRef, dropdownStyle, handleMouseDown } = useFixedDropdown({
     isOpen: open,
     onClose: () => setOpen(false),
@@ -680,7 +706,7 @@ function RowKebabMenu({ items }: { items: KebabItem[] }) {
 
   return (
     <span ref={containerRef} style={{ display: 'inline-flex' }}>
-      <Tooltip content="More actions">
+      <Tooltip content={t('sidebar.versionHistory.moreActionsTooltip')}>
         <button
           type="button"
           onMouseDown={handleMouseDown}
@@ -688,7 +714,7 @@ function RowKebabMenu({ items }: { items: KebabItem[] }) {
           style={KEBAB_BTN_STYLE}
           aria-haspopup="menu"
           aria-expanded={open}
-          aria-label="Version actions"
+          aria-label={t('sidebar.versionHistory.versionActions')}
           data-testid="version-history-row-menu"
         >
           <MaterialSymbol name="more_vert" size={18} />
@@ -729,7 +755,7 @@ interface DayGroup {
   items: VersionSnapshot[];
 }
 
-function groupByDay(list: VersionSnapshot[]): DayGroup[] {
+function groupByDay(list: VersionSnapshot[], t: Translate): DayGroup[] {
   if (list.length === 0) return [];
   // Sheets uses the same labels (Today / Yesterday / explicit date).
   // Ordering follows the list itself (assumed newest-first by store).
@@ -742,9 +768,9 @@ function groupByDay(list: VersionSnapshot[]): DayGroup[] {
     const key = dayKey(d);
     const label =
       key === todayKey
-        ? 'Today'
+        ? t('sidebar.versionHistory.today')
         : key === yesterdayKey
-          ? 'Yesterday'
+          ? t('sidebar.versionHistory.yesterday')
           : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     let group = map.get(key);
     if (!group) {

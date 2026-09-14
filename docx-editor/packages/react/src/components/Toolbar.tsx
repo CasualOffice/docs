@@ -735,7 +735,7 @@ export function Toolbar({
                 ? [
                     {
                       icon: 'file_download',
-                      label: 'Export as PDF',
+                      label: t('toolbar.exportPdf'),
                       onClick: onExportPdf,
                     } as MenuEntry,
                   ]
@@ -744,7 +744,7 @@ export function Toolbar({
                 ? [
                     {
                       icon: 'file_download',
-                      label: 'Export as ODT',
+                      label: t('toolbar.exportOdt'),
                       onClick: onExportOdt,
                     } as MenuEntry,
                   ]
@@ -753,7 +753,7 @@ export function Toolbar({
                 ? [
                     {
                       icon: 'file_download',
-                      label: 'Export as Markdown',
+                      label: t('toolbar.exportMarkdown'),
                       onClick: onExportMd,
                     } as MenuEntry,
                   ]
@@ -762,7 +762,7 @@ export function Toolbar({
                 ? [
                     {
                       icon: 'file_download',
-                      label: 'Export as Plain Text',
+                      label: t('toolbar.exportPlainText'),
                       onClick: onExportTxt,
                     } as MenuEntry,
                   ]
@@ -780,7 +780,7 @@ export function Toolbar({
                 ? [
                     {
                       icon: 'tune',
-                      label: 'Properties',
+                      label: t('toolbar.properties'),
                       onClick: onFileProperties,
                     } as MenuEntry,
                   ]
@@ -792,12 +792,12 @@ export function Toolbar({
 
       {/* Edit Menu */}
       <MenuDropdown
-        label="Edit"
+        label={t('toolbar.edit')}
         disabled={disabled}
         items={[
           {
             icon: 'undo',
-            label: 'Undo',
+            label: t('toolbar.undo'),
             shortcut: formatShortcut('Ctrl+Z'),
             // Disable when no handler is wired — previous fallback ran
             // `handleFormat('bold')`, which silently bolded the selection
@@ -807,7 +807,7 @@ export function Toolbar({
           } as MenuEntry,
           {
             icon: 'redo',
-            label: 'Redo',
+            label: t('toolbar.redo'),
             shortcut: formatShortcut('Ctrl+Y'),
             onClick: onRedo ?? (() => undefined),
             disabled: !canRedo || !onRedo,
@@ -817,7 +817,7 @@ export function Toolbar({
             ? [
                 {
                   icon: 'search',
-                  label: 'Find',
+                  label: t('toolbar.find'),
                   shortcut: formatShortcut('Ctrl+F'),
                   onClick: onOpenFind,
                 } as MenuEntry,
@@ -827,7 +827,7 @@ export function Toolbar({
             ? [
                 {
                   icon: 'find_replace',
-                  label: 'Find and Replace',
+                  label: t('toolbar.findAndReplace'),
                   shortcut: formatShortcut('Ctrl+H'),
                   onClick: onOpenFindReplace,
                 } as MenuEntry,
@@ -836,7 +836,7 @@ export function Toolbar({
           ...(onOpenFind || onOpenFindReplace ? [{ type: 'separator' as const }] : []),
           {
             icon: 'select_all',
-            label: 'Select All',
+            label: t('toolbar.selectAll'),
             shortcut: formatShortcut('Ctrl+A'),
             onClick: () => handleFormat('selectAll'),
           } as MenuEntry,
@@ -845,7 +845,7 @@ export function Toolbar({
                 { type: 'separator' as const },
                 {
                   icon: 'spellcheck',
-                  label: spellCheckEnabled ? '✓ Spelling' : 'Spelling',
+                  label: `${spellCheckEnabled ? '✓ ' : ''}${t('toolbar.spelling')}`,
                   onClick: onToggleSpellCheck,
                 } as MenuEntry,
               ]
@@ -859,35 +859,35 @@ export function Toolbar({
         disabled={disabled}
         items={[
           {
-            label: `${currentFormatting?.bold ? '✓ ' : ''}Bold`,
+            label: `${currentFormatting?.bold ? '✓ ' : ''}${t('formattingBar.bold')}`,
             shortcut: formatShortcut('Ctrl+B'),
             onClick: () => handleFormat('bold'),
           } as MenuEntry,
           {
-            label: `${currentFormatting?.italic ? '✓ ' : ''}Italic`,
+            label: `${currentFormatting?.italic ? '✓ ' : ''}${t('formattingBar.italic')}`,
             shortcut: formatShortcut('Ctrl+I'),
             onClick: () => handleFormat('italic'),
           } as MenuEntry,
           {
-            label: `${currentFormatting?.underline ? '✓ ' : ''}Underline`,
+            label: `${currentFormatting?.underline ? '✓ ' : ''}${t('formattingBar.underline')}`,
             shortcut: formatShortcut('Ctrl+U'),
             onClick: () => handleFormat('underline'),
           } as MenuEntry,
           {
-            label: `${currentFormatting?.strike ? '✓ ' : ''}Strikethrough`,
+            label: `${currentFormatting?.strike ? '✓ ' : ''}${t('formattingBar.strikethrough')}`,
             onClick: () => handleFormat('strikethrough'),
           } as MenuEntry,
           { type: 'separator' as const },
           {
-            label: `${currentFormatting?.smallCaps ? '✓ ' : ''}Small Caps`,
+            label: `${currentFormatting?.smallCaps ? '✓ ' : ''}${t('formattingBar.smallCaps')}`,
             onClick: () => handleFormat('toggleSmallCaps'),
           } as MenuEntry,
           {
-            label: `${currentFormatting?.allCaps ? '✓ ' : ''}All Caps`,
+            label: `${currentFormatting?.allCaps ? '✓ ' : ''}${t('formattingBar.allCaps')}`,
             onClick: () => handleFormat('toggleAllCaps'),
           } as MenuEntry,
           {
-            label: `${currentFormatting?.hidden ? '✓ ' : ''}Hidden`,
+            label: `${currentFormatting?.hidden ? '✓ ' : ''}${t('toolbar.hidden')}`,
             onClick: () => handleFormat('toggleHidden'),
           } as MenuEntry,
           {
@@ -895,28 +895,28 @@ export function Toolbar({
             // shadow, all CSS-driven and round-trip-clean through the
             // existing OOXML parser+serializer. The active state
             // checkmark per row reflects the mark on the selection.
-            label: 'Text effects',
+            label: t('toolbar.textEffects'),
             submenuContent: (closeMenu: () => void) => (
               <div className="py-1 min-w-[180px]">
                 {(
                   [
                     {
-                      label: 'Emboss',
+                      label: t('toolbar.emboss'),
                       action: 'toggleEmboss' as const,
                       active: !!currentFormatting?.emboss,
                     },
                     {
-                      label: 'Imprint',
+                      label: t('toolbar.imprint'),
                       action: 'toggleImprint' as const,
                       active: !!currentFormatting?.imprint,
                     },
                     {
-                      label: 'Outline',
+                      label: t('toolbar.textOutline'),
                       action: 'toggleTextOutline' as const,
                       active: !!currentFormatting?.outline,
                     },
                     {
-                      label: 'Shadow',
+                      label: t('toolbar.textShadow'),
                       action: 'toggleTextShadow' as const,
                       active: !!currentFormatting?.shadow,
                     },
@@ -941,15 +941,15 @@ export function Toolbar({
           } as MenuEntry,
           { type: 'separator' as const },
           {
-            label: 'Character spacing',
+            label: t('dialogs.characterSpacing.title'),
             submenuContent: (closeMenu: () => void) => (
               <div className="py-1 min-w-[180px]">
                 {[
-                  { label: 'Normal', value: 0 },
-                  { label: 'Expanded (+1pt)', value: 20 },
-                  { label: 'Expanded (+2pt)', value: 40 },
-                  { label: 'Condensed (−1pt)', value: -20 },
-                  { label: 'Condensed (−2pt)', value: -40 },
+                  { label: t('dialogs.characterSpacing.normal'), value: 0 },
+                  { label: t('toolbar.characterSpacingExpanded1'), value: 20 },
+                  { label: t('toolbar.characterSpacingExpanded2'), value: 40 },
+                  { label: t('toolbar.characterSpacingCondensed1'), value: -20 },
+                  { label: t('toolbar.characterSpacingCondensed2'), value: -40 },
                 ].map((item) => (
                   <button
                     key={item.value}
@@ -1141,7 +1141,7 @@ export function Toolbar({
               ? [
                   {
                     icon: 'info',
-                    label: 'About Casual Editor',
+                    label: t('toolbar.aboutCasualEditor'),
                     onClick: onShowAbout,
                   } as MenuEntry,
                 ]

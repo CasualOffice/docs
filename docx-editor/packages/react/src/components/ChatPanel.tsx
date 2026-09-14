@@ -33,6 +33,7 @@ import { Markdown } from '../lib/markdown';
 import { RightDockPanel } from './RightDockPanel';
 import { MaterialSymbol } from './ui/Icons';
 import { useTranslation } from '../i18n';
+import type { TranslationKey } from '../i18n';
 
 export interface ChatPanelProps {
   isOpen: boolean;
@@ -345,16 +346,20 @@ const quickChipStyle: CSSProperties = {
 // doesn't have to remember to flip the chip.
 interface SlashCommand {
   cmd: string;
-  label: string;
-  hint: string;
+  labelKey: TranslationKey;
+  hintKey: TranslationKey;
   build: (rest: string) => string;
 }
 
+// Labels/hints are UI chrome (translated via labelKey/hintKey below). The
+// `build(...)` output is the raw prompt sent to the on-device model, not
+// shown to the user directly — it stays in English by design (see the
+// module docstring).
 const SLASH_COMMANDS: SlashCommand[] = [
   {
     cmd: '/rewrite',
-    label: 'Rewrite selection',
-    hint: 'Rewrite the selection (tone optional)',
+    labelKey: 'chat.slashRewriteLabel',
+    hintKey: 'chat.slashRewriteHint',
     build: (rest) =>
       rest.trim()
         ? `Rewrite the selected passage to be ${rest.trim()}. Keep the meaning and format.`
@@ -362,42 +367,42 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     cmd: '/summarize',
-    label: 'Summarize selection',
-    hint: 'One-paragraph summary',
+    labelKey: 'chat.slashSummarizeLabel',
+    hintKey: 'chat.slashSummarizeHint',
     build: () => 'Summarise the selected passage in a single concise paragraph.',
   },
   {
     cmd: '/grammar',
-    label: 'Grammar fix',
-    hint: 'Correct typos and grammar only',
+    labelKey: 'chat.slashGrammarLabel',
+    hintKey: 'chat.slashGrammarHint',
     build: () =>
       'Fix grammar, agreement, and punctuation in the selected passage. Return ONLY the corrected text.',
   },
   {
     cmd: '/translate',
-    label: 'Translate selection',
-    hint: 'Translate to a language',
+    labelKey: 'chat.slashTranslateLabel',
+    hintKey: 'chat.slashTranslateHint',
     build: (rest) =>
       `Translate the selected passage to ${rest.trim() || 'Spanish'}. Return only the translation.`,
   },
   {
     cmd: '/explain',
-    label: 'Explain selection',
-    hint: 'Plain-English explanation',
+    labelKey: 'chat.slashExplainLabel',
+    hintKey: 'chat.slashExplainHint',
     build: () =>
       'Explain the selected passage in simple, plain English suitable for a non-expert reader.',
   },
   {
     cmd: '/expand',
-    label: 'Expand selection',
-    hint: 'Add detail and depth',
+    labelKey: 'chat.slashExpandLabel',
+    hintKey: 'chat.slashExpandHint',
     build: () =>
       'Expand the selected passage with more detail and concrete examples while keeping the original meaning.',
   },
   {
     cmd: '/shorten',
-    label: 'Shorten selection',
-    hint: 'Tighten without losing meaning',
+    labelKey: 'chat.slashShortenLabel',
+    hintKey: 'chat.slashShortenHint',
     build: () =>
       'Shorten the selected passage while keeping the meaning intact. Return only the shortened text.',
   },
@@ -407,15 +412,15 @@ const SLASH_COMMANDS: SlashCommand[] = [
     // with the new "readable" tone so the rewrite lands as a
     // tracked-change suggestion in the inline preview popover.
     cmd: '/polish',
-    label: 'Polish for readability',
-    hint: 'Shorter sentences, plain English, active voice',
+    labelKey: 'chat.slashPolishLabel',
+    hintKey: 'chat.slashPolishHint',
     build: () =>
       'Rewrite the selected passage to be more readable: break sentences longer than 25 words, use plain English, prefer active voice. Keep the meaning unchanged.',
   },
   {
     cmd: '/plain',
-    label: 'Plain English',
-    hint: 'Short sentences, simple words, no jargon',
+    labelKey: 'chat.slashPlainLabel',
+    hintKey: 'chat.slashPlainHint',
     build: () =>
       'Rewrite the selected passage in plain English suitable for a general audience: short sentences under 20 words, simple words, active voice, no jargon. Keep the meaning intact.',
   },
@@ -425,8 +430,8 @@ const SLASH_COMMANDS: SlashCommand[] = [
     // intent → table proposal. The user reviews + accepts in the
     // popover instead of the chat bubble.
     cmd: '/table',
-    label: 'Convert selection to table',
-    hint: 'Build a real table from the selected text',
+    labelKey: 'chat.slashTableLabel',
+    hintKey: 'chat.slashTableHint',
     build: (rest) =>
       rest.trim()
         ? `Transform the selected passage into a table. ${rest.trim()}.`
@@ -437,8 +442,8 @@ const SLASH_COMMANDS: SlashCommand[] = [
     // summary + deep link. Distinct from /explain, which paraphrases
     // the selection; /research is an external lookup.
     cmd: '/research',
-    label: 'Look up on Wikipedia',
-    hint: 'Fact lookup (Wikipedia REST)',
+    labelKey: 'chat.slashResearchLabel',
+    hintKey: 'chat.slashResearchHint',
     build: (rest) =>
       rest.trim() ? `What is ${rest.trim()}?` : 'What is the topic of the selected passage?',
   },
@@ -446,8 +451,8 @@ const SLASH_COMMANDS: SlashCommand[] = [
     // Run the resume target through transformDoc on the live doc. The
     // classifier handles the routing; the popover shows the proposal.
     cmd: '/resume',
-    label: 'Create a resume from this doc',
-    hint: 'Restructure into ATS-friendly resume',
+    labelKey: 'chat.slashResumeLabel',
+    hintKey: 'chat.slashResumeHint',
     build: (rest) =>
       rest.trim()
         ? `Create a ${rest.trim()} resume from this document.`
@@ -455,8 +460,8 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
   {
     cmd: '/memo',
-    label: 'Create a memo from this doc',
-    hint: 'Restructure into a memorandum',
+    labelKey: 'chat.slashMemoLabel',
+    hintKey: 'chat.slashMemoHint',
     build: () => 'Draft a memo from this document.',
   },
 ];
@@ -689,7 +694,7 @@ export function ChatPanel({
         setHistory([]);
         setStreaming('');
       }}
-      title="Clear conversation"
+      title={t('chat.clearButtonTitle')}
       data-testid="chat-clear"
     >
       {t('chat.clearButton')}
@@ -709,8 +714,8 @@ export function ChatPanel({
               data-testid={`chat-slash-${c.cmd.slice(1)}`}
             >
               <span style={slashCmdStyle}>{c.cmd}</span>
-              <span style={slashLabelStyle}>{c.label}</span>
-              <span style={slashHintStyle}>{c.hint}</span>
+              <span style={slashLabelStyle}>{t(c.labelKey)}</span>
+              <span style={slashHintStyle}>{t(c.hintKey)}</span>
             </button>
           ))}
         </div>
@@ -764,7 +769,7 @@ export function ChatPanel({
               onClick={() => setIncludeSelection((v) => !v)}
               data-testid="chat-selection-chip"
             >
-              Selection · {selectionWords}{' '}
+              {t('chat.selectionLabel')} · {selectionWords}{' '}
               {selectionWords === 1 ? t('chat.wordSingular') : t('chat.wordPlural')}{' '}
               {includeSelection ? t('chat.selectionIncluded') : t('chat.selectionExcluded')}
             </button>
@@ -823,10 +828,10 @@ export function ChatPanel({
                       type="button"
                       style={msgActionBtnStyle}
                       onClick={() => onInsertAtCursor(m.content)}
-                      title="Insert this reply at the cursor as a tracked suggestion"
+                      title={t('chat.insertAtCursorTitle')}
                       data-testid={`chat-msg-insert-${i}`}
                     >
-                      Insert at cursor
+                      {t('chat.insertAtCursorButton')}
                     </button>
                     <button
                       type="button"
@@ -838,7 +843,7 @@ export function ChatPanel({
                       }
                       data-testid={`chat-msg-copy-${i}`}
                     >
-                      Copy
+                      {t('chat.copyButton')}
                     </button>
                   </div>
                 )}
@@ -851,7 +856,7 @@ export function ChatPanel({
               <span style={{ opacity: 0.4 }}>▍</span>
             </div>
           )}
-          {busy && !streaming && <div style={subtleStyle}>Thinking…</div>}
+          {busy && !streaming && <div style={subtleStyle}>{t('chat.thinking')}</div>}
         </div>
       </>
     </RightDockPanel>
@@ -874,6 +879,7 @@ function ChatEmptyState({
   hasSelection: boolean;
   onPick: (prompt: string) => void;
 }) {
+  const { t } = useTranslation();
   const prompts = useMemo(
     () =>
       getQuickPromptsForDoc({
@@ -884,11 +890,8 @@ function ChatEmptyState({
   );
   return (
     <div style={emptyStyle}>
-      <strong>Ready when you are.</strong>
-      <span>
-        Ask anything about the open document, request rewrites, or brainstorm. Toggle "Use document
-        context" above to send the doc text along with your question.
-      </span>
+      <strong>{t('chat.emptyStateTitle')}</strong>
+      <span>{t('chat.emptyStateBody', { toggle: t('chat.useDocContext') })}</span>
       <div style={quickRowStyle}>
         {prompts.map((p) => (
           <button

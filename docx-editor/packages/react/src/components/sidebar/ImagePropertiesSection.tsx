@@ -10,10 +10,12 @@
  * presentation layer, not a new command path.
  */
 import { useEffect, useState, type CSSProperties, type JSX } from 'react';
+import { useTranslation } from '../../i18n';
+import type { TranslationKey } from '../../i18n';
 
 interface WrapOption {
   value: string;
-  label: string;
+  labelKey: TranslationKey;
   /** 24×24 icon path describing the wrap mode. */
   icon: JSX.Element;
 }
@@ -23,7 +25,7 @@ interface WrapOption {
 const WRAP_OPTIONS: WrapOption[] = [
   {
     value: 'inline',
-    label: 'In line',
+    labelKey: 'sidebar.imageProperties.wrapInline',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="3" y="9" width="6" height="6" rx="1" fill="currentColor" />
@@ -38,7 +40,7 @@ const WRAP_OPTIONS: WrapOption[] = [
   },
   {
     value: 'squareLeft',
-    label: 'Wrap left',
+    labelKey: 'sidebar.imageProperties.wrapLeft',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="3" y="6" width="8" height="8" rx="1" fill="currentColor" />
@@ -53,7 +55,7 @@ const WRAP_OPTIONS: WrapOption[] = [
   },
   {
     value: 'squareRight',
-    label: 'Wrap right',
+    labelKey: 'sidebar.imageProperties.wrapRight',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="13" y="6" width="8" height="8" rx="1" fill="currentColor" />
@@ -68,7 +70,7 @@ const WRAP_OPTIONS: WrapOption[] = [
   },
   {
     value: 'behind',
-    label: 'Behind text',
+    labelKey: 'sidebar.imageProperties.wrapBehind',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="7" y="6" width="10" height="10" rx="1" fill="currentColor" opacity="0.35" />
@@ -83,7 +85,7 @@ const WRAP_OPTIONS: WrapOption[] = [
   },
   {
     value: 'inFront',
-    label: 'In front',
+    labelKey: 'sidebar.imageProperties.wrapInFront',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -99,7 +101,7 @@ const WRAP_OPTIONS: WrapOption[] = [
   },
   {
     value: 'topAndBottom',
-    label: 'Top & bottom',
+    labelKey: 'sidebar.imageProperties.wrapTopAndBottom',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M3 5h18M3 8h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -205,17 +207,17 @@ export interface ImagePropertiesSectionProps {
 // Distance-from-text only applies to text-wrapping floats.
 const WRAPS_TEXT = new Set(['squareLeft', 'squareRight', 'topAndBottom']);
 
-const BORDER_PRESETS: { label: string; width: number | null }[] = [
-  { label: 'None', width: null },
-  { label: 'Thin', width: 1 },
-  { label: 'Medium', width: 2 },
-  { label: 'Thick', width: 4 },
+const BORDER_PRESETS: { id: string; labelKey: TranslationKey; width: number | null }[] = [
+  { id: 'none', labelKey: 'dialogs.bordersShading.presetNone', width: null },
+  { id: 'thin', labelKey: 'sidebar.imageProperties.borderThin', width: 1 },
+  { id: 'medium', labelKey: 'sidebar.imageProperties.borderMedium', width: 2 },
+  { id: 'thick', labelKey: 'dialogs.bordersShading.styleThick', width: 4 },
 ];
 
-const ARRANGE: { action: ImageTransform; label: string; icon: JSX.Element }[] = [
+const ARRANGE: { action: ImageTransform; labelKey: TranslationKey; icon: JSX.Element }[] = [
   {
     action: 'rotateCCW',
-    label: 'Rotate left',
+    labelKey: 'sidebar.imageProperties.rotateLeft',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M7.11 8.53 5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47zM6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47zm1.01 5.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32zM13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z" />
@@ -224,7 +226,7 @@ const ARRANGE: { action: ImageTransform; label: string; icon: JSX.Element }[] = 
   },
   {
     action: 'rotateCW',
-    label: 'Rotate right',
+    labelKey: 'sidebar.imageProperties.rotateRight',
     icon: (
       <svg
         width="18"
@@ -240,7 +242,7 @@ const ARRANGE: { action: ImageTransform; label: string; icon: JSX.Element }[] = 
   },
   {
     action: 'flipH',
-    label: 'Flip horizontal',
+    labelKey: 'imageTransform.flipHorizontal',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 3v18" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2 2" />
@@ -250,7 +252,7 @@ const ARRANGE: { action: ImageTransform; label: string; icon: JSX.Element }[] = 
   },
   {
     action: 'flipV',
-    label: 'Flip vertical',
+    labelKey: 'imageTransform.flipVertical',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M3 12h18" stroke="currentColor" strokeWidth="1.6" strokeDasharray="2 2" />
@@ -291,6 +293,7 @@ export function ImagePropertiesSection({
   distRight,
   onSetDist,
 }: ImagePropertiesSectionProps) {
+  const { t } = useTranslation();
   // Local, editable copies so typing doesn't fight the live node attrs. They
   // re-sync whenever the selected image (its size) changes underneath.
   const [w, setW] = useState<string>(width != null ? String(Math.round(width)) : '');
@@ -335,18 +338,23 @@ export function ImagePropertiesSection({
 
   return (
     <div data-testid="properties-image-section">
-      <div style={GROUP_HEADER}>Text wrapping</div>
-      <div style={TILE_GRID} role="group" aria-label="Text wrapping">
+      <div style={GROUP_HEADER}>{t('sidebar.imageProperties.textWrapping')}</div>
+      <div
+        style={TILE_GRID}
+        role="group"
+        aria-label={t('sidebar.imageProperties.textWrapping')}
+      >
         {WRAP_OPTIONS.map((o) => {
           const active = wrapType === o.value;
+          const label = t(o.labelKey);
           return (
             <button
               key={o.value}
               type="button"
               role="menuitemradio"
               aria-checked={active}
-              aria-label={o.label}
-              title={o.label}
+              aria-label={label}
+              title={label}
               style={tile(active)}
               data-testid={`properties-wrap-${o.value}`}
               onMouseDown={(e) => {
@@ -355,7 +363,7 @@ export function ImagePropertiesSection({
               }}
             >
               {o.icon}
-              <span>{o.label}</span>
+              <span>{label}</span>
             </button>
           );
         })}
@@ -363,10 +371,10 @@ export function ImagePropertiesSection({
 
       {onSetSize && (width != null || height != null) && (
         <>
-          <div style={GROUP_HEADER}>Size</div>
+          <div style={GROUP_HEADER}>{t('dialogs.pageSetup.sizeLabel')}</div>
           <div style={SIZE_ROW} data-testid="properties-image-size">
             <label style={sizeLabel}>
-              W
+              {t('sidebar.imageProperties.widthAbbr')}
               <input
                 style={{ ...sizeInput, marginLeft: 6 }}
                 type="number"
@@ -380,7 +388,7 @@ export function ImagePropertiesSection({
               />
             </label>
             <label style={sizeLabel}>
-              H
+              {t('sidebar.imageProperties.heightAbbr')}
               <input
                 style={{ ...sizeInput, marginLeft: 6 }}
                 type="number"
@@ -410,14 +418,14 @@ export function ImagePropertiesSection({
               data-testid="properties-image-lock-aspect"
               onChange={(e) => setLockAspect(e.target.checked)}
             />
-            Lock aspect ratio
+            {t('sidebar.imageProperties.lockAspectRatio')}
           </label>
         </>
       )}
 
       {onSetDist && WRAPS_TEXT.has(wrapType) && (
         <>
-          <div style={GROUP_HEADER}>Distance from text</div>
+          <div style={GROUP_HEADER}>{t('sidebar.imageProperties.distanceFromText')}</div>
           <div
             style={{
               display: 'grid',
@@ -429,10 +437,10 @@ export function ImagePropertiesSection({
           >
             {(
               [
-                ['distTop', 'Top', distTop],
-                ['distBottom', 'Bottom', distBottom],
-                ['distLeft', 'Left', distLeft],
-                ['distRight', 'Right', distRight],
+                ['distTop', t('dialogs.bordersShading.side.top'), distTop],
+                ['distBottom', t('dialogs.bordersShading.side.bottom'), distBottom],
+                ['distLeft', t('dialogs.bordersShading.side.left'), distLeft],
+                ['distRight', t('dialogs.bordersShading.side.right'), distRight],
               ] as const
             ).map(([side, label, val]) => (
               <label
@@ -463,45 +471,48 @@ export function ImagePropertiesSection({
 
       {onTransform && (
         <>
-          <div style={GROUP_HEADER}>Arrange</div>
+          <div style={GROUP_HEADER}>{t('sidebar.imageProperties.arrange')}</div>
           <div
             style={{ display: 'flex', gap: 6, padding: '0 16px 4px' }}
             role="group"
-            aria-label="Arrange"
+            aria-label={t('sidebar.imageProperties.arrange')}
           >
-            {ARRANGE.map((a) => (
-              <button
-                key={a.action}
-                type="button"
-                title={a.label}
-                aria-label={a.label}
-                style={arrangeBtn}
-                data-testid={`properties-image-${a.action}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onTransform(a.action);
-                }}
-              >
-                {a.icon}
-              </button>
-            ))}
+            {ARRANGE.map((a) => {
+              const label = t(a.labelKey);
+              return (
+                <button
+                  key={a.action}
+                  type="button"
+                  title={label}
+                  aria-label={label}
+                  style={arrangeBtn}
+                  data-testid={`properties-image-${a.action}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onTransform(a.action);
+                  }}
+                >
+                  {a.icon}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
 
       {onSetBorder && (
         <>
-          <div style={GROUP_HEADER}>Border</div>
+          <div style={GROUP_HEADER}>{t('dialogs.imageProperties.border')}</div>
           <div
             style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 16px 6px' }}
             role="group"
-            aria-label="Border width"
+            aria-label={t('table.borderWidth')}
           >
             {BORDER_PRESETS.map((b) => {
               const active = (borderWidth ?? null) === b.width;
               return (
                 <button
-                  key={b.label}
+                  key={b.id}
                   type="button"
                   style={{
                     ...arrangeBtn,
@@ -514,7 +525,7 @@ export function ImagePropertiesSection({
                       ? 'var(--doc-primary, #1a73e8)'
                       : 'var(--doc-border, #dadce0)',
                   }}
-                  data-testid={`properties-image-border-${b.label.toLowerCase()}`}
+                  data-testid={`properties-image-border-${b.id}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     onSetBorder(
@@ -524,13 +535,13 @@ export function ImagePropertiesSection({
                     );
                   }}
                 >
-                  {b.label}
+                  {t(b.labelKey)}
                 </button>
               );
             })}
           </div>
           <label style={{ ...SIZE_ROW, ...sizeLabel, paddingBottom: 14 }}>
-            Color
+            {t('dialogs.imageProperties.color')}
             <input
               type="color"
               value={color}
@@ -557,12 +568,12 @@ export function ImagePropertiesSection({
 
       {onSetAlt && (
         <>
-          <div style={GROUP_HEADER}>Alt text</div>
+          <div style={GROUP_HEADER}>{t('sidebar.imageProperties.altText')}</div>
           <div style={{ padding: '0 16px 16px' }}>
             <textarea
               value={altText}
               data-testid="properties-image-alt"
-              placeholder="Describe this image"
+              placeholder={t('sidebar.imageProperties.altTextPlaceholder')}
               rows={2}
               style={{
                 width: '100%',
