@@ -368,7 +368,8 @@
         "punctuation": "Pontuação",
         "currency": "Moedas",
         "music": "Música",
-        "emoji": "Emoji"
+        "emoji": "Emoji",
+        "recent": "Recentes"
       }
     },
     "imageProperties": {
@@ -677,7 +678,10 @@
       "tabBorders": "Bordas",
       "tabShading": "Sombreamento",
       "title": "Bordas e sombreamento",
-      "widthPt": "Largura"
+      "widthPt": "Largura",
+      "noColor": "Sem cor",
+      "previewText": "Parágrafo",
+      "hexAriaLabel": "{label} hex"
     },
     "customSpacing": {
       "afterPt": "Depois (pt)",
@@ -715,6 +719,73 @@
       "previewPlaceholder": "Digite LaTeX acima para visualizar.",
       "renderFailed": "Não foi possível renderizar a equação",
       "title": "Inserir equação"
+    },
+    "fileProperties": {
+      "title": "Propriedades do arquivo",
+      "sectionMetadata": "Metadados",
+      "sectionFileInfo": "Informações do arquivo",
+      "fieldTitle": "Título",
+      "fieldSubject": "Assunto",
+      "fieldAuthor": "Autor",
+      "fieldKeywords": "Palavras-chave",
+      "fieldKeywordsPlaceholder": "ex. financeiro; anual; relatório",
+      "fieldCategory": "Categoria",
+      "fieldDescription": "Descrição",
+      "fileName": "Nome do arquivo",
+      "size": "Tamanho",
+      "lastModifiedBy": "Última modificação por",
+      "revision": "Revisão",
+      "created": "Criado em",
+      "modified": "Modificado em"
+    },
+    "citations": {
+      "title": "Citações",
+      "addCitation": "Adicionar citação",
+      "authorPlaceholder": "Autor (ex. Knuth, D.)",
+      "yearPlaceholder": "Ano",
+      "titlePlaceholder": "Título",
+      "urlPlaceholder": "URL (opcional)",
+      "saveCitation": "Salvar citação",
+      "savedCitations": "Citações salvas",
+      "format": "Formato:",
+      "empty": "Nenhuma citação salva ainda.",
+      "deleteCitation": "Excluir citação: {title}"
+    },
+    "writingAssistant": {
+      "panelTitle": "Assistente de escrita",
+      "intro": "Roda inteiramente no seu navegador. Seu documento nunca é enviado a um servidor.",
+      "featuresHeading": "Recursos",
+      "advancedToggle": "Avançado (desligado por padrão)",
+      "deviceHeading": "Seu dispositivo",
+      "detectingCapabilities": "Detectando capacidades…",
+      "available": "disponível",
+      "unavailable": "indisponível",
+      "deviceMemoryLabel": "Memória do dispositivo",
+      "deviceMemoryValue": "{gb} GB informados",
+      "browserStorageLabel": "Armazenamento do navegador",
+      "browserStorageValue": "{used} MB usados de {total} MB",
+      "backendLabel": "Backend",
+      "networkLabel": "Rede",
+      "statusHeading": "Status",
+      "downloadProgressAriaLabel": "Progresso do download",
+      "downloadingProgress": "Baixando… {percent}%",
+      "loadingModel": "Carregando modelo…",
+      "sizeAndModels": "{size} MB · {count, plural, =1 {# modelo} other {# modelos}}",
+      "reenableAutoLabel": "Reativar automaticamente na próxima vez",
+      "clearCachedModels": "Limpar modelos em cache",
+      "consentTitle": "Baixar assistente de escrita",
+      "consentBody": "Isso baixa um modelo de ~95 MB para o cache do seu navegador para que o assistente funcione no seu dispositivo. Seu documento nunca é enviado a um servidor.",
+      "consentLicense": "O modelo é open-source (Apache-2.0).",
+      "downloadAndContinue": "Baixar e continuar",
+      "statusNoFeatures": "Nenhum recurso ativado",
+      "statusReadyToLoad": "Pronto para carregar sob demanda",
+      "statusCheckingDevice": "Verificando seu dispositivo…",
+      "statusWaitingConfirmation": "Aguardando confirmação",
+      "statusReady": "Pronto",
+      "statusReadyTiming": "Pronto · última chamada {ms} ms",
+      "statusRunning": "Executando…",
+      "statusUnloadingModel": "Descarregando modelo…",
+      "statusPaused": "Pausado — veja a mensagem abaixo"
     }
   },
   "comments": {
@@ -768,7 +839,10 @@
       "makeFormal": "Tornar formal",
       "makeCasual": "Tornar informal",
       "custom": "Personalizado"
-    }
+    },
+    "rewriteWithAi": "Reescrever com IA",
+    "summarizeWithAi": "Resumir com IA",
+    "askAiAboutThis": "Perguntar à IA sobre isso"
   },
   "documentOutline": {
     "ariaLabel": "Estrutura do documento",
@@ -844,7 +918,22 @@
       "secondsAgo": "há {s}s",
       "minutesAgo": "há {m}min",
       "hoursAgo": "há {h}h",
-      "daysAgo": "há {d}d"
+      "daysAgo": "há {d}d",
+      "backToEditing": "Voltar à edição",
+      "diffTooLarge": "Esta versão é grande demais para calcular um diff embutido; exibindo sem realce de alterações.",
+      "back": "Voltar",
+      "showChanges": "Mostrar alterações",
+      "diffTooLargeShort": "Grande demais para realçar alterações",
+      "previewContentLabel": "Pré-visualização da versão",
+      "previewUnavailable": "Pré-visualização indisponível para esta versão."
+    },
+    "textBoxProperties": {
+      "size": "Tamanho",
+      "fill": "Preenchimento",
+      "noFill": "Sem preenchimento",
+      "outline": "Contorno",
+      "outlineWidthAriaLabel": "Espessura do contorno",
+      "autoPlaceholder": "auto"
     }
   },
   "titleBar": {
@@ -1293,5 +1382,78 @@
       "insertReportFromData": "Criando tabela de relatório…",
       "createDocument": "Criando documento…"
     }
+  },
+  "mobileFormatBar": {
+    "ariaLabel": "Formatar seleção"
+  },
+  "profileSettings": {
+    "title": "Configurações do perfil",
+    "displayName": "Nome de exibição",
+    "timezone": "Fuso horário",
+    "timezoneHint": "Identificador IANA (deixe em branco para usar o padrão do navegador)",
+    "language": "Idioma",
+    "languageHint": "Tag BCP-47 (deixe em branco para usar o idioma do navegador)",
+    "loading": "Carregando perfil…",
+    "loadError": "Não foi possível carregar seu perfil. Feche e abra novamente.",
+    "errorInvalid": "Esse nome de exibição ou e-mail é inválido ou já está em uso.",
+    "errorSessionExpired": "Sua sessão expirou. Faça login novamente.",
+    "errorGeneric": "Não foi possível salvar. Tente novamente."
+  },
+  "aiToneOptions": {
+    "polish": "Aprimorar",
+    "concise": "Conciso",
+    "formal": "Formal",
+    "casual": "Casual",
+    "shorter": "Mais curto",
+    "longer": "Mais longo"
+  },
+  "commandPalette": {
+    "newDocument": "Novo documento",
+    "saveDownloadDocx": "Salvar (baixar .docx)",
+    "fileExportPath": "Arquivo · Exportar",
+    "resetZoomTo100": "Redefinir zoom para 100%",
+    "themeMatchSystem": "Tema: seguir sistema",
+    "themeLight": "Tema: claro",
+    "themeDark": "Tema: escuro",
+    "insertTableOfContents": "Inserir sumário",
+    "insertImage": "Inserir imagem",
+    "shapeRectangle": "Forma · Retângulo",
+    "shapeEllipse": "Forma · Elipse",
+    "shapeLine": "Forma · Linha",
+    "shapeArrow": "Forma · Seta",
+    "equation": "Equação",
+    "reportABug": "Reportar problema",
+    "exitFocusMode": "Sair do modo foco",
+    "enterFocusMode": "Entrar no modo foco",
+    "strictCoEditingOn": "Coedição estrita: ativada",
+    "strictCoEditingOff": "Coedição estrita: desativada",
+    "hideFormattingMarks": "Ocultar caracteres não imprimíveis",
+    "hideDocumentOutline": "Ocultar estrutura do documento",
+    "hideComments": "Ocultar comentários",
+    "showComments": "Mostrar comentários",
+    "hideVersionHistory": "Ocultar histórico de versões",
+    "showVersionHistory": "Mostrar histórico de versões"
+  },
+  "toast": {
+    "convertToTable": "Converter em tabela",
+    "pastedTabularData": "Os dados colados parecem uma tabela de {rows} × {columns}.",
+    "aiSuggestionReady": "Sugestão da IA pronta para revisão — aceite ou rejeite no documento.",
+    "translatedReplaced": "Substituído pela tradução em {target}.",
+    "translateFailedLanguage": "Não foi possível traduzir — verifique sua conexão ou escolha outro idioma.",
+    "dictionaryLoadFailed": "Não foi possível carregar o dicionário do corretor ortográfico.",
+    "translateFailedRetry": "Não foi possível traduzir — verifique sua conexão e tente novamente.",
+    "saveSerializeFailed": "Não foi possível salvar — falha ao serializar o documento. Suas edições continuam aqui; tente novamente.",
+    "savedFile": "{fileName} salvo",
+    "saveFailedGeneric": "Não foi possível salvar o documento. Suas edições continuam aqui; tente novamente.",
+    "savedFileAttachEmail": "{fileName} salvo. Anexe-o à janela de e-mail.",
+    "downloadedFileAttachEmail": "{fileName} baixado. Arraste-o para a janela de e-mail para anexar.",
+    "downloadedFile": "{fileName} baixado",
+    "exportFailed": "Falha ao exportar como {label}",
+    "refineFailed": "Falha ao refinar: {message}",
+    "aiEmptyResponse": "O modelo retornou uma resposta vazia.",
+    "aiRequestFailed": "Falha na solicitação à IA: {message}",
+    "translatingTo": "Traduzindo para {target}…",
+    "loadingSpellcheckDictionary": "Carregando dicionário do corretor ortográfico…",
+    "convertingTo": "Convertendo para {label}…"
   }
 }

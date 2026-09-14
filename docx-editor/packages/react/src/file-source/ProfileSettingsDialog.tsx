@@ -22,6 +22,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 
 import { Dialog } from '../components/ui/Dialog';
+import { useTranslation } from '../i18n';
 
 import { AuthClient } from './auth-client';
 import { PersonalFileSourceError } from './personal';
@@ -58,6 +59,7 @@ export function ProfileSettingsDialog({
   onSaved,
   testId = 'profile-settings',
 }: ProfileSettingsDialogProps) {
+  const { t } = useTranslation();
   const [client] = useState(() => authClient ?? new AuthClient());
 
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
@@ -123,7 +125,7 @@ export function ProfileSettingsDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Profile settings"
+      title={t('profileSettings.title')}
       width={460}
       dismissOnBackdrop={!saving}
       dismissOnEscape={!saving}
@@ -137,7 +139,7 @@ export function ProfileSettingsDialog({
             data-testid={`${testId}-cancel`}
             style={secondaryButtonStyle(saving)}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
@@ -148,19 +150,19 @@ export function ProfileSettingsDialog({
               saving || load.status !== 'loaded' || displayName.trim() === ''
             )}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('titleBar.saving') : t('common.save')}
           </button>
         </div>
       }
     >
       {load.status === 'loading' && (
         <div data-testid={`${testId}-loading`} style={loadingStyle}>
-          Loading profile…
+          {t('profileSettings.loading')}
         </div>
       )}
       {load.status === 'error' && (
         <div data-testid={`${testId}-load-error`} style={errorStyle}>
-          {load.error?.message ?? 'Could not load your profile. Try closing and reopening.'}
+          {load.error?.message ?? t('profileSettings.loadError')}
         </div>
       )}
       {load.status === 'loaded' && (
@@ -170,7 +172,7 @@ export function ProfileSettingsDialog({
           style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
         >
           <label style={labelStyle}>
-            <span style={labelTextStyle}>Display name</span>
+            <span style={labelTextStyle}>{t('profileSettings.displayName')}</span>
             <input
               type="text"
               value={displayName}
@@ -183,7 +185,7 @@ export function ProfileSettingsDialog({
             />
           </label>
           <label style={labelStyle}>
-            <span style={labelTextStyle}>Timezone</span>
+            <span style={labelTextStyle}>{t('profileSettings.timezone')}</span>
             <input
               type="text"
               value={timezone}
@@ -193,10 +195,10 @@ export function ProfileSettingsDialog({
               data-testid={`${testId}-timezone`}
               style={inputStyle}
             />
-            <span style={hintStyle}>IANA tz string (leave blank to use the browser default)</span>
+            <span style={hintStyle}>{t('profileSettings.timezoneHint')}</span>
           </label>
           <label style={labelStyle}>
-            <span style={labelTextStyle}>Language</span>
+            <span style={labelTextStyle}>{t('profileSettings.language')}</span>
             <input
               type="text"
               value={locale}
@@ -206,11 +208,11 @@ export function ProfileSettingsDialog({
               data-testid={`${testId}-locale`}
               style={inputStyle}
             />
-            <span style={hintStyle}>BCP-47 tag (leave blank to match the browser)</span>
+            <span style={hintStyle}>{t('profileSettings.languageHint')}</span>
           </label>
           {saveError && (
             <div data-testid={`${testId}-save-error`} style={errorStyle}>
-              {humanReadable(saveError)}
+              {humanReadable(saveError, t)}
             </div>
           )}
         </form>
@@ -229,16 +231,19 @@ function localeOf(profile: ProfileWire): string {
   return typeof v === 'string' ? v : '';
 }
 
-function humanReadable(err: PersonalFileSourceError): string {
+function humanReadable(
+  err: PersonalFileSourceError,
+  t: ReturnType<typeof useTranslation>['t']
+): string {
   // collab PATCH /auth/profile → 409 'conflict-or-invalid', 401
   // 'unauthenticated'.
   switch (err.code) {
     case 'conflict-or-invalid':
-      return 'That display name or email is invalid or already in use.';
+      return t('profileSettings.errorInvalid');
     case 'unauthenticated':
-      return 'Your session has expired. Sign in again.';
+      return t('profileSettings.errorSessionExpired');
     default:
-      return err.message || 'Could not save. Please try again.';
+      return err.message || t('profileSettings.errorGeneric');
   }
 }
 

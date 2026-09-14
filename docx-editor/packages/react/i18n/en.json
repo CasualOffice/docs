@@ -373,7 +373,8 @@
         "punctuation": "Punctuation",
         "currency": "Currency",
         "music": "Music",
-        "emoji": "Emoji"
+        "emoji": "Emoji",
+        "recent": "Recent"
       }
     },
     "imageProperties": {
@@ -506,7 +507,10 @@
       "noFill": "No fill",
       "pattern": "Pattern",
       "patternClear": "Clear (no pattern)",
-      "patternSolid": "Solid"
+      "patternSolid": "Solid",
+      "noColor": "No color",
+      "previewText": "Paragraph",
+      "hexAriaLabel": "{label} hex"
     },
     "customSpacing": {
       "title": "Custom spacing",
@@ -720,6 +724,73 @@
       "previewPlaceholder": "Type LaTeX above to preview.",
       "renderFailed": "Could not render equation",
       "invalidLatex": "Invalid LaTeX"
+    },
+    "fileProperties": {
+      "title": "File Properties",
+      "sectionMetadata": "Metadata",
+      "sectionFileInfo": "File info",
+      "fieldTitle": "Title",
+      "fieldSubject": "Subject",
+      "fieldAuthor": "Author",
+      "fieldKeywords": "Keywords",
+      "fieldKeywordsPlaceholder": "e.g. finance; annual; report",
+      "fieldCategory": "Category",
+      "fieldDescription": "Description",
+      "fileName": "File name",
+      "size": "Size",
+      "lastModifiedBy": "Last modified by",
+      "revision": "Revision",
+      "created": "Created",
+      "modified": "Modified"
+    },
+    "citations": {
+      "title": "Citations",
+      "addCitation": "Add a citation",
+      "authorPlaceholder": "Author (e.g. Knuth, D.)",
+      "yearPlaceholder": "Year",
+      "titlePlaceholder": "Title",
+      "urlPlaceholder": "URL (optional)",
+      "saveCitation": "Save citation",
+      "savedCitations": "Saved citations",
+      "format": "Format:",
+      "empty": "No citations saved yet.",
+      "deleteCitation": "Delete citation: {title}"
+    },
+    "writingAssistant": {
+      "panelTitle": "Writing Assistant",
+      "intro": "Runs entirely in your browser. Your document is never sent to a server.",
+      "featuresHeading": "Features",
+      "advancedToggle": "Advanced (off by default)",
+      "deviceHeading": "Your device",
+      "detectingCapabilities": "Detecting capabilities…",
+      "available": "available",
+      "unavailable": "unavailable",
+      "deviceMemoryLabel": "Device memory",
+      "deviceMemoryValue": "{gb} GB reported",
+      "browserStorageLabel": "Browser storage",
+      "browserStorageValue": "{used} MB used of {total} MB",
+      "backendLabel": "Backend",
+      "networkLabel": "Network",
+      "statusHeading": "Status",
+      "downloadProgressAriaLabel": "Download progress",
+      "downloadingProgress": "Downloading… {percent}%",
+      "loadingModel": "Loading model…",
+      "sizeAndModels": "{size} MB · {count, plural, =1 {# model} other {# models}}",
+      "reenableAutoLabel": "Re-enable automatically next time",
+      "clearCachedModels": "Clear cached models",
+      "consentTitle": "Download writing assistant",
+      "consentBody": "This downloads a ~95 MB model to your browser cache so the assistant can run on your device. Your document is never sent to a server.",
+      "consentLicense": "The model is open-source (Apache-2.0).",
+      "downloadAndContinue": "Download and continue",
+      "statusNoFeatures": "No features enabled",
+      "statusReadyToLoad": "Ready to load on demand",
+      "statusCheckingDevice": "Checking your device…",
+      "statusWaitingConfirmation": "Waiting for confirmation",
+      "statusReady": "Ready",
+      "statusReadyTiming": "Ready · last call {ms} ms",
+      "statusRunning": "Running…",
+      "statusUnloadingModel": "Unloading model…",
+      "statusPaused": "Paused — see message below"
     }
   },
   "voiceTyping": {
@@ -781,7 +852,10 @@
       "makeFormal": "Make Formal",
       "makeCasual": "Make Casual",
       "custom": "Custom"
-    }
+    },
+    "rewriteWithAi": "Rewrite with AI",
+    "summarizeWithAi": "Summarize with AI",
+    "askAiAboutThis": "Ask AI about this"
   },
   "documentOutline": {
     "ariaLabel": "Document outline",
@@ -857,7 +931,22 @@
       "secondsAgo": "{s}s ago",
       "minutesAgo": "{m}m ago",
       "hoursAgo": "{h}h ago",
-      "daysAgo": "{d}d ago"
+      "daysAgo": "{d}d ago",
+      "backToEditing": "Back to editing",
+      "diffTooLarge": "This version is too large to compute an inline diff; showing it without change highlights.",
+      "back": "Back",
+      "showChanges": "Show changes",
+      "diffTooLargeShort": "Too large to highlight changes",
+      "previewContentLabel": "Version preview",
+      "previewUnavailable": "Preview unavailable for this version."
+    },
+    "textBoxProperties": {
+      "size": "Size",
+      "fill": "Fill",
+      "noFill": "No fill",
+      "outline": "Outline",
+      "outlineWidthAriaLabel": "Outline width",
+      "autoPlaceholder": "auto"
     }
   },
   "viewer": {
@@ -1293,5 +1382,78 @@
       "insertReportFromData": "Building report table…",
       "createDocument": "Building document…"
     }
+  },
+  "mobileFormatBar": {
+    "ariaLabel": "Format selection"
+  },
+  "profileSettings": {
+    "title": "Profile settings",
+    "displayName": "Display name",
+    "timezone": "Timezone",
+    "timezoneHint": "IANA tz string (leave blank to use the browser default)",
+    "language": "Language",
+    "languageHint": "BCP-47 tag (leave blank to match the browser)",
+    "loading": "Loading profile…",
+    "loadError": "Could not load your profile. Try closing and reopening.",
+    "errorInvalid": "That display name or email is invalid or already in use.",
+    "errorSessionExpired": "Your session has expired. Sign in again.",
+    "errorGeneric": "Could not save. Please try again."
+  },
+  "aiToneOptions": {
+    "polish": "Polish",
+    "concise": "Concise",
+    "formal": "Formal",
+    "casual": "Casual",
+    "shorter": "Shorter",
+    "longer": "Longer"
+  },
+  "commandPalette": {
+    "newDocument": "New document",
+    "saveDownloadDocx": "Save (download .docx)",
+    "fileExportPath": "File · Export",
+    "resetZoomTo100": "Reset zoom to 100%",
+    "themeMatchSystem": "Theme: match system",
+    "themeLight": "Theme: light",
+    "themeDark": "Theme: dark",
+    "insertTableOfContents": "Insert table of contents",
+    "insertImage": "Insert image",
+    "shapeRectangle": "Shape · Rectangle",
+    "shapeEllipse": "Shape · Ellipse",
+    "shapeLine": "Shape · Line",
+    "shapeArrow": "Shape · Arrow",
+    "equation": "Equation",
+    "reportABug": "Report a bug",
+    "exitFocusMode": "Exit focus mode",
+    "enterFocusMode": "Enter focus mode",
+    "strictCoEditingOn": "Strict co-editing: on",
+    "strictCoEditingOff": "Strict co-editing: off",
+    "hideFormattingMarks": "Hide non-printing characters",
+    "hideDocumentOutline": "Hide document outline",
+    "hideComments": "Hide comments",
+    "showComments": "Show comments",
+    "hideVersionHistory": "Hide version history",
+    "showVersionHistory": "Show version history"
+  },
+  "toast": {
+    "convertToTable": "Convert to table",
+    "pastedTabularData": "Pasted data looks like a {rows} × {columns} table.",
+    "aiSuggestionReady": "AI suggestion ready for review — accept or reject in the doc.",
+    "translatedReplaced": "Replaced with {target} translation.",
+    "translateFailedLanguage": "Couldn't translate — check your connection or pick another language.",
+    "dictionaryLoadFailed": "Couldn't load the spell-check dictionary.",
+    "translateFailedRetry": "Couldn't translate — check your connection and try again.",
+    "saveSerializeFailed": "Couldn't save — the document failed to serialize. Your edits are still here; try again.",
+    "savedFile": "Saved {fileName}",
+    "saveFailedGeneric": "Couldn't save the document. Your edits are still here; try again.",
+    "savedFileAttachEmail": "Saved {fileName}. Attach it to the email window.",
+    "downloadedFileAttachEmail": "Downloaded {fileName}. Drag it into the email window to attach.",
+    "downloadedFile": "Downloaded {fileName}",
+    "exportFailed": "Failed to export as {label}",
+    "refineFailed": "Refine failed: {message}",
+    "aiEmptyResponse": "The model returned an empty response.",
+    "aiRequestFailed": "AI request failed: {message}",
+    "translatingTo": "Translating to {target}…",
+    "loadingSpellcheckDictionary": "Loading spell-check dictionary…",
+    "convertingTo": "Converting to {label}…"
   }
 }

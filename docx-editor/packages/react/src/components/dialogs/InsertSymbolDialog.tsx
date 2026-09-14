@@ -641,7 +641,9 @@ export function InsertSymbolDialog({
     emoji: t('dialogs.insertSymbol.categories.emoji'),
   };
   const categories = [
-    ...(recentSymbols.length > 0 ? [{ name: 'recent', label: 'Recent' }] : []),
+    ...(recentSymbols.length > 0
+      ? [{ name: 'recent', label: t('dialogs.insertSymbol.categories.recent') }]
+      : []),
     ...SYMBOL_CATEGORIES.map((c) => ({ name: c.name, label: categoryLabelMap[c.name] || c.label })),
   ];
 

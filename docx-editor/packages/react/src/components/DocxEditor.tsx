@@ -3157,10 +3157,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         if (inserted <= 0) return;
         const to = live.state.selection.head;
         const from = Math.max(0, to - inserted);
-        toast.message(`Pasted data looks like a ${shape.rows} × ${shape.columns} table.`, {
+        toast.message(t('toast.pastedTabularData', { rows: shape.rows, columns: shape.columns }), {
           duration: 8000,
           action: {
-            label: 'Convert to table',
+            label: t('toast.convertToTable'),
             onClick: () => {
               const v = getActiveEditorView();
               if (!v) return;
@@ -3173,7 +3173,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     };
     document.addEventListener('paste', onPaste);
     return () => document.removeEventListener('paste', onPaste);
-  }, [getActiveEditorView]);
+  }, [getActiveEditorView, t]);
 
   // AI suggestion popover wiring. See definitions below the state
   // for `openAiSuggestion`, `runAiSuggestion`, and the accept/reject
@@ -6244,18 +6244,18 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
     const mod = isMac ? '⌘' : 'Ctrl';
     const items: TextContextMenuItem[] = [
-      { action: 'cut', label: 'Cut', shortcut: `${mod}+X` },
-      { action: 'copy', label: 'Copy', shortcut: `${mod}+C` },
-      { action: 'paste', label: 'Paste', shortcut: `${mod}+V` },
+      { action: 'cut', label: t('contextMenu.cut'), shortcut: `${mod}+X` },
+      { action: 'copy', label: t('contextMenu.copy'), shortcut: `${mod}+C` },
+      { action: 'paste', label: t('contextMenu.paste'), shortcut: `${mod}+V` },
       {
         action: 'pasteAsPlainText',
-        label: 'Paste as Plain Text',
+        label: t('contextMenu.pastePlainText'),
         shortcut: `${mod}+Shift+V`,
         dividerAfter: true,
       },
       {
         action: 'delete',
-        label: 'Delete',
+        label: t('contextMenu.delete'),
         shortcut: 'Del',
         dividerAfter: !contextMenu.hasSelection && !contextMenu.cursorInTable,
       },
@@ -6263,7 +6263,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     if (contextMenu.hasSelection) {
       items.push({
         action: 'addComment',
-        label: 'Comment',
+        label: t('common.comment'),
       });
       // Quick-translate: instant replace with the last target the
       // user picked. The dialog entry sticks around for picking a
@@ -6286,16 +6286,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
       items.push({
         action: 'translateSelection',
-        label: 'Translate selection…',
+        label: t('chat.slashTranslateLabel'),
       });
       if (aiRewriteReady) {
-        items.push({ action: 'aiRewrite', label: 'Rewrite with AI' });
+        items.push({ action: 'aiRewrite', label: t('contextMenu.rewriteWithAi') });
       }
       if (aiSummarizeReady) {
-        items.push({ action: 'aiSummarize', label: 'Summarize with AI' });
+        items.push({ action: 'aiSummarize', label: t('contextMenu.summarizeWithAi') });
       }
       if (aiAskReady) {
-        items.push({ action: 'aiAsk', label: 'Ask AI about this' });
+        items.push({ action: 'aiAsk', label: t('contextMenu.askAiAboutThis') });
       }
       // Add the divider on the last selection-only entry, before the
       // table block / Select All trailer.
@@ -6306,12 +6306,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
     if (contextMenu.cursorInTable) {
       items.push(
-        { action: 'addRowAbove', label: 'Insert row above' },
-        { action: 'addRowBelow', label: 'Insert row below' },
-        { action: 'deleteRow', label: 'Delete row', dividerAfter: true },
-        { action: 'addColumnLeft', label: 'Insert column left' },
-        { action: 'addColumnRight', label: 'Insert column right' },
-        { action: 'deleteColumn', label: 'Delete column', dividerAfter: true },
+        { action: 'addRowAbove', label: t('table.insertRowAbove') },
+        { action: 'addRowBelow', label: t('table.insertRowBelow') },
+        { action: 'deleteRow', label: t('table.deleteRow'), dividerAfter: true },
+        { action: 'addColumnLeft', label: t('table.insertColumnLeft') },
+        { action: 'addColumnRight', label: t('table.insertColumnRight') },
+        { action: 'deleteColumn', label: t('table.deleteColumn'), dividerAfter: true },
         {
           action: 'mergeCells',
           label: i18n?.table?.mergeCells ?? defaultLocale.table.mergeCells,
@@ -6327,10 +6327,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         // before, so users couldn't find it. Surfaced here so the
         // right-click in a cell exposes the same affordance Notion /
         // Word both surface inline.
-        { action: 'deleteTable', label: 'Delete table', dividerAfter: true }
+        { action: 'deleteTable', label: t('table.deleteTable'), dividerAfter: true }
       );
     }
-    items.push({ action: 'selectAll', label: 'Select All', shortcut: `${mod}+A` });
+    items.push({ action: 'selectAll', label: t('contextMenu.selectAll'), shortcut: `${mod}+A` });
     return items;
   }, [
     contextMenu.hasSelection,
@@ -6339,6 +6339,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     aiRewriteReady,
     aiSummarizeReady,
     aiAskReady,
+    t,
   ]);
 
   // ---------------------------------------------------------------
@@ -6522,10 +6523,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     // now carries the deletion + insertion marks, and the action bar
     // (now always visible when there are tracked changes) gives them
     // Accept All / Reject All / Prev / Next at the top-right.
-    toast.success('AI suggestion ready for review — accept or reject in the doc.', {
+    toast.success(t('toast.aiSuggestionReady'), {
       duration: 5000,
     });
-  }, [aiSuggestion, getActiveEditorView]);
+  }, [aiSuggestion, getActiveEditorView, t]);
 
   const handleAiReject = useCallback(() => {
     aiAbortRef.current?.abort();
@@ -6703,7 +6704,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           const targetLabel =
             TRANSLATE_LANGUAGES.find((l) => l.code === targetLang)?.label ??
             targetLang.toUpperCase();
-          const toastId = toast.loading(`Translating to ${targetLabel}…`);
+          const toastId = toast.loading(t('toast.translatingTo', { target: targetLabel }));
           try {
             const translatedContent = await translateFragment(
               slice.content,
@@ -6719,9 +6720,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
             }
             const tr = live.state.tr.replace(clampedFrom, clampedTo, translatedSlice);
             live.dispatch(tr);
-            toast.success(`Replaced with ${targetLabel} translation.`, { id: toastId });
+            toast.success(t('toast.translatedReplaced', { target: targetLabel }), { id: toastId });
           } catch {
-            toast.error("Couldn't translate — check your connection or pick another language.", {
+            toast.error(t('toast.translateFailedLanguage'), {
               id: toastId,
             });
           }
@@ -6773,7 +6774,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       }
       // TextContextMenu calls onClose after onAction, so no need to close here
     },
-    [getActiveEditorView, focusActiveEditor, openSplitCellDialog]
+    [getActiveEditorView, focusActiveEditor, openSplitCellDialog, t]
   );
 
   // Handle margin changes from rulers
@@ -7178,11 +7179,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       try {
         // Pre-warm — block the visible "enabled" flip on the dict so
         // the very first transaction-tick already sees a usable engine.
-        const loadingToast = toast.loading('Loading spell-check dictionary…');
+        const loadingToast = toast.loading(t('toast.loadingSpellcheckDictionary'));
         await loadSpellChecker();
         toast.dismiss(loadingToast);
       } catch {
-        toast.error("Couldn't load the spell-check dictionary.");
+        toast.error(t('toast.dictionaryLoadFailed'));
         return;
       }
     }
@@ -7195,7 +7196,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     }
     const view = getActiveEditorView();
     if (view) refreshSpellcheckDecorations(view);
-  }, [getActiveEditorView]);
+  }, [getActiveEditorView, t]);
 
   const handleToggleGrammar = useCallback(() => {
     // No dictionary to download — the rule engine is synchronous, so the
@@ -7268,13 +7269,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           // Storage denied — the right-click quick-translate just won't
           // remember across sessions; nothing else breaks.
         }
-        toast.success(`Replaced with ${target.toUpperCase()} translation.`);
+        toast.success(t('toast.translatedReplaced', { target: target.toUpperCase() }));
       } catch (err) {
-        toast.error("Couldn't translate — check your connection and try again.");
+        toast.error(t('toast.translateFailedRetry'));
         throw err;
       }
     },
-    [getActiveEditorView, translateRange]
+    [getActiveEditorView, translateRange, t]
   );
 
   // A5 — open the translate dialog. Seeds the original-text box with
@@ -7524,9 +7525,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (!buffer) {
         // Serialization failed silently — don't leave the user believing the
         // save worked (audit: manual Save failed with no feedback).
-        toast.error(
-          "Couldn't save — the document failed to serialize. Your edits are still here; try again."
-        );
+        toast.error(t('toast.saveSerializeFailed'));
         return;
       }
       // Checkpoint a version on explicit save (Google-Docs parity). No-op
@@ -7546,16 +7545,16 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const fileName = `${documentBaseName(documentName, 'document')}.docx`;
       triggerBrowserDownload(blob, fileName);
       markDirty(false);
-      toast.success(`Saved ${fileName}`);
+      toast.success(t('toast.savedFile', { fileName }));
     } catch (err) {
       // A throw from serialization / blob / download must surface — otherwise
       // Ctrl+S silently fails and the user loses work believing it saved.
-      toast.error("Couldn't save the document. Your edits are still here; try again.");
+      toast.error(t('toast.saveFailedGeneric'));
       emitError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName, markDirty, onSave, versionCapture, emitError]);
+  }, [handleSave, documentName, markDirty, onSave, versionCapture, emitError, t]);
 
   // Autosave to IndexedDB (sheet parity). A periodic interval polls the
   // dirty flag every 30s; if dirty, it serializes and writes the buffer.
@@ -7636,13 +7635,13 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       openExternal(`mailto:?subject=${subject}&body=${body}`);
       toast.success(
         savedViaHost
-          ? `Saved ${fileName}. Attach it to the email window.`
-          : `Downloaded ${fileName}. Drag it into the email window to attach.`
+          ? t('toast.savedFileAttachEmail', { fileName })
+          : t('toast.downloadedFileAttachEmail', { fileName })
       );
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName, onExport]);
+  }, [handleSave, documentName, onExport, t]);
 
   const handleMakeCopy = useCallback(async () => {
     setIsSaving(true);
@@ -7654,15 +7653,15 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       const fileName = `Copy of ${base}.docx`;
       // Desktop shell: native Save dialog instead of a phantom download.
       if (onExport && (await onExport(blob, fileName))) {
-        toast.success(`Saved ${fileName}`);
+        toast.success(t('toast.savedFile', { fileName }));
         return;
       }
       triggerBrowserDownload(blob, fileName);
-      toast.success(`Downloaded ${fileName}`);
+      toast.success(t('toast.downloadedFile', { fileName }));
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, documentName, onExport]);
+  }, [handleSave, documentName, onExport, t]);
 
   const handleExportAs = useCallback(
     async (target: 'odt' | 'md' | 'txt') => {
@@ -7670,7 +7669,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       // Loading toast — kept until convert finishes. The first non-DOCX
       // conversion in a session boots the ~7MB WASM bundle so this can
       // take a couple seconds; the toast tells the user it's working.
-      const toastId = toast.loading(`Converting to ${label}…`);
+      const toastId = toast.loading(t('toast.convertingTo', { label }));
       try {
         const buffer = await handleSave();
         if (!buffer) {
@@ -7695,17 +7694,17 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
         // (picker) instead of a phantom ~/Downloads blob. Falls through to
         // the browser download on the web (onExport unset / returned false).
         if (onExport && (await onExport(blob, fileName))) {
-          toast.success(`Saved ${fileName}`, { id: toastId });
+          toast.success(t('toast.savedFile', { fileName }), { id: toastId });
           return;
         }
         triggerBrowserDownload(blob, fileName);
-        toast.success(`Downloaded ${fileName}`, { id: toastId });
+        toast.success(t('toast.downloadedFile', { fileName }), { id: toastId });
       } catch (error) {
-        toast.error(`Failed to export as ${label}`, { id: toastId });
+        toast.error(t('toast.exportFailed', { label }), { id: toastId });
         emitError(error instanceof Error ? error : new Error(`Failed to export as ${target}`));
       }
     },
-    [handleSave, documentName, emitError, onExport]
+    [handleSave, documentName, emitError, onExport, t]
   );
   const handleExportOdt = useCallback(() => handleExportAs('odt'), [handleExportAs]);
   const handleExportMd = useCallback(() => handleExportAs('md'), [handleExportAs]);
@@ -10221,12 +10220,12 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                       boxShadow: 'var(--doc-shadow, 0 1px 3px rgba(0,0,0,0.08))',
                                     }}
                                   >
-                                    <Tooltip content="Back to editing">
+                                    <Tooltip content={t('sidebar.versionHistory.backToEditing')}>
                                       <button
                                         type="button"
                                         onClick={handleClosePreview}
                                         data-testid="version-preview-back"
-                                        aria-label="Back to editing"
+                                        aria-label={t('sidebar.versionHistory.backToEditing')}
                                         style={{
                                           display: 'inline-flex',
                                           alignItems: 'center',
@@ -10241,11 +10240,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                         }}
                                       >
                                         <MaterialSymbol name="arrow_back" size={16} />
-                                        Back
+                                        {t('sidebar.versionHistory.back')}
                                       </button>
                                     </Tooltip>
                                     <span style={{ fontSize: 13, color: 'var(--doc-text-muted)' }}>
-                                      Viewing{' '}
+                                      {t('editor.viewing')}{' '}
                                       <strong style={{ color: 'var(--doc-text)' }}>
                                         {versionPreview.name}
                                       </strong>
@@ -10263,23 +10262,23 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                           gap: 2,
                                         }}
                                       >
-                                        <Tooltip content="Previous change">
+                                        <Tooltip content={t('trackedChanges.previous')}>
                                           <button
                                             type="button"
                                             onClick={() => stepPreviewChange('prev')}
                                             data-testid="version-preview-prev-change"
-                                            aria-label="Previous change"
+                                            aria-label={t('trackedChanges.previous')}
                                             style={PREVIEW_CHANGE_NAV_BTN_STYLE}
                                           >
                                             <MaterialSymbol name="keyboard_arrow_up" size={18} />
                                           </button>
                                         </Tooltip>
-                                        <Tooltip content="Next change">
+                                        <Tooltip content={t('trackedChanges.next')}>
                                           <button
                                             type="button"
                                             onClick={() => stepPreviewChange('next')}
                                             data-testid="version-preview-next-change"
-                                            aria-label="Next change"
+                                            aria-label={t('trackedChanges.next')}
                                             style={PREVIEW_CHANGE_NAV_BTN_STYLE}
                                           >
                                             <MaterialSymbol name="keyboard_arrow_down" size={18} />
@@ -10311,19 +10310,19 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                         onChange={(e) => setPreviewShowChanges(e.target.checked)}
                                         data-testid="version-preview-show-changes"
                                       />
-                                      Show changes
+                                      {t('sidebar.versionHistory.showChanges')}
                                     </label>
                                     {previewShowChanges && previewDiffTooLarge && (
                                       <span
                                         data-testid="version-preview-diff-too-large"
-                                        title="This version is too large to compute an inline diff; showing it without change highlights."
+                                        title={t('sidebar.versionHistory.diffTooLarge')}
                                         style={{
                                           fontSize: 12,
                                           color: 'var(--doc-text-muted, #5f6368)',
                                           fontStyle: 'italic',
                                         }}
                                       >
-                                        Too large to highlight changes
+                                        {t('sidebar.versionHistory.diffTooLargeShort')}
                                       </span>
                                     )}
                                     <button
@@ -10341,7 +10340,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                         cursor: 'pointer',
                                       }}
                                     >
-                                      Restore this version
+                                      {t('sidebar.versionHistory.restoreThisVersion')}
                                     </button>
                                   </div>
                                   <div
@@ -10370,7 +10369,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                         wordCompat={wordCompat}
                                         readOnly
                                         extensionManager={extensionManager}
-                                        contentLabel="Version preview"
+                                        contentLabel={t('sidebar.versionHistory.previewContentLabel')}
                                         scrollContainerRef={previewScrollRef}
                                       />
                                     ) : (
@@ -10382,7 +10381,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                                           fontSize: 13,
                                         }}
                                       >
-                                        Preview unavailable for this version.
+                                        {t('sidebar.versionHistory.previewUnavailable')}
                                       </div>
                                     )}
                                   </div>
@@ -10392,11 +10391,11 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
                             {/* Floating "add comment" button — appears on right edge of page at selection */}
                             {floatingCommentBtn != null && !isAddingComment && !readOnly && (
-                              <Tooltip content="Add comment" side="bottom" delayMs={300}>
+                              <Tooltip content={t('formattingBar.addComment')} side="bottom" delayMs={300}>
                                 <button
                                   type="button"
                                   data-testid="floating-add-comment-button"
-                                  aria-label="Add comment"
+                                  aria-label={t('formattingBar.addComment')}
                                   onMouseDown={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -10634,32 +10633,32 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                             ? [
                                 {
                                   id: 'polish',
-                                  label: 'Polish',
+                                  label: t('aiToneOptions.polish'),
                                   active: aiSuggestion.tone === 'polish',
                                 },
                                 {
                                   id: 'concise',
-                                  label: 'Concise',
+                                  label: t('aiToneOptions.concise'),
                                   active: aiSuggestion.tone === 'concise',
                                 },
                                 {
                                   id: 'formal',
-                                  label: 'Formal',
+                                  label: t('aiToneOptions.formal'),
                                   active: aiSuggestion.tone === 'formal',
                                 },
                                 {
                                   id: 'casual',
-                                  label: 'Casual',
+                                  label: t('aiToneOptions.casual'),
                                   active: aiSuggestion.tone === 'casual',
                                 },
                                 {
                                   id: 'shorter',
-                                  label: 'Shorter',
+                                  label: t('aiToneOptions.shorter'),
                                   active: aiSuggestion.tone === 'shorter',
                                 },
                                 {
                                   id: 'longer',
-                                  label: 'Longer',
+                                  label: t('aiToneOptions.longer'),
                                   active: aiSuggestion.tone === 'longer',
                                 },
                               ]
@@ -10955,7 +10954,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                         }
                       })
                       .catch((err) => {
-                        toast.error(`Refine failed: ${(err as Error).message}`);
+                        toast.error(
+                          t('toast.refineFailed', { message: (err as Error).message })
+                        );
                       })
                       .finally(() => setProposalBusy(false));
                   }}
@@ -10996,7 +10997,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                       .then((raw) => {
                         const text = stripModelPreamble(raw).trim();
                         if (!text) {
-                          toast.error('The model returned an empty response.');
+                          toast.error(t('toast.aiEmptyResponse'));
                           return;
                         }
                         aiFragmentRef.current = markdownToFragment(text, schema);
@@ -11012,7 +11013,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                           error: null,
                         });
                       })
-                      .catch((err) => toast.error(`AI request failed: ${(err as Error).message}`))
+                      .catch((err) => toast.error(t('toast.aiRequestFailed', { message: (err as Error).message })))
                       .finally(() => setAskAiBusy(false));
                     return;
                   }
@@ -11057,7 +11058,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                       }
                     })
                     .catch((err) => {
-                      toast.error(`AI request failed: ${(err as Error).message}`);
+                      toast.error(t('toast.aiRequestFailed', { message: (err as Error).message }));
                     })
                     .finally(() => setAskAiBusy(false));
                 }}
@@ -11473,8 +11474,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                         ? [
                             {
                               id: 'file.new',
-                              label: 'New document',
-                              path: 'File',
+                              label: t('commandPalette.newDocument'),
+                              path: t('toolbar.file'),
                               shortcut: '⌘N',
                               run: onNew,
                             },
@@ -11482,65 +11483,65 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                         : []),
                       {
                         id: 'file.open',
-                        label: 'Open…',
-                        path: 'File',
+                        label: t('toolbar.open'),
+                        path: t('toolbar.file'),
                         shortcut: '⌘O',
                         run: handleOpenDocument,
                       },
                       {
                         id: 'file.save',
-                        label: 'Save (download .docx)',
-                        path: 'File',
+                        label: t('commandPalette.saveDownloadDocx'),
+                        path: t('toolbar.file'),
                         shortcut: '⌘S',
                         run: handleDownloadDocument,
                       },
                       {
                         id: 'file.print',
-                        label: 'Print',
-                        path: 'File',
+                        label: t('toolbar.print'),
+                        path: t('toolbar.file'),
                         shortcut: '⌘P',
                         run: handleDirectPrint,
                       },
                       {
                         id: 'file.export.pdf',
-                        label: 'Export as PDF',
-                        path: 'File · Export',
+                        label: t('toolbar.exportPdf'),
+                        path: t('commandPalette.fileExportPath'),
                         run: handleExportPdf,
                       },
                       {
                         id: 'file.export.odt',
-                        label: 'Export as ODT',
-                        path: 'File · Export',
+                        label: t('toolbar.exportOdt'),
+                        path: t('commandPalette.fileExportPath'),
                         run: handleExportOdt,
                       },
                       {
                         id: 'file.export.md',
-                        label: 'Export as Markdown',
-                        path: 'File · Export',
+                        label: t('toolbar.exportMarkdown'),
+                        path: t('commandPalette.fileExportPath'),
                         run: handleExportMd,
                       },
                       {
                         id: 'file.pageSetup',
-                        label: 'Page Setup…',
-                        path: 'File',
+                        label: t('dialogs.pageSetup.title'),
+                        path: t('toolbar.file'),
                         run: handleOpenPageSetup,
                       },
                       {
                         id: 'file.properties',
-                        label: 'Properties…',
-                        path: 'File',
+                        label: t('toolbar.properties'),
+                        path: t('toolbar.file'),
                         run: handleOpenFileProperties,
                       },
                       {
                         id: 'file.makeCopy',
-                        label: 'Make a copy',
-                        path: 'File',
+                        label: t('toolbar.makeCopy'),
+                        path: t('toolbar.file'),
                         run: handleMakeCopy,
                       },
                       {
                         id: 'file.email',
-                        label: 'Email as attachment…',
-                        path: 'File',
+                        label: t('toolbar.emailAsAttachment'),
+                        path: t('toolbar.file'),
                         run: handleEmailAsAttachment,
                       },
                       {
@@ -11548,8 +11549,8 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                         // but Google-Docs muscle memory looks for it in File. Open
                         // (not toggle) so picking it from the menu always reveals it.
                         id: 'file.versionHistory',
-                        label: 'Version history',
-                        path: 'File',
+                        label: t('toolbar.versionHistory'),
+                        path: t('toolbar.file'),
                         run: () => {
                           if (!showVersionHistory) handleToggleVersionHistory();
                         },
@@ -11557,151 +11558,153 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
                       {
                         id: 'edit.find',
-                        label: 'Find',
-                        path: 'Edit',
+                        label: t('dialogs.findReplace.titleFind'),
+                        path: t('toolbar.edit'),
                         shortcut: '⌘F',
                         run: () => findReplace.openFind(''),
                       },
                       {
                         id: 'edit.findReplace',
-                        label: 'Find and Replace',
-                        path: 'Edit',
+                        label: t('dialogs.findReplace.titleFindReplace'),
+                        path: t('toolbar.edit'),
                         shortcut: '⌘H',
                         run: () => findReplace.openReplace(''),
                       },
                       {
                         id: 'edit.hyperlink',
-                        label: 'Insert link',
-                        path: 'Edit',
+                        label: t('formattingBar.insertLink'),
+                        path: t('toolbar.edit'),
                         shortcut: '⌘K',
                         run: () => handleFormat('insertLink'),
                       },
                       {
                         id: 'edit.selectAll',
-                        label: 'Select All',
-                        path: 'Edit',
+                        label: t('contextMenu.selectAll'),
+                        path: t('toolbar.edit'),
                         shortcut: '⌘A',
                         run: () => handleFormat('selectAll'),
                       },
 
                       {
                         id: 'format.bold',
-                        label: 'Bold',
-                        path: 'Format',
+                        label: t('formattingBar.bold'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘B',
                         run: () => handleFormat('bold'),
                       },
                       {
                         id: 'format.italic',
-                        label: 'Italic',
-                        path: 'Format',
+                        label: t('formattingBar.italic'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘I',
                         run: () => handleFormat('italic'),
                       },
                       {
                         id: 'format.underline',
-                        label: 'Underline',
-                        path: 'Format',
+                        label: t('formattingBar.underline'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘U',
                         run: () => handleFormat('underline'),
                       },
                       {
                         id: 'format.strike',
-                        label: 'Strikethrough',
-                        path: 'Format',
+                        label: t('formattingBar.strikethrough'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘⇧X',
                         run: () => handleFormat('strikethrough'),
                       },
                       {
                         id: 'format.super',
-                        label: 'Superscript',
-                        path: 'Format',
+                        label: t('formattingBar.superscript'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘.',
                         run: () => handleFormat('superscript'),
                       },
                       {
                         id: 'format.sub',
-                        label: 'Subscript',
-                        path: 'Format',
+                        label: t('formattingBar.subscript'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘,',
                         run: () => handleFormat('subscript'),
                       },
                       {
                         id: 'format.smallCaps',
-                        label: 'Small Caps',
-                        path: 'Format',
+                        label: t('formattingBar.smallCaps'),
+                        path: t('toolbar.format'),
                         run: () => handleFormat('toggleSmallCaps'),
                       },
                       {
                         id: 'format.allCaps',
-                        label: 'All Caps',
-                        path: 'Format',
+                        label: t('formattingBar.allCaps'),
+                        path: t('toolbar.format'),
                         run: () => handleFormat('toggleAllCaps'),
                       },
                       {
                         id: 'format.clear',
-                        label: 'Clear formatting',
-                        path: 'Format',
+                        label: t('formattingBar.clearFormatting'),
+                        path: t('toolbar.format'),
                         shortcut: '⌘\\',
                         run: () => handleFormat('clearFormatting'),
                       },
                       {
                         id: 'format.ltr',
-                        label: 'Left-to-right text',
-                        path: 'Format',
+                        label: t('toolbar.leftToRight'),
+                        path: t('toolbar.format'),
                         run: () => handleFormat('setLtr'),
                       },
                       {
                         id: 'format.rtl',
-                        label: 'Right-to-left text',
-                        path: 'Format',
+                        label: t('toolbar.rightToLeft'),
+                        path: t('toolbar.format'),
                         run: () => handleFormat('setRtl'),
                       },
 
                       {
                         id: 'view.focusMode',
-                        label: focusMode ? 'Exit focus mode' : 'Enter focus mode',
-                        path: 'View',
+                        label: focusMode
+                          ? t('commandPalette.exitFocusMode')
+                          : t('commandPalette.enterFocusMode'),
+                        path: t('toolbar.view'),
                         shortcut: 'Ctrl+Shift+\\',
                         run: () => setFocusMode((v) => !v),
                       },
                       {
                         id: 'view.zoomIn',
-                        label: 'Zoom in',
-                        path: 'View',
+                        label: t('toolbar.zoomIn'),
+                        path: t('toolbar.view'),
                         shortcut: '⌘=',
                         run: () => handleZoomChange(Math.min(state.zoom * 1.1, 4)),
                       },
                       {
                         id: 'view.zoomOut',
-                        label: 'Zoom out',
-                        path: 'View',
+                        label: t('toolbar.zoomOut'),
+                        path: t('toolbar.view'),
                         shortcut: '⌘−',
                         run: () => handleZoomChange(Math.max(state.zoom / 1.1, 0.25)),
                       },
                       {
                         id: 'view.zoomReset',
-                        label: 'Reset zoom to 100%',
-                        path: 'View',
+                        label: t('commandPalette.resetZoomTo100'),
+                        path: t('toolbar.view'),
                         shortcut: '⌘0',
                         run: () => handleZoomChange(1),
                       },
                       {
                         id: 'view.themeAuto',
-                        label: 'Theme: match system',
-                        path: 'View',
+                        label: t('commandPalette.themeMatchSystem'),
+                        path: t('toolbar.view'),
                         run: () => handleSetColorTheme('auto'),
                       },
                       {
                         id: 'view.themeLight',
-                        label: 'Theme: light',
-                        path: 'View',
+                        label: t('commandPalette.themeLight'),
+                        path: t('toolbar.view'),
                         run: () => handleSetColorTheme('light'),
                       },
                       {
                         id: 'view.themeDark',
-                        label: 'Theme: dark',
-                        path: 'View',
+                        label: t('commandPalette.themeDark'),
+                        path: t('toolbar.view'),
                         run: () => handleSetColorTheme('dark'),
                       },
                       // Strict co-editing — only when a collab session wired the
@@ -11711,9 +11714,9 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
                             {
                               id: 'view.strictCoEditing',
                               label: strictCoEditEnabled
-                                ? 'Strict co-editing: on'
-                                : 'Strict co-editing: off',
-                              path: 'View',
+                                ? t('commandPalette.strictCoEditingOn')
+                                : t('commandPalette.strictCoEditingOff'),
+                              path: t('toolbar.view'),
                               run: handleToggleStrictCoEditing,
                             },
                           ]
@@ -11721,168 +11724,174 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
 
                       {
                         id: 'insert.pageBreak',
-                        label: 'Insert page break',
-                        path: 'Insert',
+                        label: t('dialogs.keyboardShortcuts.shortcuts.pageBreak'),
+                        path: t('toolbar.insert'),
                         shortcut: '⌘↵',
                         run: () => handleInsertPageBreak(),
                       },
                       {
                         id: 'insert.toc',
-                        label: 'Insert table of contents',
-                        path: 'Insert',
+                        label: t('commandPalette.insertTableOfContents'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertTOC(),
                       },
                       {
                         id: 'insert.image',
-                        label: 'Insert image',
-                        path: 'Insert',
+                        label: t('commandPalette.insertImage'),
+                        path: t('toolbar.insert'),
                         run: handleInsertImageClick,
                       },
                       {
                         id: 'insert.watermark',
-                        label: 'Watermark…',
-                        path: 'Insert',
+                        label: t('toolbar.watermark'),
+                        path: t('toolbar.insert'),
                         run: () => setShowWatermarkDialog(true),
                       },
                       {
                         id: 'insert.buildingBlocks',
-                        label: 'Building blocks…',
-                        path: 'Insert',
+                        label: t('toolbar.buildingBlocks'),
+                        path: t('toolbar.insert'),
                         run: handleOpenBuildingBlocks,
                       },
                       {
                         id: 'insert.convertToTable',
-                        label: 'Convert selection to table',
-                        path: 'Insert',
+                        label: t('toolbar.convertToTable'),
+                        path: t('toolbar.insert'),
                         run: handleConvertSelectionToTable,
                       },
                       {
                         id: 'insert.shape.rectangle',
-                        label: 'Shape · Rectangle',
-                        path: 'Insert',
+                        label: t('commandPalette.shapeRectangle'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertShape('rectangle'),
                       },
                       {
                         id: 'insert.shape.ellipse',
-                        label: 'Shape · Ellipse',
-                        path: 'Insert',
+                        label: t('commandPalette.shapeEllipse'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertShape('ellipse'),
                       },
                       {
                         id: 'insert.shape.line',
-                        label: 'Shape · Line',
-                        path: 'Insert',
+                        label: t('commandPalette.shapeLine'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertShape('line'),
                       },
                       {
                         id: 'insert.shape.arrow',
-                        label: 'Shape · Arrow',
-                        path: 'Insert',
+                        label: t('commandPalette.shapeArrow'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertShape('arrow'),
                       },
                       {
                         id: 'insert.textbox',
-                        label: 'Text box',
-                        path: 'Insert',
+                        label: t('toolbar.textBox'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertTextBox('plain'),
                       },
                       {
                         id: 'insert.callout',
-                        label: 'Callout',
-                        path: 'Insert',
+                        label: t('toolbar.callout'),
+                        path: t('toolbar.insert'),
                         run: () => handleInsertTextBox('callout'),
                       },
                       {
                         id: 'insert.equation',
-                        label: 'Equation',
-                        path: 'Insert',
+                        label: t('commandPalette.equation'),
+                        path: t('toolbar.insert'),
                         shortcut: 'Alt+=',
                         run: openEquationDialog,
                       },
 
                       {
                         id: 'tools.wordCount',
-                        label: 'Word count',
-                        path: 'Tools',
+                        label: t('toolbar.wordCount'),
+                        path: t('toolbar.tools'),
                         shortcut: '⌘⇧C',
                         run: handleOpenWordCount,
                       },
                       {
                         id: 'tools.dictionary',
-                        label: 'Dictionary',
-                        path: 'Tools',
+                        label: t('toolbar.dictionary'),
+                        path: t('toolbar.tools'),
                         shortcut: '⌘⇧Y',
                         run: handleOpenDictionary,
                       },
                       {
                         id: 'tools.translate',
-                        label: 'Translate…',
-                        path: 'Tools',
+                        label: t('toolbar.translate'),
+                        path: t('toolbar.tools'),
                         run: handleOpenTranslate,
                       },
                       {
                         id: 'tools.explore',
-                        label: 'Explore…',
-                        path: 'Tools',
+                        label: t('toolbar.explore'),
+                        path: t('toolbar.tools'),
                         run: handleOpenExplore,
                       },
                       {
                         id: 'tools.citations',
-                        label: 'Citations…',
-                        path: 'Tools',
+                        label: t('toolbar.citations'),
+                        path: t('toolbar.tools'),
                         run: handleOpenCitations,
                       },
                       {
                         id: 'tools.preferences',
-                        label: 'Preferences…',
-                        path: 'Tools',
+                        label: t('toolbar.preferences'),
+                        path: t('toolbar.tools'),
                         run: () => setShowPreferences(true),
                       },
                       {
                         id: 'tools.accessibility',
-                        label: 'Accessibility…',
-                        path: 'Tools',
+                        label: t('toolbar.accessibility'),
+                        path: t('toolbar.tools'),
                         run: handleOpenAccessibility,
                       },
 
                       {
                         id: 'view.showFormattingMarks',
                         label: showFormattingMarks
-                          ? 'Hide non-printing characters'
-                          : 'Show non-printing characters',
-                        path: 'View',
+                          ? t('commandPalette.hideFormattingMarks')
+                          : t('toolbar.showFormattingMarks'),
+                        path: t('toolbar.view'),
                         run: handleToggleShowFormattingMarks,
                       },
                       {
                         id: 'view.showOutline',
-                        label: showOutline ? 'Hide document outline' : 'Show document outline',
-                        path: 'View',
+                        label: showOutline
+                          ? t('commandPalette.hideDocumentOutline')
+                          : t('toolbar.showOutline'),
+                        path: t('toolbar.view'),
                         shortcut: '⌘⇧H',
                         run: handleToggleOutline,
                       },
                       {
                         id: 'view.showComments',
-                        label: showCommentsSidebar ? 'Hide comments' : 'Show comments',
-                        path: 'View',
+                        label: showCommentsSidebar
+                          ? t('commandPalette.hideComments')
+                          : t('commandPalette.showComments'),
+                        path: t('toolbar.view'),
                         run: handleToggleComments,
                       },
                       {
                         id: 'view.showVersionHistory',
-                        label: showVersionHistory ? 'Hide version history' : 'Show version history',
-                        path: 'View',
+                        label: showVersionHistory
+                          ? t('commandPalette.hideVersionHistory')
+                          : t('commandPalette.showVersionHistory'),
+                        path: t('toolbar.view'),
                         run: handleToggleVersionHistory,
                       },
 
                       {
                         id: 'help.report',
-                        label: 'Report a bug',
-                        path: 'Help',
+                        label: t('commandPalette.reportABug'),
+                        path: t('toolbar.help'),
                         run: handleReportBug,
                       },
                       {
                         id: 'help.about',
-                        label: 'About Casual Editor',
-                        path: 'Help',
+                        label: t('toolbar.aboutCasualEditor'),
+                        path: t('toolbar.help'),
                         run: handleShowAbout,
                       },
                     ]}

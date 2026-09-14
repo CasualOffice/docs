@@ -368,7 +368,8 @@
         "punctuation": "Satzzeichen",
         "currency": "Währungen",
         "music": "Musik",
-        "emoji": "Emoji"
+        "emoji": "Emoji",
+        "recent": null
       }
     },
     "imageProperties": {
@@ -677,7 +678,10 @@
       "tabBorders": null,
       "tabShading": null,
       "title": null,
-      "widthPt": null
+      "widthPt": null,
+      "hexAriaLabel": null,
+      "noColor": null,
+      "previewText": null
     },
     "customSpacing": {
       "afterPt": null,
@@ -715,6 +719,73 @@
       "previewPlaceholder": null,
       "renderFailed": null,
       "title": null
+    },
+    "citations": {
+      "addCitation": null,
+      "authorPlaceholder": null,
+      "deleteCitation": null,
+      "empty": null,
+      "format": null,
+      "saveCitation": null,
+      "savedCitations": null,
+      "title": null,
+      "titlePlaceholder": null,
+      "urlPlaceholder": null,
+      "yearPlaceholder": null
+    },
+    "fileProperties": {
+      "created": null,
+      "fieldAuthor": null,
+      "fieldCategory": null,
+      "fieldDescription": null,
+      "fieldKeywords": null,
+      "fieldKeywordsPlaceholder": null,
+      "fieldSubject": null,
+      "fieldTitle": null,
+      "fileName": null,
+      "lastModifiedBy": null,
+      "modified": null,
+      "revision": null,
+      "sectionFileInfo": null,
+      "sectionMetadata": null,
+      "size": null,
+      "title": null
+    },
+    "writingAssistant": {
+      "advancedToggle": null,
+      "available": null,
+      "backendLabel": null,
+      "browserStorageLabel": null,
+      "browserStorageValue": null,
+      "clearCachedModels": null,
+      "consentBody": null,
+      "consentLicense": null,
+      "consentTitle": null,
+      "detectingCapabilities": null,
+      "deviceHeading": null,
+      "deviceMemoryLabel": null,
+      "deviceMemoryValue": null,
+      "downloadAndContinue": null,
+      "downloadProgressAriaLabel": null,
+      "downloadingProgress": null,
+      "featuresHeading": null,
+      "intro": null,
+      "loadingModel": null,
+      "networkLabel": null,
+      "panelTitle": null,
+      "reenableAutoLabel": null,
+      "sizeAndModels": null,
+      "statusCheckingDevice": null,
+      "statusHeading": null,
+      "statusNoFeatures": null,
+      "statusPaused": null,
+      "statusReady": null,
+      "statusReadyTiming": null,
+      "statusReadyToLoad": null,
+      "statusRunning": null,
+      "statusUnloadingModel": null,
+      "statusWaitingConfirmation": null,
+      "unavailable": null
     }
   },
   "comments": {
@@ -768,7 +839,10 @@
       "makeFormal": "Formeller formulieren",
       "makeCasual": "Lockerer formulieren",
       "custom": "Benutzerdefiniert"
-    }
+    },
+    "askAiAboutThis": null,
+    "rewriteWithAi": null,
+    "summarizeWithAi": null
   },
   "documentOutline": {
     "ariaLabel": "Dokumentgliederung",
@@ -844,7 +918,22 @@
       "versionActions": null,
       "versions": null,
       "wordUnit": null,
-      "yesterday": null
+      "yesterday": null,
+      "back": null,
+      "backToEditing": null,
+      "diffTooLarge": null,
+      "diffTooLargeShort": null,
+      "previewContentLabel": null,
+      "previewUnavailable": null,
+      "showChanges": null
+    },
+    "textBoxProperties": {
+      "autoPlaceholder": null,
+      "fill": null,
+      "noFill": null,
+      "outline": null,
+      "outlineWidthAriaLabel": null,
+      "size": null
     }
   },
   "titleBar": {
@@ -1293,5 +1382,78 @@
       "indexedTitle": null,
       "indexing": null
     }
+  },
+  "mobileFormatBar": {
+    "ariaLabel": null
+  },
+  "profileSettings": {
+    "displayName": null,
+    "errorGeneric": null,
+    "errorInvalid": null,
+    "errorSessionExpired": null,
+    "language": null,
+    "languageHint": null,
+    "loadError": null,
+    "loading": null,
+    "timezone": null,
+    "timezoneHint": null,
+    "title": null
+  },
+  "aiToneOptions": {
+    "casual": null,
+    "concise": null,
+    "formal": null,
+    "longer": null,
+    "polish": null,
+    "shorter": null
+  },
+  "commandPalette": {
+    "enterFocusMode": null,
+    "equation": null,
+    "exitFocusMode": null,
+    "fileExportPath": null,
+    "hideComments": null,
+    "hideDocumentOutline": null,
+    "hideFormattingMarks": null,
+    "hideVersionHistory": null,
+    "insertImage": null,
+    "insertTableOfContents": null,
+    "newDocument": null,
+    "reportABug": null,
+    "resetZoomTo100": null,
+    "saveDownloadDocx": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null,
+    "showComments": null,
+    "showVersionHistory": null,
+    "strictCoEditingOff": null,
+    "strictCoEditingOn": null,
+    "themeDark": null,
+    "themeLight": null,
+    "themeMatchSystem": null
+  },
+  "toast": {
+    "aiEmptyResponse": null,
+    "aiRequestFailed": null,
+    "aiSuggestionReady": null,
+    "convertToTable": null,
+    "convertingTo": null,
+    "dictionaryLoadFailed": null,
+    "downloadedFile": null,
+    "downloadedFileAttachEmail": null,
+    "exportFailed": null,
+    "loadingSpellcheckDictionary": null,
+    "pastedTabularData": null,
+    "refineFailed": null,
+    "saveFailedGeneric": null,
+    "saveSerializeFailed": null,
+    "savedFile": null,
+    "savedFileAttachEmail": null,
+    "translateFailedLanguage": null,
+    "translateFailedRetry": null,
+    "translatedReplaced": null,
+    "translatingTo": null
   }
 }

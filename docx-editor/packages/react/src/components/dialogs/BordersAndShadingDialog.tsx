@@ -19,6 +19,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from '../../i18n';
+import type { TranslationKey } from '../../i18n';
 
 export type BorderStyle = 'none' | 'single' | 'double' | 'dotted' | 'dashed' | 'thick' | 'triple';
 
@@ -83,13 +84,13 @@ const STANDARD_COLORS: string[] = [
   'FF00FF',
 ];
 
-const LINE_STYLES: { value: BorderStyle; dasharray?: string; label: string }[] = [
-  { value: 'single', label: 'Single' },
-  { value: 'double', label: 'Double' },
-  { value: 'thick', label: 'Thick' },
-  { value: 'dotted', dasharray: '2 2', label: 'Dotted' },
-  { value: 'dashed', dasharray: '5 3', label: 'Dashed' },
-  { value: 'triple', label: 'Triple' },
+const LINE_STYLES: { value: BorderStyle; dasharray?: string; labelKey: TranslationKey }[] = [
+  { value: 'single', labelKey: 'dialogs.bordersShading.styleSingle' },
+  { value: 'double', labelKey: 'dialogs.bordersShading.styleDouble' },
+  { value: 'thick', labelKey: 'dialogs.bordersShading.styleThick' },
+  { value: 'dotted', dasharray: '2 2', labelKey: 'dialogs.bordersShading.styleDotted' },
+  { value: 'dashed', dasharray: '5 3', labelKey: 'dialogs.bordersShading.styleDashed' },
+  { value: 'triple', labelKey: 'dialogs.bordersShading.styleTriple' },
 ];
 
 const LINE_WIDTHS: { size: number; label: string; thickness: number }[] = [
@@ -312,6 +313,7 @@ function BorderEdgePreview({
   borders: Partial<Record<Side, PerSideBorder>>;
   onToggleSide: (side: Side) => void;
 }) {
+  const { t } = useTranslation();
   const w = 220;
   const h = 90;
   const pad = 10;
@@ -349,7 +351,7 @@ function BorderEdgePreview({
     >
       <rect x={pad} y={pad} width={w - pad * 2} height={h - pad * 2} fill="white" stroke="none" />
       <text x={w / 2} y={h / 2 + 4} textAnchor="middle" fontSize={11} fill="var(--doc-text-muted)">
-        Paragraph
+        {t('dialogs.bordersShading.previewText')}
       </text>
       {sideLine('top', pad, pad, w - pad, pad)}
       {sideLine('bottom', pad, h - pad, w - pad, h - pad)}
@@ -371,6 +373,7 @@ function ColorField({
   onChange: (hex: string) => void;
   allowNone?: boolean;
 }) {
+  const { t } = useTranslation();
   const [hexDraft, setHexDraft] = useState(value);
   useEffect(() => {
     setHexDraft(value);
@@ -387,8 +390,8 @@ function ColorField({
               background:
                 'linear-gradient(to top right, transparent calc(50% - 1px), red 50%, transparent calc(50% + 1px))',
             }}
-            aria-label="No color"
-            title="No color"
+            aria-label={t('dialogs.bordersShading.noColor')}
+            title={t('dialogs.bordersShading.noColor')}
             onClick={() => onChange('')}
           />
         )}
@@ -427,7 +430,7 @@ function ColorField({
             }
           }}
           style={hexInputStyle}
-          aria-label={label + ' hex'}
+          aria-label={t('dialogs.bordersShading.hexAriaLabel', { label })}
         />
       </div>
     </div>
@@ -584,8 +587,8 @@ export function BordersAndShadingDialog({
                     color: 'var(--doc-text-on-surface)',
                   }}
                   onClick={() => setPenStyle(s.value)}
-                  aria-label={s.label}
-                  title={s.label}
+                  aria-label={t(s.labelKey)}
+                  title={t(s.labelKey)}
                   data-testid={`borders-style-${s.value}`}
                 >
                   <LineSample style={s.value} />
@@ -650,7 +653,11 @@ export function BordersAndShadingDialog({
                   }
                   data-testid={`shading-pattern-${p.value}`}
                 >
-                  {p.label}
+                  {p.value === 'clear'
+                    ? t('dialogs.bordersShading.patternClear')
+                    : p.value === 'solid'
+                      ? t('dialogs.bordersShading.patternSolid')
+                      : p.label}
                 </button>
               ))}
             </div>

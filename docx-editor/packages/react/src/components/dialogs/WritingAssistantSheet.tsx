@@ -28,6 +28,7 @@ import { FEATURES, type FeatureId, type FeatureSpec } from '../../lib/writer/reg
 import { clearCachedModels } from '../../lib/writer/storage';
 import { RightDockPanel } from '../RightDockPanel';
 import { MaterialSymbol } from '../ui/Icons';
+import { useTranslation } from '../../i18n';
 
 export interface WritingAssistantSheetProps {
   isOpen: boolean;
@@ -248,6 +249,7 @@ function progressFillStyle(progress: number): CSSProperties {
 }
 
 export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheetProps) {
+  const { t } = useTranslation();
   const state = useWriterState();
   const [pendingFeature, setPendingFeature] = useState<FeatureId | null>(null);
   const [busyId, setBusyId] = useState<FeatureId | null>(null);
@@ -314,7 +316,7 @@ export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheet
           onChange={(e) => setAutoLoad(e.target.checked)}
           data-testid="writer-autoload"
         />
-        Re-enable automatically next time
+        {t('dialogs.writingAssistant.reenableAutoLabel')}
       </label>
       <button
         type="button"
@@ -322,7 +324,7 @@ export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheet
         data-testid="writer-clear-cache"
         onClick={() => void clearCachedModels()}
       >
-        Clear cached models
+        {t('dialogs.writingAssistant.clearCachedModels')}
       </button>
     </div>
   );
@@ -330,20 +332,18 @@ export function WritingAssistantSheet({ isOpen, onClose }: WritingAssistantSheet
   return (
     <>
       <RightDockPanel
-        title="Writing Assistant"
+        title={t('dialogs.writingAssistant.panelTitle')}
         icon={<MaterialSymbol name="auto_awesome" size={16} />}
         onClose={onClose}
         testId="writing-assistant-sheet"
-        ariaLabel="Writing Assistant"
+        ariaLabel={t('dialogs.writingAssistant.panelTitle')}
         footer={footer}
       >
         <div style={bodyStyle}>
-          <p style={introStyle}>
-            Runs entirely in your browser. Your document is never sent to a server.
-          </p>
+          <p style={introStyle}>{t('dialogs.writingAssistant.intro')}</p>
 
           <FeatureSection
-            title="Features"
+            title={t('dialogs.writingAssistant.featuresHeading')}
             features={FEATURES.filter((f) => !f.advanced)}
             state={state}
             busyId={busyId}
@@ -412,6 +412,7 @@ function AdvancedSection({
   busyId: FeatureId | null;
   onToggle: (f: FeatureSpec, checked: boolean) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <section>
       <button
@@ -422,7 +423,7 @@ function AdvancedSection({
         aria-expanded={state.advancedOpen}
       >
         <span aria-hidden="true">{state.advancedOpen ? '▾' : '▸'}</span>
-        Advanced (off by default)
+        {t('dialogs.writingAssistant.advancedToggle')}
       </button>
       {state.advancedOpen && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
@@ -452,6 +453,7 @@ function FeatureRow({
   busy: boolean;
   onToggle: (checked: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const support = featureSupport(feature);
   const checked = state.enabledFeatures.includes(feature.id);
   const disabled = !support.supported || busy;
@@ -477,56 +479,79 @@ function FeatureRow({
         <span style={featureNameStyle}>{feature.label}</span>
         <span style={featureMetaStyle}>{feature.description}</span>
         <span style={subtleStyle}>
-          {feature.sizeMb} MB · {feature.modelIds.length} model
-          {feature.modelIds.length === 1 ? '' : 's'}
+          {t('dialogs.writingAssistant.sizeAndModels', {
+            size: feature.sizeMb,
+            count: feature.modelIds.length,
+          })}
           {!support.supported && ` · ${reason}`}
         </span>
         {checked && state.phase === 'downloading' && (
           <span style={subtleStyle} data-testid={`writer-progress-${feature.id}`}>
-            Downloading… {Math.round(state.progress * 100)}%
+            {t('dialogs.writingAssistant.downloadingProgress', {
+              percent: Math.round(state.progress * 100),
+            })}
           </span>
         )}
-        {checked && state.phase === 'loading' && <span style={subtleStyle}>Loading model…</span>}
+        {checked && state.phase === 'loading' && (
+          <span style={subtleStyle}>{t('dialogs.writingAssistant.loadingModel')}</span>
+        )}
       </span>
     </label>
   );
 }
 
 function DeviceSection({ state }: { state: WriterState }) {
+  const { t } = useTranslation();
   const caps = state.capabilities;
   return (
     <section>
-      <p style={sectionHeadingStyle}>Your device</p>
-      {!caps && <p style={subtleStyle}>Detecting capabilities…</p>}
+      <p style={sectionHeadingStyle}>{t('dialogs.writingAssistant.deviceHeading')}</p>
+      {!caps && <p style={subtleStyle}>{t('dialogs.writingAssistant.detectingCapabilities')}</p>}
       {caps && (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: 12, lineHeight: 1.6 }}>
           <li>
             {caps.webgpu ? '✓' : '·'} WebGPU{' '}
-            <span style={subtleStyle}>{caps.webgpu ? 'available' : 'unavailable'}</span>
+            <span style={subtleStyle}>
+              {caps.webgpu
+                ? t('dialogs.writingAssistant.available')
+                : t('dialogs.writingAssistant.unavailable')}
+            </span>
           </li>
           <li>
             {caps.wasmSimd ? '✓' : '·'} WebAssembly SIMD{' '}
-            <span style={subtleStyle}>{caps.wasmSimd ? 'available' : 'unavailable'}</span>
+            <span style={subtleStyle}>
+              {caps.wasmSimd
+                ? t('dialogs.writingAssistant.available')
+                : t('dialogs.writingAssistant.unavailable')}
+            </span>
           </li>
           {caps.deviceMemoryGb !== null && (
             <li>
-              · Device memory <span style={subtleStyle}>{caps.deviceMemoryGb} GB reported</span>
+              · {t('dialogs.writingAssistant.deviceMemoryLabel')}{' '}
+              <span style={subtleStyle}>
+                {t('dialogs.writingAssistant.deviceMemoryValue', { gb: caps.deviceMemoryGb })}
+              </span>
             </li>
           )}
           {caps.storageQuotaMb !== null && caps.storageUsedMb !== null && (
             <li>
-              · Browser storage{' '}
+              · {t('dialogs.writingAssistant.browserStorageLabel')}{' '}
               <span style={subtleStyle}>
-                {Math.round(caps.storageUsedMb)} MB used of {Math.round(caps.storageQuotaMb)} MB
+                {t('dialogs.writingAssistant.browserStorageValue', {
+                  used: Math.round(caps.storageUsedMb),
+                  total: Math.round(caps.storageQuotaMb),
+                })}
               </span>
             </li>
           )}
           <li>
-            · Backend <span style={subtleStyle}>{caps.recommendedBackend}</span>
+            · {t('dialogs.writingAssistant.backendLabel')}{' '}
+            <span style={subtleStyle}>{caps.recommendedBackend}</span>
           </li>
           {caps.effectiveNet !== 'unknown' && (
             <li>
-              · Network <span style={subtleStyle}>{caps.effectiveNet}</span>
+              · {t('dialogs.writingAssistant.networkLabel')}{' '}
+              <span style={subtleStyle}>{caps.effectiveNet}</span>
             </li>
           )}
         </ul>
@@ -536,14 +561,18 @@ function DeviceSection({ state }: { state: WriterState }) {
 }
 
 function StatusSection({ state }: { state: WriterState }) {
+  const { t } = useTranslation();
   return (
     <section>
-      <p style={sectionHeadingStyle}>Status</p>
+      <p style={sectionHeadingStyle}>{t('dialogs.writingAssistant.statusHeading')}</p>
       <span style={statusBadgeStyle} data-testid="writer-status-badge">
-        {renderStatusLabel(state)}
+        {renderStatusLabel(state, t)}
       </span>
       {state.phase === 'downloading' && (
-        <div style={progressBarStyle} aria-label="Download progress">
+        <div
+          style={progressBarStyle}
+          aria-label={t('dialogs.writingAssistant.downloadProgressAriaLabel')}
+        >
           <div style={progressFillStyle(state.progress)} />
         </div>
       )}
@@ -554,47 +583,53 @@ function StatusSection({ state }: { state: WriterState }) {
   );
 }
 
-function renderStatusLabel(state: WriterState): string {
+function renderStatusLabel(state: WriterState, t: ReturnType<typeof useTranslation>['t']): string {
   switch (state.phase) {
     case 'idle':
-      return state.enabledFeatures.length === 0 ? 'No features enabled' : 'Ready to load on demand';
+      return state.enabledFeatures.length === 0
+        ? t('dialogs.writingAssistant.statusNoFeatures')
+        : t('dialogs.writingAssistant.statusReadyToLoad');
     case 'checking-caps':
-      return 'Checking your device…';
+      return t('dialogs.writingAssistant.statusCheckingDevice');
     case 'confirming':
-      return 'Waiting for confirmation';
+      return t('dialogs.writingAssistant.statusWaitingConfirmation');
     case 'downloading':
-      return `Downloading… ${Math.round(state.progress * 100)}%`;
+      return t('dialogs.writingAssistant.downloadingProgress', {
+        percent: Math.round(state.progress * 100),
+      });
     case 'loading':
-      return 'Loading model…';
+      return t('dialogs.writingAssistant.loadingModel');
     case 'ready':
       return state.lastInferenceMs !== null
-        ? `Ready · last call ${state.lastInferenceMs} ms`
-        : 'Ready';
+        ? t('dialogs.writingAssistant.statusReadyTiming', { ms: state.lastInferenceMs })
+        : t('dialogs.writingAssistant.statusReady');
     case 'busy':
-      return 'Running…';
+      return t('dialogs.writingAssistant.statusRunning');
     case 'evicting':
-      return 'Unloading model…';
+      return t('dialogs.writingAssistant.statusUnloadingModel');
     case 'error':
-      return 'Paused — see message below';
+      return t('dialogs.writingAssistant.statusPaused');
   }
 }
 
 function ConsentDialog({ onAccept, onCancel }: { onAccept: () => void; onCancel: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       style={consentOverlayStyle}
       role="dialog"
       aria-modal="true"
-      aria-label="Download writing assistant"
+      aria-label={t('dialogs.writingAssistant.consentTitle')}
     >
       <div style={consentDialogStyle} data-testid="writer-consent-dialog">
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Download writing assistant</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+          {t('dialogs.writingAssistant.consentTitle')}
+        </h2>
         <p style={{ fontSize: 13, lineHeight: 1.5, marginTop: 10 }}>
-          This downloads a ~95 MB model to your browser cache so the assistant can run on your
-          device. Your document is never sent to a server.
+          {t('dialogs.writingAssistant.consentBody')}
         </p>
         <p style={{ fontSize: 12, lineHeight: 1.5, marginTop: 8, color: 'var(--doc-text-muted)' }}>
-          The model is open-source (Apache-2.0).
+          {t('dialogs.writingAssistant.consentLicense')}
         </p>
         <div style={btnRowStyle}>
           <button
@@ -603,7 +638,7 @@ function ConsentDialog({ onAccept, onCancel }: { onAccept: () => void; onCancel:
             onClick={onCancel}
             data-testid="writer-consent-cancel"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -611,7 +646,7 @@ function ConsentDialog({ onAccept, onCancel }: { onAccept: () => void; onCancel:
             onClick={onAccept}
             data-testid="writer-consent-accept"
           >
-            Download and continue
+            {t('dialogs.writingAssistant.downloadAndContinue')}
           </button>
         </div>
       </div>

@@ -12,6 +12,7 @@
  * round-trip and the painter re-renders — no drag overlay needed for resize.
  */
 import { useEffect, useState, type CSSProperties } from 'react';
+import { useTranslation, type TranslationKey } from '../../i18n';
 
 const GROUP_HEADER: CSSProperties = {
   padding: '14px 16px 8px',
@@ -51,11 +52,11 @@ const swatch: CSSProperties = {
   cursor: 'pointer',
 };
 
-const OUTLINE_PRESETS: { label: string; width: number | null }[] = [
-  { label: 'None', width: null },
-  { label: 'Thin', width: 1 },
-  { label: 'Medium', width: 2 },
-  { label: 'Thick', width: 4 },
+const OUTLINE_PRESETS: { id: string; labelKey: TranslationKey; width: number | null }[] = [
+  { id: 'none', labelKey: 'dialogs.bordersShading.presetNone', width: null },
+  { id: 'thin', labelKey: 'sidebar.imageProperties.borderThin', width: 1 },
+  { id: 'medium', labelKey: 'sidebar.imageProperties.borderMedium', width: 2 },
+  { id: 'thick', labelKey: 'dialogs.bordersShading.styleThick', width: 4 },
 ];
 
 const presetBtn = (active: boolean): CSSProperties => ({
@@ -98,6 +99,7 @@ export function TextBoxPropertiesSection({
   onSetOutline,
   onSetPosition,
 }: TextBoxPropertiesSectionProps) {
+  const { t } = useTranslation();
   const [w, setW] = useState(width != null ? String(Math.round(width)) : '');
   const [h, setH] = useState(height != null ? String(Math.round(height)) : '');
   const [fill, setFill] = useState(fillColor || '#ffffff');
@@ -141,10 +143,10 @@ export function TextBoxPropertiesSection({
 
   return (
     <div data-testid="properties-textbox-section">
-      <div style={GROUP_HEADER}>Size</div>
+      <div style={GROUP_HEADER}>{t('sidebar.textBoxProperties.size')}</div>
       <div style={ROW} data-testid="properties-textbox-size">
         <label style={{ color: 'inherit' }}>
-          W
+          {t('sidebar.imageProperties.widthAbbr')}
           <input
             style={{ ...numInput, marginLeft: 6 }}
             type="number"
@@ -158,14 +160,14 @@ export function TextBoxPropertiesSection({
           />
         </label>
         <label style={{ color: 'inherit' }}>
-          H
+          {t('sidebar.imageProperties.heightAbbr')}
           <input
             style={{ ...numInput, marginLeft: 6 }}
             type="number"
             min={16}
             max={2000}
             value={h}
-            placeholder="auto"
+            placeholder={t('sidebar.textBoxProperties.autoPlaceholder')}
             data-testid="properties-textbox-height"
             onChange={(e) => setH(e.target.value)}
             onBlur={commitSize}
@@ -176,7 +178,7 @@ export function TextBoxPropertiesSection({
 
       {onSetPosition && (
         <>
-          <div style={GROUP_HEADER}>Position</div>
+          <div style={GROUP_HEADER}>{t('dialogs.imagePosition.position')}</div>
           <div style={ROW} data-testid="properties-textbox-position">
             <label style={{ color: 'inherit' }}>
               X
@@ -186,7 +188,7 @@ export function TextBoxPropertiesSection({
                 min={0}
                 max={2000}
                 value={px}
-                placeholder="auto"
+                placeholder={t('sidebar.textBoxProperties.autoPlaceholder')}
                 data-testid="properties-textbox-pos-x"
                 onChange={(e) => setPx(e.target.value)}
                 onBlur={commitPosition}
@@ -201,7 +203,7 @@ export function TextBoxPropertiesSection({
                 min={0}
                 max={2000}
                 value={py}
-                placeholder="auto"
+                placeholder={t('sidebar.textBoxProperties.autoPlaceholder')}
                 data-testid="properties-textbox-pos-y"
                 onChange={(e) => setPy(e.target.value)}
                 onBlur={commitPosition}
@@ -212,7 +214,7 @@ export function TextBoxPropertiesSection({
         </>
       )}
 
-      <div style={GROUP_HEADER}>Fill</div>
+      <div style={GROUP_HEADER}>{t('sidebar.textBoxProperties.fill')}</div>
       <div style={ROW}>
         <input
           type="color"
@@ -233,36 +235,36 @@ export function TextBoxPropertiesSection({
             onSetFill(null);
           }}
         >
-          No fill
+          {t('sidebar.textBoxProperties.noFill')}
         </button>
       </div>
 
-      <div style={GROUP_HEADER}>Outline</div>
+      <div style={GROUP_HEADER}>{t('sidebar.textBoxProperties.outline')}</div>
       <div
         style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 16px 6px' }}
         role="group"
-        aria-label="Outline width"
+        aria-label={t('sidebar.textBoxProperties.outlineWidthAriaLabel')}
       >
         {OUTLINE_PRESETS.map((o) => {
           const active = (outlineWidth ?? null) === o.width;
           return (
             <button
-              key={o.label}
+              key={o.id}
               type="button"
               style={presetBtn(active)}
-              data-testid={`properties-textbox-outline-${o.label.toLowerCase()}`}
+              data-testid={`properties-textbox-outline-${o.id}`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 onSetOutline(o.width, o.width == null ? null : stroke);
               }}
             >
-              {o.label}
+              {t(o.labelKey)}
             </button>
           );
         })}
       </div>
       <label style={ROW}>
-        Color
+        {t('dialogs.imageProperties.color')}
         <input
           type="color"
           value={stroke}
