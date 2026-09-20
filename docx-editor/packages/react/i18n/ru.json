@@ -20,7 +20,9 @@
     "dismiss": "Скрыть",
     "change": "Изменить",
     "px": null,
-    "closeDialog": "Закрыть диалог"
+    "closeDialog": "Закрыть диалог",
+    "discard": null,
+    "done": null
   },
   "toolbar": {
     "ariaLabel": "Панель форматирования",
@@ -116,7 +118,18 @@
     "writingAssistant": "Помощник по письму…",
     "aboutCasualEditor": "О Casual Editor",
     "edit": "Правка",
-    "view": "Вид"
+    "view": "Вид",
+    "characterSpacingCondensed1": null,
+    "characterSpacingCondensed2": null,
+    "characterSpacingExpanded1": null,
+    "characterSpacingExpanded2": null,
+    "emboss": null,
+    "hidden": null,
+    "imprint": null,
+    "spelling": null,
+    "textEffects": null,
+    "textOutline": null,
+    "textShadow": null
   },
   "suggestingBanner": {
     "title": "Режим предложений",
@@ -186,7 +199,12 @@
     "single": "Одинарный",
     "double": "Двойной",
     "lineSpacingTitle": "Межстрочный интервал: {label}",
-    "paragraphSpacing": "Интервалы между абзацами"
+    "paragraphSpacing": "Интервалы между абзацами",
+    "addSpaceAfter": null,
+    "addSpaceBefore": null,
+    "preventSingleLines": null,
+    "removeSpaceAfter": null,
+    "removeSpaceBefore": null
   },
   "styles": {
     "selectAriaLabel": "Выбрать стиль абзаца",
@@ -264,7 +282,9 @@
       "lightMagenta": null,
       "brightGreen": null,
       "violet": null
-    }
+    },
+    "customHexColorAriaLabel": null,
+    "pickerSuffix": null
   },
   "dialogs": {
     "findReplace": {
@@ -362,7 +382,8 @@
         "punctuation": "Пунктуация",
         "currency": "Валюты",
         "music": "Музыка",
-        "emoji": "Эмодзи"
+        "emoji": "Эмодзи",
+        "recent": null
       }
     },
     "imageProperties": {
@@ -409,7 +430,8 @@
         "character": "Символа",
         "paragraph": "Абзаца",
         "line": "Строки"
-      }
+      },
+      "distanceFromText": null
     },
     "pageSetup": {
       "title": null,
@@ -495,7 +517,10 @@
       "noFill": null,
       "pattern": null,
       "patternClear": null,
-      "patternSolid": null
+      "patternSolid": null,
+      "hexAriaLabel": null,
+      "noColor": null,
+      "previewText": null
     },
     "customSpacing": {
       "title": null,
@@ -709,6 +734,185 @@
       "previewPlaceholder": "Введите LaTeX выше для предпросмотра.",
       "renderFailed": "Не удалось отрисовать формулу",
       "invalidLatex": "Некорректный LaTeX"
+    },
+    "citations": {
+      "addCitation": null,
+      "authorPlaceholder": null,
+      "deleteCitation": null,
+      "empty": null,
+      "format": null,
+      "saveCitation": null,
+      "savedCitations": null,
+      "title": null,
+      "titlePlaceholder": null,
+      "urlPlaceholder": null,
+      "yearPlaceholder": null
+    },
+    "fileProperties": {
+      "created": null,
+      "fieldAuthor": null,
+      "fieldCategory": null,
+      "fieldDescription": null,
+      "fieldKeywords": null,
+      "fieldKeywordsPlaceholder": null,
+      "fieldSubject": null,
+      "fieldTitle": null,
+      "fileName": null,
+      "lastModifiedBy": null,
+      "modified": null,
+      "revision": null,
+      "sectionFileInfo": null,
+      "sectionMetadata": null,
+      "size": null,
+      "title": null
+    },
+    "writingAssistant": {
+      "advancedToggle": null,
+      "available": null,
+      "backendLabel": null,
+      "browserStorageLabel": null,
+      "browserStorageValue": null,
+      "clearCachedModels": null,
+      "consentBody": null,
+      "consentLicense": null,
+      "consentTitle": null,
+      "detectingCapabilities": null,
+      "deviceHeading": null,
+      "deviceMemoryLabel": null,
+      "deviceMemoryValue": null,
+      "downloadAndContinue": null,
+      "downloadProgressAriaLabel": null,
+      "downloadingProgress": null,
+      "featuresHeading": null,
+      "intro": null,
+      "loadingModel": null,
+      "networkLabel": null,
+      "panelTitle": null,
+      "reenableAutoLabel": null,
+      "sizeAndModels": null,
+      "statusCheckingDevice": null,
+      "statusHeading": null,
+      "statusNoFeatures": null,
+      "statusPaused": null,
+      "statusReady": null,
+      "statusReadyTiming": null,
+      "statusReadyToLoad": null,
+      "statusRunning": null,
+      "statusUnloadingModel": null,
+      "statusWaitingConfirmation": null,
+      "unavailable": null
+    },
+    "accessibility": {
+      "goTo": null,
+      "headingJumpHintMany": null,
+      "headingJumpHintOne": null,
+      "headingJumpTitle": null,
+      "issueCount": null,
+      "missingAltHint": null,
+      "missingAltTitle": null,
+      "noIssues": null,
+      "title": null
+    },
+    "buildingBlocks": {
+      "deleteAriaLabel": null,
+      "empty": null,
+      "namePlaceholder": null,
+      "noSelectionHint": null,
+      "saveSelectionHeading": null,
+      "savedBlocksHeading": null,
+      "title": null
+    },
+    "commandPalette": {
+      "ariaLabel": null,
+      "closeHint": null,
+      "navigateHint": null,
+      "noResults": null,
+      "resultCount": null,
+      "runHint": null,
+      "searchAriaLabel": null,
+      "searchPlaceholder": null
+    },
+    "dictionary": {
+      "errorHint": null,
+      "errorMessage": null,
+      "loading": null,
+      "lookupButton": null,
+      "notFound": null,
+      "notFoundHint": null,
+      "placeholder": null,
+      "title": null
+    },
+    "explore": {
+      "citeThis": null,
+      "errorHint": null,
+      "errorMessage": null,
+      "loading": null,
+      "notFound": null,
+      "notFoundHint": null,
+      "openLink": null,
+      "searchButton": null,
+      "searchPlaceholder": null,
+      "sourceLabel": null,
+      "title": null
+    },
+    "preferences": {
+      "autocorrectDescPart1": null,
+      "autocorrectDescPart2": null,
+      "autocorrectDescPart3": null,
+      "autocorrectTitle": null,
+      "smartQuotesDescPart1": null,
+      "smartQuotesDescPart2": null,
+      "smartQuotesTitle": null,
+      "title": null
+    },
+    "translate": {
+      "copied": null,
+      "copyButton": null,
+      "errorHint": null,
+      "errorMessage": null,
+      "idleHint": null,
+      "noSelection": null,
+      "original": null,
+      "replaceButton": null,
+      "replacing": null,
+      "sourceLanguage": null,
+      "swapLanguages": null,
+      "targetLanguage": null,
+      "title": null,
+      "translatingLoading": null,
+      "translation": null
+    },
+    "translateDocument": {
+      "chunkPreviewHint": null,
+      "downloadButton": null,
+      "downloading": null,
+      "formattingRunHint": null,
+      "helper": null,
+      "nothingRunsHint": null,
+      "onDeviceError": null,
+      "pickDifferentLanguage": null,
+      "pickLanguagePrompt": null,
+      "serializeError": null,
+      "serviceError": null,
+      "snapshotting": null,
+      "stop": null,
+      "swapLanguages": null,
+      "title": null,
+      "translateToButton": null,
+      "translatingChunk": null,
+      "translatingDocument": null,
+      "translatingRuns": null
+    },
+    "watermark": {
+      "colorAriaLabel": null,
+      "colorLabel": null,
+      "hint": null,
+      "opacityLabel": null,
+      "remove": null,
+      "rotationLabel": null,
+      "textLabel": null,
+      "textPlaceholder": null,
+      "title": null
     }
   },
   "voiceTyping": {
@@ -770,7 +974,10 @@
       "makeFormal": null,
       "makeCasual": null,
       "custom": null
-    }
+    },
+    "askAiAboutThis": null,
+    "rewriteWithAi": null,
+    "summarizeWithAi": null
   },
   "documentOutline": {
     "ariaLabel": "Структура документа",
@@ -784,7 +991,85 @@
   "sidebar": {
     "ariaLabel": "Боковая панель примечаний",
     "commentsEmptyTitle": "Комментариев пока нет",
-    "commentsEmptyHint": "Выделите текст и добавьте комментарий, чтобы начать обсуждение."
+    "commentsEmptyHint": "Выделите текст и добавьте комментарий, чтобы начать обсуждение.",
+    "imageProperties": {
+      "altText": null,
+      "altTextPlaceholder": null,
+      "arrange": null,
+      "borderMedium": null,
+      "borderThin": null,
+      "distanceFromText": null,
+      "heightAbbr": null,
+      "lockAspectRatio": null,
+      "rotateLeft": null,
+      "rotateRight": null,
+      "textWrapping": null,
+      "widthAbbr": null,
+      "wrapBehind": null,
+      "wrapInFront": null,
+      "wrapInline": null,
+      "wrapLeft": null,
+      "wrapRight": null,
+      "wrapTopAndBottom": null
+    },
+    "tableProperties": {
+      "above": null,
+      "below": null,
+      "bordersAndFillGroupLabel": null,
+      "bordersAndFillHeading": null,
+      "cellsGroupLabel": null,
+      "columnsGroupLabel": null,
+      "left": null,
+      "merge": null,
+      "right": null,
+      "rowsGroupLabel": null,
+      "split": null,
+      "tableGroupLabel": null
+    },
+    "versionHistory": {
+      "autoSaved": null,
+      "caption": null,
+      "currentVersion": null,
+      "daysAgo": null,
+      "deleteConfirmBody": null,
+      "deleteVersion": null,
+      "hoursAgo": null,
+      "justNow": null,
+      "minutesAgo": null,
+      "moreActionsTooltip": null,
+      "nameThisVersion": null,
+      "namedVersionTooltip": null,
+      "noNamedVersionsYet": null,
+      "noSavedVersionsYet": null,
+      "onlyNamedVersions": null,
+      "openDocumentEmpty": null,
+      "rename": null,
+      "renameVersion": null,
+      "restoreThisVersion": null,
+      "saveVersion": null,
+      "secondsAgo": null,
+      "title": null,
+      "today": null,
+      "versionActions": null,
+      "versions": null,
+      "wordUnit": null,
+      "yesterday": null,
+      "back": null,
+      "backToEditing": null,
+      "diffTooLarge": null,
+      "diffTooLargeShort": null,
+      "previewContentLabel": null,
+      "previewUnavailable": null,
+      "showChanges": null
+    },
+    "textBoxProperties": {
+      "autoPlaceholder": null,
+      "fill": null,
+      "noFill": null,
+      "outline": null,
+      "outlineWidthAriaLabel": null,
+      "size": null
+    }
   },
   "viewer": {
     "pageIndicator": "{current} из {total}"
@@ -813,7 +1098,24 @@
   "statusBar": {
     "readingTime": "~{minutes} мин чтения",
     "readingTimeAria": "Примерно {minutes} мин чтения",
-    "readabilityUnknown": "Читаемость: —"
+    "readabilityUnknown": "Читаемость: —",
+    "charUnit": null,
+    "customisation": null,
+    "documentStatus": null,
+    "pageOf": null,
+    "readability": {
+      "ariaLabel": null,
+      "avgWordsPerSentence": null,
+      "fleschKincaid": null,
+      "longSentences": null,
+      "readingTimeLabel": null,
+      "sentenceCount": null
+    },
+    "zoomAriaLabel": null,
+    "zoomInTooltip": null,
+    "zoomOutTooltip": null,
+    "zoomPresets": null,
+    "zoomPresetsTooltip": null
   },
   "errors": {
     "loadingDocument": "Загрузка документа...",
@@ -827,7 +1129,8 @@
     "tryAgain": "Попробовать снова",
     "showDetails": "Показать детали",
     "hideDetails": "Скрыть детали",
-    "unsavedChanges": "Есть несохранённые изменения. Вы уверены, что хотите уйти?"
+    "unsavedChanges": "Есть несохранённые изменения. Вы уверены, что хотите уйти?",
+    "couldntLoadDocument": null
   },
   "table": {
     "insertRowAbove": "Вставить строку выше",
@@ -990,7 +1293,9 @@
     "differentFirstPage": "Особый первый колонтитул",
     "differentEvenOdd": "Разные колонтитулы для чётных и нечётных",
     "remove": "Удалить: {label}",
-    "closeEditing": "Завершить редактирование ({label})"
+    "closeEditing": "Завершить редактирование ({label})",
+    "closeContextMenu": null,
+    "dragToMove": null
   },
   "image": {
     "placeholder": "Заполнитель изображения",
@@ -1063,10 +1368,45 @@
     "llmRequired": null,
     "llmHintPart1": null,
     "llmHintEmphasis": null,
-    "llmHintPart2": null
+    "llmHintPart2": null,
+    "clearButtonTitle": null,
+    "copyButton": null,
+    "emptyStateBody": null,
+    "emptyStateTitle": null,
+    "insertAtCursorButton": null,
+    "insertAtCursorTitle": null,
+    "selectionLabel": null,
+    "slashExpandHint": null,
+    "slashExpandLabel": null,
+    "slashExplainHint": null,
+    "slashExplainLabel": null,
+    "slashGrammarHint": null,
+    "slashGrammarLabel": null,
+    "slashMemoHint": null,
+    "slashMemoLabel": null,
+    "slashPlainHint": null,
+    "slashPlainLabel": null,
+    "slashPolishHint": null,
+    "slashPolishLabel": null,
+    "slashResearchHint": null,
+    "slashResearchLabel": null,
+    "slashResumeHint": null,
+    "slashResumeLabel": null,
+    "slashRewriteHint": null,
+    "slashRewriteLabel": null,
+    "slashShortenHint": null,
+    "slashShortenLabel": null,
+    "slashSummarizeHint": null,
+    "slashSummarizeLabel": null,
+    "slashTableHint": null,
+    "slashTableLabel": null,
+    "slashTranslateHint": null,
+    "slashTranslateLabel": null,
+    "thinking": null
   },
   "rightPanel": {
-    "closeButton": "Закрыть панель"
+    "closeButton": "Закрыть панель",
+    "sidePanelAriaLabel": null
   },
   "footnote": {
     "editTitle": "Редактировать сноску",
@@ -1102,6 +1442,413 @@
   },
   "presence": {
     "aiEditing": "ИИ редактирует…",
-    "askingAi": "{name} спрашивает ИИ…"
+    "askingAi": "{name} спрашивает ИИ…",
+    "connecting": null,
+    "live": null,
+    "offline": null,
+    "share": null
+  },
+  "docops": {
+    "agentModeLabel": null,
+    "agentModeTitle": null,
+    "apiKeyRequiredError": null,
+    "apiKeySettingsTitle": null,
+    "backToChatTitle": null,
+    "capMessage": null,
+    "chatModeLabel": null,
+    "chatModeTitle": null,
+    "clearConversationTitle": null,
+    "defaultTableTitle": null,
+    "emptyDocumentError": null,
+    "emptyStateDescription": null,
+    "genericFailed": null,
+    "keySetup": {
+      "description": null,
+      "placeholderSaved": null,
+      "removeButton": null,
+      "saveButton": null
+    },
+    "mcp": {
+      "buttonLabel": null,
+      "connectButton": null,
+      "connectTitle": null,
+      "removeAriaLabel": null,
+      "retryAriaLabel": null,
+      "tokenAriaLabel": null,
+      "tokenPlaceholder": null,
+      "toolsSuffix": null,
+      "unknownError": null,
+      "urlAriaLabel": null
+    },
+    "noApiKeyBanner": null,
+    "noResponse": null,
+    "noSelectionError": null,
+    "panelTitle": null,
+    "placeholderAsk": null,
+    "placeholderWorking": null,
+    "planTitle": null,
+    "quickActions": {
+      "buildingTableStatus": null,
+      "outlineLabel": null,
+      "outliningStatus": null,
+      "rewriteLabel": null,
+      "rewritingStatus": null,
+      "summarizeLabel": null,
+      "summarizingStatus": null,
+      "tableLabel": null
+    },
+    "rewriteFailed": null,
+    "rewriteSuccess": null,
+    "sendTitle": null,
+    "tableInsertFailed": null,
+    "tableInsertSuccess": null,
+    "thinkingDefault": null,
+    "toolLabels": {
+      "addComment": null,
+      "convertRangeToTable": null,
+      "createDocument": null,
+      "deleteParagraphs": null,
+      "findText": null,
+      "getBlock": null,
+      "getDocStats": null,
+      "getOutline": null,
+      "getSelection": null,
+      "harmonizeStyles": null,
+      "insertParagraphAfter": null,
+      "insertReportFromData": null,
+      "insertToc": null,
+      "listStyles": null,
+      "rewriteSelection": null,
+      "setParagraphStyle": null,
+      "suggestTextChange": null
+    },
+    "workspace": {
+      "addTitle": null,
+      "folderButton": null,
+      "indexedChip": null,
+      "indexedTitle": null,
+      "indexing": null
+    }
+  },
+  "mobileFormatBar": {
+    "ariaLabel": null
+  },
+  "profileSettings": {
+    "displayName": null,
+    "errorGeneric": null,
+    "errorInvalid": null,
+    "errorSessionExpired": null,
+    "language": null,
+    "languageHint": null,
+    "loadError": null,
+    "loading": null,
+    "timezone": null,
+    "timezoneHint": null,
+    "title": null
+  },
+  "aiToneOptions": {
+    "casual": null,
+    "concise": null,
+    "formal": null,
+    "longer": null,
+    "polish": null,
+    "shorter": null
+  },
+  "commandPalette": {
+    "enterFocusMode": null,
+    "equation": null,
+    "exitFocusMode": null,
+    "fileExportPath": null,
+    "hideComments": null,
+    "hideDocumentOutline": null,
+    "hideFormattingMarks": null,
+    "hideVersionHistory": null,
+    "insertImage": null,
+    "insertTableOfContents": null,
+    "newDocument": null,
+    "reportABug": null,
+    "resetZoomTo100": null,
+    "saveDownloadDocx": null,
+    "shapeArrow": null,
+    "shapeEllipse": null,
+    "shapeLine": null,
+    "shapeRectangle": null,
+    "showComments": null,
+    "showVersionHistory": null,
+    "strictCoEditingOff": null,
+    "strictCoEditingOn": null,
+    "themeDark": null,
+    "themeLight": null,
+    "themeMatchSystem": null
+  },
+  "toast": {
+    "aiEmptyResponse": null,
+    "aiRequestFailed": null,
+    "aiSuggestionReady": null,
+    "convertToTable": null,
+    "convertingTo": null,
+    "dictionaryLoadFailed": null,
+    "downloadedFile": null,
+    "downloadedFileAttachEmail": null,
+    "exportFailed": null,
+    "loadingSpellcheckDictionary": null,
+    "pastedTabularData": null,
+    "refineFailed": null,
+    "saveFailedGeneric": null,
+    "saveSerializeFailed": null,
+    "savedFile": null,
+    "savedFileAttachEmail": null,
+    "translateFailedLanguage": null,
+    "translateFailedRetry": null,
+    "translatedReplaced": null,
+    "translatingTo": null
+  },
+  "aiSuggestion": {
+    "aiProposalAriaLabel": null,
+    "cancelRefine": null,
+    "insertBelow": null,
+    "msOnDevice": null,
+    "onDevice": null,
+    "refinePlaceholder": null,
+    "rewriting": null,
+    "source": null,
+    "stop": null,
+    "suggestInsert": null,
+    "suggestReplacement": null,
+    "suggested": null,
+    "summary": null,
+    "tone": null,
+    "tryAgain": null,
+    "waiting": null
+  },
+  "auth": {
+    "alreadyHaveAccount": null,
+    "createAccount": null,
+    "createAnAccount": null,
+    "creatingAccount": null,
+    "error": {
+      "badBody": null,
+      "generic": null,
+      "invalidCredentials": null,
+      "invalidUsername": null,
+      "modeDisabled": null,
+      "signupClosed": null,
+      "usernameTaken": null,
+      "weakPassword": null
+    },
+    "forgotPassword": null,
+    "forgotPasswordInfo1": null,
+    "forgotPasswordInfo2": null,
+    "password": null,
+    "signIn": null,
+    "signInHeading": null,
+    "signingIn": null,
+    "username": null
+  },
+  "autosaveBanner": {
+    "agoRestore": null,
+    "from": null,
+    "restore": null
+  },
+  "grammar": {
+    "suggestionAriaLabel": null
+  },
+  "markdownEditor": {
+    "blockquoteTitle": null,
+    "bulletListTitle": null,
+    "codeBlockTitle": null,
+    "download": null,
+    "exportPdf": null,
+    "formattingToolbar": null,
+    "headingTitle": null,
+    "inlineCodeTitle": null,
+    "insertImageTitle": null,
+    "insertTableTitle": null,
+    "linkTitle": null,
+    "mermaidDiagramTitle": null,
+    "modeNotebook": null,
+    "modePreview": null,
+    "modeSource": null,
+    "modeSplit": null,
+    "numberedListTitle": null,
+    "returnToHome": null,
+    "viewMode": null
+  },
+  "pagedEditor": {
+    "endnoteSection": {
+      "editHint": null
+    },
+    "imageChip": {
+      "ariaLabel": null
+    },
+    "tableChip": {
+      "ariaLabel": null
+    },
+    "textBoxChip": {
+      "ariaLabel": null,
+      "dragToMove": null
+    }
+  },
+  "panelRail": {
+    "ariaLabel": null,
+    "comments": null,
+    "hideChat": null,
+    "hideComments": null,
+    "hideDocOpsAi": null,
+    "hideFormatPanel": null,
+    "hideWritingAssistant": null
+  },
+  "propertiesPanel": {
+    "ariaLabel": null,
+    "emptyMessage": null
+  },
+  "render": {
+    "footnoteArea": {
+      "goToEndnoteAriaLabel": null,
+      "goToFootnoteAriaLabel": null
+    }
+  },
+  "signing": {
+    "captures": {
+      "chooseImage": null,
+      "typeFullNamePlaceholder": null,
+      "useThisSignature": null
+    },
+    "pane": {
+      "allSignedMessage": null,
+      "ariaLabel": null,
+      "completeButton": null,
+      "methodDraw": null,
+      "methodType": null,
+      "methodUpload": null,
+      "optionalAriaLabel": null,
+      "optionalChip": null
+    }
+  },
+  "spellcheck": {
+    "addToDictionary": null,
+    "ignore": null,
+    "noSuggestions": null,
+    "suggestionsAriaLabel": null
+  },
+  "tableGrid": {
+    "selectSize": null
+  },
+  "ui": {
+    "dialog": {
+      "defaultAriaLabel": null
+    }
+  },
+  "app": {
+    "autosaveFixture": null,
+    "backToCasualOffice": null,
+    "badConfig": null,
+    "confirmLeaveDocument": null,
+    "couldntOpenFile": null,
+    "discard": null,
+    "embedConfigError": null,
+    "fileLeftUnchanged": null,
+    "restore": null,
+    "restoreUnsavedChanges": null,
+    "returnToHome": null,
+    "share": null,
+    "signedIn": null,
+    "statusConverting": null,
+    "statusError": null,
+    "statusErrorLoadingFile": null,
+    "statusFailedToLoadTemplate": null,
+    "statusFileDeleted": null,
+    "statusFileRenamedMoved": null,
+    "statusLoadingTemplate": null,
+    "statusSaveAsFailed": null,
+    "statusSaveFailed": null,
+    "statusSavedBang": null
+  },
+  "collab": {
+    "connecting": null,
+    "couldntJoinSession": null,
+    "disconnected": null,
+    "errorDetailDefault": null,
+    "joinTheSession": null,
+    "joiningSession": null,
+    "live": null,
+    "loadingSharedDocument": null,
+    "noDocumentLoaded": null,
+    "offlineNotice": null,
+    "openSingleUserMode": null,
+    "otherEditorCount": null,
+    "preparingShareLink": null,
+    "reconnecting": null,
+    "reload": null,
+    "shareDescription": null,
+    "shareTitle": null,
+    "stayInSingleUserMode": null,
+    "tryAgain": null
+  },
+  "home": {
+    "aiFeaturesComingSoon": null,
+    "aiFeaturesDetail": null,
+    "aiFeaturesPreRelease": null,
+    "categoryAll": null,
+    "categoryCareer": null,
+    "categoryEducation": null,
+    "categoryPersonal": null,
+    "categoryWork": null,
+    "clearAll": null,
+    "createNew": null,
+    "daysAgo": null,
+    "featured": null,
+    "featuredHint": null,
+    "filterByCategory": null,
+    "footerCredit": null,
+    "heroLedePart1": null,
+    "heroLedePart2": null,
+    "heroTitle": null,
+    "hoursAgo": null,
+    "justNow": null,
+    "learnMore": null,
+    "minutesAgo": null,
+    "noTemplatesMatch": null,
+    "openFile": null,
+    "pickUpWhereYouLeftOff": null,
+    "preRelease": null,
+    "recent": null,
+    "recentHint": null,
+    "removeFromRecents": null,
+    "removeFromRecentsAria": null,
+    "reopen": null,
+    "reopenDocumentAria": null,
+    "reopenLastDocument": null,
+    "resultsFor": null,
+    "searchPlaceholder": null,
+    "templateBlankDocument": null,
+    "templateBlankMarkdown": null,
+    "templateBlankText": null,
+    "templateCount": null,
+    "templateCoverLetter": null,
+    "templateEssay": null,
+    "templateLabReport": null,
+    "templateLetter": null,
+    "templateMeetingNotes": null,
+    "templateMemo": null,
+    "templatePressRelease": null,
+    "templateProjectProposal": null,
+    "templateRecipe": null,
+    "templateResume": null,
+    "templateSample": null,
+    "templateSyllabus": null,
+    "templateTravelItinerary": null,
+    "templateWeeklyStatus": null
+  },
+  "viewers": {
+    "headerBcc": null,
+    "headerCc": null,
+    "headerDate": null,
+    "headerFrom": null,
+    "headerReplyTo": null,
+    "headerTo": null,
+    "noSubject": null,
+    "readOnlyPlainTextView": null,
+    "returnToHome": null
   }
 }

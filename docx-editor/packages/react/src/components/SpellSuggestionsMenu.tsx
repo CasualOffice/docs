@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Z_INDEX } from '../styles/zIndex';
 import { PanelState } from './ui/PanelState';
+import { useTranslation } from '../i18n';
 
 export interface SpellSuggestionsMenuProps {
   isOpen: boolean;
@@ -83,6 +84,7 @@ export function SpellSuggestionsMenu({
   onAddToDictionary,
   onClose,
 }: SpellSuggestionsMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState(0);
 
@@ -166,7 +168,7 @@ export function SpellSuggestionsMenu({
     <div
       ref={menuRef}
       role="menu"
-      aria-label="Spell-check suggestions"
+      aria-label={t('spellcheck.suggestionsAriaLabel')}
       data-testid="spell-suggestions-menu"
       style={getStyle()}
       onContextMenu={(e) => e.preventDefault()}
@@ -179,7 +181,7 @@ export function SpellSuggestionsMenu({
         <PanelState
           kind="empty"
           icon="spellcheck"
-          message="No suggestions"
+          message={t('spellcheck.noSuggestions')}
           style={{ padding: '10px 14px 12px', gap: 4 }}
         />
       )}
@@ -211,7 +213,7 @@ export function SpellSuggestionsMenu({
         }}
         data-testid="spell-ignore"
       >
-        Ignore
+        {t('spellcheck.ignore')}
       </button>
       <button
         type="button"
@@ -224,7 +226,7 @@ export function SpellSuggestionsMenu({
         }}
         data-testid="spell-add-to-dictionary"
       >
-        Add to dictionary
+        {t('spellcheck.addToDictionary')}
       </button>
     </div>
   );

@@ -35,6 +35,7 @@ import type { EditorView } from 'prosemirror-view';
 import type { PipelineProposal } from '../lib/writer/pipeline';
 import { usableRightEdge } from '../lib/anchorViewport';
 import { MaterialSymbol } from './ui/Icons';
+import { useTranslation } from '../i18n';
 
 export interface InlinePreviewPopoverProps {
   proposal: PipelineProposal;
@@ -281,6 +282,7 @@ export function InlinePreviewPopover({
   onDiscard,
   busy = false,
 }: InlinePreviewPopoverProps) {
+  const { t } = useTranslation();
   // Anchor — recomputed on mount + window resize + scroll so the card
   // tracks its origin even if the user scrolls the doc.
   const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
@@ -362,7 +364,7 @@ export function InlinePreviewPopover({
     <div
       ref={rootRef}
       role="dialog"
-      aria-label={`AI proposal — ${proposal.summary}`}
+      aria-label={t('aiSuggestion.aiProposalAriaLabel', { summary: proposal.summary })}
       data-testid="inline-preview-popover"
       style={{ ...rootStyle, top: anchor.top, left: anchor.left }}
     >
@@ -377,11 +379,11 @@ export function InlinePreviewPopover({
           type="button"
           style={subtleBtnStyle}
           onClick={onDiscard}
-          aria-label="Discard"
+          aria-label={t('common.discard')}
           data-testid="preview-discard"
           disabled={busy}
         >
-          Discard
+          {t('common.discard')}
         </button>
       </div>
       <div style={previewStyle}>{preview}</div>
@@ -390,7 +392,7 @@ export function InlinePreviewPopover({
           <input
             ref={refineRef}
             type="text"
-            placeholder="Refine — e.g. make it chronological, more concise"
+            placeholder={t('aiSuggestion.refinePlaceholder')}
             value={refineText}
             onChange={(e) => setRefineText(e.target.value)}
             onKeyDown={(e) => {
@@ -430,7 +432,7 @@ export function InlinePreviewPopover({
             disabled={busy || !refineText.trim()}
             data-testid="preview-refine-send"
           >
-            Send
+            {t('common.send')}
           </button>
           <button
             type="button"
@@ -439,7 +441,7 @@ export function InlinePreviewPopover({
               setRefineOpen(false);
               setRefineText('');
             }}
-            aria-label="Cancel refine"
+            aria-label={t('aiSuggestion.cancelRefine')}
             disabled={busy}
           >
             ✕
@@ -454,7 +456,7 @@ export function InlinePreviewPopover({
             disabled={busy}
             data-testid="preview-try-again"
           >
-            Try again
+            {t('aiSuggestion.tryAgain')}
           </button>
           {canReplace && (
             <button
@@ -464,7 +466,7 @@ export function InlinePreviewPopover({
               disabled={busy}
               data-testid="preview-insert-below"
             >
-              Insert below
+              {t('aiSuggestion.insertBelow')}
             </button>
           )}
           <button
@@ -474,7 +476,7 @@ export function InlinePreviewPopover({
             disabled={busy}
             data-testid="preview-replace"
           >
-            {canReplace ? 'Replace' : 'Insert at cursor'}
+            {canReplace ? t('dialogs.findReplace.replaceButton') : t('chat.insertAtCursorButton')}
           </button>
         </div>
       )}

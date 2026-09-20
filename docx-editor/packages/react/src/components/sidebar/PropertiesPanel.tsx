@@ -20,6 +20,7 @@ import type { ReactNode } from 'react';
 import { RightDockPanel } from '../RightDockPanel';
 import { MaterialSymbol } from '../ui/Icons';
 import { PanelState } from '../ui/PanelState';
+import { useTranslation } from '../../i18n';
 
 export type PropertiesTargetKind = 'image' | 'table' | 'shape' | 'textbox';
 
@@ -33,21 +34,19 @@ export interface PropertiesPanelProps {
 }
 
 export function PropertiesPanel({ kind, onClose, children }: PropertiesPanelProps) {
+  const { t } = useTranslation();
   return (
     <RightDockPanel
-      title="Format"
+      title={t('toolbar.format')}
       icon={<MaterialSymbol name="tune" size={18} />}
       testId="properties-panel"
-      ariaLabel="Format properties"
+      ariaLabel={t('propertiesPanel.ariaLabel')}
       onClose={onClose}
     >
       {kind && children ? (
         children
       ) : (
-        <PanelState
-          kind="empty"
-          message="Select an image, table, or shape to edit its properties."
-        />
+        <PanelState kind="empty" message={t('propertiesPanel.emptyMessage')} />
       )}
     </RightDockPanel>
   );

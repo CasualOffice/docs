@@ -138,6 +138,11 @@ import { LayoutSelectionGate } from './LayoutSelectionGate';
 import { SmartChipMenu, type SmartChipMenuItem } from './SmartChipMenu';
 import { useTranslation } from '../i18n';
 
+// New keys, not yet in en.json — see keys_l3_render.json deliverable.
+const TABLE_CHIP_ARIA_LABEL_KEY = 'pagedEditor.tableChip.ariaLabel';
+const TEXTBOX_CHIP_ARIA_LABEL_KEY = 'pagedEditor.textBoxChip.ariaLabel';
+const TEXTBOX_DRAG_TO_MOVE_KEY = 'pagedEditor.textBoxChip.dragToMove';
+
 // Visual line navigation hook
 import { useVisualLineNavigation } from './useVisualLineNavigation';
 import { useDragAutoScroll } from './useDragAutoScroll';
@@ -5343,8 +5348,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             <button
               type="button"
               data-testid="table-format-chip"
-              aria-label="Format table"
-              title="Format"
+              aria-label={t(TABLE_CHIP_ARIA_LABEL_KEY)}
+              title={t('toolbar.format')}
               onMouseDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5386,7 +5391,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               >
                 <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
               </svg>
-              Format
+              {t('toolbar.format')}
             </button>
           )}
 
@@ -5397,8 +5402,8 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             <button
               type="button"
               data-testid="textbox-format-chip"
-              aria-label="Format text box"
-              title="Format"
+              aria-label={t(TEXTBOX_CHIP_ARIA_LABEL_KEY)}
+              title={t('toolbar.format')}
               onMouseDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -5440,7 +5445,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               >
                 <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
               </svg>
-              Format
+              {t('toolbar.format')}
             </button>
           )}
 
@@ -5548,7 +5553,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
                   {onMoveTextBox && (
                     <div
                       data-testid="textbox-drag-grip"
-                      title="Drag to move"
+                      title={t(TEXTBOX_DRAG_TO_MOVE_KEY)}
                       onMouseDown={startDrag}
                       style={{
                         position: 'absolute',

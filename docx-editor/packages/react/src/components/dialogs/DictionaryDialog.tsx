@@ -17,6 +17,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { Dialog } from '../ui/Dialog';
 import { PanelState } from '../ui/PanelState';
 import { Button } from '../ui/Button';
+import { useTranslation } from '../../i18n';
 
 export interface DictionaryDialogProps {
   isOpen: boolean;
@@ -131,6 +132,7 @@ async function lookupWord(word: string, signal: AbortSignal): Promise<Dictionary
 }
 
 export function DictionaryDialog({ isOpen, onClose, initialWord }: DictionaryDialogProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState(initialWord ?? '');
   const [activeQuery, setActiveQuery] = useState<string | null>(initialWord);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'not-found' | 'error'>(
@@ -174,12 +176,12 @@ export function DictionaryDialog({ isOpen, onClose, initialWord }: DictionaryDia
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Dictionary"
+      title={t('dialogs.dictionary.title')}
       width={520}
       testId="dictionary-dialog"
       footer={
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          Close
+          {t('common.close')}
         </Button>
       }
     >
@@ -187,7 +189,7 @@ export function DictionaryDialog({ isOpen, onClose, initialWord }: DictionaryDia
         <div style={lookupRowStyle}>
           <input
             type="text"
-            placeholder="Look up a word"
+            placeholder={t('dialogs.dictionary.placeholder')}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -204,25 +206,28 @@ export function DictionaryDialog({ isOpen, onClose, initialWord }: DictionaryDia
             disabled={input.trim().length === 0}
             onClick={submit}
           >
-            Look up
+            {t('dialogs.dictionary.lookupButton')}
           </button>
         </div>
 
         {status === 'loading' && (
-          <PanelState kind="loading" message={`Looking up “${activeQuery ?? ''}”…`} />
+          <PanelState
+            kind="loading"
+            message={t('dialogs.dictionary.loading', { query: activeQuery ?? '' })}
+          />
         )}
         {status === 'not-found' && (
           <PanelState
             kind="error"
-            message={`No definition found for “${activeQuery ?? ''}”.`}
-            hint="Try a different spelling or root word."
+            message={t('dialogs.dictionary.notFound', { query: activeQuery ?? '' })}
+            hint={t('dialogs.dictionary.notFoundHint')}
           />
         )}
         {status === 'error' && (
           <PanelState
             kind="error"
-            message="Couldn't reach the dictionary service."
-            hint="Check your connection and try again."
+            message={t('dialogs.dictionary.errorMessage')}
+            hint={t('dialogs.dictionary.errorHint')}
             onRetry={() => setActiveQuery((q) => (q ? `${q}` : q))}
           />
         )}

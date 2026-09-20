@@ -18,6 +18,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { CSSProperties } from 'react';
+import { useTranslation } from '../../i18n';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import { formatSize } from '../../utils/recent-files';
@@ -128,6 +129,7 @@ export function FilePropertiesDialog({
   fileName,
   sizeBytes,
 }: FilePropertiesDialogProps): React.ReactElement | null {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
   const [creator, setCreator] = useState('');
@@ -161,14 +163,14 @@ export function FilePropertiesDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="File Properties"
-      ariaLabel="File properties"
+      title={t('dialogs.fileProperties.title')}
+      ariaLabel={t('dialogs.fileProperties.title')}
       width={540}
       testId="file-properties-dialog"
       footer={
         <>
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -177,17 +179,17 @@ export function FilePropertiesDialog({
             data-testid="fp-apply"
             onClick={handleApply}
           >
-            Apply
+            {t('common.apply')}
           </Button>
         </>
       }
     >
       <div style={contentStyle}>
         <section style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>Metadata</h3>
+          <h3 style={sectionTitleStyle}>{t('dialogs.fileProperties.sectionMetadata')}</h3>
           <div style={rowStyle}>
             <label style={labelStyle} htmlFor="fp-title">
-              Title
+              {t('dialogs.fileProperties.fieldTitle')}
             </label>
             <input
               id="fp-title"
@@ -199,7 +201,7 @@ export function FilePropertiesDialog({
           </div>
           <div style={rowStyle}>
             <label style={labelStyle} htmlFor="fp-subject">
-              Subject
+              {t('dialogs.fileProperties.fieldSubject')}
             </label>
             <input
               id="fp-subject"
@@ -211,7 +213,7 @@ export function FilePropertiesDialog({
           </div>
           <div style={rowStyle}>
             <label style={labelStyle} htmlFor="fp-creator">
-              Author
+              {t('dialogs.fileProperties.fieldAuthor')}
             </label>
             <input
               id="fp-creator"
@@ -223,7 +225,7 @@ export function FilePropertiesDialog({
           </div>
           <div style={rowStyle}>
             <label style={labelStyle} htmlFor="fp-keywords">
-              Keywords
+              {t('dialogs.fileProperties.fieldKeywords')}
             </label>
             <input
               id="fp-keywords"
@@ -231,12 +233,12 @@ export function FilePropertiesDialog({
               style={inputStyle}
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
-              placeholder="e.g. finance; annual; report"
+              placeholder={t('dialogs.fileProperties.fieldKeywordsPlaceholder')}
             />
           </div>
           <div style={rowStyle}>
             <label style={labelStyle} htmlFor="fp-category">
-              Category
+              {t('dialogs.fileProperties.fieldCategory')}
             </label>
             <input
               id="fp-category"
@@ -248,7 +250,7 @@ export function FilePropertiesDialog({
           </div>
           <div style={rowStyle}>
             <label style={labelStyle} htmlFor="fp-description">
-              Description
+              {t('dialogs.fileProperties.fieldDescription')}
             </label>
             <textarea
               id="fp-description"
@@ -261,35 +263,35 @@ export function FilePropertiesDialog({
         </section>
 
         <section style={{ ...sectionStyle, marginTop: 16 }}>
-          <h3 style={sectionTitleStyle}>File info</h3>
+          <h3 style={sectionTitleStyle}>{t('dialogs.fileProperties.sectionFileInfo')}</h3>
           <div style={rowStyle}>
-            <span style={labelStyle}>File name</span>
+            <span style={labelStyle}>{t('dialogs.fileProperties.fileName')}</span>
             <span style={readonlyValueStyle} data-testid="fp-fileName">
               {sanitize(fileName)}
             </span>
           </div>
           <div style={rowStyle}>
-            <span style={labelStyle}>Size</span>
+            <span style={labelStyle}>{t('dialogs.fileProperties.size')}</span>
             <span style={readonlyValueStyle} data-testid="fp-size">
               {typeof sizeBytes === 'number' ? formatSize(sizeBytes) : '—'}
             </span>
           </div>
           <div style={rowStyle}>
-            <span style={labelStyle}>Last modified by</span>
+            <span style={labelStyle}>{t('dialogs.fileProperties.lastModifiedBy')}</span>
             <span style={readonlyValueStyle} data-testid="fp-lastModifiedBy">
               {sanitize(current?.lastModifiedBy)}
             </span>
           </div>
           <div style={rowStyle}>
-            <span style={labelStyle}>Revision</span>
+            <span style={labelStyle}>{t('dialogs.fileProperties.revision')}</span>
             <span style={readonlyValueStyle}>{current?.revision ?? '—'}</span>
           </div>
           <div style={rowStyle}>
-            <span style={labelStyle}>Created</span>
+            <span style={labelStyle}>{t('dialogs.fileProperties.created')}</span>
             <span style={readonlyValueStyle}>{formatDate(current?.created)}</span>
           </div>
           <div style={rowStyle}>
-            <span style={labelStyle}>Modified</span>
+            <span style={labelStyle}>{t('dialogs.fileProperties.modified')}</span>
             <span style={readonlyValueStyle}>{formatDate(current?.modified)}</span>
           </div>
         </section>

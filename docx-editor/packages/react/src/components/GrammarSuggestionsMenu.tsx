@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Z_INDEX } from '../styles/zIndex';
+import { useTranslation } from '../i18n';
 
 export interface GrammarSuggestionsMenuProps {
   isOpen: boolean;
@@ -75,6 +76,7 @@ export function GrammarSuggestionsMenu({
   onPick,
   onClose,
 }: GrammarSuggestionsMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState(0);
 
@@ -137,7 +139,7 @@ export function GrammarSuggestionsMenu({
     <div
       ref={menuRef}
       role="menu"
-      aria-label="Grammar suggestion"
+      aria-label={t('grammar.suggestionAriaLabel')}
       data-testid="grammar-suggestions-menu"
       style={getStyle()}
       onContextMenu={(e) => e.preventDefault()}
@@ -165,7 +167,7 @@ export function GrammarSuggestionsMenu({
         onClick={onClose}
         data-testid="grammar-dismiss"
       >
-        Dismiss
+        {t('common.dismiss')}
       </button>
     </div>
   );

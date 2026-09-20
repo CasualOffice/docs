@@ -22,7 +22,7 @@
 
 import type { CSSProperties, ReactElement } from 'react';
 import { AvatarStack, Badge, Button, type BadgeTone } from '@schnsrw/design-system';
-import { useTranslation } from '../i18n';
+import { useTranslation, type TranslationKey } from '../i18n';
 
 export interface PresencePeer {
   /** Display name — also seeds the avatar's deterministic colour + initials. */
@@ -53,11 +53,11 @@ export interface PresenceClusterProps {
 
 const STATUS: Record<
   NonNullable<PresenceClusterProps['status']>,
-  { tone: BadgeTone; label: string }
+  { tone: BadgeTone; labelKey: TranslationKey }
 > = {
-  connected: { tone: 'success', label: 'Live' },
-  connecting: { tone: 'warning', label: 'Connecting…' },
-  disconnected: { tone: 'neutral', label: 'Offline' },
+  connected: { tone: 'success', labelKey: 'presence.live' },
+  connecting: { tone: 'warning', labelKey: 'presence.connecting' },
+  disconnected: { tone: 'neutral', labelKey: 'presence.offline' },
 };
 
 const wrapStyle: CSSProperties = {
@@ -98,7 +98,7 @@ export function PresenceCluster({
   const hasPeers = peers.length > 0;
   if (!hasPeers && !status && !onShare && !aiIsEditing) return null;
 
-  const s = status ? STATUS[status] : null;
+  const s = status ? { tone: STATUS[status].tone, label: t(STATUS[status].labelKey) } : null;
   const aiLabel = aiIsEditing
     ? aiEditingBy
       ? t('presence.askingAi', { name: aiEditingBy })
@@ -132,7 +132,7 @@ export function PresenceCluster({
         <>
           <span style={dividerStyle} aria-hidden="true" />
           <Button variant="secondary" size="sm" icon="share" onClick={onShare}>
-            Share
+            {t('presence.share')}
           </Button>
         </>
       )}

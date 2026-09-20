@@ -23,6 +23,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import type { BuildingBlock } from '../../utils/buildingBlocks';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
+import { useTranslation } from '../../i18n';
 
 export interface BuildingBlocksDialogProps {
   isOpen: boolean;
@@ -163,6 +164,7 @@ export function BuildingBlocksDialog({
   onInsert,
   onDelete,
 }: BuildingBlocksDialogProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
 
   // Reset the name field whenever the dialog opens — stale text from a
@@ -184,29 +186,28 @@ export function BuildingBlocksDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Building blocks"
+      title={t('dialogs.buildingBlocks.title')}
       width={560}
       testId="building-blocks-dialog"
       footer={
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          Close
+          {t('common.close')}
         </Button>
       }
     >
       <div style={bodyStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={sectionLabelStyle}>Save current selection</div>
+          <div style={sectionLabelStyle}>{t('dialogs.buildingBlocks.saveSelectionHeading')}</div>
           {pendingPreview === null ? (
             <div style={noSelectionHintStyle} data-testid="bb-no-selection">
-              Select text or content in the document, then reopen this dialog to save it as a
-              reusable block.
+              {t('dialogs.buildingBlocks.noSelectionHint')}
             </div>
           ) : (
             <>
               <div style={saveRowStyle}>
                 <input
                   type="text"
-                  placeholder="Block name (e.g. Signature)"
+                  placeholder={t('dialogs.buildingBlocks.namePlaceholder')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => {
@@ -223,7 +224,7 @@ export function BuildingBlocksDialog({
                   disabled={!canSave}
                   onClick={submitSave}
                 >
-                  Save
+                  {t('common.save')}
                 </button>
               </div>
               <div style={previewHintStyle}>“{pendingPreview}”</div>
@@ -233,11 +234,12 @@ export function BuildingBlocksDialog({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={sectionLabelStyle}>
-            Saved blocks{blocks.length > 0 ? ` (${blocks.length})` : ''}
+            {t('dialogs.buildingBlocks.savedBlocksHeading')}
+            {blocks.length > 0 ? ` (${blocks.length})` : ''}
           </div>
           {blocks.length === 0 ? (
             <div style={emptyStateStyle} data-testid="bb-empty">
-              No building blocks saved yet.
+              {t('dialogs.buildingBlocks.empty')}
             </div>
           ) : (
             blocks.map((block) => (
@@ -262,16 +264,16 @@ export function BuildingBlocksDialog({
                     data-testid={`bb-insert-${block.id}`}
                     onClick={() => onInsert(block.id)}
                   >
-                    Insert
+                    {t('common.insert')}
                   </button>
                   <button
                     type="button"
                     style={deleteBtnStyle}
                     data-testid={`bb-delete-${block.id}`}
                     onClick={() => onDelete(block.id)}
-                    aria-label={`Delete ${block.name}`}
+                    aria-label={t('dialogs.buildingBlocks.deleteAriaLabel', { name: block.name })}
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>

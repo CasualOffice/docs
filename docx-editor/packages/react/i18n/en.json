@@ -20,7 +20,9 @@
     "dismiss": "Dismiss",
     "change": "Change",
     "px": "px",
-    "closeDialog": "Close dialog"
+    "closeDialog": "Close dialog",
+    "done": "Done",
+    "discard": "Discard"
   },
   "toolbar": {
     "ariaLabel": "Formatting toolbar",
@@ -103,8 +105,8 @@
     "copy": "Copy",
     "paste": "Paste",
     "pasteWithoutFormatting": "Paste without formatting",
-    "find": "Find\u2026",
-    "findAndReplace": "Find and replace\u2026",
+    "find": "Find…",
+    "findAndReplace": "Find and replace…",
     "selectAll": "Select all",
     "clearFormatting": "Clear formatting",
     "zoomIn": "Zoom in",
@@ -112,11 +114,22 @@
     "resetZoom": "Reset zoom (100%)",
     "textBox": "Text box",
     "callout": "Callout",
-    "translateDocument": "Translate document\u2026",
-    "writingAssistant": "Writing assistant\u2026",
+    "translateDocument": "Translate document…",
+    "writingAssistant": "Writing assistant…",
     "aboutCasualEditor": "About Casual Editor",
     "edit": "Edit",
-    "view": "View"
+    "view": "View",
+    "spelling": "Spelling",
+    "hidden": "Hidden",
+    "textEffects": "Text effects",
+    "emboss": "Emboss",
+    "imprint": "Imprint",
+    "textOutline": "Outline",
+    "textShadow": "Shadow",
+    "characterSpacingExpanded1": "Expanded (+1pt)",
+    "characterSpacingExpanded2": "Expanded (+2pt)",
+    "characterSpacingCondensed1": "Condensed (−1pt)",
+    "characterSpacingCondensed2": "Condensed (−2pt)"
   },
   "suggestingBanner": {
     "title": "Suggesting",
@@ -186,7 +199,12 @@
     "single": "Single",
     "double": "Double",
     "lineSpacingTitle": "Line spacing: {label}",
-    "paragraphSpacing": "Paragraph spacing"
+    "paragraphSpacing": "Paragraph spacing",
+    "removeSpaceBefore": "Remove space before paragraph",
+    "addSpaceBefore": "Add space before paragraph",
+    "removeSpaceAfter": "Remove space after paragraph",
+    "addSpaceAfter": "Add space after paragraph",
+    "preventSingleLines": "Prevent single lines"
   },
   "styles": {
     "selectAriaLabel": "Select paragraph style",
@@ -264,7 +282,9 @@
       "lightMagenta": "Light Magenta",
       "brightGreen": "Bright Green",
       "violet": "Violet"
-    }
+    },
+    "customHexColorAriaLabel": "Custom hex color",
+    "pickerSuffix": "picker"
   },
   "dialogs": {
     "findReplace": {
@@ -362,7 +382,8 @@
         "punctuation": "Punctuation",
         "currency": "Currency",
         "music": "Music",
-        "emoji": "Emoji"
+        "emoji": "Emoji",
+        "recent": "Recent"
       }
     },
     "imageProperties": {
@@ -409,7 +430,8 @@
         "character": "Character",
         "paragraph": "Paragraph",
         "line": "Line"
-      }
+      },
+      "distanceFromText": "Distance from text (px)"
     },
     "pageSetup": {
       "title": "Page Setup",
@@ -495,7 +517,10 @@
       "noFill": "No fill",
       "pattern": "Pattern",
       "patternClear": "Clear (no pattern)",
-      "patternSolid": "Solid"
+      "patternSolid": "Solid",
+      "noColor": "No color",
+      "previewText": "Paragraph",
+      "hexAriaLabel": "{label} hex"
     },
     "customSpacing": {
       "title": "Custom spacing",
@@ -709,6 +734,185 @@
       "previewPlaceholder": "Type LaTeX above to preview.",
       "renderFailed": "Could not render equation",
       "invalidLatex": "Invalid LaTeX"
+    },
+    "fileProperties": {
+      "title": "File Properties",
+      "sectionMetadata": "Metadata",
+      "sectionFileInfo": "File info",
+      "fieldTitle": "Title",
+      "fieldSubject": "Subject",
+      "fieldAuthor": "Author",
+      "fieldKeywords": "Keywords",
+      "fieldKeywordsPlaceholder": "e.g. finance; annual; report",
+      "fieldCategory": "Category",
+      "fieldDescription": "Description",
+      "fileName": "File name",
+      "size": "Size",
+      "lastModifiedBy": "Last modified by",
+      "revision": "Revision",
+      "created": "Created",
+      "modified": "Modified"
+    },
+    "citations": {
+      "title": "Citations",
+      "addCitation": "Add a citation",
+      "authorPlaceholder": "Author (e.g. Knuth, D.)",
+      "yearPlaceholder": "Year",
+      "titlePlaceholder": "Title",
+      "urlPlaceholder": "URL (optional)",
+      "saveCitation": "Save citation",
+      "savedCitations": "Saved citations",
+      "format": "Format:",
+      "empty": "No citations saved yet.",
+      "deleteCitation": "Delete citation: {title}"
+    },
+    "writingAssistant": {
+      "panelTitle": "Writing Assistant",
+      "intro": "Runs entirely in your browser. Your document is never sent to a server.",
+      "featuresHeading": "Features",
+      "advancedToggle": "Advanced (off by default)",
+      "deviceHeading": "Your device",
+      "detectingCapabilities": "Detecting capabilities…",
+      "available": "available",
+      "unavailable": "unavailable",
+      "deviceMemoryLabel": "Device memory",
+      "deviceMemoryValue": "{gb} GB reported",
+      "browserStorageLabel": "Browser storage",
+      "browserStorageValue": "{used} MB used of {total} MB",
+      "backendLabel": "Backend",
+      "networkLabel": "Network",
+      "statusHeading": "Status",
+      "downloadProgressAriaLabel": "Download progress",
+      "downloadingProgress": "Downloading… {percent}%",
+      "loadingModel": "Loading model…",
+      "sizeAndModels": "{size} MB · {count, plural, =1 {# model} other {# models}}",
+      "reenableAutoLabel": "Re-enable automatically next time",
+      "clearCachedModels": "Clear cached models",
+      "consentTitle": "Download writing assistant",
+      "consentBody": "This downloads a ~95 MB model to your browser cache so the assistant can run on your device. Your document is never sent to a server.",
+      "consentLicense": "The model is open-source (Apache-2.0).",
+      "downloadAndContinue": "Download and continue",
+      "statusNoFeatures": "No features enabled",
+      "statusReadyToLoad": "Ready to load on demand",
+      "statusCheckingDevice": "Checking your device…",
+      "statusWaitingConfirmation": "Waiting for confirmation",
+      "statusReady": "Ready",
+      "statusReadyTiming": "Ready · last call {ms} ms",
+      "statusRunning": "Running…",
+      "statusUnloadingModel": "Unloading model…",
+      "statusPaused": "Paused — see message below"
+    },
+    "accessibility": {
+      "title": "Accessibility check",
+      "missingAltTitle": "Image missing alt text",
+      "missingAltHint": "Screen readers describe images via their alt text. Add a short description in the image properties.",
+      "noIssues": "No accessibility issues found.",
+      "issueCount": "{count, plural, one {# issue} other {# issues}}",
+      "goTo": "Go to",
+      "headingJumpTitle": "Heading {level} follows Heading {previousLevel}",
+      "headingJumpHintOne": "Add a Heading {nextLevel} between them so the outline doesn't skip a level. (“{text}”)",
+      "headingJumpHintMany": "{missing} heading levels are skipped. (“{text}”)"
+    },
+    "buildingBlocks": {
+      "title": "Building blocks",
+      "saveSelectionHeading": "Save current selection",
+      "noSelectionHint": "Select text or content in the document, then reopen this dialog to save it as a reusable block.",
+      "namePlaceholder": "Block name (e.g. Signature)",
+      "savedBlocksHeading": "Saved blocks",
+      "empty": "No building blocks saved yet.",
+      "deleteAriaLabel": "Delete {name}"
+    },
+    "commandPalette": {
+      "ariaLabel": "Command palette",
+      "searchAriaLabel": "Search commands, files, or settings",
+      "searchPlaceholder": "Search commands, files, or settings…",
+      "noResults": "No commands match — try a different search.",
+      "navigateHint": "navigate",
+      "runHint": "run",
+      "closeHint": "close",
+      "resultCount": "{count, plural, one {# command} other {# commands}}"
+    },
+    "dictionary": {
+      "title": "Dictionary",
+      "placeholder": "Look up a word",
+      "lookupButton": "Look up",
+      "loading": "Looking up “{query}”…",
+      "notFound": "No definition found for “{query}”.",
+      "notFoundHint": "Try a different spelling or root word.",
+      "errorMessage": "Couldn't reach the dictionary service.",
+      "errorHint": "Check your connection and try again."
+    },
+    "explore": {
+      "title": "Explore",
+      "searchPlaceholder": "Search Wikipedia",
+      "searchButton": "Search",
+      "loading": "Searching for “{query}”…",
+      "notFound": "No Wikipedia article found for “{query}”.",
+      "notFoundHint": "Try a more specific search term.",
+      "errorMessage": "Couldn't reach Wikipedia.",
+      "errorHint": "Check your connection and try again.",
+      "sourceLabel": "Wikipedia",
+      "openLink": "Open in Wikipedia ↗",
+      "citeThis": "Cite this"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "smartQuotesTitle": "Use smart quotes",
+      "smartQuotesDescPart1": "Replace straight quotes, dashes, and ellipses as you type (",
+      "smartQuotesDescPart2": ").",
+      "autocorrectTitle": "Autocorrect",
+      "autocorrectDescPart1": "Symbol sequences (",
+      "autocorrectDescPart2": ") and common-typo fixes (",
+      "autocorrectDescPart3": ")."
+    },
+    "translate": {
+      "title": "Translate",
+      "sourceLanguage": "Source language",
+      "swapLanguages": "Swap languages",
+      "targetLanguage": "Target language",
+      "original": "Original",
+      "translation": "Translation",
+      "noSelection": "(no selection)",
+      "translatingLoading": "Translating…",
+      "errorMessage": "Couldn't reach the translation service.",
+      "errorHint": "Check your connection and try again.",
+      "idleHint": "Select text in the document, or paste it on the left.",
+      "copyButton": "Copy",
+      "copied": "Copied",
+      "replaceButton": "Replace in document",
+      "replacing": "Replacing…"
+    },
+    "translateDocument": {
+      "title": "Translate document",
+      "helper": "Your open document is unchanged — only the downloaded copy is translated.",
+      "pickDifferentLanguage": "Pick a different language",
+      "translateToButton": "Translate to {language}",
+      "stop": "Stop",
+      "downloading": "Downloading…",
+      "downloadButton": "Download .docx",
+      "swapLanguages": "Swap source and target languages",
+      "pickLanguagePrompt": "Pick a target language and click Translate to render {language}.",
+      "nothingRunsHint": "Nothing runs until you start — opening this dialog never modifies your document.",
+      "snapshotting": "Snapshotting original…",
+      "translatingChunk": "Translating chunk {chunk} of {totalChunks}",
+      "translatingRuns": "Translating… {completed} of {total} text runs",
+      "translatingDocument": "Translating your document…",
+      "chunkPreviewHint": "“{preview}”",
+      "formattingRunHint": "Each formatting run translates separately so bold / italic / link boundaries stay aligned.",
+      "serializeError": "Couldn't serialise the translated document.",
+      "onDeviceError": "On-device translation failed mid-document. Try again or pick a shorter section.",
+      "serviceError": "Translation service is rate-limiting or unreachable. Try again in a moment, pick a smaller selection, or enable the Advanced LLM tier to translate on-device."
+    },
+    "watermark": {
+      "title": "Watermark",
+      "remove": "Remove",
+      "textLabel": "Text",
+      "textPlaceholder": "e.g. DRAFT, CONFIDENTIAL",
+      "colorLabel": "Color",
+      "colorAriaLabel": "Watermark color",
+      "opacityLabel": "Opacity",
+      "rotationLabel": "Rotation",
+      "hint": "The watermark sits behind page content, not clickable or selectable, and shows on every page."
     }
   },
   "voiceTyping": {
@@ -770,7 +974,10 @@
       "makeFormal": "Make Formal",
       "makeCasual": "Make Casual",
       "custom": "Custom"
-    }
+    },
+    "rewriteWithAi": "Rewrite with AI",
+    "summarizeWithAi": "Summarize with AI",
+    "askAiAboutThis": "Ask AI about this"
   },
   "documentOutline": {
     "ariaLabel": "Document outline",
@@ -784,7 +991,85 @@
   "sidebar": {
     "ariaLabel": "Annotations sidebar",
     "commentsEmptyTitle": "No comments yet",
-    "commentsEmptyHint": "Select text and add a comment to start a discussion."
+    "commentsEmptyHint": "Select text and add a comment to start a discussion.",
+    "imageProperties": {
+      "wrapInline": "In line",
+      "wrapLeft": "Wrap left",
+      "wrapRight": "Wrap right",
+      "wrapBehind": "Behind text",
+      "wrapInFront": "In front",
+      "wrapTopAndBottom": "Top & bottom",
+      "textWrapping": "Text wrapping",
+      "distanceFromText": "Distance from text",
+      "arrange": "Arrange",
+      "altText": "Alt text",
+      "altTextPlaceholder": "Describe this image",
+      "borderThin": "Thin",
+      "borderMedium": "Medium",
+      "rotateLeft": "Rotate left",
+      "rotateRight": "Rotate right",
+      "lockAspectRatio": "Lock aspect ratio",
+      "widthAbbr": "W",
+      "heightAbbr": "H"
+    },
+    "tableProperties": {
+      "bordersAndFillHeading": "Borders & fill",
+      "bordersAndFillGroupLabel": "Borders and fill",
+      "rowsGroupLabel": "Rows",
+      "columnsGroupLabel": "Columns",
+      "cellsGroupLabel": "Cells",
+      "tableGroupLabel": "Table",
+      "above": "Above",
+      "below": "Below",
+      "left": "Left",
+      "right": "Right",
+      "merge": "Merge",
+      "split": "Split"
+    },
+    "versionHistory": {
+      "title": "Version history",
+      "caption": "Versions save automatically as you edit — on save and about every 10 minutes. Open one to preview or restore it.",
+      "nameThisVersion": "Name this version",
+      "renameVersion": "Rename version",
+      "rename": "Rename",
+      "deleteVersion": "Delete version",
+      "deleteConfirmBody": "Delete \"{name}\"? This cannot be undone.",
+      "openDocumentEmpty": "Open a document to see its version history.",
+      "versions": "Versions",
+      "saveVersion": "Save version…",
+      "onlyNamedVersions": "Only named versions",
+      "noSavedVersionsYet": "No saved versions yet. \"Save version…\" bookmarks the current doc, or wait ~10 minutes for the first auto snapshot.",
+      "noNamedVersionsYet": "No named versions yet. Use “Save version…” to bookmark one.",
+      "restoreThisVersion": "Restore this version",
+      "autoSaved": "Auto-saved",
+      "namedVersionTooltip": "Named version — kept until deleted",
+      "wordUnit": "{count, plural, =1 {word} other {words}}",
+      "currentVersion": "Current version",
+      "moreActionsTooltip": "More actions",
+      "versionActions": "Version actions",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "justNow": "just now",
+      "secondsAgo": "{s}s ago",
+      "minutesAgo": "{m}m ago",
+      "hoursAgo": "{h}h ago",
+      "daysAgo": "{d}d ago",
+      "backToEditing": "Back to editing",
+      "diffTooLarge": "This version is too large to compute an inline diff; showing it without change highlights.",
+      "back": "Back",
+      "showChanges": "Show changes",
+      "diffTooLargeShort": "Too large to highlight changes",
+      "previewContentLabel": "Version preview",
+      "previewUnavailable": "Preview unavailable for this version."
+    },
+    "textBoxProperties": {
+      "size": "Size",
+      "fill": "Fill",
+      "noFill": "No fill",
+      "outline": "Outline",
+      "outlineWidthAriaLabel": "Outline width",
+      "autoPlaceholder": "auto"
+    }
   },
   "viewer": {
     "pageIndicator": "{current} of {total}"
@@ -813,7 +1098,24 @@
   "statusBar": {
     "readingTime": "~{minutes} min read",
     "readingTimeAria": "Estimated {minutes} minute read",
-    "readabilityUnknown": "Readability: —"
+    "readabilityUnknown": "Readability: —",
+    "charUnit": "{count, plural, =1 {character} other {characters}}",
+    "documentStatus": "Document status",
+    "pageOf": "Page {current} of {total}",
+    "customisation": "Status bar customisation",
+    "zoomOutTooltip": "Zoom out (⌘−)",
+    "zoomPresetsTooltip": "Zoom presets (⌘0 to reset)",
+    "zoomAriaLabel": "Zoom: {percent} percent. Click to choose a preset.",
+    "zoomPresets": "Zoom presets",
+    "zoomInTooltip": "Zoom in (⌘=)",
+    "readability": {
+      "sentenceCount": "{count, plural, one {# sentence} other {# sentences}}",
+      "avgWordsPerSentence": "{avg} words/sentence",
+      "longSentences": "{count, plural, one {# long sentence} other {# long sentences}} (> 25 words)",
+      "readingTimeLabel": "Reading time: {time}",
+      "fleschKincaid": "Flesch-Kincaid: {grade}",
+      "ariaLabel": "Readability: {compact}. {detail}"
+    }
   },
   "errors": {
     "loadingDocument": "Loading document...",
@@ -827,7 +1129,8 @@
     "tryAgain": "Try Again",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
-    "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?"
+    "unsavedChanges": "You have unsaved changes. Are you sure you want to leave?",
+    "couldntLoadDocument": "Couldn’t load the document"
   },
   "table": {
     "insertRowAbove": "Insert row above",
@@ -990,7 +1293,9 @@
     "differentFirstPage": "Different first page",
     "differentEvenOdd": "Different odd & even pages",
     "remove": "Remove {label}",
-    "closeEditing": "Close {label} editing"
+    "closeEditing": "Close {label} editing",
+    "dragToMove": "Drag to move",
+    "closeContextMenu": "Close menu"
   },
   "image": {
     "placeholder": "Image placeholder",
@@ -1063,10 +1368,45 @@
     "llmRequired": "Chat needs the Advanced LLM tier.",
     "llmHintPart1": "Open the Writing Assistant from the rail and enable",
     "llmHintEmphasis": "Advanced (Llama-3.2-1B)",
-    "llmHintPart2": "to start a conversation. ~880 MB one-time download."
+    "llmHintPart2": "to start a conversation. ~880 MB one-time download.",
+    "clearButtonTitle": "Clear conversation",
+    "selectionLabel": "Selection",
+    "insertAtCursorTitle": "Insert this reply at the cursor as a tracked suggestion",
+    "insertAtCursorButton": "Insert at cursor",
+    "copyButton": "Copy",
+    "thinking": "Thinking…",
+    "emptyStateTitle": "Ready when you are.",
+    "emptyStateBody": "Ask anything about the open document, request rewrites, or brainstorm. Toggle \"{toggle}\" above to send the doc text along with your question.",
+    "slashRewriteLabel": "Rewrite selection",
+    "slashRewriteHint": "Rewrite the selection (tone optional)",
+    "slashSummarizeLabel": "Summarize selection",
+    "slashSummarizeHint": "One-paragraph summary",
+    "slashGrammarLabel": "Grammar fix",
+    "slashGrammarHint": "Correct typos and grammar only",
+    "slashTranslateLabel": "Translate selection",
+    "slashTranslateHint": "Translate to a language",
+    "slashExplainLabel": "Explain selection",
+    "slashExplainHint": "Plain-English explanation",
+    "slashExpandLabel": "Expand selection",
+    "slashExpandHint": "Add detail and depth",
+    "slashShortenLabel": "Shorten selection",
+    "slashShortenHint": "Tighten without losing meaning",
+    "slashPolishLabel": "Polish for readability",
+    "slashPolishHint": "Shorter sentences, plain English, active voice",
+    "slashPlainLabel": "Plain English",
+    "slashPlainHint": "Short sentences, simple words, no jargon",
+    "slashTableLabel": "Convert selection to table",
+    "slashTableHint": "Build a real table from the selected text",
+    "slashResearchLabel": "Look up on Wikipedia",
+    "slashResearchHint": "Fact lookup (Wikipedia REST)",
+    "slashResumeLabel": "Create a resume from this doc",
+    "slashResumeHint": "Restructure into ATS-friendly resume",
+    "slashMemoLabel": "Create a memo from this doc",
+    "slashMemoHint": "Restructure into a memorandum"
   },
   "rightPanel": {
-    "closeButton": "Close panel"
+    "closeButton": "Close panel",
+    "sidePanelAriaLabel": "Side panel"
   },
   "footnote": {
     "editTitle": "Edit footnote",
@@ -1102,6 +1442,413 @@
   },
   "presence": {
     "aiEditing": "AI is editing…",
-    "askingAi": "{name} is asking AI…"
+    "askingAi": "{name} is asking AI…",
+    "live": "Live",
+    "connecting": "Connecting…",
+    "offline": "Offline",
+    "share": "Share"
+  },
+  "docops": {
+    "panelTitle": "DocOps AI",
+    "planTitle": "Plan",
+    "sendTitle": "Send (Enter)",
+    "noResponse": "(no response)",
+    "thinkingDefault": "Thinking…",
+    "apiKeyRequiredError": "Add an API key to use the assistant.",
+    "emptyDocumentError": "This document is empty — nothing to work with yet.",
+    "noSelectionError": "Select some text in the document first, then try this action.",
+    "genericFailed": "failed",
+    "rewriteFailed": "Couldn't apply rewrite: {message}",
+    "rewriteSuccess": "Rewrote the selection as a tracked change — review it in the comments sidebar.",
+    "tableInsertFailed": "Couldn't insert table: {message}",
+    "tableInsertSuccess": "Inserted a {rows}×{columns} table into the document.",
+    "defaultTableTitle": "Table",
+    "clearConversationTitle": "Clear conversation",
+    "apiKeySettingsTitle": "API key settings",
+    "backToChatTitle": "Back to chat",
+    "agentModeTitle": "Agent mode — plans, executes, and reviews multi-step tasks",
+    "chatModeTitle": "Chat mode — single reply",
+    "agentModeLabel": "Agent",
+    "chatModeLabel": "Chat",
+    "emptyStateDescription": "Ask anything about your document — outline, stats, styles, find text — or have it convert a selection to a table or insert a TOC.",
+    "noApiKeyBanner": "No API key saved. Click the settings icon above to add one.",
+    "capMessage": "{rounds, plural, one {Stopped after # tool step} other {Stopped after # tool steps}} — send another message to continue.",
+    "placeholderWorking": "Working…",
+    "placeholderAsk": "Ask about your document… (Enter to send)",
+    "quickActions": {
+      "summarizeLabel": "Summarize",
+      "rewriteLabel": "Rewrite selection",
+      "tableLabel": "Make table",
+      "outlineLabel": "Outline",
+      "rewritingStatus": "Rewriting selection…",
+      "buildingTableStatus": "Building table…",
+      "summarizingStatus": "Summarizing…",
+      "outliningStatus": "Outlining…"
+    },
+    "keySetup": {
+      "description": "DocOps uses the Anthropic API. Bring your own key — it's stored only in this browser's localStorage.",
+      "placeholderSaved": "••••••••  (key saved — paste new to replace)",
+      "saveButton": "Save key",
+      "removeButton": "Remove key"
+    },
+    "mcp": {
+      "buttonLabel": "MCP",
+      "connectTitle": "Connect an external MCP server; its tools join the agent",
+      "retryAriaLabel": "Retry MCP server",
+      "removeAriaLabel": "Remove MCP server",
+      "urlAriaLabel": "MCP server URL",
+      "tokenPlaceholder": "Auth token (optional)",
+      "tokenAriaLabel": "MCP auth token (optional)",
+      "connectButton": "Connect",
+      "toolsSuffix": "{count} tools",
+      "unknownError": "failed"
+    },
+    "workspace": {
+      "addTitle": "Index a local folder so the AI can search and cite across your files — on-device",
+      "indexing": "Indexing…",
+      "folderButton": "Folder",
+      "indexedTitle": "{count, plural, one {# file} other {# files}} from \"{folder}\" indexed for the AI. Click to clear.",
+      "indexedChip": "{count, plural, one {# indexed} other {# indexed}}"
+    },
+    "toolLabels": {
+      "getOutline": "Reading outline…",
+      "getSelection": "Reading selection…",
+      "getDocStats": "Reading stats…",
+      "listStyles": "Reading styles…",
+      "findText": "Searching…",
+      "convertRangeToTable": "Converting to table…",
+      "insertToc": "Inserting TOC…",
+      "suggestTextChange": "Suggesting change…",
+      "setParagraphStyle": "Applying style…",
+      "addComment": "Adding comment…",
+      "rewriteSelection": "Rewriting selection…",
+      "deleteParagraphs": "Marking for deletion…",
+      "insertParagraphAfter": "Inserting paragraph…",
+      "getBlock": "Reading block…",
+      "harmonizeStyles": "Harmonizing styles…",
+      "insertReportFromData": "Building report table…",
+      "createDocument": "Building document…"
+    }
+  },
+  "mobileFormatBar": {
+    "ariaLabel": "Format selection"
+  },
+  "profileSettings": {
+    "title": "Profile settings",
+    "displayName": "Display name",
+    "timezone": "Timezone",
+    "timezoneHint": "IANA tz string (leave blank to use the browser default)",
+    "language": "Language",
+    "languageHint": "BCP-47 tag (leave blank to match the browser)",
+    "loading": "Loading profile…",
+    "loadError": "Could not load your profile. Try closing and reopening.",
+    "errorInvalid": "That display name or email is invalid or already in use.",
+    "errorSessionExpired": "Your session has expired. Sign in again.",
+    "errorGeneric": "Could not save. Please try again."
+  },
+  "aiToneOptions": {
+    "polish": "Polish",
+    "concise": "Concise",
+    "formal": "Formal",
+    "casual": "Casual",
+    "shorter": "Shorter",
+    "longer": "Longer"
+  },
+  "commandPalette": {
+    "newDocument": "New document",
+    "saveDownloadDocx": "Save (download .docx)",
+    "fileExportPath": "File · Export",
+    "resetZoomTo100": "Reset zoom to 100%",
+    "themeMatchSystem": "Theme: match system",
+    "themeLight": "Theme: light",
+    "themeDark": "Theme: dark",
+    "insertTableOfContents": "Insert table of contents",
+    "insertImage": "Insert image",
+    "shapeRectangle": "Shape · Rectangle",
+    "shapeEllipse": "Shape · Ellipse",
+    "shapeLine": "Shape · Line",
+    "shapeArrow": "Shape · Arrow",
+    "equation": "Equation",
+    "reportABug": "Report a bug",
+    "exitFocusMode": "Exit focus mode",
+    "enterFocusMode": "Enter focus mode",
+    "strictCoEditingOn": "Strict co-editing: on",
+    "strictCoEditingOff": "Strict co-editing: off",
+    "hideFormattingMarks": "Hide non-printing characters",
+    "hideDocumentOutline": "Hide document outline",
+    "hideComments": "Hide comments",
+    "showComments": "Show comments",
+    "hideVersionHistory": "Hide version history",
+    "showVersionHistory": "Show version history"
+  },
+  "toast": {
+    "convertToTable": "Convert to table",
+    "pastedTabularData": "Pasted data looks like a {rows} × {columns} table.",
+    "aiSuggestionReady": "AI suggestion ready for review — accept or reject in the doc.",
+    "translatedReplaced": "Replaced with {target} translation.",
+    "translateFailedLanguage": "Couldn't translate — check your connection or pick another language.",
+    "dictionaryLoadFailed": "Couldn't load the spell-check dictionary.",
+    "translateFailedRetry": "Couldn't translate — check your connection and try again.",
+    "saveSerializeFailed": "Couldn't save — the document failed to serialize. Your edits are still here; try again.",
+    "savedFile": "Saved {fileName}",
+    "saveFailedGeneric": "Couldn't save the document. Your edits are still here; try again.",
+    "savedFileAttachEmail": "Saved {fileName}. Attach it to the email window.",
+    "downloadedFileAttachEmail": "Downloaded {fileName}. Drag it into the email window to attach.",
+    "downloadedFile": "Downloaded {fileName}",
+    "exportFailed": "Failed to export as {label}",
+    "refineFailed": "Refine failed: {message}",
+    "aiEmptyResponse": "The model returned an empty response.",
+    "aiRequestFailed": "AI request failed: {message}",
+    "translatingTo": "Translating to {target}…",
+    "loadingSpellcheckDictionary": "Loading spell-check dictionary…",
+    "convertingTo": "Converting to {label}…"
+  },
+  "render": {
+    "footnoteArea": {
+      "goToFootnoteAriaLabel": "Go to footnote {number} reference",
+      "goToEndnoteAriaLabel": "Go to endnote {number} reference"
+    }
+  },
+  "pagedEditor": {
+    "endnoteSection": {
+      "editHint": "Double-click to edit endnote"
+    },
+    "imageChip": {
+      "ariaLabel": "Format image"
+    },
+    "tableChip": {
+      "ariaLabel": "Format table"
+    },
+    "textBoxChip": {
+      "ariaLabel": "Format text box",
+      "dragToMove": "Drag to move"
+    }
+  },
+  "signing": {
+    "pane": {
+      "ariaLabel": "Signing pane",
+      "optionalAriaLabel": "Optional",
+      "optionalChip": "optional",
+      "allSignedMessage": "All required signatures collected. Ready to finalise.",
+      "completeButton": "Complete",
+      "methodDraw": "Draw",
+      "methodType": "Type",
+      "methodUpload": "Upload"
+    },
+    "captures": {
+      "useThisSignature": "Use this signature",
+      "typeFullNamePlaceholder": "Type your full name",
+      "chooseImage": "Choose image…"
+    }
+  },
+  "aiSuggestion": {
+    "source": "Source",
+    "tone": "Tone",
+    "suggested": "Suggested",
+    "summary": "Summary",
+    "stop": "Stop",
+    "suggestReplacement": "Suggest replacement",
+    "suggestInsert": "Suggest insert",
+    "rewriting": "Rewriting…",
+    "waiting": "Waiting…",
+    "msOnDevice": "{ms} ms · on-device",
+    "onDevice": "On-device",
+    "aiProposalAriaLabel": "AI proposal — {summary}",
+    "refinePlaceholder": "Refine — e.g. make it chronological, more concise",
+    "cancelRefine": "Cancel refine",
+    "tryAgain": "Try again",
+    "insertBelow": "Insert below"
+  },
+  "autosaveBanner": {
+    "from": "from",
+    "agoRestore": "({ago}) — restore them?",
+    "restore": "Restore"
+  },
+  "grammar": {
+    "suggestionAriaLabel": "Grammar suggestion"
+  },
+  "panelRail": {
+    "ariaLabel": "Panels",
+    "comments": "Comments",
+    "hideComments": "Hide comments",
+    "hideFormatPanel": "Hide format panel",
+    "hideWritingAssistant": "Hide Writing Assistant",
+    "hideChat": "Hide chat",
+    "hideDocOpsAi": "Hide DocOps AI"
+  },
+  "spellcheck": {
+    "suggestionsAriaLabel": "Spell-check suggestions",
+    "noSuggestions": "No suggestions",
+    "ignore": "Ignore",
+    "addToDictionary": "Add to dictionary"
+  },
+  "propertiesPanel": {
+    "ariaLabel": "Format properties",
+    "emptyMessage": "Select an image, table, or shape to edit its properties."
+  },
+  "ui": {
+    "dialog": {
+      "defaultAriaLabel": "Dialog"
+    }
+  },
+  "tableGrid": {
+    "selectSize": "Select size"
+  },
+  "auth": {
+    "signInHeading": "Sign in to Casual Editor",
+    "username": "Username",
+    "password": "Password",
+    "signingIn": "Signing in…",
+    "creatingAccount": "Creating account…",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "createAnAccount": "Create an account",
+    "alreadyHaveAccount": "I already have an account",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordInfo1": "Mode 3 doesn’t do email recovery — there’s no SMTP server on a single-node deploy. Ask the operator to ssh into the container and run:",
+    "forgotPasswordInfo2": "They’ll set a new password for you to sign in with.",
+    "error": {
+      "invalidCredentials": "That username and password don’t match an account.",
+      "usernameTaken": "That username is already taken. Try signing in.",
+      "invalidUsername": "That username isn’t allowed. Use letters, numbers, dot, dash or underscore.",
+      "weakPassword": "Password must be at least 8 characters.",
+      "signupClosed": "Sign-ups are closed on this server. Ask the operator for an account.",
+      "modeDisabled": "Accounts aren’t enabled on this server.",
+      "badBody": "Please enter a username and password.",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "markdownEditor": {
+    "headingTitle": "Heading (## )",
+    "linkTitle": "Link",
+    "inlineCodeTitle": "Inline code",
+    "codeBlockTitle": "Code block",
+    "blockquoteTitle": "Blockquote",
+    "bulletListTitle": "Bullet list",
+    "numberedListTitle": "Numbered list",
+    "insertTableTitle": "Insert table",
+    "insertImageTitle": "Insert image",
+    "mermaidDiagramTitle": "Mermaid diagram",
+    "returnToHome": "Return to home",
+    "viewMode": "View mode",
+    "exportPdf": "Export PDF",
+    "download": "Download",
+    "formattingToolbar": "Formatting",
+    "modeNotebook": "Notebook",
+    "modeSource": "Source",
+    "modeSplit": "Split",
+    "modePreview": "Preview"
+  },
+  "home": {
+    "heroTitle": "Start something today.",
+    "heroLedePart1": "A real-time collaborative",
+    "heroLedePart2": "editor that runs in the browser. Pick a template designed for the way you actually work — or open a file from your computer.",
+    "createNew": "Create new",
+    "searchPlaceholder": "Search templates",
+    "filterByCategory": "Filter by category",
+    "openFile": "Open file",
+    "reopenLastDocument": "Reopen last document",
+    "pickUpWhereYouLeftOff": "Pick up where you left off",
+    "reopen": "Reopen",
+    "removeFromRecents": "Remove from recents",
+    "removeFromRecentsAria": "Remove {name} from recents",
+    "reopenDocumentAria": "Reopen {name}",
+    "recent": "Recent",
+    "recentHint": "Pick up where you left off.",
+    "clearAll": "Clear all",
+    "featured": "Featured",
+    "featuredHint": "A few picks to get going.",
+    "resultsFor": "Results for “{query}”",
+    "templateCount": "{count, plural, one {# template} other {# templates}}",
+    "noTemplatesMatch": "No templates match. Try a different keyword.",
+    "aiFeaturesPreRelease": "AI features pre-release",
+    "preRelease": "Pre-release",
+    "aiFeaturesComingSoon": "AI features are on the way",
+    "aiFeaturesDetail": "— inline ask, rewrite panel, and a DocOps chat panel. On-device in the desktop app, or the Anthropic API on the web.",
+    "learnMore": "Learn more",
+    "footerCredit": "MIT fork of eigenpal/docx-editor · Node collab server (Hocuspocus + Yjs)",
+    "categoryAll": "All",
+    "categoryPersonal": "Personal",
+    "categoryWork": "Work",
+    "categoryEducation": "Education",
+    "categoryCareer": "Career",
+    "templateBlankDocument": "Blank document",
+    "templateBlankMarkdown": "Blank Markdown",
+    "templateBlankText": "Blank Text",
+    "templateResume": "Resume",
+    "templateCoverLetter": "Cover letter",
+    "templateMeetingNotes": "Meeting notes",
+    "templateProjectProposal": "Project proposal",
+    "templateMemo": "Memo",
+    "templateWeeklyStatus": "Weekly status",
+    "templatePressRelease": "Press release",
+    "templateLetter": "Letter",
+    "templateTravelItinerary": "Travel itinerary",
+    "templateRecipe": "Recipe",
+    "templateEssay": "Essay",
+    "templateLabReport": "Lab report",
+    "templateSyllabus": "Course syllabus",
+    "templateSample": "Sample document",
+    "justNow": "just now",
+    "minutesAgo": "{n} min ago",
+    "hoursAgo": "{n} hr ago",
+    "daysAgo": "{n, plural, one {# day ago} other {# days ago}}"
+  },
+  "app": {
+    "statusLoadingTemplate": "Loading template…",
+    "statusFailedToLoadTemplate": "Failed to load template: {message}",
+    "statusConverting": "Converting…",
+    "statusErrorLoadingFile": "Error loading file",
+    "statusSavedBang": "Saved!",
+    "statusSaveFailed": "Save failed",
+    "statusSaveAsFailed": "Save As failed",
+    "statusError": "Error: {message}",
+    "statusFileDeleted": "File was deleted from disk — your in-memory edits are still here. Use File → Save As to save a copy.",
+    "statusFileRenamedMoved": "File was renamed or moved — Save will prompt you to choose a new location.",
+    "confirmLeaveDocument": "Leave this document and return to the home page?\n\nUnsaved changes will be lost.",
+    "returnToHome": "Return to home",
+    "backToCasualOffice": "Back to Casual Office",
+    "share": "Share",
+    "badConfig": "Bad config",
+    "embedConfigError": "Embed configuration error:",
+    "signedIn": "Signed in",
+    "autosaveFixture": "Autosave fixture",
+    "couldntOpenFile": "Couldn’t open {fileName}",
+    "fileLeftUnchanged": "The file was left unchanged — nothing was saved over it.",
+    "restoreUnsavedChanges": "This document had unsaved changes from a previous session. Restore them?",
+    "restore": "Restore",
+    "discard": "Discard"
+  },
+  "collab": {
+    "shareTitle": "Share for collaboration",
+    "shareDescription": "Anyone with this link can open the document and edit it live. The session lives only while someone has it open — when everyone leaves, the document is dropped.",
+    "noDocumentLoaded": "No document loaded yet.",
+    "preparingShareLink": "Preparing share link…",
+    "stayInSingleUserMode": "Stay in single-user mode",
+    "joinTheSession": "Join the session",
+    "joiningSession": "Joining session…",
+    "loadingSharedDocument": "Loading the shared document…",
+    "couldntJoinSession": "Couldn't join the session",
+    "errorDetailDefault": "The shared document might have ended, or the backend host isn't reachable. You can retry, or start fresh in single-user mode.",
+    "openSingleUserMode": "Open single-user mode",
+    "tryAgain": "Try again",
+    "reload": "Reload",
+    "reconnecting": "Reconnecting to the session…",
+    "offlineNotice": "You're offline — edits are saved locally and will sync when the connection comes back.",
+    "connecting": "Connecting",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "otherEditorCount": "{count, plural, one {# other editor} other {# others}}"
+  },
+  "viewers": {
+    "returnToHome": "Return to home",
+    "noSubject": "(no subject)",
+    "readOnlyPlainTextView": "Read-only plain text view",
+    "headerFrom": "From",
+    "headerTo": "To",
+    "headerCc": "Cc",
+    "headerBcc": "Bcc",
+    "headerReplyTo": "Reply-To",
+    "headerDate": "Date"
   }
 }

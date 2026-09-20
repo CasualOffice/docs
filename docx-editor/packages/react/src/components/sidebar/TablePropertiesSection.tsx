@@ -15,6 +15,8 @@
  */
 import type { CSSProperties, ReactNode } from 'react';
 import type { Theme } from '@eigenpal/docx-core/types/document';
+import { useTranslation } from '../../i18n';
+import type { TranslationKey } from '../../i18n';
 import type { TableAction } from '../ui/TableToolbar';
 import { TableBorderPicker } from '../ui/TableBorderPicker';
 import { TableBorderColorPicker } from '../ui/TableBorderColorPicker';
@@ -158,37 +160,37 @@ const ICONS: Record<string, ReactNode> = {
 
 interface Item {
   action: Extract<TableAction, string>;
-  label: string;
+  labelKey: TranslationKey;
   danger?: boolean;
 }
 
-const GROUPS: { header: string; items: Item[] }[] = [
+const GROUPS: { headerKey: TranslationKey; items: Item[] }[] = [
   {
-    header: 'Rows',
+    headerKey: 'sidebar.tableProperties.rowsGroupLabel',
     items: [
-      { action: 'addRowAbove', label: 'Above' },
-      { action: 'addRowBelow', label: 'Below' },
-      { action: 'deleteRow', label: 'Delete', danger: true },
+      { action: 'addRowAbove', labelKey: 'sidebar.tableProperties.above' },
+      { action: 'addRowBelow', labelKey: 'sidebar.tableProperties.below' },
+      { action: 'deleteRow', labelKey: 'common.delete', danger: true },
     ],
   },
   {
-    header: 'Columns',
+    headerKey: 'sidebar.tableProperties.columnsGroupLabel',
     items: [
-      { action: 'addColumnLeft', label: 'Left' },
-      { action: 'addColumnRight', label: 'Right' },
-      { action: 'deleteColumn', label: 'Delete', danger: true },
+      { action: 'addColumnLeft', labelKey: 'sidebar.tableProperties.left' },
+      { action: 'addColumnRight', labelKey: 'sidebar.tableProperties.right' },
+      { action: 'deleteColumn', labelKey: 'common.delete', danger: true },
     ],
   },
   {
-    header: 'Cells',
+    headerKey: 'sidebar.tableProperties.cellsGroupLabel',
     items: [
-      { action: 'mergeCells', label: 'Merge' },
-      { action: 'splitCell', label: 'Split' },
+      { action: 'mergeCells', labelKey: 'sidebar.tableProperties.merge' },
+      { action: 'splitCell', labelKey: 'sidebar.tableProperties.split' },
     ],
   },
   {
-    header: 'Table',
-    items: [{ action: 'deleteTable', label: 'Delete table', danger: true }],
+    headerKey: 'sidebar.tableProperties.tableGroupLabel',
+    items: [{ action: 'deleteTable', labelKey: 'table.deleteTable', danger: true }],
   },
 ];
 
@@ -249,41 +251,52 @@ export function TablePropertiesSection({
   borderColorHex,
   cellBackgroundColor,
 }: TablePropertiesSectionProps) {
+  const { t } = useTranslation();
   return (
     <div data-testid="properties-table-section">
       {/* Borders & fill — the appearance controls live here, in the panel,
           not scattered across the toolbar. */}
-      <div style={GROUP_HEADER}>Borders &amp; fill</div>
-      <div style={APPEARANCE_ROW} role="group" aria-label="Borders and fill">
+      <div style={GROUP_HEADER}>{t('sidebar.tableProperties.bordersAndFillHeading')}</div>
+      <div
+        style={APPEARANCE_ROW}
+        role="group"
+        aria-label={t('sidebar.tableProperties.bordersAndFillGroupLabel')}
+      >
         <TableBorderPicker onAction={onAction} />
         <TableBorderColorPicker onAction={onAction} theme={theme} value={borderColorHex} />
         <TableBorderWidthPicker onAction={onAction} />
         <TableCellFillPicker onAction={onAction} theme={theme} value={cellBackgroundColor} />
       </div>
-      {GROUPS.map((group) => (
-        <div key={group.header}>
-          <div style={GROUP_HEADER}>{group.header}</div>
-          <div style={TILE_GRID} role="group" aria-label={group.header}>
-            {group.items.map((item) => (
-              <button
-                key={item.action}
-                type="button"
-                style={tile(!!item.danger)}
-                title={item.label}
-                aria-label={`${group.header}: ${item.label}`}
-                data-testid={`properties-table-${item.action}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onAction(item.action);
-                }}
-              >
-                {ICONS[item.action]}
-                <span>{item.label}</span>
-              </button>
-            ))}
+      {GROUPS.map((group) => {
+        const header = t(group.headerKey);
+        return (
+          <div key={group.headerKey}>
+            <div style={GROUP_HEADER}>{header}</div>
+            <div style={TILE_GRID} role="group" aria-label={header}>
+              {group.items.map((item) => {
+                const label = t(item.labelKey);
+                return (
+                  <button
+                    key={item.action}
+                    type="button"
+                    style={tile(!!item.danger)}
+                    title={label}
+                    aria-label={`${header}: ${label}`}
+                    data-testid={`properties-table-${item.action}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onAction(item.action);
+                    }}
+                  >
+                    {ICONS[item.action]}
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

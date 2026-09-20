@@ -29,6 +29,17 @@ import {
   UploadedSignatureField,
   type CapturedSignature,
 } from './captures';
+import { useTranslation } from '../i18n';
+
+// New keys, not yet in en.json — see keys_l3_render.json deliverable.
+const PANE_ARIA_LABEL_KEY = 'signing.pane.ariaLabel';
+const OPTIONAL_ARIA_LABEL_KEY = 'signing.pane.optionalAriaLabel';
+const OPTIONAL_CHIP_KEY = 'signing.pane.optionalChip';
+const ALL_SIGNED_MESSAGE_KEY = 'signing.pane.allSignedMessage';
+const COMPLETE_BUTTON_KEY = 'signing.pane.completeButton';
+const METHOD_DRAW_KEY = 'signing.pane.methodDraw';
+const METHOD_TYPE_KEY = 'signing.pane.methodType';
+const METHOD_UPLOAD_KEY = 'signing.pane.methodUpload';
 
 export interface SigningPaneProps {
   /** Optional banner override; falls back to session.banner. */
@@ -38,6 +49,7 @@ export interface SigningPaneProps {
 }
 
 export function SigningPane({ banner, testId = 'signing-pane' }: SigningPaneProps) {
+  const { t } = useTranslation();
   const ctx = useSigning();
   if (!ctx) return null;
 
@@ -48,7 +60,7 @@ export function SigningPane({ banner, testId = 'signing-pane' }: SigningPaneProp
     snapshot.activeFieldIndex >= 0 ? snapshot.fields[snapshot.activeFieldIndex] : null;
 
   return (
-    <aside style={paneStyle} role="region" aria-label="Signing pane" data-testid={testId}>
+    <aside style={paneStyle} role="region" aria-label={t(PANE_ARIA_LABEL_KEY)} data-testid={testId}>
       {banner && (
         <div style={bannerStyle} data-testid={`${testId}-banner`}>
           {banner}
@@ -70,8 +82,8 @@ export function SigningPane({ banner, testId = 'signing-pane' }: SigningPaneProp
               </span>
               <span style={listLabelStyle}>{f.label}</span>
               {!f.required && (
-                <span style={optionalChipStyle} aria-label="Optional">
-                  optional
+                <span style={optionalChipStyle} aria-label={t(OPTIONAL_ARIA_LABEL_KEY)}>
+                  {t(OPTIONAL_CHIP_KEY)}
                 </span>
               )}
             </div>
@@ -98,7 +110,7 @@ export function SigningPane({ banner, testId = 'signing-pane' }: SigningPaneProp
 
       {!active && snapshot.canComplete && (
         <div style={completeBlockStyle} data-testid={`${testId}-complete-block`}>
-          All required signatures collected. Ready to finalise.
+          {t(ALL_SIGNED_MESSAGE_KEY)}
         </div>
       )}
 
@@ -109,7 +121,7 @@ export function SigningPane({ banner, testId = 'signing-pane' }: SigningPaneProp
           style={secondaryBtnStyle()}
           data-testid={`${testId}-cancel`}
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="button"
@@ -118,7 +130,7 @@ export function SigningPane({ banner, testId = 'signing-pane' }: SigningPaneProp
           style={primaryBtnStyle(!snapshot.canComplete)}
           data-testid={`${testId}-complete`}
         >
-          Complete
+          {t(COMPLETE_BUTTON_KEY)}
         </button>
       </footer>
     </aside>
@@ -138,6 +150,7 @@ function ActiveFieldEditor({
   testId: string;
   onCapture: (cap: CapturedSignature, method: SignatureMethod) => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [method, setMethod] = useState<SignatureMethod>(field.methods[0]);
 
   // Reset the method picker whenever the active field changes — a
@@ -165,7 +178,7 @@ function ActiveFieldEditor({
               style={methodTabStyle(method === m)}
               data-testid={`${testId}-method-${m}`}
             >
-              {methodLabel(m)}
+              {methodLabel(m, t)}
             </button>
           ))}
         </div>
@@ -186,14 +199,14 @@ function ActiveFieldEditor({
   );
 }
 
-function methodLabel(m: SignatureMethod): string {
+function methodLabel(m: SignatureMethod, t: ReturnType<typeof useTranslation>['t']): string {
   switch (m) {
     case 'drawn':
-      return 'Draw';
+      return t(METHOD_DRAW_KEY);
     case 'typed':
-      return 'Type';
+      return t(METHOD_TYPE_KEY);
     case 'uploaded':
-      return 'Upload';
+      return t(METHOD_UPLOAD_KEY);
   }
 }
 

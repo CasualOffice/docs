@@ -3,6 +3,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation, type TranslationKey } from '@casualoffice/docs';
 import { EditorView, basicSetup } from 'codemirror';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
@@ -91,11 +92,12 @@ const ICONS: Record<MarkdownViewMode, React.ReactNode> = {
   ),
 };
 
-const MODE_LABEL: Record<MarkdownViewMode, string> = {
-  notebook: 'Notebook',
-  source: 'Source',
-  split: 'Split',
-  preview: 'Preview',
+// i18n keys resolved via t() at render time (see markdownEditor.mode* in en.json).
+const MODE_LABEL_KEY: Record<MarkdownViewMode, string> = {
+  notebook: 'markdownEditor.modeNotebook',
+  source: 'markdownEditor.modeSource',
+  split: 'markdownEditor.modeSplit',
+  preview: 'markdownEditor.modePreview',
 };
 
 // ─── Source-language detection ────────────────────────────────────────────────
@@ -206,7 +208,8 @@ function insertTable(view: EditorView) {
 
 interface ToolbarItem {
   label: string;
-  title: string;
+  /** i18n key for the button's tooltip/aria-label — resolved via t() at render time. */
+  titleKey: string;
   icon: React.ReactNode;
   action: (view: EditorView) => void;
 }
@@ -228,13 +231,13 @@ function makeTbIcon(d: string) {
 const TOOLBAR_ITEMS: ToolbarItem[] = [
   {
     label: 'H',
-    title: 'Heading (## )',
+    titleKey: 'markdownEditor.headingTitle',
     icon: makeTbIcon('M4 6v12M20 6v12M4 12h16'),
     action: (v) => prefixLines(v, '## '),
   },
   {
     label: 'B',
-    title: 'Bold',
+    titleKey: 'formattingBar.bold',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M6 4h8a4 4 0 010 8H6zM6 12h9a4 4 0 010 8H6z" />
@@ -244,13 +247,13 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'I',
-    title: 'Italic',
+    titleKey: 'formattingBar.italic',
     icon: makeTbIcon('M11 4h4M9 20h6M14 4l-4 16'),
     action: (v) => wrapSelection(v, '_', '_', 'italic text'),
   },
   {
     label: 'S',
-    title: 'Strikethrough',
+    titleKey: 'formattingBar.strikethrough',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -272,7 +275,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Link',
-    title: 'Link',
+    titleKey: 'markdownEditor.linkTitle',
     icon: makeTbIcon(
       'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'
     ),
@@ -280,13 +283,13 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Code',
-    title: 'Inline code',
+    titleKey: 'markdownEditor.inlineCodeTitle',
     icon: makeTbIcon('M8 6l-5 6 5 6M16 6l5 6-5 6'),
     action: (v) => wrapSelection(v, '`', '`', 'code'),
   },
   {
     label: 'Code block',
-    title: 'Code block',
+    titleKey: 'markdownEditor.codeBlockTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
@@ -308,7 +311,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Quote',
-    title: 'Blockquote',
+    titleKey: 'markdownEditor.blockquoteTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -322,7 +325,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Bullet',
-    title: 'Bullet list',
+    titleKey: 'markdownEditor.bulletListTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="4" cy="7" r="1.5" fill="currentColor" />
@@ -340,7 +343,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Numbered',
-    title: 'Numbered list',
+    titleKey: 'markdownEditor.numberedListTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -385,7 +388,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Table',
-    title: 'Insert table',
+    titleKey: 'markdownEditor.insertTableTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
@@ -396,7 +399,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Image',
-    title: 'Insert image',
+    titleKey: 'markdownEditor.insertImageTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
@@ -414,7 +417,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
   },
   {
     label: 'Mermaid',
-    title: 'Mermaid diagram',
+    titleKey: 'markdownEditor.mermaidDiagramTitle',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="2" />
@@ -443,6 +446,7 @@ export function MarkdownEditor({
   onBack,
   renderLogo,
 }: MarkdownEditorProps): React.ReactElement {
+  const { t } = useTranslation();
   const isDesktop = typeof window !== 'undefined' && window.__deskApp__?.isDesktop === true;
 
   // .txt has no markdown semantics — source-only, no preview toggle.
@@ -673,8 +677,8 @@ export function MarkdownEditor({
               onClick={onBack}
               className="md-icon-btn"
               style={styles.iconButton}
-              title="Return to home"
-              aria-label="Return to home"
+              title={t('markdownEditor.returnToHome')}
+              aria-label={t('markdownEditor.returnToHome')}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -694,28 +698,33 @@ export function MarkdownEditor({
             className="md-filename"
             style={styles.title}
             spellCheck={false}
-            aria-label="Document name"
+            aria-label={t('titleBar.documentNameAriaLabel')}
             data-testid="markdown-filename"
           />
         </div>
 
         <div style={styles.barRight}>
           {supportsPreview && (
-            <div style={styles.toggle} role="group" aria-label="View mode">
+            <div
+              style={styles.toggle}
+              role="group"
+              aria-label={t('markdownEditor.viewMode')}
+            >
               {(['notebook', 'source', 'split', 'preview'] as MarkdownViewMode[]).map((m) => {
                 const active = mode === m;
+                const label = t(MODE_LABEL_KEY[m] as TranslationKey);
                 return (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
                     aria-pressed={active}
-                    title={MODE_LABEL[m]}
+                    title={label}
                     data-testid={`markdown-view-${m}`}
                     style={{ ...styles.toggleButton, ...(active ? styles.toggleButtonActive : {}) }}
                   >
                     <span style={styles.toggleIcon}>{ICONS[m]}</span>
-                    <span>{MODE_LABEL[m]}</span>
+                    <span>{label}</span>
                   </button>
                 );
               })}
@@ -727,7 +736,7 @@ export function MarkdownEditor({
               type="button"
               onClick={handleExportPdf}
               style={styles.downloadButton}
-              title="Export as PDF"
+              title={t('toolbar.exportPdf')}
               data-testid="markdown-export-pdf"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -746,7 +755,7 @@ export function MarkdownEditor({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span>Export PDF</span>
+              <span>{t('markdownEditor.exportPdf')}</span>
             </button>
           )}
           {/* Hide the download button on desktop — the native bridge handles saves.
@@ -756,7 +765,7 @@ export function MarkdownEditor({
               type="button"
               onClick={() => void handleSave()}
               style={styles.downloadButton}
-              title="Download"
+              title={t('markdownEditor.download')}
               data-testid="markdown-download"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -768,7 +777,7 @@ export function MarkdownEditor({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span>Download</span>
+              <span>{t('markdownEditor.download')}</span>
             </button>
           )}
         </div>
@@ -776,14 +785,18 @@ export function MarkdownEditor({
 
       {/* ── Formatting toolbar (markdown only, hidden in preview-only mode) ── */}
       {kind === 'markdown' && mode !== 'preview' && (
-        <div style={styles.toolbar} role="toolbar" aria-label="Formatting">
+        <div
+          style={styles.toolbar}
+          role="toolbar"
+          aria-label={t('markdownEditor.formattingToolbar')}
+        >
           {/* Group 1: text formatting */}
           {TOOLBAR_ITEMS.slice(0, 4).map((item) => (
             <button
               key={item.label}
               type="button"
-              title={item.title}
-              aria-label={item.title}
+              title={t(item.titleKey as TranslationKey)}
+              aria-label={t(item.titleKey as TranslationKey)}
               className="md-tb"
               style={styles.toolbarButton}
               onMouseDown={(e) => {
@@ -801,8 +814,8 @@ export function MarkdownEditor({
             <button
               key={item.label}
               type="button"
-              title={item.title}
-              aria-label={item.title}
+              title={t(item.titleKey as TranslationKey)}
+              aria-label={t(item.titleKey as TranslationKey)}
               className="md-tb"
               style={styles.toolbarButton}
               onMouseDown={(e) => {
@@ -820,8 +833,8 @@ export function MarkdownEditor({
             <button
               key={item.label}
               type="button"
-              title={item.title}
-              aria-label={item.title}
+              title={t(item.titleKey as TranslationKey)}
+              aria-label={t(item.titleKey as TranslationKey)}
               className="md-tb"
               style={styles.toolbarButton}
               onMouseDown={(e) => {
@@ -839,8 +852,8 @@ export function MarkdownEditor({
             <button
               key={item.label}
               type="button"
-              title={item.title}
-              aria-label={item.title}
+              title={t(item.titleKey as TranslationKey)}
+              aria-label={t(item.titleKey as TranslationKey)}
               className="md-tb"
               style={styles.toolbarButton}
               onMouseDown={(e) => {

@@ -19,6 +19,7 @@
 import type { CSSProperties } from 'react';
 import type { AccessibilityIssue } from '@eigenpal/docx-core/utils';
 import { Dialog } from '../ui/Dialog';
+import { useTranslation } from '../../i18n';
 
 export interface AccessibilityDialogProps {
   isOpen: boolean;
@@ -94,49 +95,62 @@ const gotoBtnStyle: CSSProperties = {
   transition: 'background var(--doc-anim-fast), border-color var(--doc-anim-fast)',
 };
 
-function describe(issue: AccessibilityIssue): { title: string; hint: string } {
+function describe(
+  issue: AccessibilityIssue,
+  t: ReturnType<typeof useTranslation>['t']
+): { title: string; hint: string } {
   if (issue.kind === 'missing-alt') {
     return {
-      title: 'Image missing alt text',
-      hint: 'Screen readers describe images via their alt text. Add a short description in the image properties.',
+      title: t('dialogs.accessibility.missingAltTitle'),
+      hint: t('dialogs.accessibility.missingAltHint'),
     };
   }
   // heading-jump
   const missing = issue.level - issue.previousLevel - 1;
   return {
-    title: `Heading ${issue.level} follows Heading ${issue.previousLevel}`,
+    title: t('dialogs.accessibility.headingJumpTitle', {
+      level: issue.level,
+      previousLevel: issue.previousLevel,
+    }),
     hint:
       missing === 1
-        ? `Add a Heading ${issue.previousLevel + 1} between them so the outline doesn't skip a level. (“${issue.text}”)`
-        : `${missing} heading levels are skipped. (“${issue.text}”)`,
+        ? t('dialogs.accessibility.headingJumpHintOne', {
+            nextLevel: issue.previousLevel + 1,
+            text: issue.text,
+          })
+        : t('dialogs.accessibility.headingJumpHintMany', {
+            missing,
+            text: issue.text,
+          }),
   };
 }
 
 export function AccessibilityDialog({ isOpen, onClose, issues, onGoto }: AccessibilityDialogProps) {
+  const { t } = useTranslation();
   const summary =
-    issues.length === 0 ? null : `${issues.length} issue${issues.length === 1 ? '' : 's'}`;
+    issues.length === 0 ? null : t('dialogs.accessibility.issueCount', { count: issues.length });
   return (
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Accessibility check"
+      title={t('dialogs.accessibility.title')}
       width={560}
       testId="accessibility-dialog"
       helper={summary}
       footer={
         <button type="button" style={primaryBtnStyle} onClick={onClose}>
-          Done
+          {t('common.done')}
         </button>
       }
     >
       <div style={bodyStyle}>
         {issues.length === 0 ? (
           <div style={emptyStateStyle} data-testid="accessibility-empty">
-            No accessibility issues found.
+            {t('dialogs.accessibility.noIssues')}
           </div>
         ) : (
           issues.map((issue, i) => {
-            const { title, hint } = describe(issue);
+            const { title, hint } = describe(issue, t);
             return (
               <div key={`${issue.kind}-${issue.pmPos}-${i}`} style={rowStyle}>
                 <div>
@@ -152,7 +166,7 @@ export function AccessibilityDialog({ isOpen, onClose, issues, onGoto }: Accessi
                     onClose();
                   }}
                 >
-                  Go to
+                  {t('dialogs.accessibility.goTo')}
                 </button>
               </div>
             );

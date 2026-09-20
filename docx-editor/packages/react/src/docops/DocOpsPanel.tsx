@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { RightDockPanel } from '../components/RightDockPanel';
 import { MaterialSymbol } from '../components/ui/Icons';
+import { useTranslation, type TranslationKey } from '../i18n';
 import type { DocsBridge } from './bridge';
 import {
   DOCOPS_CATALOG,
@@ -343,23 +344,27 @@ const inputRowStyle: CSSProperties = {
 // One-tap prompts for the most common document actions, so the panel isn't a
 // blank chat box. Each seeds a natural-language prompt the model + DocOps tool
 // catalog (summarize, rewrite_selection, convert-to-table, outline/TOC) handle.
-const QUICK_ACTIONS: ReadonlyArray<{ id: string; label: string; prompt: string }> = [
+const QUICK_ACTIONS: ReadonlyArray<{ id: string; labelKey: TranslationKey; prompt: string }> = [
   {
     id: 'summarize',
-    label: 'Summarize',
+    labelKey: 'docops.quickActions.summarizeLabel',
     prompt: 'Summarize this document in a few clear sentences.',
   },
   {
     id: 'rewrite',
-    label: 'Rewrite selection',
+    labelKey: 'docops.quickActions.rewriteLabel',
     prompt: 'Rewrite the currently selected text to be clearer and more polished.',
   },
   {
     id: 'table',
-    label: 'Make table',
+    labelKey: 'docops.quickActions.tableLabel',
     prompt: 'Convert the currently selected text into a well-structured table.',
   },
-  { id: 'outline', label: 'Outline', prompt: 'Give me a concise outline of this document.' },
+  {
+    id: 'outline',
+    labelKey: 'docops.quickActions.outlineLabel',
+    prompt: 'Give me a concise outline of this document.',
+  },
 ];
 
 /** Parse a GitHub-flavored markdown table into columns + rows for insertion. */
@@ -498,6 +503,7 @@ export function DocOpsPanel({
   transport: transportProp,
   maxToolRounds: maxToolRoundsProp,
 }: DocOpsPanelProps) {
+  const { t } = useTranslation();
   const transport = transportProp ?? new DirectTransport();
   const maxToolRounds = maxToolRoundsProp ?? DEFAULT_MAX_TOOL_ROUNDS;
   const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(API_KEY_STORAGE) ?? '');
@@ -621,7 +627,7 @@ export function DocOpsPanel({
   }, []);
   // Label for the "thinking" row shown while the (non-streaming) model runs,
   // so the user sees progress between click and reply.
-  const [thinkingLabel, setThinkingLabel] = useState('Thinking…');
+  const [thinkingLabel, setThinkingLabel] = useState(t('docops.thinkingDefault'));
 
   // Anthropic conversation history (separate from display)
   const historyRef = useRef<LlmMessage[]>([]);
@@ -716,13 +722,13 @@ export function DocOpsPanel({
       // Block send if key is required and missing — but tell the user why and
       // reopen the key setup, instead of a silent dead no-op.
       if (transport.requiresApiKey && !apiKey) {
-        appendDisplay({ kind: 'error', text: 'Add an API key to use the assistant.' });
+        appendDisplay({ kind: 'error', text: t('docops.apiKeyRequiredError') });
         setShowKeySetup(true);
         return;
       }
 
       setInputValue('');
-      setThinkingLabel('Thinking…');
+      setThinkingLabel(t('docops.thinkingDefault'));
       setBusy(true);
 
       appendDisplay({ kind: 'user', text });
@@ -933,25 +939,25 @@ export function DocOpsPanel({
   // so we gather the context the action needs client-side — the editor already
   // has it — and send ONE completion with no tools. Robust regardless of model.
   const runQuickAction = useCallback(
-    async (action: { id: string; label: string; prompt: string }) => {
+    async (action: { id: string; labelKey: TranslationKey; prompt: string }) => {
       if (busy) return;
       if (transport.requiresApiKey && !apiKey) {
-        appendDisplay({ kind: 'error', text: 'Add an API key to use the assistant.' });
+        appendDisplay({ kind: 'error', text: t('docops.apiKeyRequiredError') });
         return;
       }
       setThinkingLabel(
         action.id === 'rewrite'
-          ? 'Rewriting selection…'
+          ? t('docops.quickActions.rewritingStatus')
           : action.id === 'table'
-            ? 'Building table…'
+            ? t('docops.quickActions.buildingTableStatus')
             : action.id === 'summarize'
-              ? 'Summarizing…'
+              ? t('docops.quickActions.summarizingStatus')
               : action.id === 'outline'
-                ? 'Outlining…'
-                : 'Thinking…'
+                ? t('docops.quickActions.outliningStatus')
+                : t('docops.thinkingDefault')
       );
       setBusy(true);
-      appendDisplay({ kind: 'user', text: action.label });
+      appendDisplay({ kind: 'user', text: t(action.labelKey) });
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
@@ -988,7 +994,7 @@ export function DocOpsPanel({
           if (!context) {
             appendDisplay({
               kind: 'assistant',
-              text: 'This document is empty — nothing to work with yet.',
+              text: t('docops.emptyDocumentError'),
             });
             return;
           }
@@ -997,7 +1003,7 @@ export function DocOpsPanel({
           if (!context) {
             appendDisplay({
               kind: 'assistant',
-              text: 'Select some text in the document first, then try this action.',
+              text: t('docops.noSelectionError'),
             });
             return;
           }
@@ -1044,38 +1050,42 @@ export function DocOpsPanel({
         }
         // Write actions modify the document; read actions just reply in chat.
         const failed = (r: unknown) => (r as { ok?: boolean })?.ok === false;
-        const errMsg = (r: unknown) => (r as { message?: string })?.message ?? 'failed';
+        const errMsg = (r: unknown) =>
+          (r as { message?: string })?.message ?? t('docops.genericFailed');
         if (isRewrite && text) {
           const r = await bridge.callTool('rewrite_selection', { new_text: text });
           appendDisplay(
             failed(r)
-              ? { kind: 'error', text: `Couldn't apply rewrite: ${errMsg(r)}` }
+              ? { kind: 'error', text: t('docops.rewriteFailed', { message: errMsg(r) }) }
               : {
                   kind: 'assistant',
-                  text: 'Rewrote the selection as a tracked change — review it in the comments sidebar.',
+                  text: t('docops.rewriteSuccess'),
                 }
           );
         } else if (isTable && text) {
           const parsed = parseMarkdownTable(text);
           if (parsed) {
             const r = await bridge.callTool('insert_report_from_data', {
-              title: 'Table',
+              title: t('docops.defaultTableTitle'),
               columns: parsed.columns,
               rows: parsed.rows,
             });
             appendDisplay(
               failed(r)
-                ? { kind: 'error', text: `Couldn't insert table: ${errMsg(r)}` }
+                ? { kind: 'error', text: t('docops.tableInsertFailed', { message: errMsg(r) }) }
                 : {
                     kind: 'assistant',
-                    text: `Inserted a ${parsed.rows.length}×${parsed.columns.length} table into the document.`,
+                    text: t('docops.tableInsertSuccess', {
+                      rows: parsed.rows.length,
+                      columns: parsed.columns.length,
+                    }),
                   }
             );
           } else {
             appendDisplay({ kind: 'assistant', text });
           }
         } else {
-          appendDisplay({ kind: 'assistant', text: text || '(no response)' });
+          appendDisplay({ kind: 'assistant', text: text || t('docops.noResponse') });
         }
       } catch (err) {
         if ((err as { name?: string }).name === 'AbortError') return;
@@ -1114,10 +1124,10 @@ export function DocOpsPanel({
             padding: '2px 6px',
             borderRadius: 4,
           }}
-          title="Clear conversation"
+          title={t('docops.clearConversationTitle')}
           disabled={busy}
         >
-          Clear
+          {t('chat.clearButton')}
         </button>
       )}
       <button
@@ -1133,7 +1143,7 @@ export function DocOpsPanel({
           display: 'inline-flex',
           alignItems: 'center',
         }}
-        title={showKeySetup ? 'Back to chat' : 'API key settings'}
+        title={showKeySetup ? t('docops.backToChatTitle') : t('docops.apiKeySettingsTitle')}
       >
         <MaterialSymbol name="settings" size={15} />
       </button>
@@ -1148,7 +1158,7 @@ export function DocOpsPanel({
         }
       `}</style>
       <RightDockPanel
-        title="DocOps AI"
+        title={t('docops.panelTitle')}
         icon={<MaterialSymbol name="auto_awesome" size={16} />}
         headerActions={headerActions}
         onClose={onClose}
@@ -1167,7 +1177,7 @@ export function DocOpsPanel({
                       disabled={busy || (transport.requiresApiKey && !apiKey)}
                       data-testid={`docops-quick-${a.id}`}
                     >
-                      {a.label}
+                      {t(a.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -1180,15 +1190,11 @@ export function DocOpsPanel({
                     style={agentToggleStyle(agentMode)}
                     data-testid="docops-agent-toggle"
                     aria-pressed={agentMode}
-                    title={
-                      agentMode
-                        ? 'Agent mode — plans, executes, and reviews multi-step tasks'
-                        : 'Chat mode — single reply'
-                    }
+                    title={agentMode ? t('docops.agentModeTitle') : t('docops.chatModeTitle')}
                     disabled={busy}
                   >
                     <MaterialSymbol name="auto_awesome" size={13} />
-                    {agentMode ? 'Agent' : 'Chat'}
+                    {agentMode ? t('docops.agentModeLabel') : t('docops.chatModeLabel')}
                   </button>
                   {agentMode && (
                     <button
@@ -1196,10 +1202,10 @@ export function DocOpsPanel({
                       onClick={() => setShowMcpAdd((v) => !v)}
                       style={mcpAddBtnStyle}
                       data-testid="docops-mcp-add"
-                      title="Connect an external MCP server; its tools join the agent"
+                      title={t('docops.mcp.connectTitle')}
                     >
                       <MaterialSymbol name="link" size={13} />
-                      MCP
+                      {t('docops.mcp.buttonLabel')}
                     </button>
                   )}
                   {canIndexWorkspace &&
@@ -1209,10 +1215,13 @@ export function DocOpsPanel({
                         onClick={clearWorkspaceFolder}
                         style={mcpAddBtnStyle}
                         data-testid="docops-workspace-chip"
-                        title={`${workspace.count} file${workspace.count === 1 ? '' : 's'} from "${workspace.folder}" indexed for the AI. Click to clear.`}
+                        title={t('docops.workspace.indexedTitle', {
+                          count: workspace.count,
+                          folder: workspace.folder,
+                        })}
                       >
                         <MaterialSymbol name="folder" size={13} />
-                        {workspace.count} indexed
+                        {t('docops.workspace.indexedChip', { count: workspace.count })}
                       </button>
                     ) : (
                       <button
@@ -1221,10 +1230,12 @@ export function DocOpsPanel({
                         style={mcpAddBtnStyle}
                         disabled={indexingWorkspace}
                         data-testid="docops-workspace-add"
-                        title="Index a local folder so the AI can search and cite across your files — on-device"
+                        title={t('docops.workspace.addTitle')}
                       >
                         <MaterialSymbol name="folder" size={13} />
-                        {indexingWorkspace ? 'Indexing…' : 'Folder'}
+                        {indexingWorkspace
+                          ? t('docops.workspace.indexing')
+                          : t('docops.workspace.folderButton')}
                       </button>
                     ))}
                 </div>
@@ -1242,8 +1253,12 @@ export function DocOpsPanel({
                       )}
                       <span title={s.error ?? s.url}>
                         {s.url.replace(/^https?:\/\//, '')}
-                        {s.status === 'connected' ? ` · ${s.toolCount} tools` : ''}
-                        {s.status === 'error' ? ` · ${(s.error ?? 'failed').slice(0, 40)}` : ''}
+                        {s.status === 'connected'
+                          ? ` · ${t('docops.mcp.toolsSuffix', { count: s.toolCount })}`
+                          : ''}
+                        {s.status === 'error'
+                          ? ` · ${(s.error ?? t('docops.mcp.unknownError')).slice(0, 40)}`
+                          : ''}
                       </span>
                       {s.status === 'error' && (
                         <button
@@ -1253,17 +1268,17 @@ export function DocOpsPanel({
                             void connectMcp(s.url);
                           }}
                           style={{ ...mcpRemoveStyle, fontSize: 10, fontWeight: 600 }}
-                          aria-label="Retry MCP server"
-                          title="Retry"
+                          aria-label={t('docops.mcp.retryAriaLabel')}
+                          title={t('common.retry')}
                         >
-                          Retry
+                          {t('common.retry')}
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => removeMcp(s.id)}
                         style={mcpRemoveStyle}
-                        aria-label="Remove MCP server"
+                        aria-label={t('docops.mcp.removeAriaLabel')}
                       >
                         <MaterialSymbol name="close" size={11} />
                       </button>
@@ -1281,7 +1296,7 @@ export function DocOpsPanel({
                           }
                         }}
                         placeholder="https://mcp.example.com/rpc"
-                        aria-label="MCP server URL"
+                        aria-label={t('docops.mcp.urlAriaLabel')}
                         style={mcpInputStyle}
                         data-testid="docops-mcp-input"
                       />
@@ -1295,8 +1310,8 @@ export function DocOpsPanel({
                             void connectMcp(mcpUrlDraft, mcpTokenDraft);
                           }
                         }}
-                        placeholder="Auth token (optional)"
-                        aria-label="MCP auth token (optional)"
+                        placeholder={t('docops.mcp.tokenPlaceholder')}
+                        aria-label={t('docops.mcp.tokenAriaLabel')}
                         style={mcpInputStyle}
                         data-testid="docops-mcp-token"
                       />
@@ -1307,7 +1322,7 @@ export function DocOpsPanel({
                         disabled={!mcpUrlDraft.trim()}
                         data-testid="docops-mcp-connect"
                       >
-                        Connect
+                        {t('docops.mcp.connectButton')}
                       </button>
                     </>
                   )}
@@ -1323,7 +1338,9 @@ export function DocOpsPanel({
                       void send();
                     }
                   }}
-                  placeholder={busy ? 'Working…' : 'Ask about your document… (Enter to send)'}
+                  placeholder={
+                    busy ? t('docops.placeholderWorking') : t('docops.placeholderAsk')
+                  }
                   rows={1}
                   style={textareaStyle}
                   disabled={busy}
@@ -1334,7 +1351,7 @@ export function DocOpsPanel({
                     type="button"
                     style={sendBtnStyle(false)}
                     onClick={stop}
-                    title="Stop"
+                    title={t('chat.stopButton')}
                     data-testid="docops-stop"
                   >
                     <MaterialSymbol name="close" size={16} />
@@ -1345,7 +1362,7 @@ export function DocOpsPanel({
                     style={sendBtnStyle(!inputValue.trim())}
                     onClick={() => void send()}
                     disabled={!inputValue.trim()}
-                    title="Send (Enter)"
+                    title={t('docops.sendTitle')}
                     data-testid="docops-send"
                   >
                     <MaterialSymbol name="keyboard_arrow_right" size={16} />
@@ -1359,8 +1376,7 @@ export function DocOpsPanel({
         {showKeySetup ? (
           <div style={keySetupStyle} data-testid="docops-key-setup">
             <p style={{ margin: 0, fontSize: 13, color: 'var(--doc-text)', lineHeight: 1.5 }}>
-              DocOps uses the Anthropic API. Bring your own key — it&apos;s stored only in this
-              browser&apos;s localStorage.
+              {t('docops.keySetup.description')}
             </p>
             <input
               type="password"
@@ -1369,7 +1385,7 @@ export function DocOpsPanel({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveKey();
               }}
-              placeholder={apiKey ? '••••••••  (key saved — paste new to replace)' : 'sk-ant-…'}
+              placeholder={apiKey ? t('docops.keySetup.placeholderSaved') : 'sk-ant-…'}
               style={keyInputStyle}
               autoFocus
               data-testid="docops-api-key-input"
@@ -1380,7 +1396,7 @@ export function DocOpsPanel({
               onClick={saveKey}
               disabled={!keyDraft.trim()}
             >
-              Save key
+              {t('docops.keySetup.saveButton')}
             </button>
             {apiKey && (
               <button
@@ -1398,7 +1414,7 @@ export function DocOpsPanel({
                   setShowKeySetup(true);
                 }}
               >
-                Remove key
+                {t('docops.keySetup.removeButton')}
               </button>
             )}
           </div>
@@ -1425,10 +1441,7 @@ export function DocOpsPanel({
                   size={28}
                   style={{ marginBottom: 8, opacity: 0.5 }}
                 />
-                <p style={{ margin: '8px 0 0' }}>
-                  Ask anything about your document — outline, stats, styles, find text — or have it
-                  convert a selection to a table or insert a TOC.
-                </p>
+                <p style={{ margin: '8px 0 0' }}>{t('docops.emptyStateDescription')}</p>
               </div>
             )}
 
@@ -1457,7 +1470,11 @@ export function DocOpsPanel({
                     ) : (
                       <MaterialSymbol name="close" size={12} />
                     )}
-                    <span>{TOOL_LABELS[msg.toolName] ?? msg.toolName}</span>
+                    <span>
+                      {TOOL_LABEL_KEYS[msg.toolName]
+                        ? t(TOOL_LABEL_KEYS[msg.toolName] as TranslationKey)
+                        : msg.toolName}
+                    </span>
                   </div>
                 );
               }
@@ -1471,14 +1488,14 @@ export function DocOpsPanel({
               if (msg.kind === 'cap') {
                 return (
                   <div key={i} style={msgCapStyle}>
-                    Stopped after {msg.rounds} tool steps — send another message to continue.
+                    {t('docops.capMessage', { rounds: msg.rounds })}
                   </div>
                 );
               }
               if (msg.kind === 'plan') {
                 return (
                   <div key={i} style={msgPlanStyle} data-testid="docops-plan">
-                    <div style={msgPlanTitleStyle}>Plan</div>
+                    <div style={msgPlanTitleStyle}>{t('docops.planTitle')}</div>
                     {msg.tasks.map((t) => (
                       <div key={t.id} style={msgPlanTaskStyle}>
                         {t.status === 'running' ? (
@@ -1525,7 +1542,7 @@ export function DocOpsPanel({
                   color: 'var(--doc-text-muted)',
                 }}
               >
-                No API key saved. Click the settings icon above to add one.
+                {t('docops.noApiKeyBanner')}
               </div>
             )}
 
@@ -1537,24 +1554,24 @@ export function DocOpsPanel({
   );
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  get_outline: 'Reading outline…',
-  get_selection: 'Reading selection…',
-  get_doc_stats: 'Reading stats…',
-  list_styles: 'Reading styles…',
-  find_text: 'Searching…',
-  convert_range_to_table: 'Converting to table…',
-  insert_toc: 'Inserting TOC…',
-  suggest_text_change: 'Suggesting change…',
-  set_paragraph_style: 'Applying style…',
-  add_comment: 'Adding comment…',
-  rewrite_selection: 'Rewriting selection…',
-  delete_paragraphs: 'Marking for deletion…',
-  insert_paragraph_after: 'Inserting paragraph…',
-  get_block: 'Reading block…',
-  harmonize_styles: 'Harmonizing styles…',
-  insert_report_from_data: 'Building report table…',
-  create_document: 'Building document…',
+const TOOL_LABEL_KEYS: Partial<Record<string, TranslationKey>> = {
+  get_outline: 'docops.toolLabels.getOutline',
+  get_selection: 'docops.toolLabels.getSelection',
+  get_doc_stats: 'docops.toolLabels.getDocStats',
+  list_styles: 'docops.toolLabels.listStyles',
+  find_text: 'docops.toolLabels.findText',
+  convert_range_to_table: 'docops.toolLabels.convertRangeToTable',
+  insert_toc: 'docops.toolLabels.insertToc',
+  suggest_text_change: 'docops.toolLabels.suggestTextChange',
+  set_paragraph_style: 'docops.toolLabels.setParagraphStyle',
+  add_comment: 'docops.toolLabels.addComment',
+  rewrite_selection: 'docops.toolLabels.rewriteSelection',
+  delete_paragraphs: 'docops.toolLabels.deleteParagraphs',
+  insert_paragraph_after: 'docops.toolLabels.insertParagraphAfter',
+  get_block: 'docops.toolLabels.getBlock',
+  harmonize_styles: 'docops.toolLabels.harmonizeStyles',
+  insert_report_from_data: 'docops.toolLabels.insertReportFromData',
+  create_document: 'docops.toolLabels.createDocument',
 };
 
 export default DocOpsPanel;

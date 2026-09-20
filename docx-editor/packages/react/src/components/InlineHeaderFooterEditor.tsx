@@ -963,7 +963,7 @@ export const InlineHeaderFooterEditor = forwardRef<
             {/* Drag grip — top-left blue square, only when hovered */}
             {isHovered && (
               <div
-                title="Drag to move"
+                title={t('headerFooter.dragToMove')}
                 onMouseDown={(e) => startDrag(e, rect)}
                 style={{
                   position: 'absolute',
@@ -1092,6 +1092,7 @@ function ContextMenuPanel({
   onInsertPageNumber,
   onInsertTotalPages,
 }: ContextMenuPanelProps) {
+  const { t } = useTranslation();
   const menuWidth = 190;
   const menuHeight = 190;
   const cx = x + menuWidth > window.innerWidth - 8 ? x - menuWidth : x;
@@ -1140,7 +1141,7 @@ function ContextMenuPanel({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         onClick={onCopy}
       >
-        Copy
+        {t('contextMenu.copy')}
       </button>
       <button
         type="button"
@@ -1149,7 +1150,7 @@ function ContextMenuPanel({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         onClick={onPaste}
       >
-        Paste
+        {t('contextMenu.paste')}
       </button>
       <button
         type="button"
@@ -1158,7 +1159,7 @@ function ContextMenuPanel({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         onClick={onSelectAll}
       >
-        Select all
+        {t('contextMenu.selectAll')}
       </button>
       <div style={divStyle} />
       <button
@@ -1168,7 +1169,7 @@ function ContextMenuPanel({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         onClick={onInsertPageNumber}
       >
-        Insert page number
+        {t('headerFooter.insertPageNumber')}
       </button>
       <button
         type="button"
@@ -1177,7 +1178,7 @@ function ContextMenuPanel({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         onClick={onInsertTotalPages}
       >
-        Insert total pages
+        {t('headerFooter.insertTotalPages')}
       </button>
       <div style={divStyle} />
       <button
@@ -1187,7 +1188,7 @@ function ContextMenuPanel({
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         onClick={onClose}
       >
-        Close menu
+        {t('headerFooter.closeContextMenu')}
       </button>
     </div>
   );

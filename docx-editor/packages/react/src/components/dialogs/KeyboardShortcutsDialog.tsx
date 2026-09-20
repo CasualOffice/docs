@@ -630,6 +630,7 @@ const ShortcutItem: React.FC<ShortcutItemProps> = ({
   translatedName,
   translatedDescription,
 }) => {
+  const { t } = useTranslation();
   const formattedKeys = formatKeys(shortcut.keys);
   const formattedAltKeys = shortcut.altKeys ? formatKeys(shortcut.altKeys) : null;
 
@@ -689,7 +690,9 @@ const ShortcutItem: React.FC<ShortcutItemProps> = ({
         </kbd>
         {formattedAltKeys && (
           <>
-            <span style={{ color: 'var(--doc-text-subtle)', fontSize: '11px' }}>or</span>
+            <span style={{ color: 'var(--doc-text-subtle)', fontSize: '11px' }}>
+              {t('dialogs.keyboardShortcuts.or')}
+            </span>
             <kbd
               style={{
                 display: 'inline-flex',

@@ -8,6 +8,7 @@
 // fetch and surface a friendly progress state instead of letting
 // the user stare at an empty page.
 import type { CSSProperties } from 'react';
+import { useTranslation } from '@casualoffice/docs';
 
 const styles: Record<string, CSSProperties> = {
   shell: {
@@ -49,14 +50,15 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-export function LoadingPanel({ message = 'Joining session…' }: { message?: string }) {
+export function LoadingPanel({ message }: { message?: string }) {
+  const { t } = useTranslation();
   return (
     <div style={styles.shell}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div style={styles.card}>
         <div style={styles.spinner} />
-        <p style={styles.title}>{message}</p>
-        <p style={styles.subtitle}>Loading the shared document…</p>
+        <p style={styles.title}>{message ?? t('collab.joiningSession')}</p>
+        <p style={styles.subtitle}>{t('collab.loadingSharedDocument')}</p>
       </div>
     </div>
   );

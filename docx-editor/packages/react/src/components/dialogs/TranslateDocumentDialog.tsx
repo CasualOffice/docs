@@ -30,6 +30,7 @@ import { translateFragment, TRANSLATE_LANGUAGES as LANGUAGES } from '../../lib/t
 import { translateDocViaMarkdown, type ChunkTranslationState } from '../../lib/translateMarkdown';
 import { isLlmReady } from '../../lib/writer/controller';
 import { Markdown } from '../../lib/markdown';
+import { useTranslation } from '../../i18n';
 
 export interface TranslateDocumentDialogProps {
   isOpen: boolean;
@@ -206,6 +207,7 @@ export function TranslateDocumentDialog({
   renderPreview,
   onExport,
 }: TranslateDocumentDialogProps) {
+  const { t } = useTranslation();
   const [source, setSource] = useState('en');
   const [target, setTarget] = useState('es');
   const [originalBuffer, setOriginalBuffer] = useState<ArrayBuffer | null>(null);
@@ -320,14 +322,14 @@ export function TranslateDocumentDialog({
         if (controller.signal.aborted) return;
         setTranslatedBuffer(buf);
         setPreviewStatus(buf ? 'ready' : 'error');
-        if (!buf) setPreviewError("Couldn't serialise the translated document.");
+        if (!buf) setPreviewError(t('dialogs.translateDocument.serializeError'));
       } catch (err) {
         if (controller.signal.aborted) return;
         if ((err as Error).name === 'AbortError') return;
         setPreviewError(
           isLlmReady()
-            ? 'On-device translation failed mid-document. Try again or pick a shorter section.'
-            : 'Translation service is rate-limiting or unreachable. Try again in a moment, pick a smaller selection, or enable the Advanced LLM tier to translate on-device.'
+            ? t('dialogs.translateDocument.onDeviceError')
+            : t('dialogs.translateDocument.serviceError')
         );
         setPreviewStatus('error');
       }
@@ -387,16 +389,16 @@ export function TranslateDocumentDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Translate document"
+      title={t('dialogs.translateDocument.title')}
       width={1200}
       testId="translate-document-dialog"
       dismissOnBackdrop={!exporting}
       dismissOnEscape={!exporting}
-      helper="Your open document is unchanged — only the downloaded copy is translated."
+      helper={t('dialogs.translateDocument.helper')}
       footer={
         <>
           <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={exporting}>
-            Close
+            {t('common.close')}
           </Button>
           {!hasStarted && previewStatus !== 'ready' && (
             <Button
@@ -407,7 +409,9 @@ export function TranslateDocumentDialog({
               onClick={() => setHasStarted(true)}
               data-testid="translate-doc-start"
             >
-              {source === target ? 'Pick a different language' : `Translate to ${targetLangLabel}`}
+              {source === target
+                ? t('dialogs.translateDocument.pickDifferentLanguage')
+                : t('dialogs.translateDocument.translateToButton', { language: targetLangLabel })}
             </Button>
           )}
           {hasStarted && previewStatus === 'loading' && (
@@ -425,7 +429,7 @@ export function TranslateDocumentDialog({
               }}
               data-testid="translate-doc-stop"
             >
-              Stop
+              {t('dialogs.translateDocument.stop')}
             </Button>
           )}
           {previewStatus === 'ready' && (
@@ -437,7 +441,9 @@ export function TranslateDocumentDialog({
               onClick={handleDownload}
               data-testid="translate-doc-export"
             >
-              {exporting ? 'Downloading…' : 'Download .docx'}
+              {exporting
+                ? t('dialogs.translateDocument.downloading')
+                : t('dialogs.translateDocument.downloadButton')}
             </Button>
           )}
         </>
@@ -449,7 +455,7 @@ export function TranslateDocumentDialog({
           value={source}
           onChange={(e) => setSource(e.target.value)}
           data-testid="translate-doc-source"
-          aria-label="Source language"
+          aria-label={t('dialogs.translate.sourceLanguage')}
         >
           {LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>
@@ -465,7 +471,7 @@ export function TranslateDocumentDialog({
             padding: '4px 8px',
             fontSize: 14,
           }}
-          aria-label="Swap source and target languages"
+          aria-label={t('dialogs.translateDocument.swapLanguages')}
         >
           ⇄
         </button>
@@ -474,7 +480,7 @@ export function TranslateDocumentDialog({
           value={target}
           onChange={(e) => setTarget(e.target.value)}
           data-testid="translate-doc-target"
-          aria-label="Target language"
+          aria-label={t('dialogs.translate.targetLanguage')}
         >
           {LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>
@@ -487,13 +493,18 @@ export function TranslateDocumentDialog({
       <div style={{ ...paneAreaStyle, marginTop: 12 }}>
         <div style={twoPaneRowStyle}>
           <div style={paneStyle}>
-            <div style={paneLabelStyle}>Original · {sourceLangLabel}</div>
+            <div style={paneLabelStyle}>
+              {t('dialogs.translate.original')} · {sourceLangLabel}
+            </div>
             <div style={paneEditorWrapStyle} data-testid="translate-doc-preview-source">
               {originalBuffer ? (
                 renderPreview(originalBuffer)
               ) : (
                 <div style={stateOverlayStyle}>
-                  <PanelState kind="loading" message="Snapshotting original…" />
+                  <PanelState
+                    kind="loading"
+                    message={t('dialogs.translateDocument.snapshotting')}
+                  />
                 </div>
               )}
             </div>
@@ -502,14 +513,18 @@ export function TranslateDocumentDialog({
           <div style={paneDividerStyle} />
 
           <div style={paneStyle}>
-            <div style={paneLabelStyle}>Translation · {targetLangLabel}</div>
+            <div style={paneLabelStyle}>
+              {t('dialogs.translate.translation')} · {targetLangLabel}
+            </div>
             <div style={paneEditorWrapStyle} data-testid="translate-doc-preview-target">
               {!hasStarted && previewStatus !== 'error' && (
                 <div style={stateOverlayStyle}>
                   <PanelState
                     kind="empty"
-                    message={`Pick a target language and click Translate to render ${targetLangLabel}.`}
-                    hint="Nothing runs until you start — opening this dialog never modifies your document."
+                    message={t('dialogs.translateDocument.pickLanguagePrompt', {
+                      language: targetLangLabel,
+                    })}
+                    hint={t('dialogs.translateDocument.nothingRunsHint')}
                   />
                 </div>
               )}
@@ -522,18 +537,26 @@ export function TranslateDocumentDialog({
                       //   LLM markdown round-trip: "Translating chunk 3 of 12"
                       //   Network per-run:        "Translating 17 of 280 text runs"
                       if (chunkInfo) {
-                        return `Translating chunk ${chunkInfo.chunk} of ${chunkInfo.totalChunks}`;
+                        return t('dialogs.translateDocument.translatingChunk', {
+                          chunk: chunkInfo.chunk,
+                          totalChunks: chunkInfo.totalChunks,
+                        });
                       }
                       if (progress && progress.total > 0) {
-                        return `Translating… ${progress.completed} of ${progress.total} text runs`;
+                        return t('dialogs.translateDocument.translatingRuns', {
+                          completed: progress.completed,
+                          total: progress.total,
+                        });
                       }
-                      return 'Translating your document…';
+                      return t('dialogs.translateDocument.translatingDocument');
                     })()}
                     hint={(() => {
                       if (chunkInfo) {
-                        return `“${chunkInfo.preview}${chunkInfo.preview.length >= 60 ? '…' : ''}”`;
+                        const preview =
+                          chunkInfo.preview + (chunkInfo.preview.length >= 60 ? '…' : '');
+                        return t('dialogs.translateDocument.chunkPreviewHint', { preview });
                       }
-                      return 'Each formatting run translates separately so bold / italic / link boundaries stay aligned.';
+                      return t('dialogs.translateDocument.formattingRunHint');
                     })()}
                   />
                 </div>
@@ -543,7 +566,10 @@ export function TranslateDocumentDialog({
                   state={liveChunkState}
                   chunkLabel={
                     chunkInfo
-                      ? `Translating chunk ${chunkInfo.chunk} of ${chunkInfo.totalChunks}`
+                      ? t('dialogs.translateDocument.translatingChunk', {
+                          chunk: chunkInfo.chunk,
+                          totalChunks: chunkInfo.totalChunks,
+                        })
                       : null
                   }
                 />
@@ -553,7 +579,7 @@ export function TranslateDocumentDialog({
                   <PanelState
                     kind="error"
                     message={previewError}
-                    hint="Check your connection and try again."
+                    hint={t('dialogs.translate.errorHint')}
                     onRetry={() => {
                       setPreviewStatus('idle');
                       setPreviewError(null);
@@ -660,11 +686,12 @@ function LiveTranslationPreview({
   state: ChunkTranslationState;
   chunkLabel: string | null;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={liveWrapStyle} data-testid="translate-doc-live-preview">
       <div style={liveStatusBarStyle}>
         <span style={liveSpinnerStyle} aria-hidden="true" />
-        <span>{chunkLabel ?? 'Translating…'}</span>
+        <span>{chunkLabel ?? t('dialogs.translate.translatingLoading')}</span>
       </div>
       {state.translated.map((md, i) => (
         <div

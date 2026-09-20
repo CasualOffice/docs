@@ -180,7 +180,7 @@ export function RightDockPanel({
       `}</style>
       <aside
         role="complementary"
-        aria-label={ariaLabel ?? (typeof title === 'string' ? title : 'Side panel')}
+        aria-label={ariaLabel ?? (typeof title === 'string' ? title : t('rightPanel.sidePanelAriaLabel'))}
         data-testid={testId}
         style={ROOT_STYLE}
       >

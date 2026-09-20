@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useState, type CSSProperties } from 'react';
+import { useTranslation } from '../../i18n';
 import type { Citation, CitationStyle } from '../../utils/citations';
 import { formatCitation } from '../../utils/citations';
 import { Dialog } from '../ui/Dialog';
@@ -146,6 +147,7 @@ export function CitationsDialog({
   onDelete,
   onInsert,
 }: CitationsDialogProps) {
+  const { t } = useTranslation();
   const [author, setAuthor] = useState('');
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
@@ -176,22 +178,22 @@ export function CitationsDialog({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Citations"
+      title={t('dialogs.citations.title')}
       width={640}
       testId="citations-dialog"
       footer={
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          Close
+          {t('common.close')}
         </Button>
       }
     >
       <div style={bodyStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={sectionLabelStyle}>Add a citation</div>
+          <div style={sectionLabelStyle}>{t('dialogs.citations.addCitation')}</div>
           <div style={formRowStyle}>
             <input
               type="text"
-              placeholder="Author (e.g. Knuth, D.)"
+              placeholder={t('dialogs.citations.authorPlaceholder')}
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               style={inputStyle}
@@ -199,7 +201,7 @@ export function CitationsDialog({
             />
             <input
               type="text"
-              placeholder="Year"
+              placeholder={t('dialogs.citations.yearPlaceholder')}
               value={year}
               onChange={(e) => setYear(e.target.value)}
               style={inputStyle}
@@ -207,7 +209,7 @@ export function CitationsDialog({
             />
             <input
               type="text"
-              placeholder="Title"
+              placeholder={t('dialogs.citations.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               style={{ ...inputStyle, gridColumn: '1 / span 2' }}
@@ -215,7 +217,7 @@ export function CitationsDialog({
             />
             <input
               type="text"
-              placeholder="URL (optional)"
+              placeholder={t('dialogs.citations.urlPlaceholder')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               style={{ ...inputStyle, gridColumn: '1 / span 2' }}
@@ -230,17 +232,18 @@ export function CitationsDialog({
               disabled={!canAdd}
               onClick={submit}
             >
-              Save citation
+              {t('dialogs.citations.saveCitation')}
             </button>
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={sectionLabelStyle}>
-            Saved citations{citations.length > 0 ? ` (${citations.length})` : ''}
+            {t('dialogs.citations.savedCitations')}
+            {citations.length > 0 ? ` (${citations.length})` : ''}
           </div>
           <div style={styleRowStyle}>
-            <span>Format:</span>
+            <span>{t('dialogs.citations.format')}</span>
             {(['apa', 'mla', 'chicago'] as const).map((s) => (
               <label
                 key={s}
@@ -260,7 +263,7 @@ export function CitationsDialog({
           </div>
           {citations.length === 0 ? (
             <div style={emptyStateStyle} data-testid="citation-empty">
-              No citations saved yet.
+              {t('dialogs.citations.empty')}
             </div>
           ) : (
             citations.map((c) => {
@@ -277,16 +280,16 @@ export function CitationsDialog({
                       data-testid={`citation-insert-${c.id}`}
                       onClick={() => onInsert(formatted, c.url)}
                     >
-                      Insert
+                      {t('common.insert')}
                     </button>
                     <button
                       type="button"
                       style={deleteBtnStyle}
                       data-testid={`citation-delete-${c.id}`}
                       onClick={() => onDelete(c.id)}
-                      aria-label={`Delete citation: ${c.title}`}
+                      aria-label={t('dialogs.citations.deleteCitation', { title: c.title })}
                     >
-                      Delete
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>

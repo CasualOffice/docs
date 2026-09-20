@@ -38,6 +38,7 @@ import type { SelectionRect } from '@eigenpal/docx-core/layout-bridge';
 import type { SelectionFormatting, FormattingAction } from '../Toolbar';
 import { MaterialSymbol } from './MaterialSymbol';
 import { ColorPicker } from './ColorPicker';
+import { useTranslation, type TranslationKey } from '../../i18n';
 
 const dividerStyle: CSSProperties = {
   width: 1,
@@ -148,7 +149,7 @@ interface FormatButton {
     | 'superscript'
     | 'subscript'
     | 'insertLink';
-  label: string;
+  labelKey: TranslationKey;
   /** Text glyph (B/I/U/S). Mutually exclusive with `icon`. */
   glyph?: string;
   /** Inline JSX element for buttons whose glyph can't be plain text (sub/super). */
@@ -163,12 +164,17 @@ interface FormatButton {
 }
 
 const BUTTONS: FormatButton[] = [
-  { cmd: 'bold', label: 'Bold', glyph: 'B', active: (f) => !!f.bold },
-  { cmd: 'italic', label: 'Italic', glyph: 'I', active: (f) => !!f.italic },
-  { cmd: 'underline', label: 'Underline', glyph: 'U', active: (f) => !!f.underline },
+  { cmd: 'bold', labelKey: 'formattingBar.bold', glyph: 'B', active: (f) => !!f.bold },
+  { cmd: 'italic', labelKey: 'formattingBar.italic', glyph: 'I', active: (f) => !!f.italic },
+  {
+    cmd: 'underline',
+    labelKey: 'formattingBar.underline',
+    glyph: 'U',
+    active: (f) => !!f.underline,
+  },
   {
     cmd: 'strikethrough',
-    label: 'Strikethrough',
+    labelKey: 'formattingBar.strikethrough',
     glyph: 'S',
     // SelectionFormatting calls it `strike` (matches PM mark name);
     // the FormattingAction uses `strikethrough` for the command.
@@ -176,7 +182,7 @@ const BUTTONS: FormatButton[] = [
   },
   {
     cmd: 'superscript',
-    label: 'Superscript',
+    labelKey: 'formattingBar.superscript',
     glyphEl: (
       <span style={{ fontWeight: 600, lineHeight: 1 }}>
         x<sup style={{ fontSize: '0.65em' }}>2</sup>
@@ -187,7 +193,7 @@ const BUTTONS: FormatButton[] = [
   },
   {
     cmd: 'subscript',
-    label: 'Subscript',
+    labelKey: 'formattingBar.subscript',
     glyphEl: (
       <span style={{ fontWeight: 600, lineHeight: 1 }}>
         x<sub style={{ fontSize: '0.65em' }}>2</sub>
@@ -198,7 +204,7 @@ const BUTTONS: FormatButton[] = [
   },
   {
     cmd: 'insertLink',
-    label: 'Insert link',
+    labelKey: 'formattingBar.insertLink',
     icon: 'link',
     active: () => false,
     divider: true,
@@ -252,6 +258,7 @@ function MobileFormatBarInner({
   zoom: number;
   variant: 'mobile' | 'desktop';
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const position = useMemo(() => computePosition(rects, zoom, variant), [rects, zoom, variant]);
   const containerStyle = useMemo(() => buildContainerStyle(variant), [variant]);
   const btnBase = useMemo(() => buildBtnBase(variant), [variant]);
@@ -263,7 +270,7 @@ function MobileFormatBarInner({
     <div
       style={{ ...containerStyle, ...position }}
       role="toolbar"
-      aria-label="Format selection"
+      aria-label={t('mobileFormatBar.ariaLabel')}
       data-testid={variant === 'mobile' ? 'mobile-format-bar' : 'desktop-format-bar'}
       data-variant={variant}
       onMouseDown={(e) => e.preventDefault()} // don't steal the editor's focus.
@@ -273,6 +280,7 @@ function MobileFormatBarInner({
         if (b.desktopOnly && variant === 'mobile') return null;
         const on = b.active(formatting);
         const cmd = b.cmd;
+        const label = t(b.labelKey);
         const glyphStyle: CSSProperties = {
           fontWeight: cmd === 'bold' ? 700 : 600,
           fontStyle: cmd === 'italic' ? 'italic' : 'normal',
@@ -280,7 +288,7 @@ function MobileFormatBarInner({
             cmd === 'underline' ? 'underline' : cmd === 'strikethrough' ? 'line-through' : 'none',
         };
         return (
-          <Fragment key={b.label}>
+          <Fragment key={cmd}>
             {b.divider && <span aria-hidden style={dividerStyle} />}
             <button
               type="button"
@@ -288,8 +296,8 @@ function MobileFormatBarInner({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onFormat(b.cmd)}
               aria-pressed={on}
-              aria-label={b.label}
-              title={b.label}
+              aria-label={label}
+              title={label}
               data-testid={`${variant}-format-${cmd}`}
             >
               {b.icon ? (

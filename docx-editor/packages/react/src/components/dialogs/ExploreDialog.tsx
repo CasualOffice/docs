@@ -25,6 +25,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { PanelState } from '../ui/PanelState';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
+import { useTranslation } from '../../i18n';
 
 export interface ExploreDialogProps {
   isOpen: boolean;
@@ -145,6 +146,7 @@ async function explore(query: string, signal: AbortSignal): Promise<WikiResult> 
 }
 
 export function ExploreDialog({ isOpen, onClose, initialQuery, onCite }: ExploreDialogProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState(initialQuery ?? '');
   const [activeQuery, setActiveQuery] = useState<string | null>(initialQuery);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'not-found' | 'error'>(
@@ -188,12 +190,12 @@ export function ExploreDialog({ isOpen, onClose, initialQuery, onCite }: Explore
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Explore"
+      title={t('dialogs.explore.title')}
       width={600}
       testId="explore-dialog"
       footer={
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          Close
+          {t('common.close')}
         </Button>
       }
     >
@@ -201,7 +203,7 @@ export function ExploreDialog({ isOpen, onClose, initialQuery, onCite }: Explore
         <div style={lookupRowStyle}>
           <input
             type="text"
-            placeholder="Search Wikipedia"
+            placeholder={t('dialogs.explore.searchPlaceholder')}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -218,31 +220,34 @@ export function ExploreDialog({ isOpen, onClose, initialQuery, onCite }: Explore
             disabled={input.trim().length === 0}
             onClick={submit}
           >
-            Search
+            {t('dialogs.explore.searchButton')}
           </button>
         </div>
 
         {status === 'loading' && (
-          <PanelState kind="loading" message={`Searching for “${activeQuery ?? ''}”…`} />
+          <PanelState
+            kind="loading"
+            message={t('dialogs.explore.loading', { query: activeQuery ?? '' })}
+          />
         )}
         {status === 'not-found' && (
           <PanelState
             kind="error"
-            message={`No Wikipedia article found for “${activeQuery ?? ''}”.`}
-            hint="Try a more specific search term."
+            message={t('dialogs.explore.notFound', { query: activeQuery ?? '' })}
+            hint={t('dialogs.explore.notFoundHint')}
           />
         )}
         {status === 'error' && (
           <PanelState
             kind="error"
-            message="Couldn't reach Wikipedia."
-            hint="Check your connection and try again."
+            message={t('dialogs.explore.errorMessage')}
+            hint={t('dialogs.explore.errorHint')}
             onRetry={() => setActiveQuery((q) => (q ? `${q}` : q))}
           />
         )}
         {status === 'success' && result && (
           <>
-            <span style={sourceLabelStyle}>Wikipedia</span>
+            <span style={sourceLabelStyle}>{t('dialogs.explore.sourceLabel')}</span>
             <h3 style={titleStyle} data-testid="explore-result-title">
               {result.title}
             </h3>
@@ -257,7 +262,7 @@ export function ExploreDialog({ isOpen, onClose, initialQuery, onCite }: Explore
                 rel="noreferrer noopener"
                 data-testid="explore-open-link"
               >
-                Open in Wikipedia ↗
+                {t('dialogs.explore.openLink')}
               </a>
               <button
                 type="button"
@@ -268,7 +273,7 @@ export function ExploreDialog({ isOpen, onClose, initialQuery, onCite }: Explore
                   onClose();
                 }}
               >
-                Cite this
+                {t('dialogs.explore.citeThis')}
               </button>
             </div>
           </>
